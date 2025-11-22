@@ -2,9 +2,11 @@
 
 ## Summary
 
-OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications.
+OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications. The project focuses on Vala and GTK4, with the main library written in pure Vala.
 
 - **Library** - A library that can talk to Ollama and most OpenAI-compatible REST interfaces (not yet built as a standalone library)
+- **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
+- **Tool Dependencies** - Some tools will rely on third-party applications (e.g., semantic code search which is in another repository)
 - **Tool Calling** - Supports tool calling functionality
 - **Permission System** - Includes a permission system for secure tool access
 - **Prompt Manipulation** - Provides prompt manipulation capabilities
