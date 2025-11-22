@@ -1146,24 +1146,6 @@ namespace OLLMchat.UI
 		 */
 		public Gtk.TextChildAnchor add_widget_frame(Gtk.Frame frame)
 		{
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			return this.add_widget_frame_at_position(frame, end_iter);
-		}
-		
-		/**
-		 * Adds a widget frame at a specific position in the chat view.
-		 * 
-		 * The widget will be automatically resized when the chat view is resized.
-		 * The widget must be a Gtk.Frame.
-		 * 
-		 * @param frame The frame widget to add
-		 * @param insert_pos The position to insert at
-		 * @return The TextChildAnchor that can be used to remove the widget later
-		 * @since 1.0
-		 */
-		public Gtk.TextChildAnchor add_widget_frame_at_position(Gtk.Frame frame, Gtk.TextIter insert_pos)
-		{
 			// Ensure frame is unparented before adding (required for GTK4)
 			if (frame.get_parent() != null) {
 				frame.unparent();
@@ -1174,8 +1156,10 @@ namespace OLLMchat.UI
 				this.message_widgets.add(frame);
 			}
 			
-			// Create child anchor and insert Frame
-			var anchor = this.buffer.create_child_anchor(insert_pos);
+			// Get end position and create child anchor
+			Gtk.TextIter end_iter;
+			this.buffer.get_end_iter(out end_iter);
+			var anchor = this.buffer.create_child_anchor(end_iter);
 			this.text_view.add_child_at_anchor(frame, anchor);
 			
 			// Update width after widget is shown - use Idle to ensure layout is complete
@@ -1202,7 +1186,7 @@ namespace OLLMchat.UI
 		 * Removes a widget frame from the chat view.
 		 * 
 		 * @param frame The frame widget to remove
-		 * @param anchor The TextChildAnchor returned from add_widget_frame_at_position()
+		 * @param anchor The TextChildAnchor returned from add_widget_frame()
 		 * @since 1.0
 		 */
 		public void remove_widget_frame(Gtk.Frame frame, Gtk.TextChildAnchor anchor)
