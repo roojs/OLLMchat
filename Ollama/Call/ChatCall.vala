@@ -227,10 +227,9 @@ namespace OLLMchat.Ollama
 				next_response = yield this.execute_non_streaming();
 			}
 			
-			// Recursively handle tool calls if the next response also has them, is done, and has no content
+			// Recursively handle tool calls if the next response also has them and is done
 			if (next_response.done && 
-				next_response.message.tool_calls.size > 0 
-				&& next_response.message.content == "") {
+				next_response.message.tool_calls.size > 0) {
 				return yield this.toolsReply(next_response);
 			}
 			
