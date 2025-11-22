@@ -180,9 +180,9 @@ namespace OLLMchat.Ollama
 		{
 			GLib.debug("ChatCall.toolsReply: Processing tool calls");
 			
-			// Only process tool calls if response is done, has tool_calls, and has no content
-			// If response has content, it's a final answer and we shouldn't process tool_calls
-			if (!response.done || response.message.tool_calls.size == 0 || response.message.content != "") {
+			// Only process tool calls if response is done and has tool_calls
+			// Tool calls can be present even when content is also present
+			if (!response.done || response.message.tool_calls.size == 0) {
 				GLib.debug("ChatCall.toolsReply: Reply end - done=%s, tool_calls.size=%d, content.length=%zu", 
 					response.done.to_string(), 
 					response.message.tool_calls.size, 
@@ -291,9 +291,8 @@ namespace OLLMchat.Ollama
 			response_obj.call = this;
 			response_obj.done = true; // Non-streaming responses are always done
 			
-			// Check for tool calls and handle them recursively (only if no content)
-			if (response_obj.message.tool_calls.size > 0 
-				&& response_obj.message.content == "") {
+			// Check for tool calls and handle them recursively
+			if (response_obj.message.tool_calls.size > 0) {
 				return yield this.toolsReply(response_obj);
 			}
 			
@@ -333,14 +332,13 @@ namespace OLLMchat.Ollama
 				throw e;
 			}
 
-		// Check for tool calls and handle them recursively (only if no content)
+		// Check for tool calls and handle them recursively
 			GLib.debug("ChatCall.execute_streaming: done=%s, tool_calls.size=%d, content='%s'", 
 				this.streaming_response.done.to_string(),
 				this.streaming_response.message.tool_calls.size,
 				this.streaming_response.message.content);
 			if (this.streaming_response.done && 
-				this.streaming_response.message.tool_calls.size > 0 &&
-				this.streaming_response.message.content == "") {
+				this.streaming_response.message.tool_calls.size > 0) {
 				GLib.debug("ChatCall.execute_streaming: Calling toolsReply");
 				return yield this.toolsReply(this.streaming_response);
 			}
