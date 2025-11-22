@@ -36,6 +36,10 @@ namespace OLLMchat.Ollama
 		 */
 		public void addTool(Tool tool)
 		{
+			// Ensure tools HashMap is initialized
+			if (this.tools == null) {
+				this.tools = new Gee.HashMap<string, Tool>();
+			}
 			tool.client = this;
 			this.tools.set(tool.name,  tool);
 		}
