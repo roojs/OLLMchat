@@ -215,11 +215,18 @@ namespace OLLMchat.Ollama
 					GLib.debug("ChatCall.toolsReply: Tool '%s' executed successfully", tool_call.function.name);
 				} catch (Error e) {
 					GLib.warning("Error executing tool '%s': %s", tool_call.function.name, e.message);
+					this.client.tool_message("Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}
 			
-			// Execute the chat call
+			// Automatically continue the conversation by sending tool results back to the server
+			GLib.debug("ChatCall.toolsReply: Tools executed, automatically continuing conversation");
+			
+			// Reset streaming_response for the continuation so we get a fresh response
+			this.streaming_response = null;
+			
+			// Execute the chat call with tool results in the conversation history
 			ChatResponse next_response;
 			if (this.stream) {
 				next_response = yield this.execute_streaming();
@@ -236,6 +243,7 @@ namespace OLLMchat.Ollama
 			return next_response;
 		}
 
+		
 		public async ChatResponse exec_chat() throws Error
 		{
 			if (this.model == "") {
@@ -271,6 +279,9 @@ namespace OLLMchat.Ollama
 
 		private async ChatResponse execute_non_streaming() throws Error
 		{
+			// Emit signal that we're starting to send a request
+			this.client.send_starting();
+			
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
 
@@ -300,6 +311,9 @@ namespace OLLMchat.Ollama
 
 		private async ChatResponse execute_streaming() throws Error
 		{
+			// Emit signal that we're starting to send a request
+			this.client.send_starting();
+			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
 				this.streaming_response = new ChatResponse(this.client, this);
@@ -336,11 +350,16 @@ namespace OLLMchat.Ollama
 				this.streaming_response.done.to_string(),
 				this.streaming_response.message.tool_calls.size,
 				this.streaming_response.message.content);
+			
 			if (this.streaming_response.done && 
 				this.streaming_response.message.tool_calls.size > 0) {
 				GLib.debug("ChatCall.execute_streaming: Calling toolsReply");
 				return yield this.toolsReply(this.streaming_response);
 			}
+			
+			GLib.debug("ChatCall.execute_streaming: Not calling toolsReply - done=%s, tool_calls.size=%d",
+				this.streaming_response.done.to_string(),
+				this.streaming_response.message.tool_calls.size);
 			
 			return this.streaming_response;
 		}

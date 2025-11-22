@@ -90,9 +90,13 @@ namespace OLLMchat.UI
 			this.clear_waiting_indicator();
 
 			// Add user message with simple formatting
-			Gtk.TextIter end_iter;
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert_markup(ref end_iter, "<b>You:</b>\n", -1);
+			
+			// Add blank line before "You:" if buffer is not empty
+			this.buffer.insert_markup(ref end_iter, 
+				(!start_iter.equal(end_iter) ? "\n" : "") + "<b>You:</b>\n", -1);
 			this.buffer.get_end_iter(out end_iter);
 			this.buffer.insert(ref end_iter, text, -1);
 			this.buffer.get_end_iter(out end_iter);
@@ -142,9 +146,12 @@ namespace OLLMchat.UI
 			this.is_thinking = response.is_thinking;
 			this.content_state = ContentState.NONE;
 
-			Gtk.TextIter end_iter;
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert_markup(ref end_iter, "<b>Assistant:</b>\n", -1);
+			
+			// Add blank line before "Assistant:" if buffer is not empty
+			this.buffer.insert_markup(ref end_iter, (!start_iter.equal(end_iter) ? "\n" : "") + "<b>Assistant:</b>\n", -1);
 			this.buffer.get_end_iter(out end_iter);
 			this.current_block_start = this.buffer.create_mark(null, end_iter, true);
 			this.current_block_end = this.buffer.create_mark(null, end_iter, true);
@@ -447,6 +454,13 @@ namespace OLLMchat.UI
 					if (this.current_markdown_content.length == 0) {
 						return;
 					}
+					
+					// Ensure content ends with newline if last_line has content (incomplete line)
+					if (this.last_line.length > 0 || 
+					    (this.current_markdown_content.length > 0 && 
+					     !this.current_markdown_content.has_suffix("\n"))) {
+						this.current_markdown_content += "\n";
+					}
 						
 					string rendered = MarkdownProcessor.get_default().markup_string(this.current_markdown_content);
 					
@@ -566,25 +580,20 @@ namespace OLLMchat.UI
 
 			// Display performance metrics if response is available and done
 			if (response != null && response.done && response.eval_duration > 0) {
-				Gtk.TextIter end_iter;
-				this.buffer.get_end_iter(out end_iter);
-				this.buffer.insert_markup(ref end_iter,
-					("\n\n<span size=\"small\" color=\"grey\"><i>"+
-					"Total Duration: %.2fs | " +
-					"Tokens In: %d Out: %d | " +
-					"%.2f t/s </i></span>").printf(
+				this.append_tool_message(
+					"Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
 						response.total_duration_s,
 						response.prompt_eval_count,
 						response.eval_count,
 						response.tokens_per_second
-					), -1);
-				this.scroll_to_bottom();
+					)
+				);
+			} else {
+				// Add final newline if no summary
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
+				this.buffer.insert(ref end_iter, "\n", -1);
 			}
-
-			// Add final newline
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert(ref end_iter, "\n\n", -1);
 
 			// Reset state
 			this.is_assistant_message = false;
@@ -633,8 +642,35 @@ namespace OLLMchat.UI
 		 * @param error The error message to display
 		 * @since 1.0
 		 */
+
+		/**
+		 * Appends a tool message to the chat view in grey format (same as summary).
+		 * Tool messages are processed as markdown before display.
+		 * 
+		 * @param message The tool status message to display (may contain markdown)
+		 * @param widget Optional widget parameter (default null). Expected to be a Gtk.Widget,
+		 *               but typed as Object? since the Ollama base library should work without Gtk.
+		 *               A cast will be needed when using this parameter.
+		 * @since 1.0
+		 */
+		public void append_tool_message(string message, Object? widget = null)
+		{
+			// Process message through markdown processor
+			string processed_message = MarkdownProcessor.get_default().markup_string(message);
+			
+			Gtk.TextIter end_iter;
+			this.buffer.get_end_iter(out end_iter);
+			this.buffer.insert_markup(ref end_iter,
+				"<span size=\"small\" color=\"grey\"><i>" + processed_message + "</i></span>\n",
+				-1);
+			this.scroll_to_bottom();
+		}
+
 		public void append_error(string error)
 		{
+			// Clear any waiting indicator first to prevent it from deleting the error later
+			this.clear_waiting_indicator();
+			
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
 				this.finalize_assistant_message();
@@ -668,16 +704,19 @@ namespace OLLMchat.UI
 			}
 
 			// Insert waiting indicator
-			Gtk.TextIter end_iter;
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert_markup(ref end_iter, "<b>Assistant:</b>\n", -1);
+			
+			// Add blank line before "Assistant:" if buffer is not empty
+			this.buffer.insert_markup(ref end_iter, (!start_iter.equal(end_iter) ? "\n" : "") + "<b>Assistant:</b>\n", -1);
 			this.buffer.get_end_iter(out end_iter);
 			this.waiting_mark = this.buffer.create_mark(null, end_iter, true);
 			this.waiting_dots = 0;
 			this.update_waiting_dots();
 
-			// Start timer to update dots every 2 seconds
-			this.waiting_timer = GLib.Timeout.add_seconds(2, () => {
+			// Start timer to update dots every 1 second (2x speed)
+			this.waiting_timer = GLib.Timeout.add_seconds(1, () => {
 				this.update_waiting_dots();
 				return true; // Continue timer
 			});
@@ -747,8 +786,8 @@ namespace OLLMchat.UI
 				return false; // Stop timer
 			}
 
-			// Update dots (cycle through 1, 2, 3)
-			this.waiting_dots = (this.waiting_dots % 3) + 1;
+			// Update dots (cycle through 1-6)
+			this.waiting_dots = (this.waiting_dots % 6) + 1;
 			string dots = string.nfill(this.waiting_dots, '.');
 
 			// Delete old waiting text and insert new
@@ -767,9 +806,14 @@ namespace OLLMchat.UI
 
 		private void scroll_to_bottom()
 		{
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			this.text_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 0.0);
+			// Use Idle to scroll after layout is updated
+			GLib.Idle.add(() => {
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
+				// Use use_align=true with vertical alignment 1.0 (bottom) to ensure it always scrolls
+				this.text_view.scroll_to_iter(end_iter, 0.0, true, 0.0, 1.0);
+				return false;
+			});
 		}
 
 		/**

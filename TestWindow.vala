@@ -88,11 +88,11 @@ namespace OLLMchat
 
 			this.chat_widget.response_received.connect((text) => {
 				stdout.printf("Response received: %s\n", text);
-				// Automatically send reply query after first response
+				// Fill in the second prompt in the input field after first response
 				if (!first_response_received) {
 					first_response_received = true;
-					// Send reply query about dmesg
-					this.chat_widget.send_message("Please read the first few lines of /var/log/dmesg and tell me what kernel version we are running");
+					// Set the second prompt in the input field (user must click send)
+					this.chat_widget.default_message = "Please read the first few lines of /var/log/dmesg and tell me what kernel version we are running";
 				}
 			});
 

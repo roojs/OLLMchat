@@ -25,6 +25,26 @@ namespace OLLMchat.Ollama
 		 */
 		public signal void stream_chunk(string new_text, bool is_thinking, ChatResponse response);
 
+		/**
+		 * Emitted when a tool sends a status message during execution.
+		 * 
+		 * @param message The status message from the tool
+		 * @param widget Optional widget parameter (default null). Expected to be a Gtk.Widget,
+		 *               but typed as Object? since the Ollama base library should work without Gtk.
+		 *               A cast will be needed when using this parameter in Gtk-based applications.
+		 * @since 1.0
+		 */
+		public signal void tool_message(string message, Object? widget = null);
+
+		/**
+		 * Emitted when a request is about to be sent to the server.
+		 * This signal is emitted at the start of any API request, including
+		 * initial chat requests and automatic continuations after tool execution.
+		 * 
+		 * @since 1.0
+		 */
+		public signal void send_starting();
+
 		public Soup.Session? session = null;
 
 		/**
@@ -37,9 +57,6 @@ namespace OLLMchat.Ollama
 		public void addTool(Tool tool)
 		{
 			// Ensure tools HashMap is initialized
-			if (this.tools == null) {
-				this.tools = new Gee.HashMap<string, Tool>();
-			}
 			tool.client = this;
 			this.tools.set(tool.name,  tool);
 		}

@@ -185,9 +185,11 @@ namespace OLLMchat.UI
 			this.buffer.get_end_iter(out end_iter);
 			string text = this.buffer.get_text(start_iter, end_iter, false);
 
-			if (text.strip().length > 0) {
-				this.send_clicked(text);
+			if (text.strip().length < 1) {
+				return;
 			}
+			this.send_clicked(text);
+			
 		}
 	}
 }

@@ -38,6 +38,7 @@ namespace OLLMchat.Ollama
 			this.tool_call_id = tool_call_id;
 			this.name = name;
 			this.content = content;
+			
 		}
 		
 		/**
@@ -71,6 +72,9 @@ namespace OLLMchat.Ollama
 			this.tool_call_id = tool_call.id;
 			this.name = tool_call.function.name;
 			this.content = "ERROR: Tool '" + tool_call.function.name + "' is not available";
+			
+			// Emit tool message (message_interface is always a ChatCall for tool-related messages)
+			((ChatCall) message_interface).client.tool_message("Error: Tool '" + tool_call.function.name + "' not found");
 		}
 		
 		/**

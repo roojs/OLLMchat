@@ -67,6 +67,12 @@ namespace OLLMchat.UI
 			vexpand = true
 		};
 		this.append(this.chat_view);
+		
+		// Connect tool_message signal after chat_view is created
+		this.client.tool_message.connect(this.chat_view.append_tool_message);
+		
+		// Connect send_starting signal to show waiting indicator
+		this.client.send_starting.connect(this.chat_view.show_waiting_indicator);
 
 		// Create chat input
 		this.chat_input = new ChatInput() {
@@ -125,15 +131,32 @@ namespace OLLMchat.UI
 				this.chat_view.append_assistant_chunk(new_text, response);
 			}
 
-			// If response is done, finalize and re-enable input
-			if (response.done) {
-				this.chat_view.finalize_assistant_message(response);
-				this.chat_input.set_streaming(false);
-				this.is_streaming_active = false;
-
-				// Emit response received signal
-				this.response_received(response.message.content);
+			// If response is not done, continue waiting
+			if (!response.done) {
+				return;
 			}
+
+			// Response is done - finalize the message
+			this.chat_view.finalize_assistant_message(response);
+			
+			// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
+			// Don't stop streaming yet if tools are being executed (they will auto-continue)
+			if (response.message.tool_calls.size > 0) {
+				// Tools will be executed and conversation will continue automatically
+				// Keep streaming active so we can receive the final response
+				// Don't emit response_received signal yet - wait for final response after tool execution
+				GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
+				// Don't set streaming to false yet - tools will execute and continue
+				// Don't emit response_received - this is not the final response
+				return;
+			}
+
+			// No tool calls - this is the final response
+			this.chat_input.set_streaming(false);
+			this.is_streaming_active = false;
+			
+			// Emit response received signal only for final responses (no tool_calls)
+			this.response_received(response.message.content);
 		});
 	}
 
@@ -161,10 +184,8 @@ namespace OLLMchat.UI
 			this.chat_input.set_streaming(true);
 			this.is_streaming_active = true;
 
-			// Show waiting indicator
-			this.chat_view.show_waiting_indicator();
-
 			// Send chat request asynchronously (this will call client.chat())
+			// The waiting indicator will be shown when send_starting signal is emitted
 			this.send_chat_request.begin(text);
 		}
 

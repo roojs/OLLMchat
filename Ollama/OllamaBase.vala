@@ -7,7 +7,7 @@ namespace OLLMchat.Ollama
 
 	public abstract class OllamaBase : Object, Json.Serializable
 	{
-		protected Client? client;
+		public Client? client { get; protected set; }
 		public string chat_content { get; set; default = ""; }
 
 		protected OllamaBase(Client? client = null)
@@ -34,6 +34,10 @@ namespace OLLMchat.Ollama
 
 		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Block client from serialization - it's an internal reference, not API data
+			if (property_name == "client") {
+				return null;
+			}
 			return default_serialize_property(property_name, value, pspec);
 		}
 	}

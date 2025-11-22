@@ -46,20 +46,22 @@
     }
 
     private enum MarkupPriority {
-        INDENTED_CODE = 0,
-        URL_MARKDOWN = 1,
-        EMAIL = 2,
-        URL = 3,
-        CODE = 4,
-        ITALIC_BOLD_UNDERLINE = 5,
-        BOLD_UNDERLINE = 6,
-        ITALIC_UNDERLINE = 7,
-        ITALIC_BOLD = 8,
-        BOLD = 9,
-        ITALIC = 10,
-        UNDERLINE = 11
+        ALERT_BLOCKS = 0,
+        INDENTED_CODE = 1,
+        URL_MARKDOWN = 2,
+        EMAIL = 3,
+        URL = 4,
+        CODE = 5,
+        ITALIC_BOLD_UNDERLINE = 6,
+        BOLD_UNDERLINE = 7,
+        ITALIC_UNDERLINE = 8,
+        ITALIC_BOLD = 9,
+        BOLD = 10,
+        ITALIC = 11,
+        UNDERLINE = 12
     }
 
+    private Regex ? alert_regex = null;
     private Regex ? mailto_regex = null;
     private Regex ? url_regex = null;
     private Regex ? url_markdown_regex = null;
@@ -78,6 +80,11 @@
 
     private void compile_regexes () {
         try {
+            alert_regex = new Regex (
+                "\\[!(?P<type>WARNING|ERROR|INFO|SUCCESS)\\](?P<content>[^\\[]*)",
+                RegexCompileFlags.OPTIMIZE
+            );
+
             mailto_regex = new Regex (
                 "(?P<mailto>[a-zA-Z0-9][a-zA-Z0-9._%-]*[a-zA-Z0-9]@[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,})",
                 RegexCompileFlags.OPTIMIZE
@@ -145,6 +152,7 @@
         var escaped_text = GLib.Markup.escape_text (text, text.length);
         var matches = new Gee.ArrayList<MarkupMatch ?> ();
 
+        collect_alert_matches (escaped_text, matches);
         collect_indented_code_matches (escaped_text, matches);
         collect_url_markdown_matches (escaped_text, matches);
         collect_email_matches (escaped_text, matches);
@@ -155,6 +163,42 @@
         var filtered_matches = filter_and_sort_matches (matches);
 
         return apply_matches (escaped_text, filtered_matches);
+    }
+
+    private void collect_alert_matches (string text, Gee.ArrayList<MarkupMatch ?> matches) {
+        if (alert_regex == null) return;
+
+        MatchInfo match_info;
+        if (alert_regex.match (text, 0, out match_info)) {
+            do {
+                int start_pos, end_pos;
+                if (match_info.fetch_pos (0, out start_pos, out end_pos)) {
+                    var full_match = match_info.fetch (0);
+                    var alert_type = match_info.fetch_named ("type");
+                    var alert_content = match_info.fetch_named ("content");
+                    
+                    string icon = "";
+                    string color = "grey";
+                    
+                    if (alert_type == "WARNING") {
+                        icon = "✗";
+                        color = "red";
+                    } else if (alert_type == "ERROR") {
+                        icon = "✗";
+                        color = "red";
+                    } else if (alert_type == "INFO") {
+                        icon = "ℹ";
+                        color = "blue";
+                    } else if (alert_type == "SUCCESS") {
+                        icon = "✓";
+                        color = "green";
+                    }
+                    
+                    var replacement = "<span color=\"" + color + "\">" + icon + " " + alert_content.strip() + "</span>";
+                    matches.add (MarkupMatch (start_pos, end_pos, full_match, replacement, MarkupPriority.ALERT_BLOCKS));
+                }
+            } while (match_info.next ());
+        }
     }
 
     private void collect_indented_code_matches (string text, Gee.ArrayList<MarkupMatch ?> matches) {

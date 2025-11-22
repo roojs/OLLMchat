@@ -99,6 +99,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
 				string content;
 				GLib.FileUtils.get_contents(file_path, out content);
+				this.client.tool_message("Read file " + file_path);
 				return content;
 			}
 			
@@ -139,6 +140,9 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 					// Ignore close errors
 				}
 			}
+			
+			// Send status message after reading
+			this.client.tool_message("Read file " + file_path + " (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")");
 			
 			return content;
 		}
