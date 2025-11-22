@@ -200,9 +200,13 @@ namespace OLLMchat.Ollama
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
 					GLib.warning("Tool '%s' not found in client tools", tool_call.function.name);
+					this.client.tool_message("Error: Tool '" + tool_call.function.name + "' not found");
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
 					continue;
 				}
+				
+				// Show message that tool is being executed
+				this.client.tool_message("Executing tool: " + tool_call.function.name);
 				
 				// Execute the tool
 				try {
