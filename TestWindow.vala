@@ -68,7 +68,7 @@ namespace OLLMchat
 				model = obj.get_string_member("model"),
 				api_key = obj.get_string_member("api_key"),
 				stream = true,
-				think = true,
+				think =  obj.has_member("think") ?  obj.get_boolean_member("api_key") : false,
 				keep_alive = "5m",
 				prompt_assistant = code_assistant
 			};
