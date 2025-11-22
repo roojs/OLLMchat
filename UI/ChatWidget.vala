@@ -142,6 +142,9 @@ namespace OLLMchat.UI
 			// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
 			// Don't stop streaming yet if tools are being executed (they will auto-continue)
 			if (response.message.tool_calls.size > 0) {
+				// Clear waiting indicator so permission widgets can be shown
+				this.chat_view.clear_waiting_indicator();
+				
 				// Tools will be executed and conversation will continue automatically
 				// Keep streaming active so we can receive the final response
 				// Don't emit response_received signal yet - wait for final response after tool execution
