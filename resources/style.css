@@ -1,0 +1,43 @@
+/* Main chat view text view styling */
+.chat-view-text text {
+  background-color: #dcdcdcf3;
+}
+ 
+.chat-view-text  {
+	background-color: #dcdcdcf3;
+ 
+}
+.chat-view-text > viewport {
+	margin-left: 10px;
+	margin-right: 10px;
+}
+
+
+/* User message box styling */
+.user-message-box {
+  border-radius: 8px;
+}
+
+.user-message-box text {
+  background-color: white;
+}
+
+/* User message text view styling */
+.user-message-text text {
+  background-color: white;
+}
+
+/* Code block box styling */
+.code-block-box {
+  border-radius: 8px;
+}
+
+.code-block-box text {
+  background-color: white;
+}
+
+/* Code editor styling */
+.code-editor {
+  font-family: monospace;
+}
+

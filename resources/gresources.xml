@@ -10,6 +10,9 @@
     <file>code-assistant/calling_external_apis.md</file>
     <file>code-assistant/citation_format.md</file>
   </gresource>
+  <gresource prefix="/ollmchat">
+    <file>style.css</file>
+  </gresource>
 </gresources>
 
 

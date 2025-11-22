@@ -54,7 +54,7 @@ test_ollama_deps = [
 ollmchat_resources = gnome.compile_resources(
   'ollmchat-resources',
   'resources/gresources.xml',
-  source_dir: ['resources/ollmchat-agents'],
+  source_dir: ['resources/ollmchat-agents', 'resources'],
   c_name: 'ollmchat_resources'
 )
 
