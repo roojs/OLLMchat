@@ -106,7 +106,7 @@ namespace OLLMchat
 			api_key = obj.get_string_member("api_key"),
 			stream = true,
 			think = true,
-			permission_provider = new Tools.PermissionProviderDummy()
+			permission_provider = new ChatPermission.Dummy()
 		};
 		client.stream_chunk.connect(on_stream);
 		

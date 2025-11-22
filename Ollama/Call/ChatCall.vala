@@ -206,11 +206,12 @@ namespace OLLMchat.Ollama
 				
 				// Execute the tool
 				try {
+					var result = yield this.client.tools.get(tool_call.function.name).execute(tool_call.function.arguments);
 					this.messages.add(
 						new Message.tool_reply(
 							this, tool_call.id, 
 							tool_call.function.name,
-							this.client.tools.get(tool_call.function.name).execute(tool_call.function.arguments)
+							result
 						));
 					GLib.debug("ChatCall.toolsReply: Tool '%s' executed successfully", tool_call.function.name);
 				} catch (Error e) {

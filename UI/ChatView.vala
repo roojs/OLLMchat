@@ -21,8 +21,8 @@ namespace OLLMchat.UI
 
 		private ChatWidget? chat_widget = null;
 		private Gtk.ScrolledWindow scrolled_window;
-		private Gtk.TextView text_view;
-		private Gtk.TextBuffer buffer;
+		public Gtk.TextView text_view { get; private set; }
+		public Gtk.TextBuffer buffer { get; private set; }
 		private string current_markdown_content = "";
 		private string last_line = "";
 		private int last_chunk_start = 0;
@@ -125,17 +125,6 @@ namespace OLLMchat.UI
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
 
-			// Get position to insert user message
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
-			
-			// Add blank line before user message if buffer is not empty
-			if (!start_iter.equal(end_iter)) {
-				this.buffer.insert(ref end_iter, "\n", -1);
-			}
-			this.buffer.get_end_iter(out end_iter);
-
 			// Create TextView for user message
 			var user_text_view = new Gtk.TextView() {
 				editable = false,
@@ -164,13 +153,6 @@ namespace OLLMchat.UI
 			// CSS is loaded from resource file in constructor
 			user_frame.add_css_class("user-message-box");
 
-			// Track this frame for width updates
-			this.message_widgets.add(user_frame);
-
-			// Create child anchor and insert Frame (containing TextView)
-			var user_anchor = this.buffer.create_child_anchor(end_iter);
-			this.text_view.add_child_at_anchor(user_frame, user_anchor);
-			
 			// Calculate height based on content
 			// Estimate height: ~20px per line + margins
 			var lines = text.split("\n").length;
@@ -178,22 +160,11 @@ namespace OLLMchat.UI
 			// Minimum height to ensure text is visible
 			user_text_view.height_request = estimated_height > 25 ? estimated_height : 25;
 			
-			user_frame.set_visible(true);
 			user_text_view.set_visible(true);
 			
-			// Update width after widget is shown - use Idle to ensure layout is complete
-			GLib.Idle.add(() => {
-				this.update_message_width(user_frame);
-				return false;
-			});
-
-			// Insert newline after the anchor
-			Gtk.TextIter after_anchor;
-			this.buffer.get_iter_at_child_anchor(out after_anchor, user_anchor);
-			after_anchor.forward_char();
-			this.buffer.insert(ref after_anchor, "\n", -1);
-
-			this.scroll_to_bottom();
+			// Add blank line and frame at end
+			this.add_blank_line();
+			this.add_widget_frame(user_frame);
 		}
 
 		/**
@@ -899,7 +870,7 @@ namespace OLLMchat.UI
 			return true; // Continue timer
 		}
 
-		private void scroll_to_bottom()
+		public void scroll_to_bottom()
 		{
 			// Use timeout to scroll after layout is updated (500ms delay)
 			GLib.Timeout.add(500, () => {
@@ -1018,21 +989,18 @@ namespace OLLMchat.UI
 			frame.add_css_class("code-block-box");
 
 			// Get current position in TextView
-			Gtk.TextIter insert_pos;
-			if (this.current_block_end != null) {
-				this.buffer.get_iter_at_mark(out insert_pos, this.current_block_end);
-			} else if (this.current_block_start != null) {
-				this.buffer.get_iter_at_mark(out insert_pos, this.current_block_start);
-			} else {
-				this.buffer.get_end_iter(out insert_pos);
-			}
+			// TEST: Commenting out position calculation to test inserting at end
+			// Gtk.TextIter insert_pos;
+			// if (this.current_block_end != null) {
+			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_end);
+			// } else if (this.current_block_start != null) {
+			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_start);
+			// } else {
+			// 	this.buffer.get_end_iter(out insert_pos);
+			// }
 
-			// Create child anchor and insert Frame (containing SourceView)
-			this.code_block_anchor = this.buffer.create_child_anchor(insert_pos);
-			this.text_view.add_child_at_anchor(frame, this.code_block_anchor);
-			
-			// Track this frame for width updates
-			this.message_widgets.add(frame);
+			// Add frame using the generic method at end (testing)
+			this.code_block_anchor = this.add_widget_frame(frame);
 			
 			// Insert a placeholder line after the anchor to mark the end of the code block
 			// This helps with scrolling - we can scroll to this mark instead of end of buffer
@@ -1042,19 +1010,9 @@ namespace OLLMchat.UI
 			this.buffer.insert(ref after_anchor, "\n", -1);
 			this.code_block_end_mark = this.buffer.create_mark(null, after_anchor, true);
 
-			// Set initial width
-			this.update_message_width(frame);
-			
 			// Set reasonable size for code block (smaller for single-line content)
 			this.current_source_view.height_request = 25;
-			frame.set_visible(true);
 			this.current_source_view.set_visible(true);
-			
-			// Update width after widget is shown - use Idle to ensure layout is complete
-			GLib.Idle.add(() => {
-				this.update_message_width(frame);
-				return false;
-			});
 		}
 
 		/**
@@ -1157,6 +1115,121 @@ namespace OLLMchat.UI
 					this.update_message_width((Gtk.Frame) widget);
 				}
 			}
+		}
+		
+		/**
+		 * Adds a blank line at the end of the buffer if the buffer is not empty.
+		 * 
+		 * @since 1.0
+		 */
+		public void add_blank_line()
+		{
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_start_iter(out start_iter);
+			this.buffer.get_end_iter(out end_iter);
+			
+			// Add blank line if buffer is not empty
+			if (!start_iter.equal(end_iter)) {
+				this.buffer.insert(ref end_iter, "\n", -1);
+			}
+		}
+		
+		/**
+		 * Adds a widget frame to the end of the chat view.
+		 * 
+		 * The widget will be automatically resized when the chat view is resized.
+		 * The widget must be a Gtk.Frame.
+		 * 
+		 * @param frame The frame widget to add
+		 * @return The TextChildAnchor that can be used to remove the widget later
+		 * @since 1.0
+		 */
+		public Gtk.TextChildAnchor add_widget_frame(Gtk.Frame frame)
+		{
+			Gtk.TextIter end_iter;
+			this.buffer.get_end_iter(out end_iter);
+			return this.add_widget_frame_at_position(frame, end_iter);
+		}
+		
+		/**
+		 * Adds a widget frame at a specific position in the chat view.
+		 * 
+		 * The widget will be automatically resized when the chat view is resized.
+		 * The widget must be a Gtk.Frame.
+		 * 
+		 * @param frame The frame widget to add
+		 * @param insert_pos The position to insert at
+		 * @return The TextChildAnchor that can be used to remove the widget later
+		 * @since 1.0
+		 */
+		public Gtk.TextChildAnchor add_widget_frame_at_position(Gtk.Frame frame, Gtk.TextIter insert_pos)
+		{
+			// Ensure frame is unparented before adding (required for GTK4)
+			if (frame.get_parent() != null) {
+				frame.unparent();
+			}
+			
+			// Track this frame for width updates (only if not already tracked)
+			if (!this.message_widgets.contains(frame)) {
+				this.message_widgets.add(frame);
+			}
+			
+			// Create child anchor and insert Frame
+			var anchor = this.buffer.create_child_anchor(insert_pos);
+			this.text_view.add_child_at_anchor(frame, anchor);
+			
+			// Update width after widget is shown - use Idle to ensure layout is complete
+			GLib.Idle.add(() => {
+				this.update_message_width(frame);
+				return false;
+			});
+			
+			// Insert newline after the anchor
+			Gtk.TextIter after_anchor;
+			this.buffer.get_iter_at_child_anchor(out after_anchor, anchor);
+			after_anchor.forward_char();
+			this.buffer.insert(ref after_anchor, "\n", -1);
+			
+			frame.set_visible(true);
+			
+			// Scroll to bottom to show new content
+			this.scroll_to_bottom();
+			
+			return anchor;
+		}
+		
+		/**
+		 * Removes a widget frame from the chat view.
+		 * 
+		 * @param frame The frame widget to remove
+		 * @param anchor The TextChildAnchor returned from add_widget_frame_at_position()
+		 * @since 1.0
+		 */
+		public void remove_widget_frame(Gtk.Frame frame, Gtk.TextChildAnchor anchor)
+		{
+			// Remove from tracking
+			this.message_widgets.remove(frame);
+			
+			// Hide the widget first to prevent snapshot issues
+			frame.set_visible(false);
+			
+			// Remove the anchor and surrounding text from the buffer
+			// This will automatically unparent the widget
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_iter_at_child_anchor(out start_iter, anchor);
+			
+			// Get the end iter (after the newline we inserted)
+			end_iter = start_iter;
+			end_iter.forward_char(); // Skip the anchor character
+			if (!end_iter.is_end()) {
+				end_iter.forward_char(); // Skip the newline
+			}
+			
+			// Delete the anchor and newline from buffer
+			// This will cause GTK to automatically unparent the widget
+			this.buffer.delete(ref start_iter, ref end_iter);
+			
+			// Note: TextChildAnchor is automatically deleted when removed from buffer
 		}
 		
 	}

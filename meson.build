@@ -89,17 +89,27 @@ ollmchat_prompt_src = files([
   'Prompt/CodeAssistant.vala',
 ])
 
+# Source files for ChatPermission namespace (base classes, no GTK)
+ollmchat_chatpermission_src = files([
+  'ChatPermission/Provider.vala',
+  'ChatPermission/Dummy.vala',
+])
+
+# Source files for ChatPermission namespace (GTK-dependent)
+ollmchat_chatpermission_ui_src = files([
+  'ChatPermission/ChatView.vala',
+])
+
 # Source files for Tools namespace
 ollmchat_tools_src = files([
-  'Tools/PermissionProvider.vala',
-  'Tools/PermissionProviderDummy.vala',
   'Tools/ReadFileTool.vala',
 ])
 
 # Build as a library (can be linked or used as standalone)
+# Note: ChatView is UI-specific and not included in the library
 ollmchat_prompt_lib = library('ollmchat-prompt',
   dependencies: deps,
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_resources],
   install: false
 )
 
@@ -118,6 +128,7 @@ test_ollama = executable('test-ollama',
     'TestOllama.vala',
     ollmchat_ollama_src,
     ollmchat_prompt_src,
+    ollmchat_chatpermission_src,
     ollmchat_tools_src,
     ollmchat_resources,
   ],
@@ -131,6 +142,8 @@ test_window = executable('test-window',
     'TestWindow.vala',
     ollmchat_ollama_src,
     ollmchat_prompt_src,
+    ollmchat_chatpermission_src,
+    ollmchat_chatpermission_ui_src,
     ollmchat_tools_src,
     ollmchat_ui_src,
     ollmchat_resources,

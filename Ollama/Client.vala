@@ -13,7 +13,7 @@ namespace OLLMchat.Ollama
 		public Gee.HashMap<string, Tool> tools { get; set; default = new Gee.HashMap<string, Tool>(); }
 		public ChatResponse? streaming_response { get; set; default = null; }
 		public Prompt.BaseAgentPrompt prompt_assistant { get; set; default = new Prompt.BaseAgentPrompt(); }
-		public Tools.PermissionProvider permission_provider { get; set; default = new Tools.PermissionProviderDummy(); }
+		public ChatPermission.Provider permission_provider { get; set; default = new ChatPermission.Dummy(); }
 
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.

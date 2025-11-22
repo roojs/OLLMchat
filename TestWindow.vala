@@ -50,8 +50,12 @@ namespace OLLMchat
 }
 			 */
 			var parser = new Json.Parser();
-			parser.load_from_file(Path.build_filename(
-				GLib.Environment.get_home_dir(), ".local", "share", "roobuilder", "ollama.json"));
+			try {
+				parser.load_from_file(Path.build_filename(
+					GLib.Environment.get_home_dir(), ".local", "share", "roobuilder", "ollama.json"));
+			} catch (GLib.Error e) {
+				GLib.error("Failed to load config file: %s", e.message);
+			}
 			var obj = parser.get_root().get_object();
 
 			// Create CodeAssistant prompt generator with dummy provider
@@ -66,8 +70,7 @@ namespace OLLMchat
 				stream = true,
 				think = true,
 				keep_alive = "5m",
-				prompt_assistant = code_assistant,
-				permission_provider = new Tools.PermissionProviderDummy()
+				prompt_assistant = code_assistant
 			};
 			
 			// Add tools to the client
@@ -77,6 +80,11 @@ namespace OLLMchat
 			this.chat_widget = new UI.ChatWidget(client) {
 				default_message = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is"
 			};
+			
+			// Create ChatView permission provider and set it on the client
+			client.permission_provider = new ChatPermission.ChatView(
+				this.chat_widget.chat_view
+			);
 			
 			// Track if we've sent the first query to automatically send the reply
 			bool first_response_received = false;

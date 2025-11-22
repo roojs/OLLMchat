@@ -66,7 +66,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			
 			// Set permission properties
 			this.permission_target_path = this.file_path;
-			this.permission_operation = Operation.READ;
+			this.permission_operation = ChatPermission.Operation.READ;
 			this.permission_question = question;
 			
 			return true;

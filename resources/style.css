@@ -41,3 +41,19 @@
   font-family: monospace;
 }
 
+/* Permission widget styling */
+.permission-widget {
+  background-color: #fffacd;
+  border-radius: 8px;
+}
+
+.permission-widget text {
+  background-color: #fffacd;
+}
+
+/* Fix cursor for buttons inside TextView */
+.permission-widget button {
+  cursor: pointer;
+}
+
+

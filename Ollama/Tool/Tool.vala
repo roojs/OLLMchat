@@ -23,7 +23,7 @@ namespace OLLMchat.Ollama
 		
 		public string permission_question { get; protected set; default = ""; }
 		public string permission_target_path { get; protected set; default = ""; }
-		public Tools.Operation permission_operation { get; protected set; default = Tools.Operation.READ; }
+		public ChatPermission.Operation permission_operation { get; protected set; default = ChatPermission.Operation.READ; }
 
 		protected Tool(Client client)
 		{
@@ -293,12 +293,12 @@ namespace OLLMchat.Ollama
 		 * @param parameters The parameters from the Ollama function call
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public string execute(Json.Object parameters)
+		public async string execute(Json.Object parameters)
 		{
 			 
 			// Check permission if needed
 			if (this.prepare(parameters)) {
-				if (!this.client.permission_provider.request(this)) {
+				if (!(yield this.client.permission_provider.request(this))) {
 					return "ERROR: Permission denied: " + this.permission_question;
 				}
 			}

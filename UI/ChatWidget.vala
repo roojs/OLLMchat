@@ -11,7 +11,7 @@ namespace OLLMchat.UI
 	 */
 	public class ChatWidget : Gtk.Box
 	{
-		private ChatView chat_view;
+		public ChatView chat_view { get; private set; }
 		private ChatInput chat_input;
 		public Ollama.Client client { get; private set; }
 		public Ollama.ChatCall? current_chat { get; private set; default = null; }
