@@ -70,7 +70,7 @@ namespace OLLMchat
 				permission_provider = new Tools.PermissionProviderDummy()
 			};
 			
-			// Add ReadFileTool
+			// Add tools to the client
 			client.addTool(new Tools.ReadFileTool(client));
 
 			// Create chat widget with client
