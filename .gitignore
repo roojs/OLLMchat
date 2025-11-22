@@ -1,0 +1,13 @@
+build/
+
+
+debian/auto*
+debian/debhelper*
+debian/files
+build-dir/*
+
+.flatpak-builder/*
+.gdb_history
+.vscode/
+.cursorindexingignore
+.specstory/
