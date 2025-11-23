@@ -423,6 +423,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 				// Handle insertions at end of file (range [n, n] where n > file length)
 				foreach (var edit in this.edits) {
 					if (edit.start == edit.end && edit.start > current_line) {
+						// For insertions, we don't need to skip input lines (already at end)
 						foreach (var new_line in edit.replacement.split("\n")) {
 							temp_output.put_string(new_line);
 							temp_output.put_byte('\n');
