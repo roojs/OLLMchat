@@ -371,7 +371,7 @@ namespace OLLMchat.ChatPermission
 				generator.indent = 4;
 				
 				var obj = new Json.Object();
-				foreach (var entry in this.global.entries) {
+				foreach (var entry in Provider.global.entries) {
 					obj.set_string_member(entry.key, entry.value);
 				}
 				
