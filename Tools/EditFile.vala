@@ -311,12 +311,10 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			var input_file = GLib.File.new_for_path(file_path);
 			var input_data = new GLib.DataInputStream(input_file.read(null));
 			
-			try {
-				this.process_edits(input_data, temp_output, edits_by_start);
-			} finally {
-				input_data.close(null);
-				temp_output.close(null);
-			}
+			this.process_edits(input_data, temp_output, edits_by_start);
+			
+			input_data.close(null);
+			temp_output.close(null);
 			
 			// Replace original file with temporary file
 			var original_file = GLib.File.new_for_path(file_path);

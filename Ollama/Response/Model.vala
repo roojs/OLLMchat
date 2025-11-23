@@ -90,6 +90,32 @@ namespace OLLMchat.Ollama
 			}
 		}
 		
+		/**
+		 * Updates this model's properties from a show API response.
+		 * Only updates fields that come from the show API endpoint:
+		 * - modified_at
+		 * - capabilities
+		 * - context_length (if present in show response)
+		 * 
+		 * Does NOT update fields from models() API (name, size, digest) or
+		 * runtime fields from ps() API (size_vram, durations, counts).
+		 * 
+		 * @param source The model from show API response to copy properties from
+		 */
+		public void updateFrom(Model source)
+		{
+			// Only update fields that come from show API
+			this.modified_at = source.modified_at;
+			
+			// Update capabilities
+			this.capabilities = source.capabilities;
+			
+			// Update context_length if present in show response
+			if (source.context_length > 0) {
+				this.context_length = source.context_length;
+			}
+		}
+		
 }
 
 }

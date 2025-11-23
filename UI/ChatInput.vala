@@ -330,51 +330,60 @@ namespace OLLMchat.UI
 		/**
 		 * Loads models and updates the model dropdown with available models and sets selection.
 		 * 
+		 * First populates the list with basic model info from models(), then asynchronously
+		 * fetches detailed info via show_model() which will automatically update the UI.
+		 * 
 		 * @since 1.0
 		 */
 		public async void update_models()
 		{
-			
-
 			try {
-				// Fetch all model details from server
-				yield this.client.fetch_all_model_details();
+				// Get basic model list - this populates available_models automatically
+				var models_list = yield this.client.models();
+				
+				// Clear existing models
+				this.model_store.remove_all();
+
+				// Add models from available_models (populated by models() call)
+				foreach (var model in this.client.available_models.values) {
+					this.model_store.append(model);
+				}
+				
+				// Hide loading label and show dropdown
+				if (this.model_loading_label != null) {
+					this.model_loading_label.visible = false;
+				}
+				this.model_dropdown.visible = true;
+
+				// Set selection to match client.model and update client state
+				if (this.client.model != "") {
+					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
+						var model = this.sorted_models.get_item(i) as Ollama.Model;
+						if (model.name != this.client.model) {
+							continue;
+						}
+						this.model_dropdown.selected = i;
+						// Update client.think based on selected model
+						this.client.think = model.is_thinking;
+						break;
+					}
+				}
+				
+				// Asynchronously fetch detailed info for each model
+				// This will automatically update the UI since we're updating the same Model objects
+				foreach (var model in models_list) {
+					try {
+						yield this.client.show_model(model.name);
+					} catch (Error e) {
+						GLib.warning("Failed to get details for model %s: %s", model.name, e.message);
+						// Continue with other models
+					}
+				}
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load models: %s", e.message);
 				// Don't show error to user - dropdown will just remain hidden
 				return;
 			}
-
-			// Clear existing models
-			this.model_store.remove_all();
-
-			// Add models from client
-			foreach (var model in this.client.available_models.values) {
-				this.model_store.append(model);
-			}
-			
-			// Hide loading label and show dropdown
-			if (this.model_loading_label != null) {
-				this.model_loading_label.visible = false;
-			}
-			this.model_dropdown.visible = true;
-
-			// Set selection to match client.model and update client state
-			if (this.client.model == "") {
-				return;
-			}
-			for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
-				var model = this.sorted_models.get_item(i) as Ollama.Model;
-				if (model.name != this.client.model) {
-					continue;
-				}
-				this.model_dropdown.selected = i;
-				// Update client.think based on selected model
-				this.client.think = model.is_thinking;
-				break;
-			}
-
-			// Show the dropdown now that it has models
 		}
 	}
 }

@@ -99,6 +99,12 @@ namespace OLLMchat.Ollama
 		{
 			var call = new ModelsCall(this);
 			var result = yield call.exec_models();
+			
+			// Populate available_models with the models from the list
+			foreach (var model in result) {
+				this.available_models.set(model.name, model);
+			}
+			
 			return result;
 		}
 
@@ -112,16 +118,28 @@ namespace OLLMchat.Ollama
 		/**
 		* Gets detailed information about a specific model including capabilities and stores it in available_models.
 		* 
+		* If the model already exists in available_models, it will be updated with the new data using updateFrom().
+		* Otherwise, the new model will be added to available_models.
+		* 
 		* @param model_name The name of the model to get details for
 		* @return Model object with full details including capabilities
 		* @since 1.0
 		*/
-	public async Model show_model(string model_name) throws Error
-	{
-		var result = yield new ShowModelCall(this, model_name).exec_show();
-		this.available_models.set(result.name, result);
-		return result;
-	}
+		public async Model show_model(string model_name) throws Error
+		{
+			var result = yield new ShowModelCall(this, model_name).exec_show();
+			
+			// Check if model already exists in available_models
+			if (this.available_models.has_key(result.name)) {
+				// Update existing model with new data
+				this.available_models.get(result.name).updateFrom(result);
+				return this.available_models.get(result.name);
+			}
+				// Add new model to available_models
+			this.available_models.set(result.name, result);
+			return result;
+			
+		}
 
 		/**
 		* Fetches detailed information for all available models and populates available_models.

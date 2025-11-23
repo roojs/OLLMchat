@@ -15,7 +15,7 @@ namespace OLLMchat
 
 	async void run_test(Ollama.Client client) throws Error
 	{
-		 Commented out ps() call - using model from config file instead
+		// Commented out ps() call - using model from config file instead
 		stdout.printf("--- Running Models (ps) ---\n");
 		var models = yield client.models();
 
