@@ -624,8 +624,8 @@ These tools are designed to be used with Ollama's function calling capabilities.
 src/OLLMchat/
 ├── Ollama/
 │   ├── Tool/
-│   │   ├── Tool.vala           # Tool wrapper class ✅
-│   │   ├── Function.vala        # Abstract base class for all tools ✅
+│   │   ├── Tool.vala           # Abstract base class for all tools ✅
+│   │   ├── Function.vala        # Concrete class built from Tool's properties ✅
 │   │   ├── Param.vala            # Base parameter interface ✅
 │   │   ├── ParamSimple.vala      # Simple parameter class ✅
 │   │   ├── ParamObject.vala       # Object parameter class ✅
