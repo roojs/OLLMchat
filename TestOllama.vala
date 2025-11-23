@@ -99,8 +99,9 @@ namespace OLLMchat
 		 */
 		var parser = new Json.Parser();
 		parser.load_from_file(Path.build_filename(
-			GLib.Environment.get_home_dir(), ".local", "share", "roobuilder", "ollama.json"));
-		var obj = parser.get_root().get_object();
+			GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
+		);
+			var obj = parser.get_root().get_object();
 		var client = new Ollama.Client() {
 			url = obj.get_string_member("url"),
 			model = obj.get_string_member("model"),
