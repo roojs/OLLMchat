@@ -568,6 +568,82 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ---
 
+### Tool 7: MCP Loader Tool
+
+**Status**: ⏳ To be created (`Tools/MCPLoaderTool.vala`)
+
+**Priority**: 6 (Advanced feature - enables external tool providers via MCP protocol)
+
+**Purpose**: Enable MCP (Model Context Protocol) servers to provide additional tools. The tool's description lists all available MCP servers. When called, it enables all configured MCP servers and loads their tools. Uses lazy loading to reduce context size - only enabled MCP servers' tools are available. No system prompt modification needed - tool description serves as documentation.
+
+**JSON Schema**:
+```json
+{
+  "name": "mcp_loader",
+  "description": "Enable MCP (Model Context Protocol) servers and load their tools. The description of this tool contains a list of all configured MCP servers with their names and brief descriptions. When called, this tool enables all configured MCP servers and makes their tools available. Use this tool when you need capabilities provided by MCP servers.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}
+```
+
+**Implementation Notes**:
+- **Tool Description**: 
+  - The `description` property is dynamically generated from MCP server configurations
+  - Lists all configured MCP servers with their names and descriptions
+  - LLM can read the tool description to discover available servers without calling it
+- **Tool Execution**:
+  - When called (no parameters), enables all configured MCP servers
+  - Connects to each MCP server and loads its tools
+  - Dynamically adds MCP server tools to `client.tools` after loading
+  - Returns confirmation and list of tools now available from all enabled servers
+- **Lazy Loading Strategy**: 
+  - No system prompt modification needed - `mcp_loader` tool description contains server list
+  - LLM reads the tool description to discover available servers
+  - LLM calls `mcp_loader` when it needs MCP server capabilities
+  - This reduces token usage by not including all MCP tool definitions upfront
+- **MCP Protocol**: 
+  - Implement MCP client protocol (JSON-RPC over stdin/stdout)
+  - Handle initialization handshake with MCP server
+  - Request tool definitions via MCP protocol
+  - Convert MCP tool definitions to `Tool` instances
+  - **Consider contextless MCP communication** for HTTP REST API scenarios where full tool definitions may not be needed upfront - enables more direct API interactions
+- **MCP Tool Wrapper**: 
+  - Each MCP tool is wrapped in a `Tool` instance
+  - Tool execution delegates to MCP server via JSON-RPC
+  - Results are formatted and returned to Ollama
+- **Server Management**:
+  - MCP server configurations stored in config file (e.g., `ollama.json`)
+  - Track enabled/disabled state per chat session
+  - Support multiple MCP servers enabled simultaneously
+  - Handle connection errors gracefully
+- **No permissions required** for MCP tools (servers are configured by user)
+
+**MCP Server Configuration Format** (example):
+```json
+{
+  "mcp_servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"],
+      "description": "Provides file system operations"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your-api-key"
+      },
+      "description": "Provides web search capabilities via Brave Search API"
+    }
+  }
+}
+```
+
+---
+
 ## Implementation Considerations
 
 ### Tool Integration with Ollama
@@ -641,7 +717,12 @@ src/OLLMchat/
 │   ├── HTML2Markdown.vala            # HTML to markdown converter ⏳
 │   ├── WebSearchTool.vala            # Web search tool ⏳
 │   ├── WebFetchTool.vala             # Web fetch tool ⏳
-│   └── CodebaseSearchTool.vala        # Codebase search tool ⏳
+│   ├── CodebaseSearchTool.vala        # Codebase search tool ⏳
+│   ├── MCPLoaderTool.vala            # MCP server loader tool ⏳
+│   └── MCP/
+│       ├── Client.vala                # MCP protocol client ⏳
+│       ├── ToolWrapper.vala          # Wrapper for MCP tools ⏳
+│       └── Config.vala               # MCP server configuration ⏳
 ```
 
 ---
@@ -722,7 +803,7 @@ src/OLLMchat/
 - `src/OLLMchat/Ollama/Client.vala` - Ensure chat() waits for final response
 
 **Message Structure**:
-```vala
+```json
 // Assistant message with tool calls:
 {
   "role": "assistant",
@@ -827,7 +908,47 @@ src/OLLMchat/
   - [ ] Add to meson.build
   - [ ] Test with PermissionProviderDummy
 
-### Phase 12: Integration and Testing
+### Phase 12: MCP Server Support
+
+- [ ] **MCP Loader Tool** - Create `Tools/MCPLoaderTool.vala` and MCP server integration
+  - [ ] **MCP Server Configuration**: Accept MCP server configuration (name, command, args, env, etc.) stored in config file
+  - [ ] **MCP Loader Tool** (`mcp_loader`):
+    - [ ] Lists all available MCP servers in its description
+    - [ ] Description dynamically includes server names and brief descriptions from config
+    - [ ] LLM can read the tool description to discover available MCP servers
+    - [ ] When called (no parameters), enables all configured MCP servers and loads their tools
+    - [ ] Connects to each MCP server and loads its tools
+    - [ ] Dynamically adds MCP server tools to `client.tools` after loading
+    - [ ] Returns confirmation and list of tools now available from all enabled servers
+  - [ ] **MCP Protocol Implementation**:
+    - [ ] Implement MCP client protocol (stdin/stdout JSON-RPC communication)
+    - [ ] Handle MCP server initialization handshake
+    - [ ] Request and parse tool definitions from MCP server
+    - [ ] Convert MCP tool definitions to `Tool` instances
+    - [ ] Handle MCP tool execution and result formatting
+    - [ ] **Consider contextless MCP communication** for HTTP REST API scenarios (may not need full tool definitions upfront)
+  - [ ] **MCP Server Management**:
+    - [ ] Store MCP server configurations (possibly in `ollama.json` or separate config file)
+    - [ ] Track enabled/disabled state per chat session
+    - [ ] Handle MCP server connection errors gracefully
+    - [ ] Support multiple MCP servers enabled simultaneously
+  - [ ] **Tool Wrapper**: Create wrapper `Tool` instances for MCP tools that delegate execution to MCP server
+  - [ ] No permissions required for MCP tools (servers are configured by user)
+  - [ ] Add to meson.build
+  - [ ] Test with sample MCP servers
+
+**Implementation Notes**:
+- MCP (Model Context Protocol) allows external servers to provide tools/functions
+- **No system prompt modification needed** - tool description serves as documentation
+- LLM discovers available MCP servers by reading the `mcp_loader` tool description
+- When LLM calls `mcp_loader`, it enables all configured servers and loads their tools
+- Lazy loading reduces token usage by only including enabled MCP server tools
+- MCP servers communicate via JSON-RPC over stdin/stdout
+- Each MCP tool should be wrapped in a `Tool` instance that executes via MCP protocol
+- Consider caching MCP tool definitions after first load
+- **Contextless MCP Communication**: Consider supporting contextless MCP communication for HTTP REST API scenarios where full tool definitions may not be needed upfront - this could enable more direct API interactions
+
+### Phase 13: Integration and Testing
 
 - [x] **Tool Registration** - Ensure `Client.addTool()` method works correctly ✅
 - [x] **Permission Integration** - Create UI-based PermissionProvider implementation (`ChatPermission.ChatView`) ✅
@@ -835,7 +956,7 @@ src/OLLMchat/
 - [x] **Error Handling** - Ensure all tools handle errors gracefully ✅
 - [ ] **Documentation** - Update documentation with tool usage examples
 
-### Phase 13: UI Integration
+### Phase 14: UI Integration
 
 - [x] **PermissionProviderUI** - Create UI-based permission provider (`ChatPermission.ChatView`) ✅
   - [x] Permission widget with question and buttons
