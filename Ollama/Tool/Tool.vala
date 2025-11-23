@@ -211,7 +211,7 @@ namespace OLLMchat.Ollama
 		 * 
 		 * @param parameters The JSON parameters object from the Ollama function call
 		 */
-		protected void readParams(Json.Object parameters)
+		protected virtual void readParams(Json.Object parameters)
 		{
 			unowned var ocl = (GLib.ObjectClass) this.get_class();
 			
@@ -293,7 +293,7 @@ namespace OLLMchat.Ollama
 		 * @param parameters The parameters from the Ollama function call
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public async string execute(Json.Object parameters)
+		public virtual async string execute(Json.Object parameters)
 		{
 			 
 			// Check permission if needed

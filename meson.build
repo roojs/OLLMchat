@@ -104,6 +104,7 @@ ollmchat_chatpermission_ui_src = files([
 # Source files for Tools namespace
 ollmchat_tools_src = files([
   'Tools/ReadFileTool.vala',
+  'Tools/EditFileTool.vala',
 ])
 
 # Build as a library (can be linked or used as standalone)
