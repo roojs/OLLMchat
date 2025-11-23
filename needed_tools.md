@@ -606,10 +606,11 @@ Tools are registered with the Ollama client using the `addTool` method:
   - This reduces token usage by not including all MCP tool definitions upfront
 - **MCP Protocol**: 
   - Implement MCP client protocol (JSON-RPC over stdin/stdout)
+  - Standard MCP uses streaming RPC with persistent socket connection
   - Handle initialization handshake with MCP server
   - Request tool definitions via MCP protocol
   - Convert MCP tool definitions to `Tool` instances
-  - **Consider contextless MCP communication** for HTTP REST API scenarios where full tool definitions may not be needed upfront - enables more direct API interactions
+  - **Consider stateless MCP protocol variant**: Standard MCP streaming RPC is difficult on basic HTTP servers. Consider supporting a stateless request-response version of the same protocol for HTTP REST API scenarios - this would be powerful for deployment on standard web servers while maintaining full MCP context and functionality
 - **MCP Tool Wrapper**: 
   - Each MCP tool is wrapped in a `Tool` instance
   - Tool execution delegates to MCP server via JSON-RPC
@@ -926,7 +927,7 @@ src/OLLMchat/
     - [ ] Request and parse tool definitions from MCP server
     - [ ] Convert MCP tool definitions to `Tool` instances
     - [ ] Handle MCP tool execution and result formatting
-    - [ ] **Consider contextless MCP communication** for HTTP REST API scenarios (may not need full tool definitions upfront)
+    - [ ] **Consider stateless MCP protocol variant**: Standard MCP uses streaming RPC (persistent socket), which is difficult on basic HTTP servers. Consider supporting a stateless request-response version of the same protocol for HTTP REST API scenarios - this would be powerful for deployment on standard web servers
   - [ ] **MCP Server Management**:
     - [ ] Store MCP server configurations (possibly in `ollama.json` or separate config file)
     - [ ] Track enabled/disabled state per chat session
@@ -943,10 +944,10 @@ src/OLLMchat/
 - LLM discovers available MCP servers by reading the `mcp_loader` tool description
 - When LLM calls `mcp_loader`, it enables all configured servers and loads their tools
 - Lazy loading reduces token usage by only including enabled MCP server tools
-- MCP servers communicate via JSON-RPC over stdin/stdout
+- MCP servers communicate via JSON-RPC over stdin/stdout (standard MCP uses streaming RPC with persistent socket)
 - Each MCP tool should be wrapped in a `Tool` instance that executes via MCP protocol
 - Consider caching MCP tool definitions after first load
-- **Contextless MCP Communication**: Consider supporting contextless MCP communication for HTTP REST API scenarios where full tool definitions may not be needed upfront - this could enable more direct API interactions
+- **Stateless MCP Protocol Variant**: Standard MCP uses streaming RPC (persistent socket), which is difficult to implement on basic HTTP servers. Consider supporting a stateless request-response version of the same protocol for HTTP REST API scenarios - this would be powerful for deployment on standard web servers while maintaining full MCP context and functionality
 
 ### Phase 13: Integration and Testing
 
