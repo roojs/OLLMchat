@@ -65,13 +65,15 @@ namespace OLLMchat.ChatPermission
 		 * Session storage for temporary permissions (allow_session/deny_session).
 		 * Key: full path, Value: permission string (rwx, r--, ---, etc.)
 		 */
-		static protected Gee.HashMap<string, string> session { get; private set; default = new Gee.HashMap<string, string>(); }
+		static protected Gee.HashMap<string, string> session {
+			 get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
 		 * Global permissions loaded from tool.permissions.json.
 		 * Key: full path, Value: permission string
 		 */
-		static protected Gee.HashMap<string, string> global { get; private set; default = new Gee.HashMap<string, string>(); }
+		static protected Gee.HashMap<string, string> global { 
+			get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
 		 * Constructor.
@@ -121,16 +123,16 @@ namespace OLLMchat.ChatPermission
 			var normalized_path = this.normalize_path(tool.permission_target_path);
 			
 			// Check session permissions
-			if (session.has_key(normalized_path)) {
-				var result = this.check(session.get(normalized_path), tool.permission_operation);
+			if (Provider.session.has_key(normalized_path)) {
+				var result = this.check(Provider.session.get(normalized_path), tool.permission_operation);
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
 			}
 			
 			// Check global permissions
-			if (this.global.has_key(normalized_path)) {
-				var result = this.check(this.global.get(normalized_path), tool.permission_operation);
+			if (Provider.global.has_key(normalized_path)) {
+				var result = this.check(Provider.global.get(normalized_path), tool.permission_operation);
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
