@@ -4,6 +4,23 @@ This document outlines the tools that need to be implemented for the OLLMchat pr
 
 ---
 
+## Current Status Summary
+
+**✅ Infrastructure Complete**: All base classes, permission system, and tool execution infrastructure are fully implemented and working.
+
+**✅ Completed**:
+- Base classes (Param, Tool, Function)
+- Permission system with UI integration (`ChatPermission.ChatView`)
+- Tool execution and auto-reply in `ChatCall.toolsReply()`
+- Async permission requests (non-blocking)
+- Recursive tool calling support
+- Streaming support during tool execution
+- ReadFileTool implementation
+
+**⏳ Next Steps**: Implement remaining tools (EditFileTool, RunTerminalCommandTool, WebSearchTool, CodebaseSearchTool)
+
+---
+
 ## Implementation Order
 
 This plan is organized in the order components should be created:
@@ -57,11 +74,13 @@ This plan is organized in the order components should be created:
 
 ### 2. PermissionProvider Abstract Class
 
-**Status**: ✅ Already created (`Tools/PermissionProvider.vala`)
+**Status**: ✅ Completed (`ChatPermission/Provider.vala`)
 
 **Purpose**: Abstract base class for requesting permission to execute tool operations. Ensures users have control over what actions are performed by the AI agent. Implemented as an abstract class (rather than interface) to allow shared functionality and properties. Includes permission storage system with JSON-based persistence.
 
-**Location**: `src/OLLMchat/Tools/PermissionProvider.vala`
+**Location**: `src/OLLMchat/ChatPermission/Provider.vala`
+
+**Note**: Reorganized from `Tools/PermissionProvider.vala` to top-level `ChatPermission/` folder. Base class is `Provider`, with implementations `Dummy` and `ChatView` (UI-based).
  
 
 **Permission Storage Format** (`tool.permissions.json`):
@@ -131,13 +150,19 @@ The permissions file uses a JSON structure with full paths as keys and 3-charact
 
 ---
 
-### 3. PermissionProviderDummy Class
+### 3. PermissionProvider Implementations
 
-**Status**: ✅ Already created (`Tools/PermissionProviderDummy.vala`)
+**Status**: ✅ Completed
 
-**Purpose**: Dummy implementation of `PermissionProvider` for testing and development.
+**Dummy Implementation** (`ChatPermission/Dummy.vala`):
+- Dummy implementation for testing and development
+- Always denies permission (for testing)
 
-**Location**: `src/OLLMchat/Tools/PermissionProviderDummy.vala`
+**ChatView Implementation** (`ChatPermission/ChatView.vala`):
+- UI-based implementation that shows permission widget in ChatView
+- Displays question with buttons: Deny Always, Deny, Allow, Allow Once, Allow Always
+- Uses async/await pattern for non-blocking permission requests
+- Integrates with ChatView widget lifecycle
 
 **Implementation**:
 ```vala
@@ -220,11 +245,22 @@ Parameters will be documented using a standardized string format inspired by JSD
 
 ## Part 2: Tool Implementations
 
-Each tool extends the `Function` abstract class and implements:
+**Status**: ✅ Infrastructure Complete - Ready for tool implementations
+
+The tool execution infrastructure is fully implemented:
+- ✅ Tool base class (`Ollama.Tool`) with async execution
+- ✅ Permission system with UI integration (`ChatPermission.ChatView`)
+- ✅ Automatic tool call handling and auto-reply in `ChatCall.toolsReply()`
+- ✅ Recursive tool calling support
+- ✅ Streaming support during tool execution
+- ✅ Error handling for tool failures
+
+Each tool extends the `Tool` abstract class and implements:
 - `name` property - The tool name (e.g., "read_file", "edit_file")
 - `description` property - A detailed description of what the tool does
-- `param` property - `Gee.ArrayList<Param>` containing parameter definitions (can include ParamSimple, ParamObject, ParamArray)
-- `execute_internal()` method - The actual tool implementation
+- `parameter_description` property - Parameter documentation string (parsed automatically)
+- `prepare()` method - Builds permission question and validates parameters
+- `execute_tool()` method - The actual tool implementation (async)
 
 ### Tool Registration
 
@@ -236,7 +272,7 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ### Tool 1: ReadFileTool
 
-**Status**: ⏳ To be created (`Tools/ReadFileTool.vala`)
+**Status**: ✅ Completed (`Tools/ReadFileTool.vala`)
 
 **Priority**: 1 (Essential for understanding codebase)
 
@@ -558,10 +594,12 @@ src/OLLMchat/
 │   │   ├── ParamObject.vala       # Object parameter class ✅
 │   │   └── ParamArray.vala        # Array parameter class ✅
 │   └── Client.vala               # Client with addTool() method ✅
+├── ChatPermission/
+│   ├── Provider.vala                  # Permission provider abstract class ✅
+│   ├── Dummy.vala                     # Dummy permission provider ✅
+│   └── ChatView.vala                   # UI-based permission provider ✅
 ├── Tools/
-│   ├── PermissionProvider.vala        # Permission provider abstract class ✅
-│   ├── PermissionProviderDummy.vala   # Dummy permission provider ✅
-│   ├── ReadFileTool.vala              # Read file tool ⏳
+│   ├── ReadFileTool.vala              # Read file tool ✅
 │   ├── EditFileTool.vala              # Edit file tool ⏳
 │   ├── RunTerminalCommandTool.vala    # Terminal command tool ⏳
 │   ├── CodebaseSearchTool.vala        # Codebase search tool ⏳
@@ -602,29 +640,30 @@ src/OLLMchat/
 
 ### Phase 5: ReadFileTool
 
-- [ ] **ReadFileTool** - Create `ReadFileTool.vala` (Priority 1)
-  - [ ] Implement file reading with line range support
-  - [ ] Implement file outline/structure information
-  - [ ] Add permission question building
-  - [ ] Add to meson.build
-  - [ ] Test with PermissionProviderDummy
+- [x] **ReadFileTool** - Create `ReadFileTool.vala` (Priority 1) ✅
+  - [x] Implement file reading with line range support
+  - [x] Implement file outline/structure information
+  - [x] Add permission question building
+  - [x] Add to meson.build
+  - [x] Test with PermissionProvider
 
 ### Phase 6: Tool Call Handling and Auto-Reply
 
-- [ ] **Tool Call Handling** - Implement correct chat behavior for handling tool calls
-  - [ ] Add `tool_calls` property (`Gee.ArrayList<Json.Node>`) to Message class for assistant messages
-  - [ ] Add `tool_call_id` property (string) to Message class for tool role messages
-  - [ ] Add `name` property (string) to Message class for tool role messages (tool function name)
-  - [ ] Update Message serialization to handle tool_calls (convert Gee.ArrayList to Json.Array)
-  - [ ] Update Message deserialization to handle tool_calls (convert Json.Array to Gee.ArrayList)
-  - [ ] Update ChatResponse to detect tool calls when response is done
-  - [ ] Implement automatic tool execution in ChatCall
-  - [ ] Implement auto-reply mechanism to continue conversation after tool execution
-  - [ ] Ensure recursive tool calling works (multiple tool call rounds before final response)
-  - [ ] Ensure chat() only returns after final response (not after tool calls)
-  - [ ] Ensure streaming works correctly during tool execution and auto-reply
-  - [ ] Handle multiple tool calls in one response correctly
-  - [ ] Handle tool execution failures gracefully
+- [x] **Tool Call Handling** - Implement correct chat behavior for handling tool calls ✅
+  - [x] Add `tool_calls` property (`Gee.ArrayList<Json.Node>`) to Message class for assistant messages
+  - [x] Add `tool_call_id` property (string) to Message class for tool role messages
+  - [x] Add `name` property (string) to Message class for tool role messages (tool function name)
+  - [x] Update Message serialization to handle tool_calls (convert Gee.ArrayList to Json.Array)
+  - [x] Update Message deserialization to handle tool_calls (convert Json.Array to Gee.ArrayList)
+  - [x] Update ChatResponse to detect tool calls when response is done
+  - [x] Implement automatic tool execution in ChatCall (async/await)
+  - [x] Implement auto-reply mechanism to continue conversation after tool execution
+  - [x] Ensure recursive tool calling works (multiple tool call rounds before final response)
+  - [x] Ensure chat() only returns after final response (not after tool calls)
+  - [x] Ensure streaming works correctly during tool execution and auto-reply
+  - [x] Handle multiple tool calls in one response correctly
+  - [x] Handle tool execution failures gracefully
+  - [x] Implement async permission requests (non-blocking UI)
 
 **Tool Call Flow**:
 1. User sends a chat message
@@ -726,17 +765,20 @@ src/OLLMchat/
 
 ### Phase 11: Integration and Testing
 
-- [ ] **Tool Registration** - Ensure `Client.addTool()` method works correctly
-- [ ] **Permission Integration** - Create UI-based PermissionProvider implementation
-- [ ] **End-to-End Testing** - Test tool execution flow with Ollama function calling
-- [ ] **Error Handling** - Ensure all tools handle errors gracefully
+- [x] **Tool Registration** - Ensure `Client.addTool()` method works correctly ✅
+- [x] **Permission Integration** - Create UI-based PermissionProvider implementation (`ChatPermission.ChatView`) ✅
+- [x] **End-to-End Testing** - Test tool execution flow with Ollama function calling ✅
+- [x] **Error Handling** - Ensure all tools handle errors gracefully ✅
 - [ ] **Documentation** - Update documentation with tool usage examples
 
-### Phase 12: UI Integration (Future)
+### Phase 12: UI Integration
 
-- [ ] **PermissionProviderUI** - Create UI-based permission provider with dialogs
-- [ ] **Tool Status Display** - Show tool execution status in UI
-- [ ] **Tool Results Display** - Display tool results in chat interface
+- [x] **PermissionProviderUI** - Create UI-based permission provider (`ChatPermission.ChatView`) ✅
+  - [x] Permission widget with question and buttons
+  - [x] Async permission requests (non-blocking)
+  - [x] Integration with ChatView widget lifecycle
+- [x] **Tool Status Display** - Show tool execution status in UI ✅
+- [x] **Tool Results Display** - Display tool results in chat interface ✅
 
 ---
 

@@ -136,6 +136,13 @@ namespace OLLMchat.UI
 				return;
 			}
 
+			// Response is done - if we have tool_calls but no content was received, we still need to initialize
+			// the assistant message state so statistics can be displayed in finalize_assistant_message
+			// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
+			if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
+				this.chat_view.append_assistant_chunk("", response);
+			}
+
 			// Response is done - finalize the message
 			this.chat_view.finalize_assistant_message(response);
 			

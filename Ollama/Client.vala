@@ -14,6 +14,15 @@ namespace OLLMchat.Ollama
 		public ChatResponse? streaming_response { get; set; default = null; }
 		public Prompt.BaseAgentPrompt prompt_assistant { get; set; default = new Prompt.BaseAgentPrompt(); }
 		public ChatPermission.Provider permission_provider { get; set; default = new ChatPermission.Dummy(); }
+		
+		/**
+		 * HTTP request timeout in seconds.
+		 * Default is 300 seconds (5 minutes) to accommodate long-running LLM requests.
+		 * Set to 0 for no timeout (not recommended).
+		 * 
+		 * @since 1.0
+		 */
+		public uint timeout { get; set; default = 300; }
 
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.

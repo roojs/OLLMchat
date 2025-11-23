@@ -30,7 +30,11 @@ namespace OLLMchat.Ollama
 			}
 
 			var url = this.build_url();
-			this.client.session = (this.client.session) == null ? new Soup.Session() : this.client.session;
+			if (this.client.session == null) {
+				this.client.session = new Soup.Session();
+			}
+			// Set/update timeout for long-running LLM requests
+			this.client.session.timeout = this.client.timeout;
 			
 			var message = new Soup.Message(this.http_method, url);
 
@@ -87,8 +91,11 @@ namespace OLLMchat.Ollama
 		// In Vala's libsoup-3.0 bindings, send_async() is already async and returns InputStream directly
 		// Reuse client's session to maintain TCP connection
 		
-		this.client.session = (this.client.session) == null ?
-			 new Soup.Session() : this.client.session;
+		if (this.client.session == null) {
+			this.client.session = new Soup.Session();
+		}
+		// Set/update timeout for long-running LLM requests
+		this.client.session.timeout = this.client.timeout;
 		InputStream? input_stream = null;
 		try {
 			input_stream = yield this.client.session.send_async(
