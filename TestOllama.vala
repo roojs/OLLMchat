@@ -15,9 +15,9 @@ namespace OLLMchat
 
 	async void run_test(Ollama.Client client) throws Error
 	{
-		/* Commented out ps() call - using model from config file instead
+		 Commented out ps() call - using model from config file instead
 		stdout.printf("--- Running Models (ps) ---\n");
-		var models = yield client.ps();
+		var models = yield client.models();
 
 		if (models.size == 0) {
 			stdout.printf("No running models found.\n");
@@ -31,6 +31,7 @@ namespace OLLMchat
 			stdout.printf("  Total Duration: %lld ns\n", model.total_duration);
 			stdout.printf("\n");
 		}
+		
 
 		var first_model = models[0];
 		var model_name = first_model.name != "" ? first_model.name : first_model.model;
@@ -39,8 +40,8 @@ namespace OLLMchat
 			return;
 		}
 
-		client.model = model_name;
-		*/
+		//client.model = model_name;
+		
 
 		stdout.printf("Sending query to Ollama...\n");
 		//var query = "Write a small vala program using gtk4 to show a window with a scrolled window inside is a windowlefttree and a few tree nodes - cat";
@@ -110,8 +111,8 @@ namespace OLLMchat
 		};
 		client.stream_chunk.connect(on_stream);
 		
-		// Add ReadFileTool
-		client.addTool(new Tools.ReadFileTool(client));
+		// Add ReadFile
+		client.addTool(new Tools.ReadFile(client));
 
 		main_loop = new MainLoop();
 

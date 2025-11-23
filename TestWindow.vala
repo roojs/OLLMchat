@@ -75,7 +75,8 @@ namespace OLLMchat
 			};
 			
 			// Add tools to the client
-			client.addTool(new Tools.ReadFileTool(client));
+			client.addTool(new Tools.ReadFile(client));
+			client.addTool(new Tools.EditFile(client));
 
 			// Create chat widget with client
 			this.chat_widget = new UI.ChatWidget(client) {

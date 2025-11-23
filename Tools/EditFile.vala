@@ -1,91 +1,16 @@
 namespace OLLMchat.Tools
 {
 	/**
-	 * Represents a single edit operation with range and replacement.
-	 */
-	public class Edit : Object, Json.Serializable
-	{
-		public int start { get; set; default = -1; }
-		public int end { get; set; default = -1; }
-		public string replacement { get; set; default = ""; }
-		public Gee.ArrayList<string> old_lines { get; set; default = new Gee.ArrayList<string>(); }
-		
-		public unowned ParamSpec? find_property(string name) { 
-			return this.get_class().find_property(name); 
-		}
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value) {
-			 base.set_property(pspec.get_name(), value); 
-		}
-		public new Value Json.Serializable.get_property(ParamSpec pspec) {
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-		
-		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
-		{
-			if (property_name == "range") {
-				var array = property_node.get_array();
-				this.start = (int)array.get_int_element(0);
-				this.end = (int)array.get_int_element(1);
-				value = Value(pspec.value_type);
-				return true;
-			}
-			return default_deserialize_property(property_name, out value, pspec, property_node);
-		}
-		
-		public string toDiff()
-		{
-			string diff = "";
-			foreach (var old_line in this.old_lines) {
-				diff += "- " + old_line + "\n";
-			}
-			foreach (var new_line in this.replacement.split("\n")) {
-				diff += "+ " + new_line + "\n";
-			}
-			return diff;
-		}
-		
-		/**
-		 * Writes the replacement text to the output stream and skips old lines in the input stream.
-		 * 
-		 * @param output_stream The output stream to write replacement to
-		 * @param input_stream The input stream to skip old lines from
-		 * @param current_line Reference to current line number (will be updated)
-		 * @throws Error if I/O operations fail
-		 */
-		public void apply_to_streams(GLib.DataOutputStream output_stream, GLib.DataInputStream input_stream, ref int current_line) throws Error
-		{
-			// Write replacement lines
-			foreach (var new_line in this.replacement.split("\n")) {
-				output_stream.put_string(new_line);
-				output_stream.put_byte('\n');
-			}
-			
-			// Skip old lines in input stream until end of edit range (exclusive)
-			string? line;
-			size_t length;
-			while (current_line < this.end - 1) {
-				line = input_stream.read_line(out length, null);
-				if (line == null) {
-					break;
-				}
-				current_line++;
-			}
-		}
-	}
-	
-	/**
 	 * Tool for editing files by applying a list of edits (ranges with replacement text).
 	 * 
 	 * This tool applies edits to a file using a streaming approach to minimize memory usage.
 	 * Supports two-step permission flow: first READ permission to generate diff, then WRITE permission with diff display.
 	 */
-	public class EditFileTool : Ollama.Tool
+	public class EditFile : Ollama.Tool
 	{
 		// Parameter properties
 		public string file_path { get; set; default = ""; }
-		public Gee.ArrayList<Edit> edits { get; set; default = new Gee.ArrayList<Edit>(); }
+		public Gee.ArrayList<EditFileChange> edits { get; set; default = new Gee.ArrayList<EditFileChange>(); }
 		
 		public override string name { get { return "edit_file"; } }
 		
@@ -120,14 +45,14 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		 * Signal emitted before applying edits to a file.
 		 * Handlers can return false to block the change.
 		 */
-		public signal bool before_change(string file_path, Gee.ArrayList<Edit> edits);
+		public signal bool before_change(string file_path, Gee.ArrayList<EditFileChange> edits);
 		
 		/**
 		 * Signal emitted after successfully applying edits to a file.
 		 */
-		public signal void after_change(string file_path, Gee.ArrayList<Edit> edits);
+		public signal void after_change(string file_path, Gee.ArrayList<EditFileChange> edits);
 		
-		public EditFileTool(Ollama.Client client)
+		public EditFile(Ollama.Client client)
 		{
 			base(client);
 		}
@@ -144,7 +69,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 				this.edits.clear();
 				
 				foreach (var edit_node in edits_array.get_elements()) {
-					var edit = Json.gobject_deserialize(typeof(Edit), edit_node) as Edit;
+					var edit = Json.gobject_deserialize(typeof(EditFileChange), edit_node) as EditFileChange;
 					if (edit != null) {
 						this.edits.add(edit);
 					}
@@ -188,7 +113,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			var normalized_path = this.normalize_file_path(this.file_path);
 			
 			// Step 1: Request READ permission (request() checks storage first)
-			var read_tool = new ReadFileTool(this.client) {
+			var read_tool = new ReadFile(this.client) {
 				file_path = this.file_path,
 				read_entire_file = true,
 				permission_target_path = normalized_path,
@@ -241,7 +166,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			}
 			
 			// Create HashMap of start line -> Edit
-			var edits_by_start = new Gee.HashMap<int, Edit>();
+			var edits_by_start = new Gee.HashMap<int, EditFileChange>();
 			foreach (var edit in this.edits) {
 				edits_by_start.set(edit.start, edit);
 			}
@@ -254,7 +179,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 				int current_line = 0;
 				string? line;
 				size_t length;
-				Edit? current_edit = null;
+				EditFileChange? current_edit = null;
 				
 				while ((line = data_stream.read_line(out length, null)) != null) {
 					current_line++;
@@ -317,7 +242,7 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			}
 			
 			// Apply edits using streaming approach
-			this.apply_edits_streaming(normalized_path);
+			this.apply_edits(normalized_path);
 			
 			// Send status message
 			this.client.tool_message(@"Edited file $normalized_path ($(this.edits.size) edit$(this.edits.size == 1 ? "" : "s"))");
@@ -343,17 +268,19 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 					throw new GLib.IOError.INVALID_ARGUMENT(@"Edit $(i+1): end must be > start");
 				}
 				
-				// Validate sorted order
-				if (i > 0) {
-					var prev_edit = this.edits[i - 1];
-					if (edit.start < prev_edit.start) {
-						throw new GLib.IOError.INVALID_ARGUMENT(@"Edit $(i+1): edits must be sorted in ascending order by start");
-					}
-					
-					// Validate non-overlapping
-					if (prev_edit.end > edit.start) {
-						throw new GLib.IOError.INVALID_ARGUMENT(@"Edit $(i+1): edits must be non-overlapping (edit $i ends at $(prev_edit.end), edit $(i+1) starts at $(edit.start))");
-					}
+				// Validate sorted order and non-overlapping (skip for first edit)
+				if (i < 1) {
+					continue;
+				}
+				
+				var prev_edit = this.edits[i - 1];
+				if (edit.start < prev_edit.start) {
+					throw new GLib.IOError.INVALID_ARGUMENT(@"Edit $(i+1): edits must be sorted in ascending order by start");
+				}
+				
+				// Validate non-overlapping
+				if (prev_edit.end > edit.start) {
+					throw new GLib.IOError.INVALID_ARGUMENT(@"Edit $(i+1): edits must be non-overlapping (edit $i ends at $(prev_edit.end), edit $(i+1) starts at $(edit.start))");
 				}
 			}
 		}
@@ -361,10 +288,10 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		/**
 		 * Applies edits to a file using a streaming approach.
 		 */
-		private void apply_edits_streaming(string file_path) throws Error
+		private void apply_edits(string file_path) throws Error
 		{
 			// Create HashMap of start line -> Edit
-			var edits_by_start = new Gee.HashMap<int, Edit>();
+			var edits_by_start = new Gee.HashMap<int, EditFileChange>();
 			foreach (var edit in this.edits) {
 				edits_by_start.set(edit.start, edit);
 			}
@@ -385,59 +312,10 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			var input_data = new GLib.DataInputStream(input_file.read(null));
 			
 			try {
-				int current_line = 0;
-				string? line;
-				size_t length;
-				Edit? current_edit = null;
-				
-				while ((line = input_data.read_line(out length, null)) != null) {
-					current_line++;
-					
-					// Check if this is the start of an edit
-					if (edits_by_start.has_key(current_line)) {
-						current_edit = edits_by_start.get(current_line);
-					}
-					
-					// If we're at the start of an edit, let Edit handle it
-					if (current_edit != null && current_line == current_edit.start) {
-						current_edit.apply_to_streams(temp_output, input_data, ref current_line);
-						current_edit = null;
-						continue;
-					}
-					
-					// If we're in an edit range (being replaced), skip it
-					if (current_edit != null && current_line >= current_edit.start && current_line < current_edit.end) {
-						continue;
-					}
-					
-					// If we've passed the end of the current edit, clear it
-					if (current_edit != null && current_line >= current_edit.end) {
-						current_edit = null;
-					}
-					
-					// Write line as-is (not part of any edit)
-					temp_output.put_string(line);
-					temp_output.put_byte('\n');
-				}
-				
-				// Handle insertions at end of file (range [n, n] where n > file length)
-				foreach (var edit in this.edits) {
-					if (edit.start == edit.end && edit.start > current_line) {
-						// For insertions, we don't need to skip input lines (already at end)
-						foreach (var new_line in edit.replacement.split("\n")) {
-							temp_output.put_string(new_line);
-							temp_output.put_byte('\n');
-						}
-					}
-				}
-				
+				this.process_edits(input_data, temp_output, edits_by_start);
 			} finally {
-				try {
-					input_data.close(null);
-					temp_output.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
+				input_data.close(null);
+				temp_output.close(null);
 			}
 			
 			// Replace original file with temporary file
@@ -448,6 +326,58 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 				// Ignore if file doesn't exist
 			}
 			temp_file.move(original_file, GLib.FileCopyFlags.OVERWRITE, null, null);
+		}
+		
+		/**
+		 * Processes the file line by line, applying edits.
+		 */
+		private void process_edits(
+			GLib.DataInputStream input_data,
+			GLib.DataOutputStream temp_output,
+			Gee.HashMap<int, EditFileChange> edits_by_start) throws Error
+		{
+			int current_line = 0;
+			string? line;
+			size_t length;
+			EditFileChange? current_edit = null;
+			
+			while ((line = input_data.read_line(out length, null)) != null) {
+				current_line++;
+				
+				// Check if this is the start of an edit
+				if (edits_by_start.has_key(current_line)) {
+					current_edit = edits_by_start.get(current_line);
+				}
+				
+				// If we're at the start of an edit, let Edit handle it
+				if (current_edit != null && current_line == current_edit.start) {
+					current_line = current_edit.apply_changes(
+						temp_output, input_data, current_line);
+					current_edit = null;
+					continue;
+				}
+				
+				// If we're in an edit range (being replaced), skip it
+				if (current_edit != null &&
+					 current_line >= current_edit.start &&
+					  current_line < current_edit.end) {
+					continue;
+				}
+				
+				// If we've passed the end of the current edit, clear it
+				if (current_edit != null && current_line >= current_edit.end) {
+					current_edit = null;
+				}
+				
+				// Write line as-is (not part of any edit)
+				temp_output.put_string(line);
+				temp_output.put_byte('\n');
+			}
+			
+			// Handle insertions at end of file (range [n, n] where n > file length)
+			foreach (var edit in this.edits) {
+				edit.write_changes(temp_output, current_line);
+			}
 		}
 	}
 }
