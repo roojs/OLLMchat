@@ -510,29 +510,13 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```
 
 **Implementation Notes**:
-- **Use Google or DuckDuckGo API** for web searches
+- **Use Google or DuckDuckGo API** for web searches this can be set up in the constructor
+    * for our test code we will add it to ollama.json
 - **Return markdown version** of search results (using HTML2Markdown utility from Phase 8.5)
 - Should prioritize official documentation and reputable sources
-- May need to filter or rank results by reliability
-- Should return top N results (typically 5-10) converted to markdown format
-- Should build permission question showing the search query
-
-**⚠️ Rate Limiting Requirements**:
-- **Limit**: Maximum 10 web searches per 15-minute sliding window
-- **Implementation**: 
-  - Maintain an `ArrayList<DateTime>` to store timestamps of each search
-  - Before each search, prune the list to remove timestamps older than 15 minutes
-  - If the list has 10 or more entries after pruning, request user permission
-  - If permission is granted, clear the entire list and allow the search
-  - If permission is denied, reject the search
-  - After a successful search, add the current timestamp to the list
-- **Chat-scoped**: Rate limiting is per chat window/session, not global
-- **Storage**: Store search timestamps per chat session (may need to add chat ID to ChatCall or use ChatWidget's current_chat reference)
-
-**Example Permission Question**:
-- "Search web for 'Vala Json.Serializable documentation'?"
-- After 10 searches in 15 minutes: "You have reached the limit of 10 web searches in the last 15 minutes. Allow more searches?"
-
+- Should return top N results (typically 10-20) converted to markdown format
+- No permissions required
+ 
 ---
 
 ### Tool 6: WebFetchTool
