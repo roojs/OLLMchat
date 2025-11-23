@@ -650,9 +650,11 @@ src/OLLMchat/
 │   ├── ReadFileTool.vala              # Read file tool ✅
 │   ├── EditFile.vala                  # Edit file tool ✅
 │   ├── EditFileChange.vala            # Edit change class ✅
-│   ├── RunTerminalCommandTool.vala    # Terminal command tool ⏳
-│   ├── CodebaseSearchTool.vala        # Codebase search tool ⏳
-│   └── WebSearchTool.vala            # Web search tool ⏳
+│   ├── RunTerminalCommandTool.vala    # Terminal command tool ✅
+│   ├── HTML2Markdown.vala            # HTML to markdown converter ⏳
+│   ├── WebSearchTool.vala            # Web search tool ⏳
+│   ├── WebFetchTool.vala             # Web fetch tool ⏳
+│   └── CodebaseSearchTool.vala        # Codebase search tool ⏳
 ```
 
 ---
