@@ -572,29 +572,29 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ## Implementation Considerations
 
-### Chat ID Tracking for Rate Limiting
-
-Some tools (notably `WebSearchTool`) require per-chat rate limiting:
-- **WebSearchTool**: Limits to 10 searches per 15-minute sliding window
-- **Implementation**: 
-  - Maintain an `ArrayList<DateTime>` per chat session to store search timestamps
-  - Before each search, prune timestamps older than 15 minutes
-  - If 10+ searches remain after pruning, request permission
-  - If permission granted, clear the list and proceed
-  - Add current timestamp to list after successful search
-- **Storage**: Search timestamps stored per chat session (not globally)
-- **Consideration**: Tools that need chat-scoped tracking should receive a chat identifier (or reference to ChatCall) during construction or execution
-
 ### Tool Integration with Ollama
 
 These tools are designed to be used with Ollama's function calling capabilities. Each tool should:
 
-1. **Extend Function**: Extend the `Function` abstract class which implements `Json.Serializable`
-2. **Require PermissionProvider**: All tools must be constructed with a `PermissionProvider` instance
-3. **Follow Parameter Format**: Use `Gee.ArrayList<Param>` for param array (can include ParamSimple, ParamObject, ParamArray instances)
-4. **Serialization**: Serialization is already implemented in the `Function` base class - see `Function.vala` for the current implementation
-5. **Return Structured Results**: Tool execution results should be formatted as JSON objects
-6. **Handle Errors**: Tools should throw errors or return error information in a structured format
+1. **Extend Tool**: Extend the `Tool` abstract class (not `Function`). The `Function` class is automatically created from the `Tool`'s properties.
+2. **Require Client**: All tools must be constructed with a `Client` instance, which provides access to the `permission_provider`
+3. **Define Abstract Properties**: Implement the abstract properties:
+   - `name` (string) - The tool name (e.g., "read_file", "edit_file")
+   - `description` (string) - A detailed description of what the tool does
+   - `parameter_description` (string) - Parameter documentation in `@param` format (automatically parsed to build `Function.parameters`)
+4. **Parameter Parsing**: The `parameter_description` string is automatically parsed in the constructor using the format:
+   ```
+   @param parameter_name {type} [required|optional] Parameter description here
+   ```
+   This populates the `Function.parameters` property (a `ParamObject` containing `ParamSimple` instances).
+5. **Implement prepare()**: Build permission information by setting:
+   - `permission_question` - The question to ask the user
+   - `permission_target_path` - The target path/resource (e.g., file path, URL, command)
+   - `permission_operation` - The operation type (READ, WRITE, or EXECUTE)
+   - Return `true` if permission check is needed, `false` to skip
+6. **Implement execute_tool()**: Perform the actual tool operation. Use `readParams(parameters)` to read JSON parameters into object properties. Return a string result (will be wrapped in JSON automatically).
+7. **Error Handling**: Throw `Error` exceptions from `execute_tool()` - they will be caught and formatted as `"ERROR: <message>"` by the base `execute()` method.
+8. **Tool Registration**: Register tools with `client.addTool(tool)` - the tool instance is added directly to `client.tools` array.
 
 ### Tool Execution Flow
 
