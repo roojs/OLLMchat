@@ -537,7 +537,6 @@ Tools are registered with the Ollama client using the `addTool` method:
     "properties": {
       "method": {
         "type": "string",
-        "enum": ["GET", "POST"],
         "description": "The HTTP method to use (GET or POST only)"
       },
       "url": {
