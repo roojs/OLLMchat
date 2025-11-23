@@ -598,17 +598,23 @@ These tools are designed to be used with Ollama's function calling capabilities.
 
 ### Tool Execution Flow
 
-1. **Tool Definition**: Create tool classes extending `Function` abstract class with a required `PermissionProvider`
-2. **Tool Registration**: Call `client.addTool(tool_function)` which creates a `Tool` wrapper and adds it to `client.tools` array
-3. **Function Calling**: When Ollama requests a tool call, find the appropriate tool by name from `client.tools` and call `execute()`
-4. **Permission Check**: The tool requests permission by calling `permission_provider.request_permission(this, question, target_path, operation)` with the tool instance (tool.name provides the tool name), descriptive question, target path (e.g., file path or command), and operation type (Operation.READ, Operation.WRITE, or Operation.EXECUTE). The permission provider checks storage layers (Memory → Session → Global) and prompts user if needed. If denied, the tool does not execute and returns an error.
+1. **Tool Definition**: Create tool classes extending `Tool` abstract class, constructed with a `Client` instance (which provides `permission_provider`)
+2. **Tool Registration**: Call `client.addTool(tool)` - the tool instance is added directly to `client.tools` array. The `Tool` constructor automatically creates a `Function` instance from the tool's properties.
+3. **Function Calling**: When Ollama requests a tool call, find the appropriate tool by name from `client.tools` and call `execute(parameters)` (async method)
+4. **Permission Check**: The `execute()` method calls `prepare(parameters)` to build permission information. If `prepare()` returns `true`, it calls `client.permission_provider.request(this)` (async) which:
+   - Checks storage layers (Memory → Session → Global)
+   - Prompts user if needed via UI
+   - Returns `true` if permission granted, `false` if denied
 5. **Permission Denial Handling**: If permission is denied:
-   - Tool returns `{"error": "Permission denied", "message": "..."}` JSON result
+   - Tool's `execute()` method returns `"ERROR: Permission denied: <question>"`
    - Chat flow stops immediately and returns the current response object (the assistant's response that requested the tool)
    - No error message is shown to the user - chat flow ends silently
    - The entire tool calling sequence is aborted (even if multiple tools were requested)
-6. **Tool Execution**: If permission is granted, the tool executes its `execute_internal()` method
-7. **Result Formatting**: Format tool results as JSON and send back to Ollama as a function result message
+6. **Tool Execution**: If permission is granted (or `prepare()` returned `false`), the tool executes its `execute_tool(parameters)` method:
+   - Use `readParams(parameters)` to read JSON parameters into object properties
+   - Perform the actual operation
+   - Return a string result (errors should throw `Error` exceptions)
+7. **Result Formatting**: Tool results are automatically formatted as JSON and sent back to Ollama as a function result message. Errors are formatted as `"ERROR: <message>"`.
 8. **Response Handling**: Ollama will process the tool results and continue the conversation
 9. **Recursive Tool Calling**: Tool calling may happen multiple times before final response - assistant may request more tools, which are executed automatically until final response or permission denial
 
