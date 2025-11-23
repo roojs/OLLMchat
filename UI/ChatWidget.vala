@@ -27,6 +27,16 @@ namespace OLLMchat.UI
 		public string default_message { get; set; default = ""; }
 
 		/**
+		 * Whether to show the model selection dropdown.
+		 * 
+		 * If true, the dropdown will be displayed and models will be loaded.
+		 * Default is true.
+		 * 
+		 * @since 1.0
+		 */
+		public bool show_models { get; set; default = true; }
+
+		/**
 	 	* Emitted when a message is sent by the user.
 		 * 
 		 * @param text The message text that was sent
@@ -90,6 +100,16 @@ namespace OLLMchat.UI
 		this.chat_input.stop_clicked.connect(this.on_stop_clicked);
 		this.append(this.chat_input);
 
+		// Set up model dropdown if enabled
+		if (this.show_models) {
+			this.chat_input.setup_model_dropdown(this.client);
+			// Load models asynchronously
+			Idle.add(() => {
+				this.chat_input.update_models.begin();
+				return false;
+			});
+		}
+
 		// Connect to notify signal to propagate default_message when property is set
 		// messy but usefull for testing.
 		this.notify["default-message"].connect(() => {
@@ -139,60 +159,60 @@ namespace OLLMchat.UI
 			return yield this.permission_widget.request(tool.permission_question);
 		}
 
-	private void setup_streaming_callback()
-	{
-		this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-			// Check if streaming is still active (might have been stopped)
-			if (!this.is_streaming_active) {
-				return;
-			}
+		private void setup_streaming_callback()
+		{
+			this.client.stream_chunk.connect((new_text, is_thinking, response) => {
+				// Check if streaming is still active (might have been stopped)
+				if (!this.is_streaming_active) {
+					return;
+				}
 
-			// Process chunk (even if done, there might be final text to process)
-			if (new_text.length > 0) {
-				this.chat_view.append_assistant_chunk(new_text, response);
-			}
+				// Process chunk (even if done, there might be final text to process)
+				if (new_text.length > 0) {
+					this.chat_view.append_assistant_chunk(new_text, response);
+				}
 
-			// If response is not done, continue waiting
-			if (!response.done) {
-				return;
-			}
+				// If response is not done, continue waiting
+				if (!response.done) {
+					return;
+				}
 
-			// Response is done - if we have tool_calls but no content was received, we still need to initialize
-			// the assistant message state so statistics can be displayed in finalize_assistant_message
-			// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
-			if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
-				this.chat_view.append_assistant_chunk("", response);
-			}
+				// Response is done - if we have tool_calls but no content was received, we still need to initialize
+				// the assistant message state so statistics can be displayed in finalize_assistant_message
+				// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
+				if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
+					this.chat_view.append_assistant_chunk("", response);
+				}
 
-			// Response is done - finalize the message
-			this.chat_view.finalize_assistant_message(response);
-			
-			// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
-			// Don't stop streaming yet if tools are being executed (they will auto-continue)
-			if (response.message.tool_calls.size > 0) {
-				// Clear waiting indicator so permission widgets can be shown
-				this.chat_view.clear_waiting_indicator();
+				// Response is done - finalize the message
+				this.chat_view.finalize_assistant_message(response);
 				
-				// Tools will be executed and conversation will continue automatically
-				// Keep streaming active so we can receive the final response
-				// Don't emit response_received signal yet - wait for final response after tool execution
-				GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
-				// Don't set streaming to false yet - tools will execute and continue
-				// Don't emit response_received - this is not the final response
-				return;
-			}
+				// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
+				// Don't stop streaming yet if tools are being executed (they will auto-continue)
+				if (response.message.tool_calls.size > 0) {
+					// Clear waiting indicator so permission widgets can be shown
+					this.chat_view.clear_waiting_indicator();
+					
+					// Tools will be executed and conversation will continue automatically
+					// Keep streaming active so we can receive the final response
+					// Don't emit response_received signal yet - wait for final response after tool execution
+					GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
+					// Don't set streaming to false yet - tools will execute and continue
+					// Don't emit response_received - this is not the final response
+					return;
+				}
 
-			// No tool calls - this is the final response
-			this.chat_input.set_streaming(false);
-			this.is_streaming_active = false;
-			
-			// Clear last_sent_text on successful response
-			this.last_sent_text = null;
-			
-			// Emit response received signal only for final responses (no tool_calls)
-			this.response_received(response.message.content);
-		});
-	}
+				// No tool calls - this is the final response
+				this.chat_input.set_streaming(false);
+				this.is_streaming_active = false;
+				
+				// Clear last_sent_text on successful response
+				this.last_sent_text = null;
+				
+				// Emit response received signal only for final responses (no tool_calls)
+				this.response_received(response.message.content);
+			});
+		}
 
 		private void on_send_clicked(string text)
 		{
@@ -226,142 +246,143 @@ namespace OLLMchat.UI
 			this.send_chat_request.begin(text);
 		}
 
-	private async void send_chat_request(string text)
-	{
-		// Check if we're sending the same question twice (backend duplicate check)
-		if (this.last_sent_text != null && this.last_sent_text == text) {
-			GLib.warning("[ChatWidget] Warning: Attempting to send the same message again: '%s'", 
-				text.length > 50 ? text.substring(0, 50) + "..." : text);
-		}
-		
-		// Set streaming on client
-		this.client.stream = true;
-		
-		// Create cancellable for stop functionality
-		var cancellable = new GLib.Cancellable();
-		
-		try {
-			Ollama.ChatResponse response;
+		private async void send_chat_request(string text)
+		{
+			// Check if we're sending the same question twice (backend duplicate check)
+			if (this.last_sent_text != null && this.last_sent_text == text) {
+				GLib.warning("[ChatWidget] Warning: Attempting to send the same message again: '%s'", 
+					text.length > 50 ? text.substring(0, 50) + "..." : text);
+			}
 			
-			// If we have a previous chat with a response, use reply() instead of chat()
-			if (this.current_chat != null && 
-				this.current_chat.streaming_response != null && 
-				this.current_chat.streaming_response.done &&
-				this.current_chat.streaming_response.call != null) {
-				// Use reply to continue the conversation
-				this.current_chat.cancellable = cancellable;
-				response = yield this.current_chat.streaming_response.reply(text);
-				// Update current_chat from response (should be the same call)
+			// Set streaming on client
+			this.client.stream = true;
+			
+			// Create cancellable for stop functionality
+			var cancellable = new GLib.Cancellable();
+			
+			try {
+				Ollama.ChatResponse response;
+				
+				// If we have a previous chat with a response, use reply() instead of chat()
+				if (this.current_chat != null && 
+					this.current_chat.streaming_response != null && 
+					this.current_chat.streaming_response.done &&
+					this.current_chat.streaming_response.call != null) {
+					// Use reply to continue the conversation
+					this.current_chat.cancellable = cancellable;
+					response = yield this.current_chat.streaming_response.reply(text);
+					// Update current_chat from response (should be the same call)
+					if (response.call != null && response.call is Ollama.ChatCall) {
+						this.current_chat = (Ollama.ChatCall) response.call;
+					}
+					return;
+				}
+				// First message or no previous response - use regular chat()
+				response = yield this.client.chat(text, cancellable);
+				
+				// Get the call from the response instead of tracking calls array
 				if (response.call != null && response.call is Ollama.ChatCall) {
 					this.current_chat = (Ollama.ChatCall) response.call;
+					this.current_chat.cancellable = cancellable;
 				}
-				return;
+				
+				
+				// Response is handled by streaming callback
+			} catch (GLib.IOError e) {
+				// Check if this was a user-initiated cancellation
+				if (e.code == GLib.IOError.CANCELLED) {
+					// User cancelled - don't show error, just clean up state
+					this.cleanup_streaming_state();
+					return;
+				}
+				// Handle other IO errors with specific messages
+				string error_msg = "";
+				switch (e.code) {
+					case GLib.IOError.CONNECTION_REFUSED:
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.client.url + ".";
+						break;
+					case GLib.IOError.TIMED_OUT:
+						error_msg = "Request timed out. Please check your network connection and try again.";
+						break;
+					case GLib.IOError.HOST_UNREACHABLE:
+						error_msg = "Host unreachable. Please check your network connection and server URL.";
+						break;
+					case GLib.IOError.NETWORK_UNREACHABLE:
+						error_msg = "Network unreachable. Please check your internet connection.";
+						break;
+					default:
+						error_msg = @"Network error: $(e.message)";
+						break;
+				}
+				this.handle_error(error_msg);
+			} catch (Ollama.OllamaError e) {
+				// Provide specific error messages for different error types
+				string error_msg = "";
+				if (e is Ollama.OllamaError.INVALID_ARGUMENT) {
+					error_msg = @"Invalid request: $(e.message). Please check your request parameters.";
+				} else if (e is Ollama.OllamaError.FAILED) {
+					error_msg = @"Request failed: $(e.message)";
+				} else {
+					error_msg = @"Error: $(e.message)";
+				}
+				this.handle_error(error_msg);
+			} catch (GLib.Error e) {
+				// Generic error handling
+				this.handle_error(@"Unexpected error: $(e.message)");
 			}
-			// First message or no previous response - use regular chat()
-			response = yield this.client.chat(text, cancellable);
-			
-			// Get the call from the response instead of tracking calls array
-			if (response.call != null && response.call is Ollama.ChatCall) {
-				this.current_chat = (Ollama.ChatCall) response.call;
-				this.current_chat.cancellable = cancellable;
-			}
-			
-			
-			// Response is handled by streaming callback
-		} catch (GLib.IOError e) {
-			// Check if this was a user-initiated cancellation
-			if (e.code == GLib.IOError.CANCELLED) {
-				// User cancelled - don't show error, just clean up state
-				this.cleanup_streaming_state();
-				return;
-			}
-			// Handle other IO errors with specific messages
-			string error_msg = "";
-			switch (e.code) {
-				case GLib.IOError.CONNECTION_REFUSED:
-					error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.client.url + ".";
-					break;
-				case GLib.IOError.TIMED_OUT:
-					error_msg = "Request timed out. Please check your network connection and try again.";
-					break;
-				case GLib.IOError.HOST_UNREACHABLE:
-					error_msg = "Host unreachable. Please check your network connection and server URL.";
-					break;
-				case GLib.IOError.NETWORK_UNREACHABLE:
-					error_msg = "Network unreachable. Please check your internet connection.";
-					break;
-				default:
-					error_msg = @"Network error: $(e.message)";
-					break;
-			}
-			this.handle_error(error_msg);
-		} catch (Ollama.OllamaError e) {
-			// Provide specific error messages for different error types
-			string error_msg = "";
-			if (e is Ollama.OllamaError.INVALID_ARGUMENT) {
-				error_msg = @"Invalid request: $(e.message). Please check your request parameters.";
-			} else if (e is Ollama.OllamaError.FAILED) {
-				error_msg = @"Request failed: $(e.message)";
-			} else {
-				error_msg = @"Error: $(e.message)";
-			}
-			this.handle_error(error_msg);
-		} catch (GLib.Error e) {
-			// Generic error handling
-			this.handle_error(@"Unexpected error: $(e.message)");
 		}
-	}
 
-	private void handle_error(string error_msg)
-	{
-		// Finalize any ongoing assistant message before showing error
-		if (this.is_streaming_active) {
+		private void handle_error(string error_msg)
+		{
+			// Finalize any ongoing assistant message before showing error
+			if (this.is_streaming_active) {
+				this.chat_view.finalize_assistant_message();
+			}
+			
+			// Clear any partial response content if streaming was active
+			// This ensures we don't show incomplete responses
+			// Note: We keep partial response content as it may have content the user wants to see
+			
+			this.chat_view.append_error(error_msg);
+			this.error_occurred(error_msg);
+			this.cleanup_streaming_state();
+			
+			// Auto-fill the input with the last sent text so user can retry easily
+			if (this.last_sent_text != null && this.last_sent_text.length > 0) {
+				this.chat_input.set_default_text(this.last_sent_text);
+			}
+			
+			// Note: current_chat is preserved to maintain conversation history
+			// User can retry or continue the conversation after the error
+		}
+
+		private void cleanup_streaming_state()
+		{
+			// Reset all streaming-related state
+			this.chat_input.set_streaming(false);
+			this.is_streaming_active = false;
+			// Don't clear current_chat here - preserve conversation history even on error
+			// Only clear if explicitly requested via clear_chat()
+		}
+
+		private void on_stop_clicked()
+		{
+			// Mark streaming as inactive to prevent callbacks from updating UI
+			this.is_streaming_active = false;
+
+			// Cancel the call's cancellable
+			if (this.current_chat != null && this.current_chat.cancellable != null) {
+				this.current_chat.cancellable.cancel();
+			}
+
+			// Finalize current message
 			this.chat_view.finalize_assistant_message();
-		}
-		
-		// Clear any partial response content if streaming was active
-		// This ensures we don't show incomplete responses
-		// Note: We keep partial response content as it may have content the user wants to see
-		
-		this.chat_view.append_error(error_msg);
-		this.error_occurred(error_msg);
-		this.cleanup_streaming_state();
-		
-		// Auto-fill the input with the last sent text so user can retry easily
-		if (this.last_sent_text != null && this.last_sent_text.length > 0) {
-			this.chat_input.set_default_text(this.last_sent_text);
-		}
-		
-		// Note: current_chat is preserved to maintain conversation history
-		// User can retry or continue the conversation after the error
-	}
-
-	private void cleanup_streaming_state()
-	{
-		// Reset all streaming-related state
-		this.chat_input.set_streaming(false);
-		this.is_streaming_active = false;
-		// Don't clear current_chat here - preserve conversation history even on error
-		// Only clear if explicitly requested via clear_chat()
-	}
-
-	private void on_stop_clicked()
-	{
-		// Mark streaming as inactive to prevent callbacks from updating UI
-		this.is_streaming_active = false;
-
-		// Cancel the call's cancellable
-		if (this.current_chat != null && this.current_chat.cancellable != null) {
-			this.current_chat.cancellable.cancel();
+			this.chat_input.set_streaming(false);
+			
+			// Note: We preserve current_chat to maintain conversation history
+			// The user can continue the conversation after stopping
 		}
 
-		// Finalize current message
-		this.chat_view.finalize_assistant_message();
-		this.chat_input.set_streaming(false);
-		
-		// Note: We preserve current_chat to maintain conversation history
-		// The user can continue the conversation after stopping
-	}
 	}
 }
 

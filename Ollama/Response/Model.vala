@@ -6,7 +6,8 @@ namespace OLLMchat.Ollama
 		public string modified_at { get; set; default = ""; }
 		public int64 size { get; set; default = 0; }
 		public string digest { get; set; default = ""; }
-		//public string details { get; set; default = null; } // fixme
+		public Gee.ArrayList<string> capabilities { get; set;
+			 default = new Gee.ArrayList<string>(); }
 
 		public int64 size_vram { get; set; default = 0; }
 		public int64 total_duration { get; set; default = 0; }
@@ -15,27 +16,80 @@ namespace OLLMchat.Ollama
 		public int64 prompt_eval_duration { get; set; default = 0; }
 		public int eval_count { get; set; default = 0; }
 		public int64 eval_duration { get; set; default = 0; }
-		public string? model { get; set; }
+		public string? model { get; set; } 
 		public string? expires_at { get; set; }
 		public int context_length { get; set; default = 0; }
 
-	public Model(Client? client = null)
-	{
-		base(client);
-	}
-
-		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
-		{
-			// Handle "details" property - ignore JSON value and set empty string
-			/*if (property_name == "details") {
-				this.details = "";
-				value = Value(pspec.value_type);
-				value.set_string("");
-				return true;
-			}*/
-			// Let default handler process other properties
-			return default_deserialize_property(property_name, out value, pspec, property_node);
+		/**
+		 * Returns whether the model supports thinking output
+		 */
+		public bool is_thinking {
+			get {
+				return this.capabilities.contains("thinking");
+			}
 		}
-	}
+
+		/**
+		 * Returns whether the model supports tool/function calling
+		 */
+		public bool can_call {
+			get {
+				return this.capabilities.contains("tools");
+			}
+		}
+
+		/**
+		 * Returns model name with size in parentheses (e.g., "llama3.1:70b (4.1 GB)")
+		 */
+		public string name_with_size {
+			owned get {
+				if (this.size == 0) {
+					return this.name;
+				}
+				double size_gb_val = (double)this.size / (1024.0 * 1024.0 * 1024.0);
+				string size_str;
+				if (size_gb_val >= 1.0) {
+					size_str = "%.1f GB".printf(size_gb_val);
+				} else {
+					size_str = "<1GB";
+				}
+				return "%s (%s)".printf(this.name, size_str);
+			}
+		}
+
+		public Model(Client? client = null)
+		{
+			base(client);
+		}
+
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			// Exclude computed properties from deserialization
+			switch (property_name) {
+				case "size_gb":
+				case "is_thinking":
+				case "can_call":
+				case "name_with_size":
+					// These are computed properties, skip deserialization
+					value = Value(pspec.value_type);
+					return true;
+				case "capabilities":
+					// Handle capabilities as string array
+					var capabilities = new Gee.ArrayList<string>();
+					var array = property_node.get_array();
+					for (int i = 0; i < array.get_length(); i++) {
+						var element = array.get_element(i);
+						capabilities.add(element.get_string());
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(capabilities);
+					return true;
+				default:
+					// Let default handler process other properties
+					return default_deserialize_property(property_name, out value, pspec, property_node);
+			}
+		}
+		
 }
 
+}

@@ -14,6 +14,11 @@ namespace OLLMchat.UI
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private Gtk.Button action_button;
+		private Gtk.DropDown? model_dropdown = null;
+		private Gtk.Label? model_loading_label = null;
+		private GLib.ListStore? model_store = null;
+		private Gtk.SortListModel? sorted_models = null;
+		private Ollama.Client? client = null;
 		private bool is_streaming = false;
 
 		/**
@@ -79,25 +84,35 @@ namespace OLLMchat.UI
 			scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
 			this.append(scrolled);
 
-			// Create button box (right-aligned)
+			// Create button box with dropdown on left, button on right
 			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+				margin_start = 10,
 				margin_end = 10,
 				margin_bottom = 5,
-				halign = Gtk.Align.END
+				hexpand = true
 			};
 
-			// Create action button (Send/Stop)
+			// Model dropdown will be added here when setup_model_dropdown is called
+			// It will be on the left side of the button box
+
+			// Add spacer to push button to the right
+			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true
+			};
+			button_box.append(spacer);
+			
+			// Create action button (Send/Stop) - will be on the right
 			this.action_button = new Gtk.Button.with_label("Send");
 			this.action_button.clicked.connect(this.on_button_clicked);
 			button_box.append(this.action_button);
 
 			this.append(button_box);
 
-		// Connect key press event for Enter key handling
-		var controller = new Gtk.EventControllerKey();
-		controller.key_pressed.connect(this.on_key_pressed);
-		this.text_view.add_controller(controller);
-	}
+			// Connect key press event for Enter key handling
+			var controller = new Gtk.EventControllerKey();
+			controller.key_pressed.connect(this.on_key_pressed);
+			this.text_view.add_controller(controller);
+		}
 
 		/**
 		 * Sets the streaming state, updating button label and input state.
@@ -190,6 +205,176 @@ namespace OLLMchat.UI
 			}
 			this.send_clicked(text);
 			
+		}
+
+		/**
+		 * Sets up the model dropdown widget.
+		 * 
+		 * @param client The Ollama client instance
+		 * @since 1.0
+		 */
+		public void setup_model_dropdown(Ollama.Client client)
+		{
+			this.client = client;
+
+			// Create ListStore for models
+			this.model_store = new GLib.ListStore(typeof(Ollama.Model));
+
+			// Create sorted model that sorts by name
+			var name_expression = new Gtk.PropertyExpression(typeof(Ollama.Model), null, "name");
+			var sorter = new Gtk.StringSorter(name_expression);
+			this.sorted_models = new Gtk.SortListModel(this.model_store, sorter);
+
+			// Create shared factory for both button and popup (with icons, name, size)
+			var factory = new Gtk.SignalListItemFactory();
+			factory.setup.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null) {
+					return;
+				}
+
+				var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+					margin_start = 5,
+					margin_end = 5
+				};
+
+				// Icons for capabilities
+				var tools_icon = new Gtk.Image.from_icon_name("document-properties") {
+					visible = false,
+					tooltip_text = "Supports tool calling"
+				};
+				var thinking_icon = new Gtk.Image.from_icon_name("weather-fog") {
+					visible = false,
+					tooltip_text = "Supports thinking output"
+				};
+
+				// Model name label (with size)
+				var name_label = new Gtk.Label("") {
+					hexpand = true,
+					halign = Gtk.Align.START
+				};
+
+				box.append(tools_icon);
+				box.append(thinking_icon);
+				box.append(name_label);
+
+				// Store widget references using object data (like the GTK example)
+				list_item.set_data<Gtk.Image>("tools_icon", tools_icon);
+				list_item.set_data<Gtk.Image>("thinking_icon", thinking_icon);
+				list_item.set_data<Gtk.Label>("name_label", name_label);
+
+				list_item.child = box;
+			});
+
+			factory.bind.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null || list_item.item == null) {
+					return;
+				}
+
+				var model = list_item.item as Ollama.Model;
+
+				// Retrieve widgets using object data
+				var tools_icon = list_item.get_data<Gtk.Image>("tools_icon");
+				var thinking_icon = list_item.get_data<Gtk.Image>("thinking_icon");
+				var name_label = list_item.get_data<Gtk.Label>("name_label");
+
+				// Bind widget properties to model properties
+				model.bind_property("can_call", tools_icon, "visible", BindingFlags.SYNC_CREATE);
+				model.bind_property("is_thinking", thinking_icon, "visible", BindingFlags.SYNC_CREATE);
+				model.bind_property("name_with_size", name_label, "label", BindingFlags.SYNC_CREATE);
+			});
+
+			factory.unbind.connect((item) => {
+				// Property bindings are automatically cleaned up when objects are destroyed
+			});
+
+			// Create dropdown
+			this.model_dropdown = new Gtk.DropDown(this.sorted_models, null) {
+				visible = false,
+				hexpand = false
+			};
+
+			// Use the same factory for both button and popup (with icons)
+			this.model_dropdown.set_factory(factory);
+			this.model_dropdown.set_list_factory(factory);
+
+			// Connect selection change to update client.model, think, and tools
+			this.model_dropdown.notify["selected"].connect(() => {
+				
+				var selected = this.model_dropdown.selected;
+				if (selected != Gtk.INVALID_LIST_POSITION) {
+					var model = this.sorted_models.get_item(selected) as Ollama.Model;
+					
+					this.client.model = model.name;
+					// Set think based on model capability
+					this.client.think = model.is_thinking;
+					
+				}
+			});
+
+			// Create loading label
+			this.model_loading_label = new Gtk.Label("Loading Model data...") {
+				visible = true,
+				hexpand = false
+			};
+
+			// Add loading label and dropdown to button box (before the Send button, on the left)
+			var button_box = this.get_last_child() as Gtk.Box;
+			if (button_box != null) {
+				button_box.prepend(this.model_loading_label);
+				button_box.prepend(this.model_dropdown);
+			}
+		}
+
+		/**
+		 * Loads models and updates the model dropdown with available models and sets selection.
+		 * 
+		 * @since 1.0
+		 */
+		public async void update_models()
+		{
+			
+
+			try {
+				// Fetch all model details from server
+				yield this.client.fetch_all_model_details();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to load models: %s", e.message);
+				// Don't show error to user - dropdown will just remain hidden
+				return;
+			}
+
+			// Clear existing models
+			this.model_store.remove_all();
+
+			// Add models from client
+			foreach (var model in this.client.available_models.values) {
+				this.model_store.append(model);
+			}
+			
+			// Hide loading label and show dropdown
+			if (this.model_loading_label != null) {
+				this.model_loading_label.visible = false;
+			}
+			this.model_dropdown.visible = true;
+
+			// Set selection to match client.model and update client state
+			if (this.client.model == "") {
+				return;
+			}
+			for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
+				var model = this.sorted_models.get_item(i) as Ollama.Model;
+				if (model.name != this.client.model) {
+					continue;
+				}
+				this.model_dropdown.selected = i;
+				// Update client.think based on selected model
+				this.client.think = model.is_thinking;
+				break;
+			}
+
+			// Show the dropdown now that it has models
 		}
 	}
 }

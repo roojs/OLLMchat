@@ -5,7 +5,7 @@ namespace OLLMchat.Ollama
 		FAILED
 	}
 
-	public abstract class OllamaBase : Object, Json.Serializable
+	public class OllamaBase : Object, Json.Serializable
 	{
 		public Client? client { get; protected set; }
 		public string chat_content { get; set; default = ""; }
@@ -39,6 +39,11 @@ namespace OLLMchat.Ollama
 				return null;
 			}
 			return default_serialize_property(property_name, value, pspec);
+		}
+
+		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}
 }

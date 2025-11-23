@@ -65,6 +65,7 @@ ollmchat_ollama_src = files([
   'Ollama/Call/ChatCall.vala',
   'Ollama/Call/ModelsCall.vala',
   'Ollama/Call/PsCall.vala',
+  'Ollama/Call/ShowModelCall.vala',
   'Ollama/Message.vala',
   'Ollama/MessageInterface.vala',
   'Ollama/OllamaBase.vala',

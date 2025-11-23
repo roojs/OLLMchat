@@ -68,8 +68,12 @@ namespace OLLMchat.Ollama
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "tools":
-					// Serialize tools as array if not empty, otherwise exclude
-					if (this.tools == null || this.tools.size == 0) {
+					// Only serialize tools if model is set and tools exist
+					if (this.client.model == "" || this.tools.size == 0) {
+						return null;
+					}
+					if (!this.client.available_models.has_key(this.client.model) 
+						|| !this.client.available_models.get(this.client.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -106,7 +110,7 @@ namespace OLLMchat.Ollama
 				return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
 			
-			this.messages = new Gee.ArrayList<Message>();
+			var messages = new Gee.ArrayList<Message>();
 			
 			var array = property_node.get_array();
 			for (int i = 0; i < array.get_length(); i++) {
@@ -115,11 +119,11 @@ namespace OLLMchat.Ollama
 				
 				// Set message_interface to this ChatCall
 				msg_obj.message_interface = this;
-				this.messages.add(msg_obj);
+				messages.add(msg_obj);
 			}
 			
 			value = Value(typeof(Gee.ArrayList));
-			value.set_object(this.messages);
+			value.set_object(messages);
 			return true;
 		}
  

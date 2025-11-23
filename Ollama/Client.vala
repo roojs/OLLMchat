@@ -57,12 +57,22 @@ namespace OLLMchat.Ollama
 		public Soup.Session? session = null;
 
 		/**
-		 * Adds a tool to the client's tools map.
-		 * 
-		 * Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
-		 * 
-		 * @param tool The tool to add
-		 */
+		* Available models loaded from the server, keyed by model name.
+		* 
+		* This map is populated by calling fetch_all_model_details().
+		* 
+		* @since 1.0
+		*/
+		public Gee.HashMap<string, Model> available_models { get; private set; 
+			default = new Gee.HashMap<string, Model>(); }
+
+		/**
+		* Adds a tool to the client's tools map.
+		* 
+		* Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
+		* 
+		* @param tool The tool to add
+		*/
 		public void addTool(Tool tool)
 		{
 			// Ensure tools HashMap is initialized
@@ -98,6 +108,48 @@ namespace OLLMchat.Ollama
 			var result = yield call.exec_models();
 			return result;
 		}
+
+		/**
+		* Gets detailed information about a specific model including capabilities and stores it in available_models.
+		* 
+		* @param model_name The name of the model to get details for
+		* @return Model object with full details including capabilities
+		* @since 1.0
+		*/
+	public async Model show_model(string model_name) throws Error
+	{
+		var result = yield new ShowModelCall(this, model_name).exec_show();
+		this.available_models.set(result.name, result);
+		return result;
+	}
+
+		/**
+		* Fetches detailed information for all available models and populates available_models.
+		* 
+		* This method calls models() to get the list of models, then calls show_model()
+		* for each model to get full details including capabilities. The results are
+		* stored in available_models HashMap keyed by model name.
+		* 
+		* @since 1.0
+		*/
+		public async void fetch_all_model_details() throws Error
+		{
+			var models_list = yield this.models();
+			this.available_models.clear();
+			
+			foreach (var model in models_list) {
+				try {
+					var detailed_model = yield this.show_model(model.name);
+					// Preserve size from the initial models() call if show_model didn't return it
+					if (detailed_model.size == 0 && model.size != 0) {
+						detailed_model.size = model.size;
+					}
+				} catch (Error e) {
+					GLib.warning("Failed to get details for model %s: %s", model.name, e.message);
+					// Skip this model on error
+				}
+			}
+		}	
 	}
 }
 
