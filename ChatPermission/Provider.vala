@@ -65,13 +65,13 @@ namespace OLLMchat.ChatPermission
 		 * Session storage for temporary permissions (allow_session/deny_session).
 		 * Key: full path, Value: permission string (rwx, r--, ---, etc.)
 		 */
-		protected Gee.HashMap<string, string> session { get; private set; default = new Gee.HashMap<string, string>(); }
+		static protected Gee.HashMap<string, string> session { get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
 		 * Global permissions loaded from tool.permissions.json.
 		 * Key: full path, Value: permission string
 		 */
-		protected Gee.HashMap<string, string> global { get; private set; default = new Gee.HashMap<string, string>(); }
+		static protected Gee.HashMap<string, string> global { get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
 		 * Constructor.
@@ -121,8 +121,8 @@ namespace OLLMchat.ChatPermission
 			var normalized_path = this.normalize_path(tool.permission_target_path);
 			
 			// Check session permissions
-			if (this.session.has_key(normalized_path)) {
-				var result = this.check(this.session.get(normalized_path), tool.permission_operation);
+			if (session.has_key(normalized_path)) {
+				var result = this.check(session.get(normalized_path), tool.permission_operation);
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
@@ -273,13 +273,13 @@ namespace OLLMchat.ChatPermission
 				case PermissionResponse.DENY_SESSION:
 				case PermissionResponse.ALLOW_SESSION:
 					// Store in session
-					this.session.set(target_path, new_perm);
+					Provider.session.set(target_path, new_perm);
 					break;
 					
 				case PermissionResponse.DENY_ALWAYS:
 				case PermissionResponse.ALLOW_ALWAYS:
 					// Store in global and persist to file (only if config_file is set)
-					this.global.set(target_path, new_perm);
+					Provider.global.set(target_path, new_perm);
 					if (this.config_file != "") {
 						this.save();
 					}
