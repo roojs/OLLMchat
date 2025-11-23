@@ -170,9 +170,7 @@ namespace OLLMchat.ChatPermission
 			}
 			
 			int index = (int)operation;
-			if (index < 0 || index >= perm.length) {
-				return PermissionResult.NO;
-			}
+			 
 			
 			switch (perm[index]) {
 				case '-':
