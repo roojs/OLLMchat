@@ -53,7 +53,8 @@ namespace OLLMchat
 			var parser = new Json.Parser();
 			try {
 				parser.load_from_file(Path.build_filename(
-					GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"));
+					GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json")
+				);
 			} catch (GLib.Error e) {
 				GLib.error("Failed to load config file: %s", e.message);
 			}
