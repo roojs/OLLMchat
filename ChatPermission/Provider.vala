@@ -304,10 +304,9 @@ namespace OLLMchat.ChatPermission
 			
 			var chars = current.to_utf8();
 			int index = (int)operation;
+			 
+			chars[index] = allowed ? Provider.op_chars[index] : '-';
 			
-			if (index >= 0 && index < 3) {
-				chars[index] = allowed ? Provider.op_chars[index] : '-';
-			}
 			
 			return (string)chars;
 		}
