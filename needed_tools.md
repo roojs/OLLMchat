@@ -136,14 +136,12 @@ The permissions file uses a JSON structure with full paths as keys and 3-charact
 - **Memory**: One-time decisions (allow_once/deny_once) - stored in memory, removed after use
 
 **Implementation Notes**:
-- All tools must be constructed with a `PermissionProvider` instance
+- All tools must be constructed with a `Client` instance, which provides access to the `permission_provider`
 - Permission requests should include enough context for users to make informed decisions
 - The question should describe what the tool will do with the specific parameters provided
 - Tools will not execute if permission is denied
-- The permission provider can be shared across all tools or set per-tool
-- A signal-based implementation could be used for UI integration (emitting a signal that the UI handles)
-- As an abstract class, shared functionality and properties can be added to the base class
-- The `request_permission` method receives the `Function` tool instance, allowing the permission provider to inspect the tool's properties (name, description, parameters) if needed
+- The permission provider is shared across all tools via the `Client` instance
+- The `request` method receives the `Tool` instance, allowing the permission provider to inspect the tool's properties (name, description, permission_question, permission_target_path, permission_operation) if needed
 - Permissions are checked in order: Memory → Session → Global → User prompt
 - Paths are normalized (absolute, symlinks resolved) for consistent storage
 - Permission file is automatically created/updated in the configured directory
