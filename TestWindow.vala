@@ -85,11 +85,13 @@ namespace OLLMchat
 			};
 			
 			// Create ChatView permission provider and set it on the client
-			var permission_provider = new ChatPermission.ChatView(this.chat_widget) {
-				application = app as GLib.Application,
-				directory = Path.build_filename(
+			var permission_provider = new ChatPermission.ChatView(
+				this.chat_widget,
+				Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"
-				)
+				)) {
+				application = app as GLib.Application,
+				
 			};
 			client.permission_provider = permission_provider;
 			
