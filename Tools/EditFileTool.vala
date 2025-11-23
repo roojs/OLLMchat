@@ -398,20 +398,9 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 						current_edit = edits_by_start.get(current_line);
 					}
 					
-					// If we're at the start of an edit, write replacement and skip to end
+					// If we're at the start of an edit, let Edit handle it
 					if (current_edit != null && current_line == current_edit.start) {
-						foreach (var new_line in current_edit.replacement.split("\n")) {
-							temp_output.put_string(new_line);
-							temp_output.put_byte('\n');
-						}
-						// Skip lines until end of edit range (exclusive)
-						while (current_line < current_edit.end - 1) {
-							line = input_data.read_line(out length, null);
-							if (line == null) {
-								break;
-							}
-							current_line++;
-						}
+						current_edit.apply_to_streams(temp_output, input_data, ref current_line);
 						current_edit = null;
 						continue;
 					}
