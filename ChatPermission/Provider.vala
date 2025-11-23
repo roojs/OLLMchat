@@ -282,9 +282,7 @@ namespace OLLMchat.ChatPermission
 				case PermissionResponse.ALLOW_ALWAYS:
 					// Store in global and persist to file (only if config_file is set)
 					Provider.global.set(target_path, new_perm);
-					if (this.config_file != "") {
-						this.save();
-					}
+					this.save();
 					break;
 			}
 		}
