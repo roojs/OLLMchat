@@ -715,24 +715,24 @@ src/OLLMchat/
 
 ### Phase 7: EditFileTool
 
-- [x] **EditFileTool** - Create `EditFile.vala` and `EditFileChange.vala` (Priority 2)
+- [x] **EditFileTool** - Create `EditFile.vala` and `EditFileChange.vala` (Priority 2) ✅
   - [x] Implement diff application with range validation
   - [x] Implement edit validation (non-overlapping, sorted)
   - [x] Add permission question building
   - [x] Add to meson.build
   - [x] Add to TestWindow for testing
-  - [ ] Fix build error (try-finally block issue)
+  - [ ] **Testing** - Comprehensive testing of EditFileTool functionality
 
 ### Phase 8: RunTerminalCommandTool
 
-- [ ] **RunTerminalCommandTool** - Create `RunTerminalCommandTool.vala` (Priority 3)
-  - [ ] Implement command execution in project root
-  - [ ] Implement stdout/stderr capture
-  - [ ] Add command safety validation
-  - [ ] Add timeout handling
-  - [ ] Add permission question building
-  - [ ] Add to meson.build
-  - [ ] Test with PermissionProviderDummy
+- [x] **RunTerminalCommandTool** - Create `RunTerminalCommandTool.vala` (Priority 3) ✅
+  - [x] Implement command execution in project root
+  - [x] Implement stdout/stderr capture
+  - [x] Add command safety validation
+  - [x] Add timeout handling
+  - [x] Add permission question building
+  - [x] Add to meson.build
+  - [ ] **Testing** - Comprehensive testing of RunTerminalCommandTool functionality
 
 ### Phase 9: WebSearchTool
 
