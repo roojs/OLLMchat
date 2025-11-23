@@ -45,6 +45,34 @@ namespace OLLMchat.Tools
 			}
 			return diff;
 		}
+		
+		/**
+		 * Writes the replacement text to the output stream and skips old lines in the input stream.
+		 * 
+		 * @param output_stream The output stream to write replacement to
+		 * @param input_stream The input stream to skip old lines from
+		 * @param current_line Reference to current line number (will be updated)
+		 * @throws Error if I/O operations fail
+		 */
+		public void apply_to_streams(GLib.DataOutputStream output_stream, GLib.DataInputStream input_stream, ref int current_line) throws Error
+		{
+			// Write replacement lines
+			foreach (var new_line in this.replacement.split("\n")) {
+				output_stream.put_string(new_line);
+				output_stream.put_byte('\n');
+			}
+			
+			// Skip old lines in input stream until end of edit range (exclusive)
+			string? line;
+			size_t length;
+			while (current_line < this.end - 1) {
+				line = input_stream.read_line(out length, null);
+				if (line == null) {
+					break;
+				}
+				current_line++;
+			}
+		}
 	}
 	
 	/**
@@ -335,101 +363,101 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		 */
 		private void apply_edits_streaming(string file_path) throws Error
 		{
-		// Create HashMap of start line -> Edit
-		var edits_by_start = new Gee.HashMap<int, Edit>();
-		foreach (var edit in this.edits) {
-			edits_by_start.set(edit.start, edit);
-		}
-		
-		// Create temporary file for output in system temp directory
-		var file_basename = GLib.Path.get_basename(file_path);
-		var timestamp = GLib.get_real_time().to_string();
-		var temp_file = GLib.File.new_for_path(GLib.Path.build_filename(
-			GLib.Environment.get_tmp_dir(),
-			@"ollmchat-edit-$(file_basename)-$(timestamp).tmp"
-		));
-		var temp_output = new GLib.DataOutputStream(
-			temp_file.create(GLib.FileCreateFlags.NONE, null)
-		);
-		
-		// Open input file
-		var input_file = GLib.File.new_for_path(file_path);
-		var input_data = new GLib.DataInputStream(input_file.read(null));
-		
-		try {
-			int current_line = 0;
-			string? line;
-			size_t length;
-			Edit? current_edit = null;
-			
-			while ((line = input_data.read_line(out length, null)) != null) {
-				current_line++;
-				
-				// Check if this is the start of an edit
-				if (edits_by_start.has_key(current_line)) {
-					current_edit = edits_by_start.get(current_line);
-				}
-				
-				// If we're at the start of an edit, write replacement and skip to end
-				if (current_edit != null && current_line == current_edit.start) {
-					foreach (var new_line in current_edit.replacement.split("\n")) {
-						temp_output.put_string(new_line);
-						temp_output.put_byte('\n');
-					}
-					// Skip lines until end of edit range (exclusive)
-					while (current_line < current_edit.end - 1) {
-						line = input_data.read_line(out length, null);
-						if (line == null) {
-							break;
-						}
-						current_line++;
-					}
-					current_edit = null;
-					continue;
-				}
-				
-				// If we're in an edit range (being replaced), skip it
-				if (current_edit != null && current_line >= current_edit.start && current_line < current_edit.end) {
-					continue;
-				}
-				
-				// If we've passed the end of the current edit, clear it
-				if (current_edit != null && current_line >= current_edit.end) {
-					current_edit = null;
-				}
-				
-				// Write line as-is (not part of any edit)
-				temp_output.put_string(line);
-				temp_output.put_byte('\n');
-			}
-			
-			// Handle insertions at end of file (range [n, n] where n > file length)
+			// Create HashMap of start line -> Edit
+			var edits_by_start = new Gee.HashMap<int, Edit>();
 			foreach (var edit in this.edits) {
-				if (edit.start == edit.end && edit.start > current_line) {
-					foreach (var new_line in edit.replacement.split("\n")) {
-						temp_output.put_string(new_line);
-						temp_output.put_byte('\n');
+				edits_by_start.set(edit.start, edit);
+			}
+			
+			// Create temporary file for output in system temp directory
+			var file_basename = GLib.Path.get_basename(file_path);
+			var timestamp = GLib.get_real_time().to_string();
+			var temp_file = GLib.File.new_for_path(GLib.Path.build_filename(
+				GLib.Environment.get_tmp_dir(),
+				@"ollmchat-edit-$(file_basename)-$(timestamp).tmp"
+			));
+			var temp_output = new GLib.DataOutputStream(
+				temp_file.create(GLib.FileCreateFlags.NONE, null)
+			);
+			
+			// Open input file
+			var input_file = GLib.File.new_for_path(file_path);
+			var input_data = new GLib.DataInputStream(input_file.read(null));
+			
+			try {
+				int current_line = 0;
+				string? line;
+				size_t length;
+				Edit? current_edit = null;
+				
+				while ((line = input_data.read_line(out length, null)) != null) {
+					current_line++;
+					
+					// Check if this is the start of an edit
+					if (edits_by_start.has_key(current_line)) {
+						current_edit = edits_by_start.get(current_line);
 					}
+					
+					// If we're at the start of an edit, write replacement and skip to end
+					if (current_edit != null && current_line == current_edit.start) {
+						foreach (var new_line in current_edit.replacement.split("\n")) {
+							temp_output.put_string(new_line);
+							temp_output.put_byte('\n');
+						}
+						// Skip lines until end of edit range (exclusive)
+						while (current_line < current_edit.end - 1) {
+							line = input_data.read_line(out length, null);
+							if (line == null) {
+								break;
+							}
+							current_line++;
+						}
+						current_edit = null;
+						continue;
+					}
+					
+					// If we're in an edit range (being replaced), skip it
+					if (current_edit != null && current_line >= current_edit.start && current_line < current_edit.end) {
+						continue;
+					}
+					
+					// If we've passed the end of the current edit, clear it
+					if (current_edit != null && current_line >= current_edit.end) {
+						current_edit = null;
+					}
+					
+					// Write line as-is (not part of any edit)
+					temp_output.put_string(line);
+					temp_output.put_byte('\n');
+				}
+				
+				// Handle insertions at end of file (range [n, n] where n > file length)
+				foreach (var edit in this.edits) {
+					if (edit.start == edit.end && edit.start > current_line) {
+						foreach (var new_line in edit.replacement.split("\n")) {
+							temp_output.put_string(new_line);
+							temp_output.put_byte('\n');
+						}
+					}
+				}
+				
+			} finally {
+				try {
+					input_data.close(null);
+					temp_output.close(null);
+				} catch (GLib.Error e) {
+					// Ignore close errors
 				}
 			}
 			
-		} finally {
+			// Replace original file with temporary file
+			var original_file = GLib.File.new_for_path(file_path);
 			try {
-				input_data.close(null);
-				temp_output.close(null);
+				original_file.delete(null);
 			} catch (GLib.Error e) {
-				// Ignore close errors
+				// Ignore if file doesn't exist
 			}
-		}
-		
-		// Replace original file with temporary file
-		var original_file = GLib.File.new_for_path(file_path);
-		try {
-			original_file.delete(null);
-		} catch (GLib.Error e) {
-			// Ignore if file doesn't exist
-		}
-		temp_file.move(original_file, GLib.FileCopyFlags.OVERWRITE, null, null);
+			temp_file.move(original_file, GLib.FileCopyFlags.OVERWRITE, null, null);
 		}
 	}
 }
