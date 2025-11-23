@@ -487,15 +487,15 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 **Status**: ⏳ To be created (`Tools/WebSearchTool.vala`)
 
-**Priority**: 5 (Useful for documentation and external information - uses WebKit-based approach)
+**Priority**: 5 (Useful for documentation and external information - uses API-based approach)
 
-**Purpose**: Perform a web search using the specified query and return the top search results. Should be used when you need to find information that is not available in the codebase or when you need to verify information from external sources.
+**Purpose**: Perform a web search using the specified query and return the top search results as markdown. Should be used when you need to find information that is not available in the codebase or when you need to verify information from external sources.
 
 **JSON Schema**:
 ```json
 {
   "name": "web_search",
-  "description": "Perform a web search using the specified query and return the top search results.\n\nThis tool should be used when you need to find information that is not available in the codebase or when you need to verify information from external sources.\n\nBe mindful of the reliability of the sources you use, and prioritize official documentation and reputable sources.",
+  "description": "Perform a web search using the specified query and return the top search results as markdown.\n\nThis tool should be used when you need to find information that is not available in the codebase or when you need to verify information from external sources.\n\nBe mindful of the reliability of the sources you use, and prioritize official documentation and reputable sources.",
   "parameters": {
     "type": "object",
     "properties": {
@@ -510,18 +510,12 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```
 
 **Implementation Notes**:
+- **Use Google or DuckDuckGo API** for web searches
+- **Return markdown version** of search results (using HTML2Markdown utility from Phase 8.5)
 - Should prioritize official documentation and reputable sources
 - May need to filter or rank results by reliability
-- Should return top N results (typically 5-10)
-- **HTTP Method Restriction**: Only GET requests allowed - no POST, PUT, DELETE, etc.
-- **Data Transmission Restriction**: Must prevent sending data to external servers without approval
-  - Query parameters (after `?` in URL) may be acceptable for search queries, but need careful consideration
-  - Google searches and similar may need special handling or exclusion
-- **Implementation Approach**: Prefer WebKit-based approach over API integration
-  - Use WebKit browser to perform searches (similar to existing project approach)
-  - May need WebKit browser extension to extract search results
-  - Avoid API integration route (e.g., DuckDuckGo API, Google Custom Search API)
-- Should build permission question showing the search query and target URL
+- Should return top N results (typically 5-10) converted to markdown format
+- Should build permission question showing the search query
 
 **⚠️ Rate Limiting Requirements**:
 - **Limit**: Maximum 10 web searches per 15-minute sliding window
