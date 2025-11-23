@@ -286,7 +286,7 @@ namespace OLLMchat.ChatPermission
 					break;
 			}
 		}
-		
+		static string[] op_chars = {'r', 'w', 'x'};
 		/**
 		 * Updates a permission string with a new operation permission.
 		 * 
@@ -306,8 +306,7 @@ namespace OLLMchat.ChatPermission
 			int index = (int)operation;
 			
 			if (index >= 0 && index < 3) {
-				char[] op_chars = {'r', 'w', 'x'};
-				chars[index] = allowed ? op_chars[index] : '-';
+				chars[index] = allowed ? Provider.op_chars[index] : '-';
 			}
 			
 			return (string)chars;
