@@ -711,14 +711,39 @@ namespace OLLMchat.UI
 		 * Appends a tool message to the chat view in grey format (same as summary).
 		 * Tool messages are processed as markdown before display.
 		 * 
-		 * @param message The tool status message to display (may contain markdown)
-		 * @param widget Optional widget parameter (default null). Expected to be a Gtk.Widget,
-		 *               but typed as Object? since the Ollama base library should work without Gtk.
-		 *               A cast will be needed when using this parameter.
+		 * If a widget is provided and it's a Gtk.Widget, it will be wrapped in a Frame
+		 * (with the message as the title) and added as a framed widget instead of inserting markdown text.
+		 * 
+		 * @param message The tool status message to display (may contain markdown).
+		 *                 If a widget is provided, this will be used as the Frame title.
+		 * @param widget Optional widget parameter (default null). If it's a Gtk.Widget,
+		 *               it will be wrapped in a Frame and added as a framed widget.
+		 *               Expected to be a Gtk.Widget, but typed as Object? since the Ollama
+		 *               base library should work without Gtk. A cast will be needed when using this parameter.
 		 * @since 1.0
 		 */
 		public void append_tool_message(string message, Object? widget = null)
 		{
+			// If widget is provided and it's a Gtk.Widget, wrap it in a Frame and add it
+			if (widget is Gtk.Widget) {
+				
+				// Create Frame with message as title
+				var frame = new Gtk.Frame(message == "" ? null : message) {
+					hexpand = true,
+					margin_start = 5,
+					margin_end = 5,
+					margin_top = 5,
+					margin_bottom = 5
+				};
+				frame.set_child( (Gtk.Widget) widget);
+				frame.add_css_class("code-block-box");
+				
+				// Add the framed widget
+				this.add_widget_frame(frame);
+				this.scroll_to_bottom();
+				return;
+			}
+			
 			// Process message through markdown processor
 			string processed_message = MarkdownProcessor.get_default().markup_string(message);
 			
@@ -910,7 +935,7 @@ namespace OLLMchat.UI
 		 * @param language_id The language identifier for syntax highlighting
 		 * @return A configured SourceView widget
 		 */
-		private GtkSource.View create_source_view(string? language_id)
+		public GtkSource.View create_source_view(string? language_id)
 		{
 			// Create buffer with language if specified
 			GtkSource.Buffer source_buffer;

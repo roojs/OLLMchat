@@ -101,11 +101,17 @@ ollmchat_chatpermission_ui_src = files([
   'ChatPermission/ChatView.vala',
 ])
 
-# Source files for Tools namespace
+# Source files for Tools namespace (base, no GTK)
 ollmchat_tools_src = files([
   'Tools/ReadFile.vala',
   'Tools/EditFile.vala',
   'Tools/EditFileChange.vala',
+  'Tools/RunTerminalCommand.vala',
+])
+
+# Source files for Tools namespace (GTK-dependent)
+ollmchat_tools_ui_src = files([
+  'Tools/RunTerminalCommandGtk.vala',
 ])
 
 # Build as a library (can be linked or used as standalone)
@@ -123,7 +129,7 @@ ollmchat_ui_src = files([
   'UI/ChatInput.vala',
   'UI/ChatPermission.vala',
   'MarkdownProcessor.vala',
-])
+]) + ollmchat_tools_ui_src
 
 # Build test-ollama executable (command-line test)
 test_ollama = executable('test-ollama',
@@ -149,6 +155,7 @@ test_window = executable('test-window',
     ollmchat_chatpermission_src,
     ollmchat_chatpermission_ui_src,
     ollmchat_tools_src,
+    ollmchat_tools_ui_src,
     ollmchat_ui_src,
     ollmchat_resources,
   ],
