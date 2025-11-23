@@ -258,7 +258,7 @@ Each tool extends the `Tool` abstract class and implements:
 - `description` property - A detailed description of what the tool does
 - `parameter_description` property - Parameter documentation string (parsed automatically)
 - `prepare()` method - Builds permission question and validates parameters
-- `execute_tool()` method - The actual tool implementation (async)
+- `execute_tool()` method - The actual tool implementation (synchronous, throws `Error` on failure)
 
 ### Tool Registration
 
