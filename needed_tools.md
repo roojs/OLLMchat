@@ -535,6 +535,58 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ---
 
+### Tool 6: WebFetchTool
+
+**Status**: ⏳ To be created (`Tools/WebFetchTool.vala`)
+
+**Priority**: 5 (Useful for fetching webpage contents)
+
+**Purpose**: Fetch the contents of a webpage and return the content as markdown. This tool can perform GET or POST requests to retrieve webpage content.
+
+**JSON Schema**:
+```json
+{
+  "name": "web_fetch",
+  "description": "Fetch the contents of a webpage and return the content as markdown.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string",
+        "enum": ["GET", "POST"],
+        "description": "The HTTP method to use (GET or POST only)"
+      },
+      "url": {
+        "type": "string",
+        "description": "The URL of the webpage to fetch"
+      },
+      "post_data": {
+        "type": "string",
+        "description": "The POST data to send (only required for POST requests)"
+      }
+    },
+    "required": ["method", "url"]
+  }
+}
+```
+
+**Implementation Notes**:
+- **Only GET or POST methods** allowed
+- **Return markdown version** of fetched content (using HTML2Markdown utility from Phase 8.5)
+- **Permissions**:
+  - GET requests treated as 'Read' permissions
+  - POST requests follow standard file 'Write' approval flag
+  - Strip query part from permission storage (e.g., `http://abc.com/test?test&test` → `http://abc.com/test`)
+  - Modify permission system to recognize `http(s)://` prefix and not normalize URLs
+- Should build permission question showing the URL and HTTP method
+- Must handle HTTP errors gracefully
+
+**Example Permission Question**:
+- "Fetch webpage 'http://example.com/page' (GET)?"
+- "Fetch webpage 'http://example.com/api' (POST)?"
+
+---
+
 ## Implementation Considerations
 
 ### Chat ID Tracking for Rate Limiting
