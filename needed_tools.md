@@ -734,27 +734,52 @@ src/OLLMchat/
   - [x] Add to meson.build
   - [ ] **Testing** - Comprehensive testing of RunTerminalCommandTool functionality
 
+### Phase 8.5: HTML to Markdown Converter
+
+- [ ] **HTML2Markdown** - Port html2md from C++ to Vala
+  - [ ] Port `html2md.cpp` from https://github.com/tim-gromeyer/html2md to Vala
+  - [ ] Create `Tools/HTML2Markdown.vala` utility class
+  - [ ] Implement HTML parsing and conversion to markdown
+  - [ ] Support all HTML tags handled by original C++ implementation
+  - [ ] Add to meson.build
+  - [ ] Test with various HTML inputs
+
 ### Phase 9: WebSearchTool
 
 - [ ] **WebSearchTool** - Create `WebSearchTool.vala` (Priority 5)
-  - [ ] **Research WebKit-based approach** (preferred over API integration)
-  - [ ] **Implement WebKit browser integration** for performing searches
-  - [ ] **Implement WebKit extension** to extract search results (similar to existing project)
-  - [ ] **Implement HTTP method restriction**: Only allow GET requests
-  - [ ] **Implement data transmission prevention**: Block POST/PUT/DELETE and data-sending requests
-  - [ ] **Handle query parameters**: Determine which query params are acceptable for searches
-  - [ ] **Consider Google search exclusion**: May need special handling or exclusion for Google searches
+  - [ ] **Use Google or DuckDuckGo API** for web searches
+  - [ ] **Return markdown version** of search results (using HTML2Markdown from Phase 8.5)
+  - [ ] Implement API integration (Google Custom Search API or DuckDuckGo API)
+  - [ ] Convert HTML search results to markdown format
   - [ ] Implement result filtering/ranking
   - [ ] **Implement rate limiting**: Max 10 searches per 15-minute sliding window
   - [ ] **Add timestamp tracking**: Maintain `ArrayList<DateTime>` of search timestamps per chat session
   - [ ] **Implement pruning logic**: Remove timestamps older than 15 minutes before each search
   - [ ] **Implement permission request**: When limit reached, ask user permission and clear list if granted
   - [ ] **Add chat ID tracking** (may need to add chat_id to ChatCall or use ChatWidget's current_chat)
-  - [ ] Add permission question building (include target URL in question)
+  - [ ] Add permission question building (include search query in question)
   - [ ] Add to meson.build
   - [ ] Test with PermissionProviderDummy
 
-### Phase 10: CodebaseSearchTool
+### Phase 10: WebFetchTool
+
+- [ ] **WebFetchTool** - Create `WebFetchTool.vala` (Priority 5)
+  - [ ] **Fetch webpage contents** and return as markdown (using HTML2Markdown from Phase 8.5)
+  - [ ] **Arguments**:
+    - [ ] HTTP method: GET or POST only
+    - [ ] URL (required)
+    - [ ] Post data (only required for POST requests)
+  - [ ] **Permissions**:
+    - [ ] GET requests treated as 'Read' permissions
+    - [ ] POST requests follow standard file 'Write' approval flag
+    - [ ] Strip query part from permission storage (e.g., `http://abc.com/test?test&test` → `http://abc.com/test`)
+    - [ ] Modify permission system to recognize `http(s)://` prefix and not normalize URLs
+  - [ ] Convert fetched HTML to markdown using HTML2Markdown utility
+  - [ ] Add permission question building (include URL and method in question)
+  - [ ] Add to meson.build
+  - [ ] Test with PermissionProviderDummy
+
+### Phase 11: CodebaseSearchTool
 
 - [ ] **CodebaseSearchTool** - Create `CodebaseSearchTool.vala` (Priority 4)
   - [ ] ⚠️ **IMPLEMENT LAST** - This is the most complicated tool
@@ -767,7 +792,7 @@ src/OLLMchat/
   - [ ] Add to meson.build
   - [ ] Test with PermissionProviderDummy
 
-### Phase 11: Integration and Testing
+### Phase 12: Integration and Testing
 
 - [x] **Tool Registration** - Ensure `Client.addTool()` method works correctly ✅
 - [x] **Permission Integration** - Create UI-based PermissionProvider implementation (`ChatPermission.ChatView`) ✅
@@ -775,7 +800,7 @@ src/OLLMchat/
 - [x] **Error Handling** - Ensure all tools handle errors gracefully ✅
 - [ ] **Documentation** - Update documentation with tool usage examples
 
-### Phase 12: UI Integration
+### Phase 13: UI Integration
 
 - [x] **PermissionProviderUI** - Create UI-based permission provider (`ChatPermission.ChatView`) ✅
   - [x] Permission widget with question and buttons
