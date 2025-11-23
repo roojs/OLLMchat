@@ -259,7 +259,7 @@ namespace OLLMchat.ChatPermission
 			}
 			
 			var new_perm = this.update_string(
-				this.global.has_key(target_path) ? this.global.get(target_path) : "???",
+				Provider.global.has_key(target_path) ? Provider.global.get(target_path) : "???",
 				operation,
 				allowed
 			);
@@ -334,7 +334,7 @@ namespace OLLMchat.ChatPermission
 				var obj = parser.get_root().get_object();
 				
 				foreach (var key in obj.get_members()) {
-					this.global.set(key, obj.get_string_member(key));
+					Provider.global.set(key, obj.get_string_member(key));
 				}
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load permissions: %s", e.message);
