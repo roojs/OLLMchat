@@ -118,6 +118,7 @@ ollmchat_ui_src = files([
   'UI/ChatWidget.vala',
   'UI/ChatView.vala',
   'UI/ChatInput.vala',
+  'UI/ChatPermission.vala',
   'MarkdownProcessor.vala',
 ])
 

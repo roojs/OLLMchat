@@ -10,7 +10,7 @@ namespace OLLMchat
 		var app = new Gtk.Application("org.roojs.roobuilder.test", GLib.ApplicationFlags.DEFAULT_FLAGS);
 
 		app.activate.connect(() => {
-			var window = new TestWindow();
+			var window = new TestWindow(app);
 			app.add_window(window);
 			window.present();
 		});
@@ -33,9 +33,10 @@ namespace OLLMchat
 		/**
 		 * Creates a new TestWindow instance.
 		 * 
+		 * @param app The Gtk.Application instance
 		 * @since 1.0
 		 */
-		public TestWindow()
+		public TestWindow(Gtk.Application app)
 		{
 			this.title = "OLL Chat Test";
 			this.set_default_size(800, 600);
@@ -82,9 +83,10 @@ namespace OLLMchat
 			};
 			
 			// Create ChatView permission provider and set it on the client
-			client.permission_provider = new ChatPermission.ChatView(
-				this.chat_widget.chat_view
-			);
+			var permission_provider = new ChatPermission.ChatView(this.chat_widget) {
+				application = app as GLib.Application,
+			};
+			client.permission_provider = permission_provider;
 			
 			// Track if we've sent the first query to automatically send the reply
 			bool first_response_received = false;

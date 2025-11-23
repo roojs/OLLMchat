@@ -12,10 +12,12 @@ namespace OLLMchat.UI
 	public class ChatWidget : Gtk.Box
 	{
 		public ChatView chat_view { get; private set; }
+		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
 		public Ollama.Client client { get; private set; }
-		public Ollama.ChatCall? current_chat { get; private set; default = null; }
-		private bool is_streaming_active = false;
+	public Ollama.ChatCall? current_chat { get; private set; default = null; }
+	private bool is_streaming_active = false;
+	private string? last_sent_text = null;
 
 		/**
 		* Default message text to display in the input field.
@@ -74,6 +76,12 @@ namespace OLLMchat.UI
 		// Connect send_starting signal to show waiting indicator
 		this.client.send_starting.connect(this.chat_view.show_waiting_indicator);
 
+		// Create permission widget (hidden by default)
+		this.permission_widget = new ChatPermission() {
+			vexpand = false
+		};
+		this.append(this.permission_widget);
+
 		// Create chat input
 		this.chat_input = new ChatInput() {
 			vexpand = false
@@ -116,6 +124,19 @@ namespace OLLMchat.UI
 		{
 			this.chat_view.clear();
 			this.current_chat = null;
+			this.last_sent_text = null;
+		}
+
+		/**
+		 * Requests permission from the user for a tool operation.
+		 * 
+		 * @param tool The tool requesting permission
+		 * @return The user's permission response
+		 * @since 1.0
+		 */
+		public async OLLMchat.ChatPermission.PermissionResponse request_permission(Ollama.Tool tool)
+		{
+			return yield this.permission_widget.request(tool.permission_question);
 		}
 
 	private void setup_streaming_callback()
@@ -165,6 +186,9 @@ namespace OLLMchat.UI
 			this.chat_input.set_streaming(false);
 			this.is_streaming_active = false;
 			
+			// Clear last_sent_text on successful response
+			this.last_sent_text = null;
+			
 			// Emit response received signal only for final responses (no tool_calls)
 			this.response_received(response.message.content);
 		});
@@ -175,6 +199,9 @@ namespace OLLMchat.UI
 			if (text.strip().length == 0) {
 				return;
 			}
+
+			// Store the text before clearing input (for error recovery)
+			this.last_sent_text = text;
 
 			// KLUDGE: Create a temporary ChatCall for displaying the user message
 			// This is a workaround just so the interface works - the actual ChatCall
@@ -201,6 +228,12 @@ namespace OLLMchat.UI
 
 	private async void send_chat_request(string text)
 	{
+		// Check if we're sending the same question twice (backend duplicate check)
+		if (this.last_sent_text != null && this.last_sent_text == text) {
+			GLib.warning("[ChatWidget] Warning: Attempting to send the same message again: '%s'", 
+				text.length > 50 ? text.substring(0, 50) + "..." : text);
+		}
+		
 		// Set streaming on client
 		this.client.stream = true;
 		
@@ -293,6 +326,11 @@ namespace OLLMchat.UI
 		this.chat_view.append_error(error_msg);
 		this.error_occurred(error_msg);
 		this.cleanup_streaming_state();
+		
+		// Auto-fill the input with the last sent text so user can retry easily
+		if (this.last_sent_text != null && this.last_sent_text.length > 0) {
+			this.chat_input.set_default_text(this.last_sent_text);
+		}
 		
 		// Note: current_chat is preserved to maintain conversation history
 		// User can retry or continue the conversation after the error
