@@ -99,7 +99,7 @@ namespace OLLMchat.ChatPermission
 				var obj = parser.get_root().get_object();
 				
 				foreach (var key in obj.get_members()) {
-					this.global.set(key, obj.get_string_member(key));
+					Provider.global.set(key, obj.get_string_member(key));
 				}
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load permissions: %s", e.message);
