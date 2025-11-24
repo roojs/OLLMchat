@@ -20,8 +20,8 @@ namespace OLLMchat.Ollama
 				// Notify computed properties that depend on capabilities
 				// In Vala, notify() takes a string property name (with hyphens)
 				GLib.debug("[Model] capabilities setter: updating capabilities, notifying computed properties");
-				this.notify("is-thinking");
-				this.notify("can-call");
+				this.notify_property("is-thinking");
+				this.notify_property("can-call");
 			}
 		}
 
