@@ -35,7 +35,7 @@ namespace OLLMchat.Ollama
 			}
 			set {
 				// Setter ignores incoming value but triggers notify signal for UI updates
-				this.notify_property("is_thinking");
+				this.notify("is_thinking");
 			}
 		}
 
@@ -48,7 +48,7 @@ namespace OLLMchat.Ollama
 			}
 			set {
 				// Setter ignores incoming value but triggers notify signal for UI updates
-				this.notify_property("can_call");
+				this.notify("can_call");
 			}
 		}
 
