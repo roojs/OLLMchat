@@ -133,7 +133,7 @@ ollmchat_ui_src = files([
   'UI/ChatView.vala',
   'UI/ChatInput.vala',
   'UI/ChatPermission.vala',
-  'MarkdownProcessor.vala',
+  'UI/MarkdownProcessor.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build base library (libollmchat.so) - no GTK dependencies
