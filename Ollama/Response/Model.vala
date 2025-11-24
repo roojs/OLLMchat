@@ -137,8 +137,8 @@ namespace OLLMchat.Ollama
 		 */
 		public void update_bools()
 		{
-			bool thinking = this.is_thinking;
-			bool can_call_val = this.can_call;
+			var thinking = this.is_thinking;
+			var can_call_val = this.can_call;
 			this.is_thinking = thinking;
 			this.can_call = can_call_val;
 		}
