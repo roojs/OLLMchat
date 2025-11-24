@@ -41,7 +41,7 @@ namespace OLLMchat
 			this.title = "OLL Chat Test";
 			this.set_default_size(800, 600);
 
-			// Read configuration from ~/.local/share/roobuilder/ollama.json
+			// Read configuration from ~/.config/ollmchat/ollama.json
 			// Example file content:
 			/* 
 {
