@@ -182,8 +182,11 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
 )
 
 # Generate Valadoc documentation (generated in build directory under docs/valadoc)
+# Check for valadoc dependency - documentation generation is optional
 valadoc = find_program('valadoc', required: false)
 if valadoc.found()
+  message('valadoc found: documentation will be generated')
+  
   # Base library documentation
   valadoc_base_dir = meson.current_source_dir() / 'docs' / 'ollmchat'
   valadoc_base_clean = custom_target('valadoc-base-clean',
@@ -249,6 +252,9 @@ if valadoc.found()
     build_by_default: true,
     install: false
   )
+else
+  message('valadoc not found: documentation generation will be skipped')
+  message('To generate documentation, install valadoc (e.g., sudo apt install valadoc)')
 endif
 
 # Build test-ollama executable (command-line test)
