@@ -65,14 +65,14 @@ namespace OLLMchat.ChatPermission
 		 * Session storage for temporary permissions (allow_session/deny_session).
 		 * Key: full path, Value: permission string (rwx, r--, ---, etc.)
 		 */
-		static protected Gee.HashMap<string, string> session {
+		protected static  Gee.HashMap<string, string> session {
 			 get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
 		 * Global permissions loaded from tool.permissions.json.
 		 * Key: full path, Value: permission string
 		 */
-		static protected Gee.HashMap<string, string> global { 
+		protected static Gee.HashMap<string, string> global { 
 			get; private set; default = new Gee.HashMap<string, string>(); }
 		
 		/**
@@ -284,7 +284,7 @@ namespace OLLMchat.ChatPermission
 					break;
 			}
 		}
-		static string[] op_chars = {'r', 'w', 'x'};
+		static char[] op_chars = {'r', 'w', 'x'};
 		/**
 		 * Updates a permission string with a new operation permission.
 		 * 
