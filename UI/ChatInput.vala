@@ -20,6 +20,7 @@ namespace OLLMchat.UI
 		private Gtk.SortListModel? sorted_models = null;
 		private Ollama.Client? client = null;
 		private bool is_streaming = false;
+		private bool is_loading_models = false;
 
 		/**
 		* Default message text to display in the input field.
@@ -300,7 +301,12 @@ namespace OLLMchat.UI
 			this.model_dropdown.set_list_factory(factory);
 
 			// Connect selection change to update client.model, think, and tools
+			// Ignore selection changes during model loading to preserve configured values
 			this.model_dropdown.notify["selected"].connect(() => {
+				// Ignore selection changes while loading models
+				if (this.is_loading_models) {
+					return;
+				}
 				
 				var selected = this.model_dropdown.selected;
 				if (selected != Gtk.INVALID_LIST_POSITION) {
@@ -337,6 +343,7 @@ namespace OLLMchat.UI
 		 */
 		public async void update_models()
 		{
+			this.is_loading_models = true;
 			try {
 				// Get basic model list - this populates available_models automatically
 				var models_list = yield this.client.models();
@@ -356,6 +363,7 @@ namespace OLLMchat.UI
 				this.model_dropdown.visible = true;
 
 				// Set selection to match client.model and update client state
+				// This will trigger the notify signal, but we're ignoring it during loading
 				if (this.client.model != "") {
 					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
 						var model = this.sorted_models.get_item(i) as Ollama.Model;
@@ -363,7 +371,7 @@ namespace OLLMchat.UI
 							continue;
 						}
 						this.model_dropdown.selected = i;
-						// Update client.think based on selected model
+						// Update client.think based on selected model (do this directly, not via signal)
 						this.client.think = model.is_thinking;
 						break;
 					}
@@ -383,6 +391,8 @@ namespace OLLMchat.UI
 				GLib.warning("Failed to load models: %s", e.message);
 				// Don't show error to user - dropdown will just remain hidden
 				return;
+			} finally {
+				this.is_loading_models = false;
 			}
 		}
 	}
