@@ -19,19 +19,34 @@ namespace OLLMchat.Ollama
 				this._capabilities = value;
 				// Notify computed properties that depend on capabilities
 				// Validate ParamSpecs before use to avoid corruption issues
+				GLib.debug("[Model] capabilities setter: updating capabilities, notifying computed properties");
+				
 				var pspec_thinking = this.get_class().find_property("is_thinking");
 				if (pspec_thinking != null) {
 					unowned string? name = pspec_thinking.get_name();
+					GLib.debug("[Model] capabilities setter: found is_thinking pspec, name='%s'", name ?? "(null)");
 					if (name != null && name == "is_thinking") {
+						GLib.debug("[Model] capabilities setter: notifying is_thinking property");
 						this.notify(pspec_thinking);
+					} else {
+						GLib.debug("[Model] capabilities setter: is_thinking pspec name mismatch, skipping notify");
 					}
+				} else {
+					GLib.debug("[Model] capabilities setter: is_thinking property not found");
 				}
+				
 				var pspec_can_call = this.get_class().find_property("can_call");
 				if (pspec_can_call != null) {
 					unowned string? name = pspec_can_call.get_name();
+					GLib.debug("[Model] capabilities setter: found can_call pspec, name='%s'", name ?? "(null)");
 					if (name != null && name == "can_call") {
+						GLib.debug("[Model] capabilities setter: notifying can_call property");
 						this.notify(pspec_can_call);
+					} else {
+						GLib.debug("[Model] capabilities setter: can_call pspec name mismatch, skipping notify");
 					}
+				} else {
+					GLib.debug("[Model] capabilities setter: can_call property not found");
 				}
 			}
 		}
