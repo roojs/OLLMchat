@@ -33,6 +33,10 @@ namespace OLLMchat.Ollama
 			get {
 				return this.capabilities.contains("thinking");
 			}
+			set {
+				// Setter ignores incoming value but triggers notify signal for UI updates
+				this.notify_property("is_thinking");
+			}
 		}
 
 		/**
@@ -41,6 +45,10 @@ namespace OLLMchat.Ollama
 		public bool can_call {
 			get {
 				return this.capabilities.contains("tools");
+			}
+			set {
+				// Setter ignores incoming value but triggers notify signal for UI updates
+				this.notify_property("can_call");
 			}
 		}
 
@@ -120,6 +128,19 @@ namespace OLLMchat.Ollama
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
+		}
+		
+		/**
+		 * Updates the boolean properties by getting and setting them.
+		 * This triggers notify signals for UI components that are monitoring
+		 * is_thinking and can_call properties.
+		 */
+		public void update_bools()
+		{
+			bool thinking = this.is_thinking;
+			bool can_call_val = this.can_call;
+			this.is_thinking = thinking;
+			this.can_call = can_call_val;
 		}
 		
 }
