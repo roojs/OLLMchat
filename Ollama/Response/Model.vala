@@ -12,8 +12,22 @@ namespace OLLMchat.Ollama
 		public string modified_at { get; set; default = ""; }
 		public int64 size { get; set; default = 0; }
 		public string digest { get; set; default = ""; }
-		public Gee.ArrayList<string> capabilities { get; set;
-			 default = new Gee.ArrayList<string>(); }
+		private Gee.ArrayList<string> _capabilities = new Gee.ArrayList<string>();
+		public Gee.ArrayList<string> capabilities {
+			get { return this._capabilities; }
+			set {
+				this._capabilities = value;
+				// Notify computed properties that depend on capabilities
+				var pspec_thinking = this.get_class().find_property("is_thinking");
+				if (pspec_thinking != null) {
+					this.notify(pspec_thinking);
+				}
+				var pspec_can_call = this.get_class().find_property("can_call");
+				if (pspec_can_call != null) {
+					this.notify(pspec_can_call);
+				}
+			}
+		}
 
 		public int64 size_vram { get; set; default = 0; }
 		public int64 total_duration { get; set; default = 0; }
