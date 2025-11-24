@@ -128,20 +128,13 @@ namespace OLLMchat.Ollama
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
-		}
-		
-		/**
-		 * Updates the boolean properties by getting and setting them.
-		 * This triggers notify signals for UI components that are monitoring
-		 * is_thinking and can_call properties.
-		 */
-		public void update_bools()
-		{
 			var thinking = this.is_thinking;
 			var can_call_val = this.can_call;
 			this.is_thinking = thinking;
 			this.can_call = can_call_val;
 		}
+		
+		 
 		
 }
 
