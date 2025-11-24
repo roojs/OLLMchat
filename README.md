@@ -89,6 +89,10 @@ This will build:
 **Test executables**:
 - All dependencies above (test-window requires gtksourceview-5)
 
+## License
+
+This project is licensed under the GNU Lesser General Public License version 3.0 (LGPL-3.0). See the [LICENSE](LICENSE) file for details.
+
 ## Notes
 
 - The build system uses Meson and Ninja
