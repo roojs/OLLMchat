@@ -122,10 +122,31 @@ namespace OLLMchat.Ollama
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
-			// ensures bool
-			this.notify("is_thinking");
-			this.notify("can_call");
-			
+			// Trigger notify signals for computed boolean properties to update UI
+			var pspec_thinking = this.get_class().find_property("is_thinking");
+			if (pspec_thinking != null) {
+				this.notify(pspec_thinking);
+			}
+			var pspec_can_call = this.get_class().find_property("can_call");
+			if (pspec_can_call != null) {
+				this.notify(pspec_can_call);
+			}
+		}
+		
+		/**
+		 * Updates the boolean properties by triggering notify signals.
+		 * This updates UI components that are monitoring is_thinking and can_call properties.
+		 */
+		public void update_bools()
+		{
+			var pspec_thinking = this.get_class().find_property("is_thinking");
+			if (pspec_thinking != null) {
+				this.notify(pspec_thinking);
+			}
+			var pspec_can_call = this.get_class().find_property("can_call");
+			if (pspec_can_call != null) {
+				this.notify(pspec_can_call);
+			}
 		}
 		
 		 
