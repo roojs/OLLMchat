@@ -33,10 +33,7 @@ namespace OLLMchat.Ollama
 			get {
 				return this.capabilities.contains("thinking");
 			}
-			set {
-				// Setter ignores incoming value but triggers notify signal for UI updates
-				this.notify("is_thinking");
-			}
+			set { }
 		}
 
 		/**
@@ -46,10 +43,7 @@ namespace OLLMchat.Ollama
 			get {
 				return this.capabilities.contains("tools");
 			}
-			set {
-				// Setter ignores incoming value but triggers notify signal for UI updates
-				this.notify("can_call");
-			}
+			set { }
 		}
 
 		/**
@@ -128,10 +122,10 @@ namespace OLLMchat.Ollama
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
-			var thinking = this.is_thinking;
-			var can_call_val = this.can_call;
-			this.is_thinking = thinking;
-			this.can_call = can_call_val;
+			// ensures bool
+			this.notify("is_thinking");
+			this.notify("can_call");
+			
 		}
 		
 		 
