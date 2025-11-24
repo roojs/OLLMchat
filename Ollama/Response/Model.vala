@@ -136,16 +136,8 @@ namespace OLLMchat.Ollama
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
-			// Trigger notify signals for computed boolean properties to update UI
-			// Use Vala property names (with underscores) - Vala will convert internally
-			var pspec_thinking = this.get_class().find_property("is_thinking");
-			if (pspec_thinking != null && pspec_thinking.get_name() == "is_thinking") {
-				this.notify(pspec_thinking);
-			}
-			var pspec_can_call = this.get_class().find_property("can_call");
-			if (pspec_can_call != null && pspec_can_call.get_name() == "can_call") {
-				this.notify(pspec_can_call);
-			}
+			// Note: Notifications for is_thinking and can_call are automatically
+			// triggered by the capabilities setter above
 		}
 		
 	}
