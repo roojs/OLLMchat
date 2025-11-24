@@ -1,5 +1,11 @@
 namespace OLLMchat.Ollama
 {
+	/**
+	 * Represents model information from the Ollama server.
+	 * 
+	 * Contains model metadata including name, size, capabilities, context length,
+	 * and other details. Used in model listing and model information responses.
+	 */
 	public class Model : BaseResponse
 	{
 		public string name { get; set; default = ""; }

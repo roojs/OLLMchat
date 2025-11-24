@@ -19,6 +19,13 @@
  * Authored by: Alain M. <alainmh23@gmail.com>
  */
 
+/**
+ * Markdown processor for rendering markdown text to HTML.
+ * 
+ * Provides utilities for converting markdown-formatted text to HTML,
+ * including support for code blocks, links, and other markdown features.
+ * Uses a singleton pattern for shared instance access.
+ */
  public class MarkdownProcessor : Object {
     private static MarkdownProcessor ? _instance;
     public static MarkdownProcessor get_default () {

@@ -5,6 +5,12 @@ namespace OLLMchat.Ollama
 		FAILED
 	}
 
+	/**
+	 * Base class for Ollama API objects that need JSON serialization.
+	 * 
+	 * Provides common functionality for serializing and deserializing objects
+	 * to/from JSON. Used as a base for API calls and responses.
+	 */
 	public class OllamaBase : Object, Json.Serializable
 	{
 		public Client? client { get; protected set; }

@@ -1,5 +1,12 @@
 namespace OLLMchat.Ollama
 {
+	/**
+	 * Main client class for interacting with Ollama API and OpenAI-compatible REST interfaces.
+	 * 
+	 * Provides methods for chat, model management, and tool integration. Handles
+	 * HTTP requests, streaming responses, and function calling. Manages tool
+	 * registration and execution with permission checking.
+	 */
 	public class Client : Object
 	{
 		public string url { get; set; default = "http://localhost:11434/api"; }

@@ -1,5 +1,12 @@
 namespace OLLMchat.Ollama
 {
+	/**
+	 * Chat API call implementation for sending messages and receiving responses.
+	 * 
+	 * Handles chat conversations with the LLM, including message history, tool calling,
+	 * streaming responses, and automatic tool execution. Manages the conversation
+	 * flow and tool call recursion.
+	 */
 	public class ChatCall : BaseCall, MessageInterface
 	{
 		// Read-only getters that read from client (with fake setters for serialization)

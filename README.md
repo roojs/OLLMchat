@@ -15,6 +15,13 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Embeddable Widget** - Planned to be embeddable in any application to enable LLM access and tool integration (not yet functional)
 - **Current Status** - Currently only runs with the `test-ollama` and `test-window` test executables
 
+## Documentation
+
+Online API documentation is available:
+
+- **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/ollmchat/index.htm)** - Base library documentation
+- **[ollmchat-ui API Reference](https://roojs.github.io/OLLMchat/ollmchat-ui/ollmchat-ui/index.htm)** - UI library documentation
+
 ## Build Instructions
 
 This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation.

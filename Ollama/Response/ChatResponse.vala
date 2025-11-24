@@ -1,5 +1,11 @@
 namespace OLLMchat.Ollama
 {
+	/**
+	 * Response from a chat API call.
+	 * 
+	 * Contains the assistant's message, tool calls (if any), and metadata.
+	 * Handles streaming responses and tool call detection for automatic execution.
+	 */
 	public class ChatResponse : BaseResponse, MessageInterface
 	{
 		public Message message { get; set; }
