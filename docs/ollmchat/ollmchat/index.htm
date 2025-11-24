@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package">ollmchat</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
+          <li class="namespace"><a href="OLLMchat.Ollama.html">OLLMchat.Ollama</a></li>
+          <li class="namespace"><a href="OLLMchat.Prompt.html">OLLMchat.Prompt</a></li>
+          <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title" id="ollmchat">ollmchat</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Namespaces:</h3>
+        <ul class="navi_inline">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.ChatPermission.Dummy.html">Dummy</a> - <span class="brief_description">Dummy implementation of 
+                Provider for testing.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.ChatPermission.Provider.html">Provider</a> - <span class="brief_description">Abstract base 
+                class for requesting permission to execute tool operations.</span></li>
+          </ul>
+          <h3 class="main_title">Enums:</h3>
+          <ul class="navi_inline">
+            <li class="enum"><a href="OLLMchat.ChatPermission.Operation.html">Operation</a> - <span class="brief_description">Operation types for 
+                permission requests.</span></li>
+            <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResponse.html">PermissionResponse</a> - <span class="brief_description">
+                Permission response from user. Combines allow/deny decision with storage type.</span></li>
+            <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
+                check result.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Ollama.html">Ollama</a></li>
+          <h3 class="main_title">Interfaces:</h3>
+          <ul class="navi_inline">
+            <li class="interface"><a href="OLLMchat.Ollama.MessageInterface.html">MessageInterface</a> - <span class="brief_description">Interface for
+                objects that provide chat content.</span></li>
+          </ul>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="abstract_class"><a href="OLLMchat.Ollama.BaseCall.html">BaseCall</a> - <span class="brief_description">Abstract base class for 
+                all Ollama API calls.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Ollama.BaseResponse.html">BaseResponse</a> - <span class="brief_description">Abstract base 
+                class for Ollama API responses.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.CallFunction.html">CallFunction</a> - <span class="brief_description">Represents a function 
+                call with name and arguments. Used within ToolCall to represent the function being called.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ChatCall.html">ChatCall</a> - <span class="brief_description">Chat API call implementation for 
+                sending messages and receiving responses.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ChatResponse.html">ChatResponse</a> - <span class="brief_description">Response from a chat API 
+                call.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.Client.html">Client</a> - <span class="brief_description">Main client class for interacting 
+                with Ollama API and OpenAI-compatible REST interfaces.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.Function.html">Function</a> - <span class="brief_description">Concrete class representing a 
+                function within a Tool.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.Message.html">Message</a> - <span class="brief_description">Simple message class for chat 
+                conversations. Implements Json.Serializable for use in chat calls.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.Model.html">Model</a> - <span class="brief_description">Represents model information from the 
+                Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ModelsCall.html">ModelsCall</a> - <span class="brief_description">API call to list available 
+                models on the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API 
+                objects that need JSON serialization.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Ollama.Param.html">Param</a> - <span class="brief_description">Abstract base class for 
+                parameter definitions.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ParamArray.html">ParamArray</a> - <span class="brief_description">Represents an array parameter
+                with items definition.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ParamObject.html">ParamObject</a> - <span class="brief_description">Represents an object 
+                parameter with nested properties.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ParamSimple.html">ParamSimple</a> - <span class="brief_description">Represents a simple 
+                parameter type (string, integer, boolean).</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.PsCall.html">PsCall</a> - <span class="brief_description">API call to list currently running 
+                models on the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ShowModelCall.html">ShowModelCall</a> - <span class="brief_description">API call to get 
+                detailed information about a specific model.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Ollama.Tool.html">Tool</a> - <span class="brief_description">Abstract base class for tools 
+                that can be used with Ollama function calling.</span></li>
+            <li class="class"><a href="OLLMchat.Ollama.ToolCall.html">ToolCall</a> - <span class="brief_description">Represents a tool call from the 
+                assistant. Used in assistant messages with tool_calls array.</span></li>
+          </ul>
+          <h3 class="main_title">Error domains:</h3>
+          <ul class="navi_inline">
+            <li class="errordomain"><a href="OLLMchat.Ollama.OllamaError.html">OllamaError</a></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Prompt.html">Prompt</a></li>
+          <h3 class="main_title">Interfaces:</h3>
+          <ul class="navi_inline">
+            <li class="interface"><a href="OLLMchat.Prompt.CodeAssistantProviderInterface.html">CodeAssistantProviderInterface</a> - 
+              <span class="brief_description">Interface for providing context data to CodeAssistant prompts.</span></li>
+          </ul>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Prompt.BaseAgentPrompt.html">BaseAgentPrompt</a> - <span class="brief_description">Base class for 
+                agent prompt generators.</span></li>
+            <li class="class"><a href="OLLMchat.Prompt.CodeAssistant.html">CodeAssistant</a> - <span class="brief_description">Code Assistant prompt 
+                generator.</span></li>
+            <li class="class"><a href="OLLMchat.Prompt.CodeAssistantProviderDummy.html">CodeAssistantProviderDummy</a> - 
+              <span class="brief_description">Dummy implementation of CodeAssistantProviderInterface.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Tools.html">Tools</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Tools.EditFile.html">EditFile</a> - <span class="brief_description">Tool for editing files by applying
+                a list of edits (ranges with replacement text).</span></li>
+            <li class="class"><a href="OLLMchat.Tools.EditFileChange.html">EditFileChange</a> - <span class="brief_description">Represents a single 
+                edit operation with range and replacement.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.ReadFile.html">ReadFile</a> - <span class="brief_description">Tool for reading file contents 
+                with optional line range support.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.RunTerminalCommand.html">RunTerminalCommand</a> - <span class="brief_description">Tool for 
+                executing terminal commands in the project root directory.</span></li>
+          </ul>
+        </ul>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

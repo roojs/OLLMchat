@@ -123,16 +123,11 @@ namespace OLLMchat.Ollama
 				this.context_length = source.context_length;
 			}
 			// Trigger notify signals for computed boolean properties to update UI
-			var pspec_thinking = this.get_class().find_property("is_thinking");
-			if (pspec_thinking != null) {
-				this.notify(this.get_class().find_property("is_thinking"));
-			}
-			var pspec_can_call = this.get_class().find_property("can_call");
-			if (pspec_can_call != null) {
-				this.notify(pspec_can_call);
-			}
+			this.notify(this.get_class().find_property("is_thinking"));	 
+			this.notify(this.get_class().find_property("can_call"));
+		
 		}
 		
-}
+	}
 
 }
