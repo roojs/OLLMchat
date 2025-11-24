@@ -182,80 +182,74 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
 )
 
 # Generate Valadoc documentation (generated in build directory under docs/valadoc)
-# Check for valadoc dependency - documentation generation is optional
-valadoc = find_program('valadoc', required: false)
-if valadoc.found()
-  message('valadoc found: documentation will be generated')
-  
-  # Base library documentation
-  valadoc_base_dir = meson.current_source_dir() / 'docs' / 'ollmchat'
-  valadoc_base_clean = custom_target('valadoc-base-clean',
-    output: 'valadoc-base-clean',
-    command: [find_program('rm'), '-rf', valadoc_base_dir],
-    build_by_default: false
-  )
-  valadoc_base_docs = custom_target('valadoc-base',
-    input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src,
-    output: ['valadoc-base'],
-    depends: [valadoc_base_clean],
-    command: [
-      valadoc,
-      '--package-name=ollmchat',
-      '--package-version=@0@'.format(meson.project_version()),
-      '--vapidir', meson.current_source_dir() / '../vapi',
-      '--pkg=gee-0.8',
-      '--pkg=gio-2.0',
-      '--pkg=glib-2.0',
-      '--pkg=gobject-2.0',
-      '--pkg=json-glib-1.0',
-      '--pkg=libsoup-3.0',
-      '--pkg=posix',
-      '--doclet=html',
-      '--directory=' + valadoc_base_dir,
-      '@INPUT@'
-    ],
-    build_by_default: true,
-    install: false
-  )
-  
-  # UI library documentation
-  valadoc_ui_dir = meson.current_source_dir() / 'docs' / 'ollmchat-ui'
-  valadoc_ui_clean = custom_target('valadoc-ui-clean',
-    output: 'valadoc-ui-clean',
-    command: [find_program('rm'), '-rf', valadoc_ui_dir],
-    build_by_default: false
-  )
-  valadoc_ui_docs = custom_target('valadoc-ui',
-    input: ollmchat_chatpermission_ui_src + ollmchat_ui_src,
-    output: ['valadoc-ui'],
-    depends: [ollmchat_base_lib, valadoc_ui_clean],  # Ensure base library VAPI is generated first
-    command: [
-      valadoc,
-      '--package-name=ollmchat-ui',
-      '--package-version=@0@'.format(meson.project_version()),
-      '--vapidir', meson.current_source_dir() / '../vapi',
-      '--vapidir', meson.current_build_dir(),  # Add build dir to find generated ollmchat.vapi
-      '--pkg=gee-0.8',
-      '--pkg=gio-2.0',
-      '--pkg=glib-2.0',
-      '--pkg=gobject-2.0',
-      '--pkg=json-glib-1.0',
-      '--pkg=libsoup-3.0',
-      '--pkg=gtk4',
-      '--pkg=gtksourceview-5',
-      '--pkg=posix',
-      '--pkg=ollmchat',
-      '--doclet=html',
-      '--directory=' + valadoc_ui_dir,
-      '@INPUT@'
-    ],
-    build_by_default: true,
-    install: false
-  )
-else
-  message('valadoc not found: documentation generation will be skipped')
-  message('To generate documentation, install valadoc (e.g., sudo apt install valadoc)')
-endif
+# valadoc is required - meson will fail during configuration if it's not found
+valadoc = find_program('valadoc', required: true)
+
+# Base library documentation
+valadoc_base_dir = meson.current_source_dir() / 'docs' / 'ollmchat'
+valadoc_base_clean = custom_target('valadoc-base-clean',
+  output: 'valadoc-base-clean',
+  command: [find_program('rm'), '-rf', valadoc_base_dir],
+  build_by_default: false
+)
+valadoc_base_docs = custom_target('valadoc-base',
+  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src,
+  output: ['valadoc-base'],
+  depends: [valadoc_base_clean],
+  command: [
+    valadoc,
+    '--package-name=ollmchat',
+    '--package-version=@0@'.format(meson.project_version()),
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--pkg=gee-0.8',
+    '--pkg=gio-2.0',
+    '--pkg=glib-2.0',
+    '--pkg=gobject-2.0',
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--pkg=posix',
+    '--doclet=html',
+    '--directory=' + valadoc_base_dir,
+    '@INPUT@'
+  ],
+  build_by_default: true,
+  install: false
+)
+
+# UI library documentation
+valadoc_ui_dir = meson.current_source_dir() / 'docs' / 'ollmchat-ui'
+valadoc_ui_clean = custom_target('valadoc-ui-clean',
+  output: 'valadoc-ui-clean',
+  command: [find_program('rm'), '-rf', valadoc_ui_dir],
+  build_by_default: false
+)
+valadoc_ui_docs = custom_target('valadoc-ui',
+  input: ollmchat_chatpermission_ui_src + ollmchat_ui_src,
+  output: ['valadoc-ui'],
+  depends: [ollmchat_base_lib, valadoc_ui_clean],  # Ensure base library VAPI is generated first
+  command: [
+    valadoc,
+    '--package-name=ollmchat-ui',
+    '--package-version=@0@'.format(meson.project_version()),
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_build_dir(),  # Add build dir to find generated ollmchat.vapi
+    '--pkg=gee-0.8',
+    '--pkg=gio-2.0',
+    '--pkg=glib-2.0',
+    '--pkg=gobject-2.0',
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--pkg=gtk4',
+    '--pkg=gtksourceview-5',
+    '--pkg=posix',
+    '--pkg=ollmchat',
+    '--doclet=html',
+    '--directory=' + valadoc_ui_dir,
+    '@INPUT@'
+  ],
+  build_by_default: true,
+  install: false
+)
 
 # Build test-ollama executable (command-line test)
 test_ollama = executable('test-ollama',
