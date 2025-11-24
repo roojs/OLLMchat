@@ -123,13 +123,13 @@ namespace OLLMchat.Ollama
 				this.context_length = source.context_length;
 			}
 			// Trigger notify signals for computed boolean properties to update UI
-			// Vala converts underscores to hyphens in property names
-			var pspec_thinking = this.get_class().find_property("is-thinking");
-			if (pspec_thinking != null) {
+			// Use Vala property names (with underscores) - Vala will convert internally
+			var pspec_thinking = this.get_class().find_property("is_thinking");
+			if (pspec_thinking != null && pspec_thinking.get_name() == "is_thinking") {
 				this.notify(pspec_thinking);
 			}
-			var pspec_can_call = this.get_class().find_property("can-call");
-			if (pspec_can_call != null) {
+			var pspec_can_call = this.get_class().find_property("can_call");
+			if (pspec_can_call != null && pspec_can_call.get_name() == "can_call") {
 				this.notify(pspec_can_call);
 			}
 		}
