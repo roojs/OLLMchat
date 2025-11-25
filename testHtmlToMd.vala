@@ -16,9 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-using Markdown;
-
-void main()
+int main(string[] args)
 {
 	// Read HTML from stdin
 	var html = new StringBuilder();
@@ -31,10 +29,11 @@ void main()
 	}
 
 	// Convert HTML to Markdown
-	var converter = new FromHTML(html.str);
+	var converter = new Markdown.FromHTML(html.str);
 	var markdown = converter.convert();
 
 	// Output Markdown to stdout
 	stdout.printf("%s", markdown);
-}
 
+	return 0;
+}
