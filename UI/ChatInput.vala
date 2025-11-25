@@ -39,6 +39,7 @@ namespace OLLMchat.UI
 		private Ollama.Client? client = null;
 		private bool is_streaming = false;
 		private bool is_loading_models = false;
+		private Gtk.MenuButton? tools_menu_button = null;
 
 		/**
 		* Default message text to display in the input field.
@@ -343,12 +344,53 @@ namespace OLLMchat.UI
 				hexpand = false
 			};
 
-			// Add loading label and dropdown to button box (before the Send button, on the left)
+			// Create tools menu button
+			this.setup_tools_menu_button();
+
+			// Add loading label, dropdown, and tools button to button box (before the Send button, on the left)
 			var button_box = this.get_last_child() as Gtk.Box;
 			if (button_box != null) {
 				button_box.prepend(this.model_loading_label);
 				button_box.prepend(this.model_dropdown);
+				if (this.tools_menu_button != null) {
+					button_box.prepend(this.tools_menu_button);
+				}
 			}
+		}
+
+		/**
+		 * Sets up the tools menu button with popover containing checkboxes for each tool.
+		 * 
+		 * @since 1.0
+		 */
+		private void setup_tools_menu_button()
+		{
+			// Create popover for tools menu
+			var popover = new Gtk.Popover();
+			var popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
+				margin_start = 10,
+				margin_end = 10,
+				margin_top = 10,
+				margin_bottom = 10
+			};
+			popover.set_child(popover_box);
+
+			// Create checkboxes for each tool
+			foreach (var tool in this.client.tools.values) {
+				var check_button = new Gtk.CheckButton.with_label(tool.name);
+				// Bind checkbox active state to tool active property
+				tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
+				popover_box.append(check_button);
+			}
+
+			// Create menu button with icon
+			this.tools_menu_button = new Gtk.MenuButton() {
+				icon_name = "document-properties",
+				tooltip_text = "Manage Tool Availability",
+				visible = false,
+				hexpand = false,
+				popover = popover
+			};
 		}
 
 		/**

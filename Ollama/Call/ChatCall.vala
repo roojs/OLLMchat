@@ -105,6 +105,10 @@ namespace OLLMchat.Ollama
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();
 					foreach (var tool in this.tools.values) {
+						// Only include active tools
+						if (!tool.active) {
+							continue;
+						}
 						var tool_node = Json.gobject_serialize(tool);
 						var tool_obj = tool_node.get_object();
 						// Add "type" field for Ollama API compatibility (tool-type is excluded from serialization)
