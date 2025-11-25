@@ -94,18 +94,18 @@ namespace Markdown
 			this.reset();
 
 			// Create SAX handler
-			SaxHandler sax_handler = SaxHandler();
-			sax_handler.start_document = this.sax_start_document;
-			sax_handler.end_document = this.sax_end_document;
-			sax_handler.start_element = this.sax_start_element;
-			sax_handler.end_element = this.sax_end_element;
+			SAXHandler sax_handler = SAXHandler();
+			sax_handler.startDocument = this.sax_start_document;
+			sax_handler.endDocument = this.sax_end_document;
+			sax_handler.startElement = this.sax_start_element;
+			sax_handler.endElement = this.sax_end_element;
 			sax_handler.characters = this.sax_characters;
 
 			// Parse HTML with libxml2 HTML parser
 			unowned uint8[] data = this.html.data;
 			var doc = htmlSAXParseDoc(data, "UTF-8", &sax_handler, this);
 			if (doc != null) {
-				xmlFreeDoc(doc);
+				delete doc;
 			}
 
 			this.writer.clean_up_markdown();
