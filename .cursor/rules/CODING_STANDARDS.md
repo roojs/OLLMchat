@@ -215,3 +215,158 @@ public class MyClass
 }
 ```
 
+## Switch/Case vs If/Else If
+
+**IMPORTANT:** Use `switch/case` statements rather than long chains of `if/else if/else if` statements. This improves readability and is more efficient.
+
+**Bad:**
+```vala
+public string get_status_message(int status)
+{
+    if (status == 0) {
+        return "Pending";
+    } else if (status == 1) {
+        return "Processing";
+    } else if (status == 2) {
+        return "Completed";
+    } else if (status == 3) {
+        return "Failed";
+    } else {
+        return "Unknown";
+    }
+}
+```
+
+**Good:**
+```vala
+public string get_status_message(int status)
+{
+    switch (status) {
+        case 0:
+            return "Pending";
+        case 1:
+            return "Processing";
+        case 2:
+            return "Completed";
+        case 3:
+            return "Failed";
+        default:
+            return "Unknown";
+    }
+}
+```
+
+## Property Initialization
+
+**IMPORTANT:** Do not set default values in constructors. For simple types (int, bool, string, etc.), use direct assignment. For complex types (objects, lists, etc.), use `get; set; default =` syntax.
+
+**Bad:**
+```vala
+public class MyClass
+{
+    public string name { get; set; }
+    public int count { get; set; }
+    public List<string> items { get; set; }
+    
+    public MyClass()
+    {
+        this.name = "";
+        this.count = 0;
+        this.items = new List<string>();
+    }
+}
+```
+
+**Good:**
+```vala
+public class MyClass
+{
+    public string name = "";
+    public int count = 0;
+    public List<string> items { get; set; default = new List<string>(); }
+}
+```
+
+**Also Good (for private simple fields):**
+```vala
+public class MyClass
+{
+    private string name = "";
+    private int count = 0;
+    private bool active = false;
+}
+```
+
+## Serializable Classes
+
+**IMPORTANT:** For serializable classes, use `get; set; default =` to initialize properties rather than creating objects in the constructor. Be careful with getter/setters to ensure proper serialization behavior.
+
+**Bad:**
+```vala
+public class SerializableData : GLib.Object
+{
+    public string name { get; set; }
+    public List<string> items { get; set; }
+    
+    public SerializableData()
+    {
+        this.items = new List<string>();
+    }
+}
+```
+
+**Good:**
+```vala
+public class SerializableData : GLib.Object
+{
+    public string name { get; set; default = ""; }
+    public List<string> items { get; set; default = new List<string>(); }
+}
+```
+
+## Avoiding Nullable Types
+
+**IMPORTANT:** If possible, avoid using nullable types. Instead, create an object with a checkable value (like an `active` property defaulting to `false`) to indicate whether the object is in use.
+
+**Bad:**
+```vala
+public class Renderer
+{
+    private Table? current_table;
+    
+    public void process()
+    {
+        if (this.current_table != null) {
+            this.current_table.render();
+        }
+    }
+    
+    public void reset()
+    {
+        this.current_table = null;
+    }
+}
+```
+
+**Good:**
+```vala
+public class Renderer
+{
+    private Table current_table { get; set; default = new Table(); }
+    
+    public void process()
+    {
+        if (this.current_table.active) {
+            this.current_table.render();
+        }
+    }
+    
+    public void reset()
+    {
+        this.current_table.active = false;
+    }
+}
+```
+
+Note: The `Table` class should have `public bool active { get; set; default = false; }` to ensure it defaults to `false`.
+

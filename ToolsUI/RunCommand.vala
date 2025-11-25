@@ -16,21 +16,21 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat.Tools
+namespace OLLMchat.ToolsUI
 {
 	/**
-	 * GTK-specific version of RunTerminalCommand that creates SourceView widgets
+	 * GTK-specific version of RunCommand that creates SourceView widgets
 	 * for displaying terminal output.
 	 * 
-	 * This class extends RunTerminalCommand and adds GTK widget creation.
+	 * This class extends Tools.RunCommand and adds GTK widget creation.
 	 * It should only be used when building with GTK dependencies.
 	 */
-	public class RunTerminalCommandGtk : RunTerminalCommand
+	public class RunCommand : Tools.RunCommand
 	{
 		private GtkSource.Buffer? source_buffer = null;
 		private GtkSource.View? source_view = null;
 		
-		public RunTerminalCommandGtk(Ollama.Client client)
+		public RunCommand(Ollama.Client client)
 		{
 			base(client);
 		}

@@ -1,10 +1,5 @@
 [CCode (cprefix = "MD_", lower_case_cprefix = "md_", cheader_filename = "md4c.h")]
 namespace MD4C {
-	[CCode (cname = "MD_SIZE")]
-	public uint SIZE;
-
-	[CCode (cname = "MD_OFFSET")]
-	public uint OFFSET;
 
 	[CCode (cname = "MD_BLOCKTYPE", cprefix = "MD_BLOCK_")]
 	public enum BlockType {
@@ -65,11 +60,11 @@ namespace MD4C {
 		[CCode (cname = "text", type = "const MD_CHAR*")]
 		public unowned string text;
 		[CCode (cname = "size")]
-		public SIZE size;
+		public uint size;
 		[CCode (cname = "substr_types", type = "const MD_TEXTTYPE*")]
 		public unowned TextType[] substr_types;
 		[CCode (cname = "substr_offsets", type = "const MD_OFFSET*")]
-		public unowned OFFSET[] substr_offsets;
+		public unowned uint[] substr_offsets;
 	}
 
 	[CCode (cname = "MD_BLOCK_UL_DETAIL")]
@@ -97,7 +92,7 @@ namespace MD4C {
 		[CCode (cname = "task_mark", type = "MD_CHAR")]
 		public char task_mark;
 		[CCode (cname = "task_mark_offset")]
-		public OFFSET task_mark_offset;
+		public uint task_mark_offset;
 	}
 
 	[CCode (cname = "MD_BLOCK_H_DETAIL")]
@@ -208,7 +203,7 @@ namespace MD4C {
 	public delegate int ParserLeaveSpanFunc (SpanType type, void* detail, void* userdata);
 
 	[CCode (cname = "int (*)(MD_TEXTTYPE, const MD_CHAR*, MD_SIZE, void*)", has_target = false)]
-	public delegate int ParserTextFunc (TextType type, [CCode (type = "const MD_CHAR*")] string text, SIZE size, void* userdata);
+	public delegate int ParserTextFunc (TextType type, [CCode (type = "const MD_CHAR*")] string text, uint size, void* userdata);
 
 	[CCode (cname = "void (*)(const char*, void*)", has_target = false)]
 	public delegate void ParserDebugLogFunc (string msg, void* userdata);
@@ -239,6 +234,6 @@ namespace MD4C {
 	}
 
 	[CCode (cname = "md_parse")]
-	public int parse ([CCode (type = "const MD_CHAR*")] string text, SIZE size, ref Parser parser, void* userdata);
+	public int parse ([CCode (type = "const MD_CHAR*")] string text, uint size, ref Parser parser, void* userdata);
 }
 

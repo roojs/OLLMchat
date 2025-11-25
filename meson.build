@@ -31,6 +31,7 @@ base_deps = [
 ui_deps = [
   dependency('gtk4'),
   dependency('gtksourceview-5'),
+  dependency('md4c'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -120,7 +121,7 @@ ollmchat_tools_src = files([
   'Tools/ReadFile.vala',
   'Tools/EditFile.vala',
   'Tools/EditFileChange.vala',
-  'Tools/RunTerminalCommand.vala',
+  'Tools/RunCommand.vala',
 ])
 
 # Source files for Markdown namespace (base, no GTK)
@@ -133,7 +134,7 @@ ollmchat_markdown_src = files([
 
 # Source files for Tools namespace (GTK-dependent)
 ollmchat_tools_ui_src = files([
-  'Tools/RunTerminalCommandGtk.vala',
+  'ToolsUI/RunCommand.vala',
 ])
 
 # UI source files (for UI library and test-window)
@@ -143,6 +144,7 @@ ollmchat_ui_src = files([
   'UI/ChatInput.vala',
   'UI/ChatPermission.vala',
   'UI/MarkdownProcessor.vala',
+  'MarkdownGtk/Render.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build base library (libollmchat.so) - no GTK dependencies

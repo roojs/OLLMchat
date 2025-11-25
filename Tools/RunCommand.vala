@@ -25,7 +25,7 @@ namespace OLLMchat.Tools
 	 * use permission caching based on resolved executable realpath.
 	 * Complex commands (with bash operators or multiple &&) always require approval.
 	 */
-	public class RunTerminalCommand : Ollama.Tool
+	public class RunCommand : Ollama.Tool
 	{
 		// Parameter properties
 		public string command { get; set; default = ""; }
@@ -44,7 +44,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		// Cached description (updated when path changes)
 		private string _description = BASE_DESCRIPTION;
 		
-		public override string name { get { return "run_terminal_command"; } }
+		public override string name { get { return "run_command"; } }
 		
 		public override string description { get {
 			var path = this.client.permission_provider.relative_path;
@@ -64,7 +64,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		// Flag to track if this is a complex command (needs to bypass cache)
 		private bool is_complex_command = false;
 		
-		public RunTerminalCommand(Ollama.Client client)
+		public RunCommand(Ollama.Client client)
 		{
 			base(client);
 		}
@@ -189,7 +189,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = ChatPermission.Operation.EXECUTE;
-				this.permission_question = @"Run command: $(this.command)?";
+				this.permission_question = "Run command: " + this.command + "?";
 				return true;
 			}
 			
@@ -202,7 +202,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = ChatPermission.Operation.EXECUTE;
-				this.permission_question = @"Run command: $(this.command)?";
+				this.permission_question = "Run command: " + this.command + "?";
 				return true;
 			}
 			
@@ -212,7 +212,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				this.is_complex_command = true;
 				this.permission_target_path = this.command;
 				this.permission_operation = ChatPermission.Operation.EXECUTE;
-				this.permission_question = @"Run command: $(this.command)?";
+				this.permission_question = "Run command: " + this.command + "?";
 				return true;
 			}
 			
@@ -220,7 +220,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			this.is_complex_command = false;
 			this.permission_target_path = realpath;
 			this.permission_operation = ChatPermission.Operation.EXECUTE;
-			this.permission_question = @"Run command: $(this.command)?";
+			this.permission_question = "Run command: " + this.command + "?";
 			return true;
 		}
 		
@@ -239,7 +239,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			// For complex commands, use a unique identifier to bypass cache
 			if (this.is_complex_command) {
 				// Add a timestamp to make the path unique (won't match cache)
-				var unique_path = @"$(this.permission_target_path)#$(GLib.get_real_time())";
+				var unique_path = this.permission_target_path + "#" + GLib.get_real_time().to_string();
 				this.permission_target_path = unique_path;
 			}
 			
@@ -279,7 +279,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			string shell_cmd = this.command;
 			if (work_dir != "" && !this.command.has_prefix("cd ")) {
 				// Prepend cd to command to set working directory
-				shell_cmd = @"cd $(GLib.Shell.quote(work_dir)) && $(this.command)";
+				shell_cmd = "cd " + GLib.Shell.quote(work_dir) + " && " + this.command;
 			}
 			
 			string[] argv = { "/bin/sh", "-c", shell_cmd };
@@ -293,7 +293,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 					GLib.SubprocessFlags.STDIN_INHERIT
 				);
 			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED(@"Failed to create subprocess: $(e.message)");
+				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
 			
 			// Send command start message with widget (create_terminal_widget returns null in base class)
@@ -317,7 +317,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				if (!subprocess.get_successful()) {
 					exit_status = subprocess.get_exit_status();
 				}
-				throw new GLib.IOError.FAILED(@"Failed to wait for process: $(e.message)");
+				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 			}
 			
 			// Append exit code to widget or send as message
