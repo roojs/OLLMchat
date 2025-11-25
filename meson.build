@@ -23,6 +23,7 @@ base_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
+  dependency('libxml-2.0'),
   valac.find_library('posix'),
 ]
 
@@ -122,6 +123,13 @@ ollmchat_tools_src = files([
   'Tools/RunTerminalCommand.vala',
 ])
 
+# Source files for Markdown namespace (base, no GTK)
+ollmchat_markdown_src = files([
+  'Markdown/FromHTML.vala',
+  'Markdown/Tags.vala',
+  'Markdown/Writer.vala',
+])
+
 # Source files for Tools namespace (GTK-dependent)
 ollmchat_tools_ui_src = files([
   'Tools/RunTerminalCommandGtk.vala',
@@ -139,7 +147,7 @@ ollmchat_ui_src = files([
 # Build base library (libollmchat.so) - no GTK dependencies
 ollmchat_base_lib = library('ollmchat',
   dependencies: base_deps,
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_markdown_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
   install: true
@@ -193,7 +201,7 @@ valadoc_base_clean = custom_target('valadoc-base-clean',
   build_by_default: false
 )
 valadoc_base_docs = custom_target('valadoc-base',
-  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src,
+  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src + ollmchat_markdown_src,
   output: ['valadoc-base'],
   depends: [valadoc_base_clean],
   command: [
@@ -207,6 +215,7 @@ valadoc_base_docs = custom_target('valadoc-base',
     '--pkg=gobject-2.0',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
+    '--pkg=libxml-2.0',
     '--pkg=posix',
     '--doclet=html',
     '--directory=' + valadoc_base_dir,
@@ -264,6 +273,14 @@ test_window = executable('test-window',
   dependencies: test_window_deps,
   sources: ['TestWindow.vala'],
   link_with: [ollmchat_base_lib, ollmchat_ui_lib],
+  install: false
+)
+
+# Build test-html-to-md executable (HTML to Markdown converter test)
+test_html_to_md = executable('test-html-to-md',
+  dependencies: test_ollama_deps,
+  sources: ['testHtmlToMd.vala'],
+  link_with: [ollmchat_base_lib],
   install: false
 )
 

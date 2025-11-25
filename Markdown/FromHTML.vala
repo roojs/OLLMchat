@@ -16,17 +16,55 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-using Gee;
-using Xml;
-
 namespace Markdown
 {
-	// HTML parser function from libxml2
-	[CCode (cname = "htmlSAXParseDoc", cheader_filename = "libxml/HTMLparser.h")]
-	public unowned Doc* htmlSAXParseDoc(uint8[] cur, unowned string encoding, SAXHandler* sax, void* user_data);
+	
+	
 	/**
-	 * Converts HTML to Markdown format.
-	 */
+	* SAX callback: Start of document.
+	*/
+	public void sax_start_document(void* ctx)  {}
+	
+	/**
+	* SAX callback: End of document.
+	*/
+	public void sax_end_document(void* ctx) {  }
+
+	/**
+	* SAX callback: Start element.
+	*/
+	public void sax_start_element(void* ctx, unowned string name, unowned string[] attrs)
+	{
+		var converter = (FromHTML)ctx;
+		converter.start_element(name, attrs);
+		
+	}
+
+	/**
+	* SAX callback: End element.
+	*/
+	public void sax_end_element(void* ctx, unowned string name)
+	{
+		var converter = (FromHTML)ctx;
+		converter.end_element(name);
+	}
+	/**
+	* SAX callback: Character data.
+	*/
+	private void sax_characters(void* ctx, unowned string ch, int len)
+	{
+		var converter = (FromHTML)ctx;
+		
+		// Process character by character
+		for (int i = 0; i < len; i++) {
+			converter.process_char(ch[i].to_string());
+		}
+	}
+
+
+/**
+	* Converts HTML to Markdown format.
+	*/
 	public class FromHTML : Object
 	{
 		// Options as properties
@@ -42,8 +80,8 @@ namespace Markdown
 
 		// Converter properties (public for tag handlers)
 		public string html;
-		public Writer writer;
-		public Gee.HashMap<string, TagIgnored> tags;
+		public Writer writer { get; set; default = new Writer(); }
+		public Gee.HashMap<string, TagIgnored> tags { get; set; default = new Gee.HashMap<string, TagIgnored>(); }
 		public string current_tag = "";
 		public string prev_tag = "";
 		public bool is_in_pre = false;
@@ -58,8 +96,9 @@ namespace Markdown
 		
 		// Tag stack for tracking nested tags
 		private Gee.ArrayList<string> tag_stack;
-		// Current attributes for extract_attribute()
-		private Gee.HashMap<string, string>? current_attributes;
+		// Current attributes for tag handlers
+		public Gee.HashMap<string, string> attr { get; set;
+				 default = new Gee.HashMap<string, string>(); }
 		// Track if we've converted already
 		private bool converted = false;
 
@@ -71,10 +110,7 @@ namespace Markdown
 		public FromHTML(string html)
 		{
 			this.html = html;
-			this.writer = new Writer();
-			this.tags = new Gee.HashMap<string, TagIgnored>();
 			this.tag_stack = new Gee.ArrayList<string>();
-			this.current_attributes = null;
 
 			this.initialize_tag_registry();
 		}
@@ -93,17 +129,16 @@ namespace Markdown
 
 			this.reset();
 
-			// Create SAX handler
-			SAXHandler sax_handler = SAXHandler();
-			sax_handler.startDocument = this.sax_start_document;
-			sax_handler.endDocument = this.sax_end_document;
-			sax_handler.startElement = this.sax_start_element;
-			sax_handler.endElement = this.sax_end_element;
-			sax_handler.characters = this.sax_characters;
+			// Create SAX 
+			Xml.SAXHandler sax_handler = Xml.SAXHandler();
+			sax_handler.startDocument = sax_start_document;
+			sax_handler.endDocument = sax_end_document;
+			sax_handler.startElement = sax_start_element;
+			sax_handler.endElement = sax_end_element;
+			sax_handler.characters = sax_characters;
 
 			// Parse HTML with libxml2 HTML parser
-			unowned uint8[] data = this.html.data;
-			var doc = htmlSAXParseDoc(data, "UTF-8", &sax_handler, this);
+			var doc = Html.Doc.sax_parse_doc(this.html, "UTF-8", &sax_handler, (void*)this);
 			if (doc != null) {
 				delete doc;
 			}
@@ -113,10 +148,79 @@ namespace Markdown
 
 			return this.writer.to_string();
 		}
+		public void start_element(string name, string[]? attrs)
+		{ 
+			this.writer.update_prev_ch();
+	
+			var tag_name = name.down();
+			
+			// Store attributes for tag handlers
+			this.attr = new Gee.HashMap<string, string>();
+			if (attrs != null) {
+				for (int i = 0; attrs[i] != null; i += 2) {
+					if (attrs[i + 1] != null) {
+						this.attr.set(attrs[i], attrs[i + 1]);
+					}
+				}
+			}
+
+			// Check for hidden attributes
+			if (this.tag_contains_attributes_to_hide_from_map(this.attr)) {
+				this.attr = new Gee.HashMap<string, string>();
+				return;
+			}
+
+			// Update tag stack
+			if (this.tag_stack.size > 0) {
+				this.prev_tag = this.tag_stack[this.tag_stack.size - 1];
+			} else {
+				this.prev_tag = "";
+			}
+			this.current_tag = tag_name;
+			this.tag_stack.add(tag_name);
+
+			// Get tag handler
+			var tag = this.tags.get(tag_name);
+			if (tag != null) {
+				tag.open(this);
+			}
+
+			this.attr =  new Gee.HashMap<string, string>();
+		}	
+		public void end_element(string name)
+		{
  
+			var tag_name = name.down();
+			this.current_tag = tag_name;
 
-		 
+			// Get tag handler
+			var tag = this.tags.get(tag_name);
+			if (tag == null) {
+				// Continue with stack update
+			} else {
+				tag.close(this);
+			}
 
+			// Update tag stack
+			if (this.tag_stack.size > 0 && this.tag_stack[this.tag_stack.size - 1] == tag_name) {
+				this.tag_stack.remove_at(this.tag_stack.size - 1);
+			}
+
+			// Update current_tag and prev_tag from stack
+			if (this.tag_stack.size == 0) {
+				this.current_tag = "";
+				this.prev_tag = "";
+			} else {
+				this.current_tag = this.tag_stack[this.tag_stack.size - 1];
+				if (this.tag_stack.size > 1) {
+					this.prev_tag = this.tag_stack[this.tag_stack.size - 2];
+				} else {
+					this.prev_tag = "";
+				}
+			}
+		}
+
+ 
 
 		/**
 		 * Check if conversion is in clean state.
@@ -127,28 +231,7 @@ namespace Markdown
 				this.tag_stack.size == 0 && this.index_blockquote == 0 && this.index_li == 0;
 		}
 
-
-
-		/**
-		 * Extract attribute value from tag.
-		 */
-		public string extract_attribute(string attr)
-		{
-			if (this.current_attributes == null) {
-				return "";
-			}
-
-			// Case-insensitive lookup
-			var attr_lower = attr.down();
-			foreach (var key in this.current_attributes.keys) {
-				if (key.down() == attr_lower) {
-					return this.current_attributes.get(key);
-				}
-			}
-
-			return "";
-		}
-
+ 
 		/**
 		 * Convert line to H1.
 		 */
@@ -192,123 +275,18 @@ namespace Markdown
 			this.writer.chars_in_curr_line = 0;
 		}
 
+		
 		/**
-		 * SAX callback: Start of document.
+		 * Process a string of characters (moved from parse_char_in_tag_content).
 		 */
-		private void sax_start_document(void* ctx)
+		public void process_char(string text)
 		{
-			// Nothing to do
-		}
-
-		/**
-		 * SAX callback: End of document.
-		 */
-		private void sax_end_document(void* ctx)
-		{
-			// Nothing to do
-		}
-
-		/**
-		 * SAX callback: Start element.
-		 */
-		private void sax_start_element(void* ctx, unowned string name, unowned string[] attrs)
-		{
-			var converter = (FromHTML)ctx;
-			converter.writer.update_prev_ch();
-
-			var tag_name = name.down();
+			// Extract character from string for comparisons
+			char ch = (text.length > 0) ? text[0] : '\0';
+			string char_str = text;
 			
-			// Store attributes for extract_attribute()
-			converter.current_attributes = new Gee.HashMap<string, string>();
-			for (int i = 0; attrs[i] != null; i += 2) {
-				if (attrs[i + 1] != null) {
-					converter.current_attributes.set(attrs[i], attrs[i + 1]);
-				}
-			}
-
-			// Check for hidden attributes
-			if (converter.tag_contains_attributes_to_hide_from_map(converter.current_attributes)) {
-				converter.current_attributes = null;
-				return;
-			}
-
-			// Update tag stack
-			if (converter.tag_stack.size > 0) {
-				converter.prev_tag = converter.tag_stack[converter.tag_stack.size - 1];
-			} else {
-				converter.prev_tag = "";
-			}
-			converter.current_tag = tag_name;
-			converter.tag_stack.add(tag_name);
-
-			// Get tag handler
-			var tag = converter.tags.get(tag_name);
-			if (tag != null) {
-				tag.open(converter);
-			}
-
-			converter.current_attributes = null;
-		}
-
-		/**
-		 * SAX callback: End element.
-		 */
-		private void sax_end_element(void* ctx, unowned string name)
-		{
-			var converter = (FromHTML)ctx;
-			converter.writer.update_prev_ch();
-
-			var tag_name = name.down();
-			converter.current_tag = tag_name;
-
-			// Get tag handler
-			var tag = converter.tags.get(tag_name);
-			if (tag != null) {
-				tag.close(converter);
-			}
-
-			// Update tag stack
-			if (converter.tag_stack.size > 0 && converter.tag_stack[converter.tag_stack.size - 1] == tag_name) {
-				converter.tag_stack.remove_at(converter.tag_stack.size - 1);
-			}
-
-			// Update current_tag and prev_tag from stack
-			if (converter.tag_stack.size > 0) {
-				converter.current_tag = converter.tag_stack[converter.tag_stack.size - 1];
-				if (converter.tag_stack.size > 1) {
-					converter.prev_tag = converter.tag_stack[converter.tag_stack.size - 2];
-				} else {
-					converter.prev_tag = "";
-				}
-			} else {
-				converter.current_tag = "";
-				converter.prev_tag = "";
-			}
-		}
-
-		/**
-		 * SAX callback: Character data.
-		 */
-		private void sax_characters(void* ctx, unowned string ch, int len)
-		{
-			var converter = (FromHTML)ctx;
-			var text = ch.substring(0, len);
-
-			// Process character by character to preserve existing logic
-			unowned uint8[] data = text.data;
-			for (int i = 0; i < data.length && i < len; i++) {
-				char c = (char)data[i];
-				converter.process_character(c);
-			}
-		}
-
-		/**
-		 * Process a single character (moved from parse_char_in_tag_content).
-		 */
-		private void process_character(char ch)
-		{
 			if (this.is_in_code) {
-				this.writer.append(ch);
+				this.writer.append(char_str);
 
 				if (this.index_blockquote != 0 && ch == '\n') {
 					if (this.is_in_ignored_tag()) {
@@ -323,6 +301,7 @@ namespace Markdown
 			if (this.compress_whitespace && !this.is_in_pre) {
 				if (ch == '\t') {
 					ch = ' ';
+					char_str = " ";
 				}
 
 				if (ch == ' ') {
@@ -349,8 +328,7 @@ namespace Markdown
 				return;
 			}
 
-			switch (ch)
-			{
+			switch (ch) {
 				case '*':
 					if (this.is_in_ignored_tag()) {
 						break;
@@ -397,11 +375,11 @@ namespace Markdown
 						break;
 					}
 					
-					this.writer.append(ch);
+					this.writer.append(char_str);
 					
 					break;
 				default:
-					this.writer.append(ch);
+					this.writer.append(char_str);
 					break;
 			}
 
@@ -435,7 +413,7 @@ namespace Markdown
 		{
 			this.writer.reset();
 			this.tag_stack.clear();
-			this.current_attributes = null;
+			this.attr = null;
 			this.current_tag = "";
 			this.prev_tag = "";
 			this.converted = false;
