@@ -357,7 +357,8 @@ namespace OLLMchat.UI
 				button_box.prepend(this.model_loading_label);
 				button_box.prepend(this.model_dropdown);
 				if (this.tools_menu_button != null) {
-					button_box.prepend(this.tools_menu_button);
+					// Insert tools button after the dropdown
+					button_box.insert_child_after(this.tools_menu_button, this.model_dropdown);
 				}
 			}
 		}
