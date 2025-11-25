@@ -335,6 +335,10 @@ namespace OLLMchat.UI
 					// Set think based on model capability
 					this.client.think = model.is_thinking;
 					
+					// Update tools button visibility based on model's can_call property
+					if (this.tools_menu_button != null) {
+						this.tools_menu_button.visible = model.can_call;
+					}
 				}
 			});
 
@@ -433,6 +437,10 @@ namespace OLLMchat.UI
 						this.model_dropdown.selected = i;
 						// Update client.think based on selected model (do this directly, not via signal)
 						this.client.think = model.is_thinking;
+						// Update tools button visibility based on model's can_call property
+						if (this.tools_menu_button != null) {
+							this.tools_menu_button.visible = model.can_call;
+						}
 						break;
 					}
 				}
