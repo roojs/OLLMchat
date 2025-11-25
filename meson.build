@@ -12,6 +12,7 @@ gnome = import('gnome')
 
 valac = meson.get_compiler('vala')
 
+add_project_arguments(['--vapidir', meson.current_source_dir() / 'vapi'], language: 'vala')
 add_project_arguments(['--vapidir', meson.current_source_dir() / '../vapi'], language: 'vala')
 add_project_arguments(['--target-glib=auto'], language: 'vala')
 
@@ -45,6 +46,7 @@ ui_deps = [
 test_window_deps = [
   dependency('gtk4'),
   dependency('gtksourceview-5'),
+  dependency('md4c'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -244,6 +246,7 @@ valadoc_ui_docs = custom_target('valadoc-ui',
     '--package-name=ollmchat-ui',
     '--package-version=@0@'.format(meson.project_version()),
     '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_source_dir() / 'vapi',
     '--vapidir', meson.current_build_dir(),  # Add build dir to find generated ollmchat.vapi
     '--pkg=gee-0.8',
     '--pkg=gio-2.0',
@@ -253,6 +256,7 @@ valadoc_ui_docs = custom_target('valadoc-ui',
     '--pkg=libsoup-3.0',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
+    '--pkg=md4c',
     '--pkg=posix',
     '--pkg=ollmchat',
     '--doclet=html',

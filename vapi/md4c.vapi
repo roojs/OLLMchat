@@ -190,25 +190,25 @@ namespace MD4C {
 	[CCode (cname = "MD_DIALECT_GITHUB")]
 	public const uint DIALECT_GITHUB;
 
-	[CCode (cname = "int (*)(MD_BLOCKTYPE, void*, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate int ParserEnterBlockFunc (BlockType type, void* detail, void* userdata);
 
-	[CCode (cname = "int (*)(MD_BLOCKTYPE, void*, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate int ParserLeaveBlockFunc (BlockType type, void* detail, void* userdata);
 
-	[CCode (cname = "int (*)(MD_SPANTYPE, void*, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate int ParserEnterSpanFunc (SpanType type, void* detail, void* userdata);
 
-	[CCode (cname = "int (*)(MD_SPANTYPE, void*, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate int ParserLeaveSpanFunc (SpanType type, void* detail, void* userdata);
 
-	[CCode (cname = "int (*)(MD_TEXTTYPE, const MD_CHAR*, MD_SIZE, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate int ParserTextFunc (TextType type, [CCode (type = "const MD_CHAR*")] string text, uint size, void* userdata);
 
-	[CCode (cname = "void (*)(const char*, void*)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate void ParserDebugLogFunc (string msg, void* userdata);
 
-	[CCode (cname = "void (*)(void)", has_target = false)]
+	[CCode (has_target = false, cheader_filename = "md4c.h")]
 	public delegate void ParserSyntaxFunc ();
 
 	[CCode (cname = "MD_PARSER")]

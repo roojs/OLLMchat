@@ -21,7 +21,8 @@
         <ul class="navi_main">
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
-          <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
+          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">OLLMchat.MarkdownGtk</a></li>
+          <li class="namespace"><a href="OLLMchat.ToolsUI.html">OLLMchat.ToolsUI</a></li>
           <li class="namespace"><a href="OLLMchat.UI.html">OLLMchat.UI</a></li>
         </ul>
       </div>
@@ -39,11 +40,40 @@
             <li class="class"><a href="OLLMchat.ChatPermission.ChatView.html">ChatView</a> - <span class="brief_description">Permission provider that 
                 displays permission requests using ChatWidget's permission widget.</span></li>
           </ul>
-          <li class="namespace"><a href="OLLMchat.Tools.html">Tools</a></li>
+          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">MarkdownGtk</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.Tools.RunTerminalCommandGtk.html">RunTerminalCommandGtk</a> - <span class="brief_description">GTK-
-                specific version of RunTerminalCommand that creates SourceView widgets for displaying terminal output.</span></li>
+            <li class="class"><a href="OLLMchat.MarkdownGtk.Render.html">Render</a> - <span class="brief_description">Renders markdown content to a 
+                Gtk.TextBuffer using md4c parser.</span></li>
+          </ul>
+          <h3 class="main_title">Methods:</h3>
+          <ul class="navi_inline">
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.MarkdownGtk.md4c_enter_block.html" class="method">md4c_enter_block</a></b> (<span class="main_type"><span class="enum">BlockType</span></span> type, <span class="main_keyword">void</span>* detail, <span class="main_keyword">void</span>* userdata)
+              </span>
+              <div class="leaf_brief_description">
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.MarkdownGtk.md4c_enter_span.html" class="method">md4c_enter_span</a></b> (<span class="main_type"><span class="enum">SpanType</span></span> type, <span class="main_keyword">void</span>* detail, <span class="main_keyword">void</span>* userdata)
+              </span>
+              <div class="leaf_brief_description">
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.MarkdownGtk.md4c_leave_block.html" class="method">md4c_leave_block</a></b> (<span class="main_type"><span class="enum">BlockType</span></span> type, <span class="main_keyword">void</span>* detail, <span class="main_keyword">void</span>* userdata)
+              </span>
+              <div class="leaf_brief_description">
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.MarkdownGtk.md4c_leave_span.html" class="method">md4c_leave_span</a></b> (<span class="main_type"><span class="enum">SpanType</span></span> type, <span class="main_keyword">void</span>* detail, <span class="main_keyword">void</span>* userdata)
+              </span>
+              <div class="leaf_brief_description">
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.MarkdownGtk.md4c_text.html" class="method">md4c_text</a></b> (<span class="main_type"><span class="enum">TextType</span></span> type, <span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_basic_type"><span class="struct">uint</span></span> size, <span class="main_keyword">void</span>* userdata)
+              </span>
+              <div class="leaf_brief_description">
+              </div></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.ToolsUI.html">ToolsUI</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.ToolsUI.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
+                RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.UI.html">UI</a></li>
           <h3 class="main_title">Classes:</h3>

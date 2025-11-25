@@ -19,31 +19,32 @@
 namespace OLLMchat.MarkdownGtk
 {
 	// Static callback wrappers for md4c parser
-	private int md4c_enter_block(MD4C.BlockType type, void* detail, void* userdata)
+	public static int md4c_enter_block(MD4C.BlockType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_enter_block(type, detail);
 	}
 	
-	private int md4c_leave_block(MD4C.BlockType type, void* detail, void* userdata)
+	public static int md4c_leave_block(MD4C.BlockType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_leave_block(type, detail);
 	}
 	
-	private int md4c_enter_span(MD4C.SpanType type, void* detail, void* userdata)
+	public static int md4c_enter_span(MD4C.SpanType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_enter_span(type, detail);
 	}
 	
-	private int md4c_leave_span(MD4C.SpanType type, void* detail, void* userdata)
+	public static int md4c_leave_span(MD4C.SpanType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_leave_span(type, detail);
 	}
 	
-	private int md4c_text(MD4C.TextType type, string text, MD4C.SIZE size, void* userdata)
+	[CCode (cname = "oll_mchat_markdown_gtk_md4c_text")]
+	public static int md4c_text(MD4C.TextType type, string text, uint size, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_text(type, text, size);
@@ -57,7 +58,8 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class Render : Object
 	{
-		private Gtk.TextBuffer buffer;
+		private Gtk.TextView text_view;
+		private Gtk.TextBuffer buffer { get { return this.text_view.buffer; } set {} }
 		private Gtk.TextMark start_mark;
 		private Gtk.TextMark end_mark;
 		private string markdown_text = "";
@@ -71,12 +73,12 @@ namespace OLLMchat.MarkdownGtk
 		private bool table_error = false;
 		
 		// Text accumulation
-		private StringBuilder current_text { get; set; default = new StringBuilder(); }
+		private StringBuilder current_text;
 		
 		// md4c parser
 		private MD4C.Parser parser;
 		
-		private struct BlockState
+		private class BlockState
 		{
 			public MD4C.BlockType type;
 			public int level;
@@ -95,11 +97,12 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param buffer The TextBuffer to render into
 		 */
-		public Render(Gtk.TextBuffer buffer)
+		public Render(Gtk.TextView text_view)
 		{
-			this.buffer = buffer;
+			this.text_view = text_view;
 			
 			// Initialize parser
+			this.current_text = new StringBuilder();
 			this.parser = MD4C.Parser();
 			this.parser.abi_version = 0;
 			this.parser.flags = MD4C.FLAG_TABLES | 
@@ -162,50 +165,52 @@ namespace OLLMchat.MarkdownGtk
 			this.buffer.move_mark(end_mark, end_iter);
 		}
 		
-		private int on_enter_block(MD4C.BlockType type, void* detail)
+		public int on_enter_block(MD4C.BlockType type, void* detail)
 		{
 			try {
 				switch (type) {
 					case MD4C.BlockType.P:
-						this.block_stack.add(BlockState(type, 0));
+						this.block_stack.add(new BlockState(type, 0));
 						break;
 						
 					case MD4C.BlockType.H:
 						if (detail != null) {
 							var h_detail = (MD4C.BlockHDetail*)detail;
-							this.block_stack.add(BlockState(type, (int)h_detail->level));
+							this.block_stack.add(new BlockState(type, (int)h_detail->level));
 						} else {
-							this.block_stack.add(BlockState(type, 1));
+							this.block_stack.add(new BlockState(type, 1));
 						}
 						break;
 						
 					case MD4C.BlockType.UL:
 					case MD4C.BlockType.OL:
 						if (detail != null) {
-							var list_detail = type == MD4C.BlockType.UL ? 
-								(MD4C.BlockULDetail*)detail : 
-								(MD4C.BlockOLDetail*)detail;
+						
 							bool is_tight = false;
 							if (type == MD4C.BlockType.UL) {
-								is_tight = ((MD4C.BlockULDetail*)list_detail)->is_tight != 0;
+								is_tight = ((MD4C.BlockULDetail*)detail)->is_tight != 0;
 							} else {
-								is_tight = ((MD4C.BlockOLDetail*)list_detail)->is_tight != 0;
+								is_tight = ((MD4C.BlockOLDetail*)detail)->is_tight != 0;
 							}
-							this.block_stack.add(BlockState(type, this.block_stack.size, is_tight));
+							this.block_stack.add(new BlockState(type, this.block_stack.size, is_tight));
 						} else {
-							this.block_stack.add(BlockState(type, this.block_stack.size));
+							this.block_stack.add(new BlockState(type, this.block_stack.size));
 						}
 						break;
 						
 					case MD4C.BlockType.LI:
 						// List item - add indent
 						if (!this.in_table) {
-							this.current_text.append("  ".repeat(this.block_stack.size - 1));
+							var str = "";
+							for(var i=0; i<this.block_stack.size - 1; i++) {
+								str += "  ";
+							}
+							this.current_text.append(str);
 						}
 						break;
 						
 					case MD4C.BlockType.QUOTE:
-						this.block_stack.add(BlockState(type, this.block_stack.size));
+						this.block_stack.add(new BlockState(type, this.block_stack.size));
 						break;
 						
 					case MD4C.BlockType.CODE:
@@ -266,7 +271,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		private int on_leave_block(MD4C.BlockType type, void* detail)
+		public int on_leave_block(MD4C.BlockType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -349,7 +354,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		private int on_enter_span(MD4C.SpanType type, void* detail)
+		public int on_enter_span(MD4C.SpanType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -402,7 +407,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		private int on_leave_span(MD4C.SpanType type, void* detail)
+		public int on_leave_span(MD4C.SpanType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -461,7 +466,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		private int on_text(MD4C.TextType type, string text, MD4C.SIZE size)
+		public int on_text(MD4C.TextType type, string text, uint size)
 		{
 			try {
 				string text_str = text.substring(0, (int)size);
@@ -657,7 +662,7 @@ namespace OLLMchat.MarkdownGtk
 						renderer.buffer.get_end_iter(out iter);
 					}
 					
-					this.anchor = renderer.buffer.create_child_anchor(ref iter);
+					this.anchor = renderer.buffer.create_child_anchor(iter);
 					
 				} catch (Error e) {
 					this.error = true;
@@ -707,9 +712,8 @@ namespace OLLMchat.MarkdownGtk
 				
 				try {
 					// Insert frame via child anchor
-					var text_view = renderer.buffer.get_style_context().get_parent() as Gtk.TextView;
-					if (text_view != null) {
-						text_view.add_child_at_anchor(this.frame, this.anchor);
+					if (renderer.text_view != null) {
+						renderer.text_view.add_child_at_anchor(this.frame, this.anchor);
 					}
 					
 					// Show frame
