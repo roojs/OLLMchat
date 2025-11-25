@@ -42,6 +42,8 @@ namespace OLLMchat.Ollama
 		public string permission_question { get; protected set; default = ""; }
 		public string permission_target_path { get; protected set; default = ""; }
 		public ChatPermission.Operation permission_operation { get; protected set; default = ChatPermission.Operation.READ; }
+		
+		public bool active { get; set; default = true; }
 
 		protected Tool(Client client)
 		{
@@ -213,6 +215,7 @@ namespace OLLMchat.Ollama
 				case "permission_question":
 				case "permission_target_path":
 				case "permission_operation":
+				case "active":
 					// Exclude these properties from serialization
 					return null;
 					// exculd nem etc..
