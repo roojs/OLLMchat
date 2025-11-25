@@ -384,7 +384,7 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ### Tool 3: RunTerminalCommandTool
 
-**Status**: ⏳ To be created (`Tools/RunTerminalCommandTool.vala`)
+**Status**: ✅ Implemented (not tested) (`Tools/RunTerminalCommand.vala`, `Tools/RunTerminalCommandGtk.vala`)
 
 **Priority**: 3 (Useful for compilation, testing, git operations)
 
@@ -409,15 +409,17 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```
 
 **Implementation Notes**:
-- Commands execute in project root directory
-- Should validate command safety before execution
-- Should capture both stdout and stderr
-- Should handle errors gracefully
-- May need timeout handling for long-running commands
-- Should build permission question showing the command to be executed
+- Commands execute in project root directory (or directory specified by permission provider)
+- Validates command safety before execution
+- Captures both stdout and stderr using async I/O
+- Handles errors gracefully with proper error messages
+- Permission caching for simple commands (based on executable realpath)
+- Complex commands (with bash operators) always require approval
+- GTK version (`RunTerminalCommandGtk`) provides SourceView widget for terminal output display
+- Permission question shows the command to be executed
 
 **Example Permission Question**:
-- "Run command 'meson compile -C build'?"
+- "Run command: meson compile -C build?"
 
 ---
 
