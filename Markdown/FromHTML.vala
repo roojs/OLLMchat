@@ -1,19 +1,27 @@
 /*
- * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ * Copyright (c) 2025 Alan Knowles <alan@roojs.com>
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * This code is based on the HTML to Markdown converter originally written by
+ * Tim Gromeyer (https://github.com/tim-gromeyer/html2md).
+ * Ported to Vala and modified by Alan Knowles.
  */
 
 namespace Markdown
@@ -73,6 +81,7 @@ namespace Markdown
 		public bool force_left_trim { get; set; default = false; }
 		public bool include_title { get; set; default = true; }
 		public bool split_lines { get; set; default = true; }
+		public bool format_table { get; set; default = true; }
 		public int soft_break { get; set; default = 80; }
 		public int hard_break { get; set; default = 120; }
 		public char unordered_list { get; set; default = '-'; }
@@ -89,6 +98,7 @@ namespace Markdown
 		public bool is_in_list = false;
 		public bool is_in_ordered_list = false;
 		public bool is_in_p = false;
+		public bool is_in_table = false;
 		public char prev_ch_in_html = 0;
 		public int index_blockquote = 0;
 		public int index_li = 0;
@@ -227,7 +237,7 @@ namespace Markdown
 		 */
 		public bool ok()
 		{
-			return !this.is_in_pre && !this.is_in_list && !this.is_in_p &&
+			return !this.is_in_pre && !this.is_in_list && !this.is_in_p && !this.is_in_table &&
 				this.tag_stack.size == 0 && this.index_blockquote == 0 && this.index_li == 0;
 		}
 
@@ -383,7 +393,7 @@ namespace Markdown
 					break;
 			}
 
-			if (this.writer.chars_in_curr_line > this.soft_break && !this.is_in_list &&
+			if (this.writer.chars_in_curr_line > this.soft_break && !this.is_in_table && !this.is_in_list &&
 				this.current_tag != "img" && this.current_tag != "a" &&
 				this.split_lines) {
 				if (ch == ' ') { // If the next char is - it will become a list
@@ -400,6 +410,9 @@ namespace Markdown
 		public bool replace_previous_space_in_line_by_newline()
 		{
 			if (this.current_tag == "p") {
+				return false;
+			}
+			if (this.is_in_table && this.prev_tag != "code" && this.prev_tag != "pre") {
 				return false;
 			}
 			return this.writer.replace_previous_space_in_line_by_newline();
@@ -516,6 +529,12 @@ namespace Markdown
 			this.tags.set("del", tag_strikethrough);
 
 			this.tags.set("blockquote", new TagBlockquote(this.writer));
+
+			// Tables
+			this.tags.set("table", new TagTable(this.writer));
+			this.tags.set("tr", new TagTableRow(this.writer));
+			this.tags.set("th", new TagTableHeader(this.writer));
+			this.tags.set("td", new TagTableData(this.writer));
 		}
 
 		// Public methods for tag handlers

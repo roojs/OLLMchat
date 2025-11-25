@@ -30,6 +30,8 @@ namespace Markdown
 		public char prev_ch_in_md = 0;
 		public char prev_prev_ch_in_md = 0;
 		public Gee.HashMap<string, string> html_symbol_conversions;
+		public int table_start = 0;
+		public StringBuilder table_line = new StringBuilder();
 
 		public Writer()
 		{
@@ -136,6 +138,8 @@ namespace Markdown
 			this.prev_ch_in_md = 0;
 			this.prev_prev_ch_in_md = 0;
 			this.chars_in_curr_line = 0;
+			this.table_start = 0;
+			this.table_line = new StringBuilder();
 		}
 
 		/**

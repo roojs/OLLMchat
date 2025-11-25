@@ -175,6 +175,8 @@ namespace Markdown
 				// When it's in a list, it's not in a paragraph
 				this.writer.append("  \n");
 				this.writer.append_repeat("  ", c.index_li);
+			} else if (c.is_in_table) {
+				this.writer.append("<br>");
 			} else if (this.writer.md.len > 0) {
 				this.writer.append("  \n");
 			}
@@ -215,6 +217,10 @@ namespace Markdown
 
 		public override void open(FromHTML c)
 		{
+			if (c.is_in_table) {
+				return;
+			}
+
 			if (!c.is_in_ordered_list) {
 				this.writer.append("%c ".printf(c.unordered_list));
 				return;
@@ -226,6 +232,10 @@ namespace Markdown
 
 		public override void close(FromHTML c)
 		{
+			if (c.is_in_table) {
+				return;
+			}
+
 			if (this.writer.prev_ch_in_md != '\n') {
 				this.writer.append("\n");
 			}
@@ -262,6 +272,10 @@ namespace Markdown
 
 		public override void open(FromHTML c)
 		{
+			if (c.is_in_table) {
+				return;
+			}
+
 			c.is_in_list = true;
 			c.is_in_ordered_list = true;
 			c.index_ol = 0;
@@ -275,6 +289,10 @@ namespace Markdown
 
 		public override void close(FromHTML c)
 		{
+			if (c.is_in_table) {
+				return;
+			}
+
 			c.is_in_ordered_list = false;
 
 			if (c.index_li != 0) {
@@ -424,7 +442,7 @@ namespace Markdown
 
 		public override void open(FromHTML c)
 		{
-			if (c.is_in_list) {
+			if (c.is_in_list || c.is_in_table) {
 				return;
 			}
 
@@ -437,6 +455,10 @@ namespace Markdown
 
 		public override void close(FromHTML c)
 		{
+			if (c.is_in_table) {
+				return;
+			}
+
 			if (c.index_li != 0) {
 				c.index_li--;
 			}
@@ -549,4 +571,5 @@ namespace Markdown
 			}
 		}
 	}
+
 }

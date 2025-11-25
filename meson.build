@@ -127,6 +127,7 @@ ollmchat_tools_src = files([
 ollmchat_markdown_src = files([
   'Markdown/FromHTML.vala',
   'Markdown/Tags.vala',
+  'Markdown/TagsTable.vala',
   'Markdown/Writer.vala',
 ])
 
