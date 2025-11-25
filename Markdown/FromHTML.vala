@@ -17,44 +17,13 @@
  */
 
 using Gee;
+using Xml;
 
 namespace Markdown
 {
-	// libxml2 C bindings
-	[CCode (cname = "xmlSAXHandler", cheader_filename = "libxml/parser.h", has_type_id = false)]
-	public struct SaxHandler {
-		[CCode (cname = "startDocument")]
-		public unowned SaxStartDocumentFunc? start_document;
-		[CCode (cname = "endDocument")]
-		public unowned SaxEndDocumentFunc? end_document;
-		[CCode (cname = "startElement")]
-		public unowned SaxStartElementFunc? start_element;
-		[CCode (cname = "endElement")]
-		public unowned SaxEndElementFunc? end_element;
-		[CCode (cname = "characters")]
-		public unowned SaxCharactersFunc? characters;
-	}
-
-	[CCode (cname = "void", has_target = false)]
-	public delegate void SaxStartDocumentFunc(void* ctx);
-
-	[CCode (cname = "void", has_target = false)]
-	public delegate void SaxEndDocumentFunc(void* ctx);
-
-	[CCode (cname = "void", has_target = false)]
-	public delegate void SaxStartElementFunc(void* ctx, unowned string name, unowned string[] attrs);
-
-	[CCode (cname = "void", has_target = false)]
-	public delegate void SaxEndElementFunc(void* ctx, unowned string name);
-
-	[CCode (cname = "void", has_target = false)]
-	public delegate void SaxCharactersFunc(void* ctx, unowned string ch, int len);
-
+	// HTML parser function from libxml2
 	[CCode (cname = "htmlSAXParseDoc", cheader_filename = "libxml/HTMLparser.h")]
-	public void* htmlSAXParseDoc(uint8[] cur, unowned string encoding, SaxHandler* sax, void* user_data);
-
-	[CCode (cname = "xmlFreeDoc", cheader_filename = "libxml/tree.h")]
-	public void xmlFreeDoc(void* doc);
+	public unowned Doc* htmlSAXParseDoc(uint8[] cur, unowned string encoding, SAXHandler* sax, void* user_data);
 	/**
 	 * Converts HTML to Markdown format.
 	 */
