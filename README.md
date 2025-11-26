@@ -95,6 +95,7 @@ This project is licensed under the GNU Lesser General Public License version 3.0
 
 **Note:** The markdown processor code in `UI/MarkdownProcessor.vala` is from the [Planify project](https://github.com/alainm23/planify) and is licensed under the GNU General Public License version 3.0 (GPL-3.0) or later, Copyright © 2023 Alain M. See the file header for details.
 
+
 ## Notes
 
 - The build system uses Meson and Ninja
