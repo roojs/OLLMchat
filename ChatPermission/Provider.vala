@@ -20,12 +20,14 @@ namespace OLLMchat.ChatPermission
 {
 	/**
 	 * Operation types for permission requests.
+	 * Can be combined using bitwise OR (e.g., READ | WRITE).
 	 */
+	[Flags]
 	public enum Operation
 	{
-		READ,      // "r" - read operation
-		WRITE,     // "w" - write operation
-		EXECUTE    // "x" - execute operation
+		READ = 1 << 0,      // "r" - read operation (bit 0)
+		WRITE = 1 << 1,     // "w" - write operation (bit 1)
+		EXECUTE = 1 << 2    // "x" - execute operation (bit 2)
 	}
 	
 	/**
@@ -175,11 +177,44 @@ namespace OLLMchat.ChatPermission
 		protected abstract async PermissionResponse request_user(Ollama.Tool tool);
 		
 		/**
-		 * Checks if a permission string allows the requested operation.
+		 * Checks if permission is currently granted for a tool operation.
+		 * This is a synchronous check that only looks at stored permissions,
+		 * it does not ask the user.
+		 * 
+		 * @param tool The Tool instance to check permissions for
+		 * @return true if permission is granted, false if denied or unknown
+		 */
+		public bool check_permission(Ollama.Tool tool)
+		{
+			// Normalize path
+			var normalized_path = this.normalize_path(tool.permission_target_path);
+			
+			// Check session permissions
+			if (Provider.session.has_key(normalized_path)) {
+				var result = this.check(Provider.session.get(normalized_path), tool.permission_operation);
+				if (result == PermissionResult.YES || result == PermissionResult.NO) {
+					return result == PermissionResult.YES;
+				}
+			}
+			
+			// Check global permissions
+			if (Provider.global.has_key(normalized_path)) {
+				var result = this.check(Provider.global.get(normalized_path), tool.permission_operation);
+				if (result == PermissionResult.YES || result == PermissionResult.NO) {
+					return result == PermissionResult.YES;
+				}
+			}
+			
+			// No stored permission found - return false (not granted)
+			return false;
+		}
+		
+		/**
+		 * Checks if a permission string allows the requested operation(s).
 		 * 
 		 * @param perm Permission string (e.g., "rwx", "r--", "---", "???")
-		 * @param operation Operation type (READ, WRITE, or EXECUTE)
-		 * @return PermissionResult.YES if allowed, PermissionResult.NO if denied, PermissionResult.ASK if unknown
+		 * @param operation Operation type(s) (can be combined with |, e.g., READ | WRITE)
+		 * @return PermissionResult.YES if all operations allowed, PermissionResult.NO if any denied, PermissionResult.ASK if unknown
 		 */
 		protected PermissionResult check(string perm, Operation operation)
 		{
@@ -187,8 +222,39 @@ namespace OLLMchat.ChatPermission
 				return PermissionResult.ASK; // Unknown - need to ask user
 			}
 			
-			int index = (int)operation;
-			 
+			// Check each operation bit
+			if ((operation & Operation.READ) != 0) {
+				var result = this.check_single(perm, 0);
+				if (result == PermissionResult.NO || result == PermissionResult.ASK) {
+					return result;
+				}
+			}
+			
+			if ((operation & Operation.WRITE) != 0) {
+				var result = this.check_single(perm, 1);
+				if (result == PermissionResult.NO || result == PermissionResult.ASK) {
+					return result;
+				}
+			}
+			
+			if ((operation & Operation.EXECUTE) != 0) {
+				var result = this.check_single(perm, 2);
+				if (result == PermissionResult.NO || result == PermissionResult.ASK) {
+					return result;
+				}
+			}
+			
+			return PermissionResult.YES;
+		}
+		
+		/**
+		 * Checks a single permission character at the given index.
+		 */
+		private PermissionResult check_single(string perm, int index)
+		{
+			if (perm.length <= index) {
+				return PermissionResult.ASK;
+			}
 			
 			switch (perm[index]) {
 				case '-':
@@ -259,9 +325,10 @@ namespace OLLMchat.ChatPermission
 		 * Handles user's permission response and updates storage accordingly.
 		 * 
 		 * If config_file is empty, ALWAYS responses are treated as SESSION.
+		 * When WRITE permission is granted, READ permission is automatically granted as well.
 		 * 
 		 * @param target_path The normalized target path
-		 * @param operation The operation type (READ, WRITE, or EXECUTE)
+		 * @param operation The operation type(s) (can be combined with |, e.g., READ | WRITE)
 		 * @param response The user's response enum
 		 */
 		protected void handle_response(string target_path, Operation operation, PermissionResponse response)
@@ -274,6 +341,11 @@ namespace OLLMchat.ChatPermission
 			if ((response == PermissionResponse.DENY_ALWAYS 
 				|| response == PermissionResponse.ALLOW_ALWAYS) && this.config_file == "") {
 				response = allowed ? PermissionResponse.ALLOW_SESSION : PermissionResponse.DENY_SESSION;
+			}
+			
+			// If WRITE is granted, automatically grant READ as well
+			if (allowed && (operation & Operation.WRITE) != 0) {
+				operation |= Operation.READ;
 			}
 			
 			var new_perm = this.update_string(
@@ -304,11 +376,11 @@ namespace OLLMchat.ChatPermission
 		}
 		static char[] op_chars = {'r', 'w', 'x'};
 		/**
-		 * Updates a permission string with a new operation permission.
+		 * Updates a permission string with new operation permission(s).
 		 * 
 		 * @param current Current permission string (e.g., "rw-", "???")
-		 * @param operation Operation type (READ, WRITE, or EXECUTE)
-		 * @param allowed Whether the operation is allowed
+		 * @param operation Operation type(s) (can be combined with |, e.g., READ | WRITE)
+		 * @param allowed Whether the operation(s) are allowed
 		 * @return Updated permission string
 		 */
 		protected string update_string(string current, Operation operation, bool allowed)
@@ -319,10 +391,19 @@ namespace OLLMchat.ChatPermission
 			}
 			
 			var chars = current.to_utf8();
-			int index = (int)operation;
-			 
-			chars[index] = allowed ? Provider.op_chars[index] : '-';
 			
+			// Update each operation bit
+			if ((operation & Operation.READ) != 0) {
+				chars[0] = allowed ? Provider.op_chars[0] : '-';
+			}
+			
+			if ((operation & Operation.WRITE) != 0) {
+				chars[1] = allowed ? Provider.op_chars[1] : '-';
+			}
+			
+			if ((operation & Operation.EXECUTE) != 0) {
+				chars[2] = allowed ? Provider.op_chars[2] : '-';
+			}
 			
 			return (string)chars;
 		}

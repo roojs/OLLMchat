@@ -37,6 +37,7 @@
           <li class="property"><a href="OLLMchat.ChatPermission.Provider.session.html">session</a></li>
           <li class="creation_method"><a href="OLLMchat.ChatPermission.Provider.Provider.html">Provider</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.check.html">check</a></li>
+          <li class="method"><a href="OLLMchat.ChatPermission.Provider.check_permission.html">check_permission</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.handle_response.html">handle_response</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.load.html">load</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.normalize_path.html">normalize_path</a></li>
@@ -125,7 +126,13 @@
         <ul class="navi_inline">
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><a href="OLLMchat.ChatPermission.PermissionResult.html" class="enum">PermissionResult</a></span> <b><a href="OLLMchat.ChatPermission.Provider.check.html" class="method">check</a></b> (<span class="main_basic_type"><span class="class">string</span></span> perm, <span class="main_type"><a href="OLLMchat.ChatPermission.Operation.html" class="enum">Operation</a></span> operation)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Checks if a permission string allows the requested operation.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Checks if a permission string allows the requested operation(s).
+              </span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.ChatPermission.Provider.check_permission.html" class="method">check_permission</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.Tool.html" class="abstract_class">Tool</a></span> tool)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Checks if permission is currently granted for a tool operation. This 
+                is a synchronous check that only looks at stored permissions, it does not ask the user.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.ChatPermission.Provider.handle_response.html" class="method">handle_response</a></b> (<span class="main_basic_type"><span class="class">string</span></span> target_path, <span class="main_type"><a href="OLLMchat.ChatPermission.Operation.html" class="enum">Operation</a></span> operation, <span class="main_type"><a href="OLLMchat.ChatPermission.PermissionResponse.html" class="enum">PermissionResponse</a></span> response)
             </span>
@@ -158,7 +165,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.ChatPermission.Provider.update_string.html" class="method">update_string</a></b> (<span class="main_basic_type"><span class="class">string</span></span> current, <span class="main_type"><a href="OLLMchat.ChatPermission.Operation.html" class="enum">Operation</a></span> operation, <span class="main_basic_type"><span class="struct">bool</span></span> allowed)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Updates a permission string with a new operation permission.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Updates a permission string with new operation permission(s).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

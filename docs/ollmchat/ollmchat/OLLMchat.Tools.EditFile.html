@@ -103,8 +103,8 @@
         <ul class="navi_inline">
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.EditFile.execute.html" class="virtual_method">execute</a></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Override execute() to handle two-step permission flow: 1. Request READ
-                permission to generate diff 2. Request WRITE permission with diff display</span>
+            <div class="leaf_brief_description"><span class="brief_description">Override execute() to handle permission flow: Request WRITE permission
+                (which automatically includes READ) to generate diff and write file.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.EditFile.execute_tool.html" class="virtual_method">execute_tool</a></b> (<span class="main_type"><span class="class">Object</span></span> parameters) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
@@ -125,10 +125,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Signal emitted after successfully applying edits to a file.</span>
             </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.EditFile.before_change.html" class="signal">before_change</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file_path, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Tools.EditFileChange.html" class="class">EditFileChange</a></span>&gt; edits)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tools.EditFile.before_change.html" class="signal">before_change</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file_path, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Tools.EditFileChange.html" class="class">EditFileChange</a></span>&gt; edits)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Signal emitted before applying edits to a file. Handlers can return 
-                false to block the change.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Signal emitted before applying edits to a file. Notification-only 
+                signal - use permission system to block operations.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

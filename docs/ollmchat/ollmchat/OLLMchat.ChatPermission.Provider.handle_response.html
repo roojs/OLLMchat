@@ -37,6 +37,7 @@
           <li class="property"><a href="OLLMchat.ChatPermission.Provider.session.html">session</a></li>
           <li class="creation_method"><a href="OLLMchat.ChatPermission.Provider.Provider.html">Provider</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.check.html">check</a></li>
+          <li class="method"><a href="OLLMchat.ChatPermission.Provider.check_permission.html">check_permission</a></li>
           <li class="method">handle_response</li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.load.html">load</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.normalize_path.html">normalize_path</a></li>
@@ -54,7 +55,8 @@
         </div>
         <div class="description">
           <p>Handles user's permission response and updates storage accordingly.</p>
-          <p>If config_file is empty, ALWAYS responses are treated as SESSION.</p>
+          <p>If config_file is empty, ALWAYS responses are treated as SESSION. When WRITE permission is granted, READ permission is automatically 
+            granted as well.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
@@ -66,7 +68,7 @@
             <tr>
               <td class="main_parameter_table_name">operation</td>
               <td>
-                <p>The operation type (READ, WRITE, or EXECUTE) </p>
+                <p>The operation type(s) (can be combined with |, e.g., READ | WRITE) </p>
               </td>
             </tr>
             <tr>

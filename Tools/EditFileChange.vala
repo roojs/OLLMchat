@@ -77,8 +77,12 @@ namespace OLLMchat.Tools
 			GLib.DataInputStream input_stream, 
 			int current_line) throws Error
 		{
+			GLib.debug("EditFileChange.apply_changes: Applying edit at lines %d-%d", this.start, this.end);
+			
 			// Write replacement lines
-			foreach (var new_line in this.replacement.split("\n")) {
+			var replacement_lines = this.replacement.split("\n");
+			GLib.debug("EditFileChange.apply_changes: Writing %d replacement line(s)", replacement_lines.length);
+			foreach (var new_line in replacement_lines) {
 				output_stream.put_string(new_line);
 				output_stream.put_byte('\n');
 			}
@@ -86,13 +90,16 @@ namespace OLLMchat.Tools
 			// Skip old lines in input stream until end of edit range (exclusive)
 			string? line;
 			size_t length;
+			int skipped_count = 0;
 			while (current_line < this.end - 1) {
 				line = input_stream.read_line(out length, null);
 				if (line == null) {
 					break;
 				}
 				current_line++;
+				skipped_count++;
 			}
+			GLib.debug("EditFileChange.apply_changes: Skipped %d old line(s)", skipped_count);
 			
 			return current_line;
 		}

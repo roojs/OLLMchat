@@ -37,6 +37,7 @@
           <li class="property"><a href="OLLMchat.ChatPermission.Provider.session.html">session</a></li>
           <li class="creation_method"><a href="OLLMchat.ChatPermission.Provider.Provider.html">Provider</a></li>
           <li class="method">check</li>
+          <li class="method"><a href="OLLMchat.ChatPermission.Provider.check_permission.html">check_permission</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.handle_response.html">handle_response</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.load.html">load</a></li>
           <li class="method"><a href="OLLMchat.ChatPermission.Provider.normalize_path.html">normalize_path</a></li>
@@ -53,7 +54,7 @@
         <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><a href="OLLMchat.ChatPermission.PermissionResult.html" class="enum">PermissionResult</a></span> <b><span class="method">check</span></b> (<span class="main_basic_type"><span class="class">string</span></span> perm, <span class="main_type"><a href="OLLMchat.ChatPermission.Operation.html" class="enum">Operation</a></span> operation)
         </div>
         <div class="description">
-          <p>Checks if a permission string allows the requested operation.</p>
+          <p>Checks if a permission string allows the requested operation(s).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
@@ -65,7 +66,7 @@
             <tr>
               <td class="main_parameter_table_name">operation</td>
               <td>
-                <p>Operation type (READ, WRITE, or EXECUTE) </p>
+                <p>Operation type(s) (can be combined with |, e.g., READ | WRITE) </p>
               </td>
             </tr>
           </table>
@@ -73,7 +74,7 @@
           <table class="main_parameter_table">
             <tr>
               <td>
-                <p>PermissionResult.YES if allowed, PermissionResult.NO if denied, PermissionResult.ASK if unknown </p>
+                <p>PermissionResult.YES if all operations allowed, PermissionResult.NO if any denied, PermissionResult.ASK if unknown </p>
               </td>
             </tr>
           </table>

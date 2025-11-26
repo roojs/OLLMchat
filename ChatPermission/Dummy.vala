@@ -33,9 +33,22 @@ namespace OLLMchat.ChatPermission
 		
 		protected override async PermissionResponse request_user(Ollama.Tool tool)
 		{
-			string op_str = tool.permission_operation == Operation.READ ? "READ" : (tool.permission_operation == Operation.WRITE ? "WRITE" : "EXECUTE");
+			// Build operation string for logging
+			var op_parts = new Gee.ArrayList<string>();
+			if ((tool.permission_operation & Operation.READ) != 0) {
+				op_parts.add("READ");
+			}
+			if ((tool.permission_operation & Operation.WRITE) != 0) {
+				op_parts.add("WRITE");
+			}
+			if ((tool.permission_operation & Operation.EXECUTE) != 0) {
+				op_parts.add("EXECUTE");
+			}
+			string op_str = string.joinv(" | ", op_parts.to_array());
+			
 			GLib.debug("Permission requested for tool '%s' on '%s' (%s): %s", tool.name, tool.permission_target_path, op_str, tool.permission_question);
-			// Always allow READ requests, deny others
+			
+			// Always allow READ-only requests, deny others
 			if (tool.permission_operation == Operation.READ) {
 				return PermissionResponse.ALLOW_ONCE;
 			}

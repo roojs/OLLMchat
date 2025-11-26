@@ -64,9 +64,9 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		
 		/**
 		 * Signal emitted before applying edits to a file.
-		 * Handlers can return false to block the change.
+		 * Notification-only signal - use permission system to block operations.
 		 */
-		public signal bool before_change(string file_path, Gee.ArrayList<EditFileChange> edits);
+		public signal void before_change(string file_path, Gee.ArrayList<EditFileChange> edits);
 		
 		/**
 		 * Signal emitted after successfully applying edits to a file.
@@ -109,7 +109,8 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			
 			// Build permission question for WRITE (will be used in second step)
 			var normalized_path = this.normalize_file_path(this.file_path);
-			string question = @"Edit file '$(normalized_path)' with $(this.edits.size) edit$(this.edits.size == 1 ? "" : "s")?";
+			var edit_count_text = this.edits.size == 1 ? "1 edit" : this.edits.size.to_string() + " edits";
+			string question = "Write to file '" + normalized_path + "' (" + edit_count_text + ")?";
 			
 			// Set permission properties for WRITE operation
 			this.permission_target_path = normalized_path;
@@ -120,9 +121,8 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		}
 		
 		/**
-		 * Override execute() to handle two-step permission flow:
-		 * 1. Request READ permission to generate diff
-		 * 2. Request WRITE permission with diff display
+		 * Override execute() to handle permission flow:
+		 * Request WRITE permission (which automatically includes READ) to generate diff and write file.
 		 */
 		public override async string execute(Json.Object parameters)
 		{
@@ -133,36 +133,30 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			
 			var normalized_path = this.normalize_file_path(this.file_path);
 			
-			// Step 1: Request READ permission (request() checks storage first)
-			var read_tool = new ReadFile(this.client) {
-				file_path = this.file_path,
-				read_entire_file = true,
-				permission_target_path = normalized_path,
-				permission_operation = ChatPermission.Operation.READ,
-				permission_question = @"Read file '$(normalized_path)' to preview changes?"
-			};
-			
-			if (!(yield this.client.permission_provider.request(read_tool))) {
-				return "ERROR: Permission denied: Read access required to preview changes";
-			}
-			
-			// Read file and generate diff
-			string? diff_content = null;
-			try {
-				diff_content = yield this.generate_diff(normalized_path);
-			} catch (Error e) {
-				return "ERROR: Failed to read file for diff: " + e.message;
-			}
-			
-			// Step 2: Request WRITE permission with diff
-			// TODO: Pass diff_content to permission provider for display
-			// For now, the permission widget will need to be updated separately
-			this.permission_question = @"Edit file '$(normalized_path)' with $(this.edits.size) edit$(this.edits.size == 1 ? "" : "s")?";
+			// Request WRITE permission (which includes READ automatically)
+			// This allows us to read the file for diff generation and write the changes
+			var edit_count_text = this.edits.size == 1 ? "1 edit" : this.edits.size.to_string() + " edits";
+			this.permission_question = "Write to file '" + normalized_path + "' (" + edit_count_text + ")?";
 			this.permission_target_path = normalized_path;
 			this.permission_operation = ChatPermission.Operation.WRITE;
 			
 			if (!(yield this.client.permission_provider.request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
+			}
+			
+			// Generate diff or new file contents (we now have READ permission via WRITE)
+			// If file doesn't exist, generate new file contents instead of diff
+			string? preview_content = null;
+			var file_exists = GLib.FileUtils.test(normalized_path, GLib.FileTest.IS_REGULAR);
+			if (file_exists) {
+				try {
+					preview_content = yield this.generate_diff(normalized_path);
+				} catch (Error e) {
+					return "ERROR: Failed to read file for diff: " + e.message;
+				}
+			} else {
+				// File doesn't exist - generate new file contents
+				preview_content = yield this.generate_new_file_contents();
 			}
 			
 			// Execute the tool
@@ -177,13 +171,29 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		}
 		
 		/**
+		 * Generates new file contents for a file that doesn't exist yet.
+		 * Combines all edit replacements in order.
+		 */
+		private async string generate_new_file_contents()
+		{
+			string content = "";
+			foreach (var edit in this.edits) {
+				if (content != "" && !content.has_suffix("\n")) {
+					content += "\n";
+				}
+				content += edit.replacement;
+			}
+			return content;
+		}
+		
+		/**
 		 * Generates a unified diff showing the changes that will be made.
 		 */
 		private async string generate_diff(string file_path) throws Error
 		{
 			var file = GLib.File.new_for_path(file_path);
 			if (!file.query_exists()) {
-				throw new GLib.IOError.FAILED(@"File not found: $file_path");
+				throw new GLib.IOError.FAILED("File not found: " + file_path);
 			}
 			
 			// Create HashMap of start line -> Edit
@@ -232,8 +242,8 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			}
 			
 			// Generate diff header
-			string diff = @"--- $file_path (original)\n" +
-				 @"+++ $file_path (modified)\n";
+			string diff = "--- " + file_path + " (original)\n" +
+				 "+++ " + file_path + " (modified)\n";
 			
 			// Call toDiff on all edits
 			foreach (var edit in this.edits) {
@@ -249,26 +259,45 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			this.prepare(parameters);
 			
 			var normalized_path = this.normalize_file_path(this.file_path);
+			var file_exists = GLib.FileUtils.test(normalized_path, GLib.FileTest.IS_REGULAR);
 			
-			if (!GLib.FileUtils.test(normalized_path, GLib.FileTest.IS_REGULAR)) {
-				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $normalized_path");
+			// If file doesn't exist, validate that edits can create a new file
+			// For new files, edits should typically start at line 1
+			if (!file_exists) {
+				// Validate that edits are appropriate for a new file
+				// All edits should be insertions (start == end) or start at line 1
+				foreach (var edit in this.edits) {
+					if (edit.start != edit.end && edit.start != 1) {
+						throw new GLib.IOError.INVALID_ARGUMENT("Cannot create new file: edit starts at line " + edit.start.to_string() + " but file doesn't exist");
+					}
+				}
+			} else {
+				// File exists - validate edits normally
+				this.validate_edits();
 			}
 			
-			// Validate edits
-			this.validate_edits();
+			// Emit before_change signal (notification only - blocking handled by permission system)
+			this.before_change(normalized_path, this.edits);
 			
-			// Emit before_change signal
-			if (!this.before_change(normalized_path, this.edits)) {
-				throw new GLib.IOError.PERMISSION_DENIED("File edit blocked by signal handler");
+			// Check if permission status has changed (e.g., revoked by signal handler)
+			if (!this.client.permission_provider.check_permission(this)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
+			
+			// Log and notify that we're starting to write
+			GLib.debug("EditFile.execute_tool: Starting to write file %s (%d edit%s)", 
+				normalized_path, this.edits.size, this.edits.size == 1 ? "" : "s");
+			this.client.tool_message("Writing to file " + normalized_path + "...");
 			
 			// Apply edits using streaming approach
 			this.apply_edits(normalized_path);
 			
-			// Send status message
-			this.client.tool_message(@"Edited file $normalized_path ($(this.edits.size) edit$(this.edits.size == 1 ? "" : "s"))");
+			// Log and send status message after successful write
+			GLib.debug("EditFile.execute_tool: Successfully wrote file %s (%d edit%s)", 
+				normalized_path, this.edits.size, this.edits.size == 1 ? "" : "s");
+			this.client.tool_message("Wrote file " + normalized_path);
 			
-			return @"Successfully edited file: $normalized_path";
+			return "Successfully edited file: " + normalized_path;
 		}
 		
 		/**
@@ -308,9 +337,21 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		
 		/**
 		 * Applies edits to a file using a streaming approach.
+		 * Handles both existing files and new file creation.
 		 */
 		private void apply_edits(string file_path) throws Error
 		{
+			var file_exists = GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR);
+			
+			if (!file_exists) {
+				GLib.debug("EditFile.apply_edits: Creating new file %s", file_path);
+				this.create_new_file(file_path);
+				GLib.debug("EditFile.apply_edits: Successfully created new file %s", file_path);
+				return;
+			}
+			
+			GLib.debug("EditFile.apply_edits: Starting to apply edits to %s", file_path);
+			
 			// Create HashMap of start line -> Edit
 			var edits_by_start = new Gee.HashMap<int, EditFileChange>();
 			foreach (var edit in this.edits) {
@@ -322,8 +363,10 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			var timestamp = GLib.get_real_time().to_string();
 			var temp_file = GLib.File.new_for_path(GLib.Path.build_filename(
 				GLib.Environment.get_tmp_dir(),
-				@"ollmchat-edit-$(file_basename)-$(timestamp).tmp"
+				"ollmchat-edit-" + file_basename + "-" + timestamp + ".tmp"
 			));
+			GLib.debug("EditFile.apply_edits: Created temporary file %s", temp_file.get_path());
+			
 			var temp_output = new GLib.DataOutputStream(
 				temp_file.create(GLib.FileCreateFlags.NONE, null)
 			);
@@ -332,11 +375,13 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 			var input_file = GLib.File.new_for_path(file_path);
 			var input_data = new GLib.DataInputStream(input_file.read(null));
 			
+			GLib.debug("EditFile.apply_edits: Processing edits...");
 			this.process_edits(input_data, temp_output, edits_by_start);
 			
 			input_data.close(null);
 			temp_output.close(null);
 			
+			GLib.debug("EditFile.apply_edits: Replacing original file with temporary file");
 			// Replace original file with temporary file
 			var original_file = GLib.File.new_for_path(file_path);
 			try {
@@ -345,6 +390,45 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 				// Ignore if file doesn't exist
 			}
 			temp_file.move(original_file, GLib.FileCopyFlags.OVERWRITE, null, null);
+			GLib.debug("EditFile.apply_edits: Successfully replaced file %s", file_path);
+		}
+		
+		/**
+		 * Creates a new file with the contents from edits.
+		 */
+		private void create_new_file(string file_path) throws Error
+		{
+			// Ensure parent directory exists
+			var parent_dir = GLib.Path.get_dirname(file_path);
+			var dir = GLib.File.new_for_path(parent_dir);
+			if (!dir.query_exists()) {
+				try {
+					dir.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					throw new GLib.IOError.FAILED("Failed to create parent directory: " + e.message);
+				}
+			}
+			
+			// Create new file and write all edit replacements
+			var output_file = GLib.File.new_for_path(file_path);
+			var output_stream = new GLib.DataOutputStream(
+				output_file.create(GLib.FileCreateFlags.NONE, null)
+			);
+			
+			try {
+				foreach (var edit in this.edits) {
+					foreach (var new_line in edit.replacement.split("\n")) {
+						output_stream.put_string(new_line);
+						output_stream.put_byte('\n');
+					}
+				}
+			} finally {
+				try {
+					output_stream.close(null);
+				} catch (GLib.Error e) {
+					// Ignore close errors
+				}
+			}
 		}
 		
 		/**

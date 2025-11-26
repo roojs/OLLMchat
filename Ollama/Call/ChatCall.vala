@@ -211,7 +211,7 @@ namespace OLLMchat.Ollama
 		 */
 		public async ChatResponse toolsReply(ChatResponse response) throws Error
 		{
-			GLib.debug("ChatCall.toolsReply: Processing tool calls");
+			GLib.debug("ChatCall.toolsReply: Processing %d tool call(s)", response.message.tool_calls.size);
 			
 			// Only process tool calls if response is done and has tool_calls
 			// Tool calls can be present even when content is also present
@@ -228,7 +228,7 @@ namespace OLLMchat.Ollama
 			
 			// Execute each tool call and add tool reply messages directly
 			foreach (var tool_call in response.message.tool_calls) {
-				GLib.debug("ChatCall.toolsReply: Executing tool '%s' with id '%s'",
+				GLib.debug("ChatCall.toolsReply: Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
@@ -244,15 +244,21 @@ namespace OLLMchat.Ollama
 				// Execute the tool
 				try {
 					var result = yield this.client.tools.get(tool_call.function.name).execute(tool_call.function.arguments);
+					
+					// Log result summary (truncate if too long)
+					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
+					GLib.debug("ChatCall.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
+						tool_call.function.name, result.length, result_summary);
+					
 					this.messages.add(
 						new Message.tool_reply(
 							this, tool_call.id, 
 							tool_call.function.name,
 							result
 						));
-					GLib.debug("ChatCall.toolsReply: Tool '%s' executed successfully", tool_call.function.name);
 				} catch (Error e) {
-					GLib.warning("Error executing tool '%s': %s", tool_call.function.name, e.message);
+					GLib.warning("Error executing tool '%s' (id='%s'): %s", 
+						tool_call.function.name, tool_call.id, e.message);
 					this.client.tool_message("Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
