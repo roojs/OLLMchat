@@ -112,21 +112,15 @@ namespace OLLMchat.UI
 
 		// Create chat input
 		this.chat_input = new ChatInput() {
-			vexpand = false
+			vexpand = false,
+			show_models = this.show_models
 		};
 		this.chat_input.send_clicked.connect(this.on_send_clicked);
 		this.chat_input.stop_clicked.connect(this.on_stop_clicked);
 		this.append(this.chat_input);
 
-		// Set up model dropdown if enabled
-		if (this.show_models) {
-			this.chat_input.setup_model_dropdown(this.client);
-			// Load models asynchronously
-			Idle.add(() => {
-				this.chat_input.update_models.begin();
-				return false;
-			});
-		}
+		// Always set up model dropdown (widgets are always created, visibility is controlled)
+		this.chat_input.setup_model_dropdown(this.client);
 
 		// Connect to notify signal to propagate default_message when property is set
 		// messy but usefull for testing.

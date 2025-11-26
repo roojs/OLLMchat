@@ -32,14 +32,14 @@ namespace OLLMchat.UI
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private Gtk.Button action_button;
-		private Gtk.DropDown? model_dropdown = null;
-		private Gtk.Label? model_loading_label = null;
+		private Gtk.DropDown model_dropdown;
+		private Gtk.Label model_loading_label;
 		private GLib.ListStore? model_store = null;
 		private Gtk.SortListModel? sorted_models = null;
 		private Ollama.Client? client = null;
 		private bool is_streaming = false;
 		private bool is_loading_models = false;
-		private Gtk.MenuButton? tools_menu_button = null;
+		private Gtk.MenuButton tools_menu_button;
 
 		/**
 		* Default message text to display in the input field.
@@ -57,6 +57,13 @@ namespace OLLMchat.UI
 		}
 
 		/**
+		 * Whether to show the model selection dropdown.
+		 * 
+		 * @since 1.0
+		 */
+		public bool show_models { get; set; default = true; }
+
+		/**
 	 * Emitted when the send button is clicked or Enter is pressed.
 		 * 
 		 * @param text The message text to send
@@ -71,30 +78,31 @@ namespace OLLMchat.UI
 		 */
 		public signal void stop_clicked();
 
-	/**
-	 * Creates a new ChatInput instance.
-	 * 
-	 * @since 1.0
-	 */
-	public ChatInput()
-	{
-		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 5);
+		/**
+		* Creates a new ChatInput instance.
+		* 
+		* @since 1.0
+		*/
+		public ChatInput()
+		{
+			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 5);
 
-		GLib.debug("[ChatInput] Constructor called, default_message='%s' (length=%d)", this.default_message, this.default_message.length);
+			GLib.debug("[ChatInput] Constructor called, default_message='%s' (length=%d)", this.default_message, this.default_message.length);
 
-		// Create buffer with default message text
-		this.buffer = new Gtk.TextBuffer(null);
-		this.buffer.set_text(this.default_message, -1);
+				// Create buffer with default message text
+				this.buffer = new Gtk.TextBuffer(null);
+				this.buffer.set_text(this.default_message, -1);
 
-		// Create text view with buffer
-		this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
-			wrap_mode = Gtk.WrapMode.WORD,
-			margin_start = 10,
-			margin_end = 10,
-			margin_top = 5,
-			margin_bottom = 5
-		};
-		this.text_view.set_size_request(-1, 100); // Set minimum height
+			// Create text view with buffer
+			this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
+				wrap_mode = Gtk.WrapMode.WORD,
+				margin_start = 10,
+				margin_end = 10,
+				margin_top = 5,
+				margin_bottom = 5,
+				tooltip_text = "Ctrl+Enter to send, Enter adds new lines"
+			};
+			this.text_view.set_size_request(-1, 100); // Set minimum height
 
 			// Create scrolled window for text view
 			var scrolled = new Gtk.ScrolledWindow() {
@@ -112,14 +120,35 @@ namespace OLLMchat.UI
 				hexpand = true
 			};
 
-			// Model dropdown will be added here when setup_model_dropdown is called
-			// It will be on the left side of the button box
+			// Create model-related widgets (always created, visibility controlled later)
+			this.model_loading_label = new Gtk.Label("Loading Model data...") {
+				visible = false,
+				hexpand = false
+			};
+			
+			// Create empty dropdown (will be set up in setup_model_dropdown)
+			this.model_dropdown = new Gtk.DropDown(null, null) {
+				visible = false,
+				hexpand = false
+			};
+			
+			// Create tools menu button (will be set up in setup_model_dropdown)
+			this.tools_menu_button = new Gtk.MenuButton() {
+				icon_name = "document-properties",
+				tooltip_text = "Manage Tool Availability",
+				visible = false,
+				hexpand = false
+			};
+			
+			// Always add widgets to button box in order (visibility controlled by show_models and other conditions)
+			button_box.append(this.model_loading_label);
+			button_box.append(this.model_dropdown);
+			button_box.append(this.tools_menu_button);
 
 			// Add spacer to push button to the right
-			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			button_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true
-			};
-			button_box.append(spacer);
+			});
 			
 			// Create action button (Send/Stop) - will be on the right
 			this.action_button = new Gtk.Button.with_label("Send");
@@ -193,21 +222,19 @@ namespace OLLMchat.UI
 
 		private bool on_key_pressed(uint keyval, uint keycode, Gdk.ModifierType state)
 		{
-			// Enter key sends message (unless Ctrl+Enter or Shift+Enter for newline)
+			// Ctrl+Enter sends message, Enter adds newline
 			if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter) {
-				bool ctrl_pressed = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
-				bool shift_pressed = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
-
-				// Ctrl+Enter or Shift+Enter creates newline
-				if (ctrl_pressed || shift_pressed) {
-					return false; // Let default behavior handle it
+				// Ctrl+Enter sends message (if not streaming)
+				if ((state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+					if (!this.is_streaming) {
+						this.send_current_text();
+						return true; // Consume the event
+					}
+					return true; // Consume Ctrl+Enter even when streaming
 				}
 
-				// Enter sends message (if not streaming)
-				if (!this.is_streaming) {
-					this.send_current_text();
-					return true; // Consume the event
-				}
+				// Enter without Ctrl adds newline (let default behavior handle it)
+				return false;
 			}
 
 			return false;
@@ -218,13 +245,42 @@ namespace OLLMchat.UI
 			Gtk.TextIter start_iter, end_iter;
 			this.buffer.get_start_iter(out start_iter);
 			this.buffer.get_end_iter(out end_iter);
-			string text = this.buffer.get_text(start_iter, end_iter, false);
+			var text = this.buffer.get_text(start_iter, end_iter, false);
 
 			if (text.strip().length < 1) {
 				return;
 			}
 			this.send_clicked(text);
 			
+		}
+
+		/**
+		 * Updates the visibility of model-related widgets based on show_models property.
+		 * 
+		 * @since 1.0
+		 */
+		private void update_model_widgets_visibility()
+		{
+			this.model_dropdown.visible = this.show_models;
+			this.model_loading_label.visible = this.show_models && this.is_loading_models;
+			
+			// Tools button visibility is controlled by both show_models and model's can_call property
+			if (!this.show_models) {
+				this.tools_menu_button.visible = false;
+				return;
+			}
+			
+			// Update tools button visibility based on current model selection
+			if (this.model_dropdown.selected == Gtk.INVALID_LIST_POSITION || this.sorted_models == null) {
+				return;
+			}
+			
+			var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Model;
+			if (model == null) {
+				return;
+			}
+			
+			this.tools_menu_button.visible = model.can_call;
 		}
 
 		/**
@@ -241,9 +297,7 @@ namespace OLLMchat.UI
 			this.model_store = new GLib.ListStore(typeof(Ollama.Model));
 
 			// Create sorted model that sorts by name
-			var name_expression = new Gtk.PropertyExpression(typeof(Ollama.Model), null, "name");
-			var sorter = new Gtk.StringSorter(name_expression);
-			this.sorted_models = new Gtk.SortListModel(this.model_store, sorter);
+			this.sorted_models = new Gtk.SortListModel(this.model_store, new Gtk.StringSorter(new Gtk.PropertyExpression(typeof(Ollama.Model), null, "name")));
 
 			// Create shared factory for both button and popup (with icons, name, size)
 			var factory = new Gtk.SignalListItemFactory();
@@ -309,11 +363,8 @@ namespace OLLMchat.UI
 				// Property bindings are automatically cleaned up when objects are destroyed
 			});
 
-			// Create dropdown
-			this.model_dropdown = new Gtk.DropDown(this.sorted_models, null) {
-				visible = false,
-				hexpand = false
-			};
+			// Set up dropdown with models
+			this.model_dropdown.model = this.sorted_models;
 
 			// Use the same factory for both button and popup (with icons)
 			this.model_dropdown.set_factory(factory);
@@ -327,39 +378,27 @@ namespace OLLMchat.UI
 					return;
 				}
 				
-				var selected = this.model_dropdown.selected;
-				if (selected != Gtk.INVALID_LIST_POSITION) {
-					var model = this.sorted_models.get_item(selected) as Ollama.Model;
+				if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
+					var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Model;
 					
 					this.client.model = model.name;
 					// Set think based on model capability
 					this.client.think = model.is_thinking;
 					
 					// Update tools button visibility based on model's can_call property
-					if (this.tools_menu_button != null) {
-						this.tools_menu_button.visible = model.can_call;
-					}
+					this.update_model_widgets_visibility();
 				}
 			});
 
-			// Create loading label
-			this.model_loading_label = new Gtk.Label("Loading Model data...") {
-				visible = true,
-				hexpand = false
-			};
-
-			// Create tools menu button
+			// Set up tools menu button
 			this.setup_tools_menu_button();
-
-			// Add loading label, dropdown, and tools button to button box (before the Send button, on the left)
-			var button_box = this.get_last_child() as Gtk.Box;
-			if (button_box != null) {
-				button_box.prepend(this.model_loading_label);
-				button_box.prepend(this.model_dropdown);
-				if (this.tools_menu_button != null) {
-					// Insert tools button after the dropdown
-					button_box.insert_child_after(this.tools_menu_button, this.model_dropdown);
-				}
+			
+			// Load models asynchronously if enabled
+			if (this.show_models) {
+				Idle.add(() => {
+					this.update_models.begin();
+					return false;
+				});
 			}
 		}
 
@@ -371,14 +410,12 @@ namespace OLLMchat.UI
 		private void setup_tools_menu_button()
 		{
 			// Create popover for tools menu
-			var popover = new Gtk.Popover();
 			var popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
 				margin_start = 10,
 				margin_end = 10,
 				margin_top = 10,
 				margin_bottom = 10
 			};
-			popover.set_child(popover_box);
 
 			// Create checkboxes for each tool
 			foreach (var tool in this.client.tools.values) {
@@ -394,7 +431,9 @@ namespace OLLMchat.UI
 				tooltip_text = "Manage Tool Availability",
 				visible = false,
 				hexpand = false,
-				popover = popover
+				popover = new Gtk.Popover() {
+					child = popover_box
+				}
 			};
 		}
 
@@ -422,10 +461,8 @@ namespace OLLMchat.UI
 				}
 				
 				// Hide loading label and show dropdown
-				if (this.model_loading_label != null) {
-					this.model_loading_label.visible = false;
-				}
-				this.model_dropdown.visible = true;
+				this.model_loading_label.visible = false;
+				this.update_model_widgets_visibility();
 
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
@@ -439,9 +476,7 @@ namespace OLLMchat.UI
 						// Update client.think based on selected model (do this directly, not via signal)
 						this.client.think = model.is_thinking;
 						// Update tools button visibility based on model's can_call property
-						if (this.tools_menu_button != null) {
-							this.tools_menu_button.visible = model.can_call;
-						}
+						this.update_model_widgets_visibility();
 						break;
 					}
 				}
