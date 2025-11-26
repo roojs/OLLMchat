@@ -116,20 +116,15 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public void close_state()
 		{
-			// Insert closing tag if tag_name is not empty
-			if (this.tag_name != "") {
-				this.insert_end_tag();
-			}
-			
-			// Insert accumulated text content
+			// Insert accumulated text content first
 			if (this.buffer.len > 0) {
 				this.insert_content();
 			}
 			
-			// Update end_inner mark to point to end of content
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.end_inner);
-			this.render.buffer.move_mark(this.end_inner, iter);
+			// Insert closing tag if tag_name is not empty
+			if (this.tag_name != "") {
+				this.insert_end_tag();
+			}
 			
 			// Pop to parent or reset to top_state.state
 			if (this.parent != null) {
