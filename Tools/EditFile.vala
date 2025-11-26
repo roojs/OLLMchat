@@ -56,7 +56,10 @@ When applying a diff, ensure that the diff is correct and will not cause syntax 
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] The path to the file to edit.
-@param edits {array} [required] List of edits to apply. Each edit has 'range' [start, end] and 'replacement' text.""";
+@param edits {array<edittype>} [required] List of edits to apply.
+@type edittype {object} Detail of a specific edit operation.
+@property edittype.range {array<integer>} Range of lines to edit, specified as [start, end]. The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+@property edittype.replacement {string} The replacement text.""";
 		} }
 		
 		/**

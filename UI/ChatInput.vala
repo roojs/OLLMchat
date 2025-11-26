@@ -86,6 +86,8 @@ namespace OLLMchat.UI
 		public ChatInput()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 5);
+			// Allow vertical expansion so input area can grow when paned is resized
+			this.vexpand = true;
 
 			GLib.debug("[ChatInput] Constructor called, default_message='%s' (length=%d)", this.default_message, this.default_message.length);
 
@@ -102,15 +104,25 @@ namespace OLLMchat.UI
 				margin_bottom = 5,
 				tooltip_text = "Ctrl+Enter to send, Enter adds new lines"
 			};
-			this.text_view.set_size_request(-1, 100); // Set minimum height
+			// Set initial height for 3 lines of text visible
+			// The text view will grow naturally with content when the scrolled window expands
+			this.text_view.set_size_request(-1, 60);
+			// Add CSS class for styling
+			this.text_view.add_css_class("chat-input-text");
 
 			// Create scrolled window for text view
 			var scrolled = new Gtk.ScrolledWindow() {
-				vexpand = false
+				vexpand = true,  // Allow vertical expansion when paned is resized
+				hexpand = true
 			};
+			// Set minimum size for 3 lines of text visible (~60px for text + margins)
+			// This ensures we start with 3 lines visible, but can grow without limit
+			scrolled.set_size_request(-1, 60);
 			scrolled.set_child(this.text_view);
+			//scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
 			scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
-			this.append(scrolled);
+			// Add CSS class for styling
+ 			this.append(scrolled);
 
 			// Create button box with dropdown on left, button on right
 			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
@@ -425,15 +437,9 @@ namespace OLLMchat.UI
 				popover_box.append(check_button);
 			}
 
-			// Create menu button with icon
-			this.tools_menu_button = new Gtk.MenuButton() {
-				icon_name = "document-properties",
-				tooltip_text = "Manage Tool Availability",
-				visible = false,
-				hexpand = false,
-				popover = new Gtk.Popover() {
-					child = popover_box
-				}
+			// Configure the existing menu button (created in constructor) with popover
+			this.tools_menu_button.popover = new Gtk.Popover() {
+				child = popover_box
 			};
 		}
 
@@ -460,10 +466,6 @@ namespace OLLMchat.UI
 					this.model_store.append(model);
 				}
 				
-				// Hide loading label and show dropdown
-				this.model_loading_label.visible = false;
-				this.update_model_widgets_visibility();
-
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
 				if (this.client.model != "") {
@@ -481,6 +483,11 @@ namespace OLLMchat.UI
 					}
 				}
 				
+				// Models are now loaded - hide loading label and show dropdown
+				// Set is_loading_models to false so update_model_widgets_visibility() hides the label
+				this.is_loading_models = false;
+				this.update_model_widgets_visibility();
+				
 				// Asynchronously fetch detailed info for each model
 				// This will automatically update the UI since we're updating the same Model objects
 				foreach (var model in models_list) {
@@ -491,6 +498,9 @@ namespace OLLMchat.UI
 						// Continue with other models
 					}
 				}
+				
+				// Update tools button visibility now that detailed model info (including can_call) is available
+				this.update_model_widgets_visibility();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load models: %s", e.message);
 				// Don't show error to user - dropdown will just remain hidden

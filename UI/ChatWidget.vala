@@ -34,12 +34,14 @@ namespace OLLMchat.UI
 		[CCode (type = "OLLMchatUIChatPermission*", transfer = "none")]
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
+		private Gtk.Paned paned;
 		[CCode (type = "OLLMchatOllamaClient*", transfer = "none")]
 		public Ollama.Client client { get; private set; }
 		[CCode (type = "OLLMchatOllamaChatCall*", transfer = "none")]
 		public Ollama.ChatCall? current_chat { get; private set; default = null; }
 		private bool is_streaming_active = false;
 		private string? last_sent_text = null;
+		private int min_bottom_size = 115;
 
 		/**
 		* Default message text to display in the input field.
@@ -95,12 +97,20 @@ namespace OLLMchat.UI
 		this.client = client;
 		this.setup_streaming_callback();
 
+		// Create paned widget to allow resizing between chat view and input area
+		this.paned = new Gtk.Paned(Gtk.Orientation.VERTICAL) {
+			hexpand = true,
+			vexpand = true
+		};
+
 		// Create chat view with reference to this widget
 		this.chat_view = new ChatView(this) {
 			hexpand = true,
 			vexpand = true
 		};
-		this.append(this.chat_view);
+		this.paned.set_start_child(this.chat_view);
+		// Allow start child to resize when paned resizes (top pane should grow/shrink)
+		this.paned.set_resize_start_child(true);
 		
 		// Connect tool_message signal after chat_view is created
 		this.client.tool_message.connect(this.chat_view.append_tool_message);
@@ -108,20 +118,49 @@ namespace OLLMchat.UI
 		// Connect send_starting signal to show waiting indicator
 		this.client.send_starting.connect(this.chat_view.show_waiting_indicator);
 
+		// Create a box for the bottom pane containing permission widget and input
+		var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			hexpand = true,
+			vexpand = true  // Allow vertical expansion
+		};
+		// Set minimum size request on the bottom box to enforce minimum height
+		// GTK4 Paned respects child widget size requests
+		bottom_box.set_size_request(-1, this.min_bottom_size);
+
 		// Create permission widget (hidden by default)
 		this.permission_widget = new ChatPermission() {
 			vexpand = false
 		};
-		this.append(this.permission_widget);
+		bottom_box.append(this.permission_widget);
 
 		// Create chat input
 		this.chat_input = new ChatInput() {
-			vexpand = false,
+			vexpand = true,
 			show_models = this.show_models
 		};
 		this.chat_input.send_clicked.connect(this.on_send_clicked);
 		this.chat_input.stop_clicked.connect(this.on_stop_clicked);
-		this.append(this.chat_input);
+		bottom_box.append(this.chat_input);
+
+		// Set bottom box as end child of paned
+		this.paned.set_end_child(bottom_box);
+		// Prevent end child from resizing when paned resizes - maintain fixed size
+		this.paned.set_resize_end_child(false);
+		// Set shrink-end-child to false to prevent shrinking below size request
+		// This ensures the bottom pane maintains its minimum height
+		this.paned.set_shrink_end_child(false);
+		
+		// Calculate minimum size based on component minimums:
+		// - ScrolledWindow minimum: 60px (from ChatInput scrolled.set_size_request)
+		// - Button box: ~50px (button height ~35px + margins 10px top + 5px bottom)
+		// - Spacing: 5px (from ChatInput spacing)
+		// - Permission widget: 0px (hidden by default)
+		// Total: ~115px minimum
+		// The minimum size is enforced via set_size_request() on bottom_box
+		// and set_shrink_end_child(false) on the paned
+
+		// Add paned to this widget
+		this.append(this.paned);
 
 		// Always set up model dropdown (widgets are always created, visibility is controlled)
 		this.chat_input.setup_model_dropdown(this.client);
@@ -398,6 +437,7 @@ namespace OLLMchat.UI
 			// Note: We preserve current_chat to maintain conversation history
 			// The user can continue the conversation after stopping
 		}
+
 
 	}
 }

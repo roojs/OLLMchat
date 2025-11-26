@@ -141,6 +141,34 @@ namespace OLLMchat.Ollama
 		}
 
 		/**
+		 * Sets the model from the first running model on the server (ps()).
+		 * 
+		 * If running models are found, sets this.model to the first model's name.
+		 * If no running models are found or an error occurs, leaves model unchanged.
+		 * 
+		 * @since 1.0
+		 */
+		public void set_model_from_ps()
+		{
+			var main_loop = new MainLoop();
+			Gee.ArrayList<Model>? running_models = null;
+			
+			this.ps.begin((obj, res) => {
+				try {
+					running_models = this.ps.end(res);
+					if (running_models.size > 0) {
+						this.model = running_models[0].model;
+					}
+				} catch (Error e) {
+					GLib.warning("Failed to set model from ps(): %s", e.message);
+				}
+				main_loop.quit();
+			});
+			
+			main_loop.run();
+		}
+
+		/**
 		* Gets detailed information about a specific model including capabilities and stores it in available_models.
 		* 
 		* If the model already exists in available_models, it will be updated with the new data using updateFrom().

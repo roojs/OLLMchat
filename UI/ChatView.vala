@@ -979,9 +979,36 @@ namespace OLLMchat.UI
 				wrap_mode = Gtk.WrapMode.WORD,
 				hexpand = true,
 				vexpand = false,
+				can_focus = false,  // Prevent sourceview from grabbing focus
+				focus_on_click = false,  // Prevent focus on click
 				css_classes = { "code-editor" }
 			};
 			source_view.set_buffer(source_buffer);
+			
+			// Prevent clicks in sourceview from causing textview to scroll
+			// Store scroll position before any interaction and restore it
+			var click_controller = new Gtk.GestureClick();
+			double stored_scroll_pos = 0.0;
+			click_controller.pressed.connect((n_press, x, y) => {
+				// Store current scroll position
+				var vadjustment = this.scrolled_window.vadjustment;
+				if (vadjustment != null) {
+					stored_scroll_pos = vadjustment.value;
+				}
+			});
+			click_controller.released.connect((n_press, x, y) => {
+				// Restore scroll position after click to prevent jump
+				var vadjustment = this.scrolled_window.vadjustment;
+				if (vadjustment != null) {
+					GLib.Idle.add(() => {
+						if (vadjustment != null) {
+							vadjustment.value = stored_scroll_pos;
+						}
+						return false;
+					});
+				}
+			});
+			source_view.add_controller(click_controller);
 			
 			// Connect to buffer changes to ensure TextView scrolls correctly
 			// When SourceView content changes, scroll TextView to show the bottom of the SourceView
@@ -1019,6 +1046,74 @@ namespace OLLMchat.UI
 			this.current_source_view = this.create_source_view(language_id);
 			this.current_source_buffer = (GtkSource.Buffer) this.current_source_view.buffer;
 
+			// Create a vertical container box for button header and SourceView
+			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Create horizontal box for button at top-right
+			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Add spacer to push button to the right
+			button_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true
+			});
+			
+			// Create Copy to Clipboard button
+			// Capture the specific source_buffer for this code block (not the class member)
+			var source_buffer_for_button = this.current_source_buffer;
+			var copy_button = new Gtk.Button.with_label("Copy to Clipboard") {
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				margin_top = 5,
+				margin_bottom = 2,
+				can_focus = false,  // Prevent button from grabbing focus
+				focus_on_click = false  // Prevent focus on click
+			};
+			
+			// Set cursor to pointer (fixes issue with TextView showing text cursor)
+			var cursor = new Gdk.Cursor.from_name("pointer", null);
+			if (cursor != null) {
+				copy_button.set_cursor(cursor);
+			}
+			
+			// Connect button click handler - use the captured buffer, not the class member
+			copy_button.clicked.connect(() => {
+				// Store current scroll position to restore it after copy
+				var vadjustment = this.scrolled_window.vadjustment;
+				double scroll_position = 0.0;
+				if (vadjustment != null) {
+					scroll_position = vadjustment.value;
+				}
+				
+				// Copy to clipboard
+				this.copy_source_view_to_clipboard(source_buffer_for_button);
+				
+				// Restore scroll position after a brief delay to prevent jump
+				GLib.Idle.add(() => {
+					if (vadjustment != null) {
+						vadjustment.value = scroll_position;
+					}
+					return false;
+				});
+			});
+			
+			// Add button to button box (right side)
+			button_box.append(copy_button);
+			
+			// Add button box to container
+			container_box.append(button_box);
+			
+			// Add SourceView to container (expanding)
+			this.current_source_view.hexpand = true;
+			this.current_source_view.vexpand = true;
+			container_box.append(this.current_source_view);
+
 			// Wrap in Frame for visibility and styling
 			var frame = new Gtk.Frame(null) {
 				hexpand = true,
@@ -1027,7 +1122,7 @@ namespace OLLMchat.UI
 				margin_top = 5,
 				margin_bottom = 5
 			};
-			frame.set_child(this.current_source_view);
+			frame.set_child(container_box);
 			
 			// Style the frame with white background and rounded corners
 			frame.add_css_class("code-block-box");
@@ -1057,6 +1152,37 @@ namespace OLLMchat.UI
 			// Set reasonable size for code block (smaller for single-line content)
 			this.current_source_view.height_request = 25;
 			this.current_source_view.set_visible(true);
+		}
+
+		/**
+		 * Copies the content of a SourceView buffer to the clipboard.
+		 * 
+		 * @param source_buffer The SourceView buffer to copy from
+		 */
+		private void copy_source_view_to_clipboard(GtkSource.Buffer? source_buffer)
+		{
+			if (source_buffer == null) {
+				return;
+			}
+			
+			// Get all text from the buffer
+			Gtk.TextIter start_iter, end_iter;
+			source_buffer.get_start_iter(out start_iter);
+			source_buffer.get_end_iter(out end_iter);
+			string text = source_buffer.get_text(start_iter, end_iter, false);
+			
+			if (text.length == 0) {
+				return;
+			}
+			
+			// Get the clipboard and set the text
+			var display = Gdk.Display.get_default();
+			if (display == null) {
+				return;
+			}
+			
+			var clipboard = display.get_clipboard();
+			clipboard.set_text(text);
 		}
 
 		/**

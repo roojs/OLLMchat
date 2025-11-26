@@ -58,14 +58,20 @@
         <h1 class="main_title">parse_parameter_description_string</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><span class="method">parse_parameter_description_string</span></b> (<span class="main_basic_type"><span class="class">string</span></span> in_desc)
+        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><span class="method">parse_parameter_description_string</span></b> (<span class="main_basic_type"><span class="class">string</span></span> in_desc, <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Ollama.ParamObject.html" class="class">ParamObject</a></span>&gt; type_definitions)
         </div>
         <div class="description">
           <p>Parses a single parameter description and adds it to the function's parameters property.</p>
-          <p>Format: @param parameter_name {type} [required|optional] Parameter description here</p>
-          <p>For now, only handles simple types (string, integer, boolean). Array types are ignored.</p>
+          <p>Format: @param parameter_name {type} [required|optional] Parameter description here Format: @param parameter_name {array&lt;type&gt;} 
+            [required|optional] Parameter description here</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">type_definitions</td>
+              <td>
+                <p>Map of type definitions for resolving array&lt;type&gt; references </p>
+              </td>
+            </tr>
             <tr class="main_parameter_table_unknown_parameter">
               <td class="main_parameter_table_name">desc</td>
               <td>

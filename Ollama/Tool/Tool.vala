@@ -50,11 +50,15 @@ namespace OLLMchat.Ollama
 			this.client = client;
 			this.function = new Function(this);
 			
-			 
+			// Parse parameter description in two passes:
+			// 1. Collect @type and @property declarations
+			// 2. Parse @param declarations, resolving types
 			
+			var type_definitions = new Gee.HashMap<string, ParamObject>();
 			var lines = this.parameter_description.split("\n");
-			var current_param = "";
+			var current_decl = "";
 			
+			// First pass: collect @type and @property declarations
 			foreach (var line in lines) {
 				var stripped = line.strip();
 				if (stripped == "") {
@@ -62,25 +66,55 @@ namespace OLLMchat.Ollama
 				}
 				
 				if (stripped.has_prefix("@")) {
+					// Process previous declaration if we have one
+					if (current_decl != "") {
+						this.parse_type_or_property(current_decl, type_definitions);
+					}
+					// Start new declaration
+					current_decl = stripped;
+					continue;
+				}
+				
+				// Continuation of current declaration
+				if (current_decl == "") {
+					continue;
+				}
+				current_decl += " " + stripped;
+			}
+			
+			// Process any leftover declaration at the end
+			if (current_decl != "" && (current_decl.has_prefix("@type") || current_decl.has_prefix("@property"))) {
+				this.parse_type_or_property(current_decl, type_definitions);
+			}
+			
+			// Second pass: parse @param declarations
+			current_decl = "";
+			foreach (var line in lines) {
+				var stripped = line.strip();
+				if (stripped == "") {
+					continue;
+				}
+				
+				if (stripped.has_prefix("@param")) {
 					// Process previous parameter if we have one
-					if (current_param != "") {
-						this.parse_parameter_description_string(current_param);
+					if (current_decl != "") {
+						this.parse_parameter_description_string(current_decl, type_definitions);
 					}
 					// Start new parameter
-					current_param = stripped;
+					current_decl = stripped;
 					continue;
 				}
 				
 				// Continuation of current parameter
-				if (current_param == "") {
+				if (current_decl == "" || !current_decl.has_prefix("@param")) {
 					continue;
 				}
-				current_param += " " + stripped;
+				current_decl += " " + stripped;
 			}
 			
 			// Process any leftover parameter at the end
-			if (current_param != "") {
-				this.parse_parameter_description_string(current_param);
+			if (current_decl != "" && current_decl.has_prefix("@param")) {
+				this.parse_parameter_description_string(current_decl, type_definitions);
 			}
 		}
 		
@@ -94,15 +128,158 @@ namespace OLLMchat.Ollama
 		}
 		
 		/**
+		 * Parses @type and @property declarations.
+		 * 
+		 * Format: @type typename {object} Description
+		 * Format: @property typename.propertyname {type} Description
+		 * 
+		 * @param desc The declaration string (must start with @type or @property)
+		 * @param type_definitions Map to store type definitions
+		 */
+		private void parse_type_or_property(string in_desc, Gee.HashMap<string, ParamObject> type_definitions)
+		{
+			var desc = in_desc.strip();
+			
+			if (desc.has_prefix("@type")) {
+				this.parse_type_declaration(desc, type_definitions);
+				return;
+			}
+			
+			if (desc.has_prefix("@property")) {
+				this.parse_property_declaration(desc, type_definitions);
+			}
+		}
+		
+		private void parse_type_declaration(string desc, Gee.HashMap<string, ParamObject> type_definitions)
+		{
+			var tokens = desc.split(" ");
+			if (tokens.length < 3) {
+				return;
+			}
+			
+			var type_name = tokens[1];
+			var type_token = tokens[2];
+			
+			if (!type_token.has_prefix("{") || !type_token.has_suffix("}")) {
+				return;
+			}
+			
+			var type_value = type_token.substring(1, type_token.length - 2);
+			if (type_value != "object") {
+				return;
+			}
+			
+			// Extract description (everything after the type)
+			string description = "";
+			for (int i = 3; i < tokens.length; i++) {
+				if (description != "") {
+					description += " ";
+				}
+				description += tokens[i];
+			}
+			
+			// Create or get the type definition
+			if (!type_definitions.has_key(type_name)) {
+				type_definitions[type_name] = new ParamObject.with_name(type_name, description, false);
+			}
+		}
+		
+		private void parse_property_declaration(string desc, Gee.HashMap<string, ParamObject> type_definitions)
+		{
+			var tokens = desc.split(" ");
+			if (tokens.length < 3) {
+				return;
+			}
+			
+			var property_path = tokens[1];
+			if (!property_path.contains(".")) {
+				return;
+			}
+			
+			var parts = property_path.split(".");
+			if (parts.length != 2) {
+				return;
+			}
+			
+			var type_name = parts[0];
+			var property_name = parts[1];
+			var type_token = tokens[2];
+			
+			if (!type_token.has_prefix("{") || !type_token.has_suffix("}")) {
+				return;
+			}
+			
+			var property_type = type_token.substring(1, type_token.length - 2);
+			
+			// Extract description (everything after the type)
+			string description = "";
+			for (int i = 3; i < tokens.length; i++) {
+				if (description != "") {
+					description += " ";
+				}
+				description += tokens[i];
+			}
+			
+			// Get or create the type definition
+			if (!type_definitions.has_key(type_name)) {
+				type_definitions[type_name] = new ParamObject.with_name(type_name, "", false);
+			}
+			
+			var type_obj = type_definitions[type_name];
+			
+			// Parse property type and add directly to type_obj
+			if (property_type.has_prefix("array<") && property_type.has_suffix(">")) {
+				var item_type = property_type.substring(6, property_type.length - 7);
+				
+				if (item_type == "integer") {
+					type_obj.properties.add(new ParamArray.with_name(
+						property_name,
+						new ParamSimple.with_values("item", "integer", "", false),
+						description,
+						true
+					));
+					return;
+				}
+				
+				if (type_definitions.has_key(item_type)) {
+					type_obj.properties.add(new ParamArray.with_name(
+						property_name,
+						type_definitions[item_type],
+						description,
+						true
+					));
+					return;
+				}
+				
+				// Array of simple type
+				type_obj.properties.add(new ParamArray.with_name(
+					property_name,
+					new ParamSimple.with_values("item", item_type, "", false),
+					description,
+					true
+				));
+				return;
+			}
+			
+			// Simple type
+			type_obj.properties.add(new ParamSimple.with_values(
+				property_name,
+				property_type,
+				description,
+				true
+			));
+		}
+		
+		/**
 		 * Parses a single parameter description and adds it to the function's parameters property.
 		 * 
 		 * Format: @param parameter_name {type} [required|optional] Parameter description here
-		 * 
-		 * For now, only handles simple types (string, integer, boolean). Array types are ignored.
+		 * Format: @param parameter_name {array<type>} [required|optional] Parameter description here
 		 * 
 		 * @param desc The parameter description string for a single parameter (must start with @param)
+		 * @param type_definitions Map of type definitions for resolving array<type> references
 		 */
-		protected void parse_parameter_description_string(string in_desc)
+		protected void parse_parameter_description_string(string in_desc, Gee.HashMap<string, ParamObject> type_definitions)
 		{
 			var desc = in_desc.strip();
 			if (!desc.has_prefix("@param")) {
@@ -137,9 +314,6 @@ namespace OLLMchat.Ollama
 					case ParseState.TYPE:
 						if (token.has_prefix("{") && token.has_suffix("}")) {
 							param_type = token.substring(1, token.length - 2);
-							if (param_type == "array") {
-								return; // Skip array types for now
-							}
 							state = ParseState.REQUIRED;
 							break;
 						} 
@@ -174,14 +348,40 @@ namespace OLLMchat.Ollama
 						break;
 				}
 			}
-			if (state != ParseState.DESCRIPTION) {
+			if (state != ParseState.DESCRIPTION && state != ParseState.REQUIRED) {
 				GLib.error("Invalid parameter description: %s", desc);
+			}
+			
+			// Handle array types: array<type>
+			if (param_type.has_prefix("array<") && param_type.has_suffix(">")) {
+				var item_type = param_type.substring(6, param_type.length - 7);
+				
+				if (type_definitions.has_key(item_type)) {
+					this.function.parameters.properties.add(new ParamArray.with_name(
+						param_name,
+						type_definitions[item_type],
+						description,
+						required
+					));
+					return;
+				}
+			 
+				this.function.parameters.properties.add(new ParamArray.with_name(
+					param_name,
+					new ParamSimple.with_values("item", item_type, "", false),
+					description,
+					required
+				));
 				return;
 			}
-			 
-			var param = new ParamSimple.with_values(param_name, param_type, description, required);
-			this.function.parameters.properties.add(param);
 			
+			// Simple type
+			this.function.parameters.properties.add(new ParamSimple.with_values(
+				param_name,
+				param_type,
+				description,
+				required
+			));
 		}
 
 		public unowned ParamSpec? find_property(string name)

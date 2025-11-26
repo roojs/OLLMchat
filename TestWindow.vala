@@ -64,7 +64,7 @@ namespace OLLMchat
 			/* 
 {
 	"url": "http://192.168.88.14:11434/api",
-	"model": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
+	//"model": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
 	"api_key": "your-api-key-here"
 }
 			 */
@@ -85,13 +85,16 @@ namespace OLLMchat
 			
 			var client = new Ollama.Client() {
 				url = obj.get_string_member("url"),
-				model = obj.get_string_member("model"),
+				//model = obj.get_string_member("model"),
 				api_key = obj.get_string_member("api_key"),
 				stream = true,
 				think =  obj.has_member("think") ?  obj.get_boolean_member("api_key") : false,
 				keep_alive = "5m",
 				prompt_assistant = code_assistant
 			};
+			
+			// Try to set model from running models on server
+			client.set_model_from_ps();
 			
 			// Add tools to the client
 			client.addTool(new Tools.ReadFile(client));
