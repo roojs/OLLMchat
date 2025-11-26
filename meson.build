@@ -182,14 +182,26 @@ ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
 )
 
 # GObject Introspection for UI library
-# Note: GIR generation may fail if symbols aren't properly exported
-# This is optional and can be fixed later if needed
+# Identifier prefix is 'OLLMchat' because the UI library contains symbols from
+# multiple namespaces (OLLMchat.ChatPermission, OLLMchat.ToolsUI, OLLMchat.UI)
+# that all start with 'OLLMchat'
+# We include the base library GIR so the UI library can reference base types
+# For Vala libraries, meson doesn't automatically populate the filelist with the header.
+# We need to pass the header file explicitly in the 'sources' parameter.
+# The header file is generated in the build directory by the Vala compiler.
+ollmchat_ui_header_file = meson.current_build_dir() / 'ollmchat-ui.h'
 ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
   namespace: 'OLLMchatUI',
   nsversion: '1.0',
   identifier_prefix: 'OLLMchat',
   symbol_prefix: 'ollmchat',
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'Gee-0.8'],
+  sources: [ollmchat_ui_header_file],
+  link_with: [ollmchat_base_lib],
+  extra_args: [
+    '--extra-library=' + meson.current_build_dir() / 'libollmchat.a',
+    '--accept-unprefixed'
+  ],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'Gee-0.8', ollmchat_gir[0]],
   install: true,
   fatal_warnings: false
 )
