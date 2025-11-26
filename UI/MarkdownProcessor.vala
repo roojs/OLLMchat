@@ -31,6 +31,7 @@ namespace OLLMchat.UI
 	public class MarkdownProcessor : Object
 	{
 		private static MarkdownProcessor ? _instance;
+		[CCode (return_value_type = "OLLMchatUIMarkdownProcessor*", transfer = "none")]
 		public static MarkdownProcessor get_default ()
 		{
 			if (_instance == null)

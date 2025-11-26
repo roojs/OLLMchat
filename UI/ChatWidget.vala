@@ -29,13 +29,17 @@ namespace OLLMchat.UI
 	 */
 	public class ChatWidget : Gtk.Box
 	{
+		[CCode (type = "OLLMchatUIChatView*", transfer = "none")]
 		public ChatView chat_view { get; private set; }
+		[CCode (type = "OLLMchatUIChatPermission*", transfer = "none")]
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
+		[CCode (type = "OLLMchatOllamaClient*", transfer = "none")]
 		public Ollama.Client client { get; private set; }
-	public Ollama.ChatCall? current_chat { get; private set; default = null; }
-	private bool is_streaming_active = false;
-	private string? last_sent_text = null;
+		[CCode (type = "OLLMchatOllamaChatCall*", transfer = "none")]
+		public Ollama.ChatCall? current_chat { get; private set; default = null; }
+		private bool is_streaming_active = false;
+		private string? last_sent_text = null;
 
 		/**
 		* Default message text to display in the input field.

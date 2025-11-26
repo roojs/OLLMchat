@@ -40,7 +40,7 @@
         <h1 class="main_title">application</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Application</span></span>? <b><span class="property">application</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition">[ <span class="main_type">CCode</span> ( transfer = <span class="main_literal">"none"</span> ,  type = <span class="main_literal">"GApplication*"</span> ) ]<br/><span class="main_keyword">public</span> <span class="main_type"><span class="class">Application</span></span>? <b><span class="property">application</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
           <p>GLib.Application instance to use for sending notifications. If null, notifications will not be sent.</p>

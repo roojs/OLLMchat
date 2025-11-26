@@ -39,8 +39,8 @@ namespace OLLMchat.UI
 
 		private ChatWidget? chat_widget = null;
 		private Gtk.ScrolledWindow scrolled_window;
-		public Gtk.TextView text_view { get; private set; }
-		public Gtk.TextBuffer buffer { get; private set; }
+		internal Gtk.TextView text_view { get; private set; }
+		internal Gtk.TextBuffer buffer { get; private set; }
 		private string current_markdown_content = "";
 		private string last_line = "";
 		private int last_chunk_start = 0;
@@ -953,6 +953,7 @@ namespace OLLMchat.UI
 		 * @param language_id The language identifier for syntax highlighting
 		 * @return A configured SourceView widget
 		 */
+		[CCode (return_value_type = "GtkSourceView*", transfer = "full")]
 		public GtkSource.View create_source_view(string? language_id)
 		{
 			// Create buffer with language if specified
@@ -1187,6 +1188,7 @@ namespace OLLMchat.UI
 		 * @return The TextChildAnchor that can be used to remove the widget later
 		 * @since 1.0
 		 */
+		[CCode (return_value_type = "GtkTextChildAnchor*", transfer = "full")]
 		public Gtk.TextChildAnchor add_widget_frame(Gtk.Frame frame)
 		{
 			// Ensure frame is unparented before adding (required for GTK4)

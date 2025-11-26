@@ -133,7 +133,7 @@ namespace OLLMchat.Ollama
 			}
 		}
 
-		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			if (property_name != "messages") {
 				return default_deserialize_property(property_name, out value, pspec, property_node);

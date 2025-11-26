@@ -19,32 +19,33 @@
 namespace OLLMchat.MarkdownGtk
 {
 	// Static callback wrappers for md4c parser
-	public static int md4c_enter_block(MD4C.BlockType type, void* detail, void* userdata)
+	// These are internal C callbacks and should not be exposed in GIR
+	internal static int md4c_enter_block(MD4C.BlockType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_enter_block(type, detail);
 	}
 	
-	public static int md4c_leave_block(MD4C.BlockType type, void* detail, void* userdata)
+	internal static int md4c_leave_block(MD4C.BlockType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_leave_block(type, detail);
 	}
 	
-	public static int md4c_enter_span(MD4C.SpanType type, void* detail, void* userdata)
+	internal static int md4c_enter_span(MD4C.SpanType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_enter_span(type, detail);
 	}
 	
-	public static int md4c_leave_span(MD4C.SpanType type, void* detail, void* userdata)
+	internal static int md4c_leave_span(MD4C.SpanType type, void* detail, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_leave_span(type, detail);
 	}
 	
 	[CCode (cname = "oll_mchat_markdown_gtk_md4c_text")]
-	public static int md4c_text(MD4C.TextType type, string text, uint size, void* userdata)
+	internal static int md4c_text(MD4C.TextType type, string text, uint size, void* userdata)
 	{
 		var render = (Render)userdata;
 		return render.on_text(type, text, size);
@@ -165,7 +166,7 @@ namespace OLLMchat.MarkdownGtk
 			this.buffer.move_mark(end_mark, end_iter);
 		}
 		
-		public int on_enter_block(MD4C.BlockType type, void* detail)
+		internal int on_enter_block(MD4C.BlockType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -263,6 +264,8 @@ namespace OLLMchat.MarkdownGtk
 					case MD4C.BlockType.TD:
 						// Cell content will be collected in text callbacks
 						break;
+					default:
+						break;
 				}
 			} catch (Error e) {
 				this.table_error = true;
@@ -271,7 +274,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		public int on_leave_block(MD4C.BlockType type, void* detail)
+		internal int on_leave_block(MD4C.BlockType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -346,6 +349,8 @@ namespace OLLMchat.MarkdownGtk
 					case MD4C.BlockType.TR:
 						// Row complete
 						break;
+					default:
+						break;
 				}
 			} catch (Error e) {
 				this.table_error = true;
@@ -354,7 +359,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		public int on_enter_span(MD4C.SpanType type, void* detail)
+		internal int on_enter_span(MD4C.SpanType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -400,6 +405,8 @@ namespace OLLMchat.MarkdownGtk
 						// Images not fully supported - just add placeholder
 						this.span_stack.add("[IMG:");
 						break;
+					default:
+						break;
 				}
 			} catch (Error e) {
 				return 1; // Error
@@ -407,7 +414,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		public int on_leave_span(MD4C.SpanType type, void* detail)
+		internal int on_leave_span(MD4C.SpanType type, void* detail)
 		{
 			try {
 				switch (type) {
@@ -459,6 +466,8 @@ namespace OLLMchat.MarkdownGtk
 							this.current_text.append("]");
 						}
 						break;
+					default:
+						break;
 				}
 			} catch (Error e) {
 				return 1; // Error
@@ -466,7 +475,7 @@ namespace OLLMchat.MarkdownGtk
 			return 0; // Success
 		}
 		
-		public int on_text(MD4C.TextType type, string text, uint size)
+		internal int on_text(MD4C.TextType type, string text, uint size)
 		{
 			try {
 				string text_str = text.substring(0, (int)size);
@@ -527,6 +536,8 @@ namespace OLLMchat.MarkdownGtk
 						this.current_text.append("<tt>");
 						this.current_text.append(GLib.Markup.escape_text(text_str, -1));
 						this.current_text.append("</tt>");
+						break;
+					default:
 						break;
 				}
 			} catch (Error e) {

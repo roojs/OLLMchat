@@ -201,7 +201,7 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
     '--extra-library=' + meson.current_build_dir() / 'libollmchat.a',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'Gee-0.8', ollmchat_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0]],
   install: true,
   fatal_warnings: false
 )

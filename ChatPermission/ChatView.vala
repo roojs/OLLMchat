@@ -33,6 +33,7 @@ namespace OLLMchat.ChatPermission
 		 * GLib.Application instance to use for sending notifications.
 		 * If null, notifications will not be sent.
 		 */
+		[CCode (type = "GApplication*", transfer = "none")]
 		public GLib.Application? application { get; set; default = null; }
 		
 		/**
