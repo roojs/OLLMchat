@@ -61,6 +61,7 @@ namespace OLLMchat.UI
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private int last_scrolled_width = 0;
 		private double last_scroll_pos = 0.0;
+		private MarkdownProcessor? markdown_processor = null;
 
 		/**
 		 * Creates a new ChatView instance.
@@ -96,6 +97,9 @@ namespace OLLMchat.UI
 			// Add CSS class for main chat view styling
 			this.text_view.set_left_margin(10);
 			this.buffer = this.text_view.buffer;
+			
+			// Initialize markdown processor
+			this.markdown_processor = MarkdownProcessor.get_default();
 
 			// Create a box to wrap the text view with margins
 			var text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -543,39 +547,47 @@ namespace OLLMchat.UI
 					     !this.current_markdown_content.has_suffix("\n"))) {
 						this.current_markdown_content += "\n";
 					}
-						
-					string rendered = MarkdownProcessor.get_default().markup_string(this.current_markdown_content);
 					
-					Gtk.TextIter start_iter;
-					Gtk.TextIter end_iter;
-					// Only delete if we have both marks - otherwise just insert
-					if (this.current_block_start != null && this.current_block_end != null) {
-						this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-						this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
-						this.buffer.delete(ref start_iter, ref end_iter);
-					} else {
-						// No marks - just insert at end
-						this.buffer.get_end_iter(out start_iter);
+					// Ensure we have marks
+					if (this.current_block_start == null || this.current_block_end == null) {
+						Gtk.TextIter end_iter;
+						this.buffer.get_end_iter(out end_iter);
+						if (this.current_block_start == null) {
+							this.current_block_start = this.buffer.create_mark(null, end_iter, true);
+						}
+						if (this.current_block_end == null) {
+							this.current_block_end = this.buffer.create_mark(null, end_iter, true);
+						}
 					}
 					
-					string color = this.is_thinking ? "green" : "blue";
-					string italic_tag = this.is_thinking ? "<i>" : "";
-					string italic_close_tag = this.is_thinking ? "</i>" : "";
-					this.buffer.insert_markup(ref start_iter,
-							@"<span color=\"$(color)\">$(italic_tag)$(rendered)$(italic_close_tag)</span>", -1);
-						
-					// Update marks to end of rendered content
-					this.buffer.get_end_iter(out end_iter);
-					if (this.current_block_start == null) {
-						this.current_block_start = this.buffer.create_mark(null, end_iter, true);
+					// Debug: Print chunk being finalized
+				 
+					GLib.debug("out: %s" , this.current_markdown_content);
+					
+					// Process markdown first
+					string markup = this.markdown_processor.markup_string(this.current_markdown_content);
+					// Apply color and italic styling for thinking mode
+					string styled_markup;
+					if (this.is_thinking) {
+						styled_markup = "<span color=\"green\"><i>%s</i></span>".printf(markup);
 					} else {
+						styled_markup = "<span color=\"blue\">%s</span>".printf(markup);
+					}
+					
+					// Insert into buffer
+					Gtk.TextIter start_iter, end_iter;
+					this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
+					this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
+					this.buffer.delete(ref start_iter, ref end_iter);
+					this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
+					this.buffer.insert_markup(ref start_iter, styled_markup, -1);
+					
+					// Update marks to end of rendered content for finalization
+					this.buffer.get_end_iter(out end_iter);
+					if (this.current_block_start != null) {
 						this.buffer.move_mark(this.current_block_start, end_iter);
 					}
-					if (this.current_block_end == null) {
-						this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-					} else {
-						this.buffer.move_mark(this.current_block_end, end_iter);
-					}
+					this.buffer.move_mark(this.current_block_end, end_iter);
 					// Reset content and last_line for next block
 					this.current_markdown_content = "";
 					this.last_line = "";
@@ -603,35 +615,40 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			string rendered = MarkdownProcessor.get_default().markup_string(this.current_markdown_content);
-			
-			Gtk.TextIter start_iter;
-			Gtk.TextIter end_iter;
-			// Only delete if we have both marks - otherwise just insert
-			if (this.current_block_start != null && this.current_block_end != null) {
-				this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-				this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
-				// Delete current markdown block from start to end
-				this.buffer.delete(ref start_iter, ref end_iter);
-			} else {
-				// No marks - just insert at end
-				this.buffer.get_end_iter(out start_iter);
+			// Ensure we have marks
+			if (this.current_block_start == null || this.current_block_end == null) {
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
+				if (this.current_block_start == null) {
+					this.current_block_start = this.buffer.create_mark(null, end_iter, true);
+				}
+				if (this.current_block_end == null) {
+					this.current_block_end = this.buffer.create_mark(null, end_iter, true);
+				}
 			}
 			
-			// Insert rendered content with appropriate color and italic for thinking
-			string color = this.is_thinking ? "green" : "blue";
-			string italic_tag = this.is_thinking ? "<i>" : "";
-			string italic_close_tag = this.is_thinking ? "</i>" : "";
-			this.buffer.insert_markup(ref start_iter, @"<span color=\"$(color)\">$(italic_tag)$(rendered)$(italic_close_tag)</span>", -1);
+			// Process markdown first
+			string markup = this.markdown_processor.markup_string(this.current_markdown_content);
+			// Apply color and italic styling for thinking mode
+			string styled_markup;
+			if (this.is_thinking) {
+				styled_markup = "<span color=\"green\"><i>%s</i></span>".printf(markup);
+			} else {
+				styled_markup = "<span color=\"blue\">%s</span>".printf(markup);
+			}
 			
-			// Update current_block_end to end of rendered content
-			// current_block_start stays at start of block (set by start_block) and should not move
+			// Delete old content and insert new
+			Gtk.TextIter start_iter, end_iter;
+			this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
+			this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
+			this.buffer.delete(ref start_iter, ref end_iter);
+			this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
+			this.buffer.insert_markup(ref start_iter, styled_markup, -1);
+			
+			// Update end mark
 			this.buffer.get_end_iter(out end_iter);
-			if (this.current_block_end == null) {
-				this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-			} else {
-				this.buffer.move_mark(this.current_block_end, end_iter);
-			}
+			this.buffer.move_mark(this.current_block_end, end_iter);
+			// current_block_start stays at start of block (set by start_block) and should not move
 		}
 		
 		/**
@@ -762,14 +779,24 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			// Process message through markdown processor
-			string processed_message = MarkdownProcessor.get_default().markup_string(message);
-			
+			// Create temporary marks for rendering
 			Gtk.TextIter end_iter;
 			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert_markup(ref end_iter,
-				"<span size=\"small\" color=\"#1a1a1a\"><i>" + processed_message + "</i></span>\n",
-				-1);
+			var start_mark = this.buffer.create_mark(null, end_iter, true);
+			var end_mark = this.buffer.create_mark(null, end_iter, true);
+			
+			// Process markdown and insert
+			string markup = this.markdown_processor.markup_string("*%s*".printf(message));
+			string styled_markup = "<span size=\"small\" color=\"#1a1a1a\">%s</span>\n".printf(markup);
+			
+			Gtk.TextIter iter;
+			this.buffer.get_iter_at_mark(out iter, start_mark);
+			this.buffer.insert_markup(ref iter, styled_markup, -1);
+			
+			// Clean up temporary marks
+			this.buffer.delete_mark(start_mark);
+			this.buffer.delete_mark(end_mark);
+			
 			this.scroll_to_bottom();
 		}
 
@@ -1190,6 +1217,10 @@ namespace OLLMchat.UI
 		 */
 		private void close_code_block()
 		{
+			// Debug: Print code block being finalized
+			string lang_str = (this.code_block_language != null) ? this.code_block_language : "unknown";
+			stdout.printf("[ChatView] Finalizing CODE_BLOCK: language='%s'\n", lang_str);
+			
 			// Update marks to point after the code block
 			// Use code_block_end_mark if available, otherwise use end of buffer
 			Gtk.TextIter end_iter;

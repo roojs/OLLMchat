@@ -124,9 +124,13 @@ namespace OLLMchat.Ollama
 		{
 			var call = new ModelsCall(this);
 			var result = yield call.exec_models();
-			
+			// in theory we should make a list of models that we have and delete if they are
+			// not there anymore..
 			// Populate available_models with the models from the list
 			foreach (var model in result) {
+				if (this.available_models.has_key(model.name)) {
+					continue;
+				}
 				this.available_models.set(model.name, model);
 			}
 			
@@ -205,8 +209,9 @@ namespace OLLMchat.Ollama
 		*/
 		public async void fetch_all_model_details() throws Error
 		{
+			
 			var models_list = yield this.models();
-			this.available_models.clear();
+			//this.available_models.clear(); // why clear this.models sets it?
 			
 			foreach (var model in models_list) {
 				try {

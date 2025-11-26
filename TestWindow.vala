@@ -68,15 +68,24 @@ namespace OLLMchat
 	"api_key": "your-api-key-here"
 }
 			 */
+			var config_path = Path.build_filename(
+				GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
+			);
+			if (!File.new_for_path(config_path).query_exists()) {
+				throw new GLib.FileError.NOENT("Missing file: ~/.config/ollmchat/ollama.json");
+			}
+			
 			var parser = new Json.Parser();
 			try {
-				parser.load_from_file(Path.build_filename(
-					GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json")
-				);
+				parser.load_from_file(config_path);
 			} catch (GLib.Error e) {
-				GLib.error("Failed to load config file: %s", e.message);
+				throw new GLib.FileError.FAILED("Failed to load ollama.json: %s", e.message);
 			}
+			
 			var obj = parser.get_root().get_object();
+			if (obj == null) {
+				throw new GLib.FileError.INVAL("Invalid ollama.json: file is empty or not valid JSON");
+			}
 
 			// Create CodeAssistant prompt generator with dummy provider
 			var code_assistant = new Prompt.CodeAssistant(new Prompt.CodeAssistantProviderDummy()) {
@@ -99,6 +108,7 @@ namespace OLLMchat
 			// Add tools to the client
 			client.addTool(new Tools.ReadFile(client));
 			client.addTool(new Tools.EditFile(client));
+			client.addTool(new ToolsUI.RunCommand(client));
 
 			// Create chat widget with client
 			this.chat_widget = new UI.ChatWidget(client) {

@@ -32,7 +32,6 @@ base_deps = [
 ui_deps = [
   dependency('gtk4'),
   dependency('gtksourceview-5'),
-  dependency('md4c'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -46,7 +45,6 @@ ui_deps = [
 test_window_deps = [
   dependency('gtk4'),
   dependency('gtksourceview-5'),
-  dependency('md4c'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -146,7 +144,6 @@ ollmchat_ui_src = files([
   'UI/ChatInput.vala',
   'UI/ChatPermission.vala',
   'UI/MarkdownProcessor.vala',
-  'MarkdownGtk/Render.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build base library (libollmchat.so) - no GTK dependencies
@@ -268,7 +265,6 @@ valadoc_ui_docs = custom_target('valadoc-ui',
     '--pkg=libsoup-3.0',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
-    '--pkg=md4c',
     '--pkg=posix',
     '--pkg=ollmchat',
     '--doclet=html',
@@ -288,9 +284,10 @@ test_ollama = executable('test-ollama',
 )
 
 # Build test-window executable (GTK UI test)
+# Include resources directly in the executable to ensure they're registered
 test_window = executable('test-window',
   dependencies: test_window_deps,
-  sources: ['TestWindow.vala'],
+  sources: ['TestWindow.vala', ollmchat_resources],
   link_with: [ollmchat_base_lib, ollmchat_ui_lib],
   install: false
 )

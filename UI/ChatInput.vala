@@ -366,6 +366,7 @@ namespace OLLMchat.UI
 				var name_label = list_item.get_data<Gtk.Label>("name_label");
 
 				// Bind widget properties to model properties
+				// SYNC_CREATE syncs on binding creation, and bindings automatically update when source properties change
 				model.bind_property("can_call", tools_icon, "visible", BindingFlags.SYNC_CREATE);
 				model.bind_property("is_thinking", thinking_icon, "visible", BindingFlags.SYNC_CREATE);
 				model.bind_property("name_with_size", name_label, "label", BindingFlags.SYNC_CREATE);
@@ -431,7 +432,10 @@ namespace OLLMchat.UI
 
 			// Create checkboxes for each tool
 			foreach (var tool in this.client.tools.values) {
-				var check_button = new Gtk.CheckButton.with_label(tool.name);
+				 
+				var check_button = new Gtk.CheckButton.with_label(
+					tool.description.strip().split("\n")[0]
+				);
 				// Bind checkbox active state to tool active property
 				tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
 				popover_box.append(check_button);

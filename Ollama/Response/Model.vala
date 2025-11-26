@@ -30,17 +30,7 @@ namespace OLLMchat.Ollama
 		public string modified_at { get; set; default = ""; }
 		public int64 size { get; set; default = 0; }
 		public string digest { get; set; default = ""; }
-		private Gee.ArrayList<string> _capabilities = new Gee.ArrayList<string>();
-		public Gee.ArrayList<string> capabilities {
-			get { return this._capabilities; }
-			set {
-				this._capabilities = value;
-				// Notify computed properties that depend on capabilities
-				// In Vala, notify() takes a string property name (with hyphens)
- 				this.notify_property("is-thinking");
-				this.notify_property("can-call");
-			}
-		}
+		public Gee.ArrayList<string> capabilities { get;  set; default = new Gee.ArrayList<string>(); }
 
 		public int64 size_vram { get; set; default = 0; }
 		public int64 total_duration { get; set; default = 0; }
@@ -58,9 +48,11 @@ namespace OLLMchat.Ollama
 		 */
 		public bool is_thinking {
 			get {
+				GLib.debug("is_thinking: %s %s", this.name, 
+					this.capabilities.contains("thinking") ? "1" : "0");
 				return this.capabilities.contains("thinking");
 			}
-			set { }
+			private set { }
 		}
 
 		/**
@@ -68,9 +60,11 @@ namespace OLLMchat.Ollama
 		 */
 		public bool can_call {
 			get {
+				GLib.debug("can_call: %s %s", this.name, 
+					this.capabilities.contains("tools") ? "1" : "0");
 				return this.capabilities.contains("tools");
 			}
-			set { }
+			private set { }
 		}
 
 		/**
@@ -139,19 +133,30 @@ namespace OLLMchat.Ollama
 		 */
 		public void updateFrom(Model source)
 		{
+			this.freeze_notify();
 			// Only update fields that come from show API
 			this.modified_at = source.modified_at;
 			
-			// Update capabilities
-			this.capabilities = source.capabilities;
+			// Freeze notifications to batch property changes
+ 			
+			// Update capabilities by clearing and adding, rather than replacing
+			this.capabilities.clear();
+			foreach (var cap in source.capabilities) {
+				this.capabilities.add(cap);
+			}
+			// Notify computed properties that depend on capabilities
+			//this.notify_property("capabilities");
+
+			this.notify_property("is-thinking");
+			this.notify_property("can-call");
 			
 			// Update context_length if present in show response
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
-			// Note: Notifications for is_thinking and can_call are automatically
-			// triggered by the capabilities setter above
-		}
+			this.thaw_notify();
+			// Thaw notifications - all property change signals will be emitted now
+ 		}
 		
 	}
 
