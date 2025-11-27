@@ -983,7 +983,7 @@ src/OLLMchat/
       - [ ] If not HTML: Return as-is (assume already text/markdown)
       - [ ] Return markdown string
   
-  **Step 6: Tool Execution**
+  **Step 5: Tool Execution**
   - [ ] Implement `execute_tool(Json.Object parameters) throws Error`
     - [ ] Re-read parameters using `readParams(parameters)`
     - [ ] Validate parameters again
