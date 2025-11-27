@@ -19,10 +19,31 @@
 namespace OLLMchat.MarkdownGtk
 {
 	/**
-	 * Renders markdown content to a Gtk.TextBuffer using a state-based renderer.
+	 * Renders markdown content to a Gtk.TextBuffer using a
+	 * state-based renderer.
 	 * 
-	 * Processes markdown blocks and spans, converting them to Pango markup
-	 * and inserting them into the specified TextBuffer range.
+	 * Processes markdown blocks and spans, converting them to
+	 * Pango markup and inserting them into the specified TextBuffer range.
+	 * 
+	 * ## Entry Points
+	 * 
+	 * The Render class provides three public methods for processing content:
+	 * 
+	 * - {@link add}: Adds text to be parsed and rendered incrementally. Use this
+	 * for streaming content where you receive chunks over time.
+	 * 
+	 * - {@link add_start}: Starts a new chunk of content. This resets the parser's internal state and
+	 * should be called when beginning a new content block. You should call {@link flush} before calling this if you've been
+	 * adding content with {@link add}.
+	 * 
+	 * - {@link flush}: Finalizes the current chunk. Call this before starting a new chunk with {@link add_start} 
+	 * to ensure all pending content is processed.
+	 * 
+	 * HTML tags embedded in the markdown content are automatically parsed and
+	 * handled. The parser recognizes HTML tags and creates states for them. You
+	 * only need to provide opening HTML tags in your content. The renderer
+	 * automatically handles closing tags when the corresponding state is closed
+	 * or when flush is called.
 	 */
 	public class Render : Object
 	{
@@ -73,16 +94,19 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public void add(string text)
 		{
+			GLib.debug("add: text length=%d, content='%s'", text.length, text);
 			this.parser.add(text);
 		}
 		/* call before starting a new chunk and ending last one.. */
 		public void flush()
 		{
+			GLib.debug("flush: called");
 			this.parser.flush();
 		}
 		/* call at starting a new chunk .. triggers a reset of the data - you should have flushed the last one.. */
 		public void add_start(string text, bool is_end_of_chunks = false)
 		{
+			GLib.debug("add_start: text length=%d, is_end_of_chunks=%s, content='%s'", text.length, is_end_of_chunks.to_string(), text);
 			this.parser.add_start(text, is_end_of_chunks);
 		}
 		

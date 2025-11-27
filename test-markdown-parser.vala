@@ -27,37 +27,111 @@ int main(string[] args)
 	buffer.get_start_iter(out iter);
 	var start_mark = buffer.create_mark(null, iter, true);
 	
-	// Create DummyRenderer instance (extends Render but prints callbacks)
+	// Create Render instance (using DummyRenderer for testing)
 	var renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
-	var parser = renderer.parser;
 	
-	// Read markdown from stdin or use test file
-	string markdown_text;
-	if (args.length > 1) {
-		// Read from file
-		try {
-			FileUtils.get_contents(args[1], out markdown_text);
-		} catch (Error e) {
-			stderr.printf("Error reading file: %s\n", e.message);
-			return 1;
-		}
-	} else {
-		// Read from stdin
-		var input = new StringBuilder();
-		string? line;
-		while ((line = stdin.read_line()) != null) {
-			if (input.len > 0) {
-				input.append_c('\n');
-			}
-			input.append(line);
-		}
-		markdown_text = input.str;
+	// Simulate streaming chunks from actual debug output
+	// First block chunks
+	string[] first_block_chunks = {
+		"We",
+		" need",
+		" to",
+		" read",
+		" /",
+		"var",
+		"/log",
+		"/sys",
+		"log",
+		".",
+		" Use",
+		" run",
+		"_command",
+		"?",
+		" Actually",
+		" need",
+		" to",
+		" read",
+		" a",
+		" file",
+		".",
+		" It's",
+		" a",
+		" system",
+		" file",
+		",",
+		" we",
+		" can",
+		" run",
+		" command",
+		" \"",
+		"head",
+		" -",
+		"n",
+		" ",
+		"20",
+		" /",
+		"var",
+		"/log",
+		"/sys",
+		"log",
+		"\".",
+		" Use",
+		" run",
+		"_command",
+		" tool",
+		".",
+		" Explain",
+		" to",
+		" user",
+		".",
+		"\n"
+	};
+	
+	// Second block chunks (after flush and add_start)
+	string[] second_block_chunks = {
+		"I",
+		" will",
+		" run",
+		" a",
+		" command",
+		" to",
+		" show",
+		" the",
+		" first",
+		" few",
+		" lines",
+		" of",
+		" the",
+		" system",
+		" log",
+		" file",
+		" so",
+		" we",
+		" can",
+		" look",
+		" for",
+		" the",
+		" hostname",
+		"."
+	};
+	
+	// Process chunks like the real stream does
+	stdout.printf("=== STREAMING CHUNKS ===\n");
+	
+	// First block: add_start (not shown in debug but implied), then add chunks
+	renderer.add_start("<span color=\"blue\">", false);
+	foreach (var chunk in first_block_chunks) {
+		renderer.add(chunk);
+	}
+	renderer.flush();
+	
+	// Second block: add_start with is_end_of_chunks=true, then add chunks
+	renderer.add_start("<span color=\"blue\">", true);
+	foreach (var chunk in second_block_chunks) {
+		renderer.add(chunk);
 	}
 	
-	// Parse the markdown - DummyRenderer will print all callbacks
-	stdout.printf("=== PARSER CALLBACKS ===\n");
-	parser.add(markdown_text);
-	stdout.printf("=== END CALLBACKS ===\n");
+	stdout.printf("=== END STREAMING ===\n");
 	
 	return 0;
 }

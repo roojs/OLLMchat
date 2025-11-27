@@ -41,6 +41,8 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
           <li class="method"><a href="OLLMchat.MarkdownGtk.Render.add.html">add</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.add_start.html">add_start</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.flush.html">flush</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -59,6 +61,20 @@
         <div class="description">
           <p>Renders markdown content to a Gtk.TextBuffer using a state-based renderer.</p>
           <p>Processes markdown blocks and spans, converting them to Pango markup and inserting them into the specified TextBuffer range.</p>
+          <p>## Entry Points</p>
+          <p>The Render class provides three public methods for processing content:</p>
+          <p>- <a href="OLLMchat.MarkdownGtk.Render.add.html" class="method">add</a>: Adds text to be parsed and rendered incrementally. Use this for 
+            streaming content where you receive chunks over time.</p>
+          <p>- <a href="OLLMchat.MarkdownGtk.Render.add_start.html" class="method">add_start</a>: Starts a new chunk of content. This resets the 
+            parser's internal state and should be called when beginning a new content block. You should call 
+            <a href="OLLMchat.MarkdownGtk.Render.flush.html" class="method">flush</a> before calling this if you've been adding content with 
+            <a href="OLLMchat.MarkdownGtk.Render.add.html" class="method">add</a>.</p>
+          <p>- <a href="OLLMchat.MarkdownGtk.Render.flush.html" class="method">flush</a>: Finalizes the current chunk. Call this before starting a new
+            chunk with <a href="OLLMchat.MarkdownGtk.Render.add_start.html" class="method">add_start</a> to ensure all pending content is processed.
+          </p>
+          <p>HTML tags embedded in the markdown content are automatically parsed and handled. The parser recognizes HTML tags and creates states for 
+            them. You only need to provide opening HTML tags in your content. The renderer automatically handles closing tags when the corresponding 
+            state is closed or when flush is called.</p>
         </div>
         <div class="box">
           <div class="headline" onclick="toggle_box (this, 'box-content-30')">All known sub-classes:</div>
@@ -130,6 +146,14 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.add.html" class="method">add</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Main method: adds text to be parsed and rendered.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.add_start.html" class="method">add_start</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_basic_type"><span class="struct">bool</span></span> is_end_of_chunks = <span class="main_literal">false</span>)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.flush.html" class="method">flush</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

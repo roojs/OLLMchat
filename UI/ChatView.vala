@@ -41,11 +41,11 @@ namespace OLLMchat.UI
 		private Gtk.ScrolledWindow scrolled_window;
 		internal Gtk.TextView text_view { get; private set; }
 		internal Gtk.TextBuffer buffer { get; private set; }
-		private string current_markdown_content = "";
 		private string last_line = "";
 		private int last_chunk_start = 0;
 		private Gtk.TextMark? current_block_start = null;
 		private Gtk.TextMark? current_block_end = null;
+		private MarkdownGtk.Render? current_block_renderer = null;
 		private bool is_assistant_message = false;
 		private bool is_thinking = false;
 		private ContentState content_state = ContentState.NONE;
@@ -61,7 +61,6 @@ namespace OLLMchat.UI
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private int last_scrolled_width = 0;
 		private double last_scroll_pos = 0.0;
-		private MarkdownProcessor? markdown_processor = null;
 
 		/**
 		 * Creates a new ChatView instance.
@@ -97,9 +96,6 @@ namespace OLLMchat.UI
 			// Add CSS class for main chat view styling
 			this.text_view.set_left_margin(10);
 			this.buffer = this.text_view.buffer;
-			
-			// Initialize markdown processor
-			this.markdown_processor = MarkdownProcessor.get_default();
 
 			// Create a box to wrap the text view with margins
 			var text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -225,7 +221,6 @@ namespace OLLMchat.UI
 		private void initialize_assistant_message(Ollama.ChatResponse response)
 		{
 			this.is_assistant_message = true;
-			this.current_markdown_content = "";
 			this.last_chunk_start = 0;
 			this.is_thinking = response.is_thinking;
 			this.content_state = ContentState.NONE;
@@ -302,18 +297,28 @@ namespace OLLMchat.UI
 					
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					this.current_markdown_content += text;
-					this.update_block();
+					// Ensure renderer exists (create if missing)
+					if (this.current_block_renderer == null) {
+						this.start_block(response);
+					}
+					// Send new text directly to progressive renderer
+					this.current_block_renderer.add(text);
+					// Update end_mark
+					Gtk.TextIter end_iter;
+					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+					this.buffer.move_mark(this.current_block_end, end_iter);
 					return;
 					
 				case ContentState.NONE:
 					// Start a new markdown block
 					this.content_state = response.is_thinking ? ContentState.THINKING : ContentState.CONTENT;
 					this.start_block(response);
-							
-						// Append raw text and update block
-					this.current_markdown_content += text;
-					this.update_block();
+					// Send text to renderer
+					this.current_block_renderer.add(text);
+					// Update end_mark
+					Gtk.TextIter end_iter;
+					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+					this.buffer.move_mark(this.current_block_end, end_iter);
 					return;
 			}
 		}
@@ -337,8 +342,7 @@ namespace OLLMchat.UI
 					break;
 					
 				case ContentState.NONE:
-					// Just output a line break in NONE state
-					this.current_markdown_content += "\n";
+					// Just output a line break in NONE state (no renderer yet)
 					break;
 			}
 			
@@ -414,14 +418,24 @@ namespace OLLMchat.UI
 			// Check if thinking state changed to not thinking
 			if (!response.is_thinking) {
 				// End thinking block (end_block will reset content_state to NONE)
-				this.current_markdown_content += "\n";
+				if (this.current_block_renderer != null) {
+					this.current_block_renderer.add("\n");
+				}
 				this.end_block(response);
 				return;
 			}
 			
 			// Empty lines are just regular content - add newline and continue
-			this.current_markdown_content += "\n";
-			this.update_block();
+			// Ensure renderer exists (create if missing)
+			if (this.current_block_renderer == null) {
+				this.start_block(response);
+			}
+			// Send newline to renderer
+			this.current_block_renderer.add("\n");
+			// Update end_mark
+			Gtk.TextIter end_iter;
+			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+			this.buffer.move_mark(this.current_block_end, end_iter);
 		}
 		
 		/**
@@ -440,13 +454,20 @@ namespace OLLMchat.UI
 				var mapped_language = this.map_language_id(language);
 				this.code_block_language = mapped_language ?? language;
 				
-					// Remove the marker from current_markdown_content (it was added via process_add_text)
-					// Simply remove the last last_line.length characters
-					if (this.current_markdown_content.length >= this.last_line.length) {
-						this.current_markdown_content = this.current_markdown_content.substring(0, this.current_markdown_content.length - this.last_line.length);
-					}
-				// Update block to remove marker from display
-				this.update_block();
+				// Ensure renderer exists (should already exist since we're in CONTENT state)
+				if (this.current_block_renderer == null) {
+					this.start_block(response);
+				}
+				
+				// Remove the marker from the buffer (it was already rendered)
+				// Remove last_line.length characters from the end of rendered content
+				Gtk.TextIter start_iter, end_iter;
+				this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+				start_iter = end_iter;
+				start_iter.backward_chars(this.last_line.length);
+				this.buffer.delete(ref start_iter, ref end_iter);
+				// Update renderer's end_mark to point to the new end position (so end_block() reads correct position)
+				this.buffer.move_mark(this.current_block_renderer.end_mark, start_iter);
 				// Now end the content block and start code block
 				this.end_block(response);
 				this.content_state = ContentState.CODE_BLOCK;
@@ -455,8 +476,15 @@ namespace OLLMchat.UI
 			}
 			
 			// Empty lines are just regular content - add newline and continue
-			this.current_markdown_content += "\n";
-			this.update_block();
+			// Ensure renderer exists (create if missing)
+			if (this.current_block_renderer == null) {
+				this.start_block(response);
+			}
+			this.current_block_renderer.add("\n");
+			// Update end_mark
+			Gtk.TextIter end_iter;
+			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+			this.buffer.move_mark(this.current_block_end, end_iter);
 		}
 		/**
 		* Starts a new block based on current state.
@@ -466,8 +494,6 @@ namespace OLLMchat.UI
 			switch (this.content_state) {
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Reset content for new block (but preserve last_line - it contains the text that triggered this block)
-					this.current_markdown_content = "";
 					// Thinking and content blocks start with marks at current position
 					Gtk.TextIter end_iter;
 					this.buffer.get_end_iter(out end_iter);
@@ -483,6 +509,21 @@ namespace OLLMchat.UI
 					} else {
 						this.buffer.move_mark(this.current_block_start, end_iter);
 					}
+					
+					// Create Render instance for progressive rendering
+					this.current_block_renderer = new MarkdownGtk.Render(
+						this.buffer, 
+						this.current_block_start
+					);
+					
+					// Send opening HTML tags to renderer
+					this.current_block_renderer.add_start(
+						this.is_thinking 
+							? "<span color=\"green\"><i>" 
+							: "<span color=\"blue\">",
+						true
+					);
+					
 					this.last_chunk_start = 0;
 					return;
 						
@@ -508,27 +549,6 @@ namespace OLLMchat.UI
 		}
 		
 		/**
-		* Updates the current block based on state.
-		*/
-		private void update_block()
-		{
-			switch (this.content_state) {
-				case ContentState.THINKING:
-				case ContentState.CONTENT:
-					this.update_markdown_block();
-					return;
-					
-				case ContentState.CODE_BLOCK:
-					// Code blocks update automatically via buffer changes
-					return;
-					
-				case ContentState.NONE:
-					// Nothing to update
-					return;
-			}
-		}
-		
-		/**
 		* Ends the current block based on state.
 		*/
 		private void end_block(Ollama.ChatResponse response)
@@ -536,60 +556,35 @@ namespace OLLMchat.UI
 			switch (this.content_state) {
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Replace the current markdown block with rendered content
-					if (this.current_markdown_content.length == 0) {
+					// Finalize the current markdown block
+					if (this.current_block_renderer == null) {
+						// No renderer means no content was rendered
+						this.last_line = "";
+						this.content_state = ContentState.NONE;
 						return;
 					}
 					
 					// Ensure content ends with newline if last_line has content (incomplete line)
-					if (this.last_line.length > 0 || 
-					    (this.current_markdown_content.length > 0 && 
-					     !this.current_markdown_content.has_suffix("\n"))) {
-						this.current_markdown_content += "\n";
+					if (this.last_line.length > 0) {
+						// Send final newline to renderer
+						this.current_block_renderer.add("\n");
 					}
 					
-					// Ensure we have marks
-					if (this.current_block_start == null || this.current_block_end == null) {
-						Gtk.TextIter end_iter;
-						this.buffer.get_end_iter(out end_iter);
-						if (this.current_block_start == null) {
-							this.current_block_start = this.buffer.create_mark(null, end_iter, true);
-						}
-						if (this.current_block_end == null) {
-							this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-						}
-					}
-					
-					// Debug: Print chunk being finalized
-				 
-					GLib.debug("out: %s" , this.current_markdown_content);
-					
-					// Process markdown first
-					string markup = this.markdown_processor.markup_string(this.current_markdown_content);
-					// Apply color and italic styling for thinking mode
-					string styled_markup;
-					if (this.is_thinking) {
-						styled_markup = "<span color=\"green\"><i>%s</i></span>".printf(markup);
-					} else {
-						styled_markup = "<span color=\"blue\">%s</span>".printf(markup);
-					}
-					
-					// Insert into buffer
-					Gtk.TextIter start_iter, end_iter;
-					this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
-					this.buffer.delete(ref start_iter, ref end_iter);
-					this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-					this.buffer.insert_markup(ref start_iter, styled_markup, -1);
+					// Flush renderer to finalize
+					this.current_block_renderer.flush();
 					
 					// Update marks to end of rendered content for finalization
-					this.buffer.get_end_iter(out end_iter);
+					Gtk.TextIter end_iter;
+					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
 					if (this.current_block_start != null) {
 						this.buffer.move_mark(this.current_block_start, end_iter);
 					}
 					this.buffer.move_mark(this.current_block_end, end_iter);
-					// Reset content and last_line for next block
-					this.current_markdown_content = "";
+					
+					// Clean up renderer
+					this.current_block_renderer = null;
+					
+					// Reset last_line for next block
 					this.last_line = "";
 					// Reset content_state to NONE so new blocks can be started
 					this.content_state = ContentState.NONE;
@@ -603,52 +598,6 @@ namespace OLLMchat.UI
 					// Nothing to end
 					return;
 			}
-		}
-		
-		/**
-		* Updates markdown block with incremental rendering.
-		*/
-		private void update_markdown_block()
-		{
-			// Render current markdown content (already reset for current block)
-			if (this.current_markdown_content.length == 0) {
-				return;
-			}
-			
-			// Ensure we have marks
-			if (this.current_block_start == null || this.current_block_end == null) {
-				Gtk.TextIter end_iter;
-				this.buffer.get_end_iter(out end_iter);
-				if (this.current_block_start == null) {
-					this.current_block_start = this.buffer.create_mark(null, end_iter, true);
-				}
-				if (this.current_block_end == null) {
-					this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-				}
-			}
-			
-			// Process markdown first
-			string markup = this.markdown_processor.markup_string(this.current_markdown_content);
-			// Apply color and italic styling for thinking mode
-			string styled_markup;
-			if (this.is_thinking) {
-				styled_markup = "<span color=\"green\"><i>%s</i></span>".printf(markup);
-			} else {
-				styled_markup = "<span color=\"blue\">%s</span>".printf(markup);
-			}
-			
-			// Delete old content and insert new
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-			this.buffer.get_iter_at_mark(out end_iter, this.current_block_end);
-			this.buffer.delete(ref start_iter, ref end_iter);
-			this.buffer.get_iter_at_mark(out start_iter, this.current_block_start);
-			this.buffer.insert_markup(ref start_iter, styled_markup, -1);
-			
-			// Update end mark
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.move_mark(this.current_block_end, end_iter);
-			// current_block_start stays at start of block (set by start_block) and should not move
 		}
 		
 		/**
@@ -696,10 +645,10 @@ namespace OLLMchat.UI
 
 			// Reset state
 			this.is_assistant_message = false;
-			this.current_markdown_content = "";
 			this.last_chunk_start = 0;
 			this.current_block_start = null;
 			this.current_block_end = null;
+			this.current_block_renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
@@ -718,11 +667,11 @@ namespace OLLMchat.UI
 			this.buffer.get_end_iter(out end_iter);
 			this.buffer.delete(ref start_iter, ref end_iter);
 
-			this.current_markdown_content = "";
 			this.last_chunk_start = 0;
 			this.is_assistant_message = false;
 			this.current_block_start = null;
 			this.current_block_end = null;
+			this.current_block_renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
@@ -783,19 +732,22 @@ namespace OLLMchat.UI
 			Gtk.TextIter end_iter;
 			this.buffer.get_end_iter(out end_iter);
 			var start_mark = this.buffer.create_mark(null, end_iter, true);
-			var end_mark = this.buffer.create_mark(null, end_iter, true);
 			
-			// Process markdown and insert
-			string markup = this.markdown_processor.markup_string("*%s*".printf(message));
-			string styled_markup = "<span size=\"small\" color=\"#1a1a1a\">%s</span>\n".printf(markup);
+			// Create Render instance
+			var renderer = new MarkdownGtk.Render(this.buffer, start_mark);
 			
-			Gtk.TextIter iter;
-			this.buffer.get_iter_at_mark(out iter, start_mark);
-			this.buffer.insert_markup(ref iter, styled_markup, -1);
+			// Send opening tags and markdown content to renderer (parser will handle HTML tags)
+			// Note: Closing tags are handled automatically by the renderer
+			string content_with_tags = "<span size=\"small\" color=\"#1a1a1a\"><i>*%s*".printf(message);
+			renderer.add_start(content_with_tags, true);
+			renderer.flush();
 			
-			// Clean up temporary marks
+			// Add newline after rendered content
+			this.buffer.get_iter_at_mark(out end_iter, renderer.end_mark);
+			this.buffer.insert(ref end_iter, "\n", -1);
+			
+			// Clean up temporary mark
 			this.buffer.delete_mark(start_mark);
-			this.buffer.delete_mark(end_mark);
 			
 			this.scroll_to_bottom();
 		}
@@ -905,7 +857,6 @@ namespace OLLMchat.UI
 			}
 			
 			this.is_assistant_message = true;
-			this.current_markdown_content = "";
 			this.last_chunk_start = 0;
 			this.is_thinking = response.is_thinking;
 			this.content_state = ContentState.NONE;
