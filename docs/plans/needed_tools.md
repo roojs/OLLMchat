@@ -916,6 +916,14 @@ src/OLLMchat/
   - Use protected methods for HTTP fetching logic so subclasses can reuse
   - Keep core fetching logic separate from format conversion for reusability
   
+  **Format Handling Rules**:
+  - **Automatic format detection based on Content-Type**:
+    - `image/*` → automatically converted to base64 (regardless of format parameter)
+    - `text/*` → raw format (except HTML which converts to markdown if format="markdown")
+    - `application/json` → raw format
+    - Any non-text content type → base64 (regardless of format parameter)
+  - **User-specified format parameter** only applies when content is text/HTML
+  
   **Step 1: Create Base Class Structure**
   - [ ] Create `Tools/WebFetchTool.vala` extending `Ollama.Tool`
   - [ ] Define parameter properties:
