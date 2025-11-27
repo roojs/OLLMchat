@@ -54,23 +54,27 @@ namespace OLLMchat.MarkdownGtk
 				this.current_chunk = chunk;
 				this.chunk_pos = 0;
 				var escape_next = false; // I guess used to markup chars..
-				
-				while (chunk_pos < current_chunk.length) {
+				var str= "";
+				while (this.chunk_pos < this.current_chunk.length) {
 					unichar c = current_chunk[chunk_pos];
 					
+					// escped chars
 					if (escape_next) {
-						current_text.append_unichar(c);
+						str += c;
 						escape_next = false;
-						chunk_pos++;
+						this.chunk_pos++;
 						continue;
 					}
 					
 					if (c == '\\') {
 						escape_next = true;
-						chunk_pos++;
+						this.chunk_pos++;
 						continue;
 					}
 					
+
+
+
 					// Check if this could be the start of a formatting sequence
 					if (is_format_char(c)) {
 						// Peek ahead to get the full sequence
@@ -110,7 +114,13 @@ namespace OLLMchat.MarkdownGtk
         BOLD,
         BOLD_ITALIC,
         CODE,
-        STRIKETHROUGH
+        STRIKETHROUGH,
+		HIGHLIGHT,
+		SUPERSCRIPT,
+		SUBSCRIPT,
+		ST_INVALID,
+		EQ_INVALID,
+		HTML
     }
 	private static Gee.HashMap<string, FormatType> {
 		get; set ; default = new Gee.HashMap<string, FormatType>()
@@ -120,18 +130,36 @@ namespace OLLMchat.MarkdownGtk
 	static construct {
 		
         // Asterisk sequences
-        format_map["*"] = FormatType.ITALIC;
-        format_map["**"] = FormatType.BOLD;
-        format_map["***"] = FormatType.BOLD_ITALIC;
-        
-        // Underscore sequences  
-        format_map["_"] = FormatType.ITALIC;
-        format_map["__"] = FormatType.BOLD;
-        format_map["___"] = FormatType.BOLD_ITALIC;
-        
-        // Other sequences
-        format_map["`"] = FormatType.CODE;
-        format_map["~~"] = FormatType.STRIKETHROUGH;
+		private void setup_format_map() {
+			format_map = new Gee.HashMap<string, FormatType>();
+			
+			// Asterisk sequences (most common)
+			format_map["*"] = FormatType.ITALIC;
+			format_map["**"] = FormatType.BOLD;
+			format_map["***"] = FormatType.BOLD_ITALIC;
+			
+			// Underscore sequences (alternative syntax)
+			format_map["_"] = FormatType.ITALIC;
+			format_map["__"] = FormatType.BOLD;
+			format_map["___"] = FormatType.BOLD_ITALIC;
+			
+			// Code and inline code
+			format_map["`"] = FormatType.CODE;
+			format_map["``"] = FormatType.CODE; // Some parsers support double backtick
+			
+			// Strikethrough (GFM)
+			format_map["~~"] = FormatType.STRIKETHROUGH;
+			format_map["~"] = FormatType.ST_INVALID;
+			
+			// Highlight (some markdown flavors)
+			format_map["=="] = FormatType.HIGHLIGHT;
+			format_map["="] = FormatType.EQ_INVALID;
+			
+			// Superscript/subscript (some flavors)
+			format_map["^"] = FormatType.SUPERSCRIPT;
+			format_map["~"] = FormatType.SUBSCRIPT;
+			format_map["<"] = FormatType.HTML;
+		}
 	}
 
     private Gee.Stack<FormatType> state_stack { set; get; default = new Gee.Stack<FormatType>(); };
@@ -143,9 +171,10 @@ namespace OLLMchat.MarkdownGtk
      
     
     public void parse_chunk(string chunk) {
-        current_chunk = chunk;
-        chunk_pos = 0;
-        escape_next = false;
+        this.current_chunk = chunk;
+        this.chunk_pos = 0;
+        var escape_next = false;
+		var str = "";
         
         while (chunk_pos < current_chunk.length) {
             unichar c = current_chunk[chunk_pos];
@@ -163,8 +192,12 @@ namespace OLLMchat.MarkdownGtk
                 continue;
             }
             
+
             // Check if this could be the start of a formatting sequence
-            if (is_format_char(c)) {
+            if (!format_map.has_key(c.to_string()))
+
+
+			}
                 // Peek ahead to get the full sequence
                 string sequence = peek_format_sequence();
                 
