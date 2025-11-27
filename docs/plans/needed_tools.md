@@ -970,17 +970,23 @@ src/OLLMchat/
   
   **Step 4: Format Conversion**
   - [ ] Create `convert_to_format(Bytes response_bytes, string content_type, string format)` method
-    - [ ] If format is "base64":
+    - [ ] **Automatic format detection based on Content-Type**:
+      - [ ] If Content-Type starts with `image/` → automatically convert to base64 (ignore format parameter)
+      - [ ] If Content-Type is `application/json` → convert to raw string (UTF-8)
+      - [ ] If Content-Type starts with `text/`:
+        - [ ] If `text/html` and format is "markdown": Use `Markdown.FromHTML` to convert to markdown
+        - [ ] Otherwise: Convert to raw string (UTF-8)
+      - [ ] If Content-Type is any other non-text type → automatically convert to base64 (ignore format parameter)
+    - [ ] **Base64 conversion**:
       - [ ] Convert bytes to base64 using `GLib.Base64.encode()`
       - [ ] Return base64 string
-    - [ ] If format is "raw":
+    - [ ] **Raw string conversion**:
       - [ ] Convert bytes to string using `response_bytes.get_data()` and UTF-8 decoding
+      - [ ] Handle encoding errors gracefully (fallback to base64 if UTF-8 fails)
       - [ ] Return raw string
-    - [ ] If format is "markdown":
+    - [ ] **Markdown conversion**:
       - [ ] Convert bytes to string (UTF-8)
-      - [ ] Check if content is HTML (Content-Type contains "html" or starts with "<")
-      - [ ] If HTML: Use `Markdown.FromHTML` to convert to markdown
-      - [ ] If not HTML: Return as-is (assume already text/markdown)
+      - [ ] Use `Markdown.FromHTML` to convert HTML to markdown
       - [ ] Return markdown string
   
   **Step 5: Tool Execution**
