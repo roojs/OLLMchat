@@ -534,7 +534,7 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```json
 {
   "name": "web_fetch",
-  "description": "Fetch the contents of a webpage and return the content in the specified format (markdown, raw, or base64). Multiple formats are available; base64 is recommended for binaries like images. Raw format is useful for API responses.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions. Any authentication must be configured by the client.",
+  "description": "Fetch the contents of a webpage and return the content in the specified format (markdown, raw, or base64). Format is automatically determined by Content-Type: image/* and non-text types are always returned as base64; application/json and text/* are returned as raw (except text/html which converts to markdown if format='markdown').\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions. Any authentication must be configured by the client.",
   "parameters": {
     "type": "object",
     "properties": {
