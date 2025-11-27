@@ -953,12 +953,11 @@ src/OLLMchat/
     - [ ] Set `permission_question` = "Fetch webpage '{url}' ({method})?"
     - [ ] Return `true` (always requires permission)
   
-  **Step 4: HTTP Fetching Logic (Protected Methods for Extensibility)**
+  **Step 3: HTTP Fetching Logic (Protected Methods for Extensibility)**
   - [ ] Create protected async method `fetch_http(string method, string url, string? post_data, Gee.HashMap<string, string>? extra_headers = null) throws Error`
     - [ ] Create `Soup.Session` instance (or reuse if available)
     - [ ] Set session timeout (e.g., 30 seconds)
     - [ ] Create `Soup.Message` with method and URL
-    - [ ] Add authentication headers from config (call `get_auth_headers(url)`)
     - [ ] Add any extra headers passed as parameter
     - [ ] Set Content-Type header for POST requests (if post_data provided)
     - [ ] Set request body for POST requests using `message.set_request_body_from_bytes()`
@@ -969,7 +968,7 @@ src/OLLMchat/
     - [ ] Extract Content-Type header
     - [ ] Return content type string (e.g., "text/html", "application/json", "image/png")
   
-  **Step 5: Format Conversion**
+  **Step 4: Format Conversion**
   - [ ] Create `convert_to_format(Bytes response_bytes, string content_type, string format)` method
     - [ ] If format is "base64":
       - [ ] Convert bytes to base64 using `GLib.Base64.encode()`
