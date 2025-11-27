@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>OLLMchat.MarkdownGtk.Render &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">OLLMchat.MarkdownGtk.Render &ndash; ollmchat-ui Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat-ui</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">MarkdownGtk</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="class">Render</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.buffer.html">buffer</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_state.html">current_state</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.end_mark.html">end_mark</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.parser.html">parser</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.start_mark.html">start_mark</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_end.html">tmp_end</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
+          <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.add.html">add</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">Render</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Object Hierarchy:</h2>
+        <img class="main_diagram" usemap="#OLLMchat.MarkdownGtk.Render" alt="Object hierarchy for Render" src="img/OLLMchat.MarkdownGtk.Render.png"/>
+
+      <map id="OLLMchat.MarkdownGtk.Render" name="OLLMchat.MarkdownGtk.Render">
+<area shape="rect" id="node1" href="OLLMchat.MarkdownGtk.Render.html" title="OLLMchat.MarkdownGtk.Render" alt="" coords="5,101,279,149"/>
+</map>
+
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Render</span></b> : <span class="main_type"><span class="class">Object</span></span>
+        </div>
+        <div class="description">
+          <p>Renders markdown content to a Gtk.TextBuffer using a state-based renderer.</p>
+          <p>Processes markdown blocks and spans, converting them to Pango markup and inserting them into the specified TextBuffer range.</p>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-30')">All known sub-classes:</div>
+          <div class="content" id="box-content-30">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="class"><a href="OLLMchat.MarkdownGtk.DummyRenderer.html">DummyRenderer</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+          </div>
+        </div><br/>
+        <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.MarkdownGtk.html">OLLMchat.MarkdownGtk</a>
+        </div>
+        <div class="package_note"><b>Package:</b> <a href="index.htm">ollmchat-ui</a>
+        </div>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Properties:</h3>
+        <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextBuffer</span></span> <b><a href="OLLMchat.MarkdownGtk.Render.buffer.html" class="property">buffer</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.MarkdownGtk.State.html" class="class">State</a></span> <b><a href="OLLMchat.MarkdownGtk.Render.current_state.html" class="property">current_state</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span> <b><a href="OLLMchat.MarkdownGtk.Render.end_mark.html" class="property">end_mark</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.MarkdownGtk.Parser.html" class="class">Parser</a></span> <b><a href="OLLMchat.MarkdownGtk.Render.parser.html" class="property">parser</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span> <b><a href="OLLMchat.MarkdownGtk.Render.start_mark.html" class="property">start_mark</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span> <b><a href="OLLMchat.MarkdownGtk.Render.tmp_end.html" class="property">tmp_end</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span> <b><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html" class="property">tmp_start</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.MarkdownGtk.TopState.html" class="class">TopState</a></span> <b><a href="OLLMchat.MarkdownGtk.Render.top_state.html" class="property">top_state</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+        </ul>
+        <h3 class="main_title">Creation methods:</h3>
+        <ul class="navi_inline">
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.MarkdownGtk.Render.Render.html" class="creation_method">Render</a></b> (<span class="main_type"><span class="class">TextBuffer</span></span> buffer, <span class="main_type"><span class="class">TextMark</span></span> start_mark)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates a new Render instance.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Methods:</h3>
+        <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.add.html" class="method">add</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Main method: adds text to be parsed and rendered.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Inherited Members:</h3>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-31')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-31">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">@get</li>
+                <li class="static_method">@new</li>
+                <li class="method">@ref</li>
+                <li class="method">@set</li>
+                <li class="method">add_toggle_ref</li>
+                <li class="method">add_weak_pointer</li>
+                <li class="method">bind_property</li>
+                <li class="method">connect</li>
+                <li class="virtual_method">constructed</li>
+                <li class="method">disconnect</li>
+                <li class="virtual_method">dispose</li>
+                <li class="method">dup_data</li>
+                <li class="method">dup_qdata</li>
+                <li class="method">force_floating</li>
+                <li class="method">freeze_notify</li>
+                <li class="method">get_class</li>
+                <li class="method">get_data</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">get_property</li>
+                <li class="method">get_qdata</li>
+                <li class="method">get_type</li>
+                <li class="method">getv</li>
+                <li class="static_method">interface_find_property</li>
+                <li class="static_method">interface_install_property</li>
+                <li class="static_method">interface_list_properties</li>
+                <li class="method">is_floating</li>
+                <li class="static_method">new_valist</li>
+                <li class="static_method">new_with_properties</li>
+                <li class="static_method">newv</li>
+                <li class="signal">notify</li>
+                <li class="method">notify_property</li>
+                <li class="field">ref_count</li>
+                <li class="method">ref_sink</li>
+                <li class="method">remove_toggle_ref</li>
+                <li class="method">remove_weak_pointer</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">replace_data</li>
+                <li class="method">replace_qdata</li>
+                <li class="method">set_data</li>
+                <li class="method">set_data_full</li>
+                <li class="method">set_property</li>
+                <li class="method">set_qdata</li>
+                <li class="method">set_qdata_full</li>
+                <li class="method">set_valist</li>
+                <li class="method">setv</li>
+                <li class="method">steal_data</li>
+                <li class="method">steal_qdata</li>
+                <li class="method">thaw_notify</li>
+                <li class="method">unref</li>
+                <li class="method">watch_closure</li>
+                <li class="method">weak_ref</li>
+                <li class="method">weak_unref</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

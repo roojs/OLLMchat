@@ -68,44 +68,15 @@ namespace OLLMchat.MarkdownGtk
 		
 		/**
 		 * Main method: adds text to be parsed and rendered.
-		 * Uses temporary buffer for incremental parsing - if parser returns 0 (success),
-		 * temporary content is cleared. Otherwise, it's filled with parser.pending content.
 		 * 
 		 * @param text The markdown text to process
 		 */
 		public void add(string text)
 		{
-			// Parse the text (parser.add() is quick)
-			if (this.parser.add(text) == 0) {
-				// Success: clear any existing temporary content
-				Gtk.TextIter iter;
-				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
-				Gtk.TextIter end_iter;
-				this.buffer.get_iter_at_mark(out end_iter, this.tmp_end);
-				if (iter.equal(end_iter)) {
-					return;
-				}
-				this.buffer.delete(ref iter, ref end_iter);
-				// Reset tmp_end to tmp_start
-				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
-				this.buffer.move_mark(this.tmp_end, iter);
-				return;
-			}
-			
-			// Error: add parser.pending content to temporary buffer
-			Gtk.TextIter iter;
-			this.buffer.get_iter_at_mark(out iter, this.tmp_start);
-			// Clear any existing temp content first
-			Gtk.TextIter end_iter;
-			this.buffer.get_iter_at_mark(out end_iter, this.tmp_end);
-			if (!iter.equal(end_iter)) {
-				this.buffer.delete(ref iter, ref end_iter);
-				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
-			}
-			this.buffer.insert(ref iter, this.parser.pending.str, -1);
-			// Update tmp_end
-			iter.forward_chars(this.parser.pending.str.length);
-			this.buffer.move_mark(this.tmp_end, iter);
+			// Check if text ends with newline - if so, it's end of line
+			var is_end_of_line = text.length > 0 && text[text.length - 1] == '\n';
+			// Parse the text
+			this.parser.add(text, is_end_of_line);
 		}
 		
 		// Callback methods for parser
@@ -248,7 +219,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for emphasis/italic spans.
 		 */
-		internal void on_em()
+		internal virtual void on_em()
 		{
 			this.current_state.add_state("i", "");
 		}
@@ -256,7 +227,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for strong/bold spans.
 		 */
-		internal void on_strong()
+		internal virtual void on_strong()
 		{
 			this.current_state.add_state("b", "");
 		}
@@ -272,7 +243,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for strikethrough spans.
 		 */
-		internal void on_del()
+		internal virtual void on_del()
 		{
 			this.current_state.add_state("s", "");
 		}
@@ -280,7 +251,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for inline code spans.
 		 */
-		internal void on_code_span()
+		internal virtual void on_code_span()
 		{
 			this.current_state.add_state("tt", "");
 		}
@@ -290,7 +261,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param tag_name The tag name
 		 */
-		internal void on_other(string tag_name)
+		internal virtual void on_other(string tag_name)
 		{
 			this.current_state.add_state(tag_name, "");
 		}
@@ -300,7 +271,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The text content
 		 */
-		internal void on_text(string text)
+		internal virtual void on_text(string text)
 		{
 			this.current_state.add_text(text);
 		}
@@ -342,7 +313,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param tag The HTML tag name (e.g., "div", "span")
 		 * @param attributes The HTML tag attributes (e.g., "class='test'")
 		 */
-		internal void on_html(string tag, string attributes)
+		internal virtual void on_html(string tag, string attributes)
 		{
 			this.current_state.add_state(tag, attributes);
 		}
@@ -351,9 +322,88 @@ namespace OLLMchat.MarkdownGtk
 		 * Generic callback to close the current state.
 		 * Used for closing blocks/spans.
 		 */
-		internal void on_end()
+		internal virtual void on_end()
 		{
 			this.current_state.close_state();
+		}
+	}
+	
+	/**
+	 * Dummy renderer for testing the Parser.
+	 * Extends Render and overrides methods to print callbacks instead of rendering.
+	 */
+	public class DummyRenderer : Render
+	{
+		private int indent_level = 0;
+		
+		public DummyRenderer(Gtk.TextBuffer buffer, Gtk.TextMark start_mark) {
+			base(buffer, start_mark);
+		}
+		
+		private void print_indent()
+		{
+			for (int i = 0; i < indent_level; i++) {
+				stdout.printf("  ");
+			}
+		}
+		
+		internal override void on_text(string text)
+		{
+			print_indent();
+			stdout.printf("TEXT: \"%s\"\n", text);
+		}
+		
+		internal override void on_em()
+		{
+			print_indent();
+			stdout.printf("START: <em>\n");
+			indent_level++;
+		}
+		
+		internal override void on_strong()
+		{
+			print_indent();
+			stdout.printf("START: <strong>\n");
+			indent_level++;
+		}
+		
+		internal override void on_code_span()
+		{
+			print_indent();
+			stdout.printf("START: <code>\n");
+			indent_level++;
+		}
+		
+		internal override void on_del()
+		{
+			print_indent();
+			stdout.printf("START: <del>\n");
+			indent_level++;
+		}
+		
+		internal override void on_other(string tag_name)
+		{
+			print_indent();
+			stdout.printf("START: <%s>\n", tag_name);
+			indent_level++;
+		}
+		
+		internal override void on_html(string tag, string attributes)
+		{
+			print_indent();
+			if (attributes != "") {
+				stdout.printf("START: <%s %s>\n", tag, attributes);
+			} else {
+				stdout.printf("START: <%s>\n", tag);
+			}
+			indent_level++;
+		}
+		
+		internal override void on_end()
+		{
+			indent_level--;
+			print_indent();
+			stdout.printf("END\n");
 		}
 	}
 }

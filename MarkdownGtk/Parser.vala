@@ -18,96 +18,9 @@
 
 namespace OLLMchat.MarkdownGtk
 {
-	/**
-	 * Parser for markdown text that calls specific callbacks on Render.
-	 * 
-	 * This is a placeholder implementation. Full parser implementation
-	 * will be specified in a separate plan.
-	 */
-	public class Parser
-	{
-		private Render renderer;
-		public StringBuilder pending;
-		
-		/**
-		 * Creates a new Parser instance.
-		 * 
-		 * @param renderer The Render instance to call callbacks on
-		 */
-		public Parser(Render renderer)
-		{
-			this.renderer = renderer;
-			this.pending = new StringBuilder();
-		}
-		
-		/**
-		 * Parses text and calls specific callbacks on Render.
-		 * 
-		 * @param text The markdown text to parse
-		 * @return 0 on success, non-zero on error
-		 */
-		public int add(string chunk)
-		{
-			
-    
-			 
-				this.current_chunk = chunk;
-				this.chunk_pos = 0;
-				var escape_next = false; // I guess used to markup chars..
-				var str= "";
-				while (this.chunk_pos < this.current_chunk.length) {
-					unichar c = current_chunk[chunk_pos];
-					
-					// escped chars
-					if (escape_next) {
-						str += c;
-						escape_next = false;
-						this.chunk_pos++;
-						continue;
-					}
-					
-					if (c == '\\') {
-						escape_next = true;
-						this.chunk_pos++;
-						continue;
-					}
-					
-
-
-
-					// Check if this could be the start of a formatting sequence
-					if (is_format_char(c)) {
-						// Peek ahead to get the full sequence
-						string sequence = peek_format_sequence();
-						
-						if (sequence != null) {
-							// We found a formatting sequence - flush text and handle it
-							flush_text();
-							handle_format_sequence(sequence);
-							chunk_pos += sequence.length;
-							continue;
-						}
-					}
-					
-					// Not a formatting sequence, just accumulate text
-					current_text.append_unichar(c);
-					chunk_pos++;
-				}
-				
-				current_chunk = "";
-				chunk_pos = 0;
-			}
-			// Placeholder implementation - full parser will be implemented later
-			// For now, just pass text through as plain text
-			if (text.length > 0) {
-				this.renderer.on_text(text);
-			}
-			// Return 0 for success
-			return 0;
-		}
-	}
-}
- 
+	
+	
+	
  
     private enum FormatType {
         ITALIC,
@@ -118,19 +31,28 @@ namespace OLLMchat.MarkdownGtk
 		HIGHLIGHT,
 		SUPERSCRIPT,
 		SUBSCRIPT,
-		ST_INVALID,
-		EQ_INVALID,
+		INVALID,
 		HTML
     }
-	private static Gee.HashMap<string, FormatType> {
-		get; set ; default = new Gee.HashMap<string, FormatType>()
-	};
-    
-	 
-	static construct {
+	
+	
+	/**
+	 * Parser for markdown text that calls specific callbacks on Render.
+	 * 
+	 * This is a placeholder implementation. Full parser implementation
+	 * will be specified in a separate plan.
+	 */
+	public class Parser
+	{
 		
-        // Asterisk sequences
-		private void setup_format_map() {
+		private static Gee.HashMap<string, FormatType> format_map;
+		
+		 
+		static construct {
+			setup_format_map();
+		}
+		
+		private static void setup_format_map() {
 			format_map = new Gee.HashMap<string, FormatType>();
 			
 			// Asterisk sequences (most common)
@@ -149,219 +71,364 @@ namespace OLLMchat.MarkdownGtk
 			
 			// Strikethrough (GFM)
 			format_map["~~"] = FormatType.STRIKETHROUGH;
-			format_map["~"] = FormatType.ST_INVALID;
 			
 			// Highlight (some markdown flavors)
-			format_map["=="] = FormatType.HIGHLIGHT;
-			format_map["="] = FormatType.EQ_INVALID;
+			// format_map["=="] = FormatType.HIGHLIGHT;
+			// format_map["="] = FormatType.INVALID;
 			
 			// Superscript/subscript (some flavors)
-			format_map["^"] = FormatType.SUPERSCRIPT;
-			format_map["~"] = FormatType.SUBSCRIPT;
+			// format_map["^"] = FormatType.SUPERSCRIPT;
+			// Note: "~" for subscript conflicts with "~~" for strikethrough
+			// Single "~" is not valid, so we don't map it
+			
 			format_map["<"] = FormatType.HTML;
 		}
-	}
 
-    private Gee.Stack<FormatType> state_stack { set; get; default = new Gee.Stack<FormatType>(); };
-    private string current_chunk = "";
-    private int chunk_pos = 0;
-     
+		
+		private Render renderer;
+		private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
+	 
+		private string leftover_chunk = "";
+	
+		/**
+		 * Creates a new Parser instance.
+		 * 
+		 * @param renderer The Render instance to call callbacks on
+		 */
+		public Parser(Render renderer)
+		{
+			this.renderer = renderer;
+		}
+		
+		/**
+		 * Parses text and calls specific callbacks on Render.
+		 * 
+		 * @param in_chunk The markdown text to parse
+		 * @param is_end_of_line If true, format markers at the end are treated as definitive ends
+		 */
+		public void add(string in_chunk, bool is_end_of_line = false)
+		{
+			var chunk = in_chunk + this.leftover_chunk;
+			var chunk_pos = 0;
+			var escape_next = false;
+			var str = "";
+			
+			while (chunk_pos < chunk.length) {
+				unichar c = chunk[chunk_pos];
+				
+				if (escape_next) {
+					str += c.to_string();
+					escape_next = false;
+					chunk_pos++;
+					continue;
+				}
+				
+				if (c == '\\') {
+					escape_next = true;
+					chunk_pos++;
+					continue;
+				}
+				
+				// Check if this could be the start of a formatting sequence
+				if (!format_map.has_key(c.to_string())) {
+					str += c.to_string();
+					chunk_pos++;
+					continue;
+				}
+				// If we're at the end, check format type to determine if we need lookahead
+				if (chunk_pos == chunk.length - 1) {
+					var fk = format_map[c.to_string()];
+					
+					switch (fk) {
+						case FormatType.HTML:
+							// HTML at end of line - treat as text (no more characters to check)
+							if (is_end_of_line) {
+								str += c.to_string();
+								chunk_pos++;
+								continue;
+							}
+							// Not end of line - continue processing (check if next char is alpha)
+							break;
+							
+						case FormatType.INVALID:
+							// Invalid format - if end of line, treat as text; otherwise save to leftover_chunk
+							if (is_end_of_line) {
+								str += c.to_string();
+								chunk_pos++;
+								continue;
+							}
+							this.leftover_chunk = c.to_string();
+							return;
+						
+						
+						
+						default:
+							// All other formats can have multi-character sequences
+							// Save to leftover_chunk if not end of line (might need lookahead)
+							if (!is_end_of_line) {
+								this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+								return;
+							}
+							// End of line - process as single character format
+							break;
+					}
+				}
+				
+				var fk = format_map[c.to_string()];
+				
+				// If we're at the end and it IS end of line, continue processing normally
+				// (format marker is definitive - no need to save to leftover_chunk)
+
+
+
+
+				var next_char = chunk[chunk_pos + 1];
+
+				if (fk == FormatType.HTML) {
+					// check if next char is a-z (opening tag) or '/' (closing tag)
+					if (!next_char.isalpha() && next_char != '/') {
+						str += c.to_string();
+						chunk_pos++;
+						continue;
+					}
+					// Output accumulated text before processing HTML tag
+					this.renderer.on_text(str);
+					str = "";
+					// now we are reading 
+					chunk_pos++;
+					chunk = this.add_html(chunk.substring(chunk_pos, chunk.length - chunk_pos));
+					chunk_pos = 0;
+					if (chunk.length > 0 && chunk[0] == '<') {
+						this.leftover_chunk = chunk;
+						return;
+					}
+					// if it could not read the html tag, then we can leave it to the next call
+					continue;
+				}
+				
+				var two_char_seq = c.to_string() + next_char.to_string();
+				if (!format_map.has_key(two_char_seq)) {
+					this.renderer.on_text(str);
+					str = "";
+					this.got_format(fk);
+					chunk_pos++;
+					continue;
+				}
+				var fk2 = format_map[two_char_seq];
+				// Check for third character sequence
+				if (chunk_pos + 2 >= chunk.length) {
+					this.renderer.on_text(str);
+					str = "";
+					this.got_format(fk2);
+					chunk_pos += 2;
+					continue;
+				}
+				
+				var third_char = chunk[chunk_pos + 2];
+				var three_char_seq = two_char_seq + third_char.to_string();
+				
+				if (!format_map.has_key(three_char_seq)) {
+					this.renderer.on_text(str);
+					str = "";
+					this.got_format(fk2);
+					chunk_pos += 2;
+					continue;
+				}
+				// Three-character sequence found (e.g., *** or ___)
+				this.renderer.on_text(str);
+				str = "";
+				
+				this.got_format(format_map[three_char_seq]);
+				chunk_pos += 3;
+				continue;
+			}
+			
+			this.renderer.on_text(str);
+		}
+		
+		/**
+		 * Handles format markers by checking the stack.
+		 * If the same format is on top of stack, removes it and calls on_end.
+		 * If different, adds to stack and calls the appropriate do_XXX method.
+		 * 
+		 * @param format_type The format type detected
+		 */
+		private void got_format(FormatType format_type)
+		{
+			// Check if stack is empty or top is different
+			if (this.state_stack.size == 0 || this.state_stack.get(this.state_stack.size - 1) != format_type) {
+				// Different state - add to stack and call do_XXX
+				this.state_stack.add(format_type);
+				this.do_format_start(format_type);
+				return;
+			}
+			
+			// Same state - remove from stack and call do_end
+			this.state_stack.remove_at(this.state_stack.size - 1);
+			this.do_format_end(format_type);
+		}
+		
+		/**
+		 * Calls the appropriate end method based on format type.
+		 * For BOLD_ITALIC, calls on_end twice since we opened two states.
+		 * 
+		 * @param format_type The format type to end
+		 */
+		private void do_format_end(FormatType format_type)
+		{
+			if (format_type == FormatType.BOLD_ITALIC) {
+				// BOLD_ITALIC opened two states, so close both
+				this.renderer.on_end(); // Close italic
+			}
+			
+			// Single state, close once
+			this.renderer.on_end();
+		}
+		
+		/**
+		 * Calls the appropriate renderer method based on format type.
+		 * Highlights formats that don't have renderer support.
+		 * 
+		 * @param format_type The format type to start
+		 */
+		private void do_format_start(FormatType format_type)
+		{
+			switch (format_type) {
+				case FormatType.ITALIC:
+					this.renderer.on_em();
+					break;
+				case FormatType.BOLD:
+					this.renderer.on_strong();
+					break;
+				case FormatType.BOLD_ITALIC:
+					// Push both bold and italic states
+					this.renderer.on_strong();
+					this.renderer.on_em();
+					break;
+				case FormatType.CODE:
+					this.renderer.on_code_span();
+					break;
+				case FormatType.STRIKETHROUGH:
+					this.renderer.on_del();
+					break;
+				// case FormatType.HIGHLIGHT:
+				// 	// HIGHLIGHT not supported in renderer - use on_other
+				// 	this.renderer.on_other("highlight");
+				// 	break;
+				// case FormatType.SUPERSCRIPT:
+				// 	// SUPERSCRIPT not supported in renderer - use on_other
+				// 	this.renderer.on_other("sup");
+				// 	break;
+				// case FormatType.SUBSCRIPT:
+				// 	// SUBSCRIPT not supported in renderer - use on_other
+				// 	this.renderer.on_other("sub");
+				// 	break;
+				case FormatType.HTML:
+					// HTML needs special handling - for now use on_other
+					// TODO: Parse HTML tag and attributes
+					this.renderer.on_other("html");
+					break;
+				case FormatType.INVALID:
+					// Should not reach here
+					break;
+			}
+		}
+	 
+		private string add_html(string chunk)
+		{
+			// If chunk is empty, return "<" to be picked up next time
+			if (chunk.length == 0) {
+				return "<";
+			}
+			var pos = 0;
+			var tag = "";
+			var is_closing = chunk[pos] == '/';
+			
+			// Check if this is a closing tag (starts with '/')
+			if (is_closing) {
+				pos++;
+			}
+			
+			// Read all alphabetic characters - that's our tag
+			while (pos < chunk.length && chunk[pos].isalpha()) {
+				tag += chunk[pos].to_string();
+				pos++;
+			}
+ 
+			// If we didn't get any tag (first char after '<' is not alpha), error condition
+			if (tag.length == 0) {
+				this.renderer.on_text("<");
+				return chunk;
+			}
+			
+			// Check if we've reached the end
+			if (pos >= chunk.length) {
+				// let the next part call with it.
+				return "<" + chunk;
+			}
+			
+			// at this point we should eat white space
+			var got_ws = false;
+			while (pos < chunk.length && chunk[pos] == ' ') {
+				got_ws = true;
+				pos++;
+			}
+			// at this point we have the tag.. either we are looking for attributes or a closing tag <span> </span>
+
+			// Next char should be '>' or space
+			if (chunk[pos] == '>') {
+				// we got tag then '>' so we either fire on_html with the tag and an empty attribute or on_end
+				if (is_closing) {
+					this.renderer.on_end();
+				} else {
+					this.renderer.on_html(tag, "");
+				}
+				return chunk.substring(pos + 1, chunk.length - pos - 1);
+			}
+			
+			// if we are in closing and have got to this point then it's rubbish and we need to add it as text and return the left overs
+			if (is_closing) {
+				this.renderer.on_text("</" + tag);
+				return chunk.substring(pos, chunk.length - pos);
+			}
+			
+			// if we did not get white space and it's not > then it's rubbish and we need to add it as text and return the left overs
+			if (!got_ws) {
+				this.renderer.on_text("<" + chunk.substring(0, pos));
+				return chunk.substring(pos, chunk.length - pos);
+			}
+
+			var attributes = "";
+			// we are looking for two things now
+			//   '>'  indicates end of the tag (we are not going to be clever and read the attribute format)
+			//   '\n'  indicates the whole thing is rubbish and we need to add it as text and return the left overs
+			// everything else is an attribute
+			while (pos < chunk.length && chunk[pos] != '>' && chunk[pos] != '\n' && chunk[pos] != '\r') {
+				attributes += chunk[pos].to_string();
+				pos++;
+			}
+			
+			if (pos >= chunk.length) {
+				// not got there yet - still reading attributes
+				return "<" + chunk;
+			}
+			
+			if (chunk[pos] == '>') {
+				this.renderer.on_html(tag, attributes);
+				return chunk.substring(pos + 1, chunk.length - pos - 1);
+			}
+			
+			// chunk[pos] == '\n' || chunk[pos] == '\r'
+			this.renderer.on_text("<" + chunk.substring(0, pos));
+			return chunk.substring(pos, chunk.length - pos);
+		}
+ 
+
+	}
     // Mapping of character sequences to format types
     
      
     
-    public void parse_chunk(string chunk) {
-        this.current_chunk = chunk;
-        this.chunk_pos = 0;
-        var escape_next = false;
-		var str = "";
-        
-        while (chunk_pos < current_chunk.length) {
-            unichar c = current_chunk[chunk_pos];
-            
-            if (escape_next) {
-                current_text.append_unichar(c);
-                escape_next = false;
-                chunk_pos++;
-                continue;
-            }
-            
-            if (c == '\\') {
-                escape_next = true;
-                chunk_pos++;
-                continue;
-            }
-            
-
-            // Check if this could be the start of a formatting sequence
-            if (!format_map.has_key(c.to_string()))
-
-
-			}
-                // Peek ahead to get the full sequence
-                string sequence = peek_format_sequence();
-                
-                if (sequence != null) {
-                    // We found a formatting sequence - flush text and handle it
-                    flush_text();
-                    handle_format_sequence(sequence);
-                    chunk_pos += sequence.length;
-                    continue;
-                }
-            }
-            
-            // Not a formatting sequence, just accumulate text
-            current_text.append_unichar(c);
-            chunk_pos++;
-        }
-        
-        current_chunk = "";
-        chunk_pos = 0;
-    }
+     
     
-    public void finish() {
-        flush_text();
-    }
-    
-    private bool is_format_char(unichar c) {
-        return c == '*' || c == '_' || c == '`' || c == '~';
-    }
-    
-    private string peek_format_sequence() {
-        int start_pos = chunk_pos;
-        unichar start_char = current_chunk[chunk_pos];
-        StringBuilder sequence = new StringBuilder();
-        
-        // Consume consecutive identical formatting characters
-        while (chunk_pos < current_chunk.length && 
-               current_chunk[chunk_pos] == start_char) {
-            sequence.append_unichar(start_char);
-            chunk_pos++;
-            
-            // Check if this sequence is in our format map
-            string seq_str = sequence.str;
-            if (format_map.has_key(seq_str)) {
-                // We found a valid sequence, reset chunk_pos for actual consumption
-                chunk_pos = start_pos;
-                return seq_str;
-            }
-        }
-        
-        // No valid sequence found, reset position
-        chunk_pos = start_pos;
-        return null;
-    }
-    
-    private void handle_format_sequence(string sequence) {
-        FormatType format_type = format_map[sequence];
-        FormatType current_state = state_stack.size > 0 ? state_stack.peek() : FormatType.ITALIC;
-        
-        // Check if we're closing the current formatting
-        if (state_stack.size > 0 && current_state == format_type) {
-            // Matching close - end the format
-            state_stack.pop();
-            format_end(get_format_name(format_type));
-        } else {
-            // New format starting
-            state_stack.push(format_type);
-            format_begin(get_format_name(format_type));
-        }
-    }
-    
-    private string get_format_name(FormatType format_type) {
-        switch (format_type) {
-            case FormatType.ITALIC:
-                return "italic";
-            case FormatType.BOLD:
-                return "bold";
-            case FormatType.BOLD_ITALIC:
-                return "bold_italic";
-            case FormatType.CODE:
-                return "code";
-            case FormatType.STRIKETHROUGH:
-                return "strikethrough";
-            default:
-                return "plain";
-        }
-    }
-    
-    private void flush_text() {
-        if (current_text.len > 0) {
-            text(current_text.str);
-            current_text = new StringBuilder();
-        }
-    }
-}
-
-// Example usage
-public class SimpleRenderer : Object {
-    public void on_text(string text) {
-        print(text);
-    }
-    
-    public void on_format_begin(string format_type) {
-        switch (format_type) {
-            case "italic":
-                print("<i>");
-                break;
-            case "bold":
-                print("<b>");
-                break;
-            case "bold_italic":
-                print("<b><i>");
-                break;
-            case "code":
-                print("<code>");
-                break;
-            case "strikethrough":
-                print("<s>");
-                break;
-        }
-    }
-    
-    public void on_format_end(string format_type) {
-        switch (format_type) {
-            case "italic":
-                print("</i>");
-                break;
-            case "bold":
-                print("</b>");
-                break;
-            case "bold_italic":
-                print("</i></b>");
-                break;
-            case "code":
-                print("</code>");
-                break;
-            case "strikethrough":
-                print("</s>");
-                break;
-        }
-    }
-}
-
-int main() {
-    var parser = new MarkdownSpanParser();
-    var renderer = new SimpleRenderer();
-    
-    parser.text.connect(renderer.on_text);
-    parser.format_begin.connect(renderer.on_format_begin);
-    parser.format_end.connect(renderer.on_format_end);
-    
-    // Test cases
-    string[] test_inputs = {
-        "Hello *world*",
-        "This is **bold** and ***bold italic***",
-        "`code` and ~~strikethrough~~",
-        "Mixed **bold *and italic* inside**"
-    };
-    
-    foreach (string test in test_inputs) {
-        print("Input: %s\nOutput: ", test);
-        parser.parse_chunk(test);
-        parser.finish();
-        print("\n\n");
-    }
-    
-    return 0;
-}
+} 

@@ -310,3 +310,11 @@ test_html_to_md = executable('test-html-to-md',
   install: false
 )
 
+# Build test-markdown-parser executable (Markdown parser test with dummy renderer)
+test_markdown_parser = executable('test-markdown-parser',
+  dependencies: test_window_deps,
+  sources: ['test-markdown-parser.vala'],
+  link_with: [ollmchat_base_lib, ollmchat_ui_lib],
+  install: false
+)
+
