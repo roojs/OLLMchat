@@ -147,13 +147,21 @@ namespace OLLMchat.Ollama
 		/**
 		 * Sets the model from the first running model on the server (ps()).
 		 * 
-		 * If running models are found, sets this.model to the first model's name.
+		 * Only sets the model if it's not already configured (empty string).
+		 * If running models are found and model is empty, sets this.model to the first model's name.
 		 * If no running models are found or an error occurs, leaves model unchanged.
+		 * 
+		 * Note: Always uses model.name (not model.model) to ensure consistency.
 		 * 
 		 * @since 1.0
 		 */
 		public void set_model_from_ps()
 		{
+			// Don't override model if it's already set (e.g., from config)
+			if (this.model != "") {
+				return;
+			}
+			
 			var main_loop = new MainLoop();
 			Gee.ArrayList<Model>? running_models = null;
 			
@@ -161,7 +169,8 @@ namespace OLLMchat.Ollama
 				try {
 					running_models = this.ps.end(res);
 					if (running_models.size > 0) {
-						this.model = running_models[0].model;
+						// Always use model.name for consistency (not model.model)
+						this.model = running_models[0].name;
 					}
 				} catch (Error e) {
 					GLib.warning("Failed to set model from ps(): %s", e.message);
@@ -178,24 +187,43 @@ namespace OLLMchat.Ollama
 		* If the model already exists in available_models, it will be updated with the new data using updateFrom().
 		* Otherwise, the new model will be added to available_models.
 		* 
+		* Checks cache first, and saves to cache after fetching from API.
+		* 
 		* @param model_name The name of the model to get details for
 		* @return Model object with full details including capabilities
 		* @since 1.0
 		*/
 		public async Model show_model(string model_name) throws Error
 		{
-			var result = yield new ShowModelCall(this, model_name).exec_show();
+			GLib.debug("show_model: %s", model_name);
 			
 			// Check if model already exists in available_models
-			if (this.available_models.has_key(result.name)) {
-				// Update existing model with new data
-				this.available_models.get(result.name).updateFrom(result);
-				return this.available_models.get(result.name);
+			Model model;
+			if (this.available_models.has_key(model_name)) {
+				model = this.available_models.get(model_name);
+			} else {
+				// Create new model instance
+				model = new Model(this);
+				model.name = model_name;
+				this.available_models.set(model_name, model);
 			}
-				// Add new model to available_models
-			this.available_models.set(result.name, result);
-			return result;
 			
+			// Try to load from cache first
+			if (model.load_from_cache()) {
+				GLib.debug("Loaded model '%s' from cache", model_name);
+				return model;
+			}
+			
+			// Not in cache, fetch from API
+			var result = yield new ShowModelCall(this, model_name).exec_show();
+			
+			// Update model with API result
+			model.updateFrom(result);
+			
+			// Save to cache
+			model.save_to_cache();
+			
+			return model;
 		}
 
 		/**

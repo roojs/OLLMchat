@@ -370,3 +370,84 @@ public class Renderer
 
 Note: The `Table` class should have `public bool active { get; set; default = false; }` to ensure it defaults to `false`.
 
+## Line Length and Breaking
+
+**IMPORTANT:** Avoid creating long lines. Break lines for readability:
+- **Always break on `(`** when function calls or method invocations are long
+- **Break on `+`** when string concatenation creates long lines
+- **If arguments are broken**, put each argument on its own line
+
+**Bad:**
+```vala
+this.buffer.insert_markup(ref end_iter, "<span size=\"small\" color=\"#1a1a1a\">" + renderer.toPango(message) + "</span>\n", -1);
+```
+
+**Good:**
+```vala
+this.buffer.insert_markup(
+	ref end_iter,
+	"<span size=\"small\" color=\"#1a1a1a\">" + renderer.toPango(message) + "</span>\n",
+	-1
+);
+```
+
+**Also Good (breaking on + for long concatenation):**
+```vala
+this.buffer.insert_markup(
+	ref end_iter,
+	"<span size=\"small\" color=\"#1a1a1a\">" +
+		renderer.toPango(message) +
+		"</span>\n",
+	-1
+);
+```
+
+**Good (each argument on its own line):**
+```vala
+this.some_method(
+	arg1,
+	arg2,
+	arg3,
+	arg4
+);
+```
+
+## Debug Statements
+
+**IMPORTANT:** When adding debug output using `GLib.debug()`, do NOT prefix the message with function names, class names, or location information. The debug output system already includes the filename and line number automatically, making such prefixes redundant.
+
+**IMPORTANT:** When asked to add debugging, use at most 3-4 debug statements, preferably just one targeted debug statement. Avoid "splattering" debug statements everywhere - be selective and focus on the key points that will help diagnose the issue.
+
+**Bad:**
+```vala
+GLib.debug("[Client.models] Starting models() call");
+GLib.debug("[BaseCall.parse_models_array] Called for %s", call_type);
+GLib.debug("[ChatInput.update_models] Got %d models", count);
+```
+
+**Also Bad (too many debug statements):**
+```vala
+GLib.debug("Starting function");
+GLib.debug("Got input: %s", input);
+GLib.debug("Processing item 1");
+GLib.debug("Processing item 2");
+GLib.debug("Processing item 3");
+GLib.debug("Finished processing");
+GLib.debug("Returning result");
+```
+
+**Good:**
+```vala
+GLib.debug("Starting models() call");
+GLib.debug("Called for %s", call_type);
+GLib.debug("Got %d models", count);
+```
+
+**Also Good (targeted single debug):**
+```vala
+GLib.debug("Model '%s' not found in available_models (current: '%s', available: %d)", 
+	this.client.model, this.client.model, this.client.available_models.size);
+```
+
+The debug output will automatically show the file and line number, so you don't need to include that information in the message itself.
+

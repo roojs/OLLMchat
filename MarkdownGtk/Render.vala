@@ -45,7 +45,7 @@ namespace OLLMchat.MarkdownGtk
 	 * automatically handles closing tags when the corresponding state is closed
 	 * or when flush is called.
 	 */
-	public class Render : Object
+	public class Render : RenderBase
 	{
 		public Gtk.TextBuffer buffer { get; private set; }
 		public Gtk.TextMark start_mark { get; private set; }
@@ -54,7 +54,6 @@ namespace OLLMchat.MarkdownGtk
 		public Gtk.TextMark tmp_end { get; private set; }
 		public TopState top_state { get; private set; }
 		public State current_state { get; internal set; }
-		public Parser parser { get; private set; }
 		
 		/**
 		 * Creates a new Render instance.
@@ -64,6 +63,7 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public Render(Gtk.TextBuffer buffer, Gtk.TextMark start_mark)
 		{
+			base();
 			this.buffer = buffer;
 			this.start_mark = start_mark;
 			
@@ -77,9 +77,6 @@ namespace OLLMchat.MarkdownGtk
 			this.tmp_start = this.buffer.create_mark(null, iter, true);
 			this.tmp_end = this.buffer.create_mark(null, iter, true);
 			
-			// Create parser instance
-			this.parser = new Parser(this);
-			
 			// Create top_state
 			this.top_state = new TopState(this);
 			
@@ -87,28 +84,6 @@ namespace OLLMchat.MarkdownGtk
 			this.current_state = this.top_state;
 		}
 		
-		/**
-		 * Main method: adds text to be parsed and rendered.
-		 * 
-		 * @param text The markdown text to process
-		 */
-		public void add(string text)
-		{
-			GLib.debug("add: text length=%d, content='%s'", text.length, text);
-			this.parser.add(text);
-		}
-		/* call before starting a new chunk and ending last one.. */
-		public void flush()
-		{
-			GLib.debug("flush: called");
-			this.parser.flush();
-		}
-		/* call at starting a new chunk .. triggers a reset of the data - you should have flushed the last one.. */
-		public void add_start(string text, bool is_end_of_chunks = false)
-		{
-			GLib.debug("add_start: text length=%d, is_end_of_chunks=%s, content='%s'", text.length, is_end_of_chunks.to_string(), text);
-			this.parser.add_start(text, is_end_of_chunks);
-		}
 		
 		// Callback methods for parser
 		
@@ -117,25 +92,24 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param level Header level (1-6)
 		 */
-		internal void on_h(uint level)
+		internal override void on_h(uint level)
 		{
-			string tag = "h" + level.to_string();
-			string size_attr = "";
+			var h_state = this.current_state.add_state();
+			h_state.style.weight = Pango.Weight.BOLD;
 			switch (level) {
 				case 1:
-					size_attr = "size=\"xx-large\" weight=\"bold\"";
+					h_state.style.scale = Pango.Scale.XX_LARGE;
 					break;
 				case 2:
-					size_attr = "size=\"x-large\" weight=\"bold\"";
+					h_state.style.scale = Pango.Scale.X_LARGE;
 					break;
 				case 3:
-					size_attr = "size=\"large\" weight=\"bold\"";
+					h_state.style.scale = Pango.Scale.LARGE;
 					break;
 				default:
-					size_attr = "weight=\"bold\"";
+					// Level 4-6 just use bold, no size change
 					break;
 			}
-			this.current_state.add_state(tag, size_attr);
 		}
 		
 		/**
@@ -144,9 +118,9 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark The list marker character
 		 */
-		internal void on_ul(bool is_tight, char mark)
+		internal override void on_ul(bool is_tight, char mark)
 		{
-			this.current_state.add_state("ul", "");
+			this.current_state.add_state();
 		}
 		
 		/**
@@ -156,9 +130,9 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark_delimiter The delimiter character
 		 */
-		internal void on_ol(uint start, bool is_tight, char mark_delimiter)
+		internal override void on_ol(uint start, bool is_tight, char mark_delimiter)
 		{
-			this.current_state.add_state("ol", "");
+			this.current_state.add_state();
 		}
 		
 		/**
@@ -168,9 +142,9 @@ namespace OLLMchat.MarkdownGtk
 		 * @param task_mark The task marker character
 		 * @param task_mark_offset The offset of the task marker
 		 */
-		internal void on_li(bool is_task, char task_mark, uint task_mark_offset)
+		internal override void on_li(bool is_task, char task_mark, uint task_mark_offset)
 		{
-			this.current_state.add_state("li", "");
+			this.current_state.add_state();
 		}
 		
 		/**
@@ -179,33 +153,36 @@ namespace OLLMchat.MarkdownGtk
 		 * @param lang The language identifier (may be null)
 		 * @param fence_char The fence character used
 		 */
-		internal void on_code(string? lang, char fence_char)
+		internal override void on_code(string? lang, char fence_char)
 		{
-			this.current_state.add_state("code", "");
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for paragraph blocks.
 		 */
-		internal void on_p()
+		internal override void on_p()
 		{
-			this.current_state.add_state("p", "");
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for blockquote blocks.
 		 */
-		internal void on_quote()
+		internal override void on_quote()
 		{
-			this.current_state.add_state("blockquote", "");
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for horizontal rule blocks.
 		 */
-		internal void on_hr()
+		internal override void on_hr()
 		{
-			this.current_state.add_text("<span size=\"large\">━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n");
+			var hr_state = this.current_state.add_state();
+			hr_state.style.scale = Pango.Scale.LARGE;
+			hr_state.add_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+			hr_state.close_state();
 		}
 		
 		/**
@@ -215,11 +192,12 @@ namespace OLLMchat.MarkdownGtk
 		 * @param title The link title 
 		 * @param is_autolink Whether this is an autolink
 		 */
-		internal void on_a(string href, string title, bool is_autolink)
+		internal override void on_a(string href, string title, bool is_autolink)
 		{
 			// Add span state (blue, underlined) for the link
-			var link_state = this.current_state.add_state("
-				span", "color=\"blue\" underline=\"single\"");
+			var link_state = this.current_state.add_state();
+			link_state.style.foreground = "blue";
+			link_state.style.underline = Pango.Underline.SINGLE;
 			
 			// Add the href text
 			link_state.add_text(href);
@@ -227,10 +205,10 @@ namespace OLLMchat.MarkdownGtk
 			// Close the link span
 			link_state.close_state();
 			this.current_state.add_text(" ");
-			this.current_state.add_state("b", "");
+			var bold_state = this.current_state.add_state();
+			bold_state.style.weight = Pango.Weight.BOLD;
 			// If there's a title, add it in bold after a space (leave bold state open)
 			if (title != "") {
-			
 				this.current_state.add_text(title);
 			}
 		}
@@ -241,7 +219,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param src The image source URL
 		 * @param title The image title (may be null)
 		 */
-		internal void on_img(string src, string? title)
+		internal override void on_img(string src, string? title)
 		{
 			// Images not fully supported - just add placeholder
 			this.current_state.add_text("[IMG:");
@@ -250,41 +228,43 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for emphasis/italic spans.
 		 */
-		internal virtual void on_em()
+		internal override void on_em()
 		{
-			this.current_state.add_state("i", "");
+			var em_state = this.current_state.add_state();
+			em_state.style.style = Pango.Style.ITALIC;
 		}
 		
 		/**
 		 * Callback for strong/bold spans.
 		 */
-		internal virtual void on_strong()
+		internal override void on_strong()
 		{
-			this.current_state.add_state("b", "");
+			var strong_state = this.current_state.add_state();
+			strong_state.style.weight = Pango.Weight.BOLD;
 		}
 		
 		/**
 		 * Callback for underline spans.
 		 */
-		internal void on_u()
+		internal override void on_u()
 		{
-			this.current_state.add_state("u", "");
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for strikethrough spans.
 		 */
-		internal virtual void on_del()
+		internal override void on_del()
 		{
-			this.current_state.add_state("s", "");
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for inline code spans.
 		 */
-		internal virtual void on_code_span()
+		internal override void on_code_span()
 		{
-			this.current_state.add_state("tt", "");
+			this.current_state.add_state();
 		}
 		
 		/**
@@ -292,9 +272,9 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param tag_name The tag name
 		 */
-		internal virtual void on_other(string tag_name)
+		internal override void on_other(string tag_name)
 		{
-			this.current_state.add_state(tag_name, "");
+			this.current_state.add_state();
 		}
 		
 		/**
@@ -302,7 +282,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The text content
 		 */
-		internal virtual void on_text(string text)
+		internal override void on_text(string text)
 		{
 			this.current_state.add_text(text);
 		}
@@ -310,7 +290,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for line breaks (hard breaks).
 		 */
-		internal void on_br()
+		internal override void on_br()
 		{
 			this.current_state.add_text("\n");
 		}
@@ -319,7 +299,7 @@ namespace OLLMchat.MarkdownGtk
 		 * Callback for soft line breaks.
 		 * Inserts a space (or newline in code blocks).
 		 */
-		internal void on_softbr()
+		internal override void on_softbr()
 		{
 			// For now, just add a space (code block handling can be added later if needed)
 			this.current_state.add_text(" ");
@@ -331,7 +311,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The decoded entity text
 		 */
-		internal void on_entity(string text)
+		internal override void on_entity(string text)
 		{
 			this.current_state.add_text(text);
 		}
@@ -344,16 +324,16 @@ namespace OLLMchat.MarkdownGtk
 		 * @param tag The HTML tag name (e.g., "div", "span")
 		 * @param attributes The HTML tag attributes (e.g., "class='test'")
 		 */
-		internal virtual void on_html(string tag, string attributes)
+		internal override void on_html(string tag, string attributes)
 		{
-			this.current_state.add_state(tag, attributes);
+			this.current_state.add_state();
 		}
 		
 		/**
 		 * Generic callback to close the current state.
 		 * Used for closing blocks/spans.
 		 */
-		internal virtual void on_end()
+		internal override void on_end()
 		{
 			this.current_state.close_state();
 		}

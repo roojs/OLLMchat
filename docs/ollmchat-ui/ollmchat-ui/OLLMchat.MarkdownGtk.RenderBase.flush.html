@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.MarkdownGtk.Render.flush &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.MarkdownGtk.RenderBase.flush &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.MarkdownGtk.Render.flush &ndash; ollmchat-ui Reference Manual</div>
+    <div class="site_header">OLLMchat.MarkdownGtk.RenderBase.flush &ndash; ollmchat-ui Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -27,21 +27,14 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="class"><a href="OLLMchat.MarkdownGtk.Render.html">Render</a></li>
+          <li class="abstract_class"><a href="OLLMchat.MarkdownGtk.RenderBase.html">RenderBase</a></li>
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.buffer.html">buffer</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_state.html">current_state</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.end_mark.html">end_mark</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.parser.html">parser</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.start_mark.html">start_mark</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_end.html">tmp_end</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
-          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
-          <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
-          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.add.html">add</a></li>
-          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.add_start.html">add_start</a></li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.RenderBase.parser.html">parser</a></li>
+          <li class="creation_method"><a href="OLLMchat.MarkdownGtk.RenderBase.RenderBase.html">RenderBase</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.RenderBase.add.html">add</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.RenderBase.add_start.html">add_start</a></li>
           <li class="method">flush</li>
         </ul>
       </div>
@@ -50,6 +43,9 @@
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">flush</span></b> ()
+        </div>
+        <div class="description">
+          <p>Finalizes the current chunk. Call this before starting a new chunk with add_start to ensure all pending content is processed.</p>
         </div>
       </div>
     </div><br/>

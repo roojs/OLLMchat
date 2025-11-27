@@ -26,6 +26,12 @@ namespace OLLMchat.Ollama
 	 */
 	public class Model : BaseResponse
 	{
+		/**
+		 * Model name/identifier. This is the primary identifier for the model.
+		 * 
+		 * When setting Client.model, always use this property (model.name), not model.model.
+		 * This ensures consistency across all model sources (models(), ps(), show_model()).
+		 */
 		public string name { get; set; default = ""; }
 		public string modified_at { get; set; default = ""; }
 		public int64 size { get; set; default = 0; }
@@ -39,6 +45,12 @@ namespace OLLMchat.Ollama
 		public int64 prompt_eval_duration { get; set; default = 0; }
 		public int eval_count { get; set; default = 0; }
 		public int64 eval_duration { get; set; default = 0; }
+		/**
+		 * Model identifier from ps() API response. 
+		 * 
+		 * Note: For setting Client.model, always use model.name instead of this property
+		 * to ensure consistency. This property may be null or differ from name in some contexts.
+		 */
 		public string? model { get; set; } 
 		public string? expires_at { get; set; }
 		public int context_length { get; set; default = 0; }
@@ -91,14 +103,44 @@ namespace OLLMchat.Ollama
 			base(client);
 		}
 
+		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			// Exclude computed properties and client from serialization
+			switch (property_name) {
+				case "size-gb":
+				case "is-thinking":
+				case "can-call":
+				case "name-with-size":
+				case "client":
+					// These are computed properties or internal references, skip serialization
+					return null;
+				case "capabilities":
+					// Serialize capabilities as JSON array
+					var capabilities = value.get_object() as Gee.ArrayList<string>;
+					if (capabilities == null) {
+						return null;
+					}
+					var array_node = new Json.Node(Json.NodeType.ARRAY);
+					array_node.init_array(new Json.Array());
+					var json_array = array_node.get_array();
+					foreach (var cap in capabilities) {
+						json_array.add_string_element(cap);
+					}
+					return array_node;
+				default:
+					// Let default handler process other properties
+					return base.serialize_property(property_name, value, pspec);
+			}
+		}
+
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			// Exclude computed properties from deserialization
 			switch (property_name) {
-				case "size_gb":
-				case "is_thinking":
-				case "can_call":
-				case "name_with_size":
+				case "size-gb":
+				case "is-thinking":
+				case "can-call":
+				case "name-with-size":
 					// These are computed properties, skip deserialization
 					value = Value(pspec.value_type);
 					return true;
@@ -157,6 +199,103 @@ namespace OLLMchat.Ollama
 			this.thaw_notify();
 			// Thaw notifications - all property change signals will be emitted now
  		}
+		
+		/**
+		* Gets the cache file path for this model.
+		* 
+		* @return Path to the cache file in ~/.local/share/ollmchat/models/
+		*/
+		public string get_cache_path()
+		{
+			// Sanitize model name for filesystem (replace / and : with _)
+			var safe_name = this.name.replace("/", "_").replace(":", "_");
+			var cache_dir = Path.build_filename(
+				GLib.Environment.get_user_data_dir(),
+				"ollmchat",
+				"models"
+			);
+			// Ensure cache directory exists
+			var dir = File.new_for_path(cache_dir);
+			if (!dir.query_exists()) {
+				try {
+					dir.make_directory_with_parents();
+				} catch (Error e) {
+					GLib.warning("Failed to create cache directory: %s", e.message);
+				}
+			}
+			return Path.build_filename(cache_dir, safe_name + ".json");
+		}
+
+		/**
+		* Loads model details from cache if available and updates this model using updateFrom().
+		* 
+		* @return true if cache was loaded successfully, false otherwise
+		*/
+		public bool load_from_cache()
+		{
+			if (this.name == "") {
+				return false;
+			}
+			
+			var cache_path = this.get_cache_path();
+			var cache_file = File.new_for_path(cache_path);
+			
+			if (!cache_file.query_exists()) {
+				return false;
+			}
+			
+			try {
+				var parser = new Json.Parser();
+				parser.load_from_file(cache_path);
+				var root = parser.get_root();
+				if (root == null) {
+					return false;
+				}
+				
+				var generator = new Json.Generator();
+				generator.set_root(root);
+				var json_str = generator.to_data(null);
+				var cached_model = Json.gobject_from_data(typeof(Model), json_str, -1) as Model;
+				if (cached_model == null) {
+					return false;
+				}
+				
+				// Update this model with cached data
+				this.updateFrom(cached_model);
+				return true;
+			} catch (Error e) {
+				GLib.debug("Failed to load model from cache: %s", e.message);
+				return false;
+			}
+		}
+
+		/**
+		* Saves model details to cache.
+		*/
+		public void save_to_cache()
+		{
+			var cache_path = this.get_cache_path();
+			
+			try {
+				var json_node = Json.gobject_serialize(this);
+				var generator = new Json.Generator();
+				generator.pretty = true;
+				generator.indent = 2;
+				generator.set_root(json_node);
+				var json_str = generator.to_data(null);
+				
+				var file = File.new_for_path(cache_path);
+				file.replace_contents(
+					json_str.data,
+					null,
+					false,
+					FileCreateFlags.NONE,
+					null
+				);
+			} catch (Error e) {
+				GLib.warning("Failed to save model to cache: %s", e.message);
+			}
+		}
 		
 	}
 

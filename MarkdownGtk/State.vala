@@ -26,173 +26,131 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class State
 	{
+		private static uint tag_counter = 0;
+		
 		public State? parent { get; private set; }
 		public Gee.ArrayList<State> cn { get; private set; default = new Gee.ArrayList<State>(); }
-		protected Gtk.TextMark? start_outer { public get;  set; }
-		protected Gtk.TextMark? start_inner { public get;  set; }
-		protected Gtk.TextMark? end_inner { get;  set; }
-		protected Gtk.TextMark? end_outer { public get;  set; }
-		public string tag_name { get; private set; }
+		protected Gtk.TextMark? start { public get;  set; }
+		protected Gtk.TextMark? end { get;  set; }
+		public Gtk.TextTag style { get; private set; }
 		public Render render { get; private set; }
 		
 		/**
 		 * Creates a new State instance.
 		 * 
 		 * @param parent The parent state (null for root)
-		 * @param tag_name The tag name (e.g., "em", "strong", "h1", "p")
 		 * @param render Reference to the top-level Render instance
-		 * @param attributes Optional attributes string for the tag (default: "")
 		 */
 		public State(
 			State? parent, 
-			string tag_name, 
-			Render render, 
-			string attributes = "")
+			Render render)
 		{
 			this.parent = parent;
-			this.tag_name = tag_name;
 			this.render = render;
 			
-			// Insert both opening and closing tags together (sets up marks)
-			this.insert_tags(attributes);
+			// Generate unique tag name
+			string tag_name = "style-%u".printf(tag_counter++);
+			
+			// Create and register TextTag with buffer's tag table
+			this.style = this.render.buffer.create_tag(tag_name, null);
+			
+			// Create marks at insertion point (from parent's end mark)
+			Gtk.TextIter iter;
+			if (parent != null) {
+				this.render.buffer.get_iter_at_mark(out iter, parent.end);
+			} else {
+				this.render.buffer.get_iter_at_mark(out iter, this.render.start_mark);
+			}
+			
+			this.start = this.render.buffer.create_mark(null, iter, true);
+			this.end = this.render.buffer.create_mark(null, iter, true);
+		}
+		
+		/**
+		 * Updates this state's end range to match the child's end and applies this state's tag.
+		 * Also recursively updates parent states.
+		 * 
+		 * @param child The child state whose range should be included
+		 */
+		protected virtual void update_ranges_from(State child)
+		{
+			Gtk.TextIter child_end, this_start, this_end;
+			
+			// Get child's end position
+			this.render.buffer.get_iter_at_mark(out child_end, child.end);
+			
+			// Update end mark to match child's end
+			this.render.buffer.move_mark(this.end, child_end);
+			
+			// Get this state's range
+			this.render.buffer.get_iter_at_mark(out this_start, this.start);
+			this.render.buffer.get_iter_at_mark(out this_end, this.end);
+			
+			// Apply this state's tag to its own range
+			this.render.buffer.apply_tag(this.style, this_start, this_end);
+			
+			// Recursively update parent
+			if (this.parent != null) {
+				this.parent.update_ranges_from(this);
+			}
 		}
 		
 		/**
 		 * Adds text directly to the text buffer at the current insertion point.
-		 * Escapes markup in the text before inserting.
+		 * Inserts plain text and applies the TextTag to the inserted range.
 		 * 
 		 * @param text The text to add
 		 */
 		public void add_text(string text)
 		{
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.end_inner);
-			string escaped_text = GLib.Markup.escape_text(text, -1);
-			int before_offset = iter.get_offset();
-			GLib.debug("add_text '%s': end_inner mark @%d, insert '%s' @%d", this.tag_name, before_offset, escaped_text, before_offset);
+			Gtk.TextIter start_iter, end_iter;
 			
-			this.render.buffer.insert(ref iter, escaped_text, -1);
+			// Get start position from mark (before insertion)
+			this.render.buffer.get_iter_at_mark(out start_iter, this.end);
 			
-			// Update end_inner mark to point after the inserted text
-			// Note: buffer.insert() already updates iter to point after the inserted text
-			int after_offset = iter.get_offset();
-			this.render.buffer.move_mark(this.end_inner, iter);
-			GLib.debug("add_text '%s': inserted @%d-%d, end_inner moved to @%d", this.tag_name, before_offset, after_offset, after_offset);
+			// Insert plain text (no escaping needed - TextBuffer handles it)
+			// After insert, start_iter is updated to point after the inserted text
+			this.render.buffer.insert(ref start_iter, text, -1);
+			
+			// Get the start position again from the mark (which hasn't moved yet)
+			// This ensures we have a valid iter for the start of the inserted range
+			this.render.buffer.get_iter_at_mark(out end_iter, this.end);
+			
+			// Apply this state's tag to the inserted text range
+			this.render.buffer.apply_tag(this.style, end_iter, start_iter);
+			
+			// Update end mark to point after the inserted text
+			this.render.buffer.move_mark(this.end, start_iter);
+			
+			// Update parent ranges and apply parent tags
+			if (this.parent != null) {
+				this.parent.update_ranges_from(this);
+			}
 		}
 		
 		/**
 		 * Creates a new child state and sets it as the current state on Render.
 		 * 
-		 * @param tag The tag name for the new state
-		 * @param attributes Optional attributes string for the tag (default: "")
 		 * @return The newly created State
 		 */
-		public State add_state(string tag, string attributes = "")
+		public State add_state()
 		{
-			GLib.debug("State.add_state: parent.tag_name='%s', creating child tag='%s'", this.tag_name, tag);
-			var new_state = new State(this, tag, this.render, attributes);
+			var new_state = new State(this, this.render);
 			this.cn.add(new_state);
 			
 			// Update render's current_state
 			this.render.current_state = new_state;
-			GLib.debug("State.add_state: render.current_state now set to tag='%s'", this.render.current_state.tag_name);
 			
 			return new_state;
 		}
 		
 		/**
 		 * Closes this state, pops to parent, and updates Render's current_state.
-		 * Tags are already inserted when state is created, so we just update state.
 		 */
 		public virtual void close_state()
 		{
 			// Pop to parent
 			this.render.current_state = this.parent;
-		}
-		
-		/**
-		 * Inserts both opening and closing tags into the buffer at the same time.
-		 * This ensures the buffer never has an invalid state with only one tag.
-		 * Sets up marks for tag positions.
-		 * 
-		 * @param attributes The attributes string for the tag
-		 */
-		protected virtual void insert_tags(string attributes)
-		{
-			Gtk.TextIter iter;
-			
-			// Get insertion point from parent's end_inner
-			this.render.buffer.get_iter_at_mark(out iter, this.parent.end_inner);
-			
-			// Create marks for tag positions at insertion point
-			this.start_outer = this.render.buffer.create_mark(null, iter, true);
-			this.start_inner = this.render.buffer.create_mark(null, iter, true);
-			this.end_inner = this.render.buffer.create_mark(null, iter, true);
-			this.end_outer = this.render.buffer.create_mark(null, iter, true);
-			
-			// Build opening tag
-			string open_tag = (attributes != "") 
-				? "<" + this.tag_name + " " + attributes + ">"
-				: "<" + this.tag_name + ">";
-			
-			// Build closing tag
-			string close_tag = "</" + this.tag_name + ">";
-			
-			// Use tag name twice as placeholder (e.g., "spanspan" or "ii")
-			// Insertion point will be in the middle (between the two tag names)
-			string placeholder = this.tag_name + this.tag_name;
-			string markup_to_insert = open_tag + placeholder + close_tag;
-			
-			int before_offset = iter.get_offset();
-			GLib.debug("insert_tags '%s': insert '%s' @%d", this.tag_name, markup_to_insert, before_offset);
-			
-			// Insert opening tag, placeholder, and closing tag together
-			this.render.buffer.insert_markup(ref iter, markup_to_insert, -1);
-			// After insert_markup, iter is positioned after the inserted content (after closing tag)
-			int after_offset = iter.get_offset();
-			var end_outer_iter = iter;
-			
-			// Find the placeholder text to position marks correctly
-			Gtk.TextIter placeholder_start, placeholder_end, buffer_start, buffer_end;
-			int start_outer_offset, inner_offset, end_outer_offset;
-			this.render.buffer.get_bounds(out buffer_start, out buffer_end);
-			if (buffer_start.forward_search(placeholder, Gtk.TextSearchFlags.TEXT_ONLY, out placeholder_start, out placeholder_end, null)) {
-				// Position marks at the middle of the placeholder (halfway between the two tag names)
-				Gtk.TextIter middle_iter = placeholder_start;
-				middle_iter.forward_chars(this.tag_name.length);
-				inner_offset = middle_iter.get_offset();
-				
-				this.render.buffer.move_mark(this.start_inner, middle_iter);
-				this.render.buffer.move_mark(this.end_inner, middle_iter);
-				
-				this.render.buffer.get_iter_at_mark(out iter, this.start_outer);
-				start_outer_offset = iter.get_offset();
-			} else {
-				// Fallback: use iter position if placeholder not found
-				this.render.buffer.get_iter_at_mark(out iter, this.start_outer);
-				start_outer_offset = iter.get_offset();
-				iter.forward_chars(open_tag.length + this.tag_name.length);
-				inner_offset = iter.get_offset();
-				this.render.buffer.move_mark(this.start_inner, iter);
-				this.render.buffer.move_mark(this.end_inner, iter);
-			}
-			
-			// Position end_outer after the closing tag (use the iter position from insert_markup)
-			this.render.buffer.move_mark(this.end_outer, end_outer_iter);
-			end_outer_offset = end_outer_iter.get_offset();
-			
-			// Verify mark positions and show content
-			Gtk.TextIter outer_start_iter, outer_end_iter;
-			this.render.buffer.get_iter_at_mark(out outer_start_iter, this.start_outer);
-			this.render.buffer.get_iter_at_mark(out outer_end_iter, this.end_outer);
-			this.render.buffer.get_bounds(out buffer_start, out buffer_end);
-			
-			var content_between = this.render.buffer.get_text(outer_start_iter, outer_end_iter, true);
-			var whole_buffer = this.render.buffer.get_text(buffer_start, buffer_end, true);
-			
-			GLib.debug("insert_tags '%s': content between marks '%s' (start_outer @%d, end_inner @%d, end_outer @%d)", 
-				this.tag_name, content_between, start_outer_offset, inner_offset, end_outer_offset);
-			GLib.debug("insert_tags '%s': whole buffer '%s'", this.tag_name, whole_buffer);
 		}
 		
 	}

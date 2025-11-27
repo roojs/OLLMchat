@@ -51,6 +51,10 @@
           <li class="property"><a href="OLLMchat.Ollama.Model.total_duration.html">total_duration</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Model.Model.html">Model</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Model.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.get_cache_path.html">get_cache_path</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.load_from_cache.html">load_from_cache</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.save_to_cache.html">save_to_cache</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Ollama.Model.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Model.updateFrom.html">updateFrom</a></li>
         </ul>
       </div>
@@ -119,7 +123,7 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Ollama.Model.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model identifier from ps() API response.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Ollama.Model.modified_at.html" class="property">modified_at</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -127,7 +131,8 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Ollama.Model.name.html" class="property">name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model name/identifier. This is the primary identifier for the model.
+              </span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Ollama.Model.name_with_size.html" class="property">name_with_size</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
             </span>
@@ -165,6 +170,23 @@
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Ollama.Model.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Ollama.Model.get_cache_path.html" class="method">get_cache_path</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the cache file path for this model.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Ollama.Model.load_from_cache.html" class="method">load_from_cache</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Loads model details from cache if available and updates this model 
+                using updateFrom().</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Ollama.Model.save_to_cache.html" class="method">save_to_cache</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Saves model details to cache.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Ollama.Model.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>
             <div class="leaf_brief_description">
             </div></li>

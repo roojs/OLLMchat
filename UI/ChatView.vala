@@ -366,8 +366,29 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			// Remove the closing marker line from source view before ending block
-			this.remove_last_source_view_line();
+			// Closing marker detected - check last line in source buffer and remove it if it's ```
+			if (this.current_source_buffer != null) {
+				Gtk.TextIter start_iter, end_iter;
+				this.current_source_buffer.get_bounds(out start_iter, out end_iter);
+				int line_count = this.current_source_buffer.get_line_count();
+
+				if (!start_iter.equal(end_iter) && line_count > 0) {
+					Gtk.TextIter last_line_start, last_line_end;
+					this.current_source_buffer.get_iter_at_line(out last_line_start, line_count - 1);
+					last_line_end = last_line_start;
+					last_line_end.forward_to_line_end();
+					
+					// Get the text of the last line
+					string last_line_text = this.current_source_buffer.get_text(last_line_start, last_line_end, false);
+					
+					// If it starts with ```, remove it
+					if (last_line_text.strip().has_prefix("```")) {
+						this.current_source_buffer.delete(ref last_line_start, ref last_line_end);
+					}
+					
+				}
+			}
+			
 			this.end_block(response); // End code block first
 			this.content_state = ContentState.NONE; // Set to NONE after ending
 			// Reset source view references as we're no longer working with the code block
@@ -516,13 +537,19 @@ namespace OLLMchat.UI
 						this.current_block_start
 					);
 					
-					// Send opening HTML tags to renderer
-					this.current_block_renderer.add_start(
-						this.is_thinking 
-							? "<span color=\"green\"><i>" 
-							: "<span color=\"blue\">",
-						true
-					);
+					// Set up styling for thinking/content blocks using TextTags
+					if (this.is_thinking) {
+						// Create span state for green color
+						var color_state = this.current_block_renderer.current_state.add_state();
+						color_state.style.foreground = "green";
+						// Create italic state nested inside
+						var italic_state = color_state.add_state();
+						italic_state.style.style = Pango.Style.ITALIC;
+					} else {
+						// Create span state for blue color
+						var color_state = this.current_block_renderer.current_state.add_state();
+						color_state.style.foreground = "blue";
+					}
 					
 					this.last_chunk_start = 0;
 					return;
@@ -728,26 +755,18 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			// Create temporary marks for rendering
+			// Get end position for insertion
 			Gtk.TextIter end_iter;
 			this.buffer.get_end_iter(out end_iter);
-			var start_mark = this.buffer.create_mark(null, end_iter, true);
 			
-			// Create Render instance
-			var renderer = new MarkdownGtk.Render(this.buffer, start_mark);
-			
-			// Send opening tags and markdown content to renderer (parser will handle HTML tags)
-			// Note: Closing tags are handled automatically by the renderer
-			string content_with_tags = "<span size=\"small\" color=\"#1a1a1a\"><i>*%s*".printf(message);
-			renderer.add_start(content_with_tags, true);
-			renderer.flush();
-			
-			// Add newline after rendered content
-			this.buffer.get_iter_at_mark(out end_iter, renderer.end_mark);
-			this.buffer.insert(ref end_iter, "\n", -1);
-			
-			// Clean up temporary mark
-			this.buffer.delete_mark(start_mark);
+			// Create PangoRender instance and convert to Pango markup
+			var renderer = new MarkdownGtk.PangoRender();
+			this.buffer.insert_markup(
+				ref end_iter,
+				"<span size=\"small\" color=\"#1a1a1a\">"
+					 + renderer.toPango(message) + "</span>\n",
+				-1
+			);
 			
 			this.scroll_to_bottom();
 		}
@@ -764,7 +783,15 @@ namespace OLLMchat.UI
 
 			Gtk.TextIter end_iter;
 			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert_markup(ref end_iter, @"<span color=\"red\"><b>Error:</b> $(GLib.Markup.escape_text(error))</span>\n\n", -1);
+			
+			// Create PangoRender instance and convert to Pango markup
+			var renderer = new MarkdownGtk.PangoRender();
+			this.buffer.insert_markup(
+				ref end_iter,
+				renderer.toPango("<span color=\"red\"><b>Error:</b> " +
+					 GLib.Markup.escape_text(error, -1) + "</span>\n\n"),
+				-1
+			);
 
 			this.scroll_to_bottom();
 		}
@@ -886,7 +913,14 @@ namespace OLLMchat.UI
 				this.buffer.delete(ref start_iter, ref end_iter);
 			}
 
-			this.buffer.insert_markup(ref start_iter, "<span color=\"green\">waiting for a reply" + dots + "</span>", -1);
+			// Create PangoRender instance and convert to Pango markup
+			var renderer = new MarkdownGtk.PangoRender();
+			this.buffer.insert_markup(
+				ref start_iter,
+				renderer.toPango(
+					"<span color=\"green\">waiting for a reply" + dots + "</span>"),
+				-1
+			);
 
 			return true; // Continue timer
 		}
@@ -897,15 +931,20 @@ namespace OLLMchat.UI
 			GLib.Timeout.add(500, () => {
 				// Set vertical adjustment to 100% (maximum value)
 				var vadjustment = this.scrolled_window.vadjustment;
-				if (vadjustment != null) {
-					var new_pos = vadjustment.upper;
-					// Only scroll if we're not going backwards (user may have scrolled up)
-					if (new_pos >= this.last_scroll_pos) {
-						vadjustment.value = new_pos;
-						this.last_scroll_pos = new_pos;
-					}
+				
+
+				if (vadjustment == null) {
+					GLib.debug("ChatView: scroll_to_bottom: vadjustment is null");
+					return false;
 				}
-				return false; // Don't repeat
+
+				// Set value higher than upper to force scroll to maximum
+				// This ensures we scroll to bottom even if layout hasn't fully updated
+				vadjustment.value = vadjustment.upper + 1000.0;
+				this.last_scroll_pos = vadjustment.upper + 1000.0;
+				GLib.debug("vadjustment.value=%f, vadjustment.upper=%f", vadjustment.value, vadjustment.upper);
+			
+				return false;
 			});
 		}
 

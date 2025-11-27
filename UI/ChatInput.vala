@@ -40,6 +40,7 @@ namespace OLLMchat.UI
 		private bool is_streaming = false;
 		private bool is_loading_models = false;
 		private Gtk.MenuButton tools_menu_button;
+		private Binding? tools_button_binding = null;
 
 		/**
 		* Default message text to display in the input field.
@@ -278,6 +279,11 @@ namespace OLLMchat.UI
 			
 			// Tools button visibility is controlled by both show_models and model's can_call property
 			if (!this.show_models) {
+				// Unbind and hide when show_models is false
+				if (this.tools_button_binding != null) {
+					this.tools_button_binding.unbind();
+					this.tools_button_binding = null;
+				}
 				this.tools_menu_button.visible = false;
 				return;
 			}
@@ -292,7 +298,11 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			this.tools_menu_button.visible = model.can_call;
+			// Ensure binding is set up for automatic updates
+			if (this.tools_button_binding == null) {
+				this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
+					BindingFlags.SYNC_CREATE);
+			}
 		}
 
 		/**
@@ -398,6 +408,15 @@ namespace OLLMchat.UI
 					// Set think based on model capability
 					this.client.think = model.is_thinking;
 					
+					// Update binding to new model's can_call property
+					if (this.show_models) {
+						if (this.tools_button_binding != null) {
+							this.tools_button_binding.unbind();
+						}
+						this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
+							BindingFlags.SYNC_CREATE);
+					}
+					
 					// Update tools button visibility based on model's can_call property
 					this.update_model_widgets_visibility();
 				}
@@ -457,6 +476,7 @@ namespace OLLMchat.UI
 		 */
 		public async void update_models()
 		{
+			GLib.debug("update_models: client.model='%s'", this.client.model);
 			this.is_loading_models = true;
 			try {
 				// Get basic model list - this populates available_models automatically
@@ -466,12 +486,25 @@ namespace OLLMchat.UI
 				this.model_store.remove_all();
 
 				// Add models from available_models (populated by models() call)
+				// Prioritize the current model by adding it first
+				if (this.client.model != "" && this.client.available_models.has_key(this.client.model)) {
+					var current_model = this.client.available_models.get(this.client.model);
+					this.model_store.append(current_model);
+				} else {
+					GLib.debug("Current model '%s' not in available_models", this.client.model);
+				}
+				
+				// Add all other models (excluding the current one if it was already added)
 				foreach (var model in this.client.available_models.values) {
+					if (this.client.model != "" && model.name == this.client.model) {
+						continue; // Skip current model as it was already added first
+					}
 					this.model_store.append(model);
 				}
 				
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
+				Ollama.Model? current_model_obj = null;
 				if (this.client.model != "") {
 					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
 						var model = this.sorted_models.get_item(i) as Ollama.Model;
@@ -479,6 +512,7 @@ namespace OLLMchat.UI
 							continue;
 						}
 						this.model_dropdown.selected = i;
+						current_model_obj = model;
 						// Update client.think based on selected model (do this directly, not via signal)
 						this.client.think = model.is_thinking;
 						// Update tools button visibility based on model's can_call property
@@ -487,14 +521,41 @@ namespace OLLMchat.UI
 					}
 				}
 				
+				// Bind tools button visibility to current model's can_call property if we have a model
+				// This will automatically update when model capabilities are loaded
+				// The binding will update visibility based on can_call, but we still need to check show_models
+				if (current_model_obj != null && this.show_models) {
+					if (this.tools_button_binding != null) {
+						this.tools_button_binding.unbind();
+					}
+					this.tools_button_binding = current_model_obj.bind_property("can-call", this.tools_menu_button, "visible", 
+						BindingFlags.SYNC_CREATE);
+				}
+				
 				// Models are now loaded - hide loading label and show dropdown
 				// Set is_loading_models to false so update_model_widgets_visibility() hides the label
 				this.is_loading_models = false;
 				this.update_model_widgets_visibility();
 				
 				// Asynchronously fetch detailed info for each model
+				// Prioritize the current model by fetching its details first
 				// This will automatically update the UI since we're updating the same Model objects
+				if (this.client.model != "" && this.client.available_models.has_key(this.client.model)) {
+					try {
+						yield this.client.show_model(this.client.model);
+						// Update tools button visibility immediately after current model details are loaded
+						this.update_model_widgets_visibility();
+					} catch (Error e) {
+						GLib.warning("Failed to get details for current model %s: %s", this.client.model, e.message);
+					}
+				}
+				
+				// Then fetch details for all other models (in background)
 				foreach (var model in models_list) {
+					// Skip current model as it was already fetched
+					if (this.client.model != "" && model.name == this.client.model) {
+						continue;
+					}
 					try {
 						yield this.client.show_model(model.name);
 					} catch (Error e) {
@@ -502,9 +563,6 @@ namespace OLLMchat.UI
 						// Continue with other models
 					}
 				}
-				
-				// Update tools button visibility now that detailed model info (including can_call) is available
-				this.update_model_widgets_visibility();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load models: %s", e.message);
 				// Don't show error to user - dropdown will just remain hidden

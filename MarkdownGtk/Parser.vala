@@ -85,7 +85,7 @@ namespace OLLMchat.MarkdownGtk
 		}
 
 		
-		private Render renderer;
+		private RenderBase renderer;
 		private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
 	 
 		private string leftover_chunk = "";
@@ -93,9 +93,9 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Creates a new Parser instance.
 		 * 
-		 * @param renderer The Render instance to call callbacks on
+		 * @param renderer The RenderBase instance to call callbacks on
 		 */
-		public Parser(Render renderer)
+		public Parser(RenderBase renderer)
 		{
 			this.renderer = renderer;
 		}

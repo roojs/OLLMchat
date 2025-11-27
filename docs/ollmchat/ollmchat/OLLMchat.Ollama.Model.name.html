@@ -51,6 +51,10 @@
           <li class="property"><a href="OLLMchat.Ollama.Model.total_duration.html">total_duration</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Model.Model.html">Model</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Model.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.get_cache_path.html">get_cache_path</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.load_from_cache.html">load_from_cache</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.save_to_cache.html">save_to_cache</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Ollama.Model.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Model.updateFrom.html">updateFrom</a></li>
         </ul>
       </div>
@@ -59,6 +63,11 @@
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="property">name</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        </div>
+        <div class="description">
+          <p>Model name/identifier. This is the primary identifier for the model.</p>
+          <p>When setting Client.model, always use this property (model.name), not model.model. This ensures consistency across all model sources 
+            (models(), ps(), show_model()).</p>
         </div>
       </div>
     </div><br/>

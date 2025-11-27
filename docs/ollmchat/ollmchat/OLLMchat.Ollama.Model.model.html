@@ -51,6 +51,10 @@
           <li class="property"><a href="OLLMchat.Ollama.Model.total_duration.html">total_duration</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Model.Model.html">Model</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Model.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.get_cache_path.html">get_cache_path</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.load_from_cache.html">load_from_cache</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Model.save_to_cache.html">save_to_cache</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Ollama.Model.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Model.updateFrom.html">updateFrom</a></li>
         </ul>
       </div>
@@ -59,6 +63,15 @@
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><span class="property">model</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        </div>
+        <div class="description">
+          <p>Model identifier from ps() API response.</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>For setting Client.model, always use model.name instead of this property to ensure consistency. This property may be null or differ 
+                from name in some contexts. </p>
+            </div>
+          </div>
         </div>
       </div>
     </div><br/>

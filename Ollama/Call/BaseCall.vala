@@ -280,6 +280,15 @@ namespace OLLMchat.Ollama
 					continue;
 				}
 				item_obj.client = this.client;
+				
+				// For ps() API responses: if model property is set but name is empty, set name from model
+				// This ensures name is always set for consistency
+				// Only do this for PsCall, as ModelsCall already has name set correctly
+				if (this is PsCall) {
+					GLib.debug("PsCall: setting name='%s' from model='%s'", item_obj.model ?? "(null)", item_obj.name);
+					item_obj.name = item_obj.model;
+				}
+				
 				items.add(item_obj);
 			}
 

@@ -67,8 +67,13 @@
         </div>
         <div class="description">
           <p>Sets the model from the first running model on the server (ps()).</p>
-          <p>If running models are found, sets this.model to the first model's name. If no running models are found or an error occurs, leaves model 
-            unchanged.</p>
+          <p>Only sets the model if it's not already configured (empty string). If running models are found and model is empty, sets this.model to the
+            first model's name. If no running models are found or an error occurs, leaves model unchanged.</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>Always uses model.name (not model.model) to ensure consistency. </p>
+            </div>
+          </div>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div>

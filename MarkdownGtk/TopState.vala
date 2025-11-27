@@ -33,21 +33,7 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public TopState(Render render) 
 		{
-			base(null, "", render);
-		}
-		
-		protected override void insert_tags(string attributes)
-		{
-			Gtk.TextIter iter;
-			
-			// Get insertion point from render's start_mark (for top state)
-			this.render.buffer.get_iter_at_mark(out iter, this.render.start_mark);
-			
-			// Create marks for tag positions at start point (but don't insert tags)
-			this.start_outer = this.render.buffer.create_mark(null, iter, true);
-			this.start_inner = this.render.buffer.create_mark(null, iter, true);
-			this.end_inner = this.render.buffer.create_mark(null, iter, true);
-			this.end_outer = this.render.buffer.create_mark(null, iter, true);
+			base(null, render);
 		}
 		
 		public override void close_state()
@@ -57,46 +43,36 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Wraps State.add_text() and updates render's end_mark with state's end_inner.
-		 * Also keeps all marks up to date.
+		 * Wraps State.add_text() and updates render's end_mark with state's end.
 		 * 
 		 * @param text The text to add
 		 */
 		public new void add_text(string text)
 		{
 			base.add_text(text);
-			// Update render's end_mark and keep all marks up to date
+			// Update render's end_mark
 			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.end_inner);
+			this.render.buffer.get_iter_at_mark(out iter, this.end);
 			this.render.buffer.move_mark(this.render.end_mark, iter);
-			// Keep other marks up to date (end_outer same as end_inner for top state)
-			this.render.buffer.move_mark(this.end_outer, iter);
 		}
 		
 		/**
-		 * Wraps State.add_state() and updates render's end_mark with state's end_inner.
-		 * Also keeps all marks up to date.
+		 * Wraps State.add_state() and updates render's end_mark with state's end.
 		 * 
-		 * @param tag The tag name for the new state
-		 * @param attributes The attributes string for the tag
 		 * @return The newly created State
 		 */
-		public new State add_state(string tag, string attributes = "")
+		public new State add_state()
 		{
-			var new_state = base.add_state(tag, attributes);
+			var new_state = base.add_state();
 			// Update render's end_mark
 			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, new_state.end_inner);
+			this.render.buffer.get_iter_at_mark(out iter, new_state.end);
 			this.render.buffer.move_mark(this.render.end_mark, iter);
 			// Update render's start_mark if this is the first state
 			if (this.cn.size == 1) {
-				this.render.buffer.get_iter_at_mark(out iter, new_state.start_outer);
+				this.render.buffer.get_iter_at_mark(out iter, new_state.start);
 				this.render.buffer.move_mark(this.render.start_mark, iter);
 			}
-			// Keep all marks up to date for top state
-			this.render.buffer.get_iter_at_mark(out iter, new_state.end_inner);
-			this.render.buffer.move_mark(this.end_inner, iter);
-			this.render.buffer.move_mark(this.end_outer, iter);
 			return new_state;
 		}
 	}

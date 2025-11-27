@@ -412,9 +412,9 @@ namespace OLLMchat.Ollama
 					return Json.gobject_serialize(this.function);
 					
 				case "client":
-				case "permission_question":
-				case "permission_target_path":
-				case "permission_operation":
+				case "permission-question":
+				case "permission-target_path":
+				case "permission-operation":
 				case "active":
 					// Exclude these properties from serialization
 					return null;
