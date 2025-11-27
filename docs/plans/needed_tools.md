@@ -941,7 +941,7 @@ src/OLLMchat/
   **Step 2: URL Processing and Permission Handling**
   - [ ] Create `normalize_url_for_permission(string url)` method
     - [ ] Strip query string from URL (everything after `?`)
-    - [ ] Keep `http://` or `https://` prefix intact
+    - [ ] Remap `http://` to `https://` (normalize all to HTTPS for permission storage)
     - [ ] Return normalized URL for permission storage
   - [ ] Implement `prepare(Json.Object parameters)` method
     - [ ] Read parameters using `readParams(parameters)`
