@@ -19,6 +19,9 @@ This document outlines the tools that need to be implemented for the OLLMchat pr
 
 **⏳ Next Steps**: Implement remaining tools (RunTerminalCommandTool, WebSearchTool, CodebaseSearchTool)
 
+**📋 Future Enhancements (Not for Initial Implementation)**:
+- WebFetchTool authentication config file loading (`~/.config/ollama/tools/web_fetch.json`)
+
 ---
 
 ## Implementation Order
