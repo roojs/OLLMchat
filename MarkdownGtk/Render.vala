@@ -29,17 +29,11 @@ namespace OLLMchat.MarkdownGtk
 		public Gtk.TextBuffer buffer { get; private set; }
 		public Gtk.TextMark start_mark { get; private set; }
 		public Gtk.TextMark end_mark { get; private set; }
+		public Gtk.TextMark tmp_start { get; private set; }
+		public Gtk.TextMark tmp_end { get; private set; }
 		public TopState top_state { get; private set; }
 		public State current_state { get; internal set; }
 		public Parser parser { get; private set; }
-		
-		// Optional text_view for table support
-		private Gtk.TextView? text_view = null;
-		
-		// Table support (temporary - will be refactored later)
-		private Table current_table { get; set; default = new TableEmpty(); }
-		private bool in_table = false;
-		private bool table_error = false;
 		
 		/**
 		 * Creates a new Render instance.
@@ -57,70 +51,61 @@ namespace OLLMchat.MarkdownGtk
 			this.buffer.get_iter_at_mark(out iter, start_mark);
 			this.end_mark = this.buffer.create_mark(null, iter, true);
 			
+			// Create temporary marks after end_mark for incremental parsing
+			this.buffer.get_iter_at_mark(out iter, this.end_mark);
+			this.tmp_start = this.buffer.create_mark(null, iter, true);
+			this.tmp_end = this.buffer.create_mark(null, iter, true);
+			
 			// Create parser instance
 			this.parser = new Parser(this);
 			
 			// Create top_state
 			this.top_state = new TopState(this);
 			
-			// Initialize current_state to top_state.state (never null)
-			this.current_state = this.top_state.state;
-		}
-		
-		/**
-		 * Sets the optional TextView for table support.
-		 * 
-		 * @param text_view The TextView to use for table anchors
-		 */
-		public void set_text_view(Gtk.TextView? text_view)
-		{
-			this.text_view = text_view;
+			// Initialize current_state to top_state (never null)
+			this.current_state = this.top_state;
 		}
 		
 		/**
 		 * Main method: adds text to be parsed and rendered.
+		 * Uses temporary buffer for incremental parsing - if parser returns 0 (success),
+		 * temporary content is cleared. Otherwise, it's filled with parser.pending content.
 		 * 
 		 * @param text The markdown text to process
 		 */
 		public void add(string text)
 		{
-			this.parser.add(text);
-		}
-		
-		/**
-		 * Processes a markdown block and updates the TextView range.
-		 * 
-		 * @param markdown The markdown text to process
-		 * @param start_mark Start mark for the range
-		 * @param end_mark End mark for the range
-		 */
-		public void process_block(string markdown, Gtk.TextMark start_mark, Gtk.TextMark end_mark)
-		{
-			this.start_mark = start_mark;
-			this.end_mark = end_mark;
+			// Parse the text (parser.add() is quick)
+			if (this.parser.add(text) == 0) {
+				// Success: clear any existing temporary content
+				Gtk.TextIter iter;
+				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
+				Gtk.TextIter end_iter;
+				this.buffer.get_iter_at_mark(out end_iter, this.tmp_end);
+				if (iter.equal(end_iter)) {
+					return;
+				}
+				this.buffer.delete(ref iter, ref end_iter);
+				// Reset tmp_end to tmp_start
+				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
+				this.buffer.move_mark(this.tmp_end, iter);
+				return;
+			}
 			
-			// Clear state
-			this.top_state = new TopState(this);
-			this.current_state = this.top_state.state;
-			this.in_table = false;
-			this.table_error = false;
-			this.current_table = new TableEmpty();
-			
-			// Delete old content between marks
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_iter_at_mark(out start_iter, start_mark);
-			this.buffer.get_iter_at_mark(out end_iter, end_mark);
-			this.buffer.delete(ref start_iter, ref end_iter);
-			
-			// Get new start position after deletion
-			this.buffer.get_iter_at_mark(out start_iter, start_mark);
-			
-			// Process markdown
-			this.add(markdown);
-			
-			// Update end mark
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.move_mark(end_mark, end_iter);
+			// Error: add parser.pending content to temporary buffer
+			Gtk.TextIter iter;
+			this.buffer.get_iter_at_mark(out iter, this.tmp_start);
+			// Clear any existing temp content first
+			Gtk.TextIter end_iter;
+			this.buffer.get_iter_at_mark(out end_iter, this.tmp_end);
+			if (!iter.equal(end_iter)) {
+				this.buffer.delete(ref iter, ref end_iter);
+				this.buffer.get_iter_at_mark(out iter, this.tmp_start);
+			}
+			this.buffer.insert(ref iter, this.parser.pending.str, -1);
+			// Update tmp_end
+			iter.forward_chars(this.parser.pending.str.length);
+			this.buffer.move_mark(this.tmp_end, iter);
 		}
 		
 		// Callback methods for parser
@@ -132,7 +117,7 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		internal void on_h(uint level)
 		{
-			string tag = @"h$level";
+			string tag = "h" + level.to_string();
 			string size_attr = "";
 			switch (level) {
 				case 1:
@@ -225,13 +210,27 @@ namespace OLLMchat.MarkdownGtk
 		 * Callback for link spans.
 		 * 
 		 * @param href The link URL
-		 * @param title The link title (may be null)
+		 * @param title The link title 
 		 * @param is_autolink Whether this is an autolink
 		 */
-		internal void on_a(string href, string? title, bool is_autolink)
+		internal void on_a(string href, string title, bool is_autolink)
 		{
-			string escaped_href = GLib.Markup.escape_text(href, -1);
-			this.current_state.add_state("a", @"href=\"$escaped_href\"");
+			// Add span state (blue, underlined) for the link
+			var link_state = this.current_state.add_state("
+				span", "color=\"blue\" underline=\"single\"");
+			
+			// Add the href text
+			link_state.add_text(href);
+			
+			// Close the link span
+			link_state.close_state();
+			this.current_state.add_text(" ");
+			this.current_state.add_state("b", "");
+			// If there's a title, add it in bold after a space (leave bold state open)
+			if (title != "") {
+			
+				this.current_state.add_text(title);
+			}
 		}
 		
 		/**
@@ -297,141 +296,64 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Callback for text content.
+		 * Callback for normal text content.
 		 * 
 		 * @param text The text content
 		 */
 		internal void on_text(string text)
 		{
-			string escaped_text = GLib.Markup.escape_text(text, -1);
-			this.current_state.add_text(escaped_text);
+			this.current_state.add_text(text);
 		}
 		
-		// Table support (temporary - will be refactored later)
-		private class Table
+		/**
+		 * Callback for line breaks (hard breaks).
+		 */
+		internal void on_br()
 		{
-			public virtual bool active { get; set; default = true; }
-			public Gtk.Frame? frame = null;
-			public Gtk.Grid? grid = null;
-			public Gtk.TextChildAnchor? anchor = null;
-			public uint col_count = 0;
-			public uint current_row = 0;
-			public uint current_col = 0;
-			public bool in_header = false;
-			public bool error = false;
-			
-			public Table(Render? renderer, uint cols)
-			{
-				this.col_count = cols;
-				
-				if (renderer == null) {
-					this.active = false;
-					return;
-				}
-				
-				try {
-					// Create frame and grid
-					this.frame = new Gtk.Frame(null) {
-						hexpand = true,
-						margin_start = 5,
-						margin_end = 5,
-						margin_top = 5,
-						margin_bottom = 5
-					};
-					this.frame.add_css_class("code-block-box");
-					
-					this.grid = new Gtk.Grid() {
-						column_homogeneous = false,
-						row_homogeneous = false,
-						column_spacing = 5,
-						row_spacing = 5,
-						margin_start = 5,
-						margin_end = 5,
-						margin_top = 5,
-						margin_bottom = 5
-					};
-					
-					this.frame.set_child(this.grid);
-					
-					// Create child anchor
-					Gtk.TextIter iter;
-					if (renderer.end_mark != null) {
-						renderer.buffer.get_iter_at_mark(out iter, renderer.end_mark);
-					} else {
-						renderer.buffer.get_end_iter(out iter);
-					}
-					
-					this.anchor = renderer.buffer.create_child_anchor(iter);
-					
-				} catch (Error e) {
-					this.error = true;
-					this.active = false;
-				}
-			}
-			
-			public void insert_table_cell(Render renderer, string content)
-			{
-				if (!this.active || this.error || this.grid == null) {
-					return;
-				}
-				
-				try {
-					// Create label for cell content
-					var label = new Gtk.Label(null) {
-						use_markup = true,
-						wrap = true,
-						halign = Gtk.Align.START,
-						valign = Gtk.Align.START
-					};
-					
-					// Set alignment based on cell type
-					if (this.in_header) {
-						label.add_css_class("table-header");
-					}
-					
-					label.set_markup(content);
-					
-					// Attach to grid
-					this.grid.attach(label, 
-						(int)this.current_col, 
-						(int)this.current_row, 
-						1, 1);
-					
-				} catch (Error e) {
-					this.error = true;
-				}
-			}
-			
-			public void end_table(Render renderer)
-			{
-				if (!this.active || this.error || this.frame == null || this.anchor == null) {
-					renderer.table_error = true;
-					return;
-				}
-				
-				try {
-					// Insert frame via child anchor
-					if (renderer.text_view != null) {
-						renderer.text_view.add_child_at_anchor(this.frame, this.anchor);
-					}
-					
-					// Show frame
-					this.frame.set_visible(true);
-					
-				} catch (Error e) {
-					renderer.table_error = true;
-				}
-			}
+			this.current_state.add_text("\n");
 		}
 		
-		private class TableEmpty : Table
+		/**
+		 * Callback for soft line breaks.
+		 * Inserts a space (or newline in code blocks).
+		 */
+		internal void on_softbr()
 		{
-			public override bool active { get; set; default = false; }
-			
-			public TableEmpty()
-			{
-				base(null, 0);
-			}
+			// For now, just add a space (code block handling can be added later if needed)
+			this.current_state.add_text(" ");
+		}
+		
+		/**
+		 * Callback for HTML entities.
+		 * The entity is already decoded, so just add as text.
+		 * 
+		 * @param text The decoded entity text
+		 */
+		internal void on_entity(string text)
+		{
+			this.current_state.add_text(text);
+		}
+		
+		/**
+		 * Callback for HTML tags.
+		 * Parser sends the tag name and attributes, we create a new state,
+		 * and parser will call on_end() for the close tag.
+		 * 
+		 * @param tag The HTML tag name (e.g., "div", "span")
+		 * @param attributes The HTML tag attributes (e.g., "class='test'")
+		 */
+		internal void on_html(string tag, string attributes)
+		{
+			this.current_state.add_state(tag, attributes);
+		}
+		
+		/**
+		 * Generic callback to close the current state.
+		 * Used for closing blocks/spans.
+		 */
+		internal void on_end()
+		{
+			this.current_state.close_state();
 		}
 	}
 }

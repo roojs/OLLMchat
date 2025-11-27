@@ -27,6 +27,7 @@ namespace OLLMchat.MarkdownGtk
 	internal class Parser
 	{
 		private Render renderer;
+		public StringBuilder pending { get; private set; default = new StringBuilder(); }
 		
 		/**
 		 * Creates a new Parser instance.
@@ -42,14 +43,17 @@ namespace OLLMchat.MarkdownGtk
 		 * Parses text and calls specific callbacks on Render.
 		 * 
 		 * @param text The markdown text to parse
+		 * @return 0 on success, non-zero on error
 		 */
-		public void add(string text)
+		public int add(string text)
 		{
 			// Placeholder implementation - full parser will be implemented later
 			// For now, just pass text through as plain text
 			if (text.length > 0) {
 				this.renderer.on_text(text);
 			}
+			// Return 0 for success
+			return 0;
 		}
 	}
 }
