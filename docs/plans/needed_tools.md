@@ -935,24 +935,10 @@ src/OLLMchat/
     - [ ] `name` → return `"web_fetch"`
     - [ ] `description` → return full description from JSON schema
     - [ ] `parameter_description` → return `@param` formatted documentation
-  - [ ] Constructor: `WebFetchTool(Ollama.Client client, string? config_path = null)`
-    - [ ] Accept optional config file path (default: `~/.config/ollama/tools/web_fetch.json`)
-    - [ ] Load authentication config if file exists
-    - [ ] Store auth headers in `Gee.HashMap<string, Gee.HashMap<string, string>>` (site → headers map)
+  - [ ] Constructor: `WebFetchTool(Ollama.Client client)`
+    - [ ] Simple constructor (no config loading in initial implementation)
   
-  **Step 2: Config File Loading**
-  - [ ] Create `load_auth_config(string config_path)` method
-    - [ ] Check if config file exists, return early if not
-    - [ ] Parse JSON config file using `Json.Parser`
-    - [ ] Extract `auth` object from config
-    - [ ] For each site entry, extract headers and store in auth map
-    - [ ] Handle JSON parsing errors gracefully (log and continue without auth)
-  - [ ] Create `get_auth_headers(string url)` method
-    - [ ] Extract hostname from URL using `GLib.Uri.parse()` or regex
-    - [ ] Match hostname against auth config keys (exact match or domain matching)
-    - [ ] Return `Gee.HashMap<string, string>` of headers for matched site, or empty map
-  
-  **Step 3: URL Processing and Permission Handling**
+  **Step 2: URL Processing and Permission Handling**
   - [ ] Create `normalize_url_for_permission(string url)` method
     - [ ] Strip query string from URL (everything after `?`)
     - [ ] Keep `http://` or `https://` prefix intact
