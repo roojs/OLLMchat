@@ -993,17 +993,14 @@ src/OLLMchat/
     - [ ] Send tool message: "Fetched {url} ({format})"
     - [ ] Return converted content string
   
-  **Step 7: Error Handling**
+  **Step 6: Error Handling**
   - [ ] Handle network errors (connection timeout, DNS failure, etc.)
     - [ ] Catch `GLib.IOError` and wrap with descriptive message
   - [ ] Handle HTTP errors (4xx, 5xx status codes)
     - [ ] Check status code in `fetch_http()` and throw error with status code
   - [ ] Handle invalid URLs
     - [ ] Validate URL format before making request
-  - [ ] Handle JSON config parsing errors
-    - [ ] Log error but continue without auth (don't fail tool creation)
-  
-  **Step 8: Integration**
+  **Step 7: Integration**
   - [ ] Add to `meson.build` in `ollmchat_tools_src` list
   - [ ] Register tool in application (where other tools are registered)
   - [ ] Test with `PermissionProviderDummy`
