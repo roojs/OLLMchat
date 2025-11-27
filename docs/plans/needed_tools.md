@@ -531,7 +531,7 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```json
 {
   "name": "web_fetch",
-  "description": "Fetch the contents of a webpage and return the content in the specified format (markdown, html, or base64). Multiple formats are available; base64 is recommended for binaries like images.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions.",
+  "description": "Fetch the contents of a webpage and return the content in the specified format (markdown, raw, or base64). Multiple formats are available; base64 is recommended for binaries like images. Raw format is useful for API responses.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions. Any authentication must be configured by the client.",
   "parameters": {
     "type": "object",
     "properties": {
@@ -549,9 +549,9 @@ Tools are registered with the Ollama client using the `addTool` method:
       },
       "format": {
         "type": "string",
-        "enum": ["markdown", "html", "base64"],
+        "enum": ["markdown", "raw", "base64"],
         "default": "markdown",
-        "description": "The format to return the content in (markdown, html, or base64). Default is markdown. Base64 is recommended for binaries like images."
+        "description": "The format to return the content in (markdown, raw, or base64). Default is markdown. Base64 is recommended for binaries like images. Raw format is useful for API responses."
       }
     },
     "required": ["method", "url"]
@@ -562,6 +562,24 @@ Tools are registered with the Ollama client using the `addTool` method:
 **Implementation Notes**:
 - **Only GET or POST methods** allowed
 - **Return markdown version** of fetched content (using HTML2Markdown utility from Phase 8.5)
+- **Authentication Configuration**:
+  - Authentication must be configured by the client via a config file
+  - Config file location: `.config/ollama/tools/web_fetch.json`
+  - Config file format:
+    ```json
+    {
+      "auth": {
+        "sitename": {
+          "headers": {
+            "Authorization": "Bearer token",
+            "X-API-Key": "key-value"
+          }
+        }
+      }
+    }
+    ```
+  - Constructor should accept path to config file and load authentication headers for matching sites
+  - Match sites by hostname/domain from the URL
 - **Permissions**:
   - GET requests treated as 'Read' permissions
   - POST requests follow standard file 'Write' approval flag
@@ -888,21 +906,133 @@ src/OLLMchat/
 
 ### Phase 10: WebFetchTool
 
-- [ ] **WebFetchTool** - Create `WebFetchTool.vala` (Priority 5)
-  - [ ] **Fetch webpage contents** and return as markdown (using HTML2Markdown from Phase 8.5)
-  - [ ] **Arguments**:
-    - [ ] HTTP method: GET or POST only
-    - [ ] URL (required)
-    - [ ] Post data (only required for POST requests)
-  - [ ] **Permissions**:
-    - [ ] GET requests treated as 'Read' permissions
-    - [ ] POST requests follow standard file 'Write' approval flag
-    - [ ] Strip query part from permission storage (e.g., `http://abc.com/test?test&test` → `http://abc.com/test`)
-    - [ ] Modify permission system to recognize `http(s)://` prefix and not normalize URLs
-  - [ ] Convert fetched HTML to markdown using HTML2Markdown utility
-  - [ ] Add permission question building (include URL and method in question)
-  - [ ] Add to meson.build
-  - [ ] Test with PermissionProviderDummy
+- [ ] **WebFetchTool** - Create `Tools/WebFetchTool.vala` (Priority 5)
+  
+  **Design Considerations**:
+  - Designed to be extensible - WebSearchTool will extend this class
+  - Use protected methods for HTTP fetching logic so subclasses can reuse
+  - Keep core fetching logic separate from format conversion for reusability
+  
+  **Step 1: Create Base Class Structure**
+  - [ ] Create `Tools/WebFetchTool.vala` extending `Ollama.Tool`
+  - [ ] Define parameter properties:
+    - [ ] `method` (string) - HTTP method (GET or POST)
+    - [ ] `url` (string) - URL to fetch
+    - [ ] `post_data` (string) - POST data (optional)
+    - [ ] `format` (string) - Output format: "markdown", "raw", or "base64" (default: "markdown")
+  - [ ] Implement abstract properties:
+    - [ ] `name` → return `"web_fetch"`
+    - [ ] `description` → return full description from JSON schema
+    - [ ] `parameter_description` → return `@param` formatted documentation
+  - [ ] Constructor: `WebFetchTool(Ollama.Client client, string? config_path = null)`
+    - [ ] Accept optional config file path (default: `~/.config/ollama/tools/web_fetch.json`)
+    - [ ] Load authentication config if file exists
+    - [ ] Store auth headers in `Gee.HashMap<string, Gee.HashMap<string, string>>` (site → headers map)
+  
+  **Step 2: Config File Loading**
+  - [ ] Create `load_auth_config(string config_path)` method
+    - [ ] Check if config file exists, return early if not
+    - [ ] Parse JSON config file using `Json.Parser`
+    - [ ] Extract `auth` object from config
+    - [ ] For each site entry, extract headers and store in auth map
+    - [ ] Handle JSON parsing errors gracefully (log and continue without auth)
+  - [ ] Create `get_auth_headers(string url)` method
+    - [ ] Extract hostname from URL using `GLib.Uri.parse()` or regex
+    - [ ] Match hostname against auth config keys (exact match or domain matching)
+    - [ ] Return `Gee.HashMap<string, string>` of headers for matched site, or empty map
+  
+  **Step 3: URL Processing and Permission Handling**
+  - [ ] Create `normalize_url_for_permission(string url)` method
+    - [ ] Strip query string from URL (everything after `?`)
+    - [ ] Keep `http://` or `https://` prefix intact
+    - [ ] Return normalized URL for permission storage
+  - [ ] Implement `prepare(Json.Object parameters)` method
+    - [ ] Read parameters using `readParams(parameters)`
+    - [ ] Validate `method` is "GET" or "POST" (throw error if invalid)
+    - [ ] Validate `url` is not empty
+    - [ ] Validate `post_data` is provided if method is "POST"
+    - [ ] Set `permission_target_path` = normalized URL (without query)
+    - [ ] Set `permission_operation` = `READ` for GET, `WRITE` for POST
+    - [ ] Set `permission_question` = "Fetch webpage '{url}' ({method})?"
+    - [ ] Return `true` (always requires permission)
+  
+  **Step 4: HTTP Fetching Logic (Protected Methods for Extensibility)**
+  - [ ] Create protected async method `fetch_http(string method, string url, string? post_data, Gee.HashMap<string, string>? extra_headers = null) throws Error`
+    - [ ] Create `Soup.Session` instance (or reuse if available)
+    - [ ] Set session timeout (e.g., 30 seconds)
+    - [ ] Create `Soup.Message` with method and URL
+    - [ ] Add authentication headers from config (call `get_auth_headers(url)`)
+    - [ ] Add any extra headers passed as parameter
+    - [ ] Set Content-Type header for POST requests (if post_data provided)
+    - [ ] Set request body for POST requests using `message.set_request_body_from_bytes()`
+    - [ ] Execute async request using `session.send_and_read_async()`
+    - [ ] Check status code - throw error if not 2xx
+    - [ ] Return `Bytes` object with response body
+  - [ ] Create protected method `get_content_type(Soup.MessageHeaders headers)` 
+    - [ ] Extract Content-Type header
+    - [ ] Return content type string (e.g., "text/html", "application/json", "image/png")
+  
+  **Step 5: Format Conversion**
+  - [ ] Create `convert_to_format(Bytes response_bytes, string content_type, string format)` method
+    - [ ] If format is "base64":
+      - [ ] Convert bytes to base64 using `GLib.Base64.encode()`
+      - [ ] Return base64 string
+    - [ ] If format is "raw":
+      - [ ] Convert bytes to string using `response_bytes.get_data()` and UTF-8 decoding
+      - [ ] Return raw string
+    - [ ] If format is "markdown":
+      - [ ] Convert bytes to string (UTF-8)
+      - [ ] Check if content is HTML (Content-Type contains "html" or starts with "<")
+      - [ ] If HTML: Use `Markdown.FromHTML` to convert to markdown
+      - [ ] If not HTML: Return as-is (assume already text/markdown)
+      - [ ] Return markdown string
+  
+  **Step 6: Tool Execution**
+  - [ ] Implement `execute_tool(Json.Object parameters) throws Error`
+    - [ ] Re-read parameters using `readParams(parameters)`
+    - [ ] Validate parameters again
+    - [ ] Call `fetch_http()` to get response bytes
+    - [ ] Get content type from response headers
+    - [ ] Call `convert_to_format()` to convert response
+    - [ ] Send tool message: "Fetched {url} ({format})"
+    - [ ] Return converted content string
+  
+  **Step 7: Error Handling**
+  - [ ] Handle network errors (connection timeout, DNS failure, etc.)
+    - [ ] Catch `GLib.IOError` and wrap with descriptive message
+  - [ ] Handle HTTP errors (4xx, 5xx status codes)
+    - [ ] Check status code in `fetch_http()` and throw error with status code
+  - [ ] Handle invalid URLs
+    - [ ] Validate URL format before making request
+  - [ ] Handle JSON config parsing errors
+    - [ ] Log error but continue without auth (don't fail tool creation)
+  
+  **Step 8: Integration**
+  - [ ] Add to `meson.build` in `ollmchat_tools_src` list
+  - [ ] Register tool in application (where other tools are registered)
+  - [ ] Test with `PermissionProviderDummy`
+  - [ ] Test GET requests with various URLs
+  - [ ] Test POST requests
+  - [ ] Test format conversion (markdown, raw, base64)
+  - [ ] Test authentication config loading
+  - [ ] Test error handling (invalid URLs, network errors, HTTP errors)
+  
+  **Step 9: Permission System Updates (if needed)**
+  - [ ] Verify permission system handles URLs correctly
+  - [ ] Ensure `http://` and `https://` prefixes are preserved (not normalized)
+  - [ ] Test permission caching with normalized URLs (query stripped)
+  
+  **Dependencies**:
+  - `libsoup-3.0` (already in base_deps)
+  - `Markdown.FromHTML` (already exists in codebase)
+  - `json-glib-1.0` (already in base_deps)
+  
+  **Files to Create**:
+  - `Tools/WebFetchTool.vala`
+  
+  **Files to Modify**:
+  - `meson.build` - Add WebFetchTool to source list
+  - Application initialization - Register WebFetchTool with client
 
 ### Phase 11: CodebaseSearchTool
 
