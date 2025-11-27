@@ -531,7 +531,7 @@ Tools are registered with the Ollama client using the `addTool` method:
 ```json
 {
   "name": "web_fetch",
-  "description": "Fetch the contents of a webpage and return the content as markdown.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions.",
+  "description": "Fetch the contents of a webpage and return the content in the specified format (markdown, html, or base64). Multiple formats are available; base64 is recommended for binaries like images.\n\nThis tool can perform GET or POST requests to retrieve webpage content. GET requests are treated as read operations, while POST requests require write permissions.",
   "parameters": {
     "type": "object",
     "properties": {
@@ -546,6 +546,12 @@ Tools are registered with the Ollama client using the `addTool` method:
       "post_data": {
         "type": "string",
         "description": "The POST data to send (only required for POST requests)"
+      },
+      "format": {
+        "type": "string",
+        "enum": ["markdown", "html", "base64"],
+        "default": "markdown",
+        "description": "The format to return the content in (markdown, html, or base64). Default is markdown. Base64 is recommended for binaries like images."
       }
     },
     "required": ["method", "url"]
