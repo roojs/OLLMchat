@@ -17,6 +17,12 @@ Completed plans (for reference):
 
 * replace markdown with md4c library?
 
+ * need a copy paste feature for sourceview
+   * fix the text selection stuff for sourceview?
+
+
+* Chat logs (so we can restored the?)
+
 * test the Prompt
   * have a Prompt for 'planning'?
   
@@ -26,5 +32,6 @@ Completed plans (for reference):
   * we have to send that number and get it back in theory
 
 * I guess we also need to consider that if the user has denied it before we currently show a message I think, but just that the request was blocked, we might need to enhance that with a clear button? that just clears the 
+
 
 * annoying bug that the tool icon shows up on a thinking model pulldown during first load - tried to debug but could not find any solution - the pulldonw list is fine, tis' just the button.
