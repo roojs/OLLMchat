@@ -115,16 +115,15 @@ namespace OLLMchat.MarkdownGtk
 				}
 				
 				// Insert frame via child anchor
-				if (renderer.text_view != null) {
-					renderer.text_view.add_child_at_anchor(this.frame, this.anchor);
-				}
+				// Note: text_view handling removed - tables will be handled separately
+				// TODO: Implement table insertion when table handling is added
 				
 				// Show frame
 				this.frame.set_visible(true);
 				
 			} catch (Error e) {
 				this.error = true;
-				renderer.table_error = true;
+				// Note: table_error property removed - tables will be handled separately
 			}
 		}
 	}

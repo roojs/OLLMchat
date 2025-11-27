@@ -24,10 +24,10 @@ namespace OLLMchat.MarkdownGtk
 	 * This is a placeholder implementation. Full parser implementation
 	 * will be specified in a separate plan.
 	 */
-	internal class Parser
+	public class Parser
 	{
 		private Render renderer;
-		public StringBuilder pending { get; private set; default = new StringBuilder(); }
+		public StringBuilder pending;
 		
 		/**
 		 * Creates a new Parser instance.
@@ -37,6 +37,7 @@ namespace OLLMchat.MarkdownGtk
 		public Parser(Render renderer)
 		{
 			this.renderer = renderer;
+			this.pending = new StringBuilder();
 		}
 		
 		/**

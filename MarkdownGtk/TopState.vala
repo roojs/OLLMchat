@@ -24,16 +24,16 @@ namespace OLLMchat.MarkdownGtk
 	 * TopState represents the root state that cannot be closed.
 	 * It manages buffer insertion and mark updates for the Render instance.
 	 */
-	internal class TopState : State
+	public class TopState : State
 	{
 		/**
 		 * Creates a new TopState instance.
 		 * 
 		 * @param render Reference to the Render instance
 		 */
-		public TopState(Render render)
-			: base(null, "", render)
+		public TopState(Render render) 
 		{
+			base(null, "", render);
 		}
 		
 		protected override void insert_tags(string attributes)

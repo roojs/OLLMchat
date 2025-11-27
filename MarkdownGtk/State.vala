@@ -24,14 +24,14 @@ namespace OLLMchat.MarkdownGtk
 	 * Each State represents a single styling element (e.g., italic, bold, paragraph, header).
 	 * States manage their own buffer and marks for tag positions.
 	 */
-	internal class State
+	public class State
 	{
 		public State? parent { get; private set; }
 		public Gee.ArrayList<State> cn { get; private set; default = new Gee.ArrayList<State>(); }
-		public Gtk.TextMark? start_outer { get; private set; }
-		public Gtk.TextMark? start_inner { get; private set; }
-		public Gtk.TextMark? end_inner { get; private set; }
-		public Gtk.TextMark? end_outer { get; private set; }
+		protected Gtk.TextMark? start_outer { public get;  set; }
+		protected Gtk.TextMark? start_inner { public get;  set; }
+		protected Gtk.TextMark? end_inner { public get;  set; }
+		protected Gtk.TextMark? end_outer { public get;  set; }
 		public string tag_name { get; private set; }
 		public Render render { get; private set; }
 		
