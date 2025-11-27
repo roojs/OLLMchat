@@ -73,10 +73,17 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public void add(string text)
 		{
-			// Check if text ends with newline - if so, it's end of line
-			var is_end_of_line = text.length > 0 && text[text.length - 1] == '\n';
-			// Parse the text
-			this.parser.add(text, is_end_of_line);
+			this.parser.add(text);
+		}
+		/* call before starting a new chunk and ending last one.. */
+		public void flush()
+		{
+			this.parser.flush();
+		}
+		/* call at starting a new chunk .. triggers a reset of the data - you should have flushed the last one.. */
+		public void add_start(string text, bool is_end_of_chunks = false)
+		{
+			this.parser.add_start(text, is_end_of_chunks);
 		}
 		
 		// Callback methods for parser
@@ -325,85 +332,6 @@ namespace OLLMchat.MarkdownGtk
 		internal virtual void on_end()
 		{
 			this.current_state.close_state();
-		}
-	}
-	
-	/**
-	 * Dummy renderer for testing the Parser.
-	 * Extends Render and overrides methods to print callbacks instead of rendering.
-	 */
-	public class DummyRenderer : Render
-	{
-		private int indent_level = 0;
-		
-		public DummyRenderer(Gtk.TextBuffer buffer, Gtk.TextMark start_mark) {
-			base(buffer, start_mark);
-		}
-		
-		private void print_indent()
-		{
-			for (int i = 0; i < indent_level; i++) {
-				stdout.printf("  ");
-			}
-		}
-		
-		internal override void on_text(string text)
-		{
-			print_indent();
-			stdout.printf("TEXT: \"%s\"\n", text);
-		}
-		
-		internal override void on_em()
-		{
-			print_indent();
-			stdout.printf("START: <em>\n");
-			indent_level++;
-		}
-		
-		internal override void on_strong()
-		{
-			print_indent();
-			stdout.printf("START: <strong>\n");
-			indent_level++;
-		}
-		
-		internal override void on_code_span()
-		{
-			print_indent();
-			stdout.printf("START: <code>\n");
-			indent_level++;
-		}
-		
-		internal override void on_del()
-		{
-			print_indent();
-			stdout.printf("START: <del>\n");
-			indent_level++;
-		}
-		
-		internal override void on_other(string tag_name)
-		{
-			print_indent();
-			stdout.printf("START: <%s>\n", tag_name);
-			indent_level++;
-		}
-		
-		internal override void on_html(string tag, string attributes)
-		{
-			print_indent();
-			if (attributes != "") {
-				stdout.printf("START: <%s %s>\n", tag, attributes);
-			} else {
-				stdout.printf("START: <%s>\n", tag);
-			}
-			indent_level++;
-		}
-		
-		internal override void on_end()
-		{
-			indent_level--;
-			print_indent();
-			stdout.printf("END\n");
 		}
 	}
 }

@@ -100,13 +100,26 @@ namespace OLLMchat.MarkdownGtk
 			this.renderer = renderer;
 		}
 		
+
+		public void flush()
+		{
+			this.add("", true);
+		}
+
+		public void add_start(string in_chunk, bool is_end_of_chunks = false)
+		{
+			this.leftover_chunk = "";
+			this.add(in_chunk, is_end_of_chunks);
+		}
+
+		 
 		/**
 		 * Parses text and calls specific callbacks on Render.
 		 * 
 		 * @param in_chunk The markdown text to parse
-		 * @param is_end_of_line If true, format markers at the end are treated as definitive ends
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive (no more data coming)
 		 */
-		public void add(string in_chunk, bool is_end_of_line = false)
+		public void add(string in_chunk, bool is_end_of_chunks = false)
 		{
 			var chunk = in_chunk + this.leftover_chunk;
 			var chunk_pos = 0;
@@ -141,22 +154,24 @@ namespace OLLMchat.MarkdownGtk
 					
 					switch (fk) {
 						case FormatType.HTML:
-							// HTML at end of line - treat as text (no more characters to check)
-							if (is_end_of_line) {
+							// HTML at end of chunks - treat as text (no more characters to check)
+							if (is_end_of_chunks) {
 								str += c.to_string();
 								chunk_pos++;
 								continue;
 							}
-							// Not end of line - continue processing (check if next char is alpha)
+							// Not end of chunks - continue processing (check if next char is alpha)
 							break;
 							
 						case FormatType.INVALID:
-							// Invalid format - if end of line, treat as text; otherwise save to leftover_chunk
-							if (is_end_of_line) {
+							// Invalid format - if end of chunks, treat as text; otherwise save to leftover_chunk
+							if (is_end_of_chunks) {
 								str += c.to_string();
 								chunk_pos++;
 								continue;
 							}
+							// Flush accumulated text before saving to leftover_chunk
+							this.renderer.on_text(str);
 							this.leftover_chunk = c.to_string();
 							return;
 						
@@ -164,23 +179,36 @@ namespace OLLMchat.MarkdownGtk
 						
 						default:
 							// All other formats can have multi-character sequences
-							// Save to leftover_chunk if not end of line (might need lookahead)
-							if (!is_end_of_line) {
+							// Save to leftover_chunk if not end of chunks (might need lookahead)
+							if (!is_end_of_chunks) {
+								// Flush accumulated text before saving to leftover_chunk
+								this.renderer.on_text(str);
 								this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 								return;
 							}
-							// End of line - process as single character format
+							// End of chunks - process as single character format
 							break;
 					}
 				}
 				
 				var fk = format_map[c.to_string()];
 				
-				// If we're at the end and it IS end of line, continue processing normally
+				// If we're at the end and it IS end of chunks, continue processing normally
 				// (format marker is definitive - no need to save to leftover_chunk)
 
-
-
+				// Check bounds before accessing next character
+				if (chunk_pos + 1 >= chunk.length && is_end_of_chunks) {
+					// At end of chunk and end of chunks - treat format marker as text
+					str += c.to_string();
+					chunk_pos++;
+					continue;
+				}
+				if (chunk_pos + 1 >= chunk.length) {
+					// Not end of chunks - save to leftover_chunk for next call
+					this.renderer.on_text(str);
+					this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					return;
+				}
 
 				var next_char = chunk[chunk_pos + 1];
 
@@ -198,7 +226,13 @@ namespace OLLMchat.MarkdownGtk
 					chunk_pos++;
 					chunk = this.add_html(chunk.substring(chunk_pos, chunk.length - chunk_pos));
 					chunk_pos = 0;
+					if (chunk.length > 0 && chunk[0] == '<' && is_end_of_chunks) {
+						// End of chunks - continue processing the chunk (treat incomplete HTML as text)
+						// The loop will handle it as text or format markers
+						continue;
+					}
 					if (chunk.length > 0 && chunk[0] == '<') {
+						// Not end of chunks - save for next call when we might have more data
 						this.leftover_chunk = chunk;
 						return;
 					}
