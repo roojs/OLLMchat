@@ -882,12 +882,12 @@ src/OLLMchat/
 
 ### Phase 8.5: HTML to Markdown Converter
 
-- [ ] **HTML2Markdown** - Port html2md from C++ to Vala
-  - [ ] Port `html2md.cpp` from https://github.com/tim-gromeyer/html2md to Vala
-  - [ ] Create `Tools/HTML2Markdown.vala` utility class
-  - [ ] Implement HTML parsing and conversion to markdown
-  - [ ] Support all HTML tags handled by original C++ implementation
-  - [ ] Add to meson.build
+- [x] **HTML2Markdown** - Port html2md from C++ to Vala
+  - [x] Port `html2md.cpp` from https://github.com/tim-gromeyer/html2md to Vala
+  - [x] Create `Tools/HTML2Markdown.vala` utility class
+  - [x] Implement HTML parsing and conversion to markdown
+  - [x] Support all HTML tags handled by original C++ implementation
+  - [x] Add to meson.build
   - [ ] Test with various HTML inputs
 
 ### Phase 9: WebSearchTool
