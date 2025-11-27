@@ -1007,13 +1007,13 @@ src/OLLMchat/
   - [ ] Test GET requests with various URLs
   - [ ] Test POST requests
   - [ ] Test format conversion (markdown, raw, base64)
-  - [ ] Test authentication config loading
+  - [ ] Test automatic format detection (image/* → base64, application/json → raw, etc.)
   - [ ] Test error handling (invalid URLs, network errors, HTTP errors)
   
-  **Step 9: Permission System Updates (if needed)**
+  **Step 8: Permission System Updates (if needed)**
   - [ ] Verify permission system handles URLs correctly
-  - [ ] Ensure `http://` and `https://` prefixes are preserved (not normalized)
-  - [ ] Test permission caching with normalized URLs (query stripped)
+  - [ ] Ensure URLs are normalized to `https://` for permission storage (http:// remapped)
+  - [ ] Test permission caching with normalized URLs (query stripped, http→https)
   
   **Dependencies**:
   - `libsoup-3.0` (already in base_deps)
