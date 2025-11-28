@@ -370,22 +370,22 @@ namespace OLLMchat.UI
 			if (this.current_source_buffer != null) {
 				Gtk.TextIter start_iter, end_iter;
 				this.current_source_buffer.get_bounds(out start_iter, out end_iter);
-				int line_count = this.current_source_buffer.get_line_count();
-
-				if (!start_iter.equal(end_iter) && line_count > 0) {
-					Gtk.TextIter last_line_start, last_line_end;
-					this.current_source_buffer.get_iter_at_line(out last_line_start, line_count - 1);
-					last_line_end = last_line_start;
-					last_line_end.forward_to_line_end();
-					
-					// Get the text of the last line
-					string last_line_text = this.current_source_buffer.get_text(last_line_start, last_line_end, false);
-					
-					// If it starts with ```, remove it
-					if (last_line_text.strip().has_prefix("```")) {
-						this.current_source_buffer.delete(ref last_line_start, ref last_line_end);
+				if (!start_iter.equal(end_iter)) {
+					int line_count = this.current_source_buffer.get_line_count();
+					if (line_count > 0) {
+						Gtk.TextIter last_line_start, last_line_end;
+						this.current_source_buffer.get_iter_at_line(out last_line_start, line_count - 1);
+						last_line_end = last_line_start;
+						last_line_end.forward_to_line_end();
+						
+						// Get the text of the last line
+						string last_line_text = this.current_source_buffer.get_text(last_line_start, last_line_end, false);
+						
+						// If it starts with ```, remove it
+						if (last_line_text.strip().has_prefix("```")) {
+							this.remove_last_source_view_line();
+						}
 					}
-					
 				}
 			}
 			
@@ -480,15 +480,18 @@ namespace OLLMchat.UI
 					this.start_block(response);
 				}
 				
-				// Remove the marker from the buffer (it was already rendered)
-				// Remove last_line.length characters from the end of rendered content
-				Gtk.TextIter start_iter, end_iter;
-				this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-				start_iter = end_iter;
-				start_iter.backward_chars(this.last_line.length);
-				this.buffer.delete(ref start_iter, ref end_iter);
-				// Update renderer's end_mark to point to the new end position (so end_block() reads correct position)
-				this.buffer.move_mark(this.current_block_renderer.end_mark, start_iter);
+				// TODO: Remove the marker from the buffer (it was already rendered)
+				// Temporarily disabled - will revisit later
+				// if (this.current_source_view == null) {
+				// 	// Remove last_line.length characters from the end of rendered content
+				// 	Gtk.TextIter start_iter, end_iter;
+				// 	this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+				// 	start_iter = end_iter;
+				// 	start_iter.backward_chars(this.last_line.length);
+				// 	this.buffer.delete(ref start_iter, ref end_iter);
+				// 	// Update renderer's end_mark to point to the new end position (so end_block() reads correct position)
+				// 	this.buffer.move_mark(this.current_block_renderer.end_mark, start_iter);
+				// }
 				// Now end the content block and start code block
 				this.end_block(response);
 				this.content_state = ContentState.CODE_BLOCK;
@@ -942,7 +945,7 @@ namespace OLLMchat.UI
 				// This ensures we scroll to bottom even if layout hasn't fully updated
 				vadjustment.value = vadjustment.upper + 1000.0;
 				this.last_scroll_pos = vadjustment.upper + 1000.0;
-				GLib.debug("vadjustment.value=%f, vadjustment.upper=%f", vadjustment.value, vadjustment.upper);
+			//	GLib.debug("vadjustment.value=%f, vadjustment.upper=%f", vadjustment.value, vadjustment.upper);
 			
 				return false;
 			});
@@ -1343,16 +1346,17 @@ namespace OLLMchat.UI
 				frame.unparent();
 			}
 			
-			// Track this frame for width updates (only if not already tracked)
-			if (!this.message_widgets.contains(frame)) {
-				this.message_widgets.add(frame);
-			}
+			// Track this frame for width updates
+			this.message_widgets.add(frame);
 			
 			// Get end position and create child anchor
 			Gtk.TextIter end_iter;
 			this.buffer.get_end_iter(out end_iter);
 			var anchor = this.buffer.create_child_anchor(end_iter);
 			this.text_view.add_child_at_anchor(frame, anchor);
+			
+			// Store anchor in frame for later retrieval
+			frame.set_data<Gtk.TextChildAnchor>("anchor", anchor);
 			
 			// Update width after widget is shown - use Idle to ensure layout is complete
 			GLib.Idle.add(() => {
@@ -1376,6 +1380,7 @@ namespace OLLMchat.UI
 		
 		/**
 		 * Removes a widget frame from the chat view.
+		   THIS DOES NOT APPEAR TO BE USED.. - we might need it later for 'clear' operation though?
 		 * 
 		 * @param frame The frame widget to remove
 		 * @param anchor The TextChildAnchor returned from add_widget_frame()

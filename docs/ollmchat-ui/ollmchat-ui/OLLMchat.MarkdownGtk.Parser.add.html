@@ -33,6 +33,7 @@
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Parser.Parser.html">Parser</a></li>
           <li class="method">add</li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Parser.add_old.html">add_old</a></li>
           <li class="method"><a href="OLLMchat.MarkdownGtk.Parser.add_start.html">add_start</a></li>
           <li class="method"><a href="OLLMchat.MarkdownGtk.Parser.flush.html">flush</a></li>
         </ul>
@@ -44,7 +45,7 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">add</span></b> (<span class="main_basic_type"><span class="class">string</span></span> in_chunk, <span class="main_basic_type"><span class="struct">bool</span></span> is_end_of_chunks = <span class="main_literal">false</span>)
         </div>
         <div class="description">
-          <p>Parses text and calls specific callbacks on Render.</p>
+          <p>Parses text and calls specific callbacks on Render. Uses peekMatch to detect format sequences.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

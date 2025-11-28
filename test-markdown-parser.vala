@@ -133,5 +133,55 @@ int main(string[] args)
 	
 	stdout.printf("=== END STREAMING ===\n");
 	
+	// Test case: bold before code block
+	// Input: - `**/**tmp**/test**.gs**` ** – exact copy of the original script you supplied.
+	// Expected: TEXT "-", START <strong>, TEXT "`/**tmp**/test**.gs**`", END (strong), TEXT " – exact copy..."
+	stdout.printf("\n=== TEST: BOLD BEFORE CODE BLOCK ===\n");
+	
+	var test_renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
+	
+	// Simulate the exact chunks from debug output
+	string[] test_chunks = {
+		"-",
+		" ",
+		"**",
+		"`",
+		"/",
+		"tmp",
+		"/test",
+		".gs",
+		"`",
+		"**",
+		" –",
+		" exact",
+		" copy",
+		" of",
+		" the",
+		" original",
+		" script",
+		" you",
+		" supplied",
+		"."
+	};
+	
+	test_renderer.add_start("", false);
+	foreach (var chunk in test_chunks) {
+		test_renderer.add(chunk);
+	}
+	test_renderer.flush();
+	
+	stdout.printf("\n=== TEST: SIMPLE BOLD BEFORE CODE ===\n");
+	var test2_renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
+	// Simpler test: just "**" followed by "`"
+	test2_renderer.add_start("", false);
+	test2_renderer.add("**");
+	test2_renderer.add("`");
+	test2_renderer.add("test");
+	test2_renderer.add("`");
+	test2_renderer.add("**");
+	test2_renderer.flush();
+	
+	stdout.printf("=== END TEST ===\n");
+	
 	return 0;
 }
