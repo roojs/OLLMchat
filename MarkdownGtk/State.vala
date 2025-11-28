@@ -106,7 +106,7 @@ namespace OLLMchat.MarkdownGtk
 			Gtk.TextIter start_iter, end_iter;
 			
 			// weird stuff comming in.. that we have found
-			var text = in_text.replace("‑", "-").replace("“", "\"");
+			var text = GLib.utf8_make_valid(in_text
 
 
 			// Get start position from mark (before insertion)
