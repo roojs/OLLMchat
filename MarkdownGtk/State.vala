@@ -101,10 +101,14 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The text to add
 		 */
-		public void add_text(string text)
+		public void add_text(string in_text)
 		{
 			Gtk.TextIter start_iter, end_iter;
 			
+			// weird stuff comming in.. that we have found
+			var text = in_text.replace("‑", "-").replace("“", "\"");
+
+
 			// Get start position from mark (before insertion)
 			this.render.buffer.get_iter_at_mark(out start_iter, this.end);
 			
