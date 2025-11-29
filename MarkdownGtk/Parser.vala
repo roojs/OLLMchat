@@ -33,10 +33,7 @@ namespace OLLMchat.MarkdownGtk
 		SUBSCRIPT,
 		INVALID,
 		HTML,
-		LITERAL
-    }
-	
-	private enum BlockType {
+		LITERAL,
 		HEADING_1,
 		HEADING_2,
 		HEADING_3,
@@ -53,7 +50,7 @@ namespace OLLMchat.MarkdownGtk
 		FENCED_CODE,
 		BLOCKQUOTE,
 		TABLE
-	}
+    }
 	
 	
 	/**
@@ -66,7 +63,7 @@ namespace OLLMchat.MarkdownGtk
 	{
 		
 		private static Gee.HashMap<string, FormatType> format_map;
-		private static Gee.HashMap<string, BlockType> block_map;
+		private static Gee.HashMap<string, FormatType> block_map;
 		
 		 
 		static construct {
