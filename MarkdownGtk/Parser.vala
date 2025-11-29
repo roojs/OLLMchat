@@ -105,28 +105,28 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		private static void setup_block_map() {
-			block_map = new Gee.HashMap<string, BlockType>();
+			block_map = new Gee.HashMap<string, FormatType>();
 			
 			// Headings: # Heading 1 to ###### Heading 6
-			block_map["#"] = BlockType.HEADING_1;
-			block_map["##"] = BlockType.HEADING_2;
-			block_map["###"] = BlockType.HEADING_3;
-			block_map["####"] = BlockType.HEADING_4;
-			block_map["#####"] = BlockType.HEADING_5;
-			block_map["######"] = BlockType.HEADING_6;
+			block_map["#"] = FormatType.HEADING_1;
+			block_map["##"] = FormatType.HEADING_2;
+			block_map["###"] = FormatType.HEADING_3;
+			block_map["####"] = FormatType.HEADING_4;
+			block_map["#####"] = FormatType.HEADING_5;
+			block_map["######"] = FormatType.HEADING_6;
 			
 			// Horizontal Rules: ---, ***, ___
-			block_map["---"] = BlockType.HORIZONTAL_RULE;
-			block_map["***"] = BlockType.HORIZONTAL_RULE;
-			block_map["___"] = BlockType.HORIZONTAL_RULE;
+			block_map["---"] = FormatType.HORIZONTAL_RULE;
+			block_map["***"] = FormatType.HORIZONTAL_RULE;
+			block_map["___"] = FormatType.HORIZONTAL_RULE;
 			
 			// Paragraphs: Any text separated by blank lines
 			// (handled implicitly, no marker needed)
 			
 			// Unordered Lists: - item, * item, + item
-			block_map["-"] = BlockType.UNORDERED_LIST;
-			block_map["*"] = BlockType.UNORDERED_LIST;
-			block_map["+"] = BlockType.UNORDERED_LIST;
+			block_map["-"] = FormatType.UNORDERED_LIST;
+			block_map["*"] = FormatType.UNORDERED_LIST;
+			block_map["+"] = FormatType.UNORDERED_LIST;
 			
 			// Ordered Lists: 1. item, 2. item
 			// (handled by pattern matching, not simple string key)
@@ -141,17 +141,17 @@ namespace OLLMchat.MarkdownGtk
 			// (handled by pattern matching for leading spaces/tabs)
 			
 			// Fenced Code: ``` or ~~~ with optional language
-			block_map["```"] = BlockType.FENCED_CODE;
-			block_map["~~~"] = BlockType.FENCED_CODE;
+			block_map["```"] = FormatType.FENCED_CODE;
+			block_map["~~~"] = FormatType.FENCED_CODE;
 			
 			// Code Attributes: ```python, ``` {.language-python}
 			// (handled as part of FENCED_CODE processing)
 			
 			// Blockquotes: > quote text
-			block_map[">"] = BlockType.BLOCKQUOTE;
+			block_map[">"] = FormatType.BLOCKQUOTE;
 			
 			// Tables: | Header | Header | with | --- | --- | (GFM)
-			block_map["|"] = BlockType.TABLE;
+			block_map["|"] = FormatType.TABLE;
 		}
 
 		
