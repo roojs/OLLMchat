@@ -106,6 +106,56 @@ namespace OLLMchat.MarkdownGtk
 			
 			format_map["<"] = FormatType.HTML;
 		}
+		
+		private static void setup_block_map() {
+			block_map = new Gee.HashMap<string, BlockType>();
+			
+			// Headings: # Heading 1 to ###### Heading 6
+			block_map["#"] = BlockType.HEADING_1;
+			block_map["##"] = BlockType.HEADING_2;
+			block_map["###"] = BlockType.HEADING_3;
+			block_map["####"] = BlockType.HEADING_4;
+			block_map["#####"] = BlockType.HEADING_5;
+			block_map["######"] = BlockType.HEADING_6;
+			
+			// Horizontal Rules: ---, ***, ___
+			block_map["---"] = BlockType.HORIZONTAL_RULE;
+			block_map["***"] = BlockType.HORIZONTAL_RULE;
+			block_map["___"] = BlockType.HORIZONTAL_RULE;
+			
+			// Paragraphs: Any text separated by blank lines
+			// (handled implicitly, no marker needed)
+			
+			// Unordered Lists: - item, * item, + item
+			block_map["-"] = BlockType.UNORDERED_LIST;
+			block_map["*"] = BlockType.UNORDERED_LIST;
+			block_map["+"] = BlockType.UNORDERED_LIST;
+			
+			// Ordered Lists: 1. item, 2. item
+			// (handled by pattern matching, not simple string key)
+			
+			// Task Lists: - [ ], - [x] (GFM)
+			// (handled by pattern matching with - [)
+			
+			// Definition Lists: (some flavors)
+			// (handled by pattern matching)
+			
+			// Indented Code: 4 spaces or 1 tab
+			// (handled by pattern matching for leading spaces/tabs)
+			
+			// Fenced Code: ``` or ~~~ with optional language
+			block_map["```"] = BlockType.FENCED_CODE;
+			block_map["~~~"] = BlockType.FENCED_CODE;
+			
+			// Code Attributes: ```python, ``` {.language-python}
+			// (handled as part of FENCED_CODE processing)
+			
+			// Blockquotes: > quote text
+			block_map[">"] = BlockType.BLOCKQUOTE;
+			
+			// Tables: | Header | Header | with | --- | --- | (GFM)
+			block_map["|"] = BlockType.TABLE;
+		}
 
 		
 		private RenderBase renderer;
