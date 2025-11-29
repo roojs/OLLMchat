@@ -149,7 +149,7 @@ namespace OLLMchat.MarkdownGtk
 		
 		// Tables: | Header | Header | with | --- | --- | (GFM)
 		block_map["|"] = FormatType.TABLE;
-	}
+	} 
 
 		
 		private RenderBase renderer;
