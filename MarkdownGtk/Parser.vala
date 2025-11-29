@@ -65,94 +65,91 @@ namespace OLLMchat.MarkdownGtk
 		private static Gee.HashMap<string, FormatType> format_map;
 		private static Gee.HashMap<string, FormatType> block_map;
 		
-		 
-		static construct {
-			setup_format_map();
-			setup_block_map();
-		}
+	 
+	static construct {
+		setup_maps();
+	}
+	
+	private static void setup_maps() {
+		format_map = new Gee.HashMap<string, FormatType>();
 		
-		private static void setup_format_map() {
-			format_map = new Gee.HashMap<string, FormatType>();
-			
-			// Asterisk sequences (most common)
-			format_map["*"] = FormatType.ITALIC;
-			format_map["**"] = FormatType.BOLD;
-			format_map["***"] = FormatType.BOLD_ITALIC;
-			
-			// Underscore sequences (alternative syntax)
-			format_map["_"] = FormatType.ITALIC;
-			format_map["__"] = FormatType.BOLD;
-			format_map["___"] = FormatType.BOLD_ITALIC;
-			
-			// Code and inline code
-			format_map["`"] = FormatType.LITERAL;
-			format_map["``"] = FormatType.CODE; // Some parsers support double backtick
-			
-			// Strikethrough (GFM)
-			format_map["~"] = FormatType.INVALID;
-			format_map["~~"] = FormatType.STRIKETHROUGH;
-			
-			// Highlight (some markdown flavors)
-			// format_map["=="] = FormatType.HIGHLIGHT;
-			// format_map["="] = FormatType.INVALID;
-			
-			// Superscript/subscript (some flavors)
-			// format_map["^"] = FormatType.SUPERSCRIPT;
-			// Note: "~" for subscript conflicts with "~~" for strikethrough
-			// Single "~" is not valid, so we don't map it
-			
-			format_map["<"] = FormatType.HTML;
-		}
+		// Asterisk sequences (most common)
+		format_map["*"] = FormatType.ITALIC;
+		format_map["**"] = FormatType.BOLD;
+		format_map["***"] = FormatType.BOLD_ITALIC;
 		
-		private static void setup_block_map() {
-			block_map = new Gee.HashMap<string, FormatType>();
-			
-			// Headings: # Heading 1 to ###### Heading 6
-			block_map["#"] = FormatType.HEADING_1;
-			block_map["##"] = FormatType.HEADING_2;
-			block_map["###"] = FormatType.HEADING_3;
-			block_map["####"] = FormatType.HEADING_4;
-			block_map["#####"] = FormatType.HEADING_5;
-			block_map["######"] = FormatType.HEADING_6;
-			
-			// Horizontal Rules: ---, ***, ___
-			block_map["---"] = FormatType.HORIZONTAL_RULE;
-			block_map["***"] = FormatType.HORIZONTAL_RULE;
-			block_map["___"] = FormatType.HORIZONTAL_RULE;
-			
-			// Paragraphs: Any text separated by blank lines
-			// (handled implicitly, no marker needed)
-			
-			// Unordered Lists: - item, * item, + item
-			block_map["-"] = FormatType.UNORDERED_LIST;
-			block_map["*"] = FormatType.UNORDERED_LIST;
-			block_map["+"] = FormatType.UNORDERED_LIST;
-			
-			// Ordered Lists: 1. item, 2. item
-			// (handled by pattern matching, not simple string key)
-			
-			// Task Lists: - [ ], - [x] (GFM)
-			// (handled by pattern matching with - [)
-			
-			// Definition Lists: (some flavors)
-			// (handled by pattern matching)
-			
-			// Indented Code: 4 spaces or 1 tab
-			// (handled by pattern matching for leading spaces/tabs)
-			
-			// Fenced Code: ``` or ~~~ with optional language
-			block_map["```"] = FormatType.FENCED_CODE;
-			block_map["~~~"] = FormatType.FENCED_CODE;
-			
-			// Code Attributes: ```python, ``` {.language-python}
-			// (handled as part of FENCED_CODE processing)
-			
-			// Blockquotes: > quote text
-			block_map[">"] = FormatType.BLOCKQUOTE;
-			
-			// Tables: | Header | Header | with | --- | --- | (GFM)
-			block_map["|"] = FormatType.TABLE;
-		}
+		// Underscore sequences (alternative syntax)
+		format_map["_"] = FormatType.ITALIC;
+		format_map["__"] = FormatType.BOLD;
+		format_map["___"] = FormatType.BOLD_ITALIC;
+		
+		// Code and inline code
+		format_map["`"] = FormatType.LITERAL;
+		format_map["``"] = FormatType.CODE; // Some parsers support double backtick
+		
+		// Strikethrough (GFM)
+		format_map["~"] = FormatType.INVALID;
+		format_map["~~"] = FormatType.STRIKETHROUGH;
+		
+		// Highlight (some markdown flavors)
+		// format_map["=="] = FormatType.HIGHLIGHT;
+		// format_map["="] = FormatType.INVALID;
+		
+		// Superscript/subscript (some flavors)
+		// format_map["^"] = FormatType.SUPERSCRIPT;
+		// Note: "~" for subscript conflicts with "~~" for strikethrough
+		// Single "~" is not valid, so we don't map it
+		
+		format_map["<"] = FormatType.HTML;
+		
+		block_map = new Gee.HashMap<string, FormatType>();
+		
+		// Headings: # Heading 1 to ###### Heading 6
+		block_map["#"] = FormatType.HEADING_1;
+		block_map["##"] = FormatType.HEADING_2;
+		block_map["###"] = FormatType.HEADING_3;
+		block_map["####"] = FormatType.HEADING_4;
+		block_map["#####"] = FormatType.HEADING_5;
+		block_map["######"] = FormatType.HEADING_6;
+		
+		// Horizontal Rules: ---, ***, ___
+		block_map["---"] = FormatType.HORIZONTAL_RULE;
+		block_map["***"] = FormatType.HORIZONTAL_RULE;
+		block_map["___"] = FormatType.HORIZONTAL_RULE;
+		
+		// Paragraphs: Any text separated by blank lines
+		// (handled implicitly, no marker needed)
+		
+		// Unordered Lists: - item, * item, + item
+		block_map["-"] = FormatType.UNORDERED_LIST;
+		block_map["*"] = FormatType.UNORDERED_LIST;
+		block_map["+"] = FormatType.UNORDERED_LIST;
+		
+		// Ordered Lists: 1. item, 2. item
+		// (handled by pattern matching, not simple string key)
+		
+		// Task Lists: - [ ], - [x] (GFM)
+		// (handled by pattern matching with - [)
+		
+		// Definition Lists: (some flavors)
+		// (handled by pattern matching)
+		
+		// Indented Code: 4 spaces or 1 tab
+		// (handled by pattern matching for leading spaces/tabs)
+		
+		// Fenced Code: ``` or ~~~ with optional language
+		block_map["```"] = FormatType.FENCED_CODE;
+		block_map["~~~"] = FormatType.FENCED_CODE;
+		
+		// Code Attributes: ```python, ``` {.language-python}
+		// (handled as part of FENCED_CODE processing)
+		
+		// Blockquotes: > quote text
+		block_map[">"] = FormatType.BLOCKQUOTE;
+		
+		// Tables: | Header | Header | with | --- | --- | (GFM)
+		block_map["|"] = FormatType.TABLE;
+	}
 
 		
 		private RenderBase renderer;
