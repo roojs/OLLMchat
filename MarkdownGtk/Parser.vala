@@ -23,6 +23,7 @@ namespace OLLMchat.MarkdownGtk
 	
  
     private enum FormatType {
+        NONE,
         ITALIC,
         BOLD,
         BOLD_ITALIC,
@@ -44,6 +45,7 @@ namespace OLLMchat.MarkdownGtk
 		PARAGRAPH,
 		UNORDERED_LIST,
 		ORDERED_LIST,
+		CONTINUE_LIST,
 		TASK_LIST,
 		DEFINITION_LIST,
 		INDENTED_CODE,
@@ -66,90 +68,142 @@ namespace OLLMchat.MarkdownGtk
 		private static Gee.HashMap<string, FormatType> block_map;
 		
 	 
-	static construct {
-		setup_maps();
-	}
-	
-	private static void setup_maps() {
-		format_map = new Gee.HashMap<string, FormatType>();
+		static construct {
+			setup_maps();
+		}
 		
-		// Asterisk sequences (most common)
-		format_map["*"] = FormatType.ITALIC;
-		format_map["**"] = FormatType.BOLD;
-		format_map["***"] = FormatType.BOLD_ITALIC;
-		
-		// Underscore sequences (alternative syntax)
-		format_map["_"] = FormatType.ITALIC;
-		format_map["__"] = FormatType.BOLD;
-		format_map["___"] = FormatType.BOLD_ITALIC;
-		
-		// Code and inline code
-		format_map["`"] = FormatType.LITERAL;
-		format_map["``"] = FormatType.CODE; // Some parsers support double backtick
-		
-		// Strikethrough (GFM)
-		format_map["~"] = FormatType.INVALID;
-		format_map["~~"] = FormatType.STRIKETHROUGH;
-		
-		// Highlight (some markdown flavors)
-		// format_map["=="] = FormatType.HIGHLIGHT;
-		// format_map["="] = FormatType.INVALID;
-		
-		// Superscript/subscript (some flavors)
-		// format_map["^"] = FormatType.SUPERSCRIPT;
-		// Note: "~" for subscript conflicts with "~~" for strikethrough
-		// Single "~" is not valid, so we don't map it
-		
-		format_map["<"] = FormatType.HTML;
-		
-		block_map = new Gee.HashMap<string, FormatType>();
-		
-		// Headings: # Heading 1 to ###### Heading 6
-		block_map["#"] = FormatType.HEADING_1;
-		block_map["##"] = FormatType.HEADING_2;
-		block_map["###"] = FormatType.HEADING_3;
-		block_map["####"] = FormatType.HEADING_4;
-		block_map["#####"] = FormatType.HEADING_5;
-		block_map["######"] = FormatType.HEADING_6;
-		
-		// Horizontal Rules: ---, ***, ___
-		block_map["---"] = FormatType.HORIZONTAL_RULE;
-		block_map["***"] = FormatType.HORIZONTAL_RULE;
-		block_map["___"] = FormatType.HORIZONTAL_RULE;
-		
-		// Paragraphs: Any text separated by blank lines
-		// (handled implicitly, no marker needed)
-		
-		// Unordered Lists: - item, * item, + item
-		block_map["-"] = FormatType.UNORDERED_LIST;
-		block_map["*"] = FormatType.UNORDERED_LIST;
-		block_map["+"] = FormatType.UNORDERED_LIST;
-		
-		// Ordered Lists: 1. item, 2. item
-		// (handled by pattern matching, not simple string key)
-		
-		// Task Lists: - [ ], - [x] (GFM)
-		// (handled by pattern matching with - [)
-		
-		// Definition Lists: (some flavors)
-		// (handled by pattern matching)
-		
-		// Indented Code: 4 spaces or 1 tab
-		// (handled by pattern matching for leading spaces/tabs)
-		
-		// Fenced Code: ``` or ~~~ with optional language
-		block_map["```"] = FormatType.FENCED_CODE;
-		block_map["~~~"] = FormatType.FENCED_CODE;
-		
-		// Code Attributes: ```python, ``` {.language-python}
-		// (handled as part of FENCED_CODE processing)
-		
-		// Blockquotes: > quote text
-		block_map[">"] = FormatType.BLOCKQUOTE;
-		
-		// Tables: | Header | Header | with | --- | --- | (GFM)
-		block_map["|"] = FormatType.TABLE;
-	} 
+		private static void setup_maps() {
+			format_map = new Gee.HashMap<string, FormatType>();
+			
+			// Asterisk sequences (most common)
+			format_map["*"] = FormatType.ITALIC;
+			format_map["**"] = FormatType.BOLD;
+			format_map["***"] = FormatType.BOLD_ITALIC;
+			
+			// Underscore sequences (alternative syntax)
+			format_map["_"] = FormatType.ITALIC;
+			format_map["__"] = FormatType.BOLD;
+			format_map["___"] = FormatType.BOLD_ITALIC;
+			
+			// Code and inline code
+			format_map["`"] = FormatType.LITERAL;
+			format_map["``"] = FormatType.CODE; // Some parsers support double backtick
+			
+			// Strikethrough (GFM)
+			format_map["~"] = FormatType.INVALID;
+			format_map["~~"] = FormatType.STRIKETHROUGH;
+			
+			// Highlight (some markdown flavors)
+			// format_map["=="] = FormatType.HIGHLIGHT;
+			// format_map["="] = FormatType.INVALID;
+			
+			// Superscript/subscript (some flavors)
+			// format_map["^"] = FormatType.SUPERSCRIPT;
+			// Note: "~" for subscript conflicts with "~~" for strikethrough
+			// Single "~" is not valid, so we don't map it
+			
+			// Task list checkboxes: [ ], [x] (GFM)
+			format_map["[ ]"] = FormatType.TASK_LIST;
+			format_map["[x]"] = FormatType.TASK_LIST;
+			
+			format_map["<"] = FormatType.HTML;
+			
+			block_map = new Gee.HashMap<string, FormatType>();
+			
+			// Headings: # Heading 1 to ###### Heading 6
+			block_map["#"] = FormatType.HEADING_1;
+			block_map["##"] = FormatType.HEADING_2;
+			block_map["###"] = FormatType.HEADING_3;
+			block_map["####"] = FormatType.HEADING_4;
+			block_map["#####"] = FormatType.HEADING_5;
+			block_map["######"] = FormatType.HEADING_6;
+			
+			// Horizontal Rules: ---, ***, ___
+			block_map["--"] = FormatType.INVALID;
+			block_map["---"] = FormatType.HORIZONTAL_RULE;
+			block_map["**"] = FormatType.INVALID;
+			block_map["***"] = FormatType.HORIZONTAL_RULE;
+			block_map["__"] = FormatType.INVALID;
+			block_map["___"] = FormatType.HORIZONTAL_RULE;
+			
+			// Paragraphs: Any text separated by blank lines
+			// (handled implicitly, no marker needed)
+			
+			// Unordered Lists: - item, * item, + item
+			block_map["-"] = FormatType.INVALID;
+			block_map["- "] = FormatType.UNORDERED_LIST;
+			block_map["* "] = FormatType.UNORDERED_LIST;
+			block_map["+"] = FormatType.INVALID;
+			block_map["+ "] = FormatType.UNORDERED_LIST;
+			
+			// Ordered Lists: 1. item, 2. item, etc. (treat any number as 1.)
+			// Need both "1." and "11." to handle single and double digit numbers
+			block_map["1"] = FormatType.INVALID;
+			block_map["1."] = FormatType.INVALID;
+			block_map["1. "] = FormatType.ORDERED_LIST;
+			block_map["11"] = FormatType.INVALID;
+			block_map["11."] = FormatType.INVALID;
+			block_map["11. "] = FormatType.ORDERED_LIST;
+			// Indented versions: 1-4 spaces before number
+			block_map[" 1"] = FormatType.INVALID;
+			block_map[" 1."] = FormatType.INVALID;
+			block_map[" 1. "] = FormatType.ORDERED_LIST;
+			block_map["  1"] = FormatType.INVALID;
+			block_map["  1."] = FormatType.INVALID;
+			block_map["  1. "] = FormatType.ORDERED_LIST;
+			block_map["   1"] = FormatType.INVALID;
+			block_map["   1."] = FormatType.INVALID;
+			block_map["   1. "] = FormatType.ORDERED_LIST;
+			block_map["    1"] = FormatType.INVALID;
+			block_map["    1."] = FormatType.INVALID;
+			block_map["    1. "] = FormatType.ORDERED_LIST;
+			block_map[" 11"] = FormatType.INVALID;
+			block_map[" 11."] = FormatType.INVALID;
+			block_map[" 11. "] = FormatType.ORDERED_LIST;
+			block_map["  11"] = FormatType.INVALID;
+			block_map["  11."] = FormatType.INVALID;
+			block_map["  11. "] = FormatType.ORDERED_LIST;
+			block_map["   11"] = FormatType.INVALID;
+			block_map["   11."] = FormatType.INVALID;
+			block_map["   11. "] = FormatType.ORDERED_LIST;
+			block_map["    11"] = FormatType.INVALID;
+			block_map["    11."] = FormatType.INVALID;
+			block_map["    11. "] = FormatType.ORDERED_LIST;
+			
+			// Continue list: 2 spaces to continue list items
+			block_map[" "] = FormatType.INVALID;
+			block_map["  "] = FormatType.CONTINUE_LIST;
+			
+			// Task Lists: - [ ], - [x] (GFM)
+			// (handled by pattern matching with - [)
+			
+			// Definition Lists: (some flavors)
+			// (handled by pattern matching)
+			
+			// Indented Code: 4 spaces or 1 tab
+			block_map["   "] = FormatType.INVALID;
+			block_map["    "] = FormatType.INDENTED_CODE;
+			block_map["\t"] = FormatType.INDENTED_CODE;
+			
+			// Fenced Code: ``` or ~~~ with optional language
+			block_map["`"] = FormatType.INVALID;
+			block_map["``"] = FormatType.INVALID;
+			block_map["```"] = FormatType.FENCED_CODE;
+			block_map["~"] = FormatType.INVALID;
+			block_map["~~"] = FormatType.INVALID;
+			block_map["~~~"] = FormatType.FENCED_CODE;
+			
+			// Code Attributes: ```python, ``` {.language-python}
+			// (handled as part of FENCED_CODE processing)
+			
+			// Blockquotes: > quote text
+			block_map[">"] = FormatType.INVALID;
+			block_map["> "] = FormatType.BLOCKQUOTE;
+			
+			// Tables: | Header | Header | with | --- | --- | (GFM)
+			block_map["|"] = FormatType.INVALID;
+			block_map["| "] = FormatType.TABLE;
+		} 
 
 		
 		private RenderBase renderer;
@@ -157,6 +211,7 @@ namespace OLLMchat.MarkdownGtk
 	 
 		private string leftover_chunk = "";
 		private bool in_literal = false;
+		private FormatType last_line_block = FormatType.NONE;
 	
 		/**
 		 * Creates a new Parser instance.
@@ -186,14 +241,12 @@ namespace OLLMchat.MarkdownGtk
 		 * Determines if characters at a given position match a format tag.
 		 * Uses a loop-based approach to handle variable-length format sequences.
 		 * 
-		 * @param format_map The format map to check against
 		 * @param chunk The text chunk to examine
 		 * @param chunk_pos The position in the chunk to check
 		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
 		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
 		 */
-		private int peekMatch(
-			Gee.HashMap<string, FormatType> format_map, 
+		private int peekFormat(
 			string chunk, 
 			int chunk_pos, 
 			bool is_end_of_chunks
@@ -204,8 +257,10 @@ namespace OLLMchat.MarkdownGtk
 			}
 			
 			// Check if single character is in format_map
-			var single_char = chunk.get_char(chunk_pos).to_string();
-			if (!format_map.has_key(single_char)) {
+			var first_char = chunk.get_char(chunk_pos);
+			var single_char = first_char.to_string();
+			// Optimize: skip has_key check if character is alphabetic (format markers are typically punctuation)
+			if (first_char.isalpha() || !format_map.has_key(single_char)) {
 				return 0; // No match
 			}
 			
@@ -244,8 +299,10 @@ namespace OLLMchat.MarkdownGtk
 				var char_at_cp = chunk.get_char(cp);
 				sequence += char_at_cp.to_string();
 				cp += char_at_cp.to_string().length;
-				 
-				if (!format_map.has_key(sequence)) {
+				
+				// Optimize: skip has_key check if last character is alphabetic
+				var last_char = char_at_cp;
+				if (last_char.isalpha() || !format_map.has_key(sequence)) {
 					// Sequence not in format_map - return longest valid match found (0 if none)
 					return max_match_length;
 				}
@@ -254,6 +311,102 @@ namespace OLLMchat.MarkdownGtk
  				
 				// If FormatType is NOT INVALID, update max_match_length
 				if (format_map.get(sequence) != FormatType.INVALID) {
+					// Count characters, not bytes
+					int char_count = 0;
+					for (var i = chunk_pos; i < cp; ) {
+						var char_at_i = chunk.get_char(i);
+						i += char_at_i.to_string().length;
+						char_count++;
+					}
+					max_match_length = char_count;
+				}
+			}
+			
+			// Reached end of chunk
+			if (!is_end_of_chunks) {
+				// Not end of chunks - might be longer match
+				return -1;
+			}
+			// At end of chunks - return what we found (0 if only INVALID matches)
+			return max_match_length;
+		}
+
+		/**
+		 * Determines if characters at a given position match a block tag.
+		 * Uses a loop-based approach to handle variable-length block sequences.
+		 * Includes number normalization for ordered lists.
+		 * 
+		 * @param chunk The text chunk to examine
+		 * @param chunk_pos The position in the chunk to check
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
+		 */
+		private int peekBlock(
+			string chunk, 
+			int chunk_pos, 
+			bool is_end_of_chunks
+		) {
+			// Check bounds
+			if (chunk_pos >= chunk.length) {
+				return 0;
+			}
+			
+			// Check if single character is in block_map
+			var first_char = chunk.get_char(chunk_pos);
+			var single_char = first_char.isdigit() ? "1" : first_char.to_string();
+			// Optimize: skip has_key check if character is alphabetic (block markers are typically punctuation/spaces)
+			// Note: we allow digits and spaces as they can be part of block markers (ordered lists, indented code)
+			if (first_char.isalpha() || !block_map.has_key(single_char)) {
+				return 0; // No match
+			}
+			
+			// Edge case: At end of chunk
+			var ch = chunk.get_char(chunk_pos);
+			var next_pos = chunk_pos + ch.to_string().length;
+			if (next_pos >= chunk.length) {
+				if (!is_end_of_chunks) {
+					return -1; // Might be longer match
+				}
+				// At end of chunks - check if single char FormatType is INVALID → return 0
+				if (block_map.get(single_char) == FormatType.INVALID) {
+					return 0;
+				}
+				return 1; // Definitive single char match
+			}
+			
+			// Loop-based sequence matching
+			int max_match_length = 0;
+			var sequence = "";
+			
+			for (var cp = chunk_pos; cp < chunk.length; ) {
+				// Build sequence incrementally by appending current character
+				var char_at_cp = chunk.get_char(cp);
+				// Normalize digits to '1' for ordered list matching
+				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
+				cp += char_at_cp.to_string().length;
+				
+				// Optimize: skip has_key check if last character is alphabetic
+				// Note: we allow digits and spaces as they can be part of block markers
+				var last_char = char_at_cp;
+				if (last_char.isalpha() || !block_map.has_key(sequence)) {
+					// Sequence not in block_map - return longest valid match found (0 if none)
+					return max_match_length;
+				}
+				
+				// Sequence is in block_map
+				
+				var block_type = block_map.get(sequence);
+				
+				// Check if CONTINUE_LIST is valid (only if last line was ORDERED_LIST or UNORDERED_LIST)
+				if (block_type == FormatType.CONTINUE_LIST) {
+					if (this.last_line_block != FormatType.ORDERED_LIST && this.last_line_block != FormatType.UNORDERED_LIST) {
+						// CONTINUE_LIST not valid - return longest valid match found (0 if none)
+						return max_match_length;
+					}
+				}
+				
+				// If FormatType is NOT INVALID, update max_match_length
+				if (block_type != FormatType.INVALID) {
 					// Count characters, not bytes
 					int char_count = 0;
 					for (var i = chunk_pos; i < cp; ) {
@@ -306,7 +459,7 @@ namespace OLLMchat.MarkdownGtk
 		 
 		/**
 		 * Parses text and calls specific callbacks on Render.
-		 * Uses peekMatch to detect format sequences.
+		 * Uses peekFormat to detect format sequences.
 		 * 
 		 * @param in_chunk The markdown text to parse
 		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive (no more data coming)
@@ -337,8 +490,8 @@ namespace OLLMchat.MarkdownGtk
 					continue;
 				}
 				
-				// Use peekMatch to detect format sequences (needed even in literal mode for backtick toggle)
-				var match_len = this.peekMatch(format_map, chunk, chunk_pos, is_end_of_chunks);
+				// Use peekFormat to detect format sequences (needed even in literal mode for backtick toggle)
+				var match_len = this.peekFormat(chunk, chunk_pos, is_end_of_chunks);
 				
 				if (match_len == -1) {
 					// Cannot determine - need more characters
@@ -350,7 +503,7 @@ namespace OLLMchat.MarkdownGtk
 				
 				if (match_len == 0) {
 					// No match or LITERAL (backtick) or in_literal mode - add as text and consume the character
-					// For LITERAL, peekMatch already toggled in_literal
+					// For LITERAL, peekFormat already toggled in_literal
 					str += c.to_string();
 					chunk_pos += c.to_string().length;
 					continue;
