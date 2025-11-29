@@ -36,6 +36,25 @@ namespace OLLMchat.MarkdownGtk
 		LITERAL
     }
 	
+	private enum BlockType {
+		HEADING_1,
+		HEADING_2,
+		HEADING_3,
+		HEADING_4,
+		HEADING_5,
+		HEADING_6,
+		HORIZONTAL_RULE,
+		PARAGRAPH,
+		UNORDERED_LIST,
+		ORDERED_LIST,
+		TASK_LIST,
+		DEFINITION_LIST,
+		INDENTED_CODE,
+		FENCED_CODE,
+		BLOCKQUOTE,
+		TABLE
+	}
+	
 	
 	/**
 	 * Parser for markdown text that calls specific callbacks on Render.
@@ -47,10 +66,12 @@ namespace OLLMchat.MarkdownGtk
 	{
 		
 		private static Gee.HashMap<string, FormatType> format_map;
+		private static Gee.HashMap<string, BlockType> block_map;
 		
 		 
 		static construct {
 			setup_format_map();
+			setup_block_map();
 		}
 		
 		private static void setup_format_map() {
