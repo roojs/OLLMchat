@@ -17,25 +17,16 @@ namespace VectorSearch
 			this.embedding_dimension = 768; // Default for nomic-embed-text
 		}
 		
-		private async void ensure_initialized() throws Error
+		private void initialize_from_embedding(Gee.ArrayList<double?> embedding) throws Error
 		{
 			if (this.index != null) {
 				return; // Already initialized
 			}
 			
-			// Get dimension from first embedding
-			// EmbedResponse.embeddings is Gee.ArrayList<Gee.ArrayList<double?>>
-			// For a single input, we get one embedding vector in the array
-			var test_response = yield this.ollama.embed("test");
-			if (test_response == null || test_response.embeddings.size == 0) {
-				throw new Error.FAILED("Failed to get test embedding from Ollama");
-			}
-			
-			// Get the dimension from the first embedding vector's length
+			// Get the dimension from the embedding vector's length
 			// embedding_dimension is the size of each embedding vector (e.g., 768 for nomic-embed-text)
 			// FAISS requires this dimension upfront because all vectors must have the same dimension
-			var first_embedding = test_response.embeddings[0];
-			this.embedding_dimension = (uint64)first_embedding.size;
+			this.embedding_dimension = (uint64)embedding.size;
 			this.index = new Index(this.embedding_dimension);
 		}
 		
