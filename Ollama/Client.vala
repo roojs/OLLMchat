@@ -32,13 +32,26 @@ namespace OLLMchat.Ollama
 		public string model { get; set; default = ""; }
 		public bool stream { get; set; default = false; }
 		public string? format { get; set; }
-		public Json.Object? options { get; set; }
+		public Options options { get; private set; }
 		public bool think { get; set; default = false; }
 		public string? keep_alive { get; set; }
 		public Gee.HashMap<string, Tool> tools { get; set; default = new Gee.HashMap<string, Tool>(); }
 		public ChatResponse? streaming_response { get; set; default = null; }
 		public Prompt.BaseAgentPrompt prompt_assistant { get; set; default = new Prompt.BaseAgentPrompt(); }
 		public ChatPermission.Provider permission_provider { get; set; default = new ChatPermission.Dummy(); }
+		
+		// Options properties - default to -1 (no value set) for numbers, empty string for strings
+		public int seed { get; set; default = -1; }
+		public double temperature { get; set; default = -1.0; }
+		public double top_p { get; set; default = -1.0; }
+		public int top_k { get; set; default = -1; }
+		public int num_predict { get; set; default = -1; }
+		public double repeat_penalty { get; set; default = -1.0; }
+		public int num_ctx { get; set; default = -1; }
+		public int num_batch { get; set; default = -1; }
+		public int num_gpu { get; set; default = -1; }
+		public int num_thread { get; set; default = -1; }
+		public string? stop { get; set; }
 		
 		/**
 		 * HTTP request timeout in seconds.
@@ -48,6 +61,11 @@ namespace OLLMchat.Ollama
 		 * @since 1.0
 		 */
 		public uint timeout { get; set; default = 300; }
+
+		public Client()
+		{
+			this.options = new Options(this);
+		}
 
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.
