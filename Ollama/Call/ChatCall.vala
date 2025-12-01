@@ -43,8 +43,8 @@ namespace OLLMchat.Ollama
 			set { } // Fake setter for serialization
 		}
 		
-		public Options options { 
-			get { return this.client.options; }
+		public Call.Options options { 
+			owned get { return new Call.Options(this.client); }
 			set { } // Fake setter for serialization
 		}
 		

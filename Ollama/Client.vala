@@ -32,7 +32,6 @@ namespace OLLMchat.Ollama
 		public string model { get; set; default = ""; }
 		public bool stream { get; set; default = false; }
 		public string? format { get; set; }
-		public Options options { get; private set; }
 		public bool think { get; set; default = false; }
 		public string? keep_alive { get; set; }
 		public Gee.HashMap<string, Tool> tools { get; set; default = new Gee.HashMap<string, Tool>(); }
@@ -48,10 +47,7 @@ namespace OLLMchat.Ollama
 		public int num_predict { get; set; default = -1; }
 		public double repeat_penalty { get; set; default = -1.0; }
 		public int num_ctx { get; set; default = -1; }
-		public int num_batch { get; set; default = -1; }
-		public int num_gpu { get; set; default = -1; }
-		public int num_thread { get; set; default = -1; }
-		public string? stop { get; set; }
+		public string stop { get; set; default = ""; }
 		
 		/**
 		 * HTTP request timeout in seconds.
@@ -64,7 +60,6 @@ namespace OLLMchat.Ollama
 
 		public Client()
 		{
-			this.options = new Options(this);
 		}
 
 		/**
@@ -280,14 +275,56 @@ namespace OLLMchat.Ollama
 		 * Returns a single EmbedResponse object containing the embeddings and metadata.
 		 * 
 		 * @param input The text to generate embeddings for
+		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
+		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return EmbedResponse object with embeddings and timing information
 		 * @since 1.0
 		 */
-		public async EmbedResponse embed(string input, GLib.Cancellable? cancellable = null) throws Error
+		public async EmbedResponse embed(
+		string input,
+		int dimensions = -1,
+		bool truncate = false,
+		GLib.Cancellable? cancellable = null
+	) throws Error
 		{
-			var call = new EmbedCall(this, input) {
-				cancellable = cancellable
+			var call = new EmbedCall(this) {
+				cancellable = cancellable,
+				input = input,
+				dimensions = dimensions,
+				truncate = truncate
+			};
+			
+			var result = yield call.exec_embed();
+			
+			return result;
+		}
+
+		/**
+		 * Generates embeddings for an array of input texts.
+		 * 
+		 * Creates vector embeddings representing the input texts using the configured model.
+		 * Returns a single EmbedResponse object containing the embeddings and metadata.
+		 * 
+		 * @param input_array The array of texts to generate embeddings for
+		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
+		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
+		 * @param cancellable Optional cancellable for cancelling the request
+		 * @return EmbedResponse object with embeddings and timing information
+		 * @since 1.0
+		 */
+		public async EmbedResponse embed_array(
+			Gee.ArrayList<string> input_array,
+			int dimensions = -1,
+			bool truncate = false,
+			GLib.Cancellable? cancellable = null
+		) throws Error
+		{
+			var call = new EmbedCall(this) {
+				cancellable = cancellable,
+				input_array = input_array,
+				dimensions = dimensions,
+				truncate = truncate
 			};
 			
 			var result = yield call.exec_embed();

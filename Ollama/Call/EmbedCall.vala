@@ -26,41 +26,30 @@ namespace OLLMchat.Ollama
 	 */
 	public class EmbedCall : BaseCall
 	{
-		public string model { get; set; default = ""; }
-		public string? input { get; set; }
-		public Gee.ArrayList<string>? input_array { get; set; }
-		public bool truncate { get; set; default = true; }
-		public int dimensions { get; set; default = 0; }
-		public string? keep_alive { get; set; }
-		public Options options { 
-			get { return this.client.options; }
+		// Read-only getters that read from client (with fake setters for serialization)
+		public string model { 
+			get { return this.client.model; }
+			set { } // Fake setter for serialization
+		}
+		
+		public string input { get; set; default = ""; }
+		public Gee.ArrayList<string> input_array { get; set; default = new Gee.ArrayList<string>(); }
+		public bool truncate { get; set; default = false; }
+		public int dimensions { get; set; default = -1; }
+		
+		public string? keep_alive { 
+			get { return this.client.keep_alive; }
+			set { } // Fake setter for serialization
+		}
+		
+		public Call.Options options { 
+			owned get { return new Call.Options(this.client); }
 			set { } // Fake setter for serialization
 		}
 
-		public EmbedCall(Client client, string input) throws OllamaError
+		public EmbedCall(Client client)
 		{
 			base(client);
-			if (input == "") {
-				throw new OllamaError.FAILED("Input cannot be empty");
-			}
-			this.input = input;
-			if (client.model != "") {
-				this.model = client.model;
-			}
-			this.url_endpoint = "embed";
-			this.http_method = "POST";
-		}
-
-		public EmbedCall.with_array(Client client, Gee.ArrayList<string> input_array) throws OllamaError
-		{
-			base(client);
-			if (input_array == null || input_array.size == 0) {
-				throw new OllamaError.FAILED("Input array cannot be empty");
-			}
-			this.input_array = input_array;
-			if (client.model != "") {
-				this.model = client.model;
-			}
 			this.url_endpoint = "embed";
 			this.http_method = "POST";
 		}
@@ -69,12 +58,11 @@ namespace OLLMchat.Ollama
 		{
 			switch (property_name) {
 				case "client":
-				case "input-array":
 					return null;
 				case "input":
-					// If input_array is set, serialize it as "input" (array)
+					// If input_array has items, serialize it as "input" (array)
 					// Otherwise serialize the string input
-					if (this.input_array != null && this.input_array.size > 0) {
+					if (this.input_array.size > 0) {
 						var input_array_node = new Json.Node(Json.NodeType.ARRAY);
 						var json_array = new Json.Array();
 						foreach (var item in this.input_array) {
@@ -83,11 +71,17 @@ namespace OLLMchat.Ollama
 						input_array_node.init_array(json_array);
 						return input_array_node;
 					}
-					// Serialize string input normally
+					// Serialize string input normally (only if not empty)
+					if (this.input == "") {
+						return null;
+					}
 					return base.serialize_property(property_name, value, pspec);
+				case "input-array":
+					// Don't serialize input_array directly - it's handled in "input"
+					return null;
 				case "dimensions":
-					// Only serialize if set (greater than 0)
-					if (this.dimensions <= 0) {
+					// Only serialize if set (not -1)
+					if (this.dimensions == -1) {
 						return null;
 					}
 					return base.serialize_property(property_name, value, pspec);

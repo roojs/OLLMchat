@@ -27,8 +27,10 @@ namespace OLLMchat.Ollama
 	public class EmbedResponse : BaseResponse
 	{
 		public string model { get; set; default = ""; }
-		public Gee.ArrayList<Gee.ArrayList<double?>> embeddings { get; set; 
-			default = new Gee.ArrayList<Gee.ArrayList<double?>>(); }
+		public Gee.ArrayList<Gee.ArrayList<double?>> embeddings { 
+				get; set; 
+				default = new Gee.ArrayList<Gee.ArrayList<double?>>(); 
+		}
 		public int64 total_duration { get; set; default = 0; }
 		public int64 load_duration { get; set; default = 0; }
 		public int prompt_eval_count { get; set; default = 0; }
@@ -46,17 +48,15 @@ namespace OLLMchat.Ollama
 				case "embeddings":
 					// Serialize embeddings as array of arrays
 					var embeddings_list = value.get_object() as Gee.ArrayList<Gee.ArrayList<double?>>;
-					if (embeddings_list == null) {
-						return null;
-					}
+					 
 					var array_node = new Json.Node(Json.NodeType.ARRAY);
 					var json_array = new Json.Array();
 					foreach (var embedding in embeddings_list) {
 						var inner_array = new Json.Array();
 						foreach (var val in embedding) {
-							if (val != null) {
-								inner_array.add_double_element(val);
-							}
+							 
+							inner_array.add_double_element(val);
+							 
 						}
 						json_array.add_array_element(inner_array);
 					}
@@ -67,7 +67,8 @@ namespace OLLMchat.Ollama
 			}
 		}
 
-		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		public override bool deserialize_property(
+			string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			switch (property_name) {
 				case "embeddings":
@@ -75,21 +76,18 @@ namespace OLLMchat.Ollama
 					var embeddings_list = new Gee.ArrayList<Gee.ArrayList<double?>>();
 					var array = property_node.get_array();
 					for (int i = 0; i < array.get_length(); i++) {
-						var inner_node = array.get_element(i);
-						if (inner_node.get_node_type() != Json.NodeType.ARRAY) {
-							continue;
-						}
-						var inner_array = inner_node.get_array();
+						var inner_array = array.get_array_element(i);
 						var embedding = new Gee.ArrayList<double?>();
 						for (int j = 0; j < inner_array.get_length(); j++) {
 							var val_node = inner_array.get_element(j);
-							double? val = null;
 							if (val_node.get_value_type() == typeof(double)) {
-								val = val_node.get_double();
-							} else if (val_node.get_value_type() == typeof(int)) {
-								val = (double)val_node.get_int();
+								embedding.add(val_node.get_double());
+								continue;
 							}
-							embedding.add(val);
+							if (val_node.get_value_type() == typeof(int)) {	
+								embedding.add((double)val_node.get_int());
+								continue;
+							}
 						}
 						embeddings_list.add(embedding);
 					}
