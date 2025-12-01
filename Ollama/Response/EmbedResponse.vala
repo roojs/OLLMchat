@@ -27,8 +27,8 @@ namespace OLLMchat.Ollama
 	public class EmbedResponse : BaseResponse
 	{
 		public string model { get; set; default = ""; }
-		public Gee.ArrayList<Gee.ArrayList<double>> embeddings { get; set; 
-			default = new Gee.ArrayList<Gee.ArrayList<double>>(); }
+		public Gee.ArrayList<Gee.ArrayList<double?>> embeddings { get; set; 
+			default = new Gee.ArrayList<Gee.ArrayList<double?>>(); }
 		public int64 total_duration { get; set; default = 0; }
 		public int64 load_duration { get; set; default = 0; }
 		public int prompt_eval_count { get; set; default = 0; }
@@ -45,7 +45,7 @@ namespace OLLMchat.Ollama
 					return null;
 				case "embeddings":
 					// Serialize embeddings as array of arrays
-					var embeddings_list = value.get_object() as Gee.ArrayList<Gee.ArrayList<double>>;
+					var embeddings_list = value.get_object() as Gee.ArrayList<Gee.ArrayList<double?>>;
 					if (embeddings_list == null) {
 						return null;
 					}
@@ -54,7 +54,9 @@ namespace OLLMchat.Ollama
 					foreach (var embedding in embeddings_list) {
 						var inner_array = new Json.Array();
 						foreach (var val in embedding) {
-							inner_array.add_double_element(val);
+							if (val != null) {
+								inner_array.add_double_element(val);
+							}
 						}
 						json_array.add_array_element(inner_array);
 					}
@@ -70,7 +72,7 @@ namespace OLLMchat.Ollama
 			switch (property_name) {
 				case "embeddings":
 					// Handle embeddings as array of arrays
-					var embeddings_list = new Gee.ArrayList<Gee.ArrayList<double>>();
+					var embeddings_list = new Gee.ArrayList<Gee.ArrayList<double?>>();
 					var array = property_node.get_array();
 					for (int i = 0; i < array.get_length(); i++) {
 						var inner_node = array.get_element(i);
@@ -78,14 +80,16 @@ namespace OLLMchat.Ollama
 							continue;
 						}
 						var inner_array = inner_node.get_array();
-						var embedding = new Gee.ArrayList<double>();
+						var embedding = new Gee.ArrayList<double?>();
 						for (int j = 0; j < inner_array.get_length(); j++) {
 							var val_node = inner_array.get_element(j);
+							double? val = null;
 							if (val_node.get_value_type() == typeof(double)) {
-								embedding.add(val_node.get_double());
+								val = val_node.get_double();
 							} else if (val_node.get_value_type() == typeof(int)) {
-								embedding.add((double)val_node.get_int());
+								val = (double)val_node.get_int();
 							}
+							embedding.add(val);
 						}
 						embeddings_list.add(embedding);
 					}
