@@ -77,11 +77,13 @@ namespace VectorSearch
 				throw new Error.FAILED("Database not initialized");
 			}
 			
-			var query_embedding = yield this.ollama.embed(query);
-			if (query_embedding == null) {
+			var response = yield this.ollama.embed(query);
+			if (response == null || response.embeddings.size == 0) {
 				throw new Error.FAILED("Failed to get query embedding");
 			}
 			
+			// Extract the first embedding vector and convert to float[]
+			var query_embedding = this.convert_embedding_to_float_array(response.embeddings[0]);
 			var results = this.index.search(query_embedding, k);
 			var enhanced_results = new SearchResultWithDocument[results.length];
 			
