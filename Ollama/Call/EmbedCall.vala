@@ -32,7 +32,10 @@ namespace OLLMchat.Ollama
 		public bool truncate { get; set; default = true; }
 		public int dimensions { get; set; default = 0; }
 		public string? keep_alive { get; set; }
-		public Json.Object? options { get; set; }
+		public Options options { 
+			get { return this.client.options; }
+			set { } // Fake setter for serialization
+		}
 
 		public EmbedCall(Client client, string input) throws OllamaError
 		{
@@ -89,13 +92,11 @@ namespace OLLMchat.Ollama
 					}
 					return base.serialize_property(property_name, value, pspec);
 				case "options":
-					// Serialize Json.Object if present
-					if (this.options == null) {
+					// Only serialize options if they have valid values
+					if (!this.options.has_values()) {
 						return null;
 					}
-					var node = new Json.Node(Json.NodeType.OBJECT);
-					node.init_object(this.options);
-					return node;
+					return base.serialize_property(property_name, value, pspec);
 				default:
 					return base.serialize_property(property_name, value, pspec);
 			}

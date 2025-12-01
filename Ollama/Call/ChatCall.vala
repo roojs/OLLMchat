@@ -117,6 +117,13 @@ namespace OLLMchat.Ollama
 					}
 					return tools_node;
 				
+				case "options":
+					// Only serialize options if they have valid values
+					if (!this.options.has_values()) {
+						return null;
+					}
+					return default_serialize_property(property_name, value, pspec);
+				
 				case "messages":
 					// Serialize the message array built in exec_chat()
 					var node = new Json.Node(Json.NodeType.ARRAY);
