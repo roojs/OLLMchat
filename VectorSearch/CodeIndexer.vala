@@ -24,8 +24,6 @@ namespace VectorSearch
 				throw new Error.FAILED("File paths and languages arrays must have same length");
 			}
 			
-			yield this.vector_db.initialize();
-			
 			var documents_to_index = new Gee.ArrayList<string>();
 			
 			for (int i = 0; i < file_paths.length; i++) {
