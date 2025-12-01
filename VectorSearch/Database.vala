@@ -10,15 +10,16 @@ namespace VectorSearch
 		public Database(OLLMchat.Ollama.Client ollama)
 		{
 			this.ollama = ollama;
+			if (this.ollama.model == "") {
+				throw new Error.FAILED("Ollama client model is not set");
+			}
 			this.documents = new Gee.ArrayList<string>();
 			this.embedding_dimension = 768; // Default for nomic-embed-text
 		}
 		
 		public async void initialize() throws Error
 		{
-			if (this.ollama.model == "") {
-				throw new Error.FAILED("Ollama client model is not set");
-			}
+			
 			
 			// Test embedding to get dimension
 			// EmbedResponse.embeddings is Gee.ArrayList<Gee.ArrayList<double?>>
