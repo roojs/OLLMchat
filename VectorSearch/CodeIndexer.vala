@@ -7,10 +7,13 @@ namespace VectorSearch
 		private Gee.HashMap<string, CodeElement> element_registry;
 		private Gee.ArrayList<CodeFile> analyzed_files;
 		
-		public CodeIndexer(OLLMchat.Ollama.Client ollama)
+		public CodeIndexer(
+		OLLMchat.Ollama.Client analyzer_client,
+		OLLMchat.Ollama.Client vector_db_client
+	)
 		{
-			this.vector_db = new Database(ollama);
-			this.analyzer = new CodeImport(ollama);
+			this.vector_db = new Database(vector_db_client);
+			this.analyzer = new CodeImport(analyzer_client);
 			this.element_registry = new Gee.HashMap<string, CodeElement>();
 			this.analyzed_files = new Gee.ArrayList<CodeFile>();
 		}
