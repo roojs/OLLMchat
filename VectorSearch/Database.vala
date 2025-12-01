@@ -21,12 +21,18 @@ namespace VectorSearch
 			}
 			
 			// Test embedding to get dimension
-			var test_embedding = yield this.ollama.embed("test");
-			if (test_embedding == null) {
+			// EmbedResponse.embeddings is Gee.ArrayList<Gee.ArrayList<double?>>
+			// For a single input, we get one embedding vector in the array
+			var test_response = yield this.ollama.embed("test");
+			if (test_response == null || test_response.embeddings.size == 0) {
 				throw new Error.FAILED("Failed to get test embedding from Ollama");
 			}
 			
-			this.embedding_dimension = test_embedding.length;
+			// Get the dimension from the first embedding vector's length
+			// embedding_dimension is the size of each embedding vector (e.g., 768 for nomic-embed-text)
+			// FAISS requires this dimension upfront because all vectors must have the same dimension
+			var first_embedding = test_response.embeddings[0];
+			this.embedding_dimension = (uint64)first_embedding.size;
 			this.index = new Index(this.embedding_dimension);
 		}
 		
