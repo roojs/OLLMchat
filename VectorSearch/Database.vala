@@ -17,11 +17,13 @@ namespace VectorSearch
 			this.embedding_dimension = 768; // Default for nomic-embed-text
 		}
 		
-		public async void initialize() throws Error
+		private async void ensure_initialized() throws Error
 		{
+			if (this.index != null) {
+				return; // Already initialized
+			}
 			
-			
-			// Test embedding to get dimension
+			// Get dimension from first embedding
 			// EmbedResponse.embeddings is Gee.ArrayList<Gee.ArrayList<double?>>
 			// For a single input, we get one embedding vector in the array
 			var test_response = yield this.ollama.embed("test");
@@ -52,9 +54,7 @@ namespace VectorSearch
 
 	public async void add_documents(string[] texts) throws Error
 		{
-			if (this.index == null) {
-				throw new Error.FAILED("Database not initialized");
-			}
+			yield this.ensure_initialized();
 			
 			float[][] embeddings = new float[texts.length][];
 			
@@ -74,9 +74,7 @@ namespace VectorSearch
 		
 		public async SearchResultWithDocument[] search(string query, uint64 k = 5) throws Error
 		{
-			if (this.index == null) {
-				throw new Error.FAILED("Database not initialized");
-			}
+			yield this.ensure_initialized();
 			
 			var response = yield this.ollama.embed(query);
 			if (response == null || response.embeddings.size == 0) {
