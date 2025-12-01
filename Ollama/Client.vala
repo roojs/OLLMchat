@@ -253,7 +253,29 @@ namespace OLLMchat.Ollama
 					// Skip this model on error
 				}
 			}
-		}	
+		}
+
+		/**
+		 * Generates embeddings for the input text.
+		 * 
+		 * Creates vector embeddings representing the input text using the configured model.
+		 * Returns a single EmbedResponse object containing the embeddings and metadata.
+		 * 
+		 * @param input The text to generate embeddings for
+		 * @param cancellable Optional cancellable for cancelling the request
+		 * @return EmbedResponse object with embeddings and timing information
+		 * @since 1.0
+		 */
+		public async EmbedResponse embed(string input, GLib.Cancellable? cancellable = null) throws Error
+		{
+			var call = new EmbedCall(this, input) {
+				cancellable = cancellable
+			};
+			
+			var result = yield call.exec_embed();
+			
+			return result;
+		}
 	}
 }
 
