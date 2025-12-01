@@ -45,8 +45,6 @@ namespace VectorSearch
 
 	public async void add_documents(string[] texts) throws Error
 		{
-			yield this.ensure_initialized();
-			
 			float[][] embeddings = new float[texts.length][];
 			
 			for (int i = 0; i < texts.length; i++) {
@@ -54,6 +52,10 @@ namespace VectorSearch
 				if (response == null || response.embeddings.size == 0) {
 					throw new Error.FAILED("Failed to get embedding for document " + i.to_string());
 				}
+				
+				// Initialize index from first embedding if not already initialized
+				this.initialize_from_embedding(response.embeddings[0]);
+				
 				// Extract the first embedding vector and convert to float[]
 				embeddings[i] = this.convert_embedding_to_float_array(response.embeddings[0]);
 				this.documents.add(texts[i]);
@@ -65,12 +67,14 @@ namespace VectorSearch
 		
 		public async SearchResultWithDocument[] search(string query, uint64 k = 5) throws Error
 		{
-			yield this.ensure_initialized();
-			
 			var response = yield this.ollama.embed(query);
 			if (response == null || response.embeddings.size == 0) {
 				throw new Error.FAILED("Failed to get query embedding");
 			}
+			
+			// Initialize index from query embedding if not already initialized
+			// (This can happen if search is called before add_documents)
+			this.initialize_from_embedding(response.embeddings[0]);
 			
 			// Extract the first embedding vector and convert to float[]
 			var query_embedding = this.convert_embedding_to_float_array(response.embeddings[0]);
