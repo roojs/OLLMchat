@@ -43,7 +43,7 @@ namespace OLLMchat.Ollama
 			set { } // Fake setter for serialization
 		}
 		
-		public Json.Object? options { 
+		public Options options { 
 			get { return this.client.options; }
 			set { } // Fake setter for serialization
 		}
