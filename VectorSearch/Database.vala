@@ -36,20 +36,34 @@ namespace VectorSearch
 			this.index = new Index(this.embedding_dimension);
 		}
 		
-		public async void add_documents(string[] texts) throws Error
+		private float[] convert_embedding_to_float_array(Gee.ArrayList<double?> embedding) throws Error
+		{
+			var float_array = new float[embedding.size];
+			for (int i = 0; i < embedding.size; i++) {
+				var val = embedding[i];
+				if (val == null) {
+					throw new Error.FAILED("Null value in embedding vector");
+				}
+				float_array[i] = (float)val;
+			}
+			return float_array;
+		}
+
+	public async void add_documents(string[] texts) throws Error
 		{
 			if (this.index == null) {
 				throw new Error.FAILED("Database not initialized");
 			}
 			
-			float[][] embeddings = new float[texts.length];
+			float[][] embeddings = new float[texts.length][];
 			
 			for (int i = 0; i < texts.length; i++) {
-				var embedding = yield this.ollama.embed(texts[i]);
-				if (embedding == null) {
+				var response = yield this.ollama.embed(texts[i]);
+				if (response == null || response.embeddings.size == 0) {
 					throw new Error.FAILED("Failed to get embedding for document " + i.to_string());
 				}
-				embeddings[i] = embedding;
+				// Extract the first embedding vector and convert to float[]
+				embeddings[i] = this.convert_embedding_to_float_array(response.embeddings[0]);
 				this.documents.add(texts[i]);
 			}
 			
