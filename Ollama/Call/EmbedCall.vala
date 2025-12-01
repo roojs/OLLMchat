@@ -30,7 +30,7 @@ namespace OLLMchat.Ollama
 		public string? input { get; set; }
 		public Gee.ArrayList<string>? input_array { get; set; }
 		public bool truncate { get; set; default = true; }
-		public int? dimensions { get; set; }
+		public int dimensions { get; set; default = 0; }
 		public string? keep_alive { get; set; }
 		public Json.Object? options { get; set; }
 
@@ -83,8 +83,8 @@ namespace OLLMchat.Ollama
 					// Serialize string input normally
 					return base.serialize_property(property_name, value, pspec);
 				case "dimensions":
-					// Only serialize if set (not null)
-					if (this.dimensions == null) {
+					// Only serialize if set (greater than 0)
+					if (this.dimensions <= 0) {
 						return null;
 					}
 					return base.serialize_property(property_name, value, pspec);
