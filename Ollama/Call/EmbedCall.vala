@@ -69,10 +69,18 @@ namespace OLLMchat.Ollama
 				case "input-array":
 					return null;
 				case "input":
-					// Only serialize input if input_array is not set
-					if (this.input_array != null) {
-						return null;
+					// If input_array is set, serialize it as "input" (array)
+					// Otherwise serialize the string input
+					if (this.input_array != null && this.input_array.size > 0) {
+						var input_array_node = new Json.Node(Json.NodeType.ARRAY);
+						var json_array = new Json.Array();
+						foreach (var item in this.input_array) {
+							json_array.add_string_element(item);
+						}
+						input_array_node.init_array(json_array);
+						return input_array_node;
 					}
+					// Serialize string input normally
 					return base.serialize_property(property_name, value, pspec);
 				case "dimensions":
 					// Only serialize if set (not null)
@@ -91,49 +99,6 @@ namespace OLLMchat.Ollama
 				default:
 					return base.serialize_property(property_name, value, pspec);
 			}
-		}
-
-		protected override string get_request_body()
-		{
-			var root = new Json.Node(Json.NodeType.OBJECT);
-			var root_obj = new Json.Object();
-			root.init_object(root_obj);
-
-			// Add model
-			if (this.model != "") {
-				root_obj.set_string_member("model", this.model);
-			}
-
-			// Add input - either string or array
-			if (this.input_array != null && this.input_array.size > 0) {
-				var input_array_node = new Json.Node(Json.NodeType.ARRAY);
-				var json_array = new Json.Array();
-				foreach (var item in this.input_array) {
-					json_array.add_string_element(item);
-				}
-				input_array_node.init_array(json_array);
-				root_obj.set_member("input", input_array_node);
-			} else if (this.input != null) {
-				root_obj.set_string_member("input", this.input);
-			}
-
-			// Add optional fields
-			if (!this.truncate) {
-				root_obj.set_boolean_member("truncate", false);
-			}
-			if (this.dimensions != null) {
-				root_obj.set_int_member("dimensions", this.dimensions);
-			}
-			if (this.keep_alive != null) {
-				root_obj.set_string_member("keep_alive", this.keep_alive);
-			}
-			if (this.options != null) {
-				root_obj.set_object_member("options", this.options);
-			}
-
-			var generator = new Json.Generator();
-			generator.set_root(root);
-			return generator.to_data(null);
 		}
 
 		public async EmbedResponse exec_embed() throws Error
