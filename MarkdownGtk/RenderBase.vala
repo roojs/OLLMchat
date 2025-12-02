@@ -93,7 +93,7 @@ namespace OLLMchat.MarkdownGtk
 		internal virtual void on_img(string src, string? title) {}
 		internal virtual void on_br() {}
 		internal virtual void on_softbr() {}
-		internal virtual void on_entity(string text) {}
+		public virtual void on_entity(string text) {}
 		internal virtual void on_u() {}
 	}
 }
