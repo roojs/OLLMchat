@@ -39,15 +39,28 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_a.html">on_a</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_br.html">on_br</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_code.html">on_code</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_code_span.html">on_code_span</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_del.html">on_del</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_em.html">on_em</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_end.html">on_end</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_entity.html">on_entity</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_h.html">on_h</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_hr.html">on_hr</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_html.html">on_html</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_img.html">on_img</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_li.html">on_li</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_ol.html">on_ol</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_other.html">on_other</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_p.html">on_p</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_quote.html">on_quote</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_softbr.html">on_softbr</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_strong.html">on_strong</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_text.html">on_text</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_u.html">on_u</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_ul.html">on_ul</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -123,6 +136,18 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_a.html" class="virtual_method">on_a</a></b> (<span class="main_basic_type"><span class="class">string</span></span> href, <span class="main_basic_type"><span class="class">string</span></span> title, <span class="main_basic_type"><span class="struct">bool</span></span> is_autolink)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for link spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_br.html" class="virtual_method">on_br</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for line breaks (hard breaks).</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_code.html" class="virtual_method">on_code</a></b> (<span class="main_basic_type"><span class="class">string</span></span>? lang, <span class="main_basic_type"><span class="struct">char</span></span> fence_char)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for code blocks.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_code_span.html" class="virtual_method">on_code_span</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Callback for inline code spans.</span>
@@ -140,14 +165,52 @@
             <div class="leaf_brief_description"><span class="brief_description">Generic callback to close the current state. Used for closing 
                 blocks/spans.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_entity.html" class="virtual_method">on_entity</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for HTML entities. The entity is already decoded, so just add
+                as text.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_h.html" class="virtual_method">on_h</a></b> (<span class="main_basic_type"><span class="struct">uint</span></span> level)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for header blocks.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_hr.html" class="virtual_method">on_hr</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for horizontal rule blocks.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_html.html" class="virtual_method">on_html</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tag, <span class="main_basic_type"><span class="class">string</span></span> attributes)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Callback for HTML tags. Parser sends the tag name and attributes, we 
                 create a new state, and parser will call on_end() for the close tag.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_img.html" class="virtual_method">on_img</a></b> (<span class="main_basic_type"><span class="class">string</span></span> src, <span class="main_basic_type"><span class="class">string</span></span>? title)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for image spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_li.html" class="virtual_method">on_li</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_task, <span class="main_basic_type"><span class="struct">char</span></span> task_mark, <span class="main_basic_type"><span class="struct">uint</span></span> task_mark_offset)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for list item blocks.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_ol.html" class="virtual_method">on_ol</a></b> (<span class="main_basic_type"><span class="struct">uint</span></span> start, <span class="main_basic_type"><span class="struct">bool</span></span> is_tight, <span class="main_basic_type"><span class="struct">char</span></span> mark_delimiter)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for ordered list blocks.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_other.html" class="virtual_method">on_other</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tag_name)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Generic callback for unmapped block/span types.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_p.html" class="virtual_method">on_p</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for paragraph blocks.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_quote.html" class="virtual_method">on_quote</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for blockquote blocks.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_softbr.html" class="virtual_method">on_softbr</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for soft line breaks. Inserts a space (or newline in code 
+                blocks).</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_strong.html" class="virtual_method">on_strong</a></b> ()
             </span>
@@ -160,6 +223,10 @@
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_u.html" class="virtual_method">on_u</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Callback for underline spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_ul.html" class="virtual_method">on_ul</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_tight, <span class="main_basic_type"><span class="struct">char</span></span> mark)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for unordered list blocks.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

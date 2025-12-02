@@ -92,7 +92,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param level Header level (1-6)
 		 */
-		internal override void on_h(uint level)
+		public override void on_h(uint level)
 		{
 			var h_state = this.current_state.add_state();
 			h_state.style.weight = Pango.Weight.BOLD;
@@ -118,7 +118,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark The list marker character
 		 */
-		internal override void on_ul(bool is_tight, char mark)
+		public override void on_ul(bool is_tight, char mark)
 		{
 			this.current_state.add_state();
 		}
@@ -130,7 +130,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark_delimiter The delimiter character
 		 */
-		internal override void on_ol(uint start, bool is_tight, char mark_delimiter)
+		public override void on_ol(uint start, bool is_tight, char mark_delimiter)
 		{
 			this.current_state.add_state();
 		}
@@ -142,7 +142,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param task_mark The task marker character
 		 * @param task_mark_offset The offset of the task marker
 		 */
-		internal override void on_li(bool is_task, char task_mark, uint task_mark_offset)
+		public override void on_li(bool is_task, char task_mark, uint task_mark_offset)
 		{
 			this.current_state.add_state();
 		}
@@ -153,7 +153,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param lang The language identifier (may be null)
 		 * @param fence_char The fence character used
 		 */
-		internal override void on_code(string? lang, char fence_char)
+		public override void on_code(string? lang, char fence_char)
 		{
 			this.current_state.add_state();
 		}
@@ -161,7 +161,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for paragraph blocks.
 		 */
-		internal override void on_p()
+		public override void on_p()
 		{
 			this.current_state.add_state();
 		}
@@ -169,7 +169,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for blockquote blocks.
 		 */
-		internal override void on_quote()
+		public override void on_quote()
 		{
 			this.current_state.add_state();
 		}
@@ -177,7 +177,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for horizontal rule blocks.
 		 */
-		internal override void on_hr()
+		public override void on_hr()
 		{
 			var hr_state = this.current_state.add_state();
 			hr_state.style.scale = Pango.Scale.LARGE;
@@ -192,7 +192,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param title The link title 
 		 * @param is_autolink Whether this is an autolink
 		 */
-		internal override void on_a(string href, string title, bool is_autolink)
+		public override void on_a(string href, string title, bool is_autolink)
 		{
 			// Add span state (blue, underlined) for the link
 			var link_state = this.current_state.add_state();
@@ -219,7 +219,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param src The image source URL
 		 * @param title The image title (may be null)
 		 */
-		internal override void on_img(string src, string? title)
+		public override void on_img(string src, string? title)
 		{
 			// Images not fully supported - just add placeholder
 			this.current_state.add_text("[IMG:");
@@ -290,7 +290,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for line breaks (hard breaks).
 		 */
-		internal override void on_br()
+		public override void on_br()
 		{
 			this.current_state.add_text("\n");
 		}
@@ -299,7 +299,7 @@ namespace OLLMchat.MarkdownGtk
 		 * Callback for soft line breaks.
 		 * Inserts a space (or newline in code blocks).
 		 */
-		internal override void on_softbr()
+		public override void on_softbr()
 		{
 			// For now, just add a space (code block handling can be added later if needed)
 			this.current_state.add_text(" ");
@@ -311,7 +311,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The decoded entity text
 		 */
-		internal override void on_entity(string text)
+		public override void on_entity(string text)
 		{
 			this.current_state.add_text(text);
 		}

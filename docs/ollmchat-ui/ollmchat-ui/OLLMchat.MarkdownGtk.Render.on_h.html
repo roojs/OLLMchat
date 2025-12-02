@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.MarkdownGtk.Render.end_mark &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.MarkdownGtk.Render.on_h &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.MarkdownGtk.Render.end_mark &ndash; ollmchat-ui Reference Manual</div>
+    <div class="site_header">OLLMchat.MarkdownGtk.Render.on_h &ndash; ollmchat-ui Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -33,7 +33,7 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.buffer.html">buffer</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_state.html">current_state</a></li>
-          <li class="property">end_mark</li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.end_mark.html">end_mark</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.start_mark.html">start_mark</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_end.html">tmp_end</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
@@ -47,7 +47,7 @@
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_em.html">on_em</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_end.html">on_end</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_entity.html">on_entity</a></li>
-          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_h.html">on_h</a></li>
+          <li class="virtual_method">on_h</li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_hr.html">on_hr</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_html.html">on_html</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_img.html">on_img</a></li>
@@ -64,10 +64,22 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">end_mark</h1>
+        <h1 class="main_title">on_h</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span> <b><span class="property">end_mark</span></b> { <span class="main_keyword">get</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">on_h</span></b> (<span class="main_basic_type"><span class="struct">uint</span></span> level)
+        </div>
+        <div class="description">
+          <p>Callback for header blocks.</p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">level</td>
+              <td>
+                <p>Header level (1-6) </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>
