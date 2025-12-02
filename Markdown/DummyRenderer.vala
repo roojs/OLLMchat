@@ -37,48 +37,48 @@ namespace OLLMchat.Markdown
 			}
 		}
 		
-		internal override void on_text(string text)
+		public override void on_text(string text)
 		{
 			print_indent();
 			stdout.printf("TEXT: \"%s\"\n", text);
 		}
 		
-		internal override void on_em()
+		public override void on_em()
 		{
 			print_indent();
 			stdout.printf("START: <em>\n");
 			indent_level++;
 		}
 		
-		internal override void on_strong()
+		public override void on_strong()
 		{
 			print_indent();
 			stdout.printf("START: <strong>\n");
 			indent_level++;
 		}
 		
-		internal override void on_code_span()
+		public override void on_code_span()
 		{
 			print_indent();
 			stdout.printf("START: <code>\n");
 			indent_level++;
 		}
 		
-		internal override void on_del()
+		public override void on_del()
 		{
 			print_indent();
 			stdout.printf("START: <del>\n");
 			indent_level++;
 		}
 		
-		internal override void on_other(string tag_name)
+		public override void on_other(string tag_name)
 		{
 			print_indent();
 			stdout.printf("START: <%s>\n", tag_name);
 			indent_level++;
 		}
 		
-		internal override void on_html(string tag, string attributes)
+		public override void on_html(string tag, string attributes)
 		{
 			print_indent();
 			if (attributes != "") {
@@ -89,7 +89,7 @@ namespace OLLMchat.Markdown
 			indent_level++;
 		}
 		
-		internal override void on_end()
+		public override void on_end()
 		{
 			indent_level--;
 			print_indent();
