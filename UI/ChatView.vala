@@ -106,6 +106,18 @@ namespace OLLMchat.UI
 			};
 			text_view_box.append(this.text_view);
 
+			// Create box for assistant message content (Render will add TextViews here)
+			this.assistant_message_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true
+			};
+			
+			// Create single Render instance for assistant messages
+			this.assistant_renderer = new MarkdownGtk.Render.with_box(this.assistant_message_box);
+			
+			// Add assistant message box to text_view_box
+			text_view_box.append(this.assistant_message_box);
+
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
 				vexpand = true
