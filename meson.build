@@ -143,7 +143,6 @@ ollmchat_markdown_src = files([
 ollmchat_markdowngtk_src = files([
   'MarkdownGtk/RenderBase.vala',
   'MarkdownGtk/Render.vala',
-  'MarkdownGtk/DummyRenderer.vala',
   'MarkdownGtk/State.vala',
   'MarkdownGtk/TopState.vala',
   'MarkdownGtk/Table.vala',
@@ -308,7 +307,7 @@ test_window = executable('test-window',
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
 test_markdown_parser = executable('test-markdown-parser',
   dependencies: test_window_deps,
-  sources: ['test-markdown-parser.vala'],
+  sources: ['test-markdown-parser.vala', 'Markdown/DummyRenderer.vala'],
   link_with: [ollmchat_base_lib, ollmchat_ui_lib],
   install: false
 )
