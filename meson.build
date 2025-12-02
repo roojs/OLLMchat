@@ -136,6 +136,7 @@ ollmchat_tools_ui_src = files([
 # Source files for Markdown namespace (base, no GTK)
 ollmchat_markdown_src = files([
   'Markdown/Parser.vala',
+  'Markdown/RenderBase.vala',
   'Markdown/PangoRender.vala',
 ])
 

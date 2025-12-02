@@ -45,7 +45,7 @@ namespace OLLMchat.MarkdownGtk
 	 * automatically handles closing tags when the corresponding state is closed
 	 * or when flush is called.
 	 */
-	public class Render : RenderBase
+	public class Render : Markdown.RenderBase
 	{
 		public Gtk.TextBuffer buffer { get; private set; }
 		public Gtk.TextMark start_mark { get; private set; }

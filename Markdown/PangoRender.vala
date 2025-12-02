@@ -39,7 +39,7 @@ namespace OLLMchat.Markdown
 	 * - <small> - Small text
 	 * - <span> - Generic span (no styling by default)
 	 */
-	public class PangoRender : MarkdownGtk.RenderBase
+	public class PangoRender : RenderBase
 	{
 		private StringBuilder pango_markup;
 		private Gee.ArrayList<string> open_tags;
