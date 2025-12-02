@@ -271,10 +271,6 @@ namespace OLLMchat.UI
 					
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Ensure renderer exists (create if missing)
-					if (this.renderer == null) {
-						this.start_block(response);
-					}
 					// Send new text directly to progressive renderer
 					this.renderer.add(text);
 					// No need to update end_mark anymore (box model handles it)
@@ -410,18 +406,12 @@ namespace OLLMchat.UI
 			// Check if thinking state changed to not thinking
 			if (!response.is_thinking) {
 				// End thinking block (end_block will reset content_state to NONE)
-				if (this.renderer != null) {
-					this.renderer.add("\n");
-				}
+				this.renderer.add("\n");
 				this.end_block(response);
 				return;
 			}
 			
 			// Empty lines are just regular content - add newline and continue
-			// Ensure renderer exists (create if missing)
-			if (this.renderer == null) {
-				this.start_block(response);
-			}
 			// Send newline to renderer
 			this.renderer.add("\n");
 			// No need to update end_mark anymore (box model handles it)
@@ -443,11 +433,6 @@ namespace OLLMchat.UI
 				var mapped_language = this.map_language_id(language);
 				this.code_block_language = mapped_language ?? language;
 				
-				// Ensure renderer exists (should already exist since we're in CONTENT state)
-				if (this.renderer == null) {
-					this.start_block(response);
-				}
-				
 				// TODO: Remove the marker from the buffer (it was already rendered)
 				// Temporarily disabled - will revisit later
 				// if (this.current_source_view == null) {
@@ -468,10 +453,6 @@ namespace OLLMchat.UI
 			}
 			
 			// Empty lines are just regular content - add newline and continue
-			// Ensure renderer exists (create if missing)
-			if (this.renderer == null) {
-				this.start_block(response);
-			}
 			this.renderer.add("\n");
 			// No need to update end_mark anymore (box model handles it)
 		}
@@ -483,9 +464,6 @@ namespace OLLMchat.UI
 			switch (this.content_state) {
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Use renderer for progressive rendering
-					this.renderer = this.renderer;
-					
 					// Initialize renderer if needed (creates TextView on first block)
 					this.renderer.start();
 					
@@ -535,14 +513,6 @@ namespace OLLMchat.UI
 			switch (this.content_state) {
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Finalize the current markdown block
-					if (this.renderer == null) {
-						// No renderer means no content was rendered
-						this.last_line = "";
-						this.content_state = ContentState.NONE;
-						return;
-					}
-					
 					// Ensure content ends with newline if last_line has content (incomplete line)
 					if (this.last_line.length > 0) {
 						// Send final newline to renderer
@@ -551,11 +521,6 @@ namespace OLLMchat.UI
 					
 					// Flush renderer to finalize
 					this.renderer.flush();
-					
-					// No need to update marks anymore (box model handles it)
-					
-					// Clean up renderer
-					this.renderer = null;
 					
 					// Call renderer.end_block() to end current block
 					// (start() will be called when starting the next block)
@@ -626,7 +591,6 @@ namespace OLLMchat.UI
 			// Reset state
 			this.is_assistant_message = false;
 			this.last_chunk_start = 0;
-			this.renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
@@ -651,7 +615,6 @@ namespace OLLMchat.UI
 			// Reset state
 			this.last_chunk_start = 0;
 			this.is_assistant_message = false;
-			this.renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
