@@ -324,7 +324,7 @@ namespace OLLMchat.MarkdownGtk
 		 * @param tag The HTML tag name (e.g., "div", "span")
 		 * @param attributes The HTML tag attributes (e.g., "class='test'")
 		 */
-		internal override void on_html(string tag, string attributes)
+		public override void on_html(string tag, string attributes)
 		{
 			this.current_state.add_state();
 		}
@@ -333,7 +333,7 @@ namespace OLLMchat.MarkdownGtk
 		 * Generic callback to close the current state.
 		 * Used for closing blocks/spans.
 		 */
-		internal override void on_end()
+		public override void on_end()
 		{
 			this.current_state.close_state();
 		}
