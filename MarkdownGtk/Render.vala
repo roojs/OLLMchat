@@ -47,15 +47,10 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class Render : Markdown.RenderBase
 	{
-		public Gtk.TextBuffer? buffer { get; private set; default = null; }
-		public Gtk.TextMark? start_mark { get; private set; default = null; }
-		public Gtk.TextMark? end_mark { get; private set; default = null; }
-		public Gtk.TextMark? tmp_start { get; private set; default = null; }
-		public Gtk.TextMark? tmp_end { get; private set; default = null; }
 		public TopState? top_state { get; private set; default = null; }
 		public State? current_state { get; internal set; default = null; }
 		
-		// New properties for Gtk.Box model
+		// Properties for Gtk.Box model
 		public Gtk.Box? box { get; private set; default = null; }
 		public Gtk.TextView? current_textview { get; private set; default = null; }
 		public Gtk.TextBuffer? current_buffer { get; private set; default = null; }
@@ -78,38 +73,6 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Creates a new Render instance.
-		 * 
-		 * @param buffer The TextBuffer to render into
-		 * @param start_mark Start mark for the range
-		 */
-		public Render(Gtk.TextBuffer buffer, Gtk.TextMark start_mark)
-		{
-			base();
-			this.buffer = buffer;
-			this.start_mark = start_mark;
-			
-			// Create end_mark at the same position as start_mark
-			Gtk.TextIter iter;
-			this.buffer.get_iter_at_mark(out iter, start_mark);
-			this.end_mark = this.buffer.create_mark(null, iter, true);
-			
-			// Create temporary marks after end_mark for incremental parsing
-			this.buffer.get_iter_at_mark(out iter, this.end_mark);
-			this.tmp_start = this.buffer.create_mark(null, iter, true);
-			this.tmp_end = this.buffer.create_mark(null, iter, true);
-			
-			// Create top_state
-			this.top_state = new TopState(this);
-			
-			// Initialize TopState's tag and marks (for old constructor path)
-			this.top_state.initialize();
-			
-			// Initialize current_state to top_state (never null)
-			this.current_state = this.top_state;
-		}
-		
-		/**
 		 * Creates a new TextView, sets it up, and initializes all necessary state.
 		 * Used by both ensure_textview_created() and end_block().
 		 * Assumes top_state is already created and set as current_state.
@@ -128,22 +91,8 @@ namespace OLLMchat.MarkdownGtk
 			// Get the buffer from the TextView
 			this.current_buffer = this.current_textview.buffer;
 			
-			// Set the old buffer property for compatibility (State/TopState use render.buffer)
-			this.buffer = this.current_buffer;
-			
 			// Add TextView to box at bottom
 			this.box.append(this.current_textview);
-			
-			// Create marks at the end of the buffer
-			Gtk.TextIter iter;
-			this.buffer.get_end_iter(out iter);
-			this.start_mark = this.buffer.create_mark(null, iter, true);
-			this.end_mark = this.buffer.create_mark(null, iter, true);
-			
-			// Create temporary marks after end_mark for incremental parsing
-			this.buffer.get_iter_at_mark(out iter, this.end_mark);
-			this.tmp_start = this.buffer.create_mark(null, iter, true);
-			this.tmp_end = this.buffer.create_mark(null, iter, true);
 			
 			// Initialize TopState's tag and marks now that buffer is ready
 			this.top_state.initialize();

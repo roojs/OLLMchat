@@ -296,10 +296,7 @@ namespace OLLMchat.UI
 					}
 					// Send new text directly to progressive renderer
 					this.current_block_renderer.add(text);
-					// Update end_mark
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					// No need to update end_mark anymore (box model handles it)
 					return;
 					
 				case ContentState.NONE:
@@ -308,10 +305,7 @@ namespace OLLMchat.UI
 					this.start_block(response);
 					// Send text to renderer
 					this.current_block_renderer.add(text);
-					// Update end_mark
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					// No need to update end_mark anymore (box model handles it)
 					return;
 			}
 		}
@@ -446,10 +440,7 @@ namespace OLLMchat.UI
 			}
 			// Send newline to renderer
 			this.current_block_renderer.add("\n");
-			// Update end_mark
-			Gtk.TextIter end_iter;
-			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-			this.buffer.move_mark(this.current_block_end, end_iter);
+			// No need to update end_mark anymore (box model handles it)
 		}
 		
 		/**
@@ -498,10 +489,7 @@ namespace OLLMchat.UI
 				this.start_block(response);
 			}
 			this.current_block_renderer.add("\n");
-			// Update end_mark
-			Gtk.TextIter end_iter;
-			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-			this.buffer.move_mark(this.current_block_end, end_iter);
+			// No need to update end_mark anymore (box model handles it)
 		}
 		/**
 		* Starts a new block based on current state.
@@ -527,11 +515,8 @@ namespace OLLMchat.UI
 						this.buffer.move_mark(this.current_block_start, end_iter);
 					}
 					
-					// Create Render instance for progressive rendering
-					this.current_block_renderer = new MarkdownGtk.Render(
-						this.buffer, 
-						this.current_block_start
-					);
+					// Use assistant_renderer for progressive rendering
+					this.current_block_renderer = this.assistant_renderer;
 					
 					// Set up styling for thinking/content blocks using TextTags
 					if (this.is_thinking) {
@@ -596,13 +581,7 @@ namespace OLLMchat.UI
 					// Flush renderer to finalize
 					this.current_block_renderer.flush();
 					
-					// Update marks to end of rendered content for finalization
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					if (this.current_block_start != null) {
-						this.buffer.move_mark(this.current_block_start, end_iter);
-					}
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					// No need to update marks anymore (box model handles it)
 					
 					// Clean up renderer
 					this.current_block_renderer = null;

@@ -149,9 +149,9 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 10: Remove old TextBuffer-based properties from Render
+### Step 10: Remove old TextBuffer-based properties from Render ✓
 
-**Files**: `MarkdownGtk/Render.vala`, `MarkdownGtk/State.vala`, `MarkdownGtk/TopState.vala`
+**Files**: `MarkdownGtk/Render.vala`, `MarkdownGtk/State.vala`, `MarkdownGtk/TopState.vala`, `MarkdownGtk/Table.vala`, `UI/ChatView.vala`
 
 **Changes**:
 
@@ -160,6 +160,9 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 - Update all mark operations to use `current_buffer`
 - Remove old constructor `Render(Gtk.TextBuffer, Gtk.TextMark)`
 - Update `State` constructor to get buffer from `render.current_buffer`
+- Update `Table.vala` to use `current_buffer` instead of `buffer`
+- Update `ChatView` to use `assistant_renderer` instead of creating new Render instances
+- Remove end_mark tracking code from ChatView (box model handles it)
 
 **Verification**: Code compiles, all rendering works correctly
 
@@ -187,7 +190,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 **Changes**:
 
-- Update `DummyRenderer` constructor to accept `Gtk.Box` instead of `Gtk.TextBuffer, Gtk.TextMark`
+- Update `DummyRenderer` constructor to work like pango - no gtk references (change it's extends etc..?)
 - Update test file to create a box and pass to DummyRenderer
 - Ensure DummyRenderer still extends Render and works correctly
 
@@ -202,9 +205,10 @@ This plan breaks the refactoring into 12 reviewable steps:
 - Steps 1-4: Namespace reorganization (independent, can be done first) ✓
 - Steps 5-7: Render refactoring (additive, maintains backward compatibility initially) ✓
 - Steps 8-9: ChatView integration (uses new Render API) ✓
-- Steps 10-11: Cleanup (removes old code) - TODO
+- Step 10: Cleanup (removes old TextBuffer properties) ✓
+- Step 11: Cleanup (removes old TextView/buffer management from ChatView) - TODO
 - Step 12: Test updates (final cleanup) - TODO
 
 Each step keeps the code compiling and functional, allowing for incremental review and testing.
 
-**Progress: 9/12 steps completed (75%)**
+**Progress: 10/12 steps completed (83%)**

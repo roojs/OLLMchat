@@ -42,13 +42,16 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		internal void initialize()
 		{
-			// Initialize tag and marks using render's start_mark as insertion point
-			this.initialize_tag_and_marks(this.render.start_mark);
-			
-			// TopState's end mark should start at the same position as render's end_mark
+			// Initialize tag and marks at the end of the buffer
 			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.render.end_mark);
-			this.render.buffer.move_mark(this.end, iter);
+			this.render.current_buffer.get_end_iter(out iter);
+			var insertion_mark = this.render.current_buffer.create_mark(null, iter, true);
+			this.initialize_tag_and_marks(insertion_mark);
+			this.render.current_buffer.delete_mark(insertion_mark);
+			
+			// TopState's end mark should start at the end of the buffer
+			this.render.current_buffer.get_end_iter(out iter);
+			this.render.current_buffer.move_mark(this.end, iter);
 		}
 		
 		public override void close_state()
@@ -68,10 +71,7 @@ namespace OLLMchat.MarkdownGtk
 			this.render.ensure_textview_created();
 			
 			base.add_text(text);
-			// Update render's end_mark
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.end);
-			this.render.buffer.move_mark(this.render.end_mark, iter);
+			// No need to update render's end_mark anymore (removed in step 10)
 		}
 		
 		/**
@@ -85,15 +85,7 @@ namespace OLLMchat.MarkdownGtk
 			this.render.ensure_textview_created();
 			
 			var new_state = base.add_state();
-			// Update render's end_mark
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, new_state.end);
-			this.render.buffer.move_mark(this.render.end_mark, iter);
-			// Update render's start_mark if this is the first state
-			if (this.cn.size == 1) {
-				this.render.buffer.get_iter_at_mark(out iter, new_state.start);
-				this.render.buffer.move_mark(this.render.start_mark, iter);
-			}
+			// No need to update render's marks anymore (removed in step 10)
 			return new_state;
 		}
 	}
