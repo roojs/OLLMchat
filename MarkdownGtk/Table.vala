@@ -87,14 +87,14 @@ namespace OLLMchat.MarkdownGtk
 			
 			try {
 				// Create child anchor at current position
-				Gtk.TextIter iter;
-				if (renderer.end_mark != null) {
-					renderer.buffer.get_iter_at_mark(out iter, renderer.end_mark);
-				} else {
-					renderer.buffer.get_end_iter(out iter);
+				if (renderer.current_buffer == null) {
+					return;
 				}
+				Gtk.TextIter iter;
+				// Use end of buffer (TopState's end mark is protected)
+				renderer.current_buffer.get_end_iter(out iter);
 				
-				this.anchor = renderer.buffer.create_child_anchor(iter);
+				this.anchor = renderer.current_buffer.create_child_anchor(iter);
 				
 				// Build all cells
 				foreach (var cell in this.cells) {

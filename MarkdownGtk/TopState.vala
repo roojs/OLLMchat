@@ -36,45 +36,54 @@ namespace OLLMchat.MarkdownGtk
 			base(null, render);
 		}
 		
+		/**
+		 * Initializes TopState's tag and marks after the buffer is ready.
+		 * Called from start() when using box-based mode.
+		 */
+		internal void initialize()
+		{
+			// Initialize tag and marks at the end of the buffer
+			Gtk.TextIter iter;
+			this.render.current_buffer.get_end_iter(out iter);
+			var insertion_mark = this.render.current_buffer.create_mark(null, iter, true);
+			this.initialize_tag_and_marks(insertion_mark);
+			this.render.current_buffer.delete_mark(insertion_mark);
+			
+			// TopState's end mark should start at the end of the buffer
+			this.render.current_buffer.get_end_iter(out iter);
+			this.render.current_buffer.move_mark(this.end, iter);
+		}
+		
 		public override void close_state()
 		{
 			// TopState cannot be closed - reset to top_state
 			this.render.current_state = this.render.top_state;
 		}
 		
-		/**
-		 * Wraps State.add_text() and updates render's end_mark with state's end.
-		 * 
-		 * @param text The text to add
-		 */
-		public new void add_text(string text)
-		{
-			base.add_text(text);
-			// Update render's end_mark
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, this.end);
-			this.render.buffer.move_mark(this.render.end_mark, iter);
-		}
-		
-		/**
-		 * Wraps State.add_state() and updates render's end_mark with state's end.
-		 * 
-		 * @return The newly created State
-		 */
-		public new State add_state()
-		{
-			var new_state = base.add_state();
-			// Update render's end_mark
-			Gtk.TextIter iter;
-			this.render.buffer.get_iter_at_mark(out iter, new_state.end);
-			this.render.buffer.move_mark(this.render.end_mark, iter);
-			// Update render's start_mark if this is the first state
-			if (this.cn.size == 1) {
-				this.render.buffer.get_iter_at_mark(out iter, new_state.start);
-				this.render.buffer.move_mark(this.render.start_mark, iter);
-			}
-			return new_state;
-		}
+	/**
+	 * Wraps State.add_text() and updates render's end_mark with state's end.
+	 * 
+	 * @param text The text to add
+	 */
+	public new void add_text(string text)
+	{
+		// TextView should already be initialized via start() - no need to check here
+		base.add_text(text);
+		// No need to update render's end_mark anymore (removed in step 10)
+	}
+	
+	/**
+	 * Wraps State.add_state() and updates render's end_mark with state's end.
+	 * 
+	 * @return The newly created State
+	 */
+	public new State add_state()
+	{
+		// TextView should already be initialized via start() - no need to check here
+		var new_state = base.add_state();
+		// No need to update render's marks anymore (removed in step 10)
+		return new_state;
+	}
 	}
 }
 

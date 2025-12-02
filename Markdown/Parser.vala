@@ -230,11 +230,18 @@ namespace OLLMchat.Markdown
 			this.add("", true);
 		}
 
-		public void add_start(string in_chunk, bool is_end_of_chunks = false)
+		/**
+		* Starts/initializes the parser for a new block.
+		* 
+		* Resets the parser's internal state, clears the state stack,
+		* and sets the current state to NONE.
+		*/
+		public void start()
 		{
 			this.in_literal = false;
 			this.leftover_chunk = "";
-			this.add(in_chunk, is_end_of_chunks);
+			this.state_stack.clear();
+			this.last_line_block = FormatType.NONE;
 		}
 
 		/**

@@ -18,17 +18,8 @@
 
 int main(string[] args)
 {
-	// Initialize Gtk (required for Render class)
-	Gtk.init();
-	
-	// Create a minimal TextBuffer and mark for Render
-	var buffer = new Gtk.TextBuffer(null);
-	Gtk.TextIter iter;
-	buffer.get_start_iter(out iter);
-	var start_mark = buffer.create_mark(null, iter, true);
-	
 	// Create Render instance (using DummyRenderer for testing)
-	var renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
+	var renderer = new OLLMchat.Markdown.DummyRenderer();
 	
 	// Simulate streaming chunks from actual debug output
 	// First block chunks
@@ -118,15 +109,17 @@ int main(string[] args)
 	// Process chunks like the real stream does
 	stdout.printf("=== STREAMING CHUNKS ===\n");
 	
-	// First block: add_start (not shown in debug but implied), then add chunks
-	renderer.add_start("<span color=\"blue\">", false);
+	// First block: start, then add chunks
+	renderer.start();
+	renderer.add("<span color=\"blue\">");
 	foreach (var chunk in first_block_chunks) {
 		renderer.add(chunk);
 	}
 	renderer.flush();
 	
-	// Second block: add_start with is_end_of_chunks=true, then add chunks
-	renderer.add_start("<span color=\"blue\">", true);
+	// Second block: start, then add chunks
+	renderer.start();
+	renderer.add("<span color=\"blue\">");
 	foreach (var chunk in second_block_chunks) {
 		renderer.add(chunk);
 	}
@@ -138,7 +131,7 @@ int main(string[] args)
 	// Expected: TEXT "-", START <strong>, TEXT "`/**tmp**/test**.gs**`", END (strong), TEXT " – exact copy..."
 	stdout.printf("\n=== TEST: BOLD BEFORE CODE BLOCK ===\n");
 	
-	var test_renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
+	var test_renderer = new OLLMchat.Markdown.DummyRenderer();
 	
 	// Simulate the exact chunks from debug output
 	string[] test_chunks = {
@@ -164,16 +157,16 @@ int main(string[] args)
 		"."
 	};
 	
-	test_renderer.add_start("", false);
+	test_renderer.start();
 	foreach (var chunk in test_chunks) {
 		test_renderer.add(chunk);
 	}
 	test_renderer.flush();
 	
 	stdout.printf("\n=== TEST: SIMPLE BOLD BEFORE CODE ===\n");
-	var test2_renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
+	var test2_renderer = new OLLMchat.Markdown.DummyRenderer();
 	// Simpler test: just "**" followed by "`"
-	test2_renderer.add_start("", false);
+	test2_renderer.start();
 	test2_renderer.add("**");
 	test2_renderer.add("`");
 	test2_renderer.add("test");

@@ -66,7 +66,8 @@ namespace OLLMchat.Markdown
 			this.open_tags.clear();
 			
 			// Use parser to process HTML tags
-			this.add_start(html_text, true);
+			this.start();
+			this.add(html_text);
 			this.flush();
 			
 			return this.pango_markup.str;

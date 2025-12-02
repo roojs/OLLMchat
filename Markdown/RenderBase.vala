@@ -43,7 +43,7 @@ namespace OLLMchat.Markdown
 		 * 
 		 * @param text The markdown text to process
 		 */
-		public void add(string text)
+		public virtual void add(string text)
 		{
 			this.parser.add(text);
 		}
@@ -58,15 +58,13 @@ namespace OLLMchat.Markdown
 		}
 		
 		/**
-		 * Starts a new chunk of content. This resets the parser's internal state and
-		 * should be called when beginning a new content block.
+		 * Starts/initializes the parser for a new block.
 		 * 
-		 * @param text The markdown text to process
-		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * Resets the parser's internal state. Should be called when beginning a new content block.
 		 */
-		public void add_start(string text, bool is_end_of_chunks = false)
+		public void start()
 		{
-			this.parser.add_start(text, is_end_of_chunks);
+			this.parser.start();
 		}
 		
 		// Callback methods for parser - all must be implemented by subclasses

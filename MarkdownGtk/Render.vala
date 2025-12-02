@@ -47,43 +47,98 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class Render : Markdown.RenderBase
 	{
-		public Gtk.TextBuffer buffer { get; private set; }
-		public Gtk.TextMark start_mark { get; private set; }
-		public Gtk.TextMark end_mark { get; private set; }
-		public Gtk.TextMark tmp_start { get; private set; }
-		public Gtk.TextMark tmp_end { get; private set; }
-		public TopState top_state { get; private set; }
-		public State current_state { get; internal set; }
+		public TopState? top_state { get; private set; default = null; }
+		public State? current_state { get; internal set; default = null; }
+		
+		// Properties for Gtk.Box model
+		public Gtk.Box? box { get; private set; default = null; }
+		public Gtk.TextView? current_textview { get; private set; default = null; }
+		public Gtk.TextBuffer? current_buffer { get; private set; default = null; }
 		
 		/**
-		 * Creates a new Render instance.
+		 * Creates a new Render instance with a Gtk.Box.
 		 * 
-		 * @param buffer The TextBuffer to render into
-		 * @param start_mark Start mark for the range
+		 * The Render will create TextViews as needed and add them to the box.
+		 * 
+		 * @param box The Gtk.Box to add TextViews to
 		 */
-		public Render(Gtk.TextBuffer buffer, Gtk.TextMark start_mark)
+		public Render(Gtk.Box box)
 		{
 			base();
-			this.buffer = buffer;
-			this.start_mark = start_mark;
+			this.box = box;
 			
-			// Create end_mark at the same position as start_mark
-			Gtk.TextIter iter;
-			this.buffer.get_iter_at_mark(out iter, start_mark);
-			this.end_mark = this.buffer.create_mark(null, iter, true);
-			
-			// Create temporary marks after end_mark for incremental parsing
-			this.buffer.get_iter_at_mark(out iter, this.end_mark);
-			this.tmp_start = this.buffer.create_mark(null, iter, true);
-			this.tmp_end = this.buffer.create_mark(null, iter, true);
-			
-			// Create top_state
+			// Create top_state early (it won't initialize tag/marks until buffer is ready)
 			this.top_state = new TopState(this);
-			
-			// Initialize current_state to top_state (never null)
 			this.current_state = this.top_state;
 		}
 		
+		/**
+		 * Starts/initializes the renderer for a new block.
+		 * 
+		 * Creates the TextView and initializes TopState.
+		 * Must be called before add() for each new block.
+		 * 
+		 * If a TextView already exists, ends the current block first.
+		 */
+		public void start()
+		{
+			// If TextView already exists, end the current block first
+			if (this.current_textview != null) {
+				this.end_block();
+			}
+			
+			// Initialize parser state
+			base.start();
+			
+			// Create new TextView
+			this.current_textview = new Gtk.TextView() {
+				editable = false,
+				cursor_visible = false,
+				wrap_mode = Gtk.WrapMode.WORD,
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Get the buffer from the TextView
+			this.current_buffer = this.current_textview.buffer;
+			
+			// Add TextView to box at bottom
+			this.box.append(this.current_textview);
+			
+			// Initialize TopState's tag and marks now that buffer is ready
+			this.top_state.initialize();
+		}
+		
+		/**
+		 * Ends the current block.
+		 * 
+		 * Clears the current TextView and TopState, preparing for a new block.
+		 * Call start() separately when you want to start a new block.
+		 */
+		public void end_block()
+		{
+			// Clear current TextView and buffer
+			this.current_textview = null;
+			this.current_buffer = null;
+			
+			// Create new TopState (will be initialized when start() is called)
+			this.top_state = new TopState(this);
+			this.current_state = this.top_state;
+		}
+		
+		/**
+		 * Override add() to check that TextView is created (programming error if not).
+		 */
+		public override void add(string text)
+		{
+			// Check that TextView is created - this is a programming error if not
+			if (this.current_textview == null) {
+				GLib.error("Render.add() called before start() - TextView not initialized. Call start() before adding text.");
+			}
+			
+			// Call parent add() to process the text
+			base.add(text);
+		}
 		
 		// Callback methods for parser
 		

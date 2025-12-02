@@ -39,13 +39,10 @@ namespace OLLMchat.UI
 
 		private ChatWidget? chat_widget = null;
 		private Gtk.ScrolledWindow scrolled_window;
-		internal Gtk.TextView text_view { get; private set; }
-		internal Gtk.TextBuffer buffer { get; private set; }
+		private Gtk.Box text_view_box;
+		private MarkdownGtk.Render renderer;
 		private string last_line = "";
 		private int last_chunk_start = 0;
-		private Gtk.TextMark? current_block_start = null;
-		private Gtk.TextMark? current_block_end = null;
-		private MarkdownGtk.Render? current_block_renderer = null;
 		private bool is_assistant_message = false;
 		private bool is_thinking = false;
 		private ContentState content_state = ContentState.NONE;
@@ -56,10 +53,8 @@ namespace OLLMchat.UI
 		private string? code_block_language = null;
 		private GtkSource.View? current_source_view = null;
 		private GtkSource.Buffer? current_source_buffer = null;
-		private Gtk.TextChildAnchor? code_block_anchor = null;
 		private Gtk.TextMark? code_block_end_mark = null;
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
-		private int last_scrolled_width = 0;
 		private double last_scroll_pos = 0.0;
 
 		/**
@@ -86,23 +81,14 @@ namespace OLLMchat.UI
 				Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
 				);
 	
-			this.text_view = new Gtk.TextView() {
-				editable = false,
-				cursor_visible = false,
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = true
-			};
-			// Add CSS class for main chat view styling
-			this.text_view.set_left_margin(10);
-			this.buffer = this.text_view.buffer;
-
-			// Create a box to wrap the text view with margins
-			var text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			// Create a box for assistant message content
+			this.text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
 			};
-			text_view_box.append(this.text_view);
+
+			// Create single Render instance for assistant messages (uses text_view_box)
+			this.renderer = new MarkdownGtk.Render(this.text_view_box);
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
@@ -114,16 +100,6 @@ namespace OLLMchat.UI
 
 			
 			
-			// Connect to scrollbar adjustment changes to detect resize
-			this.scrolled_window.hadjustment.changed.connect(this.update_user_message_widths);
-			
-			// Update widths when widget is first realized
-			this.text_view.realize.connect(() => {
-				GLib.Idle.add(() => {
-					this.update_user_message_widths();
-					return false;
-				});
-			});
 		}
 
 		/**
@@ -218,24 +194,24 @@ namespace OLLMchat.UI
 		/**
 		* Initializes a new assistant message.
 		*/
+		/**
+		 * Gets the current buffer from renderer, ensuring TextView is created.
+		 */
+		private Gtk.TextBuffer? get_current_buffer()
+		{
+			// Initialize renderer if needed (for operations like waiting indicator, tool messages, etc.)
+			this.renderer.start();
+			return this.renderer.current_buffer;
+		}
+
 		private void initialize_assistant_message(Ollama.ChatResponse response)
 		{
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
 			this.is_thinking = response.is_thinking;
 			this.content_state = ContentState.NONE;
-
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
-			
-			// Add blank line before assistant message if buffer is not empty
-			if (!start_iter.equal(end_iter)) {
-				this.buffer.insert(ref end_iter, "\n", -1);
-			}
-			this.buffer.get_end_iter(out end_iter);
-			this.current_block_start = this.buffer.create_mark(null, end_iter, true);
-			this.current_block_end = this.buffer.create_mark(null, end_iter, true);
+			// Initialize the renderer for the new assistant message
+			this.renderer.start();
 		}
 
 		/**
@@ -251,9 +227,7 @@ namespace OLLMchat.UI
 				if (this.content_state != ContentState.NONE) {
 					this.end_block(response);
 					// Add extra line breaks to visually separate the old block from the new one
-					Gtk.TextIter end_iter;
-					this.buffer.get_end_iter(out end_iter);
-					this.buffer.insert(ref end_iter, "\n\n", -1);
+					// With box model, Render will create new TextView on next add()
 				}
 				// Update thinking state AFTER ending block (so block is formatted with old status)
 				this.is_thinking = response.is_thinking;
@@ -298,15 +272,12 @@ namespace OLLMchat.UI
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
 					// Ensure renderer exists (create if missing)
-					if (this.current_block_renderer == null) {
+					if (this.renderer == null) {
 						this.start_block(response);
 					}
 					// Send new text directly to progressive renderer
-					this.current_block_renderer.add(text);
-					// Update end_mark
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					this.renderer.add(text);
+					// No need to update end_mark anymore (box model handles it)
 					return;
 					
 				case ContentState.NONE:
@@ -314,11 +285,8 @@ namespace OLLMchat.UI
 					this.content_state = response.is_thinking ? ContentState.THINKING : ContentState.CONTENT;
 					this.start_block(response);
 					// Send text to renderer
-					this.current_block_renderer.add(text);
-					// Update end_mark
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					this.renderer.add(text);
+					// No need to update end_mark anymore (box model handles it)
 					return;
 			}
 		}
@@ -394,10 +362,13 @@ namespace OLLMchat.UI
 			// Reset source view references as we're no longer working with the code block
 			this.current_source_view = null;
 			this.current_source_buffer = null;
-			// Add newline to outer textview after closing code block
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.insert(ref end_iter, "\n", -1);
+			// Add newline to current buffer after closing code block
+			var buffer = this.get_current_buffer();
+			if (buffer != null) {
+				Gtk.TextIter end_iter;
+				buffer.get_end_iter(out end_iter);
+				buffer.insert(ref end_iter, "\n", -1);
+			}
 		}
 		
 		/**
@@ -439,8 +410,8 @@ namespace OLLMchat.UI
 			// Check if thinking state changed to not thinking
 			if (!response.is_thinking) {
 				// End thinking block (end_block will reset content_state to NONE)
-				if (this.current_block_renderer != null) {
-					this.current_block_renderer.add("\n");
+				if (this.renderer != null) {
+					this.renderer.add("\n");
 				}
 				this.end_block(response);
 				return;
@@ -448,15 +419,12 @@ namespace OLLMchat.UI
 			
 			// Empty lines are just regular content - add newline and continue
 			// Ensure renderer exists (create if missing)
-			if (this.current_block_renderer == null) {
+			if (this.renderer == null) {
 				this.start_block(response);
 			}
 			// Send newline to renderer
-			this.current_block_renderer.add("\n");
-			// Update end_mark
-			Gtk.TextIter end_iter;
-			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-			this.buffer.move_mark(this.current_block_end, end_iter);
+			this.renderer.add("\n");
+			// No need to update end_mark anymore (box model handles it)
 		}
 		
 		/**
@@ -476,7 +444,7 @@ namespace OLLMchat.UI
 				this.code_block_language = mapped_language ?? language;
 				
 				// Ensure renderer exists (should already exist since we're in CONTENT state)
-				if (this.current_block_renderer == null) {
+				if (this.renderer == null) {
 					this.start_block(response);
 				}
 				
@@ -485,12 +453,12 @@ namespace OLLMchat.UI
 				// if (this.current_source_view == null) {
 				// 	// Remove last_line.length characters from the end of rendered content
 				// 	Gtk.TextIter start_iter, end_iter;
-				// 	this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
+				// 	this.buffer.get_iter_at_mark(out end_iter, this.renderer.end_mark);
 				// 	start_iter = end_iter;
 				// 	start_iter.backward_chars(this.last_line.length);
 				// 	this.buffer.delete(ref start_iter, ref end_iter);
 				// 	// Update renderer's end_mark to point to the new end position (so end_block() reads correct position)
-				// 	this.buffer.move_mark(this.current_block_renderer.end_mark, start_iter);
+				// 	this.buffer.move_mark(this.renderer.end_mark, start_iter);
 				// }
 				// Now end the content block and start code block
 				this.end_block(response);
@@ -501,14 +469,11 @@ namespace OLLMchat.UI
 			
 			// Empty lines are just regular content - add newline and continue
 			// Ensure renderer exists (create if missing)
-			if (this.current_block_renderer == null) {
+			if (this.renderer == null) {
 				this.start_block(response);
 			}
-			this.current_block_renderer.add("\n");
-			// Update end_mark
-			Gtk.TextIter end_iter;
-			this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-			this.buffer.move_mark(this.current_block_end, end_iter);
+			this.renderer.add("\n");
+			// No need to update end_mark anymore (box model handles it)
 		}
 		/**
 		* Starts a new block based on current state.
@@ -518,39 +483,23 @@ namespace OLLMchat.UI
 			switch (this.content_state) {
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Thinking and content blocks start with marks at current position
-					Gtk.TextIter end_iter;
-					this.buffer.get_end_iter(out end_iter);
+					// Use renderer for progressive rendering
+					this.renderer = this.renderer;
 					
-					// Always move marks to current end position (create if null, move if exists)
-					if (this.current_block_end == null) {
-						this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-					} else {
-						this.buffer.move_mark(this.current_block_end, end_iter);
-					}
-					if (this.current_block_start == null) {
-						this.current_block_start = this.buffer.create_mark(null, end_iter, true);
-					} else {
-						this.buffer.move_mark(this.current_block_start, end_iter);
-					}
-					
-					// Create Render instance for progressive rendering
-					this.current_block_renderer = new MarkdownGtk.Render(
-						this.buffer, 
-						this.current_block_start
-					);
+					// Initialize renderer if needed (creates TextView on first block)
+					this.renderer.start();
 					
 					// Set up styling for thinking/content blocks using TextTags
 					if (this.is_thinking) {
 						// Create span state for green color
-						var color_state = this.current_block_renderer.current_state.add_state();
+						var color_state = this.renderer.current_state.add_state();
 						color_state.style.foreground = "green";
 						// Create italic state nested inside
 						var italic_state = color_state.add_state();
 						italic_state.style.style = Pango.Style.ITALIC;
 					} else {
 						// Create span state for blue color
-						var color_state = this.current_block_renderer.current_state.add_state();
+						var color_state = this.renderer.current_state.add_state();
 						color_state.style.foreground = "blue";
 					}
 					
@@ -587,7 +536,7 @@ namespace OLLMchat.UI
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
 					// Finalize the current markdown block
-					if (this.current_block_renderer == null) {
+					if (this.renderer == null) {
 						// No renderer means no content was rendered
 						this.last_line = "";
 						this.content_state = ContentState.NONE;
@@ -597,22 +546,20 @@ namespace OLLMchat.UI
 					// Ensure content ends with newline if last_line has content (incomplete line)
 					if (this.last_line.length > 0) {
 						// Send final newline to renderer
-						this.current_block_renderer.add("\n");
+						this.renderer.add("\n");
 					}
 					
 					// Flush renderer to finalize
-					this.current_block_renderer.flush();
+					this.renderer.flush();
 					
-					// Update marks to end of rendered content for finalization
-					Gtk.TextIter end_iter;
-					this.buffer.get_iter_at_mark(out end_iter, this.current_block_renderer.end_mark);
-					if (this.current_block_start != null) {
-						this.buffer.move_mark(this.current_block_start, end_iter);
-					}
-					this.buffer.move_mark(this.current_block_end, end_iter);
+					// No need to update marks anymore (box model handles it)
 					
 					// Clean up renderer
-					this.current_block_renderer = null;
+					this.renderer = null;
+					
+					// Call renderer.end_block() to end current block
+					// (start() will be called when starting the next block)
+					this.renderer.end_block();
 					
 					// Reset last_line for next block
 					this.last_line = "";
@@ -668,17 +615,18 @@ namespace OLLMchat.UI
 				);
 			} else {
 				// Add final newline if no summary
-				Gtk.TextIter end_iter;
-				this.buffer.get_end_iter(out end_iter);
-				this.buffer.insert(ref end_iter, "\n", -1);
+				var buffer = this.get_current_buffer();
+				if (buffer != null) {
+					Gtk.TextIter end_iter;
+					buffer.get_end_iter(out end_iter);
+					buffer.insert(ref end_iter, "\n", -1);
+				}
 			}
 
 			// Reset state
 			this.is_assistant_message = false;
 			this.last_chunk_start = 0;
-			this.current_block_start = null;
-			this.current_block_end = null;
-			this.current_block_renderer = null;
+			this.renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
@@ -692,25 +640,22 @@ namespace OLLMchat.UI
 		 */
 		public void clear()
 		{
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
-			this.buffer.delete(ref start_iter, ref end_iter);
-
+			// Clear all widgets from the box
+			var children = this.text_view_box.get_first_child();
+			while (children != null) {
+				var next = children.get_next_sibling();
+				this.text_view_box.remove(children);
+				children = next;
+			}
+			
+			// Reset state
 			this.last_chunk_start = 0;
 			this.is_assistant_message = false;
-			this.current_block_start = null;
-			this.current_block_end = null;
-			this.current_block_renderer = null;
+			this.renderer = null;
 			this.content_state = ContentState.NONE;
 			this.code_block_language = null;
 			this.current_source_view = null;
 			this.current_source_buffer = null;
-			this.code_block_anchor = null;
-			if (this.code_block_end_mark != null) {
-				this.buffer.delete_mark(this.code_block_end_mark);
-				this.code_block_end_mark = null;
-			}
 			this.clear_waiting_indicator();
 		}
 
@@ -759,12 +704,17 @@ namespace OLLMchat.UI
 			}
 			
 			// Get end position for insertion
+			var buffer = this.get_current_buffer();
+			if (buffer == null) {
+				return;
+			}
+			
 			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
+			buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
 			var renderer = new Markdown.PangoRender();
-			this.buffer.insert_markup(
+			buffer.insert_markup(
 				ref end_iter,
 				"<span size=\"small\" color=\"#1a1a1a\">"
 					 + renderer.toPango(message) + "</span>\n",
@@ -784,12 +734,18 @@ namespace OLLMchat.UI
 				this.finalize_assistant_message();
 			}
 
+			// Get end position for insertion
+			var buffer = this.get_current_buffer();
+			if (buffer == null) {
+				return;
+			}
+			
 			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
+			buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
 			var renderer = new Markdown.PangoRender();
-			this.buffer.insert_markup(
+			buffer.insert_markup(
 				ref end_iter,
 				renderer.toPango("<span color=\"red\"><b>Error:</b> " +
 					 GLib.Markup.escape_text(error, -1) + "</span>\n\n"),
@@ -820,16 +776,21 @@ namespace OLLMchat.UI
 			}
 
 			// Insert waiting indicator
+			var buffer = this.get_current_buffer();
+			if (buffer == null) {
+				return;
+			}
+			
 			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
+			buffer.get_start_iter(out start_iter);
+			buffer.get_end_iter(out end_iter);
 			
 			// Add blank line before waiting indicator if buffer is not empty
 			if (!start_iter.equal(end_iter)) {
-				this.buffer.insert(ref end_iter, "\n", -1);
+				buffer.insert(ref end_iter, "\n", -1);
 			}
-			this.buffer.get_end_iter(out end_iter);
-			this.waiting_mark = this.buffer.create_mark(null, end_iter, true);
+			buffer.get_end_iter(out end_iter);
+			this.waiting_mark = buffer.create_mark(null, end_iter, true);
 			this.waiting_dots = 0;
 			this.update_waiting_dots();
 
@@ -860,22 +821,29 @@ namespace OLLMchat.UI
 			}
 
 			// Get position where waiting indicator starts (after "Assistant:" label)
+			var buffer = this.renderer.current_buffer;
+			if (buffer == null) {
+				this.waiting_mark = null;
+				this.is_waiting = false;
+				return;
+			}
+			
 			Gtk.TextIter mark_pos;
 			if (this.waiting_mark != null) {
-				this.buffer.get_iter_at_mark(out mark_pos, this.waiting_mark);
+				buffer.get_iter_at_mark(out mark_pos, this.waiting_mark);
 			} else {
-				this.buffer.get_end_iter(out mark_pos);
+				buffer.get_end_iter(out mark_pos);
 			}
 
-		// Delete waiting indicator content (from mark to end)
+			// Delete waiting indicator content (from mark to end)
 			if (this.waiting_mark != null) {
 				Gtk.TextIter end_iter;
-				this.buffer.get_end_iter(out end_iter);
+				buffer.get_end_iter(out end_iter);
 				
 				if (mark_pos.get_offset() < end_iter.get_offset()) {
-					this.buffer.delete(ref mark_pos, ref end_iter);
+					buffer.delete(ref mark_pos, ref end_iter);
 				}
-				this.buffer.delete_mark(this.waiting_mark);
+				buffer.delete_mark(this.waiting_mark);
 				this.waiting_mark = null;
 			}
 			this.waiting_dots = 0;
@@ -890,11 +858,7 @@ namespace OLLMchat.UI
 			this.last_chunk_start = 0;
 			this.is_thinking = response.is_thinking;
 			this.content_state = ContentState.NONE;
-
-			Gtk.TextIter current_end;
-			this.buffer.get_end_iter(out current_end);
-			this.current_block_start = this.buffer.create_mark(null, current_end, true);
-			this.current_block_end = this.buffer.create_mark(null, current_end, true);
+			// With box model, no need to create marks - Render handles it
 		}
 
 		private bool update_waiting_dots()
@@ -903,22 +867,27 @@ namespace OLLMchat.UI
 				return false; // Stop timer
 			}
 
+			var buffer = this.renderer.current_buffer;
+			if (buffer == null) {
+				return false; // Stop timer if buffer is gone
+			}
+
 			// Update dots (cycle through 1-6)
 			this.waiting_dots = (this.waiting_dots % 6) + 1;
 			string dots = string.nfill(this.waiting_dots, '.');
 
 			// Delete old waiting text and insert new
 			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_iter_at_mark(out start_iter, this.waiting_mark);
-			this.buffer.get_end_iter(out end_iter);
+			buffer.get_iter_at_mark(out start_iter, this.waiting_mark);
+			buffer.get_end_iter(out end_iter);
 
 			if (start_iter.get_offset() < end_iter.get_offset()) {
-				this.buffer.delete(ref start_iter, ref end_iter);
+				buffer.delete(ref start_iter, ref end_iter);
 			}
 
 			// Create PangoRender instance and convert to Pango markup
 			var renderer = new Markdown.PangoRender();
-			this.buffer.insert_markup(
+			buffer.insert_markup(
 				ref start_iter,
 				renderer.toPango(
 					"<span color=\"green\">waiting for a reply" + dots + "</span>"),
@@ -1036,16 +1005,8 @@ namespace OLLMchat.UI
 				// Use Idle to scroll after layout is updated
 				GLib.Idle.add(() => {
 					// Scroll to the end mark which is positioned right after the SourceView widget
-					// This ensures we show the bottom of the SourceView as it grows
-					if (this.code_block_end_mark != null) {
-						Gtk.TextIter mark_iter;
-						this.buffer.get_iter_at_mark(out mark_iter, this.code_block_end_mark);
-						// Scroll with vertical alignment at bottom (1.0) to show bottom of SourceView
-						this.text_view.scroll_to_iter(mark_iter, 0.0, false, 0.0, 1.0);
-					} else {
-						// Fallback: scroll to bottom
-						this.scroll_to_bottom();
-					}
+					// With box model, just scroll to bottom
+					this.scroll_to_bottom();
 					return false;
 				});
 			});
@@ -1147,27 +1108,20 @@ namespace OLLMchat.UI
 			// Style the frame with white background and rounded corners
 			frame.add_css_class("code-block-box");
 
-			// Get current position in TextView
-			// TEST: Commenting out position calculation to test inserting at end
-			// Gtk.TextIter insert_pos;
-			// if (this.current_block_end != null) {
-			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_end);
-			// } else if (this.current_block_start != null) {
-			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_start);
-			// } else {
-			// 	this.buffer.get_end_iter(out insert_pos);
-			// }
-
-			// Add frame using the generic method at end (testing)
-			this.code_block_anchor = this.add_widget_frame(frame);
+			// Add frame directly to renderer.box
+			// Track this frame for width updates
+			this.message_widgets.add(frame);
 			
-			// Insert a placeholder line after the anchor to mark the end of the code block
-			// This helps with scrolling - we can scroll to this mark instead of end of buffer
-			Gtk.TextIter after_anchor;
-			this.buffer.get_iter_at_child_anchor(out after_anchor, this.code_block_anchor);
-			after_anchor.forward_char(); // Move past the anchor
-			this.buffer.insert(ref after_anchor, "\n", -1);
-			this.code_block_end_mark = this.buffer.create_mark(null, after_anchor, true);
+			// Add frame to box
+			this.renderer.box.append(frame);
+			
+			frame.set_visible(true);
+			
+			// Scroll to bottom to show new content
+			this.scroll_to_bottom();
+			
+			// No anchor needed for box-based approach
+			this.code_block_end_mark = null;
 
 			// Set reasonable size for code block (smaller for single-line content)
 			this.current_source_view.height_request = 25;
@@ -1214,103 +1168,18 @@ namespace OLLMchat.UI
 			string lang_str = (this.code_block_language != null) ? this.code_block_language : "unknown";
 			stdout.printf("[ChatView] Finalizing CODE_BLOCK: language='%s'\n", lang_str);
 			
-			// Update marks to point after the code block
-			// Use code_block_end_mark if available, otherwise use end of buffer
-			Gtk.TextIter end_iter;
-			if (this.code_block_end_mark != null) {
-				this.buffer.get_iter_at_mark(out end_iter, this.code_block_end_mark);
-			} else {
-				this.buffer.get_end_iter(out end_iter);
-			}
-			
-			if (this.current_block_end != null) {
-				this.buffer.move_mark(this.current_block_end, end_iter);
-			} else {
-				this.current_block_end = this.buffer.create_mark(null, end_iter, true);
-			}
-			if (this.current_block_start != null) {
-				this.buffer.move_mark(this.current_block_start, end_iter);
-			} else {
-				this.current_block_start = this.buffer.create_mark(null, end_iter, true);
-			}
-
-			// Clean up code block marks
-			if (this.code_block_end_mark != null) {
-				this.buffer.delete_mark(this.code_block_end_mark);
-				this.code_block_end_mark = null;
-			}
+			// With box model, no need to update marks - Render handles it
+			// Clean up code block marks (no longer needed with box model)
+			this.code_block_end_mark = null;
 
 			// SourceView widget will remain in TextView, just stop writing to it
 			this.current_source_view = null;
 			this.current_source_buffer = null;
-			this.code_block_anchor = null;
 		}
 
 		/**
 		 * Updates the width of a single user message widget to match available space.
 		 */
-		/**
-		 * Updates the width of a message frame (user message or code block) to match available space.
-		 */
-		private void update_message_width(Gtk.Frame frame)
-		{
-			// Use ScrolledWindow width as the base, as that's what actually resizes
-			if (this.scrolled_window.get_width() <= 1) {
-				return; // Width not yet available
-			}
-
-			// Get the child widget (TextView for user messages, SourceView for code blocks)
-			var child = frame.get_child();
-			if (child == null) {
-				return;
-			}
-
-			// Calculate available width
-			// Account for:
-			// - Main TextView margins (external to main TextView)
-			// - Frame margins (external to Frame)
-			// - Internal margins for TextView (if it's a TextView)
-			var available_width = this.scrolled_window.get_width()
-				- this.text_view.margin_start - this.text_view.margin_end 
-				- frame.margin_start - frame.margin_end
-				- 50; // Account for padding and other spacing
-
-			// If it's a TextView, also account for its internal margins
-			if (child is Gtk.TextView) {
-				var text_view = (Gtk.TextView) child;
-				available_width -= text_view.margin_start + text_view.margin_end;
-			}
-
-			if (available_width > 0) {
-				child.width_request = available_width;
-			}
-		}
-
-		/**
-		 * Updates the width of all user message widgets to match available space.
-		 */
-		private void update_user_message_widths()
-		{
-			// Use ScrolledWindow width as the base, as that's what actually resizes
-			if (this.scrolled_window.get_width() <= 1) {
-				return; // Width not yet available
-			}
-			
-			// Only update if the width actually changed
-			if (this.scrolled_window.get_width() == this.last_scrolled_width) {
-				return;
-			}
-			
-			GLib.debug("ChatView: resize detected, width=%d", this.scrolled_window.get_width());
-			this.last_scrolled_width = this.scrolled_window.get_width();
-
-			foreach (var widget in this.message_widgets) {
-				if (widget is Gtk.Frame) {
-					this.update_message_width((Gtk.Frame) widget);
-				}
-			}
-		}
-		
 		/**
 		 * Adds a blank line at the end of the buffer if the buffer is not empty.
 		 * 
@@ -1318,13 +1187,19 @@ namespace OLLMchat.UI
 		 */
 		public void add_blank_line()
 		{
+			// With box model, add blank line to current buffer
+			var buffer = this.get_current_buffer();
+			if (buffer == null) {
+				return;
+			}
+			
 			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_start_iter(out start_iter);
-			this.buffer.get_end_iter(out end_iter);
+			buffer.get_start_iter(out start_iter);
+			buffer.get_end_iter(out end_iter);
 			
 			// Add blank line if buffer is not empty
 			if (!start_iter.equal(end_iter)) {
-				this.buffer.insert(ref end_iter, "\n", -1);
+				buffer.insert(ref end_iter, "\n", -1);
 			}
 		}
 		
@@ -1335,11 +1210,9 @@ namespace OLLMchat.UI
 		 * The widget must be a Gtk.Frame.
 		 * 
 		 * @param frame The frame widget to add
-		 * @return The TextChildAnchor that can be used to remove the widget later
 		 * @since 1.0
 		 */
-		[CCode (return_value_type = "GtkTextChildAnchor*", transfer = "full")]
-		public Gtk.TextChildAnchor add_widget_frame(Gtk.Frame frame)
+		public void add_widget_frame(Gtk.Frame frame)
 		{
 			// Ensure frame is unparented before adding (required for GTK4)
 			if (frame.get_parent() != null) {
@@ -1349,33 +1222,13 @@ namespace OLLMchat.UI
 			// Track this frame for width updates
 			this.message_widgets.add(frame);
 			
-			// Get end position and create child anchor
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			var anchor = this.buffer.create_child_anchor(end_iter);
-			this.text_view.add_child_at_anchor(frame, anchor);
-			
-			// Store anchor in frame for later retrieval
-			frame.set_data<Gtk.TextChildAnchor>("anchor", anchor);
-			
-			// Update width after widget is shown - use Idle to ensure layout is complete
-			GLib.Idle.add(() => {
-				this.update_message_width(frame);
-				return false;
-			});
-			
-			// Insert newline after the anchor
-			Gtk.TextIter after_anchor;
-			this.buffer.get_iter_at_child_anchor(out after_anchor, anchor);
-			after_anchor.forward_char();
-			this.buffer.insert(ref after_anchor, "\n", -1);
+			// Add frame directly to renderer.box
+			this.renderer.box.append(frame);
 			
 			frame.set_visible(true);
 			
 			// Scroll to bottom to show new content
 			this.scroll_to_bottom();
-			
-			return anchor;
 		}
 		
 		/**
@@ -1383,7 +1236,7 @@ namespace OLLMchat.UI
 		   THIS DOES NOT APPEAR TO BE USED.. - we might need it later for 'clear' operation though?
 		 * 
 		 * @param frame The frame widget to remove
-		 * @param anchor The TextChildAnchor returned from add_widget_frame()
+		 * @param anchor The TextChildAnchor returned from add_widget_frame() (unused with box model)
 		 * @since 1.0
 		 */
 		public void remove_widget_frame(Gtk.Frame frame, Gtk.TextChildAnchor anchor)
@@ -1394,23 +1247,10 @@ namespace OLLMchat.UI
 			// Hide the widget first to prevent snapshot issues
 			frame.set_visible(false);
 			
-			// Remove the anchor and surrounding text from the buffer
-			// This will automatically unparent the widget
-			Gtk.TextIter start_iter, end_iter;
-			this.buffer.get_iter_at_child_anchor(out start_iter, anchor);
-			
-			// Get the end iter (after the newline we inserted)
-			end_iter = start_iter;
-			end_iter.forward_char(); // Skip the anchor character
-			if (!end_iter.is_end()) {
-				end_iter.forward_char(); // Skip the newline
+			// With box model, just remove the frame from its parent
+			if (frame.get_parent() != null) {
+				frame.unparent();
 			}
-			
-			// Delete the anchor and newline from buffer
-			// This will cause GTK to automatically unparent the widget
-			this.buffer.delete(ref start_iter, ref end_iter);
-			
-			// Note: TextChildAnchor is automatically deleted when removed from buffer
 		}
 		
 	}
