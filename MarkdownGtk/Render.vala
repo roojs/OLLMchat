@@ -87,6 +87,9 @@ namespace OLLMchat.MarkdownGtk
 				this.end_block();
 			}
 			
+			// Initialize parser state
+			base.start();
+			
 			// Create new TextView
 			this.current_textview = new Gtk.TextView() {
 				editable = false,

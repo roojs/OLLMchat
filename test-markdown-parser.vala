@@ -109,15 +109,17 @@ int main(string[] args)
 	// Process chunks like the real stream does
 	stdout.printf("=== STREAMING CHUNKS ===\n");
 	
-	// First block: add_start (not shown in debug but implied), then add chunks
-	renderer.add_start("<span color=\"blue\">", false);
+	// First block: start, then add chunks
+	renderer.start();
+	renderer.add("<span color=\"blue\">");
 	foreach (var chunk in first_block_chunks) {
 		renderer.add(chunk);
 	}
 	renderer.flush();
 	
-	// Second block: add_start with is_end_of_chunks=true, then add chunks
-	renderer.add_start("<span color=\"blue\">", true);
+	// Second block: start, then add chunks
+	renderer.start();
+	renderer.add("<span color=\"blue\">");
 	foreach (var chunk in second_block_chunks) {
 		renderer.add(chunk);
 	}
@@ -155,7 +157,7 @@ int main(string[] args)
 		"."
 	};
 	
-	test_renderer.add_start("", false);
+	test_renderer.start();
 	foreach (var chunk in test_chunks) {
 		test_renderer.add(chunk);
 	}
@@ -164,7 +166,7 @@ int main(string[] args)
 	stdout.printf("\n=== TEST: SIMPLE BOLD BEFORE CODE ===\n");
 	var test2_renderer = new OLLMchat.Markdown.DummyRenderer();
 	// Simpler test: just "**" followed by "`"
-	test2_renderer.add_start("", false);
+	test2_renderer.start();
 	test2_renderer.add("**");
 	test2_renderer.add("`");
 	test2_renderer.add("test");
