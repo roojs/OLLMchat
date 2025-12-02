@@ -41,6 +41,8 @@ namespace OLLMchat.UI
 		private Gtk.ScrolledWindow scrolled_window;
 		internal Gtk.TextView text_view { get; private set; }
 		internal Gtk.TextBuffer buffer { get; private set; }
+		private Gtk.Box assistant_message_box;
+		private MarkdownGtk.Render assistant_renderer;
 		private string last_line = "";
 		private int last_chunk_start = 0;
 		private Gtk.TextMark? current_block_start = null;
