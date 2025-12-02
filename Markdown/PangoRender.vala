@@ -170,7 +170,7 @@ namespace OLLMchat.Markdown
 		/**
 		 * Handles closing HTML tags.
 		 */
-		internal override void on_end()
+		public override void on_end()
 		{
 			// Close the most recently opened tag
 			if (this.open_tags.size > 0) {
@@ -182,7 +182,7 @@ namespace OLLMchat.Markdown
 		/**
 		 * Handles text content - escape and append to Pango markup.
 		 */
-		internal override void on_text(string text)
+		public override void on_text(string text)
 		{
 			// Escape special Pango markup characters
 			var escaped = GLib.Markup.escape_text(text, -1);
@@ -192,7 +192,7 @@ namespace OLLMchat.Markdown
 		/**
 		 * Handles HTML entities (already decoded by parser).
 		 */
-		internal override void on_entity(string text)
+		public override void on_entity(string text)
 		{
 			var escaped = GLib.Markup.escape_text(text, -1);
 			this.pango_markup.append(escaped);
