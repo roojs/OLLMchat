@@ -763,7 +763,7 @@ namespace OLLMchat.UI
 			this.buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
-			var renderer = new MarkdownGtk.PangoRender();
+			var renderer = new Markdown.PangoRender();
 			this.buffer.insert_markup(
 				ref end_iter,
 				"<span size=\"small\" color=\"#1a1a1a\">"
@@ -788,7 +788,7 @@ namespace OLLMchat.UI
 			this.buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
-			var renderer = new MarkdownGtk.PangoRender();
+			var renderer = new Markdown.PangoRender();
 			this.buffer.insert_markup(
 				ref end_iter,
 				renderer.toPango("<span color=\"red\"><b>Error:</b> " +
@@ -917,7 +917,7 @@ namespace OLLMchat.UI
 			}
 
 			// Create PangoRender instance and convert to Pango markup
-			var renderer = new MarkdownGtk.PangoRender();
+			var renderer = new Markdown.PangoRender();
 			this.buffer.insert_markup(
 				ref start_iter,
 				renderer.toPango(
