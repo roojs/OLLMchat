@@ -228,7 +228,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for emphasis/italic spans.
 		 */
-		internal override void on_em()
+		public override void on_em()
 		{
 			var em_state = this.current_state.add_state();
 			em_state.style.style = Pango.Style.ITALIC;
@@ -237,7 +237,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for strong/bold spans.
 		 */
-		internal override void on_strong()
+		public override void on_strong()
 		{
 			var strong_state = this.current_state.add_state();
 			strong_state.style.weight = Pango.Weight.BOLD;
@@ -254,7 +254,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for strikethrough spans.
 		 */
-		internal override void on_del()
+		public override void on_del()
 		{
 			this.current_state.add_state();
 		}
@@ -262,7 +262,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for inline code spans.
 		 */
-		internal override void on_code_span()
+		public override void on_code_span()
 		{
 			this.current_state.add_state();
 		}
@@ -272,7 +272,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param tag_name The tag name
 		 */
-		internal override void on_other(string tag_name)
+		public override void on_other(string tag_name)
 		{
 			this.current_state.add_state();
 		}
@@ -282,7 +282,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param text The text content
 		 */
-		internal override void on_text(string text)
+		public override void on_text(string text)
 		{
 			this.current_state.add_text(text);
 		}
