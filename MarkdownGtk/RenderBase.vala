@@ -27,7 +27,7 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public abstract class RenderBase : Object
 	{
-		public Parser parser { get; private set; }
+		public Markdown.Parser parser { get; private set; }
 		
 		/**
 		 * Creates a new RenderBase instance.
@@ -35,7 +35,7 @@ namespace OLLMchat.MarkdownGtk
 		protected RenderBase()
 		{
 			// Create parser instance
-			this.parser = new Parser(this);
+			this.parser = new Markdown.Parser(this);
 		}
 		
 		/**

@@ -28,7 +28,7 @@ int main(string[] args)
 	var start_mark = buffer.create_mark(null, iter, true);
 	
 	// Create Render instance (using DummyRenderer for testing)
-	var renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
+	var renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
 	
 	// Simulate streaming chunks from actual debug output
 	// First block chunks
@@ -138,7 +138,7 @@ int main(string[] args)
 	// Expected: TEXT "-", START <strong>, TEXT "`/**tmp**/test**.gs**`", END (strong), TEXT " – exact copy..."
 	stdout.printf("\n=== TEST: BOLD BEFORE CODE BLOCK ===\n");
 	
-	var test_renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
+	var test_renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
 	
 	// Simulate the exact chunks from debug output
 	string[] test_chunks = {
@@ -171,7 +171,7 @@ int main(string[] args)
 	test_renderer.flush();
 	
 	stdout.printf("\n=== TEST: SIMPLE BOLD BEFORE CODE ===\n");
-	var test2_renderer = new OLLMchat.MarkdownGtk.DummyRenderer(buffer, start_mark);
+	var test2_renderer = new OLLMchat.Markdown.DummyRenderer(buffer, start_mark);
 	// Simpler test: just "**" followed by "`"
 	test2_renderer.add_start("", false);
 	test2_renderer.add("**");

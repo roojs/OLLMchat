@@ -133,6 +133,11 @@ ollmchat_tools_ui_src = files([
   'ToolsUI/RunCommand.vala',
 ])
 
+# Source files for Markdown namespace (base, no GTK)
+ollmchat_markdown_src = files([
+  'Markdown/Parser.vala',
+])
+
 # Source files for MarkdownGtk namespace (GTK-dependent)
 ollmchat_markdowngtk_src = files([
   'MarkdownGtk/RenderBase.vala',
@@ -141,7 +146,6 @@ ollmchat_markdowngtk_src = files([
   'MarkdownGtk/PangoRender.vala',
   'MarkdownGtk/State.vala',
   'MarkdownGtk/TopState.vala',
-  'MarkdownGtk/Parser.vala',
   'MarkdownGtk/Table.vala',
   'MarkdownGtk/TableCell.vala',
 ])
@@ -157,7 +161,7 @@ ollmchat_ui_src = files([
 # Build base library (libollmchat.so) - no GTK dependencies
 ollmchat_base_lib = library('ollmchat',
   dependencies: base_deps,
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_markdown_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
   install: true
