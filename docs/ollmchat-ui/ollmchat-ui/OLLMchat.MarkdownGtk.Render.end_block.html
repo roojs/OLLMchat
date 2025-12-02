@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.MarkdownGtk.Render.end_mark &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.MarkdownGtk.Render.end_block &ndash; ollmchat-ui &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.MarkdownGtk.Render.end_mark &ndash; ollmchat-ui Reference Manual</div>
+    <div class="site_header">OLLMchat.MarkdownGtk.Render.end_block &ndash; ollmchat-ui Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -36,7 +36,7 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_buffer.html">current_buffer</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_state.html">current_state</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_textview.html">current_textview</a></li>
-          <li class="property">end_mark</li>
+          <li class="property"><a href="OLLMchat.MarkdownGtk.Render.end_mark.html">end_mark</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.start_mark.html">start_mark</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_end.html">tmp_end</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
@@ -44,7 +44,7 @@
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.with_box.html">Render.with_box</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.add.html">add</a></li>
-          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.end_block.html">end_block</a></li>
+          <li class="method">end_block</li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_a.html">on_a</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_br.html">on_br</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_code.html">on_code</a></li>
@@ -70,10 +70,16 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">end_mark</h1>
+        <h1 class="main_title">end_block</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">TextMark</span></span>? <b><span class="property">end_mark</span></b> { <span class="main_keyword">get</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">end_block</span></b> ()
+        </div>
+        <div class="description">
+          <p>Ends the current block and creates a new TextView for the next block.</p>
+          <p>Creates a new TextView, adds it to the box at bottom, sets it as current, creates new marks, and resets TopState to work with the new 
+            buffer.</p>
+          <p>This method only works when using box-based mode (box is set). For the old TextBuffer-based constructor, this method does nothing.</p>
         </div>
       </div>
     </div><br/>

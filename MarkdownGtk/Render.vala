@@ -110,19 +110,11 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Ensures that a TextView is created for box-based rendering.
-		 * 
-		 * If using box-based constructor and current_textview is null, creates
-		 * a new TextView, adds it to the box, and initializes all necessary state.
-		 * Returns immediately if TextView already exists or if not using box-based mode.
+		 * Creates a new TextView, sets it up, and initializes all necessary state.
+		 * Used by both ensure_textview_created() and end_block().
 		 */
-		internal void ensure_textview_created()
+		private void create_and_setup_textview()
 		{
-			// Return early if TextView already exists or not using box-based mode
-			if (this.current_textview != null || this.box == null) {
-				return;
-			}
-			
 			// Create new TextView
 			this.current_textview = new Gtk.TextView() {
 				editable = false,
@@ -155,6 +147,43 @@ namespace OLLMchat.MarkdownGtk
 			// Initialize TopState's tag and marks now that buffer is ready
 			// (TopState was created in constructor, but needs buffer to initialize)
 			this.top_state.initialize();
+		}
+		
+		/**
+		 * Ensures that a TextView is created for box-based rendering.
+		 * 
+		 * If using box-based constructor and current_textview is null, creates
+		 * a new TextView, adds it to the box, and initializes all necessary state.
+		 * Returns immediately if TextView already exists or if not using box-based mode.
+		 */
+		internal void ensure_textview_created()
+		{
+			// Return early if TextView already exists or not using box-based mode
+			if (this.current_textview != null || this.box == null) {
+				return;
+			}
+			
+			this.create_and_setup_textview();
+		}
+		
+		/**
+		 * Ends the current block and creates a new TextView for the next block.
+		 * 
+		 * Creates a new TextView, adds it to the box at bottom, sets it as current,
+		 * creates new marks, and resets TopState to work with the new buffer.
+		 * 
+		 * This method only works when using box-based mode (box is set).
+		 * For the old TextBuffer-based constructor, this method does nothing.
+		 */
+		public void end_block()
+		{
+			// Only works when box is set (box-based mode)
+			if (this.box == null) {
+				return;
+			}
+			
+			// Create new TextView and set it up
+			this.create_and_setup_textview();
 		}
 		
 		/**
