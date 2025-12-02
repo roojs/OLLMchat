@@ -20,14 +20,15 @@ namespace OLLMchat.Markdown
 {
 	/**
 	 * Dummy renderer for testing the Parser.
-	 * Extends Render and overrides methods to print callbacks instead of rendering.
+	 * Extends RenderBase and overrides methods to print callbacks instead of rendering.
 	 */
-	public class DummyRenderer : MarkdownGtk.Render
+	public class DummyRenderer : RenderBase
 	{
 		private int indent_level = 0;
 		
-		public DummyRenderer(Gtk.TextBuffer buffer, Gtk.TextMark start_mark) {
-			base(buffer, start_mark);
+		public DummyRenderer()
+		{
+			base();
 		}
 		
 		private void print_indent()

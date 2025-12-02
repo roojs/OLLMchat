@@ -49,7 +49,7 @@ namespace OLLMchat.MarkdownGtk
 			this.render = render;
 			
 			// Skip tag and mark creation for TopState (parent == null)
-			// TopState will initialize these in ensure_textview_created()
+			// TopState will initialize these in start()
 			if (parent == null) {
 				// TopState - will be initialized later (properties default to null)
 				return;

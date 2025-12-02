@@ -37,7 +37,6 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_textview.html">current_textview</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
-          <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.with_box.html">Render.with_box</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.add.html">add</a></li>
           <li class="method">end_block</li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_a.html">on_a</a></li>
@@ -62,6 +61,7 @@
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_text.html">on_text</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_u.html">on_u</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_ul.html">on_ul</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.start.html">start</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -71,10 +71,8 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">end_block</span></b> ()
         </div>
         <div class="description">
-          <p>Ends the current block and creates a new TextView for the next block.</p>
-          <p>Creates a new TextView, adds it to the box at bottom, sets it as current, creates new marks, and resets TopState to work with the new 
-            buffer.</p>
-          <p>This method only works when using box-based mode (box is set). For the old TextBuffer-based constructor, this method does nothing.</p>
+          <p>Ends the current block.</p>
+          <p>Clears the current TextView and TopState, preparing for a new block. Call start() separately when you want to start a new block.</p>
         </div>
       </div>
     </div><br/>

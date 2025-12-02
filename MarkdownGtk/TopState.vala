@@ -38,7 +38,7 @@ namespace OLLMchat.MarkdownGtk
 		
 		/**
 		 * Initializes TopState's tag and marks after the buffer is ready.
-		 * Called from ensure_textview_created() when using box-based mode.
+		 * Called from start() when using box-based mode.
 		 */
 		internal void initialize()
 		{
@@ -60,34 +60,30 @@ namespace OLLMchat.MarkdownGtk
 			this.render.current_state = this.render.top_state;
 		}
 		
-		/**
-		 * Wraps State.add_text() and updates render's end_mark with state's end.
-		 * 
-		 * @param text The text to add
-		 */
-		public new void add_text(string text)
-		{
-			// Ensure TextView is created if needed (for box-based mode)
-			this.render.ensure_textview_created();
-			
-			base.add_text(text);
-			// No need to update render's end_mark anymore (removed in step 10)
-		}
-		
-		/**
-		 * Wraps State.add_state() and updates render's end_mark with state's end.
-		 * 
-		 * @return The newly created State
-		 */
-		public new State add_state()
-		{
-			// Ensure TextView is created if needed (for box-based mode)
-			this.render.ensure_textview_created();
-			
-			var new_state = base.add_state();
-			// No need to update render's marks anymore (removed in step 10)
-			return new_state;
-		}
+	/**
+	 * Wraps State.add_text() and updates render's end_mark with state's end.
+	 * 
+	 * @param text The text to add
+	 */
+	public new void add_text(string text)
+	{
+		// TextView should already be initialized via start() - no need to check here
+		base.add_text(text);
+		// No need to update render's end_mark anymore (removed in step 10)
+	}
+	
+	/**
+	 * Wraps State.add_state() and updates render's end_mark with state's end.
+	 * 
+	 * @return The newly created State
+	 */
+	public new State add_state()
+	{
+		// TextView should already be initialized via start() - no need to check here
+		var new_state = base.add_state();
+		// No need to update render's marks anymore (removed in step 10)
+		return new_state;
+	}
 	}
 }
 

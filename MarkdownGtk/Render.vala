@@ -62,7 +62,7 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param box The Gtk.Box to add TextViews to
 		 */
-		public Render.with_box(Gtk.Box box)
+		public Render(Gtk.Box box)
 		{
 			base();
 			this.box = box;
@@ -73,12 +73,20 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Creates a new TextView, sets it up, and initializes all necessary state.
-		 * Used by both ensure_textview_created() and end_block().
-		 * Assumes top_state is already created and set as current_state.
+		 * Starts/initializes the renderer for a new block.
+		 * 
+		 * Creates the TextView and initializes TopState.
+		 * Must be called before add() for each new block.
+		 * 
+		 * If a TextView already exists, ends the current block first.
 		 */
-		private void create_and_setup_textview()
+		public void start()
 		{
+			// If TextView already exists, end the current block first
+			if (this.current_textview != null) {
+				this.end_block();
+			}
+			
 			// Create new TextView
 			this.current_textview = new Gtk.TextView() {
 				editable = false,
@@ -99,54 +107,31 @@ namespace OLLMchat.MarkdownGtk
 		}
 		
 		/**
-		 * Ensures that a TextView is created for box-based rendering.
+		 * Ends the current block.
 		 * 
-		 * If using box-based constructor and current_textview is null, creates
-		 * a new TextView, adds it to the box, and initializes all necessary state.
-		 * Returns immediately if TextView already exists or if not using box-based mode.
-		 */
-		internal void ensure_textview_created()
-		{
-			// Return early if TextView already exists or not using box-based mode
-			if (this.current_textview != null || this.box == null) {
-				return;
-			}
-			
-			// TopState already created in constructor, just set up TextView and initialize
-			this.create_and_setup_textview();
-		}
-		
-		/**
-		 * Ends the current block and creates a new TextView for the next block.
-		 * 
-		 * Creates a new TextView, adds it to the box at bottom, sets it as current,
-		 * creates new marks, and resets TopState to work with the new buffer.
-		 * 
-		 * This method only works when using box-based mode (box is set).
-		 * For the old TextBuffer-based constructor, this method does nothing.
+		 * Clears the current TextView and TopState, preparing for a new block.
+		 * Call start() separately when you want to start a new block.
 		 */
 		public void end_block()
 		{
-			// Only works when box is set (box-based mode)
-			if (this.box == null) {
-				return;
-			}
+			// Clear current TextView and buffer
+			this.current_textview = null;
+			this.current_buffer = null;
 			
-			// Create new TopState for the new buffer (before setting up TextView)
+			// Create new TopState (will be initialized when start() is called)
 			this.top_state = new TopState(this);
 			this.current_state = this.top_state;
-			
-			// Create new TextView and set it up (will initialize TopState)
-			this.create_and_setup_textview();
 		}
 		
 		/**
-		 * Override add() to implement lazy TextView creation for box-based rendering.
+		 * Override add() to check that TextView is created (programming error if not).
 		 */
 		public override void add(string text)
 		{
-			// Ensure TextView is created if needed (for box-based mode)
-			this.ensure_textview_created();
+			// Check that TextView is created - this is a programming error if not
+			if (this.current_textview == null) {
+				GLib.error("Render.add() called before start() - TextView not initialized. Call start() before adding text.");
+			}
 			
 			// Call parent add() to process the text
 			base.add(text);

@@ -37,7 +37,6 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.current_textview.html">current_textview</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
-          <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.with_box.html">Render.with_box</a></li>
           <li class="virtual_method">add</li>
           <li class="method"><a href="OLLMchat.MarkdownGtk.Render.end_block.html">end_block</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_a.html">on_a</a></li>
@@ -62,6 +61,7 @@
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_text.html">on_text</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_u.html">on_u</a></li>
           <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_ul.html">on_ul</a></li>
+          <li class="method"><a href="OLLMchat.MarkdownGtk.Render.start.html">start</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -71,7 +71,7 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">add</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
         </div>
         <div class="description">
-          <p>Override add() to implement lazy TextView creation for box-based rendering.</p>
+          <p>Override add() to check that TextView is created (programming error if not).</p>
         </div>
       </div>
     </div><br/>

@@ -168,31 +168,32 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 11: Remove old TextView/buffer management from ChatView
+### Step 11: Remove old TextView/buffer management from ChatView ✓
 
 **Files**: `UI/ChatView.vala`
 
 **Changes**:
 
-- Remove `text_view` and `buffer` properties
-- Update scrolling logic to work with box model (scroll the box or scrolled window)
-- Remove TextChildAnchor-based frame management code
-- Update any remaining references to old text_view/buffer
-- Update `add_blank_line()` if needed (may not be needed with box model)
+- ✓ Remove `text_view` and `buffer` properties
+- ✓ Update scrolling logic to work with box model (scroll the box or scrolled window)
+- ✓ Remove TextChildAnchor-based frame management code
+- ✓ Update any remaining references to old text_view/buffer
+- ✓ Update `add_blank_line()` if needed (may not be needed with box model)
 
 **Verification**: Code compiles, all functionality works
 
 ---
 
-### Step 12: Update DummyRenderer for new Render API
+### Step 12: Update DummyRenderer for new Render API ✓
 
 **Files**: `Markdown/DummyRenderer.vala`, `test-markdown-parser.vala`
 
 **Changes**:
 
-- Update `DummyRenderer` constructor to work like pango - no gtk references (change it's extends etc..?)
-- Update test file to create a box and pass to DummyRenderer
-- Ensure DummyRenderer still extends Render and works correctly
+- ✓ Update `DummyRenderer` to extend `RenderBase` instead of `MarkdownGtk.Render` (removes all GTK dependencies)
+- ✓ Remove constructor parameters (no longer needs buffer/mark)
+- ✓ Update test file to remove GTK initialization and buffer/mark creation
+- ✓ Ensure DummyRenderer still works correctly with parser
 
 **Verification**: Code compiles, tests pass
 
@@ -206,9 +207,9 @@ This plan breaks the refactoring into 12 reviewable steps:
 - Steps 5-7: Render refactoring (additive, maintains backward compatibility initially) ✓
 - Steps 8-9: ChatView integration (uses new Render API) ✓
 - Step 10: Cleanup (removes old TextBuffer properties) ✓
-- Step 11: Cleanup (removes old TextView/buffer management from ChatView) - TODO
-- Step 12: Test updates (final cleanup) - TODO
+- Step 11: Cleanup (removes old TextView/buffer management from ChatView) ✓
+- Step 12: Test updates (final cleanup) ✓
 
 Each step keeps the code compiling and functional, allowing for incremental review and testing.
 
-**Progress: 10/12 steps completed (83%)**
+**Progress: 12/12 steps completed (100%)**
