@@ -112,6 +112,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Creates a new TextView, sets it up, and initializes all necessary state.
 		 * Used by both ensure_textview_created() and end_block().
+		 * Assumes top_state is already created and set as current_state.
 		 */
 		private void create_and_setup_textview()
 		{
@@ -145,7 +146,6 @@ namespace OLLMchat.MarkdownGtk
 			this.tmp_end = this.buffer.create_mark(null, iter, true);
 			
 			// Initialize TopState's tag and marks now that buffer is ready
-			// (TopState was created in constructor, but needs buffer to initialize)
 			this.top_state.initialize();
 		}
 		
@@ -163,6 +163,7 @@ namespace OLLMchat.MarkdownGtk
 				return;
 			}
 			
+			// TopState already created in constructor, just set up TextView and initialize
 			this.create_and_setup_textview();
 		}
 		
@@ -182,7 +183,11 @@ namespace OLLMchat.MarkdownGtk
 				return;
 			}
 			
-			// Create new TextView and set it up
+			// Create new TopState for the new buffer (before setting up TextView)
+			this.top_state = new TopState(this);
+			this.current_state = this.top_state;
+			
+			// Create new TextView and set it up (will initialize TopState)
 			this.create_and_setup_textview();
 		}
 		
