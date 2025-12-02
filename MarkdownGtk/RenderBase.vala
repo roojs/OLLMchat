@@ -71,14 +71,14 @@ namespace OLLMchat.MarkdownGtk
 		
 		// Callback methods for parser - all must be implemented by subclasses
 		
-		internal abstract void on_text(string text);
-		internal abstract void on_em();
-		internal abstract void on_strong();
-		internal abstract void on_code_span();
-		internal abstract void on_del();
-		internal abstract void on_other(string tag_name);
-		internal abstract void on_html(string tag, string attributes);
-		internal abstract void on_end();
+		public abstract void on_text(string text);
+		public abstract void on_em();
+		public abstract void on_strong();
+		public abstract void on_code_span();
+		public abstract void on_del();
+		public abstract void on_other(string tag_name);
+		public abstract void on_html(string tag, string attributes);
+		public abstract void on_end();
 		
 		// Block-level callbacks (can have default empty implementations)
 		internal virtual void on_h(uint level) {}
