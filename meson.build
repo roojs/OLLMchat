@@ -142,7 +142,6 @@ ollmchat_markdown_src = files([
 
 # Source files for MarkdownGtk namespace (GTK-dependent)
 ollmchat_markdowngtk_src = files([
-  'MarkdownGtk/RenderBase.vala',
   'MarkdownGtk/Render.vala',
   'MarkdownGtk/State.vala',
   'MarkdownGtk/TopState.vala',
