@@ -73,25 +73,25 @@ namespace OLLMchat.Markdown
 		}
 		
 		// Support all markdown formatting tags - convert to Pango markup
-		internal override void on_em()
+		public override void on_em()
 		{
 			this.pango_markup.append("<i>");
 			this.open_tags.add("i");
 		}
 		
-		internal override void on_strong()
+		public override void on_strong()
 		{
 			this.pango_markup.append("<b>");
 			this.open_tags.add("b");
 		}
 		
-		internal override void on_code_span()
+		public override void on_code_span()
 		{
 			this.pango_markup.append("<tt>");
 			this.open_tags.add("tt");
 		}
 		
-		internal override void on_del()
+		public override void on_del()
 		{
 			this.pango_markup.append("<s>");
 			this.open_tags.add("s");
@@ -100,7 +100,7 @@ namespace OLLMchat.Markdown
 		/**
 		 * Handles other unmapped tags.
 		 */
-		internal override void on_other(string tag_name)
+		public override void on_other(string tag_name)
 		{
 			// For unknown tags, we don't add Pango markup
 			// but we still track it so on_end() can close it properly
@@ -111,7 +111,7 @@ namespace OLLMchat.Markdown
 		/**
 		 * Handles HTML tags and converts them to Pango markup.
 		 */
-		internal override void on_html(string tag, string attributes)
+		public override void on_html(string tag, string attributes)
 		{
 			var tag_lower = tag.down();
 			string? pango_tag = null;
