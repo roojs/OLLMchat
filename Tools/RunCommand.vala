@@ -173,11 +173,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			return trimmed.substring(0, space_pos);
 		}
 		
-		protected override bool prepare(Json.Object parameters)
+		protected override bool build_perm_question()
 		{
-			// Read parameters
-			this.readParams(parameters);
-			
 			// Validate required parameter
 			if (this.command == "") {
 				return false;
@@ -229,10 +226,13 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 * For complex commands, we use a unique path that won't match cache entries,
 		 * effectively forcing a new permission request each time.
 		 */
-		public override async string execute(Json.Object parameters)
+		public override async string execute(Ollama.ChatCall chat_call, Json.Object parameters)
 		{
-			// Prepare parameters
-			if (!this.prepare(parameters)) {
+			// Read parameters
+			this.prepare(parameters);
+			
+			// Build permission question
+			if (!this.build_perm_question()) {
 				return "ERROR: Invalid parameters";
 			}
 			
@@ -413,7 +413,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		/**
 		 * Required by base class, but we handle everything in execute().
 		 */
-		protected override string execute_tool(Json.Object parameters) throws Error
+		protected override string execute_tool(Ollama.ChatCall chat_call, Json.Object parameters) throws Error
 		{
 			// This should never be called since we override execute()
 			throw new GLib.IOError.NOT_SUPPORTED("execute_tool() should not be called");

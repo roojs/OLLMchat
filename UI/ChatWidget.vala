@@ -115,8 +115,8 @@ namespace OLLMchat.UI
 		// Connect tool_message signal after chat_view is created
 		this.client.tool_message.connect(this.chat_view.append_tool_message);
 		
-		// Connect send_starting signal to show waiting indicator
-		this.client.send_starting.connect(this.chat_view.show_waiting_indicator);
+		// Connect chat_send signal to show waiting indicator
+		this.client.chat_send.connect(this.chat_view.show_waiting_indicator);
 
 		// Create a box for the bottom pane containing permission widget and input
 		var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -271,9 +271,8 @@ namespace OLLMchat.UI
 
 		private void on_send_clicked(string text)
 		{
-			if (text.strip().length == 0) {
-				return;
-			}
+			// Trim trailing line breaks from the message
+			 
 
 			// Store the text before clearing input (for error recovery)
 			this.last_sent_text = text;

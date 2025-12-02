@@ -147,12 +147,8 @@ namespace OLLMchat.UI
 			// CSS is loaded from resource file in constructor
 			user_frame.add_css_class("user-message-box");
 
-			// Calculate height based on content
-			// Estimate height: ~20px per line + margins
-			var lines = text.split("\n").length;
-			var estimated_height = (lines * 20) + 16; // 16px for margins
-			// Minimum height to ensure text is visible
-			user_text_view.height_request = estimated_height > 25 ? estimated_height : 25;
+			// Don't set height_request - let TextView size naturally to content
+			// With vexpand = false, it will size to fit the text content
 			
 			user_text_view.set_visible(true);
 			
@@ -676,11 +672,14 @@ namespace OLLMchat.UI
 			buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
+			GLib.debug("ChatView.append_tool_message: Input message: %s", message);
 			var renderer = new Markdown.PangoRender();
+			var pango_result = renderer.toPango(message);
+			GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
 			buffer.insert_markup(
 				ref end_iter,
 				"<span size=\"small\" color=\"#1a1a1a\">"
-					 + renderer.toPango(message) + "</span>\n",
+					 + pango_result + "</span>\n",
 				-1
 			);
 			

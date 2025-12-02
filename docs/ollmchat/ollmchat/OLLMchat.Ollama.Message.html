@@ -43,6 +43,7 @@
           <li class="creation_method"><a href="OLLMchat.Ollama.Message.Message.tool_reply.html">Message.tool_reply</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Message.Message.with_tools.html">Message.with_tools</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Message.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Ollama.Message.extract_last_code.html">extract_last_code</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Message.serialize_property.html">serialize_property</a></li>
           <li class="field"><a href="OLLMchat.Ollama.Message.message_interface.html">message_interface</a></li>
         </ul>
@@ -127,6 +128,11 @@
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Ollama.Message.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
             </span>
             <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Ollama.Message.extract_last_code.html" class="method">extract_last_code</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Extracts code content from markdown code block syntax in this 
+                message's content. Handles both <code>`language and </code>` formats. Returns the last code block if multiple exist.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Ollama.Message.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>

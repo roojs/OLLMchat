@@ -38,7 +38,7 @@ namespace OLLMchat.Ollama
 		public ChatResponse? streaming_response { get; set; default = null; }
 		public Prompt.BaseAgentPrompt prompt_assistant { get; set; default = new Prompt.BaseAgentPrompt(); }
 		public ChatPermission.Provider permission_provider { get; set; default = new ChatPermission.Dummy(); }
-		
+	
 		// Options properties - default to -1 (no value set) for numbers, empty string for strings
 		public int seed { get; set; default = -1; }
 		public double temperature { get; set; default = -1.0; }
@@ -73,6 +73,19 @@ namespace OLLMchat.Ollama
 		public signal void stream_chunk(string new_text, bool is_thinking, ChatResponse response);
 
 		/**
+		 * Emitted when streaming content (not thinking) is received from the chat API.
+		 * 
+		 * This signal is emitted only for regular content chunks, not thinking content.
+		 * Tools can connect to this signal to capture streaming messages and build strings,
+		 * including extracting code blocks as they arrive.
+		 * 
+		 * @param new_text The new content text chunk received (not thinking)
+		 * @param response The ChatResponse object containing the streaming state
+		 * @since 1.0
+		 */
+		public signal void stream_content(string new_text, ChatResponse response);
+
+		/**
 		 * Emitted when a tool sends a status message during execution.
 		 * 
 		 * @param message The status message from the tool
@@ -84,13 +97,22 @@ namespace OLLMchat.Ollama
 		public signal void tool_message(string message, Object? widget = null);
 
 		/**
-		 * Emitted when a request is about to be sent to the server.
-		 * This signal is emitted at the start of any API request, including
+		 * Emitted when a chat request is sent to the server.
+		 * This signal is emitted when the request is about to be sent, including
 		 * initial chat requests and automatic continuations after tool execution.
 		 * 
 		 * @since 1.0
 		 */
-		public signal void send_starting();
+		public signal void chat_send();
+
+		/**
+		 * Emitted when the streaming response starts (first chunk received).
+		 * This signal is emitted when the first chunk of the response is processed,
+		 * indicating that the server has started sending data back.
+		 * 
+		 * @since 1.0
+		 */
+		public signal void stream_start();
 
 		public Soup.Session? session = null;
 

@@ -230,11 +230,11 @@ namespace OLLMchat.Ollama
 				return response;
 			}
 			
-			// Add the assistant message with tool_calls to the conversation
-			this.messages.add(response.message);
-			
-			// Execute each tool call and add tool reply messages directly
-			foreach (var tool_call in response.message.tool_calls) {
+		// Add the assistant message with tool_calls to the conversation
+		this.messages.add(response.message);
+		
+		// Execute each tool call and add tool reply messages directly
+		foreach (var tool_call in response.message.tool_calls) {
 				GLib.debug("ChatCall.toolsReply: Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
@@ -246,11 +246,13 @@ namespace OLLMchat.Ollama
 				}
 				
 				// Show message that tool is being executed
-				this.client.tool_message("Executing tool: " + tool_call.function.name);
+				this.client.tool_message("Executing tool: `" + tool_call.function.name + "`");
 				
-				// Execute the tool
+				// Execute the tool with chat_call as first parameter
 				try {
-					var result = yield this.client.tools.get(tool_call.function.name).execute(tool_call.function.arguments);
+					var result = yield this.client.tools
+						.get(tool_call.function.name)
+						.execute(this, tool_call.function.arguments);
 					
 					// Log result summary (truncate if too long)
 					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
@@ -330,8 +332,8 @@ namespace OLLMchat.Ollama
 
 		private async ChatResponse execute_non_streaming() throws Error
 		{
-			// Emit signal that we're starting to send a request
-			this.client.send_starting();
+			// Emit signal that we're sending the request
+			this.client.chat_send();
 			
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
@@ -339,6 +341,9 @@ namespace OLLMchat.Ollama
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
 				throw new OllamaError.FAILED("Invalid JSON response");
 			}
+
+			// Emit stream_start signal when response is received (non-streaming)
+			this.client.stream_start();
 
 			var generator = new Json.Generator();
 			generator.set_root(root);
@@ -362,8 +367,8 @@ namespace OLLMchat.Ollama
 
 		private async ChatResponse execute_streaming() throws Error
 		{
-			// Emit signal that we're starting to send a request
-			this.client.send_starting();
+			// Emit signal that we're sending the request
+			this.client.chat_send();
 			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
@@ -437,8 +442,20 @@ namespace OLLMchat.Ollama
 				this.streaming_response = new ChatResponse(this.client, this);
 			}
 
+			// Emit stream_start signal on first chunk (when message is null, this is the first chunk)
+			if (this.streaming_response.message == null) {
+				this.client.stream_start();
+			}
+
 			// Process chunk
 			this.streaming_response.addChunk(chunk);
+
+			// Emit stream_content signal for content only (not thinking)
+			if (this.streaming_response.new_content.length > 0) {
+				this.client.stream_content(
+					this.streaming_response.new_content, this.streaming_response
+				);
+			}
 
 			// Emit signal if there's new content (either regular content or thinking)
 			// Also emit when done=true even if no new content, so we can finalize

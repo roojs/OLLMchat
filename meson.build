@@ -123,7 +123,6 @@ ollmchat_chatpermission_ui_src = files([
 ollmchat_tools_src = files([
   'Tools/ReadFile.vala',
   'Tools/EditFile.vala',
-  'Tools/EditFileChange.vala',
   'Tools/RunCommand.vala',
 ])
 

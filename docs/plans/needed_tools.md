@@ -17,7 +17,7 @@ This document outlines the tools that need to be implemented for the OLLMchat pr
 - Streaming support during tool execution
 - ReadFileTool implementation
 
-**⏳ Next Steps**: Implement remaining tools (RunTerminalCommandTool, WebSearchTool, CodebaseSearchTool)
+**⏳ Next Steps**: Implement remaining tools (ApplyDiffTool, RunTerminalCommandTool, WebSearchTool, CodebaseSearchTool)
 
 **📋 Future Enhancements (Not for Initial Implementation)**:
 - WebFetchTool authentication config file loading (`~/.config/ollama/tools/web_fetch.json`)
@@ -385,6 +385,52 @@ Tools are registered with the Ollama client using the `addTool` method:
 
 ---
 
+### Tool 2.5: ApplyDiffTool
+
+**Status**: ⏳ To be created (`Tools/ApplyDiff.vala`)
+
+**Priority**: 2 (Essential for applying standard diff formats)
+
+**Purpose**: Apply a standard unified diff format to a file. Similar to edit_file, but accepts standard diff format (as produced by `diff -u` or `git diff`) instead of structured edit objects. This allows applying diffs from external sources or tools that output standard diff format.
+
+**JSON Schema**:
+```json
+{
+  "name": "apply_diff",
+  "description": "Apply a standard unified diff format to a file.\n\nThis tool accepts a standard unified diff format (as produced by `diff -u` or `git diff`) and applies it to the target file. The diff should be in unified diff format with headers (--- and +++ lines) and hunk markers (@@).\n\nBefore calling this tool, you MUST first output the complete diff in a markdown code block with the 'diff' language tag, for example:\n\n```diff\n--- a/file.txt\n+++ b/file.txt\n@@ -1,3 +1,4 @@\n line 1\n-line 2\n+new line 2\n line 3\n+line 4\n```\n\nThen call this tool with the file path. The tool will extract the diff from your last code block and apply it to the file.\n\nYou should always read the file before applying a diff to ensure you have the latest version.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "file_path": {
+        "type": "string",
+        "description": "The path to the file to apply the diff to."
+      }
+    },
+    "required": ["file_path"]
+  }
+}
+```
+
+**Implementation Notes**:
+- Similar workflow to edit_file: LLM outputs diff in markdown code block first, then calls tool
+- Tool extracts diff from last code block in conversation
+- Parses standard unified diff format:
+  - Header lines: `--- a/file.txt` and `+++ b/file.txt`
+  - Hunk markers: `@@ -start,count +start,count @@`
+  - Context lines (unchanged)
+  - Lines prefixed with `-` (to be removed)
+  - Lines prefixed with `+` (to be added)
+- Converts unified diff to internal edit format
+- Reuses edit application logic from EditFile
+- Should validate diff format before applying
+- Should read file first to ensure latest version
+- Should build permission question showing file path
+
+**Example Permission Question**:
+- "Apply diff to file 'src/Example.vala'?"
+
+---
+
 ### Tool 3: RunTerminalCommandTool
 
 **Status**: ✅ Implemented (not tested) (`Tools/RunTerminalCommand.vala`, `Tools/RunTerminalCommandGtk.vala`)
@@ -743,6 +789,7 @@ src/OLLMchat/
 │   ├── ReadFileTool.vala              # Read file tool ✅
 │   ├── EditFile.vala                  # Edit file tool ✅
 │   ├── EditFileChange.vala            # Edit change class ✅
+│   ├── ApplyDiff.vala                 # Apply standard diff format tool ⏳
 │   ├── RunTerminalCommandTool.vala    # Terminal command tool ✅
 │   ├── HTML2Markdown.vala            # HTML to markdown converter ⏳
 │   ├── WebSearchTool.vala            # Web search tool ⏳
@@ -868,6 +915,20 @@ src/OLLMchat/
   - [x] Add to meson.build
   - [x] Add to TestWindow for testing
   - [ ] **Testing** - Comprehensive testing of EditFileTool functionality
+
+### Phase 7.5: ApplyDiffTool
+
+- [ ] **ApplyDiffTool** - Create `Tools/ApplyDiff.vala` (Priority 2)
+  - [ ] Implement unified diff format parsing
+  - [ ] Parse diff headers (--- and +++ lines)
+  - [ ] Parse hunk markers (@@ -start,count +start,count @@)
+  - [ ] Convert unified diff format to internal edit format
+  - [ ] Reuse edit application logic from EditFile
+  - [ ] Extract diff from last markdown code block (similar to EditFile)
+  - [ ] Validate diff format before applying
+  - [ ] Add permission question building
+  - [ ] Add to meson.build
+  - [ ] Test with various diff formats (git diff, unified diff, etc.)
 
 ### Phase 8: RunTerminalCommandTool
 

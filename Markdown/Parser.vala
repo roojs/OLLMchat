@@ -473,8 +473,7 @@ namespace OLLMchat.Markdown
 		 */
 		public void add(string in_chunk, bool is_end_of_chunks = false)
 		{
-			GLib.debug("Parser.add: %s", in_chunk);
-			
+			GLib.debug("add(%s)", in_chunk);
 			var chunk = this.leftover_chunk + in_chunk; // Prepend leftover_chunk so it's processed first
 			this.leftover_chunk = ""; // Clear leftover_chunk after using it
 			var chunk_pos = 0;

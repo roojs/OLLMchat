@@ -62,11 +62,8 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			base(client);
 		}
 		
-		protected override bool prepare(Json.Object parameters)
+		protected override bool build_perm_question()
 		{
-			// Read parameters into object properties
-			this.readParams(parameters);
-			
 			// Validate required parameter
 			if (this.file_path == "") {
 				return false;
@@ -75,11 +72,11 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			// Build permission question based on parameters
 			string question;
 			if (this.read_entire_file) {
-				question = @"Read entire file '$(this.file_path)'?";
+				question = "Read entire file '" + this.file_path + "'?";
 			} else if (this.start_line > 0 && this.end_line > 0) {
-				question = @"Read file '$(this.file_path)' (lines $(this.start_line)-$(this.end_line))?";
+				question = "Read file '" + this.file_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
 			} else {
-				question = @"Read file '$(this.file_path)'?";
+				question = "Read file '" + this.file_path + "'?";
 			}
 			
 			// Set permission properties
@@ -90,10 +87,8 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			return true;
 		}
 		
-		protected override string execute_tool(Json.Object parameters) throws Error
+		protected override string execute_tool(Ollama.ChatCall chat_call, Json.Object parameters) throws Error
 		{
-			// Read parameters into object properties
-			this.readParams(parameters);
 			
 			// Normalize and validate file path
 			var file_path = this.normalize_file_path(this.file_path);

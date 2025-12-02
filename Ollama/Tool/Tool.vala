@@ -494,31 +494,45 @@ namespace OLLMchat.Ollama
 		}
 		
 		/**
-		 * Abstract method for tools to prepare permission information.
+		 * Reads parameters from JSON into object properties.
 		 * 
-		 * Tools implement this method to extract and build permission information
+		 * Tools can override this to read their specific parameters.
+		 * 
+		 * @param parameters The parameters from the Ollama function call
+		 */
+		protected virtual void prepare(Json.Object parameters)
+		{
+			this.readParams(parameters);
+		}
+		
+		/**
+		 * Abstract method for tools to build permission information.
+		 * 
+		 * Tools implement this method to build permission information
 		 * from their specific parameters. Sets permission_question, permission_target_path,
 		 * and permission_operation properties.
 		 * 
-		 * @param parameters The parameters from the Ollama function call
 		 * @return true if permission needs to be asked, false if permission check can be skipped
 		 */
-		protected abstract bool prepare(Json.Object parameters);
+		protected abstract bool build_perm_question();
 		
 		/**
 		 * Public method that handles permission checking before execution.
 		 * 
-		 * Calls prepare() to populate permission properties, then checks permission
-		 * if needed, and finally calls execute_tool() to perform the actual operation.
+		 * Calls prepare() to read parameters, then build_perm_question() to populate permission properties,
+		 * checks permission if needed, and finally calls execute_tool() to perform the actual operation.
 		 * 
+		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public virtual async string execute(Json.Object parameters)
+		public virtual async string execute(ChatCall chat_call, Json.Object parameters)
 		{
-			 
+			// Read parameters
+			this.prepare(parameters);
+			
 			// Check permission if needed
-			if (this.prepare(parameters)) {
+			if (this.build_perm_question()) {
 				if (!(yield this.client.permission_provider.request(this))) {
 					return "ERROR: Permission denied: " + this.permission_question;
 				}
@@ -526,7 +540,7 @@ namespace OLLMchat.Ollama
 			
 			// Execute the tool
 			try {
-				return this.execute_tool(parameters);
+				return this.execute_tool(chat_call, parameters);
 			} catch (Error e) {
 				return "ERROR: " + e.message;
 			}
@@ -538,9 +552,10 @@ namespace OLLMchat.Ollama
 		 * This method contains the tool-specific implementation that performs
 		 * the actual operation after permission has been granted.
 		 * 
+		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
 		 * @return String content result (will be wrapped in JSON by execute())
 		 */
-		protected abstract string execute_tool(Json.Object parameters) throws Error;
+		protected abstract string execute_tool(ChatCall chat_call, Json.Object parameters) throws Error;
 	}
 }

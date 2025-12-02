@@ -37,10 +37,10 @@
           <li class="virtual_property"><a href="OLLMchat.Tools.RunCommand.parameter_description.html">parameter_description</a></li>
           <li class="creation_method"><a href="OLLMchat.Tools.RunCommand.RunCommand.html">RunCommand</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.append_to_widget.html">append_to_widget</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.build_perm_question.html">build_perm_question</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.create_terminal_widget.html">create_terminal_widget</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute.html">execute</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute_tool.html">execute_tool</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.prepare.html">prepare</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.send_or_append_message.html">send_or_append_message</a></li>
         </ul>
       </div>
@@ -101,24 +101,24 @@
             <div class="leaf_brief_description"><span class="brief_description">Appends text to the terminal widget. Does nothing in base class, 
                 appends to SourceView in GTK version.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.RunCommand.build_perm_question.html" class="virtual_method">build_perm_question</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_type"><span class="class">Object</span></span>? <b><a href="OLLMchat.Tools.RunCommand.create_terminal_widget.html" class="virtual_method">create_terminal_widget</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Creates a terminal widget for displaying command output. Returns null 
                 in base class, widget in GTK version.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute.html" class="virtual_method">execute</a></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute.html" class="virtual_method">execute</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.ChatCall.html" class="class">ChatCall</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Override execute() to handle complex commands differently and execute 
                 async subprocess. For complex commands, we use a unique path that won't match cache entries, effectively forcing a new permission 
                 request each time.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute_tool.html" class="virtual_method">execute_tool</a></b> (<span class="main_type"><span class="class">Object</span></span> parameters) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute_tool.html" class="virtual_method">execute_tool</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.ChatCall.html" class="class">ChatCall</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Required by base class, but we handle everything in execute().</span>
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.RunCommand.prepare.html" class="virtual_method">prepare</a></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
-            </span>
-            <div class="leaf_brief_description">
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tools.RunCommand.send_or_append_message.html" class="virtual_method">send_or_append_message</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
             </span>
@@ -128,34 +128,35 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-94')">All known members inherited from class OLLMchat.Ollama.Tool</div>
-          <div class="content" id="box-content-94">
+          <div class="headline" onclick="toggle_box (this, 'box-content-92')">All known members inherited from class OLLMchat.Ollama.Tool</div>
+          <div class="content" id="box-content-92">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.Ollama.Tool.active.html">active</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.build_perm_question.html">build_perm_question</a></li>
                 <li class="property"><a href="OLLMchat.Ollama.Tool.client.html">client</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.description.html">description</a></li>
                 <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.execute.html">execute</a></li>
                 <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.execute_tool.html">execute_tool</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.find_property.html">find_property</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.function.html">function</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="property"><a href="OLLMchat.Ollama.Tool.function.html">function</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.get_property.html">get_property</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.name.html">name</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.normalize_file_path.html">normalize_file_path</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.parameter_description.html">parameter_description</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.parse_parameter_description_string.html">parse_parameter_description_string</a></li>
                 <li class="property"><a href="OLLMchat.Ollama.Tool.permission_operation.html">permission_operation</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.permission_question.html">permission_question</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="property"><a href="OLLMchat.Ollama.Tool.permission_question.html">permission_question</a></li>
                 <li class="property"><a href="OLLMchat.Ollama.Tool.permission_target_path.html">permission_target_path</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.prepare.html">prepare</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.prepare.html">prepare</a></li>
                 <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.readParams.html">readParams</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.serialize_property.html">serialize_property</a></li>
                 <li class="method"><a href="OLLMchat.Ollama.Tool.set_property.html">set_property</a></li>
@@ -165,8 +166,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-95')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-95">
+          <div class="headline" onclick="toggle_box (this, 'box-content-93')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-93">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -232,8 +233,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-96')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-96">
+          <div class="headline" onclick="toggle_box (this, 'box-content-94')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-94">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>

@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.Ollama.Tool.function &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.Ollama.Tool.build_perm_question &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.Ollama.Tool.function &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.Ollama.Tool.build_perm_question &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -34,7 +34,7 @@
           <li class="property"><a href="OLLMchat.Ollama.Tool.active.html">active</a></li>
           <li class="property"><a href="OLLMchat.Ollama.Tool.client.html">client</a></li>
           <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.description.html">description</a></li>
-          <li class="property">function</li>
+          <li class="property"><a href="OLLMchat.Ollama.Tool.function.html">function</a></li>
           <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.name.html">name</a></li>
           <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.parameter_description.html">parameter_description</a></li>
           <li class="property"><a href="OLLMchat.Ollama.Tool.permission_operation.html">permission_operation</a></li>
@@ -42,7 +42,7 @@
           <li class="property"><a href="OLLMchat.Ollama.Tool.permission_target_path.html">permission_target_path</a></li>
           <li class="property"><a href="OLLMchat.Ollama.Tool.tool_type.html">tool_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Tool.Tool.html">Tool</a></li>
-          <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.build_perm_question.html">build_perm_question</a></li>
+          <li class="abstract_method">build_perm_question</li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.execute.html">execute</a></li>
           <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.execute_tool.html">execute_tool</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.find_property.html">find_property</a></li>
@@ -56,10 +56,23 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">function</h1>
+        <h1 class="main_title">build_perm_question</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Ollama.Function.html" class="class">Function</a></span>? <b><span class="property">function</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="abstract_method">build_perm_question</span></b> ()
+        </div>
+        <div class="description">
+          <p>Abstract method for tools to build permission information.</p>
+          <p>Tools implement this method to build permission information from their specific parameters. Sets permission_question, 
+            permission_target_path, and permission_operation properties.</p>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>true if permission needs to be asked, false if permission check can be skipped </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

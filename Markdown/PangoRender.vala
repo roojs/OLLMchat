@@ -70,6 +70,11 @@ namespace OLLMchat.Markdown
 			this.add(html_text);
 			this.flush();
 			
+			// Close any remaining open tags
+			while (this.open_tags.size > 0) {
+				this.on_end();
+			}
+			
 			return this.pango_markup.str;
 		}
 		

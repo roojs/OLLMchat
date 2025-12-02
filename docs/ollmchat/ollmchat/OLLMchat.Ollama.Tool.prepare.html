@@ -42,13 +42,14 @@
           <li class="property"><a href="OLLMchat.Ollama.Tool.permission_target_path.html">permission_target_path</a></li>
           <li class="property"><a href="OLLMchat.Ollama.Tool.tool_type.html">tool_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Ollama.Tool.Tool.html">Tool</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.build_perm_question.html">build_perm_question</a></li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.execute.html">execute</a></li>
           <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.execute_tool.html">execute_tool</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.find_property.html">find_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.get_property.html">get_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.normalize_file_path.html">normalize_file_path</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.parse_parameter_description_string.html">parse_parameter_description_string</a></li>
-          <li class="abstract_method">prepare</li>
+          <li class="virtual_method">prepare</li>
           <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.readParams.html">readParams</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Ollama.Tool.set_property.html">set_property</a></li>
@@ -58,26 +59,17 @@
         <h1 class="main_title">prepare</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="abstract_method">prepare</span></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
+        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">prepare</span></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
         </div>
         <div class="description">
-          <p>Abstract method for tools to prepare permission information.</p>
-          <p>Tools implement this method to extract and build permission information from their specific parameters. Sets permission_question, 
-            permission_target_path, and permission_operation properties.</p>
+          <p>Reads parameters from JSON into object properties.</p>
+          <p>Tools can override this to read their specific parameters.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">parameters</td>
               <td>
                 <p>The parameters from the Ollama function call </p>
-              </td>
-            </tr>
-          </table>
-          <h2 class="main_title">Returns:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td>
-                <p>true if permission needs to be asked, false if permission check can be skipped </p>
               </td>
             </tr>
           </table>

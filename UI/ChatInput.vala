@@ -260,7 +260,10 @@ namespace OLLMchat.UI
 			this.buffer.get_end_iter(out end_iter);
 			var text = this.buffer.get_text(start_iter, end_iter, false);
 
-			if (text.strip().length < 1) {
+			// Trim trailing line breaks from the interface
+			text = text.strip();
+
+			if (text.length < 1) {
 				return;
 			}
 			this.send_clicked(text);

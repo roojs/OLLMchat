@@ -32,14 +32,15 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="virtual_property"><a href="OLLMchat.Tools.EditFile.description.html">description</a></li>
-          <li class="property"><a href="OLLMchat.Tools.EditFile.edits.html">edits</a></li>
+          <li class="property"><a href="OLLMchat.Tools.EditFile.end_line.html">end_line</a></li>
           <li class="property"><a href="OLLMchat.Tools.EditFile.file_path.html">file_path</a></li>
           <li class="virtual_property"><a href="OLLMchat.Tools.EditFile.name.html">name</a></li>
           <li class="virtual_property"><a href="OLLMchat.Tools.EditFile.parameter_description.html">parameter_description</a></li>
+          <li class="property"><a href="OLLMchat.Tools.EditFile.start_line.html">start_line</a></li>
           <li class="creation_method"><a href="OLLMchat.Tools.EditFile.EditFile.html">EditFile</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Tools.EditFile.build_perm_question.html">build_perm_question</a></li>
           <li class="virtual_method">execute</li>
           <li class="virtual_method"><a href="OLLMchat.Tools.EditFile.execute_tool.html">execute_tool</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Tools.EditFile.prepare.html">prepare</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.EditFile.readParams.html">readParams</a></li>
           <li class="signal"><a href="OLLMchat.Tools.EditFile.after_change.html">after_change</a></li>
           <li class="signal"><a href="OLLMchat.Tools.EditFile.before_change.html">before_change</a></li>
@@ -49,7 +50,7 @@
         <h1 class="main_title">execute</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">execute</span></b> (<span class="main_type"><span class="class">Object</span></span> parameters)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">execute</span></b> (<span class="main_type"><a href="OLLMchat.Ollama.ChatCall.html" class="class">ChatCall</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters)
         </div>
         <div class="description">
           <p>Override execute() to handle permission flow: Request WRITE permission (which automatically includes READ) to generate diff and write 

@@ -109,6 +109,48 @@ namespace OLLMchat.Ollama
 			this.tool_calls = tool_calls;
 		}
 
+		/**
+		 * Extracts code content from markdown code block syntax in this message's content.
+		 * Handles both ```language and ``` formats.
+		 * Returns the last code block if multiple exist.
+		 */
+		public string? extract_last_code()
+		{
+			var lines = this.content.split("\n");
+			
+			// Go backwards to find the last code block
+			bool in_code_block = false;
+			string code = "";
+			
+			for (int i = lines.length - 1; i >= 0; i--) {
+				var line = lines[i];
+				
+				if (line.has_prefix("```")) {
+					if (in_code_block) {
+						// Found opening ``` - return the code we've collected
+						return code; // yeap if we delete stuff.. then we will put an empty block..
+						
+					} 
+						// Found closing ``` - start collecting
+					in_code_block = true;
+					continue;
+				}
+				if (!in_code_block) {
+					continue;
+				}
+				// Prepend line to code (since we're going backwards)
+			
+				code = (code == "") ? line : line + "\n" + code;
+				
+				
+			}
+			
+			// Handle case where code block isn't closed (opening ``` at start)
+			// if it's no closed.. then its an error..
+			
+			return null;
+		}
+
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
