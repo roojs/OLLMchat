@@ -6,7 +6,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ## Step-by-Step Implementation Plan
 
-### Step 1: Move Parser to Markdown namespace
+### Step 1: Move Parser to Markdown namespace ✓
 
 **Files**: `MarkdownGtk/Parser.vala` → `Markdown/Parser.vala`, `MarkdownGtk/RenderBase.vala`, `meson.build`, `test-markdown-parser.vala`
 
@@ -22,7 +22,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 2: Move PangoRender to Markdown namespace
+### Step 2: Move PangoRender to Markdown namespace ✓
 
 **Files**: `MarkdownGtk/PangoRender.vala` → `Markdown/PangoRender.vala`, `UI/ChatView.vala`, `meson.build`
 
@@ -37,7 +37,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 3: Move DummyRenderer to Markdown namespace (keep old API)
+### Step 3: Move DummyRenderer to Markdown namespace (keep old API) ✓
 
 **Files**: `MarkdownGtk/DummyRenderer.vala` → `Markdown/DummyRenderer.vala`, `test-markdown-parser.vala`, `meson.build`
 
@@ -53,7 +53,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 4: Update visibility modifiers for library API
+### Step 4: Update visibility modifiers for library API ✓
 
 **Files**: `Markdown/Parser.vala`, `Markdown/PangoRender.vala`, `Markdown/DummyRenderer.vala`, `MarkdownGtk/RenderBase.vala`
 
@@ -68,7 +68,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 5: Add Gtk.Box support to Render (additive changes)
+### Step 5: Add Gtk.Box support to Render (additive changes) ✓
 
 **Files**: `MarkdownGtk/Render.vala`
 
@@ -85,7 +85,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 6: Implement lazy TextView creation in Render
+### Step 6: Implement lazy TextView creation in Render ✓
 
 **Files**: `MarkdownGtk/Render.vala`
 
@@ -101,7 +101,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 7: Add end_block() method to Render
+### Step 7: Add end_block() method to Render ✓
 
 **Files**: `MarkdownGtk/Render.vala`
 
@@ -118,7 +118,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 8: Update ChatView to create Render with Gtk.Box
+### Step 8: Update ChatView to create Render with Gtk.Box ✓
 
 **Files**: `UI/ChatView.vala`
 
@@ -134,7 +134,7 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 ---
 
-### Step 9: Update ChatView to call end_block() and add frames to box
+### Step 9: Update ChatView to call end_block() and add frames to box ✓
 
 **Files**: `UI/ChatView.vala`
 
@@ -199,10 +199,12 @@ This refactoring is broken into 12 independent steps that can be reviewed separa
 
 This plan breaks the refactoring into 12 reviewable steps:
 
-- Steps 1-4: Namespace reorganization (independent, can be done first)
-- Steps 5-7: Render refactoring (additive, maintains backward compatibility initially)
-- Steps 8-9: ChatView integration (uses new Render API)
-- Steps 10-11: Cleanup (removes old code)
-- Step 12: Test updates (final cleanup)
+- Steps 1-4: Namespace reorganization (independent, can be done first) ✓
+- Steps 5-7: Render refactoring (additive, maintains backward compatibility initially) ✓
+- Steps 8-9: ChatView integration (uses new Render API) ✓
+- Steps 10-11: Cleanup (removes old code) - TODO
+- Step 12: Test updates (final cleanup) - TODO
 
 Each step keeps the code compiling and functional, allowing for incremental review and testing.
+
+**Progress: 9/12 steps completed (75%)**

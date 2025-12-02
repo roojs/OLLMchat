@@ -41,7 +41,7 @@ namespace OLLMchat.UI
 		private Gtk.ScrolledWindow scrolled_window;
 		internal Gtk.TextView text_view { get; private set; }
 		internal Gtk.TextBuffer buffer { get; private set; }
-		private Gtk.Box assistant_message_box;
+		private Gtk.Box text_view_box;
 		private MarkdownGtk.Render assistant_renderer;
 		private string last_line = "";
 		private int last_chunk_start = 0;
@@ -58,10 +58,8 @@ namespace OLLMchat.UI
 		private string? code_block_language = null;
 		private GtkSource.View? current_source_view = null;
 		private GtkSource.Buffer? current_source_buffer = null;
-		private Gtk.TextChildAnchor? code_block_anchor = null;
 		private Gtk.TextMark? code_block_end_mark = null;
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
-		private int last_scrolled_width = 0;
 		private double last_scroll_pos = 0.0;
 
 		/**
@@ -100,23 +98,14 @@ namespace OLLMchat.UI
 			this.buffer = this.text_view.buffer;
 
 			// Create a box to wrap the text view with margins
-			var text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			this.text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
 			};
-			text_view_box.append(this.text_view);
+			this.text_view_box.append(this.text_view);
 
-			// Create box for assistant message content (Render will add TextViews here)
-			this.assistant_message_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = true
-			};
-			
-			// Create single Render instance for assistant messages
-			this.assistant_renderer = new MarkdownGtk.Render.with_box(this.assistant_message_box);
-			
-			// Add assistant message box to text_view_box
-			text_view_box.append(this.assistant_message_box);
+			// Create single Render instance for assistant messages (uses text_view_box)
+			this.assistant_renderer = new MarkdownGtk.Render.with_box(this.text_view_box);
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
@@ -128,16 +117,6 @@ namespace OLLMchat.UI
 
 			
 			
-			// Connect to scrollbar adjustment changes to detect resize
-			this.scrolled_window.hadjustment.changed.connect(this.update_user_message_widths);
-			
-			// Update widths when widget is first realized
-			this.text_view.realize.connect(() => {
-				GLib.Idle.add(() => {
-					this.update_user_message_widths();
-					return false;
-				});
-			});
 		}
 
 		/**
@@ -628,6 +607,9 @@ namespace OLLMchat.UI
 					// Clean up renderer
 					this.current_block_renderer = null;
 					
+					// Call assistant_renderer.end_block() to create new TextView for next block
+					this.assistant_renderer.end_block();
+					
 					// Reset last_line for next block
 					this.last_line = "";
 					// Reset content_state to NONE so new blocks can be started
@@ -720,7 +702,6 @@ namespace OLLMchat.UI
 			this.code_block_language = null;
 			this.current_source_view = null;
 			this.current_source_buffer = null;
-			this.code_block_anchor = null;
 			if (this.code_block_end_mark != null) {
 				this.buffer.delete_mark(this.code_block_end_mark);
 				this.code_block_end_mark = null;
@@ -1161,27 +1142,20 @@ namespace OLLMchat.UI
 			// Style the frame with white background and rounded corners
 			frame.add_css_class("code-block-box");
 
-			// Get current position in TextView
-			// TEST: Commenting out position calculation to test inserting at end
-			// Gtk.TextIter insert_pos;
-			// if (this.current_block_end != null) {
-			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_end);
-			// } else if (this.current_block_start != null) {
-			// 	this.buffer.get_iter_at_mark(out insert_pos, this.current_block_start);
-			// } else {
-			// 	this.buffer.get_end_iter(out insert_pos);
-			// }
-
-			// Add frame using the generic method at end (testing)
-			this.code_block_anchor = this.add_widget_frame(frame);
+			// Add frame directly to assistant_renderer.box
+			// Track this frame for width updates
+			this.message_widgets.add(frame);
 			
-			// Insert a placeholder line after the anchor to mark the end of the code block
-			// This helps with scrolling - we can scroll to this mark instead of end of buffer
-			Gtk.TextIter after_anchor;
-			this.buffer.get_iter_at_child_anchor(out after_anchor, this.code_block_anchor);
-			after_anchor.forward_char(); // Move past the anchor
-			this.buffer.insert(ref after_anchor, "\n", -1);
-			this.code_block_end_mark = this.buffer.create_mark(null, after_anchor, true);
+			// Add frame to box
+			this.assistant_renderer.box.append(frame);
+			
+			frame.set_visible(true);
+			
+			// Scroll to bottom to show new content
+			this.scroll_to_bottom();
+			
+			// No anchor needed for box-based approach
+			this.code_block_end_mark = null;
 
 			// Set reasonable size for code block (smaller for single-line content)
 			this.current_source_view.height_request = 25;
@@ -1257,74 +1231,11 @@ namespace OLLMchat.UI
 			// SourceView widget will remain in TextView, just stop writing to it
 			this.current_source_view = null;
 			this.current_source_buffer = null;
-			this.code_block_anchor = null;
 		}
 
 		/**
 		 * Updates the width of a single user message widget to match available space.
 		 */
-		/**
-		 * Updates the width of a message frame (user message or code block) to match available space.
-		 */
-		private void update_message_width(Gtk.Frame frame)
-		{
-			// Use ScrolledWindow width as the base, as that's what actually resizes
-			if (this.scrolled_window.get_width() <= 1) {
-				return; // Width not yet available
-			}
-
-			// Get the child widget (TextView for user messages, SourceView for code blocks)
-			var child = frame.get_child();
-			if (child == null) {
-				return;
-			}
-
-			// Calculate available width
-			// Account for:
-			// - Main TextView margins (external to main TextView)
-			// - Frame margins (external to Frame)
-			// - Internal margins for TextView (if it's a TextView)
-			var available_width = this.scrolled_window.get_width()
-				- this.text_view.margin_start - this.text_view.margin_end 
-				- frame.margin_start - frame.margin_end
-				- 50; // Account for padding and other spacing
-
-			// If it's a TextView, also account for its internal margins
-			if (child is Gtk.TextView) {
-				var text_view = (Gtk.TextView) child;
-				available_width -= text_view.margin_start + text_view.margin_end;
-			}
-
-			if (available_width > 0) {
-				child.width_request = available_width;
-			}
-		}
-
-		/**
-		 * Updates the width of all user message widgets to match available space.
-		 */
-		private void update_user_message_widths()
-		{
-			// Use ScrolledWindow width as the base, as that's what actually resizes
-			if (this.scrolled_window.get_width() <= 1) {
-				return; // Width not yet available
-			}
-			
-			// Only update if the width actually changed
-			if (this.scrolled_window.get_width() == this.last_scrolled_width) {
-				return;
-			}
-			
-			GLib.debug("ChatView: resize detected, width=%d", this.scrolled_window.get_width());
-			this.last_scrolled_width = this.scrolled_window.get_width();
-
-			foreach (var widget in this.message_widgets) {
-				if (widget is Gtk.Frame) {
-					this.update_message_width((Gtk.Frame) widget);
-				}
-			}
-		}
-		
 		/**
 		 * Adds a blank line at the end of the buffer if the buffer is not empty.
 		 * 
@@ -1349,11 +1260,9 @@ namespace OLLMchat.UI
 		 * The widget must be a Gtk.Frame.
 		 * 
 		 * @param frame The frame widget to add
-		 * @return The TextChildAnchor that can be used to remove the widget later
 		 * @since 1.0
 		 */
-		[CCode (return_value_type = "GtkTextChildAnchor*", transfer = "full")]
-		public Gtk.TextChildAnchor add_widget_frame(Gtk.Frame frame)
+		public void add_widget_frame(Gtk.Frame frame)
 		{
 			// Ensure frame is unparented before adding (required for GTK4)
 			if (frame.get_parent() != null) {
@@ -1363,33 +1272,13 @@ namespace OLLMchat.UI
 			// Track this frame for width updates
 			this.message_widgets.add(frame);
 			
-			// Get end position and create child anchor
-			Gtk.TextIter end_iter;
-			this.buffer.get_end_iter(out end_iter);
-			var anchor = this.buffer.create_child_anchor(end_iter);
-			this.text_view.add_child_at_anchor(frame, anchor);
-			
-			// Store anchor in frame for later retrieval
-			frame.set_data<Gtk.TextChildAnchor>("anchor", anchor);
-			
-			// Update width after widget is shown - use Idle to ensure layout is complete
-			GLib.Idle.add(() => {
-				this.update_message_width(frame);
-				return false;
-			});
-			
-			// Insert newline after the anchor
-			Gtk.TextIter after_anchor;
-			this.buffer.get_iter_at_child_anchor(out after_anchor, anchor);
-			after_anchor.forward_char();
-			this.buffer.insert(ref after_anchor, "\n", -1);
+			// Add frame directly to assistant_renderer.box
+			this.assistant_renderer.box.append(frame);
 			
 			frame.set_visible(true);
 			
 			// Scroll to bottom to show new content
 			this.scroll_to_bottom();
-			
-			return anchor;
 		}
 		
 		/**
