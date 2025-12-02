@@ -47,13 +47,35 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class Render : Markdown.RenderBase
 	{
-		public Gtk.TextBuffer buffer { get; private set; }
-		public Gtk.TextMark start_mark { get; private set; }
-		public Gtk.TextMark end_mark { get; private set; }
-		public Gtk.TextMark tmp_start { get; private set; }
-		public Gtk.TextMark tmp_end { get; private set; }
-		public TopState top_state { get; private set; }
-		public State current_state { get; internal set; }
+		public Gtk.TextBuffer? buffer { get; private set; default = null; }
+		public Gtk.TextMark? start_mark { get; private set; default = null; }
+		public Gtk.TextMark? end_mark { get; private set; default = null; }
+		public Gtk.TextMark? tmp_start { get; private set; default = null; }
+		public Gtk.TextMark? tmp_end { get; private set; default = null; }
+		public TopState? top_state { get; private set; default = null; }
+		public State? current_state { get; internal set; default = null; }
+		
+		// New properties for Gtk.Box model
+		public Gtk.Box? box { get; private set; default = null; }
+		public Gtk.TextView? current_textview { get; private set; default = null; }
+		public Gtk.TextBuffer? current_buffer { get; private set; default = null; }
+		
+		/**
+		 * Creates a new Render instance with a Gtk.Box.
+		 * 
+		 * The Render will create TextViews as needed and add them to the box.
+		 * 
+		 * @param box The Gtk.Box to add TextViews to
+		 */
+		public Render.with_box(Gtk.Box box)
+		{
+			base();
+			this.box = box;
+			
+			// Create top_state early (it won't initialize tag/marks until buffer is ready)
+			this.top_state = new TopState(this);
+			this.current_state = this.top_state;
+		}
 		
 		/**
 		 * Creates a new Render instance.
@@ -80,10 +102,72 @@ namespace OLLMchat.MarkdownGtk
 			// Create top_state
 			this.top_state = new TopState(this);
 			
+			// Initialize TopState's tag and marks (for old constructor path)
+			this.top_state.initialize();
+			
 			// Initialize current_state to top_state (never null)
 			this.current_state = this.top_state;
 		}
 		
+		/**
+		 * Ensures that a TextView is created for box-based rendering.
+		 * 
+		 * If using box-based constructor and current_textview is null, creates
+		 * a new TextView, adds it to the box, and initializes all necessary state.
+		 * Returns immediately if TextView already exists or if not using box-based mode.
+		 */
+		internal void ensure_textview_created()
+		{
+			// Return early if TextView already exists or not using box-based mode
+			if (this.current_textview != null || this.box == null) {
+				return;
+			}
+			
+			// Create new TextView
+			this.current_textview = new Gtk.TextView() {
+				editable = false,
+				cursor_visible = false,
+				wrap_mode = Gtk.WrapMode.WORD,
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Get the buffer from the TextView
+			this.current_buffer = this.current_textview.buffer;
+			
+			// Set the old buffer property for compatibility (State/TopState use render.buffer)
+			this.buffer = this.current_buffer;
+			
+			// Add TextView to box at bottom
+			this.box.append(this.current_textview);
+			
+			// Create marks at the end of the buffer
+			Gtk.TextIter iter;
+			this.buffer.get_end_iter(out iter);
+			this.start_mark = this.buffer.create_mark(null, iter, true);
+			this.end_mark = this.buffer.create_mark(null, iter, true);
+			
+			// Create temporary marks after end_mark for incremental parsing
+			this.buffer.get_iter_at_mark(out iter, this.end_mark);
+			this.tmp_start = this.buffer.create_mark(null, iter, true);
+			this.tmp_end = this.buffer.create_mark(null, iter, true);
+			
+			// Initialize TopState's tag and marks now that buffer is ready
+			// (TopState was created in constructor, but needs buffer to initialize)
+			this.top_state.initialize();
+		}
+		
+		/**
+		 * Override add() to implement lazy TextView creation for box-based rendering.
+		 */
+		public override void add(string text)
+		{
+			// Ensure TextView is created if needed (for box-based mode)
+			this.ensure_textview_created();
+			
+			// Call parent add() to process the text
+			base.add(text);
+		}
 		
 		// Callback methods for parser
 		

@@ -26,13 +26,13 @@ namespace OLLMchat.MarkdownGtk
 	 */
 	public class State
 	{
-		private static uint tag_counter = 0;
+		internal static uint tag_counter = 0;
 		
 		public State? parent { get; private set; }
 		public Gee.ArrayList<State> cn { get; private set; default = new Gee.ArrayList<State>(); }
-		protected Gtk.TextMark? start { public get;  set; }
-		protected Gtk.TextMark? end { get;  set; }
-		public Gtk.TextTag style { get; private set; }
+		protected Gtk.TextMark? start { public get; set; default = null; }
+		protected Gtk.TextMark? end { get; set; default = null; }
+		public Gtk.TextTag? style { get; protected set; default = null; }
 		public Render render { get; private set; }
 		
 		/**
@@ -48,22 +48,43 @@ namespace OLLMchat.MarkdownGtk
 			this.parent = parent;
 			this.render = render;
 			
-			// Generate unique tag name
-			string tag_name = "style-%u".printf(tag_counter++);
-			
-			// Create and register TextTag with buffer's tag table
-			this.style = this.render.buffer.create_tag(tag_name, null);
-			
-			// Create marks at insertion point (from parent's end mark)
-			Gtk.TextIter iter;
-			if (parent != null) {
-				this.render.buffer.get_iter_at_mark(out iter, parent.end);
-			} else {
-				this.render.buffer.get_iter_at_mark(out iter, this.render.start_mark);
+			// Skip tag and mark creation for TopState (parent == null)
+			// TopState will initialize these in ensure_textview_created()
+			if (parent == null) {
+				// TopState - will be initialized later (properties default to null)
+				return;
 			}
+		 
+			// Initialize tag and marks from parent's end mark
+			this.initialize_from_parent(parent);
+		}
+		
+		/**
+		 * Initializes this state's tag and marks.
+		 * Can be called from State constructor or from Render for TopState.
+		 * 
+		 * @param insertion_point The TextMark to use as the insertion point for marks
+		 */
+		internal void initialize_tag_and_marks(Gtk.TextMark insertion_point)
+		{
+			// Generate unique tag name and create TextTag
+			this.style = this.render.buffer.create_tag("style-%u".printf(tag_counter++), null);
+			
+			// Create marks at insertion point
+			Gtk.TextIter iter;
+			this.render.buffer.get_iter_at_mark(out iter, insertion_point);
 			
 			this.start = this.render.buffer.create_mark(null, iter, true);
 			this.end = this.render.buffer.create_mark(null, iter, true);
+		}
+		
+		/**
+		 * Initializes this state's tag and marks from parent's end mark.
+		 * Used by regular State instances (not TopState).
+		 */
+		private void initialize_from_parent(State parent)
+		{
+			this.initialize_tag_and_marks(parent.end);
 		}
 		
 		/**

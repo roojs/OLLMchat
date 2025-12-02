@@ -36,6 +36,21 @@ namespace OLLMchat.MarkdownGtk
 			base(null, render);
 		}
 		
+		/**
+		 * Initializes TopState's tag and marks after the buffer is ready.
+		 * Called from ensure_textview_created() when using box-based mode.
+		 */
+		internal void initialize()
+		{
+			// Initialize tag and marks using render's start_mark as insertion point
+			this.initialize_tag_and_marks(this.render.start_mark);
+			
+			// TopState's end mark should start at the same position as render's end_mark
+			Gtk.TextIter iter;
+			this.render.buffer.get_iter_at_mark(out iter, this.render.end_mark);
+			this.render.buffer.move_mark(this.end, iter);
+		}
+		
 		public override void close_state()
 		{
 			// TopState cannot be closed - reset to top_state
@@ -49,6 +64,9 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public new void add_text(string text)
 		{
+			// Ensure TextView is created if needed (for box-based mode)
+			this.render.ensure_textview_created();
+			
 			base.add_text(text);
 			// Update render's end_mark
 			Gtk.TextIter iter;
@@ -63,6 +81,9 @@ namespace OLLMchat.MarkdownGtk
 		 */
 		public new State add_state()
 		{
+			// Ensure TextView is created if needed (for box-based mode)
+			this.render.ensure_textview_created();
+			
 			var new_state = base.add_state();
 			// Update render's end_mark
 			Gtk.TextIter iter;

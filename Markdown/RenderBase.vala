@@ -43,7 +43,7 @@ namespace OLLMchat.Markdown
 		 * 
 		 * @param text The markdown text to process
 		 */
-		public void add(string text)
+		public virtual void add(string text)
 		{
 			this.parser.add(text);
 		}
