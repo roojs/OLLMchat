@@ -81,20 +81,20 @@ namespace OLLMchat.Markdown
 		public abstract void on_end();
 		
 		// Block-level callbacks (can have default empty implementations)
-		internal virtual void on_h(uint level) {}
-		internal virtual void on_p() {}
-		internal virtual void on_ul(bool is_tight, char mark) {}
-		internal virtual void on_ol(uint start, bool is_tight, char mark_delimiter) {}
-		internal virtual void on_li(bool is_task, char task_mark, uint task_mark_offset) {}
-		internal virtual void on_code(string? lang, char fence_char) {}
-		internal virtual void on_quote() {}
-		internal virtual void on_hr() {}
-		internal virtual void on_a(string href, string title, bool is_autolink) {}
-		internal virtual void on_img(string src, string? title) {}
-		internal virtual void on_br() {}
-		internal virtual void on_softbr() {}
+		public virtual void on_h(uint level) {}
+		public virtual void on_p() {}
+		public virtual void on_ul(bool is_tight, char mark) {}
+		public virtual void on_ol(uint start, bool is_tight, char mark_delimiter) {}
+		public virtual void on_li(bool is_task, char task_mark, uint task_mark_offset) {}
+		public virtual void on_code(string? lang, char fence_char) {}
+		public virtual void on_quote() {}
+		public virtual void on_hr() {}
+		public virtual void on_a(string href, string title, bool is_autolink) {}
+		public virtual void on_img(string src, string? title) {}
+		public virtual void on_br() {}
+		public virtual void on_softbr() {}
 		public virtual void on_entity(string text) {}
-		internal virtual void on_u() {}
+		public virtual void on_u() {}
 	}
 }
 

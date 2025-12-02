@@ -39,6 +39,15 @@
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.tmp_start.html">tmp_start</a></li>
           <li class="property"><a href="OLLMchat.MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="OLLMchat.MarkdownGtk.Render.Render.html">Render</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_code_span.html">on_code_span</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_del.html">on_del</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_em.html">on_em</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_end.html">on_end</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_html.html">on_html</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_other.html">on_other</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_strong.html">on_strong</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_text.html">on_text</a></li>
+          <li class="virtual_method"><a href="OLLMchat.MarkdownGtk.Render.on_u.html">on_u</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -48,12 +57,11 @@
         <img class="main_diagram" usemap="#OLLMchat.MarkdownGtk.Render" alt="Object hierarchy for Render" src="img/OLLMchat.MarkdownGtk.Render.png"/>
 
       <map id="OLLMchat.MarkdownGtk.Render" name="OLLMchat.MarkdownGtk.Render">
-<area shape="rect" id="node1" href="OLLMchat.MarkdownGtk.Render.html" title="OLLMchat.MarkdownGtk.Render" alt="" coords="23,197,296,245"/>
-<area shape="rect" id="node2" href="OLLMchat.MarkdownGtk.RenderBase.html" title="OLLMchat.MarkdownGtk.RenderBase" alt="" coords="5,101,313,149"/>
+<area shape="rect" id="node1" href="OLLMchat.MarkdownGtk.Render.html" title="OLLMchat.MarkdownGtk.Render" alt="" coords="9,197,283,245"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Render</span></b> : <span class="main_type"><a href="OLLMchat.MarkdownGtk.RenderBase.html" class="abstract_class">RenderBase</a></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Render</span></b> : <span class="main_type"><span class="abstract_class">RenderBase</span></span>
         </div>
         <div class="description">
           <p>Renders markdown content to a Gtk.TextBuffer using a state-based renderer.</p>
@@ -69,24 +77,6 @@
           <p>HTML tags embedded in the markdown content are automatically parsed and handled. The parser recognizes HTML tags and creates states for 
             them. You only need to provide opening HTML tags in your content. The renderer automatically handles closing tags when the corresponding 
             state is closed or when flush is called.</p>
-        </div>
-        <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-31')">All known sub-classes:</div>
-          <div class="content" id="box-content-31">
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="class"><a href="OLLMchat.MarkdownGtk.DummyRenderer.html">DummyRenderer</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-              </ul>
-            </div>
-          </div>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.MarkdownGtk.html">OLLMchat.MarkdownGtk</a>
         </div>
@@ -131,32 +121,95 @@
             <div class="leaf_brief_description"><span class="brief_description">Creates a new Render instance.</span>
             </div></li>
         </ul>
+        <h3 class="main_title">Methods:</h3>
+        <ul class="navi_inline">
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_code_span.html" class="virtual_method">on_code_span</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for inline code spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_del.html" class="virtual_method">on_del</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for strikethrough spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_em.html" class="virtual_method">on_em</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for emphasis/italic spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_end.html" class="virtual_method">on_end</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Generic callback to close the current state. Used for closing 
+                blocks/spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_html.html" class="virtual_method">on_html</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tag, <span class="main_basic_type"><span class="class">string</span></span> attributes)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for HTML tags. Parser sends the tag name and attributes, we 
+                create a new state, and parser will call on_end() for the close tag.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_other.html" class="virtual_method">on_other</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tag_name)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Generic callback for unmapped block/span types.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_strong.html" class="virtual_method">on_strong</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for strong/bold spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_text.html" class="virtual_method">on_text</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for normal text content.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.MarkdownGtk.Render.on_u.html" class="virtual_method">on_u</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Callback for underline spans.</span>
+            </div></li>
+        </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-32')">All known members inherited from class OLLMchat.MarkdownGtk.RenderBase
+          <div class="headline" onclick="toggle_box (this, 'box-content-29')">All known members inherited from class OLLMchat.Markdown.RenderBase
           </div>
-          <div class="content" id="box-content-32">
+          <div class="content" id="box-content-29">
             <div class="column">
               <ul class="navi_inline">
-                <li class="method"><a href="OLLMchat.MarkdownGtk.RenderBase.add.html">add</a></li>
-                <li class="method"><a href="OLLMchat.MarkdownGtk.RenderBase.add_start.html">add_start</a></li>
+                <li class="method">add</li>
+                <li class="method">add_start</li>
+                <li class="method">flush</li>
+                <li class="virtual_method">on_a</li>
+                <li class="virtual_method">on_br</li>
+                <li class="virtual_method">on_code</li>
+                <li class="abstract_method">on_code_span</li>
+                <li class="abstract_method">on_del</li>
+                <li class="abstract_method">on_em</li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="method"><a href="OLLMchat.MarkdownGtk.RenderBase.flush.html">flush</a></li>
+                <li class="abstract_method">on_end</li>
+                <li class="virtual_method">on_entity</li>
+                <li class="virtual_method">on_h</li>
+                <li class="virtual_method">on_hr</li>
+                <li class="abstract_method">on_html</li>
+                <li class="virtual_method">on_img</li>
+                <li class="virtual_method">on_li</li>
+                <li class="virtual_method">on_ol</li>
+                <li class="abstract_method">on_other</li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.MarkdownGtk.RenderBase.parser.html">parser</a></li>
+                <li class="virtual_method">on_p</li>
+                <li class="virtual_method">on_quote</li>
+                <li class="virtual_method">on_softbr</li>
+                <li class="abstract_method">on_strong</li>
+                <li class="abstract_method">on_text</li>
+                <li class="virtual_method">on_u</li>
+                <li class="virtual_method">on_ul</li>
+                <li class="property">parser</li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-33')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-33">
+          <div class="headline" onclick="toggle_box (this, 'box-content-30')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-30">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

@@ -246,7 +246,7 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for underline spans.
 		 */
-		internal override void on_u()
+		public override void on_u()
 		{
 			this.current_state.add_state();
 		}
