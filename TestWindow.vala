@@ -107,7 +107,7 @@ namespace OLLMchat
 			
 			// Add tools to the client
 			client.addTool(new Tools.ReadFile(client));
-			client.addTool(new Tools.EditFile(client));
+			client.addTool(new Tools.EditMode(client));
 			client.addTool(new ToolsUI.RunCommand(client));
 
 			// Create chat widget with client

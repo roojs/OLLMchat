@@ -122,8 +122,8 @@ ollmchat_chatpermission_ui_src = files([
 # Source files for Tools namespace (base, no GTK)
 ollmchat_tools_src = files([
   'Tools/ReadFile.vala',
-  'Tools/EditFile.vala',
-  'Tools/EditFileChange.vala',
+  'Tools/EditMode.vala',
+  'Tools/EditModeChange.vala',
   'Tools/RunCommand.vala',
 ])
 
