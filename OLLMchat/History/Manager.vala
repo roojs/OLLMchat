@@ -82,7 +82,11 @@ namespace OLLMchat.History
 				// Check if session already exists for this chat
 				var existing_session = this.sessions_by_fid.get(chat.fid);
 				if (existing_session != null) {
-					// Session already exists, don't create a new one
+					// Session already exists - save it to update title/reply count
+					existing_session.save_async.begin();
+					// Notify that display properties may have changed
+					existing_session.notify_property("display_info");
+					existing_session.notify_property("display_title");
 					return;
 				}
 				
@@ -110,8 +114,14 @@ namespace OLLMchat.History
 				}
 				// Get session by fid from the chat object
 				var session = this.sessions_by_fid.get(response.call.fid);
+				if (session == null) {
+					return;
+				}
 				// Save session to DB and file
 				session.save_async.begin();
+				// Notify that display properties may have changed (reply count updated)
+				session.notify_property("display_info");
+				session.notify_property("title");
 			});
 		}
 		

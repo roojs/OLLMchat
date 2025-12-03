@@ -169,6 +169,8 @@ namespace OLLMchat.History
 			} else {
 				sq.updateById(this);
 			}
+			// Backup in-memory database to disk
+			this.manager.db.backupDB();
 		}
 		
 		/**
@@ -190,9 +192,14 @@ namespace OLLMchat.History
 				if (this.title == "" && this.manager.title_generator == null) {
 					this.title = "Unknown Chat";
 					foreach (var msg in this.messages) {
+						// Skip system and assistant messages, only use user messages for title
 						if (msg.role == "user") {
-							this.title = msg.content;
-							break;
+							// Use original_content if available (before prompt engine modification), otherwise use content
+							var title_text = (msg.original_content != "") ? msg.original_content : msg.content;
+							if (title_text.strip().length > 0) {
+								this.title = title_text;
+								break;
+							}
 						}
 					}
 				} 

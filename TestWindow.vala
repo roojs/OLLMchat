@@ -90,6 +90,9 @@ namespace OLLMchat
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
 			this.split_view.show_sidebar = false; // Hidden at start
+			// Set sidebar width as fraction of total width (0.25 = 25% of window width)
+			this.split_view.set_sidebar_width_fraction(0.25);
+			this.split_view.collapsed = true;
 			
 			// Connect toggle button to show/hide sidebar
 			toggle_button.toggled.connect(() => {

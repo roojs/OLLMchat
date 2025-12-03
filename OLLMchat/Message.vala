@@ -26,6 +26,7 @@ namespace OLLMchat
 	{
 		public string role { get; set; default = ""; }
 		public string content { get; set; default = ""; }
+		public string original_content { get; set; default = ""; }  // Original user input before prompt engine modification
 		public string thinking { get; set; default = ""; }
 		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set; default = new Gee.ArrayList<Response.ToolCall>(); }
 		public string tool_call_id { get; set; default = ""; }
@@ -161,6 +162,10 @@ namespace OLLMchat
 			switch (property_name) {
 				case "include-history-info":
 					// Exclude the flag itself from serialization
+					return null;
+				
+				case "original-content":
+					// Exclude original_content from serialization (internal use only)
 					return null;
 				
 				case "timestamp":

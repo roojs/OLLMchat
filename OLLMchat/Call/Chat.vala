@@ -64,6 +64,9 @@ namespace OLLMchat.Call
 		}
 		public Response.Chat? streaming_response { get; set; default = null; }
 		public string system_content { get; set; default = ""; }
+		
+		// Store original user text before prompt engine modifies chat_content
+		public string original_user_text { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
@@ -89,6 +92,7 @@ namespace OLLMchat.Call
 				case "message":
 				case "streaming-response":
 				case "system-content":
+				case "original-user-text":
 					// Exclude these properties from serialization
 					return null;
 				
@@ -191,7 +195,10 @@ namespace OLLMchat.Call
 			}
 
 			// Append the new user message
-			this.messages.add(new Message(this, "user", new_text));
+			var user_message = new Message(this, "user", new_text);
+			// For replies, the new_text is already the original (not modified by prompt engine)
+			user_message.original_content = new_text;
+			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
 			for (int i = 0; i < this.messages.size; i++) {
@@ -316,7 +323,12 @@ namespace OLLMchat.Call
 			}
 			
 			// Always add the user message (this Chat)
-			this.messages.add(new Message(this, "user", this.chat_content));
+			var user_message = new Message(this, "user", this.chat_content);
+			// Store original user text if available (before prompt engine modification)
+			if (this.original_user_text != "") {
+				user_message.original_content = this.original_user_text;
+			}
+			this.messages.add(user_message);
 			
 			// Debug: output messages being sent
 			GLib.debug("Chat.exec_chat: Sending %d message(s):", this.messages.size);

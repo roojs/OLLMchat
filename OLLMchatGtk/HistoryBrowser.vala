@@ -125,12 +125,12 @@ namespace OLLMchatGtk
 				margin_bottom = 8
 			};
 			
-			// Title label (primary text)
+			// Title label (primary text) - using body text size instead of title-4
 			var title_label = new Gtk.Label("") {
 				halign = Gtk.Align.START,
 				hexpand = true,
 				ellipsize = Pango.EllipsizeMode.END,
-				css_classes = {"title-4", "list-chat-title"}
+				css_classes = {"body", "list-chat-title"}
 			};
 			
 			// Secondary line box (horizontal)
@@ -189,6 +189,7 @@ namespace OLLMchatGtk
 			
 			// Bind properties using SYNC_CREATE to set initial values
 			session.bind_property("display_title", title_label, "label", BindingFlags.SYNC_CREATE);
+			session.bind_property("display_title", title_label, "tooltip-text", BindingFlags.SYNC_CREATE);
 			session.bind_property("display_info", info_label, "label", BindingFlags.SYNC_CREATE);
 			session.bind_property("display_date", date_label, "label", BindingFlags.SYNC_CREATE);
 		}
@@ -225,8 +226,12 @@ namespace OLLMchatGtk
 		 */
 		private void on_session_added(OLLMchat.History.Session session)
 		{
-			// Insert at beginning (most recent first)
-			this.session_store.insert(0, session);
+			// Use Idle to defer adding to listview, giving time for title to be set
+			Idle.add(() => {
+				// Insert at beginning (most recent first)
+				this.session_store.insert(0, session);
+				return false;
+			});
 		}
 	}
 }

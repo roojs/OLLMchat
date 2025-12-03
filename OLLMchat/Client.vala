@@ -322,7 +322,8 @@ namespace OLLMchat
 		{
 			// Create chat call
 			var call = new Call.Chat(this) {
-				cancellable = cancellable
+				cancellable = cancellable,
+				original_user_text = text  // Store original text before prompt engine modifies it
 			};
 			
 			// Fill chat call with prompts from prompt_assistant
