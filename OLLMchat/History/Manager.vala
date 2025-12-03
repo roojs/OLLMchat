@@ -29,6 +29,7 @@ namespace OLLMchat.History
 		public string history_dir { get; private set; }
 		public Gee.ArrayList<Session> sessions { get; private set; default = new Gee.ArrayList<Session>(); }
 		public SQ.Database db { get; private set; }
+		public TitleGenerator? title_generator { get; set; default = null; }
 		
 		// HashMap to track sessions by fid
 		private Gee.HashMap<string, Session> sessions_by_fid = new Gee.HashMap<string, Session>();

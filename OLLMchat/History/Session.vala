@@ -134,6 +134,26 @@ namespace OLLMchat.History
 				this.total_messages = this.messages.size;
 				// TODO: Calculate total_tokens and duration_seconds from response metadata
 				
+				// Generate title if not set
+				if (this.title == "" && this.manager.title_generator == null) {
+					this.title = "Unknown Chat";
+					foreach (var msg in this.messages) {
+						if (msg.role == "user") {
+							this.title = msg.content;
+							break;
+						}
+					}
+				} 
+				if (this.title == "") {
+					// Use generator to create title
+					try {
+						this.title = yield this.manager.title_generator.to_title(this.chat);
+					} catch (Error e) {
+						GLib.warning("Failed to generate title: %s", e.message);
+						this.title = "Untitled Chat";
+					}
+				}
+				
 				// Save to database
 				this.saveToDB();
 				

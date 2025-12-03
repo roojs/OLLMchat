@@ -531,6 +531,35 @@ namespace OLLMchat
 			
 			return result;
 		}
+
+		/**
+		 * Generates a response for the provided prompt.
+		 * 
+		 * Uses the /api/generate endpoint to generate a response without maintaining
+		 * conversation history. This is useful for simple prompt-response scenarios.
+		 * 
+		 * @param prompt The text prompt to generate a response for
+		 * @param system Optional system prompt
+		 * @param cancellable Optional cancellable for cancelling the request
+		 * @return Response.Generate object with the generated response and metadata
+		 * @since 1.0
+		 */
+		public async Response.Generate generate(
+			string prompt,
+			string system = "",
+			GLib.Cancellable? cancellable = null
+		) throws Error
+		{
+			var call = new Call.Generate(this) {
+				cancellable = cancellable,
+				prompt = prompt,
+				system = system
+			};
+			
+			var result = yield call.exec_generate();
+			
+			return result;
+		}
 	}
 }
 
