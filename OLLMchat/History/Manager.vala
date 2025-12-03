@@ -29,6 +29,10 @@ namespace OLLMchat.History
 		public string history_dir { get; private set; }
 		public Gee.ArrayList<Session> sessions { get; private set; default = new Gee.ArrayList<Session>(); }
 		public SQ.Database db { get; private set; }
+		public TitleGenerator? title_generator { get; set; default = null; }
+		
+		// HashMap to track sessions by fid
+		private Gee.HashMap<string, Session> sessions_by_fid = new Gee.HashMap<string, Session>();
 		
 		/**
 		 * Constructor.
@@ -66,8 +70,29 @@ namespace OLLMchat.History
 		 */
 		public void register_client(Client client)
 		{
-			// TODO: Connect to Client signals when integration is implemented (section 1.3)
-			// For now, this is a placeholder
+			// Connect to chat_send signal to detect new chat sessions
+			client.chat_send.connect((chat) => {
+				// Create new session with chat and manager
+				var session = new Session(chat, this);
+				
+				// Store in HashMap
+				this.sessions_by_fid.set(chat.fid, session);
+				
+				// Write initial session to DB and file
+				session.save_async.begin();
+			});
+			
+			// Connect to stream_chunk to detect response completion
+			client.stream_chunk.connect((new_text, is_thinking, response) => {
+				// Save when response is done (not streaming, but toolcalls or done response)
+				if (!response.done) {
+					return;
+				}
+				// Get session by fid from the chat object
+				var session = this.sessions_by_fid.get(response.call.fid);
+				// Save session to DB and file
+				session.save_async.begin();
+			});
 		}
 		
 		/**

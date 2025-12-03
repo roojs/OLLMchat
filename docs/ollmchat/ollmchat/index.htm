@@ -24,12 +24,14 @@
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.Call.html">OLLMchat.Call</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
+          <li class="namespace"><a href="OLLMchat.History.html">OLLMchat.History</a></li>
           <li class="namespace"><a href="OLLMchat.Prompt.html">OLLMchat.Prompt</a></li>
           <li class="namespace"><a href="OLLMchat.Response.html">OLLMchat.Response</a></li>
           <li class="namespace"><a href="OLLMchat.Tool.html">OLLMchat.Tool</a></li>
           <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
           <li class="namespace"><a href="OLLMchatGtk.html">OLLMchatGtk</a></li>
           <li class="namespace"><a href="OLLMchatGtk.Tools.html">OLLMchatGtk.Tools</a></li>
+          <li class="namespace"><a href="SQ.html">SQ</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -146,6 +148,8 @@
                 messages and receiving responses.</span></li>
             <li class="class"><a href="OLLMchat.Call.Embed.html">Embed</a> - <span class="brief_description">API call to generate embeddings for input
                 text.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Generate.html">Generate</a> - <span class="brief_description">API call to generate a response for
+                a prompt.</span></li>
             <li class="class"><a href="OLLMchat.Call.Models.html">Models</a> - <span class="brief_description">API call to list available models on 
                 the Ollama server.</span></li>
             <li class="class"><a href="OLLMchat.Call.Options.html">Options</a> - <span class="brief_description">Options object for Ollama API calls.
@@ -171,6 +175,16 @@
                 Permission response from user. Combines allow/deny decision with storage type.</span></li>
             <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
                 check result.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.History.html">History</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.History.Manager.html">Manager</a> - <span class="brief_description">Manager for chat history 
+                persistence.</span></li>
+            <li class="class"><a href="OLLMchat.History.Session.html">Session</a> - <span class="brief_description">Session is a wrapper around 
+                Call.Chat that provides history persistence.</span></li>
+            <li class="class"><a href="OLLMchat.History.TitleGenerator.html">TitleGenerator</a> - <span class="brief_description">Generates concise 
+                titles for chat conversations using LLM.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.Prompt.html">Prompt</a></li>
           <h3 class="main_title">Interfaces:</h3>
@@ -198,6 +212,8 @@
             </li>
             <li class="class"><a href="OLLMchat.Response.Embed.html">Embed</a> - <span class="brief_description">Represents the response from the 
                 embeddings API.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Generate.html">Generate</a> - <span class="brief_description">Represents the response from 
+                the generate API.</span></li>
             <li class="class"><a href="OLLMchat.Response.Model.html">Model</a> - <span class="brief_description">Represents model information from the
                 Ollama server.</span></li>
             <li class="class"><a href="OLLMchat.Response.ToolCall.html">ToolCall</a> - <span class="brief_description">Represents a tool call from the
@@ -250,6 +266,16 @@
                 displays permission requests using ChatWidget's permission widget.</span></li>
             <li class="class"><a href="OLLMchatGtk.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
                 RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
+          </ul>
+          <li class="namespace"><a href="SQ.html">SQ</a> - <span class="brief_description">Simple SQL builder for GObject values.</span></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="SQ.Database.html">Database</a> - <span class="brief_description">Manages SQLite database connections with in-
+                memory storage and file backup.</span></li>
+            <li class="class"><a href="SQ.Query.html">Query</a> - <span class="brief_description">A generic SQL query builder for GObject-based types.
+              </span></li>
+            <li class="class"><a href="SQ.Schema.html">Schema</a> - <span class="brief_description">Represents the schema information for a database 
+                table column.</span></li>
           </ul>
         </ul>
       </div>

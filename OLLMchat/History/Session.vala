@@ -35,7 +35,11 @@ namespace OLLMchat.History
 		public string title { get; set; default = ""; }
 		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
-		public string fid { get; set; default = ""; }
+		// Computed property that returns chat.fid
+		public string fid {
+			get { return this.chat.fid; }
+			set {}
+		} 
 		
 		// Wrapper properties around chat.client
 		public string model {
@@ -75,9 +79,7 @@ namespace OLLMchat.History
 		{
 			this.chat = chat;
 			this.manager = manager;
-			// Generate file ID from current timestamp
-			var now = new DateTime.now_local();
-			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			// fid is a computed property that returns chat.fid
 		}
 		
 		/**
@@ -114,6 +116,51 @@ namespace OLLMchat.History
 				this.id = sq.insert(this);
 			} else {
 				sq.updateById(this);
+			}
+		}
+		
+		/**
+		 * Save session to both DB and file asynchronously.
+		 * Updates metadata and saves to both database and JSON file.
+		 */
+		public async void save_async()
+		{
+			try {
+				// Update updated_at timestamp
+				var now = new DateTime.now_local();
+				this.updated_at = now.format("%Y-%m-%d %H:%M:%S");
+				
+				// Update metadata
+				this.total_messages = this.messages.size;
+				// TODO: Calculate total_tokens and duration_seconds from response metadata
+				
+				// Generate title if not set
+				if (this.title == "" && this.manager.title_generator == null) {
+					this.title = "Unknown Chat";
+					foreach (var msg in this.messages) {
+						if (msg.role == "user") {
+							this.title = msg.content;
+							break;
+						}
+					}
+				} 
+				if (this.title == "") {
+					// Use generator to create title
+					try {
+						this.title = yield this.manager.title_generator.to_title(this.chat);
+					} catch (Error e) {
+						GLib.warning("Failed to generate title: %s", e.message);
+						this.title = "Untitled Chat";
+					}
+				}
+				
+				// Save to database
+				this.saveToDB();
+				
+				// Save to JSON file
+				yield this.write();
+			} catch (Error e) {
+				GLib.warning("Failed to save session: %s", e.message);
 			}
 		}
 		
@@ -158,7 +205,7 @@ namespace OLLMchat.History
 			var file = GLib.File.new_for_path(full_path);
 			var file_stream = yield file.replace_async(null, false, GLib.FileCreateFlags.NONE, GLib.Priority.DEFAULT, null);
 			var data_stream = new GLib.DataOutputStream(file_stream);
-			yield data_stream.put_string_async(generator.to_data(null), GLib.Priority.DEFAULT, null);
+			data_stream.put_string(generator.to_data(null));
 			yield data_stream.close_async(GLib.Priority.DEFAULT, null);
 			
 			// Unset flag on messages (set during serialization)
@@ -187,7 +234,7 @@ namespace OLLMchat.History
 			
 			var file = GLib.File.new_for_path(full_path);
 			if (!file.query_exists()) {
-				throw new GLib.IOError.NOENT("File not found: " + full_path);
+				throw new GLib.FileError.NOENT("File not found: " + full_path);
 			}
 			
 			// Read file contents
@@ -205,7 +252,7 @@ namespace OLLMchat.History
 			
 			var root_node = parser.get_root();
 			if (root_node == null || root_node.get_node_type() != Json.NodeType.OBJECT) {
-				throw new GLib.IOError.INVAL("Invalid JSON: root is not an object");
+				throw new GLib.FileError.INVAL("Invalid JSON: root is not an object");
 			}
 			
 			// Deserialize into a new temporary Session object

@@ -44,9 +44,10 @@ namespace OLLMchat
 	 * 
 	 * @since 1.0
 	 */
-	public class TestWindow : Gtk.Window
-	{
-		private OLLMchatGtk.ChatWidget chat_widget;
+		public class TestWindow : Gtk.Window
+		{
+			private OLLMchatGtk.ChatWidget chat_widget;
+			private OLLMchat.History.Manager? history_manager = null;
 
 		/**
 		 * Creates a new TestWindow instance.
@@ -105,6 +106,23 @@ namespace OLLMchat
 			// Try to set model from running models on server
 			client.set_model_from_ps();
 			
+			// Set up history manager and title generator if configured
+			var data_dir = Path.build_filename(
+				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
+			);
+			// Ensure directory exists
+			var data_dir_file = File.new_for_path(data_dir);
+			if (!data_dir_file.query_exists()) {
+				try {
+					data_dir_file.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to create data directory %s: %s", data_dir, e.message);
+				}
+			}
+			
+			// Set up history manager and title generator (async, don't wait)
+			this.setup_history_manager.begin(data_dir, client, obj);
+			
 			// Add tools to the client
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
 			client.addTool(new OLLMchat.Tools.EditMode(client));
@@ -150,6 +168,53 @@ namespace OLLMchat
 
 			// Set window child
 			this.set_child(this.chat_widget);
+		}
+		
+		/**
+		 * Set up history manager and title generator if title_model is configured.
+		 * Only creates history manager if we can actually use it (title_model is valid).
+		 * Uses early returns for fail-fast pattern.
+		 * 
+		 * @param data_dir Directory for history storage
+		 * @param client The main chat client
+		 * @param obj The JSON config object
+		 */
+		private async void setup_history_manager(string data_dir, OLLMchat.Client client, Json.Object obj)
+		{
+			// Fail fast: check if title_model is configured
+			if (!obj.has_member("title_model")) {
+				GLib.warning("title_model not set in config - history manager disabled");
+				return;
+			}
+			
+			var title_model = obj.get_string_member("title_model");
+			if (title_model == "") {
+				GLib.warning("title_model is set but empty in config - history manager disabled");
+				return;
+			}
+			
+			// Create separate client for title generation
+			var title_client = new OLLMchat.Client() {
+				url = obj.get_string_member("url"),
+				api_key = obj.get_string_member("api_key"),
+				model = title_model,
+				stream = false
+			};
+			
+			// Fail fast: verify model exists on server
+			try {
+				yield title_client.show_model(title_model);
+			} catch (Error e) {
+				GLib.warning("title_model '%s' not found on server - history manager disabled: %s", title_model, e.message);
+				return;
+			}
+			
+			// Model exists - create history manager and title generator
+			this.history_manager = new OLLMchat.History.Manager(data_dir);
+			this.history_manager.title_generator = new OLLMchat.History.TitleGenerator(title_client);
+			
+			// Register client with history manager
+			this.history_manager.register_client(client);
 		}
 	}
 }
