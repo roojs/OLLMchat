@@ -155,8 +155,17 @@ namespace OLLMchat.History
     {
         public int64 id { get; set; default = -1; }
         public Call.Chat chat { get; set; }
+        public Manager manager { get; set; }
         public string updated_at { get; set; default = ""; }  // Format: Y-m-d H:i:s
         public string title { get; set; default = ""; }
+        
+        public Session(Call.Chat chat, Manager manager)
+        {
+            this.chat = chat;
+            this.manager = manager;
+            // Generate fid and assign to chat
+            chat.fid = Manager.generate_id();
+        }
         
         // Wrapper properties around chat.client
         public string model {
