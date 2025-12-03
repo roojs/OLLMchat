@@ -19,12 +19,17 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="namespace"><a href="Markdown.html">Markdown</a></li>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
+          <li class="namespace"><a href="OLLMchat.Markdown.html">OLLMchat.Markdown</a></li>
+          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">OLLMchat.MarkdownGtk</a></li>
           <li class="namespace"><a href="OLLMchat.Ollama.html">OLLMchat.Ollama</a></li>
           <li class="namespace"><a href="OLLMchat.Ollama.Call.html">OLLMchat.Ollama.Call</a></li>
           <li class="namespace"><a href="OLLMchat.Prompt.html">OLLMchat.Prompt</a></li>
           <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
+          <li class="namespace"><a href="OLLMchat.ToolsUI.html">OLLMchat.ToolsUI</a></li>
+          <li class="namespace"><a href="OLLMchat.UI.html">OLLMchat.UI</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -34,10 +39,73 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Namespaces:</h3>
         <ul class="navi_inline">
+          <li class="namespace"><a href="Markdown.html">Markdown</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="Markdown.FromHTML.html">FromHTML</a> - <span class="brief_description">Converts HTML to Markdown format.</span>
+            </li>
+            <li class="class"><a href="Markdown.TagAnchor.html">TagAnchor</a> - <span class="brief_description">Handler for anchor tags.</span></li>
+            <li class="class"><a href="Markdown.TagBlockquote.html">TagBlockquote</a> - <span class="brief_description">Handler for blockquote tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagBreak.html">TagBreak</a> - <span class="brief_description">Handler for break tags.</span></li>
+            <li class="class"><a href="Markdown.TagCode.html">TagCode</a> - <span class="brief_description">Handler for code tags.</span></li>
+            <li class="class"><a href="Markdown.TagDiv.html">TagDiv</a> - <span class="brief_description">Handler for div tags.</span></li>
+            <li class="class"><a href="Markdown.TagIgnored.html">TagIgnored</a> - <span class="brief_description">Base class for tag handlers. Default
+                implementations do nothing (ignore behavior).</span></li>
+            <li class="class"><a href="Markdown.TagImage.html">TagImage</a> - <span class="brief_description">Handler for image tags.</span></li>
+            <li class="class"><a href="Markdown.TagListItem.html">TagListItem</a> - <span class="brief_description">Handler for list item tags.</span>
+            </li>
+            <li class="class"><a href="Markdown.TagOption.html">TagOption</a> - <span class="brief_description">Handler for option tags.</span></li>
+            <li class="class"><a href="Markdown.TagOrderedList.html">TagOrderedList</a> - <span class="brief_description">Handler for ordered list 
+                tags.</span></li>
+            <li class="class"><a href="Markdown.TagParagraph.html">TagParagraph</a> - <span class="brief_description">Handler for paragraph tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagPre.html">TagPre</a> - <span class="brief_description">Handler for pre tags.</span></li>
+            <li class="class"><a href="Markdown.TagSeperator.html">TagSeperator</a> - <span class="brief_description">Handler for separator tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagSimple.html">TagSimple</a> - <span class="brief_description">Generic handler for simple tags that 
+                add the same string at opening and closing.</span></li>
+            <li class="class"><a href="Markdown.TagSimpleWithBreak.html">TagSimpleWithBreak</a> - <span class="brief_description">Generic handler for 
+                tags that add start on open, and check previous char before adding end on close.</span></li>
+            <li class="class"><a href="Markdown.TagTable.html">TagTable</a> - <span class="brief_description">Handler for table tags.</span></li>
+            <li class="class"><a href="Markdown.TagTableData.html">TagTableData</a> - <span class="brief_description">Handler for table data tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagTableHeader.html">TagTableHeader</a> - <span class="brief_description">Handler for table header 
+                tags.</span></li>
+            <li class="class"><a href="Markdown.TagTableRow.html">TagTableRow</a> - <span class="brief_description">Handler for table row tags.</span>
+            </li>
+            <li class="class"><a href="Markdown.TagTitle.html">TagTitle</a> - <span class="brief_description">Handler for title tags.</span></li>
+            <li class="class"><a href="Markdown.TagUnderline.html">TagUnderline</a> - <span class="brief_description">Handler for underline tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagUnorderedList.html">TagUnorderedList</a> - <span class="brief_description">Handler for unordered 
+                list tags.</span></li>
+            <li class="class"><a href="Markdown.Writer.html">Writer</a> - <span class="brief_description">Handles markdown output writing.</span></li>
+          </ul>
+          <h3 class="main_title">Methods:</h3>
+          <ul class="navi_inline">
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_end_document.html" class="method">sax_end_document</a></b> (<span class="main_keyword">void</span>* ctx)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: End of document.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_end_element.html" class="method">sax_end_element</a></b> (<span class="main_keyword">void</span>* ctx, <span class="main_basic_type"><span class="class">string</span></span> name)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: End element.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_start_document.html" class="method">sax_start_document</a></b> (<span class="main_keyword">void</span>* ctx)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: Start of document.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_start_element.html" class="method">sax_start_element</a></b> (<span class="main_keyword">void</span>* ctx, <span class="main_basic_type"><span class="class">string</span></span> name, <span class="main_basic_type"><span class="class">string</span></span>[] attrs)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: Start element.</span>
+              </div></li>
+          </ul>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.ChatPermission.ChatView.html">ChatView</a> - <span class="brief_description">Permission provider that 
+                displays permission requests using ChatWidget's permission widget.</span></li>
             <li class="class"><a href="OLLMchat.ChatPermission.Dummy.html">Dummy</a> - <span class="brief_description">Dummy implementation of 
                 Provider for testing.</span></li>
             <li class="abstract_class"><a href="OLLMchat.ChatPermission.Provider.html">Provider</a> - <span class="brief_description">Abstract base 
@@ -51,6 +119,28 @@
                 Permission response from user. Combines allow/deny decision with storage type.</span></li>
             <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
                 check result.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Markdown.html">Markdown</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Markdown.DummyRenderer.html">DummyRenderer</a> - <span class="brief_description">Dummy renderer for 
+                testing the Parser. Extends RenderBase and overrides methods to print callbacks instead of rendering.</span></li>
+            <li class="class"><a href="OLLMchat.Markdown.PangoRender.html">PangoRender</a> - <span class="brief_description">Simple renderer that 
+                converts markdown and HTML tags to Pango markup strings.</span></li>
+            <li class="class"><a href="OLLMchat.Markdown.Parser.html">Parser</a> - <span class="brief_description">Parser for markdown text that calls
+                specific callbacks on Render.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Markdown.RenderBase.html">RenderBase</a> - <span class="brief_description">Base abstract 
+                class for renderers that use the Parser.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">MarkdownGtk</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.MarkdownGtk.Render.html">Render</a> - <span class="brief_description">Renders markdown content to a 
+                Gtk.TextBuffer using a state-based renderer.</span></li>
+            <li class="class"><a href="OLLMchat.MarkdownGtk.State.html">State</a> - <span class="brief_description">Represents a single piece of 
+                styling in the markdown renderer.</span></li>
+            <li class="class"><a href="OLLMchat.MarkdownGtk.TopState.html">TopState</a> - <span class="brief_description">Extends State to handle 
+                special root state behavior.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.Ollama.html">Ollama</a></li>
           <h3 class="main_title">Interfaces:</h3>
@@ -139,6 +229,24 @@
                 with optional line range support.</span></li>
             <li class="class"><a href="OLLMchat.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">Tool for executing terminal 
                 commands in the project root directory.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.ToolsUI.html">ToolsUI</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.ToolsUI.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
+                RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.UI.html">UI</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.UI.ChatInput.html">ChatInput</a> - <span class="brief_description">Chat input widget with multiline 
+                text input and send/stop button.</span></li>
+            <li class="class"><a href="OLLMchat.UI.ChatPermission.html">ChatPermission</a> - <span class="brief_description">Permission widget that 
+                displays permission requests with buttons.</span></li>
+            <li class="class"><a href="OLLMchat.UI.ChatView.html">ChatView</a> - <span class="brief_description">Chat view widget for displaying chat 
+                messages with markdown rendering.</span></li>
+            <li class="class"><a href="OLLMchat.UI.ChatWidget.html">ChatWidget</a> - <span class="brief_description">Reusable chat widget that can be 
+                embedded anywhere in the project.</span></li>
           </ul>
         </ul>
       </div>

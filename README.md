@@ -4,9 +4,11 @@
 
 OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications. The project focuses on Vala and GTK4, with the main library written in pure Vala.
 
-- **Library** - A library that can talk to Ollama and most OpenAI-compatible REST interfaces
-  - `libollmchat.so` - Base library (no GTK dependencies)
-  - `libollmchat-ui.so` - UI library (depends on base library, includes GTK components)
+- **Libraries** - A set of libraries for LLM access, tool integration, and markdown processing
+  - `libomarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
+  - `libomarkdown-ui.so` - Markdown GTK rendering library (depends on libomarkdown, includes GTK components)
+  - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libomarkdown, no GTK dependencies)
+  - `libollmchat-ui.so` - UI library with chat widgets (depends on libollmchat and libomarkdown-ui, includes GTK components)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
 - **Tool Dependencies** - Some tools will rely on third-party applications (e.g., semantic code search which is in another repository)
 - **Tool Calling** - Supports tool calling functionality
@@ -15,7 +17,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds two shared libraries with headers, VAPI, and GIR files. Includes test executables (`test-ollama` and `test-window`)
+- **Current Status** - Builds four shared libraries with headers, VAPI, and GIR files. Includes test executables (`test-ollama`, `test-window`, and `test-markdown-parser`)
 
 ## Demo
 
@@ -27,8 +29,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 
 Online API documentation is available:
 
-- **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/ollmchat/index.htm)** - Base library documentation
-- **[ollmchat-ui API Reference](https://roojs.github.io/OLLMchat/ollmchat-ui/ollmchat-ui/index.htm)** - UI library documentation
+- **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/ollmchat/index.htm)** - Unified library documentation (base and UI)
 
 ## Build Instructions
 
@@ -57,37 +58,54 @@ ninja -C build
 ```
 
 This will build:
-- `libollmchat.so` - Base library (with headers, VAPI, and GIR files)
-- `libollmchat-ui.so` - UI library (with headers, VAPI, and GIR files)
+- `libomarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
+- `libomarkdown-ui.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
+- `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
+- `libollmchat-ui.so` - UI library with chat widgets (with headers, VAPI, and GIR files)
 - `test-ollama` - Command-line test executable
 - `test-window` - GTK UI test executable
-- Valadoc documentation (in `docs/ollmchat/` and `docs/ollmchat-ui/`)
+- `test-markdown-parser` - Markdown parser test executable
+- Valadoc documentation (in `docs/ollmchat/`)
 
 ## Project Structure
 
+**Markdown Libraries:**
+- `Markdown/` - Markdown parsing and rendering (libomarkdown)
+- `MarkdownGtk/` - GTK-specific markdown rendering (libomarkdown-ui)
+
+**OLLMchat Libraries:**
 - `Ollama/` - Ollama API client implementation
 - `Prompt/` - Prompt generation system for different agent types
 - `ChatPermission/` - Permission system for tool access control
 - `Tools/` - Tool implementations (ReadFile, EditFile, RunTerminalCommand, etc.)
+- `ToolsUI/` - GTK-specific tool UI components
 - `UI/` - GTK UI components for chat interface
 - `resources/` - Resource files including prompt templates
 - `docs/` - Generated documentation (Valadoc) and implementation plans
 
 ## Dependencies
 
-**Base library (`libollmchat.so`)**:
+**Markdown base library (`libomarkdown.so`)**:
 - Gee
 - GLib/GIO
+- libxml-2.0
+
+**Markdown UI library (`libomarkdown-ui.so`)**:
+- All markdown base library dependencies
+- GTK4
+
+**OLLMchat base library (`libollmchat.so`)**:
+- All markdown base library dependencies
 - json-glib
 - libsoup-3.0
 
-**UI library (`libollmchat-ui.so`)**:
-- All base library dependencies
-- GTK4
+**OLLMchat UI library (`libollmchat-ui.so`)**:
+- All OLLMchat base library dependencies
+- All markdown UI library dependencies
 - gtksourceview-5
 
 **Test executables**:
-- All dependencies above (test-window requires gtksourceview-5)
+- All dependencies above (test-window and test-markdown-parser require GTK4 and gtksourceview-5)
 
 ## License
 
@@ -100,5 +118,6 @@ This project is licensed under the GNU Lesser General Public License version 3.0
 - Resources are compiled into the binary using GLib's resource system
 - The prompt system loads agent-specific sections from resource files
 - Libraries are built as shared libraries with C headers, VAPI files, and GObject Introspection (GIR) files
-- Valadoc documentation is automatically generated in `docs/ollmchat/` and `docs/ollmchat-ui/`
+- Markdown functionality is split into separate libraries (libomarkdown and libomarkdown-ui) for better modularity
+- Valadoc documentation is automatically generated in `docs/ollmchat/` (unified documentation for all libraries)
 

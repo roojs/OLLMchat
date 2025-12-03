@@ -133,15 +133,20 @@ ollmchat_tools_ui_src = files([
   'ToolsUI/RunCommand.vala',
 ])
 
-# Source files for Markdown namespace (base, no GTK)
-ollmchat_markdown_src = files([
+# Source files for Markdown namespace (base, no GTK) - for libomarkdown
+omarkdown_src = files([
   'Markdown/Parser.vala',
   'Markdown/RenderBase.vala',
   'Markdown/PangoRender.vala',
+  'Markdown/DummyRenderer.vala',
+  'Markdown/FromHTML.vala',
+  'Markdown/Tags.vala',
+  'Markdown/TagsTable.vala',
+  'Markdown/Writer.vala',
 ])
 
-# Source files for MarkdownGtk namespace (GTK-dependent)
-ollmchat_markdowngtk_src = files([
+# Source files for MarkdownGtk namespace (GTK-dependent) - for libomarkdown-ui
+omarkdown_ui_src = files([
   'MarkdownGtk/Render.vala',
   'MarkdownGtk/State.vala',
   'MarkdownGtk/TopState.vala',
@@ -155,25 +160,77 @@ ollmchat_ui_src = files([
   'UI/ChatView.vala',
   'UI/ChatInput.vala',
   'UI/ChatPermission.vala',
-]) + ollmchat_tools_ui_src + ollmchat_markdowngtk_src
+]) + ollmchat_tools_ui_src
+
+# Build omarkdown base library (libomarkdown.so) - no GTK dependencies
+omarkdown_base_lib = library('omarkdown',
+  dependencies: base_deps,
+  sources: [omarkdown_src],
+  vala_header: 'omarkdown.h',
+  vala_vapi: 'omarkdown.vapi',
+  install: true
+)
+
+# Build omarkdown UI library (libomarkdown-ui.so) - depends on omarkdown base library
+omarkdown_ui_lib = library('omarkdown-ui',
+  dependencies: ui_deps,
+  sources: [omarkdown_ui_src],
+  vala_header: 'omarkdown-ui.h',
+  vala_vapi: 'omarkdown-ui.vapi',
+  link_with: [omarkdown_base_lib],
+  vala_args: ['--vapidir', meson.current_build_dir(), '--pkg=omarkdown'],  # Add build dir and pkg to find omarkdown.vapi
+  install: true
+)
 
 # Build base library (libollmchat.so) - no GTK dependencies
 ollmchat_base_lib = library('ollmchat',
   dependencies: base_deps,
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_markdown_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
+  link_with: [omarkdown_base_lib],
   install: true
 )
 
-# Build UI library (libollmchat-ui.so) - depends on base library
+# Build UI library (libollmchat-ui.so) - depends on base library and omarkdown-ui
 ollmchat_ui_lib = library('ollmchat-ui',
   dependencies: ui_deps,
   sources: [ollmchat_chatpermission_ui_src, ollmchat_tools_ui_src, ollmchat_ui_src],
   vala_header: 'ollmchat-ui.h',
   vala_vapi: 'ollmchat-ui.vapi',
-  link_with: [ollmchat_base_lib],
+  link_with: [ollmchat_base_lib, omarkdown_ui_lib],
   install: true
+)
+
+# GObject Introspection for omarkdown base library
+# Note: Symbol prefix matches the namespace (OLLMchat.Markdown)
+omarkdown_gir = gnome.generate_gir(omarkdown_base_lib,
+  namespace: 'OMarkdown',
+  nsversion: '1.0',
+  identifier_prefix: 'OLLMchat',
+  symbol_prefix: 'oll_mchat',
+  includes: ['GObject-2.0', 'Gio-2.0'],
+  install: true,
+  fatal_warnings: false
+)
+
+# GObject Introspection for omarkdown UI library
+# Note: Symbol prefix matches the namespace (OLLMchat.MarkdownGtk)
+omarkdown_ui_header_file = meson.current_build_dir() / 'omarkdown-ui.h'
+omarkdown_ui_gir = gnome.generate_gir(omarkdown_ui_lib,
+  namespace: 'OMarkdownUI',
+  nsversion: '1.0',
+  identifier_prefix: 'OLLMchat',
+  symbol_prefix: 'oll_mchat',
+  sources: [omarkdown_ui_header_file],
+  link_with: [omarkdown_base_lib],
+  extra_args: [
+    '--extra-library=omarkdown',
+    '--accept-unprefixed'
+  ],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'Gee-0.8', omarkdown_gir[0]],
+  install: true,
+  fatal_warnings: false
 )
 
 # GObject Introspection for base library
@@ -214,26 +271,27 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
   fatal_warnings: false
 )
 
-# Generate Valadoc documentation (generated in build directory under docs/valadoc)
+# Generate Valadoc documentation (single unified documentation)
 # valadoc is required - meson will fail during configuration if it's not found
 valadoc = find_program('valadoc', required: true)
 
-# Base library documentation
-valadoc_base_dir = meson.current_source_dir() / 'docs' / 'ollmchat'
-valadoc_base_clean = custom_target('valadoc-base-clean',
-  output: 'valadoc-base-clean',
-  command: [find_program('rm'), '-rf', valadoc_base_dir],
+# Combined documentation for both base and UI libraries
+valadoc_dir = meson.current_source_dir() / 'docs' / 'ollmchat'
+valadoc_clean = custom_target('valadoc-clean',
+  output: 'valadoc-clean',
+  command: [find_program('rm'), '-rf', valadoc_dir],
   build_by_default: false
 )
-valadoc_base_docs = custom_target('valadoc-base',
-  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src,
-  output: ['valadoc-base'],
-  depends: [valadoc_base_clean],
+valadoc_docs = custom_target('valadoc',
+  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src + ollmchat_chatpermission_ui_src + ollmchat_ui_src + omarkdown_src + omarkdown_ui_src,
+  output: ['valadoc'],
+  depends: [valadoc_clean],
   command: [
     valadoc,
     '--package-name=ollmchat',
     '--package-version=@0@'.format(meson.project_version()),
     '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_source_dir() / 'vapi',
     '--pkg=gee-0.8',
     '--pkg=gio-2.0',
     '--pkg=glib-2.0',
@@ -241,45 +299,11 @@ valadoc_base_docs = custom_target('valadoc-base',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',
-    '--pkg=posix',
-    '--doclet=html',
-    '--directory=' + valadoc_base_dir,
-    '@INPUT@'
-  ],
-  build_by_default: true,
-  install: false
-)
-
-# UI library documentation
-valadoc_ui_dir = meson.current_source_dir() / 'docs' / 'ollmchat-ui'
-valadoc_ui_clean = custom_target('valadoc-ui-clean',
-  output: 'valadoc-ui-clean',
-  command: [find_program('rm'), '-rf', valadoc_ui_dir],
-  build_by_default: false
-)
-valadoc_ui_docs = custom_target('valadoc-ui',
-  input: ollmchat_chatpermission_ui_src + ollmchat_ui_src,
-  output: ['valadoc-ui'],
-  depends: [ollmchat_base_lib, valadoc_ui_clean],  # Ensure base library VAPI is generated first
-  command: [
-    valadoc,
-    '--package-name=ollmchat-ui',
-    '--package-version=@0@'.format(meson.project_version()),
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', meson.current_source_dir() / 'vapi',
-    '--vapidir', meson.current_build_dir(),  # Add build dir to find generated ollmchat.vapi
-    '--pkg=gee-0.8',
-    '--pkg=gio-2.0',
-    '--pkg=glib-2.0',
-    '--pkg=gobject-2.0',
-    '--pkg=json-glib-1.0',
-    '--pkg=libsoup-3.0',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
     '--pkg=posix',
-    '--pkg=ollmchat',
     '--doclet=html',
-    '--directory=' + valadoc_ui_dir,
+    '--directory=' + valadoc_dir,
     '@INPUT@'
   ],
   build_by_default: true,
@@ -299,7 +323,7 @@ test_ollama = executable('test-ollama',
 test_window = executable('test-window',
   dependencies: test_window_deps,
   sources: ['TestWindow.vala', ollmchat_resources],
-  link_with: [ollmchat_base_lib, ollmchat_ui_lib],
+  link_with: [ollmchat_base_lib, ollmchat_ui_lib, omarkdown_ui_lib],
   install: false
 )
 
@@ -307,8 +331,8 @@ test_window = executable('test-window',
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
 test_markdown_parser = executable('test-markdown-parser',
   dependencies: test_window_deps,
-  sources: ['test-markdown-parser.vala', 'Markdown/DummyRenderer.vala'],
-  link_with: [ollmchat_base_lib, ollmchat_ui_lib],
+  sources: ['test-markdown-parser.vala'],
+  link_with: [omarkdown_base_lib, omarkdown_ui_lib],
   install: false
 )
 
