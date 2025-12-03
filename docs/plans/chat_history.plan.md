@@ -326,8 +326,9 @@ public Chat(Client client)
     base(client);
     this.url_endpoint = "chat";
     this.http_method = "POST";
-    // fid will be set when Session is created
-    this.fid = Manager.generate_id();
+    // Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+    var now = new DateTime.now_local();
+    this.fid = @"$(now.get_year())-%02d-$(now.get_day_of_month())-%02d-$(now.get_hour())-%02d-$(now.get_minute())-%02d-$(now.get_second())".printf(now.get_month(), now.get_day_of_month(), now.get_hour(), now.get_minute(), now.get_second());
 }
 ```
 
