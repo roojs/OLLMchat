@@ -296,6 +296,7 @@ The History Manager should be integrated with the `Client` class, not the UI lay
 - If `fid` is not set (new chat), generate session ID and assign to `chat.fid`
 - Create Session object and store in HashMap: `sessions[chat.fid] = session`
 - Write session to both SQLite database and JSON file
+- **Note**: When `reply()` is called, it uses the same `Call.Chat` object, so `fid` is already set and preserved automatically
 
 **Response Saving**:
 - When a response is complete (not streaming, but toolcalls or done response), save the session
