@@ -116,7 +116,9 @@ namespace OLLMchatGtk
 		this.client.tool_message.connect(this.chat_view.append_tool_message);
 		
 		// Connect chat_send signal to show waiting indicator
-		this.client.chat_send.connect(this.chat_view.show_waiting_indicator);
+		this.client.chat_send.connect((chat) => {
+			this.chat_view.show_waiting_indicator();
+		});
 
 		// Create a box for the bottom pane containing permission widget and input
 		var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
