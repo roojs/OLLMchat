@@ -373,12 +373,14 @@ public void register_client(Client client)
     // Connect to stream_chunk to detect response completion
     client.stream_chunk.connect((new_text, is_thinking, response) => {
         // Save when response is done (not streaming, but toolcalls or done response)
-        if (response.done) {
-            // Get session by fid from the chat object
-            var session = this.sessions_by_fid.get(response.call.fid);
-            // Save session to DB and file
-            this.save_session_async.begin(session);
-        }
+        if (!response.done) {
+			return;
+		}
+		// Get session by fid from the chat object
+		var session = this.sessions_by_fid.get(response.call.fid);
+		// Save session to DB and file
+		this.save_session_async.begin(session);
+	
     });
 }
 
