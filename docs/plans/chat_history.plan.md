@@ -288,13 +288,14 @@ The History Manager should be integrated with the `Client` class, not the UI lay
 
 **Session ID Tracking**:
 - Add `fid` (session ID) property to `Call.Chat` object to track which session this chat belongs to
+- `fid` is set in the constructor of `Call.Chat` - it will always be set
 - History Manager maintains a `HashMap<string, Session>` mapping `fid => session`
-- When a new chat starts, generate a unique `fid` and assign it to the `Call.Chat` object
+- When creating a new Session, the Session constructor generates the `fid` and assigns it to the chat
 
 **Session Registration**:
-- When `chat_send` signal is emitted with `Call.Chat` argument, check if `chat.fid` is set
-- If `fid` is not set (new chat), generate session ID and assign to `chat.fid`
-- Create Session object and store in HashMap: `sessions[chat.fid] = session`
+- When `chat_send` signal is emitted with `Call.Chat` argument, create a new Session with the chat
+- Session constructor takes `chat` and `manager` as arguments
+- Store Session in HashMap: `sessions[chat.fid] = session`
 - Write session to both SQLite database and JSON file
 - **Note**: When `reply()` is called, it uses the same `Call.Chat` object, so `fid` is already set and preserved automatically
 
