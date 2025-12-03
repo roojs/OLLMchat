@@ -278,9 +278,10 @@ namespace OLLMchat
 		 * This signal is emitted when the request is about to be sent, including
 		 * initial chat requests and automatic continuations after tool execution.
 		 * 
+		 * @param chat The Call.Chat object that is being sent
 		 * @since 1.0
 		 */
-		public signal void chat_send();
+		public signal void chat_send(Call.Chat chat);
 
 		/**
 		 * Emitted when the streaming response starts (first chunk received).
