@@ -69,8 +69,55 @@ namespace OLLMchat.History
 		 */
 		public void register_client(Client client)
 		{
-			// TODO: Connect to Client signals when integration is implemented (section 1.3)
-			// For now, this is a placeholder
+			// Connect to chat_send signal to detect new chat sessions
+			client.chat_send.connect((chat) => {
+				// Create new session with chat and manager
+				var session = new Session(chat, this);
+				
+				// Store in HashMap
+				this.sessions_by_fid.set(chat.fid, session);
+				
+				// Write initial session to DB and file
+				this.save_session_async.begin(session);
+			});
+			
+			// Connect to stream_chunk to detect response completion
+			client.stream_chunk.connect((new_text, is_thinking, response) => {
+				// Save when response is done (not streaming, but toolcalls or done response)
+				if (!response.done) {
+					return;
+				}
+				// Get session by fid from the chat object
+				var session = this.sessions_by_fid.get(response.call.fid);
+				// Save session to DB and file
+				this.save_session_async.begin(session);
+			});
+		}
+		
+		/**
+		 * Save session to both DB and file asynchronously.
+		 * 
+		 * @param session The session to save
+		 */
+		private async void save_session_async(Session session)
+		{
+			try {
+				// Update updated_at timestamp
+				var now = new DateTime.now_local();
+				session.updated_at = now.format("%Y-%m-%d %H:%M:%S");
+				
+				// Update metadata
+				session.total_messages = session.messages.size;
+				// TODO: Calculate total_tokens and duration_seconds from response metadata
+				
+				// Save to database
+				session.saveToDB();
+				
+				// Save to JSON file
+				yield session.write();
+			} catch (Error e) {
+				GLib.warning("Failed to save session: %s", e.message);
+			}
 		}
 		
 		/**
