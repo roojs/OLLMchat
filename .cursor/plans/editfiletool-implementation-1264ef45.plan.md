@@ -1,232 +1,128 @@
 <!-- 1264ef45-b912-431b-b67b-64621029fd92 48525d1c-44e8-4eec-976a-3bdaee692c04 -->
-# EditFileTool Implementation Plan
+# Edit Mode Refactoring
+
+Refactor the `EditFile` tool into an "Edit Mode" system that works differently from the current implementation.
 
 ## Overview
 
-Create `EditFileTool.vala` in the `Tools/` directory following the same pattern as `ReadFileTool.vala`. The tool will apply a list of edits (each with a range and replacement text) to a file, with validation to ensure edits are non-overlapping and sorted.
+The new system will:
 
-## Files to Create/Modify
+1. Tool only accepts filename and activates "edit mode" for that file
+2. While edit mode is active, code blocks with `type:startline:endline` format are automatically captured
+3. When chat is done (response.done = true), all captured changes are applied
+4. After applying, send a message detailing which file was updated and how many lines it now has
 
-### 1. Create `Tools/EditFileTool.vala`
+## Implementation Steps
 
-- Extend `Ollama.Tool` base class
-- Implement required abstract properties: `name`, `description`, `parameter_description`
-- Implement `prepare()` method for permission handling
-- Implement `execute_tool()` method for applying edits
+### 1. Restore EditFileChange Class
 
-### 2. Update `meson.build`
+- Restore `Tools/EditFileChange.vala` from git commit `aa36e4c`
+- This class represents a single edit with `start`, `end`, `replacement`, and `old_lines` properties
+- Includes methods: `apply_changes()`, `write_changes()`
 
-- Add `'Tools/EditFileTool.vala'` to the sources list (after ReadFileTool.vala)
+### 2. Refactor EditFile to EditMode Tool
 
-## Implementation Details
+**File**: `Tools/EditFile.vala`
 
-### Tool Structure
+**Changes**:
 
-- **Name**: `"edit_file"`
-- **Description**: From the JSON schema in needed_tools.md (lines 337)
-- **Parameters**:
-- `file_path` (string, required): Path to file to edit
-- `edits` (array of objects, required): List of edits, each with:
-- `range` (array of 2 integers): [start, end] where start is inclusive, end is exclusive (1-based)
-- `replacement` (string): Replacement text
+- Rename tool from `"edit_file"` to `"edit_mode"`
+- Remove `start_line` and `end_line` parameters - only accept `file_path`
+- Add `monitoring` flag to track if edit mode is active for a file
+- Add `Gee.HashMap<string, Gee.ArrayList<EditFileChange>>` to store changes per file path
+- Connect to `stream_content` signal to capture code blocks when monitoring is active
+- Connect to `stream_chunk` signal to detect when `response.done = true`
+- Modify existing code block handling methods to parse language tags in format `type:startline:endline` (e.g., `python:10:15`)
+- Store parsed code blocks as `EditFileChange` objects in the changes map
+- When chat is done and changes exist, apply all changes and send message with file details
+- If no changes were captured when chat is done, send error message
 
-### Parameter Description Format
+**Key Methods to Add/Modify**:
 
-Use the `@param` format for `parameter_description`:
+- `execute()`: Only request permission and set monitoring flag
+- Modify existing code block handling methods to parse `type:startline:endline` format and create EditFileChange
+- `on_chat_done()`: Apply all changes when response.done = true, or send error if no changes
+- `apply_all_changes()`: Loop through changes and apply them using old EditFile logic, emit signal for each applied change
+- `send_changes_done_reply()`: Send message with file name and line count via ChatCall.reply()
 
-- `@param file_path {string} [required] The path to the file to edit.`
-- `@param edits {array} [required] List of edits to apply. Each edit has 'range' [start, end] and 'replacement' text.`
+### 3. Update Tool Description
 
-### Key Implementation Requirements
+**File**: `Tools/EditFile.vala`
 
-1. **Parameter Parsing**:
+Update `description` property to:
 
-- `file_path` can use `readParams()` (simple parameter)
-- `edits` must be manually parsed from `Json.Object` since it's an array (readParams only handles simple types)
-- Parse `edits` as `Json.Array` and extract each edit object
+- Explain that this tool turns on edit mode for a file
+- Explain that code blocks after edit mode is turned on will be applied to the file
+- Explain code block format: `type:startline:endline` (e.g., `python:10:15`)
+- Explain that to apply changes, just end the chat (send chat done signal)
 
-2. **Edit Validation** (in `execute_tool()`):
+Update `parameter_description` to only mention `file_path` parameter.
 
-- Validate all edits have valid ranges (start >= 1, end > start, end <= file_length+1)
-- Validate edits are sorted in ascending order by start line
-- Validate edits are non-overlapping (end of edit[i] <= start of edit[i+1])
-- Throw appropriate errors if validation fails
+### 4. Update Code Assistant Summary
 
-3. **File Reading**:
+**File**: `resources/ollmchat-agents/code-assistant/making_code_changes.md`
 
-- Read entire file into memory (as array of lines or single string)
-- Use `normalize_file_path()` helper from base class
-- Validate file exists and is regular file
+Update to explain:
 
-4. **Edit Application**:
+- Code edits should be done using the edit mode tool
+- Code is never sent directly to a tool
+- The edit mode tool is only used to turn on edit mode
+- After edit mode is active, code blocks with `type:startline:endline` format are automatically captured
 
-- Apply edits in reverse order (from end to start) to avoid line number shifting issues
-- For each edit with range [start, end]:
-- If range is [n, n]: Insert replacement before line n
-- If range is [n, n+1]: Replace line n with replacement
-- If range is [n, m] where m > n+1: Replace lines n through m-1 with replacement
-- Handle newlines in replacement text correctly
+### 5. Code Block Parsing Logic
 
-5. **Two-Step Permission Handling**:
+Modify existing code block handling methods to parse markdown code block language tags:
 
-**Important**: If we don't have READ permission, we need two permission requests:
+- Format: `type:startline:endline` (e.g., `python:10:15`, `vala:1:5`)
+- Extract: file type (optional, can be ignored), start line, end line
+- When code block closes, create `EditFileChange` with:
+- `start` = parsed start line
+- `end` = parsed end line  
+- `replacement` = code block content
+- Store in changes map but do not emit signal yet (signal emitted when change is applied)
 
-1. First: Request READ permission to read the file and generate the diff
-2. Second: Request WRITE permission showing the generated diff
+### 6. Chat Done Detection
 
-**Implementation Approach**:
+Connect to `client.stream_chunk` signal and check `response.done`:
 
-- Override `execute()` method in `EditFileTool` (instead of relying on base class `execute()`)
-- Step 1 - READ Permission:
-- Check if we have READ permission for the file
-- If not, request READ permission with question: `"Read file 'path' to preview changes?"`
-- If denied, abort with error
-- If granted, read the file (streaming) and generate diff preview
-- Step 2 - WRITE Permission:
-- Generate unified diff from file content and edits
-- Request WRITE permission with question: `"Edit file 'path' with N edits?"` and pass diff content
-- If denied, abort with error
-- If granted, proceed to `execute_tool()`
-- If we already have READ permission (from storage), skip step 1 and go directly to step 2
+- When `response.done = true` and monitoring is active
+- Check if there are any changes stored
+- If yes, apply all changes using the old EditFile logic
+- After applying, send message with file name and line count (e.g., "File 'path/to/file.vala' has been updated. It now has 150 lines.")
+- If no changes were captured, send error message: "There was a problem applying the changes."
+- Clear monitoring flag and changes
 
-**Alternative**: Handle in `prepare()` by checking permission storage first, but this requires async operations which `prepare()` doesn't support. Overriding `execute()` is cleaner.
+### 7. Permission Handling
 
-**Note**: The base class `execute()` method calls `prepare()` then checks permission. We'll override it to handle the two-step flow.
+- Request single WRITE permission when edit mode is activated (in `execute()`)
+- No two-step READ/WRITE flow needed - keep current single permission approach
+- Store permission state so changes can be applied later
+- If permission denied, return error and don't activate monitoring
 
-6. **Status Messages**:
+### 8. Change Tracking Signals
 
-- Use `this.client.tool_message()` to send status updates
-- Example: `"Edited file path/to/file.vala (3 edits)"`
-
-7. **Error Handling**:
-
-- Throw `GLib.IOError` for file I/O errors
-- Throw `GLib.IOError.INVALID_ARGUMENT` for validation errors
-- Errors will be caught by base class and formatted as `"ERROR: ..."`
-
-### Code Structure Reference
-
-Follow the pattern from `ReadFileTool.vala`:
-
-- Constructor takes `Ollama.Client client` and calls `base(client)`
-- `prepare()` validates parameters and builds permission question
-- `execute_tool()` performs the actual file editing operation
-- Use helper methods: `normalize_file_path()`, `readParams()` (for simple params)
-
-### Signal Implementation
-
-Add two signals to `EditFileTool` to allow other tools/components to intercept and potentially block file changes:
-
-1. **`before_change` signal**:
-
-- Signature: `public signal bool before_change(string file_path, Json.Array edits)`
-- Emitted before applying edits to the file (after validation, before reading/applying edits)
-- Handlers can return `false` to block the change
-- If any handler returns `false`, the edit operation is aborted with `GLib.IOError.PERMISSION_DENIED`
-- If all handlers return `true` (or no handlers), proceed with edit
-
-2. **`after_change` signal**:
-
-- Signature: `public signal void after_change(string file_path, Json.Array edits)`
-- Emitted after successfully applying edits and writing the file
-- Notification-only signal (no return value)
-
-**Signal Usage in execute_tool()**:
-
-- Emit `before_change` after validation but before reading/applying edits
-- Check return value: if any handler returned `false`, throw `GLib.IOError.PERMISSION_DENIED`
-- Emit `after_change` after successful file write
-
-**Note**: Update error handling section to include `GLib.IOError.PERMISSION_DENIED` for signal-blocked operations.
-
-### Diff Display in Permission Widget
-
-Add ability to show file diffs in the permission approval widget using SourceView:
-
-1. **ChatWidget Changes**:
-
-- Add property: `public bool show_diffs { get; set; default = false; }`
-- Pass this property to `ChatPermission` widget (or check it when requesting permission)
-
-2. **ChatPermission Widget Changes** (`UI/ChatPermission.vala`):
-
-- Add optional `GtkSource.View?` widget for displaying diffs
-- Add `GtkSource.Buffer` for diff content
-- Position SourceView between `question_label` and `button_box` in the container
-- Update `request()` method signature to accept optional diff content: `public async PermissionResponse request(string question, string? diff_content = null)`
-- When `diff_content` is provided and non-empty:
-- Show SourceView widget
-- Set diff content in SourceView buffer
-- Configure SourceView: read-only, syntax highlighting (unified diff format), reasonable height
-- When `diff_content` is null or empty:
-- Hide SourceView widget
-- Use `GtkSource.View` with `GtkSource.Buffer` (similar to how ChatView creates SourceView for code blocks)
-
-3. **EditFileTool Integration**:
-
-- In `prepare()` method, generate diff preview before requesting permission
-- Read the file (or affected sections) to generate before/after diff
-- Format as unified diff (or similar readable format)
-- Pass diff content to permission request via `ChatPermission.ChatView.request_user()`
-- Update `ChatPermission.ChatView.request_user()` to extract diff from tool and pass to widget
-
-4. **Diff Generation**:
-
-- Read file sections that will be edited (streaming approach)
-- Generate unified diff format showing:
-- Lines being removed (with `-` prefix)
-- Lines being added (with `+` prefix)
-- Context lines around changes
-- Format: Unified diff format or simple before/after view
-
-**Files to Modify**:
-
-- `UI/ChatWidget.vala` - Add `show_diffs` property
-- `UI/ChatPermission.vala` - Add SourceView for diff display, update `request()` method
-- `ChatPermission/ChatView.vala` - Update `request_user()` to extract and pass diff content
-- `Tools/EditFileTool.vala` - Generate diff preview in `prepare()` method
-
-### Memory-Efficient Implementation (Streaming Approach)
-
-**Important**: Do NOT load the entire file into memory. Use a streaming line-by-line approach:
-
-1. **First Pass - Validation**:
-
-- Read file line by line using `DataInputStream` (like ReadFileTool does)
-- Count total lines to validate edit ranges
-- Close file after counting
-
-2. **Second Pass - Apply Edits**:
-
-- Open input file for reading (line by line)
-- Open temporary file for writing (or use `StringBuilder` if file is small)
-- Track current line number and current edit index
-- For each line:
-- If before edit range: write line as-is
-- If at start of edit: write replacement, skip to end of range
-- If within edit range: skip (already handled)
-- If after all edits: write line as-is
-- Replace original file with temporary file after successful write
-
-3. **Benefits**:
-
-- Memory usage is O(1) regardless of file size (only current line in memory)
-- Works efficiently for very large files
-- Follows same pattern as ReadFileTool for consistency
-
-### Testing Considerations
-
-- Test with single edit
-- Test with multiple non-overlapping edits
-- Test with insertion ([n, n] range)
-- Test with line replacement ([n, n+1] range)
-- Test with multi-line replacement ([n, m] where m > n+1)
-- Test validation: overlapping edits, unsorted edits, invalid ranges
-- Test permission denial handling
-- Test `before_change` signal blocking (handler returns false) - should abort with PERMISSION_DENIED error
-- Test `before_change` signal allowing (handler returns true or no handlers) - should proceed normally
-- Test `after_change` signal emission after successful edit
-- Test with large files to verify memory efficiency (streaming approach)
+- Add signal: `public signal void change_done(string file_path, EditFileChange change)`
+- Emit this signal each time a change is actually applied to the file (in `apply_all_changes()`)
+- This allows UI components to track and preview changes as they are applied (non-blocking)
+- Signal should include file path and the EditFileChange object with its range and content
+- UI can offer a preview of changes without blocking the editing process
+- After all editing has completed, user is free to review the changes
+
+## Files to Modify
+
+1. `Tools/EditFile.vala` - Complete refactor
+2. `Tools/EditFileChange.vala` - Restore from git history
+3. `resources/ollmchat-agents/code-assistant/making_code_changes.md` - Update documentation
+
+## Key Implementation Details
+
+- Use `Gee.HashMap<string, Gee.ArrayList<EditFileChange>>` to track changes per file
+- Parse code block language tag: split on `:` to get `[type, start, end]`
+- Reuse old `apply_edits()` logic from git commit `aa36e4c`
+- Use `ChatCall.reply()` or similar to send message with file name and line count after applying changes
+- Monitor `stream_content` signal only when `monitoring` flag is true for that file
+- Modify existing code block handling methods rather than creating new `process_code_block()` method
+- Emit `change_done` signal when each change is actually applied to the file (not when captured)
 
 ### To-dos
 
