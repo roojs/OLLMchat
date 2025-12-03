@@ -44,10 +44,12 @@ namespace OLLMchat
 	 * 
 	 * @since 1.0
 	 */
-		public class TestWindow : Gtk.Window
+		public class TestWindow : Adw.Window
 		{
 			private OLLMchatGtk.ChatWidget chat_widget;
 			private OLLMchat.History.Manager? history_manager = null;
+			private Adw.OverlaySplitView split_view;
+			private OLLMchatGtk.HistoryBrowser? history_browser = null;
 
 		/**
 		 * Creates a new TestWindow instance.
@@ -59,6 +61,41 @@ namespace OLLMchat
 		{
 			this.title = "OLL Chat Test";
 			this.set_default_size(800, 600);
+
+			// Create toolbar view to manage header bar and content
+			var toolbar_view = new Adw.ToolbarView();
+			
+			// Create header bar with toggle button and new chat button
+			var header_bar = new Adw.HeaderBar();
+			var toggle_button = new Gtk.ToggleButton() {
+				icon_name = "sidebar-show-symbolic",
+				tooltip_text = "Toggle History"
+			};
+			header_bar.pack_start(toggle_button);
+			
+			var new_chat_button = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				tooltip_text = "New Chat"
+			};
+			header_bar.pack_start(new_chat_button);
+			
+			// Connect new chat button to clear current chat
+			new_chat_button.clicked.connect(() => {
+				this.chat_widget.clear_chat();
+			});
+			
+			// Add header bar to toolbar view's top slot
+			toolbar_view.add_top_bar(header_bar);
+
+			// Create overlay split view
+			this.split_view = new Adw.OverlaySplitView();
+			this.split_view.show_sidebar = false; // Hidden at start
+			
+			// Connect toggle button to show/hide sidebar
+			toggle_button.toggled.connect(() => {
+				this.split_view.show_sidebar = toggle_button.active;
+				toggle_button.icon_name = toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
+			});
 
 			// Read configuration from ~/.config/ollmchat/ollama.json
 			// Example file content:
@@ -106,7 +143,7 @@ namespace OLLMchat
 			// Try to set model from running models on server
 			client.set_model_from_ps();
 			
-			// Set up history manager and title generator if configured
+			// Set up history manager
 			var data_dir = Path.build_filename(
 				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
 			);
@@ -120,8 +157,21 @@ namespace OLLMchat
 				}
 			}
 			
-			// Set up history manager and title generator (async, don't wait)
-			this.setup_history_manager.begin(data_dir, client, obj);
+			// Create history manager
+			this.history_manager = new OLLMchat.History.Manager(data_dir);
+			
+			// Register client with history manager
+			this.history_manager.register_client(client);
+			
+			// Create history browser and add to split view sidebar
+			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
+			this.split_view.sidebar = this.history_browser;
+			
+			// Connect history browser to load sessions
+			this.connect_history_browser(this.history_browser);
+			
+			// Set up title generator if configured (async, don't wait)
+			this.setup_title_generator.begin(obj);
 			
 			// Add tools to the client
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
@@ -166,8 +216,14 @@ namespace OLLMchat
 				stderr.printf("Error: %s\n", error);
 			});
 
-			// Set window child
-			this.set_child(this.chat_widget);
+			// Set chat widget as main content
+			this.split_view.content = this.chat_widget;
+
+			// Set split view as toolbar view content
+			toolbar_view.content = this.split_view;
+			
+			// Set toolbar view as window content
+			this.set_content(toolbar_view);
 		}
 
 		/**
@@ -192,25 +248,23 @@ namespace OLLMchat
 		}
 		
 		/**
-		 * Set up history manager and title generator if title_model is configured.
-		 * Only creates history manager if we can actually use it (title_model is valid).
+		 * Set up title generator if title_model is configured.
+		 * Only sets up title generator if title_model is valid.
 		 * Uses early returns for fail-fast pattern.
 		 * 
-		 * @param data_dir Directory for history storage
-		 * @param client The main chat client
 		 * @param obj The JSON config object
 		 */
-		private async void setup_history_manager(string data_dir, OLLMchat.Client client, Json.Object obj)
+		private async void setup_title_generator(Json.Object obj)
 		{
 			// Fail fast: check if title_model is configured
 			if (!obj.has_member("title_model")) {
-				GLib.warning("title_model not set in config - history manager disabled");
+				GLib.warning("title_model not set in config - title generation disabled");
 				return;
 			}
 			
 			var title_model = obj.get_string_member("title_model");
 			if (title_model == "") {
-				GLib.warning("title_model is set but empty in config - history manager disabled");
+				GLib.warning("title_model is set but empty in config - title generation disabled");
 				return;
 			}
 			
@@ -226,16 +280,14 @@ namespace OLLMchat
 			try {
 				yield title_client.show_model(title_model);
 			} catch (Error e) {
-				GLib.warning("title_model '%s' not found on server - history manager disabled: %s", title_model, e.message);
+				GLib.warning("title_model '%s' not found on server - title generation disabled: %s", title_model, e.message);
 				return;
 			}
 			
-			// Model exists - create history manager and title generator
-			this.history_manager = new OLLMchat.History.Manager(data_dir);
-			this.history_manager.title_generator = new OLLMchat.History.TitleGenerator(title_client);
-			
-			// Register client with history manager
-			this.history_manager.register_client(client);
+			// Model exists - set up title generator
+			if (this.history_manager != null) {
+				this.history_manager.title_generator = new OLLMchat.History.TitleGenerator(title_client);
+			}
 		}
 	}
 }

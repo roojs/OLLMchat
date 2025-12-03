@@ -47,6 +47,7 @@ ui_deps = [
 # Dependencies for test-window (includes GTK UI)
 test_window_deps = [
   dependency('gtk4'),
+  dependency('libadwaita-1'),
   dependency('gtksourceview-5'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),

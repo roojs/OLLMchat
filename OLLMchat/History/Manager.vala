@@ -40,7 +40,7 @@ namespace OLLMchat.History
 		/**
 		 * Constructor.
 		 * 
-		 * @param directory Directory where history files are stored (must exist, caller is responsible)
+		 * @param directory Directory where history files are stored (will create history subdirectory if needed)
 		 */
 		public Manager(string directory)
 		{
@@ -51,10 +51,14 @@ namespace OLLMchat.History
 			// Use provided directory and append "history"
 			this.history_dir = GLib.Path.build_filename(directory, "history");
 			
-			// Verify directory exists - caller is responsible for creating it
+			// Create directory if it doesn't exist
 			var dir = GLib.File.new_for_path(this.history_dir);
 			if (!dir.query_exists()) {
-				GLib.error("Manager: history directory does not exist: %s", this.history_dir);
+				try {
+					dir.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					GLib.error("Manager: failed to create history directory %s: %s", this.history_dir, e.message);
+				}
 			}
 			
 			// Create database instance
@@ -75,6 +79,13 @@ namespace OLLMchat.History
 		{
 			// Connect to chat_send signal to detect new chat sessions
 			client.chat_send.connect((chat) => {
+				// Check if session already exists for this chat
+				var existing_session = this.sessions_by_fid.get(chat.fid);
+				if (existing_session != null) {
+					// Session already exists, don't create a new one
+					return;
+				}
+				
 				// Create new session with chat and manager
 				var session = new Session(chat, this);
 				
