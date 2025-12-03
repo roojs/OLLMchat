@@ -78,7 +78,7 @@ namespace OLLMchat.History
 				this.sessions_by_fid.set(chat.fid, session);
 				
 				// Write initial session to DB and file
-				this.save_session_async.begin(session);
+				session.save_async.begin();
 			});
 			
 			// Connect to stream_chunk to detect response completion
@@ -90,34 +90,8 @@ namespace OLLMchat.History
 				// Get session by fid from the chat object
 				var session = this.sessions_by_fid.get(response.call.fid);
 				// Save session to DB and file
-				this.save_session_async.begin(session);
+				session.save_async.begin();
 			});
-		}
-		
-		/**
-		 * Save session to both DB and file asynchronously.
-		 * 
-		 * @param session The session to save
-		 */
-		private async void save_session_async(Session session)
-		{
-			try {
-				// Update updated_at timestamp
-				var now = new DateTime.now_local();
-				session.updated_at = now.format("%Y-%m-%d %H:%M:%S");
-				
-				// Update metadata
-				session.total_messages = session.messages.size;
-				// TODO: Calculate total_tokens and duration_seconds from response metadata
-				
-				// Save to database
-				session.saveToDB();
-				
-				// Save to JSON file
-				yield session.write();
-			} catch (Error e) {
-				GLib.warning("Failed to save session: %s", e.message);
-			}
 		}
 		
 		/**
