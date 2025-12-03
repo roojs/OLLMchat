@@ -309,7 +309,17 @@ The History Manager should be integrated with the `Client` class, not the UI lay
 **Key Changes to `Call/Chat.vala`**:
 ```vala
 // Add session ID property to track which history session this chat belongs to
-public string? fid { get; set; default = null; }
+// Set in constructor - will always be set
+public string fid { get; set; }
+
+public Chat(Client client)
+{
+    base(client);
+    this.url_endpoint = "chat";
+    this.http_method = "POST";
+    // fid will be set when Session is created
+    this.fid = "";
+}
 ```
 
 **Key Changes to `Client.vala`**:
