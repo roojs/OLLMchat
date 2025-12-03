@@ -266,11 +266,6 @@ CREATE TABLE sessions (
 
 #### 1.3 Integration with Client
 
-**⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️**
-
-**🚨 THIS SECTION HAS NOT BEEN REVIEWED - DO NOT IMPLEMENT YET 🚨**
-
-**This integration section needs review before implementation. All code and design decisions in this section are subject to change.**
 
 ---
 
