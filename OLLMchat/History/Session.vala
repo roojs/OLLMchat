@@ -75,9 +75,8 @@ namespace OLLMchat.History
 		{
 			this.chat = chat;
 			this.manager = manager;
-			// Generate file ID from current timestamp
-			var now = new DateTime.now_local();
-			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			// Use fid from chat object (already set in Chat constructor)
+			this.fid = chat.fid;
 		}
 		
 		/**
