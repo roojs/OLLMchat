@@ -44,9 +44,10 @@ namespace OLLMchat
 	 * 
 	 * @since 1.0
 	 */
-	public class TestWindow : Gtk.Window
-	{
-		private OLLMchatGtk.ChatWidget chat_widget;
+		public class TestWindow : Gtk.Window
+		{
+			private OLLMchatGtk.ChatWidget chat_widget;
+			private OLLMchat.History.Manager? history_manager = null;
 
 		/**
 		 * Creates a new TestWindow instance.
