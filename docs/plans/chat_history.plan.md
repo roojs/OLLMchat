@@ -256,7 +256,7 @@ CREATE TABLE sessions (
 - SQLite stores metadata for quick browsing/searching
 - JSON files store complete session data including all messages
 
-#### 1.3 Integration with ChatWidget
+#### 1.3 Integration with Client
 
 **⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️**
 
@@ -266,24 +266,86 @@ CREATE TABLE sessions (
 
 ---
 
-**Modifications to `UI/ChatWidget.vala`**:
-- Add `History.Manager` instance
-- Add `current_session_id` property to track active session
-- Auto-save chat after each message exchange
-- Load chat state when restoring a session
+**History Manager should be tied to Client, not UI**
 
-**Key Changes**:
+The History Manager should be integrated with the `Client` class, not the UI layer. This keeps history management separate from UI concerns and allows it to work regardless of which UI (or no UI) is being used.
+
+**Setup Flow**:
+1. When a `Client` is set up, create a `History.Manager` instance
+2. Register the client with the History Manager using `register_client()`
+3. History Manager connects to Client signals to detect chat events
+
+**Client Signals Available**:
+- `chat_send` - Emitted when a chat request is sent (needs to be updated to include `Call.Chat` argument)
+- `stream_chunk` - Emitted for each streaming chunk (can check `response.done` to detect completion)
+- `stream_content` - Emitted for content chunks only
+- `stream_start` - Emitted when streaming starts
+- `tool_message` - Emitted when tools send status messages
+
+**Required Changes to Client Signal**:
+- Update `chat_send` signal to include `Call.Chat` as argument: `public signal void chat_send(Call.Chat chat)`
+- This allows History Manager to access the chat object directly
+
+**Session ID Tracking**:
+- Add `fid` (session ID) property to `Call.Chat` object to track which session this chat belongs to
+- History Manager maintains a `HashMap<string, Session>` mapping `fid => session`
+- When a new chat starts, generate a unique `fid` and assign it to the `Call.Chat` object
+
+**Session Registration**:
+- When `chat_send` signal is emitted with `Call.Chat` argument, check if `chat.fid` is set
+- If `fid` is not set (new chat), generate session ID and assign to `chat.fid`
+- Create Session object and store in HashMap: `sessions[chat.fid] = session`
+- Write session to both SQLite database and JSON file
+
+**Response Saving**:
+- When a response is complete (not streaming, but toolcalls or done response), save the session
+- Need to detect final response completion:
+  - Check `response.done == true` in `stream_chunk` handler
+  - For tool calls: Only save when it's the final response (after all tool calls are executed)
+  - For non-streaming: Response is always done when returned
+- Save to both SQLite database and JSON file
+
+**Key Changes to `History/Manager.vala`**:
 ```vala
-private History.Manager? history_manager = null;
-private string? current_session_id = null;
-private bool is_restored_session = false;
+// Register a Client to monitor for chat events
+public void register_client(Client client)
+{
+    // Connect to chat_send signal to detect new chat sessions
+    client.chat_send.connect(() => {
+        // Register new session when chat starts
+        this.register_new_session(client);
+    });
+    
+    // Connect to stream_chunk to detect response completion
+    client.stream_chunk.connect((new_text, is_thinking, response) => {
+        // Check if response is done and final (no pending tool calls)
+        if (response.done && this.is_final_response(response)) {
+            // Save session to DB and file
+            this.save_session_async.begin(response.call);
+        }
+    });
+}
 
-// Save chat after response received
-private async void save_chat_to_history();
+// Check if this is a final response (not a tool call that will continue)
+private bool is_final_response(Response.Chat response)
+{
+    // If response has tool_calls, toolsReply will handle them recursively
+    // We need to detect when toolsReply is complete
+    // This might require tracking state or adding a new signal
+    // For now: save when done=true and no tool_calls, or when tool execution chain is complete
+    return response.done && response.message.tool_calls.size == 0;
+}
 
-// Restore chat from history
-public async void restore_chat(string session_id) throws Error;
+// Register new session when chat starts
+private async void register_new_session(Client client);
+
+// Save session to both DB and file
+private async void save_session_async(Call.Chat chat);
 ```
+
+**Note on UI Integration**:
+- UI integration (restoring chats, browsing history) is separate and will be implemented later
+- This section focuses only on automatic history saving via Client signals
 
 ### Phase 2: LLM Title Generation
 
