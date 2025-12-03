@@ -317,6 +317,15 @@ public string? fid { get; set; default = null; }
 public signal void chat_send(Call.Chat chat);
 ```
 
+**Key Changes to `Call/Chat.vala`** (update signal emissions):
+```vala
+// In execute_non_streaming() method (line ~336):
+this.client.chat_send(this);  // Pass 'this' (the Call.Chat object)
+
+// In execute_streaming() method (line ~371):
+this.client.chat_send(this);  // Pass 'this' (the Call.Chat object)
+```
+
 **Key Changes to `History/Manager.vala`**:
 ```vala
 // HashMap to track sessions by fid
