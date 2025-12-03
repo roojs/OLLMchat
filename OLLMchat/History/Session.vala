@@ -119,6 +119,31 @@ namespace OLLMchat.History
 			}
 		}
 		
+		/**
+		 * Save session to both DB and file asynchronously.
+		 * Updates metadata and saves to both database and JSON file.
+		 */
+		public async void save_async()
+		{
+			try {
+				// Update updated_at timestamp
+				var now = new DateTime.now_local();
+				this.updated_at = now.format("%Y-%m-%d %H:%M:%S");
+				
+				// Update metadata
+				this.total_messages = this.messages.size;
+				// TODO: Calculate total_tokens and duration_seconds from response metadata
+				
+				// Save to database
+				this.saveToDB();
+				
+				// Save to JSON file
+				yield this.write();
+			} catch (Error e) {
+				GLib.warning("Failed to save session: %s", e.message);
+			}
+		}
+		
 		// Messages wrapper - uses this.chat.messages
 		public Gee.ArrayList<Message> messages {
 			get { return this.chat.messages; }
