@@ -169,6 +169,27 @@ namespace OLLMchat
 			// Set window child
 			this.set_child(this.chat_widget);
 		}
+
+		/**
+		 * Connects a HistoryBrowser to load sessions when selected.
+		 * 
+		 * Call this method after creating a HistoryBrowser to enable session loading.
+		 * 
+		 * @param history_browser The HistoryBrowser instance to connect
+		 * @since 1.0
+		 */
+		public void connect_history_browser(OLLMchatGtk.HistoryBrowser history_browser)
+		{
+			history_browser.session_selected.connect((session) => {
+				this.chat_widget.load_session.begin(session, (obj, res) => {
+					try {
+						this.chat_widget.load_session.end(res);
+					} catch (Error e) {
+						stderr.printf("Error loading session: %s\n", e.message);
+					}
+				});
+			});
+		}
 		
 		/**
 		 * Set up history manager and title generator if title_model is configured.

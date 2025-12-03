@@ -594,12 +594,76 @@ namespace OLLMchatGtk
 		}
 
 		/**
+		 * Appends a complete assistant message (not streaming).
+		 * Used when loading sessions from history.
+		 * 
+		 * @param message The complete Message object to display
+		 * @since 1.0
+		 */
+		public void append_complete_assistant_message(OLLMchat.Message message)
+		{
+			// Finalize any ongoing assistant message
+			if (this.is_assistant_message) {
+				this.finalize_assistant_message();
+			}
+
+			// Clear any waiting indicator
+			this.clear_waiting_indicator();
+
+			// Get Call.Chat from message_interface to create Response.Chat
+			if (!(message.message_interface is OLLMchat.Call.Chat)) {
+				GLib.warning("ChatView.append_complete_assistant_message: message_interface is not Call.Chat");
+				return;
+			}
+
+			var call = (OLLMchat.Call.Chat) message.message_interface;
+			var client = call.client;
+
+			// Create a minimal Response.Chat for processing
+			var response = new OLLMchat.Response.Chat(client, call);
+			response.message = message;
+			response.done = true;
+
+			// Initialize assistant message state
+			this.is_assistant_message = true;
+			this.last_chunk_start = 0;
+			this.is_thinking = message.thinking != "";
+			this.content_state = ContentState.NONE;
+			this.renderer.start();
+
+			// Process thinking content first if present
+			if (message.thinking != "") {
+				response.is_thinking = true;
+				this.process_new_chunk(message.thinking, response);
+				// Ensure thinking block is finalized
+				if (this.content_state != ContentState.NONE) {
+					this.end_block(response);
+				}
+			}
+
+			// Process regular content
+			if (message.content != "") {
+				response.is_thinking = false;
+				this.process_new_chunk(message.content, response);
+			}
+
+			// Finalize the message
+			this.finalize_assistant_message(response);
+		}
+
+		/**
 		 * Clears all content from the chat view.
 		 * 
 		 * @since 1.0
 		 */
 		public void clear()
 		{
+			
+			// Reset markdown renderer state if there's an active block
+			if (this.renderer.current_textview != null) {
+				this.renderer.end_block();
+			}
+			
 			// Clear all widgets from the box
 			var children = this.text_view_box.get_first_child();
 			while (children != null) {

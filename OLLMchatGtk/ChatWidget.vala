@@ -205,6 +205,53 @@ namespace OLLMchatGtk
 		}
 
 		/**
+		 * Loads a history session into the chat widget.
+		 * 
+		 * This method:
+		 * - Cancels any active streaming
+		 * - Loads the session's JSON file (if not already loaded)
+		 * - Clears the current chat view
+		 * - Sets current_chat to the session's chat
+		 * - Renders all messages from the session to ChatView
+		 * 
+		 * @param session The session to load
+		 * @throws Error if loading fails
+		 * @since 1.0
+		 */
+		public async void load_session(OLLMchat.History.Session session) throws Error
+		{
+			// Step 1: Cancel active streaming if any
+			if (this.is_streaming_active) {
+				this.is_streaming_active = false;
+				if (this.current_chat != null && this.current_chat.cancellable != null) {
+					this.current_chat.cancellable.cancel();
+				}
+				this.chat_view.finalize_assistant_message();
+				this.chat_input.set_streaming(false);
+			}
+
+			// Step 2: Load session JSON file if needed
+			yield session.read();
+
+			// Step 3: Clear current chat (clears view and resets current_chat)
+			// Note: clear_chat() calls chat_view.clear() which resets the renderer
+			this.clear_chat();
+
+			// Step 4: Set current_chat to session's chat
+			this.current_chat = session.chat;
+
+			// Step 6: Iterate through messages and render
+			foreach (var msg in session.chat.messages) {
+				if (msg.role == "user") {
+					this.chat_view.append_user_message(msg.content, msg.message_interface);
+				} else if (msg.role == "assistant") {
+					this.chat_view.append_complete_assistant_message(msg);
+				}
+				// Skip tool messages - they're not displayed
+			}
+		}
+
+		/**
 		 * Requests permission from the user for a tool operation.
 		 * 
 		 * @param tool The tool requesting permission
