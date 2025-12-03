@@ -31,6 +31,9 @@ namespace OLLMchat.History
 		public SQ.Database db { get; private set; }
 		public TitleGenerator? title_generator { get; set; default = null; }
 		
+		// Signal emitted when a new session is added (for UI updates)
+		public signal void session_added(Session session);
+		
 		// HashMap to track sessions by fid
 		private Gee.HashMap<string, Session> sessions_by_fid = new Gee.HashMap<string, Session>();
 		
@@ -78,6 +81,12 @@ namespace OLLMchat.History
 				// Store in HashMap
 				this.sessions_by_fid.set(chat.fid, session);
 				
+				// Add to sessions list
+				this.sessions.add(session);
+				
+				// Emit signal for UI updates (HistoryBrowser can listen to this)
+				this.session_added(session);
+				
 				// Write initial session to DB and file
 				session.save_async.begin();
 			});
@@ -102,7 +111,7 @@ namespace OLLMchat.History
 		{
 			this.sessions.clear();
 			var sq = new SQ.Query<Session>(this.db, "session");
-			sq.select("ORDER BY updated_at DESC", this.sessions);
+			sq.select("ORDER BY updated_at_timestamp DESC", this.sessions);
 		}
 	}
 }

@@ -167,6 +167,7 @@ ollmchat_ui_src = files([
   'OLLMchatGtk/ChatView.vala',
   'OLLMchatGtk/ChatInput.vala',
   'OLLMchatGtk/ChatPermission.vala',
+  'OLLMchatGtk/HistoryBrowser.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build omarkdown base library (libomarkdown.so) - no GTK dependencies
@@ -362,6 +363,7 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
   symbol_prefix: 'ollmchat',
   sources: [ollmchat_ui_header_file],
   link_with: [ollmchat_base_lib, omarkdown_base_lib, omarkdown_ui_lib],
+  dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ollmchat',
     '--extra-library=omarkdown',

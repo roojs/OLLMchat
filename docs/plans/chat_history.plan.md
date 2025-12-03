@@ -111,6 +111,9 @@ public class Manager : Object
     public string history_dir { get; private set; }
     public Gee.ArrayList<Session> sessions { get; private set; default = new Gee.ArrayList<Session>(); }
     
+    // Signal emitted when a new session is added (for UI updates)
+    public signal void session_added(Session session);
+    
     // Register a Client to monitor for chat events
     public void register_client(Client client);
     
@@ -366,6 +369,12 @@ public void register_client(Client client)
         // Store in HashMap
         this.sessions_by_fid.set(chat.fid, session);
         
+        // Add to sessions list
+        this.sessions.add(session);
+        
+        // Emit signal for UI updates (HistoryBrowser can listen to this)
+        this.session_added(session);
+        
         // Write initial session to DB and file
         this.save_session_async.begin(session);
     });
@@ -437,36 +446,79 @@ Respond with ONLY the title, no explanation or quotes.
 
 ### Phase 3: UI Features
 
-#### 3.1 History Browser Widget (`UI/HistoryBrowser.vala`)
+#### 3.1 History Browser Widget (`OLLMchatGtk/HistoryBrowser.vala`)
 
-**Namespace**: `OLLMchat.UI`
+**Namespace**: `OLLMchatGtk`
 
 **Responsibilities**:
-- Display list of past chat sessions
-- Show title, preview, date, and model for each session
-- Allow filtering and searching
+- Display list of past chat sessions using `Gtk.ListView`
+- Show title, model, reply count, and date for each session
 - Enable selection and restoration of chats
+- Automatically update when new chats are added via Manager signals
+- Note: Filtering/searching can be implemented using `Gtk.FilterListModel` (not in initial implementation)
 
 **UI Design**:
-- Use `Adw.OverlaySplitView` (libadwaita) for side panel
-- List view with search entry at top
-- Each item shows:
-  - Title (bold)
-  - Preview text (truncated)
-  - Date/time (relative: "2 hours ago", "Yesterday", etc.)
-  - Model name (small, secondary text)
+- Use `Gtk.ListView` with `GLib.ListStore` as the data model
+- Each row displays:
+  - **Main line**: Title (bold, primary text)
+  - **Secondary line** (small text, light grey):
+    - Left side: `model - 2 replies ...` (model name, reply count)
+    - Right side: Date (aligned right, small grey text)
+    - Format: `model - N replies ...  date`
+
+**Implementation Details**:
+
+**Constructor**:
+- Takes `History.Manager` as parameter
+- Connects to Manager signals to receive notifications when chats are added
+- Loads sessions asynchronously from Manager
+- Creates `GLib.ListStore` to hold Session objects
+- Creates `Gtk.ListView` and sets it as the child of the `Gtk.ScrolledWindow` (this widget)
+
+**Data Model**:
+- Uses `GLib.ListStore` containing `History.Session` objects
+- ListStore is populated asynchronously after construction
+- Automatically updated when Manager emits `session_added` signal
+
+**Manager Signals Required**:
+- Add `session_added` signal to `History.Manager`:
+  ```vala
+  public signal void session_added(Session session);
+  ```
+- Emit this signal when a new session is created and saved (in `register_client()` after session is created)
 
 **Key Methods**:
 ```vala
-public class HistoryBrowser : Adw.Bin
+public class HistoryBrowser : Gtk.ScrolledWindow
 {
-    public signal void chat_selected(string session_id);
+    private History.Manager manager;
+    private GLib.ListStore session_store;
+    private Gtk.ListView list_view;
+    
+    // Signal emitted when a session is selected (passes Session object)
+    public signal void session_selected(History.Session session);
     public signal void chat_deleted(string session_id);
     
-    public void refresh_list();
-    public void set_search_query(string query);
+    // Constructor takes History Manager
+    public HistoryBrowser(History.Manager manager);
+    
+    // Load sessions asynchronously from manager
+    private async void load_sessions_async();
+    
+    // Add session to ListStore (called from signal handler)
+    private void add_session_to_store(Session session);
+    
+    // Note: Search/filtering can be implemented using Gtk.FilterListModel on the ListView
+    // public void set_search_query(string query);  // Hidden for now - use filters instead
 }
 ```
+
+**Row Factory**:
+- Use `Gtk.SignalListItemFactory` to create custom row widgets
+- Each row contains:
+  - Vertical box with two labels
+  - First label: Title (bold)
+  - Second label: Model and reply count on left, date on right (small, grey)
 
 #### 3.2 History Overlay Integration
 

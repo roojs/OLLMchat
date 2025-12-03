@@ -31,7 +31,7 @@ namespace OLLMchat.History
 	{
 		public int64 id { get; set; default = -1; }
 		public Call.Chat chat { get; set; }
-		public string updated_at { get; set; default = ""; }  // Format: Y-m-d H:i:s
+		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
 		public string title { get; set; default = ""; }
 		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
@@ -45,6 +45,58 @@ namespace OLLMchat.History
 		public string model {
 			get { return this.chat.client.model; }
 			set { this.chat.client.model = value; }
+		}
+		
+		// Display properties for UI
+		public string display_title {
+			get { return this.title; }
+		}
+		
+		public string display_info {
+			owned get {
+				// Count assistant messages (replies)
+				int reply_count = 0;
+				foreach (var msg in this.chat.messages) {
+					if (msg.role == "assistant") {
+						reply_count++;
+					}
+				}
+				
+				return "%s - %d %s".printf(
+					this.model ,
+					reply_count,
+					reply_count == 1 ? "reply" : "replies"
+				);
+			}
+		}
+		
+		public string display_date {
+			owned get {
+				if (this.updated_at_timestamp == 0) {
+					return "";
+				}
+				
+				var dt = new DateTime.from_unix_local(this.updated_at_timestamp);
+				var now = new DateTime.now_local();
+				var diff = now.difference(dt);
+				var days = (int)(diff / TimeSpan.DAY);
+				var hours = (int)(diff / TimeSpan.HOUR);
+				var minutes = (int)(diff / TimeSpan.MINUTE);
+				
+				if (days > 7) {
+					return dt.format("%b %d, %Y");
+				}
+				if (days > 0) {
+					return days == 1 ? "Yesterday" : "%d days ago".printf(days);
+				}
+				if (hours > 0) {
+					return hours == 1 ? "1 hour ago" : "%d hours ago".printf(hours);
+				}
+				if (minutes > 0) {
+					return minutes == 1 ? "1 minute ago" : "%d minutes ago".printf(minutes);
+				}
+				return "Just now";
+			}
 		}
 		
 		// Metadata flattened on session (not separate class)
@@ -90,7 +142,7 @@ namespace OLLMchat.History
 			string errmsg;
 			var query = "CREATE TABLE IF NOT EXISTS session (" +
 				"id INTEGER PRIMARY KEY, " +
-				"updated_at TEXT NOT NULL, " +
+				"updated_at_timestamp INT64 NOT NULL DEFAULT 0, " +
 				"title TEXT NOT NULL DEFAULT '', " +
 				"model TEXT NOT NULL DEFAULT '', " +
 				"total_messages INTEGER NOT NULL DEFAULT 0, " +
@@ -126,9 +178,9 @@ namespace OLLMchat.History
 		public async void save_async()
 		{
 			try {
-				// Update updated_at timestamp
+				// Update timestamp
 				var now = new DateTime.now_local();
-				this.updated_at = now.format("%Y-%m-%d %H:%M:%S");
+				this.updated_at_timestamp = now.to_unix();
 				
 				// Update metadata
 				this.total_messages = this.messages.size;
@@ -277,7 +329,7 @@ namespace OLLMchat.History
 					}
 				}
 			}
-			// Database has: id, updated_at, title, model, total_messages, total_tokens, duration_seconds, fid
+			// Database has: id, updated_at_timestamp, title, model, total_messages, total_tokens, duration_seconds, fid
 			// So we only copy: child_chats and messages
 			this.child_chats = temp_session.child_chats;
 			
@@ -325,7 +377,7 @@ namespace OLLMchat.History
 		{
 			switch (property_name) {
 				case "fid":
-				case "updated_at":
+				case "updated_at_timestamp":
 				case "title":
 				case "model":
 				case "total_messages":
