@@ -147,8 +147,13 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param level Header level (1-6)
 		 */
-		public override void on_h(uint level)
+		public override void on_h(bool is_start, uint level)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			var h_state = this.current_state.add_state();
 			h_state.style.weight = Pango.Weight.BOLD;
 			switch (level) {
@@ -173,8 +178,13 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark The list marker character
 		 */
-		public override void on_ul(bool is_tight, char mark)
+		public override void on_ul(bool is_start, bool is_tight, char mark)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -185,8 +195,13 @@ namespace OLLMchat.MarkdownGtk
 		 * @param is_tight Whether the list is tight
 		 * @param mark_delimiter The delimiter character
 		 */
-		public override void on_ol(uint start, bool is_tight, char mark_delimiter)
+		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -197,8 +212,13 @@ namespace OLLMchat.MarkdownGtk
 		 * @param task_mark The task marker character
 		 * @param task_mark_offset The offset of the task marker
 		 */
-		public override void on_li(bool is_task, char task_mark, uint task_mark_offset)
+		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -208,24 +228,39 @@ namespace OLLMchat.MarkdownGtk
 		 * @param lang The language identifier (may be null)
 		 * @param fence_char The fence character used
 		 */
-		public override void on_code(string? lang, char fence_char)
+		public override void on_code(bool is_start, string? lang, char fence_char)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for paragraph blocks.
 		 */
-		public override void on_p()
+		public override void on_p(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for blockquote blocks.
 		 */
-		public override void on_quote()
+		public override void on_quote(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -247,8 +282,13 @@ namespace OLLMchat.MarkdownGtk
 		 * @param title The link title 
 		 * @param is_autolink Whether this is an autolink
 		 */
-		public override void on_a(string href, string title, bool is_autolink)
+		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			// Add span state (blue, underlined) for the link
 			var link_state = this.current_state.add_state();
 			link_state.style.foreground = "blue";
@@ -283,8 +323,13 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for emphasis/italic spans.
 		 */
-		public override void on_em()
+		public override void on_em(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			var em_state = this.current_state.add_state();
 			em_state.style.style = Pango.Style.ITALIC;
 		}
@@ -292,8 +337,13 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for strong/bold spans.
 		 */
-		public override void on_strong()
+		public override void on_strong(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			var strong_state = this.current_state.add_state();
 			strong_state.style.weight = Pango.Weight.BOLD;
 		}
@@ -301,24 +351,39 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for underline spans.
 		 */
-		public override void on_u()
+		public override void on_u(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for strikethrough spans.
 		 */
-		public override void on_del()
+		public override void on_del(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for inline code spans.
 		 */
-		public override void on_code_span()
+		public override void on_code_span(bool is_start)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -327,8 +392,13 @@ namespace OLLMchat.MarkdownGtk
 		 * 
 		 * @param tag_name The tag name
 		 */
-		public override void on_other(string tag_name)
+		public override void on_other(bool is_start, string tag_name)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
+			
 			this.current_state.add_state();
 		}
 		
@@ -374,23 +444,19 @@ namespace OLLMchat.MarkdownGtk
 		/**
 		 * Callback for HTML tags.
 		 * Parser sends the tag name and attributes, we create a new state,
-		 * and parser will call on_end() for the close tag.
+		 * and parser will call on_html(false, ...) for the close tag.
 		 * 
 		 * @param tag The HTML tag name (e.g., "div", "span")
 		 * @param attributes The HTML tag attributes (e.g., "class='test'")
 		 */
-		public override void on_html(string tag, string attributes)
+		public override void on_html(bool is_start, string tag, string attributes)
 		{
+			if (!is_start) {
+				this.current_state.close_state();
+				return;
+			}
 			this.current_state.add_state();
-		}
-		
-		/**
-		 * Generic callback to close the current state.
-		 * Used for closing blocks/spans.
-		 */
-		public override void on_end()
-		{
-			this.current_state.close_state();
+			
 		}
 	}
 }

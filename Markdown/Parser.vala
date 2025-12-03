@@ -596,19 +596,43 @@ namespace OLLMchat.Markdown
 		
 		/**
 		 * Calls the appropriate end method based on format type.
-		 * For BOLD_ITALIC, calls on_end twice since we opened two states.
+		 * For BOLD_ITALIC, calls on_em(false) then on_strong(false) in reverse order.
 		 * 
 		 * @param format_type The format type to end
 		 */
 		private void do_format_end(FormatType format_type)
 		{
 			if (format_type == FormatType.BOLD_ITALIC) {
-				// BOLD_ITALIC opened two states, so close both
-				this.renderer.on_end(); // Close italic
+				// BOLD_ITALIC opened two states, so close both in reverse order
+				this.renderer.on_em(false); // Close italic
+				this.renderer.on_strong(false); // Close bold
+				return;
 			}
 			
 			// Single state, close once
-			this.renderer.on_end();
+			switch (format_type) {
+				case FormatType.ITALIC:
+					this.renderer.on_em(false);
+					break;
+				case FormatType.BOLD:
+					this.renderer.on_strong(false);
+					break;
+				case FormatType.CODE:
+					this.renderer.on_code_span(false);
+					break;
+				case FormatType.STRIKETHROUGH:
+					this.renderer.on_del(false);
+					break;
+				case FormatType.HTML:
+					// HTML closing is handled in add_html()
+					break;
+				case FormatType.INVALID:
+					// Should not reach here
+					break;
+				default:
+					// Unknown format type
+					break;
+			}
 		}
 		
 		/**
@@ -621,38 +645,38 @@ namespace OLLMchat.Markdown
 		{
 			switch (format_type) {
 				case FormatType.ITALIC:
-					this.renderer.on_em();
+					this.renderer.on_em(true);
 					break;
 				case FormatType.BOLD:
-					this.renderer.on_strong();
+					this.renderer.on_strong(true);
 					break;
 				case FormatType.BOLD_ITALIC:
 					// Push both bold and italic states
-					this.renderer.on_strong();
-					this.renderer.on_em();
+					this.renderer.on_strong(true);
+					this.renderer.on_em(true);
 					break;
 				case FormatType.CODE:
-					this.renderer.on_code_span();
+					this.renderer.on_code_span(true);
 					break;
 				case FormatType.STRIKETHROUGH:
-					this.renderer.on_del();
+					this.renderer.on_del(true);
 					break;
 				// case FormatType.HIGHLIGHT:
 				// 	// HIGHLIGHT not supported in renderer - use on_other
-				// 	this.renderer.on_other("highlight");
+				// 	this.renderer.on_other(true, "highlight");
 				// 	break;
 				// case FormatType.SUPERSCRIPT:
 				// 	// SUPERSCRIPT not supported in renderer - use on_other
-				// 	this.renderer.on_other("sup");
+				// 	this.renderer.on_other(true, "sup");
 				// 	break;
 				// case FormatType.SUBSCRIPT:
 				// 	// SUBSCRIPT not supported in renderer - use on_other
-				// 	this.renderer.on_other("sub");
+				// 	this.renderer.on_other(true, "sub");
 				// 	break;
 				case FormatType.HTML:
 					// HTML needs special handling - for now use on_other
 					// TODO: Parse HTML tag and attributes
-					this.renderer.on_other("html");
+					this.renderer.on_other(true, "html");
 					break;
 				case FormatType.INVALID:
 					// Should not reach here
@@ -714,9 +738,9 @@ namespace OLLMchat.Markdown
 			if (pos < chunk.length && chunk.get_char(pos) == '>') {
 				// we got tag then '>' so we either fire on_html with the tag and an empty attribute or on_end
 				if (is_closing) {
-					this.renderer.on_end();
+					this.renderer.on_html(false, tag, "");
 				} else {
-					this.renderer.on_html(tag, "");
+					this.renderer.on_html(true, tag, "");
 				}
 				var ch = chunk.get_char(pos);
 				var next_pos = pos + ch.to_string().length;
@@ -755,7 +779,7 @@ namespace OLLMchat.Markdown
 			}
 			
 			if (chunk.get_char(pos) == '>') {
-				this.renderer.on_html(tag, attributes);
+				this.renderer.on_html(true, tag, attributes);
 				var ch = chunk.get_char(pos);
 				var next_pos = pos + ch.to_string().length;
 				return chunk.substring(next_pos, chunk.length - next_pos);

@@ -70,29 +70,28 @@ namespace OLLMchat.Markdown
 		// Callback methods for parser - all must be implemented by subclasses
 		
 		public abstract void on_text(string text);
-		public abstract void on_em();
-		public abstract void on_strong();
-		public abstract void on_code_span();
-		public abstract void on_del();
-		public abstract void on_other(string tag_name);
-		public abstract void on_html(string tag, string attributes);
-		public abstract void on_end();
+		public abstract void on_em(bool is_start);
+		public abstract void on_strong(bool is_start);
+		public abstract void on_code_span(bool is_start);
+		public abstract void on_del(bool is_start);
+		public abstract void on_other(bool is_start, string tag_name);
+		public abstract void on_html(bool is_start, string tag, string attributes);
 		
 		// Block-level callbacks (can have default empty implementations)
-		public virtual void on_h(uint level) {}
-		public virtual void on_p() {}
-		public virtual void on_ul(bool is_tight, char mark) {}
-		public virtual void on_ol(uint start, bool is_tight, char mark_delimiter) {}
-		public virtual void on_li(bool is_task, char task_mark, uint task_mark_offset) {}
-		public virtual void on_code(string? lang, char fence_char) {}
-		public virtual void on_quote() {}
+		public virtual void on_h(bool is_start, uint level) {}
+		public virtual void on_p(bool is_start) {}
+		public virtual void on_ul(bool is_start, bool is_tight, char mark) {}
+		public virtual void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
+		public virtual void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
+		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
+		public virtual void on_quote(bool is_start) {}
 		public virtual void on_hr() {}
-		public virtual void on_a(string href, string title, bool is_autolink) {}
+		public virtual void on_a(bool is_start, string href, string title, bool is_autolink) {}
 		public virtual void on_img(string src, string? title) {}
 		public virtual void on_br() {}
 		public virtual void on_softbr() {}
 		public virtual void on_entity(string text) {}
-		public virtual void on_u() {}
+		public virtual void on_u(bool is_start) {}
 	}
 }
 

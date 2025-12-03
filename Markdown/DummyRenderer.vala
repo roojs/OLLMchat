@@ -44,43 +44,89 @@ namespace OLLMchat.Markdown
 			stdout.printf("TEXT: \"%s\"\n", text);
 		}
 		
-		public override void on_em()
+		public override void on_em(bool is_start)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <em>\n");
+				return;
+			}
+			
 			print_indent();
 			stdout.printf("START: <em>\n");
 			indent_level++;
 		}
 		
-		public override void on_strong()
+		public override void on_strong(bool is_start)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <strong>\n");
+				return;
+			}
+			
 			print_indent();
 			stdout.printf("START: <strong>\n");
 			indent_level++;
 		}
 		
-		public override void on_code_span()
+		public override void on_code_span(bool is_start)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <code>\n");
+				return;
+			}
+			
 			print_indent();
 			stdout.printf("START: <code>\n");
 			indent_level++;
 		}
 		
-		public override void on_del()
+		public override void on_del(bool is_start)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <del>\n");
+				return;
+			}
+			
 			print_indent();
 			stdout.printf("START: <del>\n");
 			indent_level++;
 		}
 		
-		public override void on_other(string tag_name)
+		public override void on_other(bool is_start, string tag_name)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <%s>\n", tag_name);
+				return;
+			}
+			
 			print_indent();
 			stdout.printf("START: <%s>\n", tag_name);
 			indent_level++;
 		}
 		
-		public override void on_html(string tag, string attributes)
+		public override void on_html(bool is_start, string tag, string attributes)
 		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				if (attributes != "") {
+					stdout.printf("END: <%s %s>\n", tag, attributes);
+				} else {
+					stdout.printf("END: <%s>\n", tag);
+				}
+				return;
+			}
+			
 			print_indent();
 			if (attributes != "") {
 				stdout.printf("START: <%s %s>\n", tag, attributes);
@@ -88,13 +134,6 @@ namespace OLLMchat.Markdown
 				stdout.printf("START: <%s>\n", tag);
 			}
 			indent_level++;
-		}
-		
-		public override void on_end()
-		{
-			indent_level--;
-			print_indent();
-			stdout.printf("END\n");
 		}
 	}
 }
