@@ -20,7 +20,7 @@ namespace OLLMchat
 {
 	MainLoop? main_loop = null;
 
-	void on_stream(string partial, bool is_thinking, Ollama.ChatResponse response)
+	void on_stream(string partial, bool is_thinking, OLLMchat.Response.Chat response)
 	{
 		if (is_thinking) {
 			// Optionally handle thinking differently, or just output it
@@ -31,7 +31,7 @@ namespace OLLMchat
 		stdout.flush();
 	}
 
-	async void run_test(Ollama.Client client) throws Error
+	async void run_test(OLLMchat.Client client) throws Error
 	{
 		// Commented out ps() call - using model from config file instead
 		stdout.printf("--- Running Models (ps) ---\n");
@@ -61,7 +61,7 @@ namespace OLLMchat
 		//client.model = model_name;
 		
 
-		stdout.printf("Sending query to Ollama...\n");
+		stdout.printf("Sending query to OLLMchat...\n");
 		//var query = "Write a small vala program using gtk4 to show a window with a scrolled window inside is a windowlefttree and a few tree nodes - cat";
 		//var query = "Write a small vala program using gtk4 to show hello world";
 		var query = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is";
@@ -120,18 +120,18 @@ namespace OLLMchat
 			GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
 		));
 		var obj = parser.get_root().get_object();
-		var client = new Ollama.Client() {
+		var client = new OLLMchat.Client() {
 			url = obj.get_string_member("url"),
 			model = obj.get_string_member("model"),
 			api_key = obj.get_string_member("api_key"),
 			stream = true,
 			think = true,
-			permission_provider = new ChatPermission.Dummy()
+			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};
 		client.stream_chunk.connect(on_stream);
 		
 		// Add ReadFile
-		client.addTool(new Tools.ReadFile(client));
+		client.addTool(new OLLMchat.Tools.ReadFile(client));
 
 		main_loop = new MainLoop();
 

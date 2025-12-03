@@ -43,7 +43,7 @@ namespace Markdown
 	*/
 	public void sax_start_element(void* ctx, unowned string name, unowned string[] attrs)
 	{
-		var converter = (FromHTML)ctx;
+		var converter = (HtmlParser)ctx;
 		converter.start_element(name, attrs);
 		
 	}
@@ -53,7 +53,7 @@ namespace Markdown
 	*/
 	public void sax_end_element(void* ctx, unowned string name)
 	{
-		var converter = (FromHTML)ctx;
+		var converter = (HtmlParser)ctx;
 		converter.end_element(name);
 	}
 	/**
@@ -61,7 +61,7 @@ namespace Markdown
 	*/
 	private void sax_characters(void* ctx, unowned string ch, int len)
 	{
-		var converter = (FromHTML)ctx;
+		var converter = (HtmlParser)ctx;
 		
 		// Process character by character
 		for (int i = 0; i < len; i++) {
@@ -73,7 +73,7 @@ namespace Markdown
 /**
 	* Converts HTML to Markdown format.
 	*/
-	public class FromHTML : Object
+	public class HtmlParser : Object
 	{
 		// Options as properties
 		public bool compress_whitespace { get; set; default = true; }
@@ -117,7 +117,7 @@ namespace Markdown
 		 *
 		 * @param html Input HTML string to convert
 		 */
-		public FromHTML(string html)
+		public HtmlParser(string html)
 		{
 			this.html = html;
 			this.tag_stack = new Gee.ArrayList<string>();

@@ -41,7 +41,7 @@ To build the project, follow these steps:
 
 ### 1. Setup the build directory
 
-From the `src/OLLMchat` directory, run:
+From the project root directory, run:
 
 ```bash
 meson setup build --prefix=/usr
@@ -70,16 +70,31 @@ This will build:
 ## Project Structure
 
 **Markdown Libraries:**
-- `Markdown/` - Markdown parsing and rendering (libomarkdown)
-- `MarkdownGtk/` - GTK-specific markdown rendering (libomarkdown-ui)
+- `Markdown/` - Markdown parsing and rendering (libomarkdown, namespace: `Markdown`)
+- `MarkdownGtk/` - GTK-specific markdown rendering (libomarkdown-ui, namespace: `MarkdownGtk`)
 
-**OLLMchat Libraries:**
-- `Ollama/` - Ollama API client implementation
-- `Prompt/` - Prompt generation system for different agent types
-- `ChatPermission/` - Permission system for tool access control
-- `Tools/` - Tool implementations (ReadFile, EditFile, RunTerminalCommand, etc.)
-- `ToolsUI/` - GTK-specific tool UI components
-- `UI/` - GTK UI components for chat interface
+**OLLMchat Base Library (`libollmchat.so`):**
+- `OLLMchat/` - Main namespace (`OLLMchat`)
+  - `Client.vala` - Main client class for Ollama/OpenAI API access
+  - `Call/` - API call implementations (Chat, Embed, Generate, etc.)
+  - `Response/` - Response handling classes
+  - `Tool/` - Tool interface and base classes (namespace: `OLLMchat.Tool`)
+  - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, etc., namespace: `OLLMchat.Tools`)
+  - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
+  - `Prompt/` - Prompt generation system for different agent types (namespace: `OLLMchat.Prompt`)
+  - `Message.vala`, `MessageInterface.vala`, `OllamaBase.vala` - Core message and base classes
+
+**OLLMchat UI Library (`libollmchat-ui.so`):**
+- `OLLMchatGtk/` - GTK UI components (namespace: `OLLMchatGtk`)
+  - `ChatWidget.vala` - Main chat widget
+  - `ChatView.vala` - Chat view component
+  - `ChatInput.vala` - Chat input component
+  - `ChatPermission.vala` - Permission UI component
+  - `Tools/` - GTK-specific tool UI components (namespace: `OLLMchatGtk.Tools`)
+    - `Permission.vala` - Permission provider UI
+    - `RunCommand.vala` - Run command tool UI
+
+**Resources and Documentation:**
 - `resources/` - Resource files including prompt templates
 - `docs/` - Generated documentation (Valadoc) and implementation plans
 

@@ -46,7 +46,7 @@ namespace OLLMchat
 	 */
 	public class TestWindow : Gtk.Window
 	{
-		private UI.ChatWidget chat_widget;
+		private OLLMchatGtk.ChatWidget chat_widget;
 
 		/**
 		 * Creates a new TestWindow instance.
@@ -88,11 +88,11 @@ namespace OLLMchat
 			}
 
 			// Create CodeAssistant prompt generator with dummy provider
-			var code_assistant = new Prompt.CodeAssistant(new Prompt.CodeAssistantProviderDummy()) {
+			var code_assistant = new Prompt.CodeAssistant(new Prompt.CodeAssistantDummy()) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
 			};
 			
-			var client = new Ollama.Client() {
+			var client = new OLLMchat.Client() {
 				url = obj.get_string_member("url"),
 				//model = obj.get_string_member("model"),
 				api_key = obj.get_string_member("api_key"),
@@ -106,17 +106,17 @@ namespace OLLMchat
 			client.set_model_from_ps();
 			
 			// Add tools to the client
-			client.addTool(new Tools.ReadFile(client));
-			client.addTool(new Tools.EditMode(client));
-			client.addTool(new ToolsUI.RunCommand(client));
+			client.addTool(new OLLMchat.Tools.ReadFile(client));
+			client.addTool(new OLLMchat.Tools.EditMode(client));
+			client.addTool(new OLLMchatGtk.Tools.RunCommand(client));
 
 			// Create chat widget with client
-			this.chat_widget = new UI.ChatWidget(client) {
+			this.chat_widget = new OLLMchatGtk.ChatWidget(client) {
 				default_message = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is"
 			};
 			
 			// Create ChatView permission provider and set it on the client
-			var permission_provider = new ChatPermission.ChatView(
+			var permission_provider = new OLLMchatGtk.Tools.Permission(
 				this.chat_widget,
 				Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"

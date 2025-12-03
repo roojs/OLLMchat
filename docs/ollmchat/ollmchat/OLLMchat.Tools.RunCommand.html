@@ -52,11 +52,11 @@
 
       <map id="OLLMchat.Tools.RunCommand" name="OLLMchat.Tools.RunCommand">
 <area shape="rect" id="node1" href="OLLMchat.Tools.RunCommand.html" title="OLLMchat.Tools.RunCommand" alt="" coords="7,197,269,245"/>
-<area shape="rect" id="node2" href="OLLMchat.Ollama.Tool.html" title="OLLMchat.Ollama.Tool" alt="" coords="37,101,239,149"/>
+<area shape="rect" id="node2" href="OLLMchat.Tool.Interface.html" title="OLLMchat.Tool.Interface" alt="" coords="32,101,244,149"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">RunCommand</span></b> : <span class="main_type"><a href="OLLMchat.Ollama.Tool.html" class="abstract_class">Tool</a></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">RunCommand</span></b> : <span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span>
         </div>
         <div class="description">
           <p>Tool for executing terminal commands in the project root directory.</p>
@@ -64,11 +64,11 @@
             resolved executable realpath. Complex commands (with bash operators or multiple &amp;&amp;) always require approval.</p>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-95')">All known sub-classes:</div>
-          <div class="content" id="box-content-95">
+          <div class="headline" onclick="toggle_box (this, 'box-content-91')">All known sub-classes:</div>
+          <div class="content" id="box-content-91">
             <div class="column">
               <ul class="navi_inline">
-                <li class="class"><a href="OLLMchat.ToolsUI.RunCommand.html">RunCommand</a></li>
+                <li class="class"><a href="OLLMchatGtk.Tools.RunCommand.html">RunCommand</a></li>
               </ul>
             </div>
             <div class="column">
@@ -107,7 +107,7 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Tools.RunCommand.RunCommand.html" class="creation_method">RunCommand</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.Client.html" class="class">Client</a></span> client)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Tools.RunCommand.RunCommand.html" class="creation_method">RunCommand</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -128,13 +128,13 @@
             <div class="leaf_brief_description"><span class="brief_description">Creates a terminal widget for displaying command output. Returns null 
                 in base class, widget in GTK version.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute.html" class="virtual_method">execute</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.ChatCall.html" class="class">ChatCall</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute.html" class="virtual_method">execute</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Override execute() to handle complex commands differently and execute 
                 async subprocess. For complex commands, we use a unique path that won't match cache entries, effectively forcing a new permission 
                 request each time.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute_tool.html" class="virtual_method">execute_tool</a></b> (<span class="main_type"><a href="OLLMchat.Ollama.ChatCall.html" class="class">ChatCall</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RunCommand.execute_tool.html" class="virtual_method">execute_tool</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Required by base class, but we handle everything in execute().</span>
             </div></li>
@@ -146,46 +146,47 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-96')">All known members inherited from class OLLMchat.Ollama.Tool</div>
-          <div class="content" id="box-content-96">
+          <div class="headline" onclick="toggle_box (this, 'box-content-92')">All known members inherited from class OLLMchat.Tool.Interface</div>
+          <div class="content" id="box-content-92">
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.Ollama.Tool.active.html">active</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.build_perm_question.html">build_perm_question</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.client.html">client</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.description.html">description</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.execute.html">execute</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Ollama.Tool.execute_tool.html">execute_tool</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.find_property.html">find_property</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.active.html">active</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.build_perm_question.html">build_perm_question</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.client.html">client</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.description.html">description</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.execute.html">execute</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.execute_tool.html">execute_tool</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.find_property.html">find_property</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.Ollama.Tool.function.html">function</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.get_property.html">get_property</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.name.html">name</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.normalize_file_path.html">normalize_file_path</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Ollama.Tool.parameter_description.html">parameter_description</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.parse_parameter_description_string.html">parse_parameter_description_string</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.permission_operation.html">permission_operation</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.function.html">function</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.get_property.html">get_property</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.name.html">name</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.normalize_file_path.html">normalize_file_path</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.parameter_description.html">parameter_description</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.parse_parameter_description_string.html">parse_parameter_description_string</a>
+                </li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.permission_operation.html">permission_operation</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.Ollama.Tool.permission_question.html">permission_question</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.permission_target_path.html">permission_target_path</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.prepare.html">prepare</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Ollama.Tool.readParams.html">readParams</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.serialize_property.html">serialize_property</a></li>
-                <li class="method"><a href="OLLMchat.Ollama.Tool.set_property.html">set_property</a></li>
-                <li class="property"><a href="OLLMchat.Ollama.Tool.tool_type.html">tool_type</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.permission_question.html">permission_question</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.permission_target_path.html">permission_target_path</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.prepare.html">prepare</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.readParams.html">readParams</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.serialize_property.html">serialize_property</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.set_property.html">set_property</a></li>
+                <li class="property"><a href="OLLMchat.Tool.Interface.tool_type.html">tool_type</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-97')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-97">
+          <div class="headline" onclick="toggle_box (this, 'box-content-93')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-93">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -251,8 +252,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-98')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-98">
+          <div class="headline" onclick="toggle_box (this, 'box-content-94')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-94">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>

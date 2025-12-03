@@ -22,13 +22,14 @@
           <li class="namespace"><a href="Markdown.html">Markdown</a></li>
           <li class="namespace"><a href="MarkdownGtk.html">MarkdownGtk</a></li>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <li class="namespace"><a href="OLLMchat.Call.html">OLLMchat.Call</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
-          <li class="namespace"><a href="OLLMchat.Ollama.html">OLLMchat.Ollama</a></li>
-          <li class="namespace"><a href="OLLMchat.Ollama.Call.html">OLLMchat.Ollama.Call</a></li>
           <li class="namespace"><a href="OLLMchat.Prompt.html">OLLMchat.Prompt</a></li>
+          <li class="namespace"><a href="OLLMchat.Response.html">OLLMchat.Response</a></li>
+          <li class="namespace"><a href="OLLMchat.Tool.html">OLLMchat.Tool</a></li>
           <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
-          <li class="namespace"><a href="OLLMchat.ToolsUI.html">OLLMchat.ToolsUI</a></li>
-          <li class="namespace"><a href="OLLMchat.UI.html">OLLMchat.UI</a></li>
+          <li class="namespace"><a href="OLLMchatGtk.html">OLLMchatGtk</a></li>
+          <li class="namespace"><a href="OLLMchatGtk.Tools.html">OLLMchatGtk.Tools</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -43,8 +44,8 @@
           <ul class="navi_inline">
             <li class="class"><a href="Markdown.DummyRenderer.html">DummyRenderer</a> - <span class="brief_description">Dummy renderer for testing the
                 Parser. Extends RenderBase and overrides methods to print callbacks instead of rendering.</span></li>
-            <li class="class"><a href="Markdown.FromHTML.html">FromHTML</a> - <span class="brief_description">Converts HTML to Markdown format.</span>
-            </li>
+            <li class="class"><a href="Markdown.HtmlParser.html">HtmlParser</a> - <span class="brief_description">Converts HTML to Markdown format.
+              </span></li>
             <li class="class"><a href="Markdown.PangoRender.html">PangoRender</a> - <span class="brief_description">Simple renderer that converts 
                 markdown and HTML tags to Pango markup strings.</span></li>
             <li class="class"><a href="Markdown.Parser.html">Parser</a> - <span class="brief_description">Parser for markdown text that calls specific
@@ -118,11 +119,45 @@
                 state behavior.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <h3 class="main_title">Interfaces:</h3>
+          <ul class="navi_inline">
+            <li class="interface"><a href="OLLMchat.MessageInterface.html">MessageInterface</a> - <span class="brief_description">Interface for 
+                objects that provide chat content.</span></li>
+          </ul>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Client.html">Client</a> - <span class="brief_description">Main client class for interacting with 
+                Ollama API and OpenAI-compatible REST interfaces.</span></li>
+            <li class="class"><a href="OLLMchat.Message.html">Message</a> - <span class="brief_description">Simple message class for chat 
+                conversations. Implements Json.Serializable for use in chat calls.</span></li>
+            <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API objects 
+                that need JSON serialization.</span></li>
+          </ul>
+          <h3 class="main_title">Error domains:</h3>
+          <ul class="navi_inline">
+            <li class="errordomain"><a href="OLLMchat.OllamaError.html">OllamaError</a></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Call.html">Call</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="abstract_class"><a href="OLLMchat.Call.Base.html">Base</a> - <span class="brief_description">Abstract base class for all Ollama
+                API calls.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Chat.html">Chat</a> - <span class="brief_description">Chat API call implementation for sending 
+                messages and receiving responses.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Embed.html">Embed</a> - <span class="brief_description">API call to generate embeddings for input
+                text.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Models.html">Models</a> - <span class="brief_description">API call to list available models on 
+                the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Options.html">Options</a> - <span class="brief_description">Options object for Ollama API calls.
+              </span></li>
+            <li class="class"><a href="OLLMchat.Call.Ps.html">Ps</a> - <span class="brief_description">API call to list currently running models on 
+                the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Call.ShowModel.html">ShowModel</a> - <span class="brief_description">API call to get detailed 
+                information about a specific model.</span></li>
+          </ul>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.ChatPermission.ChatView.html">ChatView</a> - <span class="brief_description">Permission provider that 
-                displays permission requests using ChatWidget's permission widget.</span></li>
             <li class="class"><a href="OLLMchat.ChatPermission.Dummy.html">Dummy</a> - <span class="brief_description">Dummy implementation of 
                 Provider for testing.</span></li>
             <li class="abstract_class"><a href="OLLMchat.ChatPermission.Provider.html">Provider</a> - <span class="brief_description">Abstract base 
@@ -137,81 +172,52 @@
             <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
                 check result.</span></li>
           </ul>
-          <li class="namespace"><a href="OLLMchat.Ollama.html">Ollama</a></li>
-          <h3 class="main_title">Interfaces:</h3>
-          <ul class="navi_inline">
-            <li class="interface"><a href="OLLMchat.Ollama.MessageInterface.html">MessageInterface</a> - <span class="brief_description">Interface for
-                objects that provide chat content.</span></li>
-          </ul>
-          <h3 class="main_title">Classes:</h3>
-          <ul class="navi_inline">
-            <li class="abstract_class"><a href="OLLMchat.Ollama.BaseCall.html">BaseCall</a> - <span class="brief_description">Abstract base class for 
-                all Ollama API calls.</span></li>
-            <li class="abstract_class"><a href="OLLMchat.Ollama.BaseResponse.html">BaseResponse</a> - <span class="brief_description">Abstract base 
-                class for Ollama API responses.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.CallFunction.html">CallFunction</a> - <span class="brief_description">Represents a function 
-                call with name and arguments. Used within ToolCall to represent the function being called.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ChatCall.html">ChatCall</a> - <span class="brief_description">Chat API call implementation for 
-                sending messages and receiving responses.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ChatResponse.html">ChatResponse</a> - <span class="brief_description">Response from a chat API 
-                call.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.Client.html">Client</a> - <span class="brief_description">Main client class for interacting 
-                with Ollama API and OpenAI-compatible REST interfaces.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.EmbedCall.html">EmbedCall</a> - <span class="brief_description">API call to generate embeddings
-                for input text.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.EmbedResponse.html">EmbedResponse</a> - <span class="brief_description">Represents the response
-                from the embeddings API.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.Function.html">Function</a> - <span class="brief_description">Concrete class representing a 
-                function within a Tool.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.Message.html">Message</a> - <span class="brief_description">Simple message class for chat 
-                conversations. Implements Json.Serializable for use in chat calls.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.Model.html">Model</a> - <span class="brief_description">Represents model information from the 
-                Ollama server.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ModelsCall.html">ModelsCall</a> - <span class="brief_description">API call to list available 
-                models on the Ollama server.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API 
-                objects that need JSON serialization.</span></li>
-            <li class="abstract_class"><a href="OLLMchat.Ollama.Param.html">Param</a> - <span class="brief_description">Abstract base class for 
-                parameter definitions.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ParamArray.html">ParamArray</a> - <span class="brief_description">Represents an array parameter
-                with items definition.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ParamObject.html">ParamObject</a> - <span class="brief_description">Represents an object 
-                parameter with nested properties.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ParamSimple.html">ParamSimple</a> - <span class="brief_description">Represents a simple 
-                parameter type (string, integer, boolean).</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.PsCall.html">PsCall</a> - <span class="brief_description">API call to list currently running 
-                models on the Ollama server.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ShowModelCall.html">ShowModelCall</a> - <span class="brief_description">API call to get 
-                detailed information about a specific model.</span></li>
-            <li class="abstract_class"><a href="OLLMchat.Ollama.Tool.html">Tool</a> - <span class="brief_description">Abstract base class for tools 
-                that can be used with Ollama function calling.</span></li>
-            <li class="class"><a href="OLLMchat.Ollama.ToolCall.html">ToolCall</a> - <span class="brief_description">Represents a tool call from the 
-                assistant. Used in assistant messages with tool_calls array.</span></li>
-          </ul>
-          <h3 class="main_title">Error domains:</h3>
-          <ul class="navi_inline">
-            <li class="errordomain"><a href="OLLMchat.Ollama.OllamaError.html">OllamaError</a></li>
-          </ul>
-          <li class="namespace"><a href="OLLMchat.Ollama.Call.html">Call</a></li>
-          <h3 class="main_title">Classes:</h3>
-          <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.Ollama.Call.Options.html">Options</a> - <span class="brief_description">Options object for Ollama API 
-                calls.</span></li>
-          </ul>
           <li class="namespace"><a href="OLLMchat.Prompt.html">Prompt</a></li>
           <h3 class="main_title">Interfaces:</h3>
           <ul class="navi_inline">
-            <li class="interface"><a href="OLLMchat.Prompt.CodeAssistantProviderInterface.html">CodeAssistantProviderInterface</a> - 
-              <span class="brief_description">Interface for providing context data to CodeAssistant prompts.</span></li>
+            <li class="interface"><a href="OLLMchat.Prompt.AgentInterface.html">AgentInterface</a> - <span class="brief_description">Interface for 
+                providing context data to CodeAssistant prompts.</span></li>
           </ul>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.Prompt.BaseAgentPrompt.html">BaseAgentPrompt</a> - <span class="brief_description">Base class for 
-                agent prompt generators.</span></li>
+            <li class="class"><a href="OLLMchat.Prompt.BaseAgent.html">BaseAgent</a> - <span class="brief_description">Base class for agent prompt 
+                generators.</span></li>
             <li class="class"><a href="OLLMchat.Prompt.CodeAssistant.html">CodeAssistant</a> - <span class="brief_description">Code Assistant prompt 
                 generator.</span></li>
-            <li class="class"><a href="OLLMchat.Prompt.CodeAssistantProviderDummy.html">CodeAssistantProviderDummy</a> - 
-              <span class="brief_description">Dummy implementation of CodeAssistantProviderInterface.</span></li>
+            <li class="class"><a href="OLLMchat.Prompt.CodeAssistantDummy.html">CodeAssistantDummy</a> - <span class="brief_description">Dummy 
+                implementation of AgentInterface.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Response.html">Response</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="abstract_class"><a href="OLLMchat.Response.Base.html">Base</a> - <span class="brief_description">Abstract base class for Ollama
+                API responses.</span></li>
+            <li class="class"><a href="OLLMchat.Response.CallFunction.html">CallFunction</a> - <span class="brief_description">Represents a function 
+                call with name and arguments. Used within ToolCall to represent the function being called.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Chat.html">Chat</a> - <span class="brief_description">Response from a chat API call.</span>
+            </li>
+            <li class="class"><a href="OLLMchat.Response.Embed.html">Embed</a> - <span class="brief_description">Represents the response from the 
+                embeddings API.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Model.html">Model</a> - <span class="brief_description">Represents model information from the
+                Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Response.ToolCall.html">ToolCall</a> - <span class="brief_description">Represents a tool call from the
+                assistant. Used in assistant messages with tool_calls array.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Tool.html">Tool</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Tool.Function.html">Function</a> - <span class="brief_description">Concrete class representing a 
+                function within a Tool.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Tool.Interface.html">Interface</a> - <span class="brief_description">Abstract base class for 
+                tools that can be used with Ollama function calling.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Tool.Param.html">Param</a> - <span class="brief_description">Abstract base class for 
+                parameter definitions.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamArray.html">ParamArray</a> - <span class="brief_description">Represents an array parameter 
+                with items definition.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamObject.html">ParamObject</a> - <span class="brief_description">Represents an object 
+                parameter with nested properties.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamSimple.html">ParamSimple</a> - <span class="brief_description">Represents a simple parameter
+                type (string, integer, boolean).</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.Tools.html">Tools</a></li>
           <h3 class="main_title">Classes:</h3>
@@ -225,23 +231,25 @@
             <li class="class"><a href="OLLMchat.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">Tool for executing terminal 
                 commands in the project root directory.</span></li>
           </ul>
-          <li class="namespace"><a href="OLLMchat.ToolsUI.html">ToolsUI</a></li>
+          <li class="namespace"><a href="OLLMchatGtk.html">OLLMchatGtk</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.ToolsUI.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
-                RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
-          </ul>
-          <li class="namespace"><a href="OLLMchat.UI.html">UI</a></li>
-          <h3 class="main_title">Classes:</h3>
-          <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.UI.ChatInput.html">ChatInput</a> - <span class="brief_description">Chat input widget with multiline 
+            <li class="class"><a href="OLLMchatGtk.ChatInput.html">ChatInput</a> - <span class="brief_description">Chat input widget with multiline 
                 text input and send/stop button.</span></li>
-            <li class="class"><a href="OLLMchat.UI.ChatPermission.html">ChatPermission</a> - <span class="brief_description">Permission widget that 
+            <li class="class"><a href="OLLMchatGtk.ChatPermission.html">ChatPermission</a> - <span class="brief_description">Permission widget that 
                 displays permission requests with buttons.</span></li>
-            <li class="class"><a href="OLLMchat.UI.ChatView.html">ChatView</a> - <span class="brief_description">Chat view widget for displaying chat 
+            <li class="class"><a href="OLLMchatGtk.ChatView.html">ChatView</a> - <span class="brief_description">Chat view widget for displaying chat 
                 messages with markdown rendering.</span></li>
-            <li class="class"><a href="OLLMchat.UI.ChatWidget.html">ChatWidget</a> - <span class="brief_description">Reusable chat widget that can be 
+            <li class="class"><a href="OLLMchatGtk.ChatWidget.html">ChatWidget</a> - <span class="brief_description">Reusable chat widget that can be 
                 embedded anywhere in the project.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchatGtk.Tools.html">Tools</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchatGtk.Tools.Permission.html">Permission</a> - <span class="brief_description">Permission provider that 
+                displays permission requests using ChatWidget's permission widget.</span></li>
+            <li class="class"><a href="OLLMchatGtk.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
+                RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
           </ul>
         </ul>
       </div>

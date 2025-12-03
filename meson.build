@@ -75,64 +75,60 @@ ollmchat_resources = gnome.compile_resources(
   c_name: 'ollmchat_resources'
 )
 
-# Source files for Ollama namespace (needed by CodeAssistant)
+# Source files for OLLMchat namespace (needed by CodeAssistant)
 ollmchat_ollama_src = files([
-  'Ollama/Client.vala',
-  'Ollama/Call/BaseCall.vala',
-  'Ollama/Call/ChatCall.vala',
-  'Ollama/Call/EmbedCall.vala',
-  'Ollama/Call/ModelsCall.vala',
-  'Ollama/Call/Options.vala',
-  'Ollama/Call/PsCall.vala',
-  'Ollama/Call/ShowModelCall.vala',
-  'Ollama/Message.vala',
-  'Ollama/MessageInterface.vala',
-  'Ollama/OllamaBase.vala',
-  'Ollama/Response/BaseResponse.vala',
-  'Ollama/Response/CallFunction.vala',
-  'Ollama/Response/ChatResponse.vala',
-  'Ollama/Response/EmbedResponse.vala',
-  'Ollama/Response/Model.vala',
-  'Ollama/Response/ToolCall.vala',
-  'Ollama/Tool/Tool.vala',
-  'Ollama/Tool/Param.vala',
-  'Ollama/Tool/ParamSimple.vala',
-  'Ollama/Tool/ParamObject.vala',
-  'Ollama/Tool/ParamArray.vala',
-  'Ollama/Tool/Function.vala',
+  'OLLMchat/Client.vala',
+  'OLLMchat/Call/Base.vala',
+  'OLLMchat/Call/Chat.vala',
+  'OLLMchat/Call/Embed.vala',
+  'OLLMchat/Call/Models.vala',
+  'OLLMchat/Call/Options.vala',
+  'OLLMchat/Call/Ps.vala',
+  'OLLMchat/Call/ShowModel.vala',
+  'OLLMchat/Message.vala',
+  'OLLMchat/MessageInterface.vala',
+  'OLLMchat/OllamaBase.vala',
+  'OLLMchat/Response/Base.vala',
+  'OLLMchat/Response/CallFunction.vala',
+  'OLLMchat/Response/Chat.vala',
+  'OLLMchat/Response/Embed.vala',
+  'OLLMchat/Response/Model.vala',
+  'OLLMchat/Response/ToolCall.vala',
+  'OLLMchat/Tool/Tool.vala',
+  'OLLMchat/Tool/Param.vala',
+  'OLLMchat/Tool/ParamSimple.vala',
+  'OLLMchat/Tool/ParamObject.vala',
+  'OLLMchat/Tool/ParamArray.vala',
+  'OLLMchat/Tool/Function.vala',
+  'OLLMchat/ChatPermission/Provider.vala',
+  'OLLMchat/ChatPermission/Dummy.vala',
 ])
 
-# Source files for prompt system
+# Source files for prompt system - moved to OLLMchat/Prompt/
 ollmchat_prompt_src = files([
-  'Prompt/BaseAgentPrompt.vala',
-  'Prompt/CodeAssistantProviderInterface.vala',
-  'Prompt/CodeAssistantProviderDummy.vala',
-  'Prompt/CodeAssistant.vala',
+  'OLLMchat/Prompt/BaseAgent.vala',
+  'OLLMchat/Prompt/AgentInterface.vala',
+  'OLLMchat/Prompt/CodeAssistantDummy.vala',
+  'OLLMchat/Prompt/CodeAssistant.vala',
 ])
 
-# Source files for ChatPermission namespace (base classes, no GTK)
-ollmchat_chatpermission_src = files([
-  'ChatPermission/Provider.vala',
-  'ChatPermission/Dummy.vala',
-])
+# Source files for ChatPermission namespace (moved to Ollama.ChatPermission)
+# Provider and Dummy are now in OLLMchat/ChatPermission/
+# Permission (formerly ChatView) is now in OLLMchatGtk.Tools/
 
-# Source files for ChatPermission namespace (GTK-dependent)
-ollmchat_chatpermission_ui_src = files([
-  'ChatPermission/ChatView.vala',
-])
-
-# Source files for Tools namespace (base, no GTK)
+# Source files for Tools namespace (base, no GTK) - moved to OLLMchat.Tools
 ollmchat_tools_src = files([
-  'Tools/ReadFile.vala',
-  'Tools/EditMode.vala',
-  'Tools/EditModeChange.vala',
-  'Tools/RunCommand.vala',
+  'OLLMchat/Tools/ReadFile.vala',
+  'OLLMchat/Tools/EditMode.vala',
+  'OLLMchat/Tools/EditModeChange.vala',
+  'OLLMchat/Tools/RunCommand.vala',
 ])
 
 
-# Source files for Tools namespace (GTK-dependent)
+# Source files for Tools namespace (GTK-dependent) - moved to OLLMchatGtk.Tools
 ollmchat_tools_ui_src = files([
-  'ToolsUI/RunCommand.vala',
+  'OLLMchatGtk/Tools/RunCommand.vala',
+  'OLLMchatGtk/Tools/Permission.vala',
 ])
 
 # Source files for Markdown namespace (base, no GTK) - for libomarkdown
@@ -156,12 +152,12 @@ omarkdown_ui_src = files([
   'MarkdownGtk/TableCell.vala',
 ])
 
-# UI source files (for UI library and test-window)
+# UI source files (for UI library and test-window) - renamed to OLLMchatGtk
 ollmchat_ui_src = files([
-  'UI/ChatWidget.vala',
-  'UI/ChatView.vala',
-  'UI/ChatInput.vala',
-  'UI/ChatPermission.vala',
+  'OLLMchatGtk/ChatWidget.vala',
+  'OLLMchatGtk/ChatView.vala',
+  'OLLMchatGtk/ChatInput.vala',
+  'OLLMchatGtk/ChatPermission.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build omarkdown base library (libomarkdown.so) - no GTK dependencies
@@ -261,16 +257,15 @@ omarkdown_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-lomarkdown'],
   sources: [omarkdown_vapi[0]]  # Include VAPI file to ensure it's built first
 )
+# omarkdown_vapi_dep is used by the UI library (ollmchat_ui_lib), not the base library
 # Ensure omarkdown_base_lib is built before omarkdown_vapi_dep is used
 # (meson will detect -lomarkdown in link_args and build the library)
 
 ollmchat_base_lib = library('ollmchat',
-  dependencies: [base_deps, omarkdown_vapi_dep],
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_chatpermission_src, ollmchat_tools_src, ollmchat_resources],
+  dependencies: base_deps,
+  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
-  # Use --pkg for VAPI access (uses manually generated omarkdown.vapi, not omarkdown-meson.vapi)
-  vala_args: ['--pkg=omarkdown', '--vapidir', meson.current_build_dir()],
   install: true
 )
 
@@ -287,10 +282,10 @@ omarkdown_ui_vapi_dep = declare_dependency(
 
 ollmchat_ui_lib = library('ollmchat-ui',
   dependencies: [ui_deps, omarkdown_vapi_dep, omarkdown_ui_vapi_dep],
-  sources: [ollmchat_chatpermission_ui_src, ollmchat_tools_ui_src, ollmchat_ui_src],
+  sources: [ollmchat_tools_ui_src, ollmchat_ui_src],
   vala_header: 'ollmchat-ui.h',
   vala_vapi: 'ollmchat-ui.vapi',
-  link_with: [ollmchat_base_lib],  # Link with base (which includes omarkdown_vapi_dep)
+  link_with: [ollmchat_base_lib],  # Link with base library
   # Use --pkg for VAPI access (uses manually generated VAPI files, not meson-generated ones)
   # The omarkdown_vapi_dep and omarkdown_ui_vapi_dep provide link_args for libraries
   # but since we're using declare_dependency with sources (not link_with), determine_dep_vapis() won't find the meson-generated VAPI
@@ -344,8 +339,7 @@ ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
 
 # GObject Introspection for UI library
 # Identifier prefix is 'OLLMchat' because the UI library contains symbols from
-# multiple namespaces (OLLMchat.ChatPermission, OLLMchat.ToolsUI, OLLMchat.UI)
-# that all start with 'OLLMchat'
+# multiple namespaces (OLLMchatGtk, OLLMchatGtk.Tools) that all start with 'OLLMchat'
 # We include the base library GIR so the UI library can reference base types
 # For Vala libraries, meson doesn't automatically populate the filelist with the header.
 # We need to pass the header file explicitly in the 'sources' parameter.
@@ -379,7 +373,7 @@ valadoc_clean = custom_target('valadoc-clean',
   build_by_default: false
 )
 valadoc_docs = custom_target('valadoc',
-  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_chatpermission_src + ollmchat_tools_src + ollmchat_chatpermission_ui_src + ollmchat_ui_src + omarkdown_src + omarkdown_ui_src,
+  input: ollmchat_ollama_src + ollmchat_prompt_src + ollmchat_tools_src + ollmchat_ui_src + omarkdown_src + omarkdown_ui_src,
   output: ['valadoc'],
   depends: [valadoc_clean],
   command: [

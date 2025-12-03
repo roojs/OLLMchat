@@ -296,7 +296,7 @@ namespace OLLMchat.UI
 				return;
 			}
 			
-			var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Model;
+			var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Response.Model;
 			if (model == null) {
 				return;
 			}
@@ -319,10 +319,10 @@ namespace OLLMchat.UI
 			this.client = client;
 
 			// Create ListStore for models
-			this.model_store = new GLib.ListStore(typeof(Ollama.Model));
+			this.model_store = new GLib.ListStore(typeof(Ollama.Response.Model));
 
 			// Create sorted model that sorts by name
-			this.sorted_models = new Gtk.SortListModel(this.model_store, new Gtk.StringSorter(new Gtk.PropertyExpression(typeof(Ollama.Model), null, "name")));
+			this.sorted_models = new Gtk.SortListModel(this.model_store, new Gtk.StringSorter(new Gtk.PropertyExpression(typeof(Ollama.Response.Model), null, "name")));
 
 			// Create shared factory for both button and popup (with icons, name, size)
 			var factory = new Gtk.SignalListItemFactory();
@@ -371,7 +371,7 @@ namespace OLLMchat.UI
 					return;
 				}
 
-				var model = list_item.item as Ollama.Model;
+				var model = list_item.item as Ollama.Response.Model;
 
 				// Retrieve widgets using object data
 				var tools_icon = list_item.get_data<Gtk.Image>("tools_icon");
@@ -405,7 +405,7 @@ namespace OLLMchat.UI
 				}
 				
 				if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
-					var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Model;
+					var model = this.sorted_models.get_item(this.model_dropdown.selected) as Ollama.Response.Model;
 					
 					this.client.model = model.name;
 					// Set think based on model capability
@@ -507,10 +507,10 @@ namespace OLLMchat.UI
 				
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
-				Ollama.Model? current_model_obj = null;
+				Ollama.Response.Model? current_model_obj = null;
 				if (this.client.model != "") {
 					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
-						var model = this.sorted_models.get_item(i) as Ollama.Model;
+						var model = this.sorted_models.get_item(i) as Ollama.Response.Model;
 						if (model.name != this.client.model) {
 							continue;
 						}

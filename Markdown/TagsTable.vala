@@ -21,14 +21,14 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			c.is_in_table = true;
 			this.writer.append("\n");
 			this.writer.table_start = (int)this.writer.md.len;
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.is_in_table = false;
 			this.writer.append("\n");
@@ -173,12 +173,12 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			this.writer.append("\n");
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			this.writer.update_prev_ch();
 			if (this.writer.prev_ch_in_md == '|') {
@@ -209,7 +209,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			var align = c.attr.has_key("align") ? c.attr.get("align") : "";
 			if (align == null) {
@@ -246,7 +246,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (this.writer.prev_prev_ch_in_md != '|') {
 				this.writer.append("| ");

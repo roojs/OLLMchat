@@ -31,8 +31,8 @@ namespace Markdown
 			this.writer = writer;
 		}
 
-		public virtual void open(FromHTML c) {}
-		public virtual void close(FromHTML c) {}
+		public virtual void open(HtmlParser c) {}
+		public virtual void close(HtmlParser c) {}
 	}
 
 	/**
@@ -48,12 +48,12 @@ namespace Markdown
 			this.md = md;
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			this.writer.append(this.md);
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			this.writer.append(this.md);
 		}
@@ -74,12 +74,12 @@ namespace Markdown
 			this.end_str = end_str;
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			this.writer.append(this.start_str);
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (this.writer.prev_prev_ch_in_md != ' ') {
 				this.writer.append(this.end_str);
@@ -100,7 +100,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.prev_tag == "img") {
 				this.writer.append("\n");
@@ -111,7 +111,7 @@ namespace Markdown
 			this.current_href = c.attr.has_key("href") ? c.attr.get("href") : "";
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			// Check if we need to shorten (if previous char is '[')
 			if (this.writer.md.len > 0 && this.writer.md.str[this.writer.md.len - 1] == '[') {
@@ -148,12 +148,12 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			this.writer.append("<u>");
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			this.writer.append("</u>");
 		}
@@ -169,7 +169,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.is_in_list) {
 				// When it's in a list, it's not in a paragraph
@@ -193,7 +193,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (this.writer.prev_ch_in_md != '\n') {
 				this.writer.append("\n");
@@ -215,7 +215,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.is_in_table) {
 				return;
@@ -230,7 +230,7 @@ namespace Markdown
 			this.writer.append("%d%c ".printf(c.index_ol, c.ordered_list));
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (c.is_in_table) {
 				return;
@@ -252,7 +252,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (this.writer.md.len > 0) {
 				this.writer.append("  \n");
@@ -270,7 +270,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.is_in_table) {
 				return;
@@ -287,7 +287,7 @@ namespace Markdown
 			this.writer.append("\n");
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (c.is_in_table) {
 				return;
@@ -315,7 +315,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			c.is_in_pre = true;
 
@@ -338,7 +338,7 @@ namespace Markdown
 			}
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.is_in_pre = false;
 
@@ -361,7 +361,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			c.is_in_code = true;
 
@@ -383,7 +383,7 @@ namespace Markdown
 			}
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.is_in_code = false;
 
@@ -405,7 +405,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			c.is_in_p = true;
 
@@ -416,7 +416,7 @@ namespace Markdown
 			}
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.is_in_p = false;
 
@@ -440,7 +440,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.is_in_list || c.is_in_table) {
 				return;
@@ -453,7 +453,7 @@ namespace Markdown
 			this.writer.append("\n");
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (c.is_in_table) {
 				return;
@@ -483,7 +483,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.turn_line_into_header1();
 		}
@@ -499,7 +499,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			if (c.prev_tag != "a" && this.writer.prev_ch_in_md != '\n') {
 				this.writer.append("\n");
@@ -520,7 +520,7 @@ namespace Markdown
 			this.writer.append(")");
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			if (c.prev_tag == "a") {
 				this.writer.append("\n");
@@ -538,7 +538,7 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			this.writer.append("\n---\n"); // NOTE: We can make this an option
 		}
@@ -554,14 +554,14 @@ namespace Markdown
 			base(writer);
 		}
 
-		public override void open(FromHTML c)
+		public override void open(HtmlParser c)
 		{
 			c.index_blockquote++;
 			this.writer.append("\n");
 			this.writer.append_repeat("> ", c.index_blockquote);
 		}
 
-		public override void close(FromHTML c)
+		public override void close(HtmlParser c)
 		{
 			c.index_blockquote--;
 			// Only shorten if a "> " was added (i.e., a newline was processed in the blockquote)

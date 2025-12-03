@@ -8,8 +8,8 @@ namespace VectorSearch
 		private Gee.ArrayList<CodeFile> analyzed_files;
 		
 		public CodeIndexer(
-		OLLMchat.Ollama.Client analyzer_client,
-		OLLMchat.Ollama.Client vector_db_client
+		OLLMchat.OLLMchat.Client analyzer_client,
+		OLLMchat.OLLMchat.Client vector_db_client
 	)
 		{
 			this.vector_db = new Database(vector_db_client);

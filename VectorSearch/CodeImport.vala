@@ -2,9 +2,9 @@ namespace VectorSearch
 {
 	public class CodeImport : Object
 	{
-		private OLLMchat.Ollama.Client ollama;
+		private OLLMchat.OLLMchat.Client ollama;
 		
-		public CodeImport(OLLMchat.Ollama.Client ollama)
+		public CodeImport(OLLMchat.OLLMchat.Client ollama)
 		{
 			this.ollama = ollama;
 		}

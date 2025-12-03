@@ -82,7 +82,7 @@ For now, let's use a mapping approach in the cleanup.
 - Remove `on_end()` implementation
 
 ## Implementation Details
-
+1
 ### Special Case: BOLD_ITALIC
 
 When `BOLD_ITALIC` format is detected:

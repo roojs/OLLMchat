@@ -169,7 +169,7 @@ namespace OLLMchat.UI
 		 */
 		public void append_assistant_chunk(string new_text, Ollama.MessageInterface message)
 		{
-			var response = (Ollama.ChatResponse) message;
+			var response = (Ollama.Response.Chat) message;
 
 			if (this.is_waiting) {
 				this.clear_waiting_indicator(response);
@@ -200,7 +200,7 @@ namespace OLLMchat.UI
 			return this.renderer.current_buffer;
 		}
 
-		private void initialize_assistant_message(Ollama.ChatResponse response)
+		private void initialize_assistant_message(Ollama.Response.Chat response)
 		{
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
@@ -214,7 +214,7 @@ namespace OLLMchat.UI
 		* Processes new chunk from message.content using state machine.
 		* Splits content into complete lines vs incomplete line and processes accordingly.
 		*/
-		private void process_new_chunk(string new_text, Ollama.ChatResponse response)
+		private void process_new_chunk(string new_text, Ollama.Response.Chat response)
 		{
 			// Check if state changed (thinking vs content)
 			// If state changed, end the current block
@@ -249,7 +249,7 @@ namespace OLLMchat.UI
 		/**
 		* Appends text to current markdown content based on current state.
 		*/
-		private void process_add_text(string text, Ollama.ChatResponse response)
+		private void process_add_text(string text, Ollama.Response.Chat response)
 		{
 			// Append text to last_line (text does not contain newlines)
 			this.last_line += text;
@@ -286,7 +286,7 @@ namespace OLLMchat.UI
 		/**
 		* Processes a newline, delegating to state-specific handlers.
 		*/
-		private void process_new_line(Ollama.ChatResponse response)
+		private void process_new_line(Ollama.Response.Chat response)
 		{
 			switch (this.content_state) {
 				case ContentState.CODE_BLOCK:
@@ -313,7 +313,7 @@ namespace OLLMchat.UI
 		/**
 		* Handles newline when in CODE_BLOCK state.
 		*/
-		private void process_new_line_code_block(Ollama.ChatResponse response)
+		private void process_new_line_code_block(Ollama.Response.Chat response)
 		{
 			// Check for closing code block marker (trim first to handle spaces before ```)
 			if (!this.last_line.strip().has_prefix("```")) {
@@ -397,7 +397,7 @@ namespace OLLMchat.UI
 		/**
 		* Handles newline when in THINKING state.
 		*/
-		private void process_new_line_thinking(Ollama.ChatResponse response)
+		private void process_new_line_thinking(Ollama.Response.Chat response)
 		{
 			// Check if thinking state changed to not thinking
 			if (!response.is_thinking) {
@@ -416,7 +416,7 @@ namespace OLLMchat.UI
 		/**
 		* Handles newline when in CONTENT state.
 		*/
-		private void process_new_line_content(Ollama.ChatResponse response)
+		private void process_new_line_content(Ollama.Response.Chat response)
 		{
 			// Check for code block marker (trim first to handle spaces before ```)
 			if (this.last_line.strip().has_prefix("```")) {
@@ -455,7 +455,7 @@ namespace OLLMchat.UI
 		/**
 		* Starts a new block based on current state.
 		*/
-		private void start_block(Ollama.ChatResponse response)
+		private void start_block(Ollama.Response.Chat response)
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
@@ -504,7 +504,7 @@ namespace OLLMchat.UI
 		/**
 		* Ends the current block based on state.
 		*/
-		private void end_block(Ollama.ChatResponse response)
+		private void end_block(Ollama.Response.Chat response)
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
@@ -545,7 +545,7 @@ namespace OLLMchat.UI
 		 * 
 		 * @since 1.0
 		 */
-		public void finalize_assistant_message(Ollama.ChatResponse? response = null)
+		public void finalize_assistant_message(Ollama.Response.Chat? response = null)
 		{
 			if (!this.is_assistant_message) {
 				return;
@@ -771,7 +771,7 @@ namespace OLLMchat.UI
 		 * @param response Optional ChatResponse to initialize state when clearing waiting
 		 * @since 1.0
 		 */
-		public void clear_waiting_indicator(Ollama.ChatResponse? response = null)
+		public void clear_waiting_indicator(Ollama.Response.Chat? response = null)
 		{
 			if (!this.is_waiting) {
 				return;

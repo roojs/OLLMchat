@@ -3,11 +3,11 @@ namespace VectorSearch
 	public class Database : Object
 	{
 		private Index? index = null;
-		private OLLMchat.Ollama.Client ollama;
+		private OLLMchat.OLLMchat.Client ollama;
 		private Gee.ArrayList<string> documents;
 		private uint64 embedding_dimension;
 		
-		public Database(OLLMchat.Ollama.Client ollama)
+		public Database(OLLMchat.OLLMchat.Client ollama)
 		{
 			this.ollama = ollama;
 			if (this.ollama.model == "") {
