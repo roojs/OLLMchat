@@ -323,7 +323,8 @@ public Chat(Client client)
     this.http_method = "POST";
     // Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
     var now = new DateTime.now_local();
-    this.fid = @"$(now.get_year())-%02d-%02d-%02d-%02d-%02d-%02d".printf(
+    this.fid = "%s-%02d-%02d-%02d-%02d-%02d-%02d".printf(,
+		now.get_year().to_string()
         now.get_month(), 
         now.get_day_of_month(), 
         now.get_hour(), 
