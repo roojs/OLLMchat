@@ -20,10 +20,9 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="namespace"><a href="Markdown.html">Markdown</a></li>
+          <li class="namespace"><a href="MarkdownGtk.html">MarkdownGtk</a></li>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
-          <li class="namespace"><a href="OLLMchat.Markdown.html">OLLMchat.Markdown</a></li>
-          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">OLLMchat.MarkdownGtk</a></li>
           <li class="namespace"><a href="OLLMchat.Ollama.html">OLLMchat.Ollama</a></li>
           <li class="namespace"><a href="OLLMchat.Ollama.Call.html">OLLMchat.Ollama.Call</a></li>
           <li class="namespace"><a href="OLLMchat.Prompt.html">OLLMchat.Prompt</a></li>
@@ -42,8 +41,16 @@
           <li class="namespace"><a href="Markdown.html">Markdown</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
+            <li class="class"><a href="Markdown.DummyRenderer.html">DummyRenderer</a> - <span class="brief_description">Dummy renderer for testing the
+                Parser. Extends RenderBase and overrides methods to print callbacks instead of rendering.</span></li>
             <li class="class"><a href="Markdown.FromHTML.html">FromHTML</a> - <span class="brief_description">Converts HTML to Markdown format.</span>
             </li>
+            <li class="class"><a href="Markdown.PangoRender.html">PangoRender</a> - <span class="brief_description">Simple renderer that converts 
+                markdown and HTML tags to Pango markup strings.</span></li>
+            <li class="class"><a href="Markdown.Parser.html">Parser</a> - <span class="brief_description">Parser for markdown text that calls specific
+                callbacks on Render.</span></li>
+            <li class="abstract_class"><a href="Markdown.RenderBase.html">RenderBase</a> - <span class="brief_description">Base abstract class for 
+                renderers that use the Parser.</span></li>
             <li class="class"><a href="Markdown.TagAnchor.html">TagAnchor</a> - <span class="brief_description">Handler for anchor tags.</span></li>
             <li class="class"><a href="Markdown.TagBlockquote.html">TagBlockquote</a> - <span class="brief_description">Handler for blockquote tags.
               </span></li>
@@ -100,6 +107,16 @@
               <div class="leaf_brief_description"><span class="brief_description">SAX callback: Start element.</span>
               </div></li>
           </ul>
+          <li class="namespace"><a href="MarkdownGtk.html">MarkdownGtk</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="MarkdownGtk.Render.html">Render</a> - <span class="brief_description">Renders markdown content to a 
+                Gtk.TextBuffer using a state-based renderer.</span></li>
+            <li class="class"><a href="MarkdownGtk.State.html">State</a> - <span class="brief_description">Represents a single piece of styling in the
+                markdown renderer.</span></li>
+            <li class="class"><a href="MarkdownGtk.TopState.html">TopState</a> - <span class="brief_description">Extends State to handle special root 
+                state behavior.</span></li>
+          </ul>
           <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
           <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
           <h3 class="main_title">Classes:</h3>
@@ -119,28 +136,6 @@
                 Permission response from user. Combines allow/deny decision with storage type.</span></li>
             <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
                 check result.</span></li>
-          </ul>
-          <li class="namespace"><a href="OLLMchat.Markdown.html">Markdown</a></li>
-          <h3 class="main_title">Classes:</h3>
-          <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.Markdown.DummyRenderer.html">DummyRenderer</a> - <span class="brief_description">Dummy renderer for 
-                testing the Parser. Extends RenderBase and overrides methods to print callbacks instead of rendering.</span></li>
-            <li class="class"><a href="OLLMchat.Markdown.PangoRender.html">PangoRender</a> - <span class="brief_description">Simple renderer that 
-                converts markdown and HTML tags to Pango markup strings.</span></li>
-            <li class="class"><a href="OLLMchat.Markdown.Parser.html">Parser</a> - <span class="brief_description">Parser for markdown text that calls
-                specific callbacks on Render.</span></li>
-            <li class="abstract_class"><a href="OLLMchat.Markdown.RenderBase.html">RenderBase</a> - <span class="brief_description">Base abstract 
-                class for renderers that use the Parser.</span></li>
-          </ul>
-          <li class="namespace"><a href="OLLMchat.MarkdownGtk.html">MarkdownGtk</a></li>
-          <h3 class="main_title">Classes:</h3>
-          <ul class="navi_inline">
-            <li class="class"><a href="OLLMchat.MarkdownGtk.Render.html">Render</a> - <span class="brief_description">Renders markdown content to a 
-                Gtk.TextBuffer using a state-based renderer.</span></li>
-            <li class="class"><a href="OLLMchat.MarkdownGtk.State.html">State</a> - <span class="brief_description">Represents a single piece of 
-                styling in the markdown renderer.</span></li>
-            <li class="class"><a href="OLLMchat.MarkdownGtk.TopState.html">TopState</a> - <span class="brief_description">Extends State to handle 
-                special root state behavior.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.Ollama.html">Ollama</a></li>
           <h3 class="main_title">Interfaces:</h3>

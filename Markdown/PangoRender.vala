@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat.Markdown
+namespace Markdown
 {
 	/**
 	 * Simple renderer that converts markdown and HTML tags to Pango markup strings.

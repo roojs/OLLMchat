@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat.MarkdownGtk
+namespace MarkdownGtk
 {
 	/**
 	 * Renders markdown content to a Gtk.TextBuffer using a
