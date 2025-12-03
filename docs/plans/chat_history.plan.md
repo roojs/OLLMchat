@@ -347,53 +347,27 @@ public void register_client(Client client)
 {
     // Connect to chat_send signal to detect new chat sessions
     client.chat_send.connect((chat) => {
-        // Check if this chat already has a fid (existing session)
-        if (chat.fid == null || chat.fid == "") {
-            // New chat - generate session ID and assign to chat.fid
-            chat.fid = Manager.generate_id();
-            // Register new session
-            this.register_new_session.begin(chat);
-        }
-        // If fid exists, this is a continuation of existing session
+        // Create new session with chat and manager
+        // Session constructor will generate fid and assign to chat.fid
+        var session = new Session(chat, this);
+        
+        // Store in HashMap
+        this.sessions_by_fid.set(chat.fid, session);
+        
+        // Write initial session to DB and file
+        this.save_session_async.begin(session);
     });
     
     // Connect to stream_chunk to detect response completion
     client.stream_chunk.connect((new_text, is_thinking, response) => {
-        // Check if response is done and final (no pending tool calls)
-        if (response.done && this.is_final_response(response)) {
+        // Save when response is done (not streaming, but toolcalls or done response)
+        if (response.done) {
             // Get session by fid from the chat object
-            if (response.call.fid != null && this.sessions_by_fid.has_key(response.call.fid)) {
-                var session = this.sessions_by_fid.get(response.call.fid);
-                // Save session to DB and file
-                this.save_session_async.begin(session);
-            }
+            var session = this.sessions_by_fid.get(response.call.fid);
+            // Save session to DB and file
+            this.save_session_async.begin(session);
         }
     });
-}
-
-// Check if this is a final response (not a tool call that will continue)
-private bool is_final_response(Response.Chat response)
-{
-    // If response has tool_calls, toolsReply will handle them recursively
-    // We need to detect when toolsReply is complete
-    // This might require tracking state or adding a new signal
-    // For now: save when done=true and no tool_calls, or when tool execution chain is complete
-    return response.done && response.message.tool_calls.size == 0;
-}
-
-// Register new session when chat starts
-private async void register_new_session(Call.Chat chat)
-{
-    // Create Session object wrapping this chat
-    var session = new Session();
-    session.chat = chat;
-    session.file_path = Manager.id_to_path(chat.fid);
-    
-    // Store in HashMap
-    this.sessions_by_fid.set(chat.fid, session);
-    
-    // Write initial session to DB and file
-    yield this.save_session_async(session);
 }
 
 // Save session to both DB and file
