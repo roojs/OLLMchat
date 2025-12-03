@@ -67,11 +67,18 @@ namespace OLLMchat.Call
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
+		// Session ID field to track which history session this chat belongs to
+		// Generated in constructor - will always be set
+		public string fid = "";
+		
 		public Chat(Client client)
 		{
 			base(client);
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
+			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+			var now = new DateTime.now_local();
+			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
 		}
 		// this is only called by response - not by the user
 		  
@@ -333,7 +340,7 @@ namespace OLLMchat.Call
 		private async Response.Chat execute_non_streaming() throws Error
 		{
 			// Emit signal that we're sending the request
-			this.client.chat_send();
+			this.client.chat_send(this);
 			
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
@@ -368,7 +375,7 @@ namespace OLLMchat.Call
 		private async Response.Chat execute_streaming() throws Error
 		{
 			// Emit signal that we're sending the request
-			this.client.chat_send();
+			this.client.chat_send(this);
 			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
