@@ -102,6 +102,8 @@ ollmchat_ollama_src = files([
   'OLLMchat/Tool/Function.vala',
   'OLLMchat/ChatPermission/Provider.vala',
   'OLLMchat/ChatPermission/Dummy.vala',
+  'OLLMchat/History/Manager.vala',
+  'OLLMchat/History/Session.vala',
 ])
 
 # Source files for prompt system - moved to OLLMchat/Prompt/
