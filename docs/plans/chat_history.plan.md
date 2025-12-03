@@ -163,8 +163,7 @@ namespace OLLMchat.History
         {
             this.chat = chat;
             this.manager = manager;
-            // Generate fid and assign to chat
-            chat.fid = Manager.generate_id();
+            // fid is already set in Chat constructor
         }
         
         // Wrapper properties around chat.client
