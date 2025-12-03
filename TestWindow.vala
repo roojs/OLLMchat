@@ -106,6 +106,26 @@ namespace OLLMchat
 			// Try to set model from running models on server
 			client.set_model_from_ps();
 			
+			// Set up history manager
+			var data_dir = Path.build_filename(
+				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
+			);
+			// Ensure directory exists
+			var data_dir_file = File.new_for_path(data_dir);
+			if (!data_dir_file.query_exists()) {
+				try {
+					data_dir_file.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to create data directory %s: %s", data_dir, e.message);
+				}
+			}
+			
+			// Create history manager
+			this.history_manager = new OLLMchat.History.Manager(data_dir);
+			
+			// Register client with history manager
+			this.history_manager.register_client(client);
+			
 			// Add tools to the client
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
 			client.addTool(new OLLMchat.Tools.EditMode(client));
