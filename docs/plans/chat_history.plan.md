@@ -305,23 +305,48 @@ The History Manager should be integrated with the `Client` class, not the UI lay
   - For non-streaming: Response is always done when returned
 - Save to both SQLite database and JSON file
 
+**Key Changes to `Call/Chat.vala`**:
+```vala
+// Add session ID property to track which history session this chat belongs to
+public string? fid { get; set; default = null; }
+```
+
+**Key Changes to `Client.vala`**:
+```vala
+// Update chat_send signal to include Call.Chat argument
+public signal void chat_send(Call.Chat chat);
+```
+
 **Key Changes to `History/Manager.vala`**:
 ```vala
+// HashMap to track sessions by fid
+private Gee.HashMap<string, Session> sessions_by_fid = new Gee.HashMap<string, Session>();
+
 // Register a Client to monitor for chat events
 public void register_client(Client client)
 {
     // Connect to chat_send signal to detect new chat sessions
-    client.chat_send.connect(() => {
-        // Register new session when chat starts
-        this.register_new_session(client);
+    client.chat_send.connect((chat) => {
+        // Check if this chat already has a fid (existing session)
+        if (chat.fid == null || chat.fid == "") {
+            // New chat - generate session ID and assign to chat.fid
+            chat.fid = Manager.generate_id();
+            // Register new session
+            this.register_new_session.begin(chat);
+        }
+        // If fid exists, this is a continuation of existing session
     });
     
     // Connect to stream_chunk to detect response completion
     client.stream_chunk.connect((new_text, is_thinking, response) => {
         // Check if response is done and final (no pending tool calls)
         if (response.done && this.is_final_response(response)) {
-            // Save session to DB and file
-            this.save_session_async.begin(response.call);
+            // Get session by fid from the chat object
+            if (response.call.fid != null && this.sessions_by_fid.has_key(response.call.fid)) {
+                var session = this.sessions_by_fid.get(response.call.fid);
+                // Save session to DB and file
+                this.save_session_async.begin(session);
+            }
         }
     });
 }
@@ -337,10 +362,22 @@ private bool is_final_response(Response.Chat response)
 }
 
 // Register new session when chat starts
-private async void register_new_session(Client client);
+private async void register_new_session(Call.Chat chat)
+{
+    // Create Session object wrapping this chat
+    var session = new Session();
+    session.chat = chat;
+    session.file_path = Manager.id_to_path(chat.fid);
+    
+    // Store in HashMap
+    this.sessions_by_fid.set(chat.fid, session);
+    
+    // Write initial session to DB and file
+    yield this.save_session_async(session);
+}
 
 // Save session to both DB and file
-private async void save_session_async(Call.Chat chat);
+private async void save_session_async(Session session);
 ```
 
 **Note on UI Integration**:
