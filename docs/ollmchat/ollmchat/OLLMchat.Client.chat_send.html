@@ -54,6 +54,7 @@
           <li class="method"><a href="OLLMchat.Client.embed.html">embed</a></li>
           <li class="method"><a href="OLLMchat.Client.embed_array.html">embed_array</a></li>
           <li class="method"><a href="OLLMchat.Client.fetch_all_model_details.html">fetch_all_model_details</a></li>
+          <li class="method"><a href="OLLMchat.Client.generate.html">generate</a></li>
           <li class="method"><a href="OLLMchat.Client.models.html">models</a></li>
           <li class="method"><a href="OLLMchat.Client.ps.html">ps</a></li>
           <li class="method"><a href="OLLMchat.Client.set_model_from_ps.html">set_model_from_ps</a></li>
@@ -70,11 +71,20 @@
         <h1 class="main_title">chat_send</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">chat_send</span></b> ()
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">chat_send</span></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat)
         </div>
         <div class="description">
           <p>Emitted when a chat request is sent to the server. This signal is emitted when the request is about to be sent, including initial chat 
             requests and automatic continuations after tool execution.</p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">chat</td>
+              <td>
+                <p>The Call.Chat object that is being sent </p>
+              </td>
+            </tr>
+          </table>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div>

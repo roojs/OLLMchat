@@ -205,7 +205,7 @@ namespace OLLMchat.History
 			var file = GLib.File.new_for_path(full_path);
 			var file_stream = yield file.replace_async(null, false, GLib.FileCreateFlags.NONE, GLib.Priority.DEFAULT, null);
 			var data_stream = new GLib.DataOutputStream(file_stream);
-			yield data_stream.put_string_async(generator.to_data(null), GLib.Priority.DEFAULT, null);
+			data_stream.put_string(generator.to_data(null));
 			yield data_stream.close_async(GLib.Priority.DEFAULT, null);
 			
 			// Unset flag on messages (set during serialization)
@@ -234,7 +234,7 @@ namespace OLLMchat.History
 			
 			var file = GLib.File.new_for_path(full_path);
 			if (!file.query_exists()) {
-				throw new GLib.IOError.NOENT("File not found: " + full_path);
+				throw new GLib.FileError.NOENT("File not found: " + full_path);
 			}
 			
 			// Read file contents
@@ -252,7 +252,7 @@ namespace OLLMchat.History
 			
 			var root_node = parser.get_root();
 			if (root_node == null || root_node.get_node_type() != Json.NodeType.OBJECT) {
-				throw new GLib.IOError.INVAL("Invalid JSON: root is not an object");
+				throw new GLib.FileError.INVAL("Invalid JSON: root is not an object");
 			}
 			
 			// Deserialize into a new temporary Session object

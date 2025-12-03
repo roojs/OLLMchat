@@ -495,7 +495,7 @@ namespace SQ {
 		 		 ret.add( stmt.column_text(0));
 			}
 			 
-		    GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  Database.db.errmsg());
+		    GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
 		}
 		
@@ -515,7 +515,7 @@ namespace SQ {
 		 		 ret.add(( int)stmt.column_int64(0));
 			}
 			 
-		    GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  Database.db.errmsg());
+		    GLib.debug("fetchAllInt64 got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
 		}
 		

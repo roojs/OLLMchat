@@ -27,6 +27,7 @@ base_deps = [
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   dependency('libxml-2.0'),
+  dependency('sqlite3'),
   valac.find_library('posix'),
 ]
 
@@ -274,6 +275,7 @@ ollmchat_base_lib = library('ollmchat',
   sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
+  vala_args: ['--pkg=sqlite3'],
   install: true
 )
 
@@ -297,7 +299,7 @@ ollmchat_ui_lib = library('ollmchat-ui',
   # Use --pkg for VAPI access (uses manually generated VAPI files, not meson-generated ones)
   # The omarkdown_vapi_dep and omarkdown_ui_vapi_dep provide link_args for libraries
   # but since we're using declare_dependency with sources (not link_with), determine_dep_vapis() won't find the meson-generated VAPI
-  vala_args: ['--pkg=omarkdown', '--pkg=omarkdown-ui', '--vapidir', meson.current_build_dir()],
+  vala_args: ['--pkg=omarkdown', '--pkg=omarkdown-ui', '--pkg=sqlite3', '--vapidir', meson.current_build_dir()],
   install: true
 )
 
@@ -359,12 +361,14 @@ ollmchat_ui_gir = gnome.generate_gir(ollmchat_ui_lib,
   identifier_prefix: 'OLLMchat',
   symbol_prefix: 'ollmchat',
   sources: [ollmchat_ui_header_file],
-  link_with: [ollmchat_base_lib],
+  link_with: [ollmchat_base_lib, omarkdown_base_lib, omarkdown_ui_lib],
   extra_args: [
     '--extra-library=ollmchat',
+    '--extra-library=omarkdown',
+    '--extra-library=omarkdown-ui',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0], omarkdown_gir[0], omarkdown_ui_gir[0]],
   install: true,
   fatal_warnings: false
 )
@@ -397,6 +401,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=libxml-2.0',
+    '--pkg=sqlite3',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
     '--pkg=posix',
@@ -415,6 +420,7 @@ test_ollama = executable('test-ollama',
   dependencies: test_ollama_deps,
   sources: ['TestOllama.vala'],
   link_with: [ollmchat_base_lib],
+  vala_args: ['--pkg=sqlite3'],
   install: false
 )
 
@@ -426,7 +432,7 @@ test_window = executable('test-window',
   sources: ['TestWindow.vala', ollmchat_resources],
   link_with: [ollmchat_base_lib, ollmchat_ui_lib],
   # Use --pkg for VAPI access (uses manually generated VAPI files)
-  vala_args: ['--pkg=omarkdown', '--pkg=omarkdown-ui', '--vapidir', meson.current_build_dir()],
+  vala_args: ['--pkg=omarkdown', '--pkg=omarkdown-ui', '--pkg=sqlite3', '--vapidir', meson.current_build_dir()],
   install: false
 )
 
