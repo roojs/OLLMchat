@@ -31,6 +31,11 @@ namespace OLLMchat
 		public string tool_call_id { get; set; default = ""; }
 		public string name { get; set; default = ""; }
 		public MessageInterface message_interface;
+		
+		// History info (only included when include_history_info is true)
+		public bool include_history_info { get; set; default = false; }
+		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
+		public bool hidden { get; set; default = false; }
 
 		public Message(MessageInterface message_interface, string role, string content, string thinking = "")
 		{
@@ -154,6 +159,18 @@ namespace OLLMchat
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
+				case "include-history-info":
+					// Exclude the flag itself from serialization
+					return null;
+				
+				case "timestamp":
+				case "hidden":
+					// Only serialize history info if include_history_info is true
+					if (!this.include_history_info) {
+						return null;
+					}
+					return default_serialize_property(property_name, value, pspec);
+				
 				case "thinking":
 					// Exclude thinking if empty
 					if (this.thinking == "") {
