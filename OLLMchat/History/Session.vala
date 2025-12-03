@@ -38,7 +38,8 @@ namespace OLLMchat.History
 		// Computed property that returns chat.fid
 		public string fid {
 			get { return this.chat.fid; }
-		}
+			set {}
+		} 
 		
 		// Wrapper properties around chat.client
 		public string model {
@@ -78,8 +79,7 @@ namespace OLLMchat.History
 		{
 			this.chat = chat;
 			this.manager = manager;
-			// Use fid from chat object (already set in Chat constructor)
-			this.fid = chat.fid;
+			// fid is a computed property that returns chat.fid
 		}
 		
 		/**
