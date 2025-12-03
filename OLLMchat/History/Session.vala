@@ -35,7 +35,10 @@ namespace OLLMchat.History
 		public string title { get; set; default = ""; }
 		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
-		public string fid { get; set; default = ""; }
+		// Computed property that returns chat.fid
+		public string fid {
+			get { return this.chat.fid; }
+		}
 		
 		// Wrapper properties around chat.client
 		public string model {
