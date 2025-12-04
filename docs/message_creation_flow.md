@@ -435,6 +435,7 @@ this.prompt_assistant.fill(call, text);
 | Location | When | Messages Created | Purpose |
 |----------|------|------------------|---------|
 | ChatWidget.on_send_clicked | User sends message | Temporary ChatCall | UI display |
+| Client.chat → prompt_assistant.fill | After user sends | Modifies chat_content | Prompt engine processing |
 | Call.Chat.exec_chat | First message | System, User | API request |
 | Call.Chat.reply | Reply message | Assistant, User | API request |
 | Call.Chat.toolsReply | Tool execution | Assistant (tool_calls), Tool replies | API request |
