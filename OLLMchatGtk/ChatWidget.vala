@@ -360,17 +360,13 @@ namespace OLLMchatGtk
 
 		private void on_send_clicked(string text)
 		{
-			// Trim trailing line breaks from the message
-			 
-
 			// Store the text before clearing input (for error recovery)
 			this.last_sent_text = text;
 
-			// Ensure we have a session and client
-			// KLUDGE: Create a temporary ChatCall for displaying the user message
+			// Create a temporary ChatCall for displaying the user message
 			// This is a workaround just so the interface works - the actual ChatCall
-			// will be created later in client.chat()
-			var user_call = new OLLMchat.Call.Chat(this.session.client) {
+			// will be created later in send_message()
+			var user_call = new OLLMchat.Call.Chat(this.manager.session.client) {
 				chat_content = text
 			};
 			
@@ -385,7 +381,7 @@ namespace OLLMchatGtk
 			this.chat_input.set_streaming(true);
 			this.is_streaming_active = true;
 
-			// Send chat request asynchronously (this will call client.chat())
+			// Send chat request asynchronously (EmptySession will convert to Session on first message)
 			// The waiting indicator will be shown when send_starting signal is emitted
 			this.send_chat_request.begin(text);
 		}
