@@ -196,49 +196,8 @@ namespace OLLMchatGtk
 				// Load session data if needed (no-op for already loaded sessions)
 				yield this.manager.session.load();
 				
-				// Render messages from session.messages with filtering for UI display
-				// Display special session types: "think-stream", "content-stream", "user-sent", "ui"
-				// Handle "end-stream" message: when encountered, flag to ignore the next message if it's a "done" message from streaming
-				// Skip certain chat message types: "system" (not displayed in UI), "tool" (already handled), "user" (use "user-sent" instead)
-				bool ignore_next_done = false;
-				foreach (var msg in this.manager.session.messages) {
-					switch (msg.role) {
-						case "end-stream":
-							// Flag to ignore the next "done" message from streaming
-							ignore_next_done = true;
-							break;
-						case "assistant":
-							// Skip messages flagged by "end-stream" (empty assistant messages after streaming)
-							if (ignore_next_done && msg.content == "") {
-								ignore_next_done = false;
-								break;
-							}
-							ignore_next_done = false;
-							this.chat_view.append_complete_assistant_message(msg);
-							break;
-						case "user-sent":
-							ignore_next_done = false;
-							this.chat_view.append_user_message(msg.content, msg.message_interface);
-							break;
-						case "think-stream":
-						case "content-stream":
-							ignore_next_done = false;
-							// Render streaming messages as assistant messages
-							var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content);
-							this.chat_view.append_complete_assistant_message(stream_msg);
-							break;
-						case "ui":
-							ignore_next_done = false;
-							// UI messages are already handled via tool_message signal, but we can display them if needed
-							// For now, skip them as they're handled by the tool_message signal
-							break;
-						default:
-							ignore_next_done = false;
-							// Skip: "system" (not displayed), "tool" (already handled), "user" (use "user-sent" instead)
-							break;
-					}
-				}
-				
+				// Load and render messages from session
+				this.load_messages();
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
 			}
