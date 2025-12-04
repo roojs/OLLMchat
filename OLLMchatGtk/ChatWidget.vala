@@ -260,35 +260,42 @@ namespace OLLMchatGtk
 		 * - Cancels any active streaming
 		 * - Loads the session's JSON file (if not already loaded)
 		 * - Clears the current chat view
-		 * - Sets current_chat to the session's chat
 		 * - Renders all messages from the session to ChatView
 		 * 
 		 * @param session The session to load
 		 * @throws Error if loading fails
 		 * @since 1.0
 		 */
-		public async void load_session(OLLMchat.History.Session session) throws Error
+		public async void load_session(OLLMchat.History.SessionBase session) throws Error
 		{
 			// Step 1: Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
 			this.is_streaming_active = false;
 
-			// Step 2: Load session JSON file if needed
-			yield session.read();
+			// Step 2: Load session JSON file if needed (for SessionPlaceholder)
+			if (session is OLLMchat.History.SessionPlaceholder) {
+				var placeholder = session as OLLMchat.History.SessionPlaceholder;
+				yield placeholder.load();
+				// After load(), session will be a real Session
+				session = this.manager.session;
+			}
 
 			// Step 3: Clear current chat (clears view)
 			// Note: clear_chat() calls chat_view.clear() which resets the renderer
 			this.clear_chat();
 
 			// Step 4: Iterate through messages and render
-			foreach (var msg in session.chat.messages) {
-				if (msg.role == "user") {
-					this.chat_view.append_user_message(msg.content, msg.message_interface);
-				} else if (msg.role == "assistant") {
-					this.chat_view.append_complete_assistant_message(msg);
+			if (session is OLLMchat.History.Session) {
+				var real_session = session as OLLMchat.History.Session;
+				foreach (var msg in real_session.chat.messages) {
+					if (msg.role == "user") {
+						this.chat_view.append_user_message(msg.content, msg.message_interface);
+					} else if (msg.role == "assistant") {
+						this.chat_view.append_complete_assistant_message(msg);
+					}
+					// Skip tool messages - they're not displayed
 				}
-				// Skip tool messages - they're not displayed
 			}
 		}
 
