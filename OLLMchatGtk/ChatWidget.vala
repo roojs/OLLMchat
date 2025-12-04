@@ -182,44 +182,43 @@ namespace OLLMchatGtk
 		* @param session The session to switch to
 		* @since 1.0
 		*/
-		public async void switch_to_session(OLLMchat.History.Session session)
+		public async void switch_to_session(OLLMchat.History.SessionBase session)
 		{
 			// Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
 			this.is_streaming_active = false;
 			this.chat_input.sensitive = false;
-			// Deactivate old session (Manager disconnects its signals)
-			this.session.deactivate();
-			this.clear_chat();
-
-			// Switch manager to new session (Manager connects its signals)
+			
+			// Switch manager to new session (Manager handles deactivation/activation)
 			this.manager.switch_to_session(session);
-			this.session = session;
+			this.clear_chat();
 			
 			// Manager signals are already connected in constructor
 			// Model dropdown is updated via session_activated signal
 			
 			// Lock input while loading
- 			
 			try {
-				// Load session data if needed
-				//session read will initalize chat always.
-				yield session.read();
-				 
-				
-				  
-				// Render all messages from the session
-				 
-				foreach (var msg in session.chat.messages) {
-					if (msg.role == "user") {
-						this.chat_view.append_user_message(msg.content, msg.message_interface);
-					} else if (msg.role == "assistant") {
-						this.chat_view.append_complete_assistant_message(msg);
-					}
-					// Skip tool messages - they're not displayed
+				// Load session data if needed (for SessionPlaceholder)
+				if (session is OLLMchat.History.SessionPlaceholder) {
+					var placeholder = session as OLLMchat.History.SessionPlaceholder;
+					yield placeholder.load();
+					// After load(), manager.session will be the real Session
+					session = this.manager.session;
 				}
-				 
+				
+				// Render all messages from the session
+				if (session is OLLMchat.History.Session) {
+					var real_session = session as OLLMchat.History.Session;
+					foreach (var msg in real_session.chat.messages) {
+						if (msg.role == "user") {
+							this.chat_view.append_user_message(msg.content, msg.message_interface);
+						} else if (msg.role == "assistant") {
+							this.chat_view.append_complete_assistant_message(msg);
+						}
+						// Skip tool messages - they're not displayed
+					}
+				}
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
 			}
