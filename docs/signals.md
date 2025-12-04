@@ -29,7 +29,8 @@ These signals are emitted by the `Client` class and represent events from the Ol
 
 3. **Manager.chat_send → ChatWidget** (UI consumption)
    - Not directly connected - Manager's signal is available but not currently used by ChatWidget
-   - Could be used for UI updates when chat is sent
+   - **Purpose:** Show the sending/waiting indicator when a chat request is sent
+   - Intended to trigger `ChatView.show_waiting_indicator()` to display the animated "waiting for a reply..." indicator
 
 #### `stream_chunk(string new_text, bool is_thinking, Response.Chat response)`
 **When emitted:**
