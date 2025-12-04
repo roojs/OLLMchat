@@ -39,9 +39,6 @@ namespace OLLMchat.History
 			}
 		}
 		
-		public override Gee.ArrayList<Message> messages {
-			owned get { return new Gee.ArrayList<Message>(); }
-		}
 		
 		/**
 		 * Constructor for placeholder session loaded from database.
@@ -123,15 +120,32 @@ namespace OLLMchat.History
 			//real_session.child_chats = json_session.child_chats;
 			
 			// c) Copy messages from SessionJson into Session
-			real_session.chat.messages.clear();
+			// First, restore all messages to session.messages (including special types)
 			foreach (var msg in json_session.messages) {
 				msg.message_interface = real_session.chat;
-				real_session.chat.messages.add(msg);
+				real_session.messages.add(msg);
+			}
+			
+			// Filter messages to populate chat.messages with only API-compatible messages
+			// Filter out special session message types: "think-stream", "content-stream", "user-sent", "ui", "end-stream"
+			// Only include standard roles: "system", "user", "assistant", "tool"
+			foreach (var msg in real_session.messages) {
+				switch (msg.role) {
+					case "system":
+					case "user":
+					case "assistant":
+					case "tool":
+						real_session.chat.messages.add(msg);
+						break;
+					default:
+						// Skip non-standard roles
+						break;
+				}
 			}
 			
 			// d) Remove itself from manager.sessions and fire remove_chat signal
 			this.manager.sessions.remove(this);
-            this.manager.session_removed(this);
+			this.manager.session_removed(this);
 			
 			
 			// e) Add the new Session to manager.sessions and fire add_chat signal

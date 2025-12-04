@@ -196,8 +196,6 @@ namespace OLLMchat.Call
 
 			// Append the new user message
 			var user_message = new Message(this, "user", new_text);
-			// For replies, the new_text is already the original (not modified by prompt engine)
-			user_message.original_content = new_text;
 			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
@@ -324,10 +322,6 @@ namespace OLLMchat.Call
 			
 			// Always add the user message (this Chat)
 			var user_message = new Message(this, "user", this.chat_content);
-			// Store original user text if available (before prompt engine modification)
-			if (this.original_user_text != "") {
-				user_message.original_content = this.original_user_text;
-			}
 			this.messages.add(user_message);
 			
 			// Debug: output messages being sent

@@ -83,6 +83,11 @@ namespace OLLMchat.History
 		// Format: "YYYY/mm/dd/h-i-s" (relative file path)
 		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
 		
+		// Messages property - maintains separate list for serialization
+		// This list includes all message types (standard + special session types)
+		// Separate from chat.messages and used for serialization
+		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
+		
 		// Manager reference for getting history directory
 		internal Manager manager { get; set; }
 		
@@ -95,7 +100,6 @@ namespace OLLMchat.History
 		
 		// Abstract properties that depend on chat
 		public abstract string fid { get; set; }
-		public abstract Gee.ArrayList<Message> messages { owned get; }
 		public abstract string display_info { owned get; }
 		
 		/**
@@ -138,6 +142,13 @@ namespace OLLMchat.History
 				this.manager.stream_start();
 			});
 			this.tool_message_id = this.client.tool_message.connect((message, widget) => {
+				// Capture UI messages as "ui" role messages in session.messages (only for Session instances)
+				if (this is Session) {
+					var session = this as Session;
+					var ui_msg = new Message(session.chat, "ui", message);
+					this.messages.add(ui_msg);
+				}
+				// Relay to manager for UI
 				this.manager.tool_message(message, widget);
 			});
 		}
@@ -178,6 +189,7 @@ namespace OLLMchat.History
 		 * Must be implemented by subclasses.
 		 */
 		protected abstract void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+		
 		
 		/**
 		 * Convert file ID to path format.
