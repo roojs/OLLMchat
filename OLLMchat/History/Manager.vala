@@ -86,6 +86,7 @@ namespace OLLMchat.History
 			this.base_client = base_client;
 
             this.session = new EmptySession(this);
+			this.session.activate();
 		}
 		
 		/**
