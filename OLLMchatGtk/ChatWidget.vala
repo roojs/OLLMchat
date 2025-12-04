@@ -195,12 +195,12 @@ namespace OLLMchatGtk
 			try {
 				// Load session data if needed (no-op for already loaded sessions)
 				yield this.manager.session.load();
-				
-				// Load and render messages from session
-				this.load_messages();
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
 			}
+			
+			// Load and render messages from session
+			this.load_messages();
 			
 			// Unlock input after loading
 			this.chat_input.sensitive = true;
