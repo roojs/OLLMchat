@@ -200,16 +200,15 @@ namespace OLLMchatGtk
 			// Lock input while loading
 			try {
 				// Load session data if needed (for SessionPlaceholder)
-				if (session is OLLMchat.History.SessionPlaceholder) {
-					var placeholder = session as OLLMchat.History.SessionPlaceholder;
+				if (this.manager.session is OLLMchat.History.SessionPlaceholder) {
+					var placeholder = this.manager.session as OLLMchat.History.SessionPlaceholder;
 					yield placeholder.load();
 					// After load(), manager.session will be the real Session
-					session = this.manager.session;
 				}
 				
 				// Render all messages from the session
-				if (session is OLLMchat.History.Session) {
-					var real_session = session as OLLMchat.History.Session;
+				if (this.manager.session is OLLMchat.History.Session) {
+					var real_session = this.manager.session as OLLMchat.History.Session;
 					foreach (var msg in real_session.chat.messages) {
 						if (msg.role == "user") {
 							this.chat_view.append_user_message(msg.content, msg.message_interface);
