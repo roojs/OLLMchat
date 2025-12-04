@@ -36,6 +36,7 @@ namespace OLLMchat
 				is_tool = false;
 				is_agent = false;
 				is_stream_end = false;
+				is_ui_visible = false;
 				
 				// Set flags based on role
 				switch (value) {
@@ -43,34 +44,43 @@ namespace OLLMchat
 						is_thinking = true;
 						is_stream = true;
 						is_hidden = true;
+						is_ui_visible = true;  // Display as assistant message
 						break;
 					case "content-stream":
 						is_content = true;
 						is_stream = true;
 						is_hidden = true;
+						is_ui_visible = true;  // Display as assistant message
 						break;
 					case "user":
 					case "user-sent":
 						is_user = true;
 						if (value == "user-sent") {
 							is_hidden = true;
+							is_ui_visible = true;  // Display user-sent messages
 						}
+						// "user" role is not UI visible (use "user-sent" instead)
 						break;
 					case "assistant":
 						is_agent = true;
+						is_ui_visible = true;
 						break;
 					case "tool":
 						is_tool = true;
+						// Tool messages are handled separately, not displayed directly
 						break;
 					case "end-stream":
 						is_stream_end = true;
 						is_hidden = true;
+						// Not displayed in UI
 						break;
 					case "ui":
 						is_hidden = true;
+						is_ui_visible = true;  // Display via tool_message
 						break;
 					case "system":
 						// System messages are not hidden (they get sent to API)
+						// But not displayed in UI
 						break;
 				}
 			}
@@ -85,6 +95,7 @@ namespace OLLMchat
 		public bool is_tool = false;
 		public bool is_agent = false;
 		public bool is_stream_end = false;
+		public bool is_ui_visible = false;  // For types that should be displayed in the UI
 		
 		public string content { get; set; default = ""; }
 		public string thinking { get; set; default = ""; }
