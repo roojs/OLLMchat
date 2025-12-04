@@ -184,6 +184,19 @@ namespace OLLMchat.Call
 		 */
 		public async Response.Chat reply(string new_text, Response.Chat previous_response) throws Error
 		{
+			// Create dummy user-sent Message with original text BEFORE prompt engine modification
+			var user_sent_msg = new Message(this, "user-sent", new_text);
+			this.client.message_created(user_sent_msg);
+			
+			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
+			this.client.prompt_assistant.fill(this, new_text);
+			
+			// If system_content is set, create system Message and emit message_created
+			if (this.system_content != "") {
+				var system_msg = new Message(this, "system", this.system_content);
+				this.client.message_created(system_msg);
+			}
+			
 			// Append the assistant's response from the previous call
 			// If it had tool_calls, preserve them in the conversation history
 			if (previous_response.message.tool_calls.size > 0) {
@@ -194,8 +207,9 @@ namespace OLLMchat.Call
 					 previous_response.message.thinking));
 			}
 
-			// Append the new user message
-			var user_message = new Message(this, "user", new_text);
+			// Append the new user message with modified chat_content (for API request)
+			// Note: "user-sent" message was already created via signal with original text
+			var user_message = new Message(this, "user", this.chat_content);
 			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
