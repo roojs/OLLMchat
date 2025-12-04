@@ -485,16 +485,14 @@ namespace OLLMchatGtk
 			// Mark streaming as inactive to prevent callbacks from updating UI
 			this.is_streaming_active = false;
 
-			// Cancel the call's cancellable
-			if (this.session.chat != null && this.session.chat.cancellable != null) {
-				this.session.chat.cancellable.cancel();
-			}
+			// Cancel the current request via session
+			this.manager.session.cancel_current_request();
 
 			// Finalize current message
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
 			
-			// Conversation history is preserved in session.chat
+			// Conversation history is preserved in session
 			// The user can continue the conversation after stopping
 		}
 
