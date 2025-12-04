@@ -81,12 +81,15 @@ Refactor the client-side message handling to use a unified `message_created(Mess
 - **File**: `OLLMchatGtk/ChatWidget.vala`
 - Remove `on_send_clicked()` logic that creates temporary ChatCall for display
 - Connect to `manager.message_created` signal
-- In handler, display message based on role:
-- "user-sent": call `chat_view.append_user_message()`
-- "system": skip (not displayed)
-- "assistant": call `chat_view.append_complete_assistant_message()`
-- "ui": call `chat_view.append_tool_message()`
+- In handler, check `message.is_ui_visible` property:
+- If `false`, skip the message (e.g., "system", "end-stream", "tool", "user")
+- If `true`, display message based on role:
+  - "user-sent": call `chat_view.append_user_message()`
+  - "assistant": call `chat_view.append_complete_assistant_message()`
+  - "ui": call `chat_view.append_tool_message()`
+  - "think-stream" / "content-stream": call `chat_view.append_complete_assistant_message()` (convert to assistant message)
 - Keep `load_messages()` for history loading (UI only, no signal emission)
+- Update `load_messages()` to also use `is_ui_visible` for filtering
 
 ### 11. Remove original_user_text from Call.Chat
 
