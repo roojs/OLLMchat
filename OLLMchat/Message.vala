@@ -176,19 +176,6 @@ namespace OLLMchat
 		}
 		
 		/**
-		 * Constructor for stream end messages.
-		 * Used to mark the end of a streaming response.
-		 * 
-		 * @param message_interface The message interface
-		 */
-		public Message.stream_end(MessageInterface message_interface)
-		{
-			this.message_interface = message_interface;
-			this.role = "end-stream";
-			this.content = "";
-		}
-
-		/**
 		 * Extracts code content from markdown code block syntax in this message's content.
 		 * Handles both ```language and ``` formats.
 		 * Returns the last code block if multiple exist.
