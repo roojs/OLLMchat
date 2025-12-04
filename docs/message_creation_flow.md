@@ -2,6 +2,82 @@
 
 This document details at what point in the flow of chat/response we create messages, including any created by the front end. The main logic being we might need to think about rationalizing this to making implementing event handlers a bit more simpler.
 
+## ⚠️ CRITICAL: Content Modification Points
+
+**IMPORTANT:** User message content is modified at a specific point in the flow. Understanding this is essential for understanding the message creation flow.
+
+### Where Content Gets Modified
+
+**Location:** `OLLMchat/Client.vala:321-335` in the `chat()` method
+
+**Exact Code:**
+```vala
+public async Response.Chat chat(string text, GLib.Cancellable? cancellable = null) throws Error
+{
+    // Create chat call
+    var call = new Call.Chat(this) {
+        cancellable = cancellable,
+        original_user_text = text  // ✅ ORIGINAL TEXT STORED HERE (before modification)
+    };
+    
+    // ⚠️ CONTENT MODIFICATION HAPPENS HERE ⚠️
+    this.prompt_assistant.fill(call, text);
+    // After this call, call.chat_content has been MODIFIED by the prompt engine
+    
+    var result = yield call.exec_chat();
+    return result;
+}
+```
+
+### What Gets Modified
+
+1. **`call.chat_content`** - **MODIFIED** by `prompt_assistant.fill()`
+   - Starts as: empty string (or whatever was set in Chat constructor)
+   - After `fill()`: Contains the prompt-engine-modified version of the user's text
+   - This modified content is what gets sent to the API
+
+2. **`call.system_content`** - **MAY BE SET** by `prompt_assistant.fill()`
+   - May be set to a system prompt by the prompt engine
+   - If set, becomes a "system" message in the API request
+
+3. **`call.original_user_text`** - **PRESERVED** (never modified)
+   - Set before `fill()` is called
+   - Contains the raw, unmodified user input
+   - Used for history persistence (stored as "user-sent" message)
+
+### Flow Diagram
+
+```
+User types: "Hello"
+    ↓
+ChatWidget.on_send_clicked(text="Hello")
+    ↓
+Client.chat(text="Hello")
+    ↓
+call.original_user_text = "Hello"  ← PRESERVED
+    ↓
+prompt_assistant.fill(call, "Hello")
+    ↓
+    ⚠️ MODIFICATION HAPPENS HERE ⚠️
+    call.chat_content = "Hello" + [prompt engine modifications]
+    call.system_content = [may be set by prompt engine]
+    ↓
+call.exec_chat()
+    ↓
+Message created with: call.chat_content (MODIFIED)
+```
+
+### Why This Matters
+
+- **For API requests:** Uses `chat_content` (modified version)
+- **For history persistence:** Uses `original_user_text` (unmodified version)
+- **For UI display:** Can show either, but typically shows original for user messages
+- **For debugging:** Need to check both `original_user_text` and `chat_content` to see what was modified
+
+### Key Takeaway
+
+**The prompt engine modifies `call.chat_content` between storing `original_user_text` and creating the Message object. This is the ONLY place where user content is modified before being sent to the API.**
+
 ## Message Creation Points
 
 ### 1. Frontend (UI) Message Creation
