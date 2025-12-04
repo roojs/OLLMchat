@@ -236,13 +236,8 @@ ChatWidget (OLLMchatGtk.ChatWidget)
 1. **Session Activation** (`SessionBase.activate()`):
    - Connects client signals to persistence handlers (`on_chat_send`, `on_stream_chunk`)
    - Connects client signals to Manager relay (anonymous lambdas)
-   - Each connection stores handler ID for later disconnection
 
-2. **Session Deactivation** (`SessionBase.deactivate()`):
-   - Disconnects all client signal handlers
-   - Prevents signals from inactive sessions from reaching UI
-
-3. **Manager Relay**:
+2. **Manager Relay**:
    - Manager always has relay signals available
    - Only the active session's client signals are relayed
    - UI components connect to Manager signals (not directly to Client)
@@ -253,5 +248,4 @@ ChatWidget (OLLMchatGtk.ChatWidget)
 - **Active Session Only**: Only the active session's client signals are relayed to the UI
 - **Persistence vs UI**: SessionBase handlers capture data for persistence, while Manager relays handle UI updates
 - **Tool Integration**: Tools can connect directly to client signals or use Manager relay signals
-- **Disconnection**: All signal connections are properly cleaned up when sessions are deactivated
 
