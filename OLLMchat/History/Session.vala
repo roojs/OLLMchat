@@ -347,6 +347,16 @@ namespace OLLMchat.History
 		}
 		
 		/**
+		 * Handle JSON property mapping and custom deserialization.
+		 * No-op for Session - sessions are never deserialized (only SessionJson is used).
+		 */
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			value = Value(pspec.value_type);
+			return true;
+		}
+		
+		/**
 		 * Handle JSON property mapping for serialization.
 		 */
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

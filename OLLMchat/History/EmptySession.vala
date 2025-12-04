@@ -43,10 +43,6 @@ namespace OLLMchat.History
 			set { }
 		}
 		
-		public override Gee.ArrayList<Message> messages {
-			owned get { return new Gee.ArrayList<Message>(); }
-		}
-		
 		public override string display_info {
 			owned get { return "New Chat"; }
 		}
