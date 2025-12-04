@@ -97,8 +97,7 @@ These signals are emitted by the `Client` class and represent events from the Ol
 **Listeners:**
 1. **SessionBase.tool_message handler** (persistence + UI relay)
    - Connected in `SessionBase.activate()` (line 144-153)
-   - Disconnected in `SessionBase.deactivate()` (line 176)
-   - Purpose: Captures UI messages as "ui" role messages in `session.messages` (for Session instances), then relays to Manager
+   - **Purpose:** Captures UI messages as "ui" role messages in `session.messages` (for Session instances), then relays to Manager
    - Implementation: Creates "ui" message and adds to `session.messages`, then relays to Manager
 
 2. **Manager.tool_message()** (UI relay)
@@ -106,7 +105,7 @@ These signals are emitted by the `Client` class and represent events from the Ol
 
 3. **Manager.tool_message → ChatWidget.chat_view.append_tool_message()** (UI consumption)
    - Connected in `ChatWidget` constructor (line 114)
-   - Purpose: Displays tool status messages in the chat view
+   - **Purpose:** Displays tool status messages in the chat view
 
 ### 2. Manager Signals (`OLLMchat.History.Manager`)
 
@@ -120,7 +119,7 @@ These signals are emitted by the `Manager` class and represent session managemen
 **Listeners:**
 1. **HistoryBrowser.on_session_added()**
    - Connected in `HistoryBrowser` constructor (line 104)
-   - Purpose: Updates UI when a new session is added to the history
+   - **Purpose:** Updates UI when a new session is added to the history
 
 #### `session_removed(SessionBase session)`
 **When emitted:**
@@ -137,7 +136,7 @@ These signals are emitted by the `Manager` class and represent session managemen
 **Listeners:**
 1. **ChatInput.model_dropdown update**
    - Connected in `ChatInput` constructor (line 432)
-   - Purpose: Updates model dropdown when session is activated
+   - **Purpose:** Updates model dropdown when session is activated
 
 #### Manager Relay Signals
 
@@ -159,7 +158,7 @@ These signals are emitted by the `ChatWidget` class and represent user-facing ev
 **Listeners:**
 1. **TestWindow.message_sent handler**
    - Connected in `TestWindow` constructor (line 201)
-   - Purpose: Logs or handles message sent events (example usage)
+   - **Purpose:** Logs or handles message sent events (example usage)
 
 #### `response_received(string text)`
 **When emitted:**
@@ -169,7 +168,7 @@ These signals are emitted by the `ChatWidget` class and represent user-facing ev
 **Listeners:**
 1. **TestWindow.response_received handler**
    - Connected in `TestWindow` constructor (line 205)
-   - Purpose: Logs or handles response received events (example usage)
+   - **Purpose:** Logs or handles response received events (example usage)
 
 #### `error_occurred(string error)`
 **When emitted:**
@@ -178,7 +177,7 @@ These signals are emitted by the `ChatWidget` class and represent user-facing ev
 **Listeners:**
 1. **TestWindow.error_occurred handler**
    - Connected in `TestWindow` constructor (line 215)
-   - Purpose: Logs or handles error events (example usage)
+   - **Purpose:** Logs or handles error events (example usage)
 
 ## Signal Flow Diagram
 
