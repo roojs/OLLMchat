@@ -31,7 +31,7 @@ namespace OLLMchat.History
 		public SQ.Database db { get; private set; }
 		public TitleGenerator? title_generator { get; set; default = null; }
 		public Client base_client { get; private set; }
-		public SessionBase? session { get; private set; default = null; }
+		public SessionBase session { get; internal set; }
 		
 		// Signal emitted when a new session is added (for UI updates)
 		public signal void session_added(SessionBase session);
@@ -202,11 +202,13 @@ namespace OLLMchat.History
 		{
 			this.sessions.clear();
 			var sq = new SQ.Query<SessionPlaceholder>(this.db, "session");
-			sq.select("ORDER BY updated_at_timestamp DESC", this.sessions);
+			var placeholder_list = new Gee.ArrayList<SessionPlaceholder>();
+			sq.select("ORDER BY updated_at_timestamp DESC", placeholder_list);
 			
-			// Set manager for all loaded sessions
-			foreach (var session in this.sessions) {
-				session.manager = this;
+			// Add placeholders to sessions list and set manager
+			foreach (var placeholder in placeholder_list) {
+				placeholder.manager = this;
+				this.sessions.add(placeholder);
 			}
 		}
 	}

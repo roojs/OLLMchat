@@ -66,7 +66,7 @@ namespace OLLMchat.History
 		 * 
 		 * @throws Error if loading fails
 		 */
-		public async void load() throws Error
+		public override async void load() throws Error
 		{
 			// a) Create a new Session with chat
 			var real_session = new Session(this.manager, new Call.Chat(this.manager.new_client()));
@@ -171,7 +171,7 @@ namespace OLLMchat.History
 		
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
-			
+			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages");
 		}
 		
 		public override void cancel_current_request()

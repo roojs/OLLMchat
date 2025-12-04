@@ -93,7 +93,7 @@ namespace OLLMchat
 			this.split_view.show_sidebar = false; // Hidden at start
 			// Set sidebar width as fraction of total width (0.25 = 25% of window width)
 			this.split_view.set_sidebar_width_fraction(0.25);
-			this.split_view.collapsed = true;
+			// this.split_view.collapsed = true; // should we do it as expandy or overlay
 			
 			// Connect toggle button to show/hide sidebar
 			toggle_button.toggled.connect(() => {
