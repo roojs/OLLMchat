@@ -62,13 +62,12 @@ These signals are emitted by the `Client` class and represent events from the Ol
 **Listeners:**
 1. **Manager.stream_content()** (UI relay)
    - Connected via anonymous lambda in `SessionBase.activate()` (line 138-140)
-   - Disconnected in `SessionBase.deactivate()` (line 174)
-   - Purpose: Relays signal from active session's client to Manager
+   - **Purpose:** Relays signal from active session's client to Manager
    - Manager then emits its own `stream_content` signal (line 48)
 
 2. **Tools (e.g., EditMode)**
    - Connected in `EditMode` constructor (line 91-95)
-   - Purpose: Tools can capture streaming content to extract code blocks and build strings
+   - **Purpose:** Tools can capture streaming content to extract code blocks and build strings
    - Example: `EditMode` uses this to capture code as it streams in
 
 #### `stream_start()`
@@ -80,13 +79,12 @@ These signals are emitted by the `Client` class and represent events from the Ol
 **Listeners:**
 1. **Manager.stream_start()` (UI relay)
    - Connected via anonymous lambda in `SessionBase.activate()` (line 141-143)
-   - Disconnected in `SessionBase.deactivate()` (line 175)
-   - Purpose: Relays signal from active session's client to Manager
+   - **Purpose:** Relays signal from active session's client to Manager
    - Manager then emits its own `stream_start` signal (line 49)
 
 2. **Tools (e.g., EditMode)**
    - Connected in `EditMode` constructor (line 81-89)
-   - Purpose: Tools can initialize state when streaming starts
+   - **Purpose:** Tools can initialize state when streaming starts
    - Example: `EditMode` resets its state when streaming starts
 
 #### `tool_message(string message, Object? widget = null)`
