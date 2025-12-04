@@ -292,6 +292,17 @@ namespace OLLMchat
 		 */
 		public signal void stream_start();
 
+		/**
+		 * Emitted when a message is created in the conversation.
+		 * This signal is the primary driver for message creation events, used for
+		 * both persistence (Manager) and UI display. Messages are created before
+		 * prompt engine modification to preserve original user text.
+		 * 
+		 * @param m The Message object that was created
+		 * @since 1.0
+		 */
+		public signal void message_created(Message m);
+
 		public Soup.Session? session = null;
 
 		/**
