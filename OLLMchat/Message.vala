@@ -25,7 +25,7 @@ namespace OLLMchat
 	public class Message : Object, Json.Serializable
 	{
 		public string role {
-			get;
+			get { return value; }
 			set {
 				// Reset all flags
 				is_thinking = false;
