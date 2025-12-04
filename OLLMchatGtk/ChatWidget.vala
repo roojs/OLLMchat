@@ -388,49 +388,19 @@ namespace OLLMchatGtk
 
 		private async void send_chat_request(string text)
 		{
-			// Ensure we have a session
-			if (this.session == null) {
-				// Create a new session if we don't have one
-				this.session = this.manager.create_new_session();
-				this.manager.switch_to_session(this.session);
-				// Manager signals are already connected in constructor
-				// Model dropdown is updated via session_activated signal
-			}
-			
 			// Check if we're sending the same question twice (backend duplicate check)
 			if (this.last_sent_text != null && this.last_sent_text == text) {
 				GLib.warning("[ChatWidget] Warning: Attempting to send the same message again: '%s'", 
 					text.length > 50 ? text.substring(0, 50) + "..." : text);
 			}
 			
-			// Set streaming on client
-			this.session.client.stream = true;
-			
 			// Create cancellable for stop functionality
 			var cancellable = new GLib.Cancellable();
 			
 			try {
-				OLLMchat.Response.Chat response;
-				
-				// If we have a previous chat with a response, use reply() instead of chat()
-				if (this.session.chat != null && 
-					this.session.chat.streaming_response != null && 
-					this.session.chat.streaming_response.done &&
-					this.session.chat.streaming_response.call != null) {
-					// Use reply to continue the conversation
-					this.session.chat.cancellable = cancellable;
-					response = yield this.session.chat.streaming_response.reply(text);
-					return;
-				}
-				// First message or no previous response - use regular chat()
-				response = yield this.session.client.chat(text, cancellable);
-				
-				// Get the call from the response and set cancellable
-				if (response.call != null && response.call is OLLMchat.Call.Chat) {
-					var chat = (OLLMchat.Call.Chat) response.call;
-					chat.cancellable = cancellable;
-				}
-				
+				// Use session.send_message() - EmptySession will convert to Session on first message
+				// Session.send_message() handles streaming, reply() vs chat(), and cancellable
+				yield this.manager.session.send_message(text, cancellable);
 				
 				// Response is handled by streaming callback
 			} catch (GLib.IOError e) {
@@ -444,7 +414,7 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.session.client.url + ".";
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";
