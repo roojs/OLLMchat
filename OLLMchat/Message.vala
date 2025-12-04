@@ -24,7 +24,70 @@ namespace OLLMchat
 	 */
 	public class Message : Object, Json.Serializable
 	{
-		public string role { get; set; default = ""; }
+		private string _role = "";
+		public string role {
+			get { return _role; }
+			set {
+				_role = value;
+				// Reset all flags
+				is_thinking = false;
+				is_content = false;
+				is_stream = false;
+				is_user = false;
+				is_hidden = false;
+				is_tool = false;
+				is_agent = false;
+				is_stream_end = false;
+				
+				// Set flags based on role
+				switch (value) {
+					case "think-stream":
+						is_thinking = true;
+						is_stream = true;
+						is_hidden = true;
+						break;
+					case "content-stream":
+						is_content = true;
+						is_stream = true;
+						is_hidden = true;
+						break;
+					case "user":
+					case "user-sent":
+						is_user = true;
+						if (value == "user-sent") {
+							is_hidden = true;
+						}
+						break;
+					case "assistant":
+						is_agent = true;
+						break;
+					case "tool":
+						is_tool = true;
+						break;
+					case "end-stream":
+						is_stream_end = true;
+						is_hidden = true;
+						break;
+					case "ui":
+						is_hidden = true;
+						break;
+					case "system":
+						// System messages are not hidden (they get sent to API)
+						break;
+				}
+			}
+		}
+		
+		// Public properties (without get/set)
+		public bool is_thinking;
+		public bool is_content;
+		public bool is_stream;
+		public bool is_user;
+		public bool is_hidden;  // For types that don't get sent to the API
+		public bool is_tool;
+		public bool is_agent;
+		public bool is_stream_end;
+		
 		public string content { get; set; default = ""; }
 		public string thinking { get; set; default = ""; }
 		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set; default = new Gee.ArrayList<Response.ToolCall>(); }
