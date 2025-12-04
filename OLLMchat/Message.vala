@@ -27,7 +27,15 @@ namespace OLLMchat
 		public string role {
 			get;
 			set {
-				role = value;
+				// Reset all flags
+				is_thinking = false;
+				is_content = false;
+				is_stream = false;
+				is_user = false;
+				is_hidden = false;
+				is_tool = false;
+				is_agent = false;
+				is_stream_end = false;
 				
 				// Set flags based on role
 				switch (value) {
