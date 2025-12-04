@@ -1,0 +1,153 @@
+/*
+ * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMchat.History
+{
+	/**
+	 * EmptySession represents a session that hasn't started yet (no messages sent).
+	 * 
+	 * This is used to provide a consistent API where Manager always has a session.
+	 * When a message is sent, EmptySession converts itself to a real Session.
+	 * EmptySession is never saved to the database or added to the sessions list.
+	 */
+	public class EmptySession : SessionBase
+	{
+		public Call.Chat? chat {
+			get { return null; }
+			set { } // Ignore attempts to set chat
+		}
+		
+		public EmptySession(Manager manager)
+		{
+			base(manager);
+			this.client = manager.new_client();
+		}
+		
+		public override string fid {
+			get { return ""; }
+			set { }
+		}
+		
+		public override Gee.ArrayList<Message> messages {
+			owned get { return new Gee.ArrayList<Message>(); }
+		}
+		
+		public override string display_info {
+			owned get { return "New Chat"; }
+		}
+		
+		public override async void save_async()
+		{
+			// No-op: EmptySession is never saved
+		}
+		
+		public override void saveToDB()
+		{
+			// No-op: EmptySession is never saved
+		}
+		
+		public override async void write() throws Error
+		{
+			// No-op: EmptySession is never written
+		}
+		
+		public override async void read() throws Error
+		{
+			throw new GLib.IOError.NOT_SUPPORTED("EmptySession cannot be read from file");
+		}
+		
+		/**
+		 * Converts EmptySession to a real Session when a message is sent.
+		 * 
+		 * Creates a new Session, copies client properties, replaces this EmptySession
+		 * in the manager, and then calls send_message() on the new Session.
+		 */
+		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Create client for new session
+			var new_client = this.manager.new_client();
+			
+			// Copy client properties from EmptySession
+			new_client.model = this.client.model;
+			new_client.think = this.client.think;
+			new_client.stream = this.client.stream;
+			new_client.format = this.client.format;
+			new_client.keep_alive = this.client.keep_alive;
+			new_client.seed = this.client.seed;
+			new_client.temperature = this.client.temperature;
+			new_client.top_p = this.client.top_p;
+			new_client.top_k = this.client.top_k;
+			new_client.num_predict = this.client.num_predict;
+			new_client.repeat_penalty = this.client.repeat_penalty;
+			new_client.num_ctx = this.client.num_ctx;
+			new_client.stop = this.client.stop;
+			new_client.timeout = this.client.timeout;
+			
+			// Copy available_models
+			foreach (var entry in this.client.available_models.entries) {
+				new_client.available_models.set(entry.key, entry.value);
+			}
+			
+			// Create chat with new client
+			var chat = new Call.Chat(new_client);
+			
+			// Convert EmptySession to real Session
+			var real_session = new Session(this.manager, chat);
+			
+			// Replace EmptySession with real Session in manager
+			this.manager.session = real_session;
+			real_session.activate();
+			this.manager.session_activated(real_session);
+			
+			// Now call send_message on the real session
+			return yield real_session.send_message(text, cancellable);
+		}
+		
+		public override async void load() throws Error
+		{
+			// No-op: EmptySession doesn't need loading
+		}
+		
+		public override void cancel_current_request()
+		{
+			// No-op: EmptySession has no chat, so nothing to cancel
+		}
+		
+		protected override void on_chat_send(Call.Chat chat)
+		{
+			// No-op: EmptySession doesn't handle chat_send
+		}
+		
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		{
+			// No-op: EmptySession doesn't handle stream_chunk
+		}
+		
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			value = Value(pspec.value_type);
+			return true;
+		}
+		
+		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			return null;
+		}
+	}
+}
+

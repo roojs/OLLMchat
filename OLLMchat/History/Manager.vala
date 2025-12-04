@@ -142,14 +142,31 @@ namespace OLLMchat.History
 		/**
 		 * Switches to a new session, deactivating the current one and activating the new one.
 		 * 
+		 * When switching to EmptySession, preserves model and tool states from the previous session.
+		 * 
 		 * @param session The session to switch to
 		 */
 		public void switch_to_session(SessionBase session)
 		{
+			// Store previous session's client for state preservation
+			 
 			// Deactivate current session
+			this.session.deactivate();
+			
+			// If switching to EmptySession, copy model and tool states from previous session
+			if (session is EmptySession) {
 			 
-            this.session.deactivate();
-			 
+				// Copy model
+				session.client.model = this.session.client.model;
+				session.client.think = this.session.client.think;
+				// Copy tool active states (match by tool name)
+				foreach (var prev_tool in this.session.client.tools.values) {
+					if (!session.client.tools.has_key(prev_tool.name)) {
+						continue; //should not happen
+					}
+					session.client.tools.get(prev_tool.name).active = prev_tool.active;
+				}
+			}
 			
 			// Activate new session
 			this.session = session;

@@ -421,6 +421,15 @@ namespace OLLMchat.History
 		}
 		
 		/**
+		 * Loads the session data if needed.
+		 * No-op for Session (already loaded).
+		 */
+		public override async void load() throws Error
+		{
+			// No-op: Session is already loaded
+		}
+		
+		/**
 		 * Cancels the current request if one is active.
 		 * 
 		 * Safe to call if no active request exists.

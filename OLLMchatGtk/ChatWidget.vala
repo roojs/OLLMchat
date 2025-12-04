@@ -129,7 +129,7 @@ namespace OLLMchatGtk
 			bottom_box.append(this.permission_widget);
 
 			// Create chat input
-			this.chat_input = new ChatInput() {
+			this.chat_input = new ChatInput(this.manager) {
 				vexpand = true,
 				show_models = this.show_models
 			};
@@ -157,14 +157,8 @@ namespace OLLMchatGtk
 			// Add paned to this widget
 			this.append(this.paned);
 
-			// Connect model dropdown to manager's base client
-			this.chat_input.setup_model_dropdown(this.manager.base_client);
-			
-			// Update model dropdown when session is activated
-			// this will enable us to sue sessions with clients from different servers.
-			this.manager.session_activated.connect((session) => {
-				this.chat_input.setup_model_dropdown(session.client);
-			});
+			// Set up model dropdown
+			this.chat_input.setup_model_dropdown();
 
 			// Connect to notify signal to propagate default_message when property is set
 			// messy but usefull for testing.
@@ -199,24 +193,17 @@ namespace OLLMchatGtk
 			
 			// Lock input while loading
 			try {
-				// Load session data if needed (for SessionPlaceholder)
-				if (this.manager.session is OLLMchat.History.SessionPlaceholder) {
-					var placeholder = this.manager.session as OLLMchat.History.SessionPlaceholder;
-					yield placeholder.load();
-					// After load(), manager.session will be the real Session
-				}
+				// Load session data if needed (no-op for already loaded sessions)
+				yield this.manager.session.load();
 				
 				// Render all messages from the session
-				if (this.manager.session is OLLMchat.History.Session) {
-					var real_session = this.manager.session as OLLMchat.History.Session;
-					foreach (var msg in real_session.chat.messages) {
-						if (msg.role == "user") {
-							this.chat_view.append_user_message(msg.content, msg.message_interface);
-						} else if (msg.role == "assistant") {
-							this.chat_view.append_complete_assistant_message(msg);
-						}
-						// Skip tool messages - they're not displayed
+				foreach (var msg in this.manager.session.messages) {
+					if (msg.role == "user") {
+						this.chat_view.append_user_message(msg.content, msg.message_interface);
+					} else if (msg.role == "assistant") {
+						this.chat_view.append_complete_assistant_message(msg);
 					}
+					// Skip tool messages - they're not displayed
 				}
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
@@ -255,11 +242,7 @@ namespace OLLMchatGtk
 		/**
 		 * Loads a history session into the chat widget.
 		 * 
-		 * This method:
-		 * - Cancels any active streaming
-		 * - Loads the session's JSON file (if not already loaded)
-		 * - Clears the current chat view
-		 * - Renders all messages from the session to ChatView
+		 * This method switches to the session and loads its data.
 		 * 
 		 * @param session The session to load
 		 * @throws Error if loading fails
@@ -267,35 +250,9 @@ namespace OLLMchatGtk
 		 */
 		public async void load_session(OLLMchat.History.SessionBase session) throws Error
 		{
-			// Step 1: Finalize any active streaming (but don't cancel - we might switch back)
-			this.chat_view.finalize_assistant_message();
-			this.chat_input.set_streaming(false);
-			this.is_streaming_active = false;
-
-			// Step 2: Load session JSON file if needed (for SessionPlaceholder)
-			if (session is OLLMchat.History.SessionPlaceholder) {
-				var placeholder = session as OLLMchat.History.SessionPlaceholder;
-				yield placeholder.load();
-				// After load(), session will be a real Session
-				session = this.manager.session;
-			}
-
-			// Step 3: Clear current chat (clears view)
-			// Note: clear_chat() calls chat_view.clear() which resets the renderer
-			this.clear_chat();
-
-			// Step 4: Iterate through messages and render
-			if (session is OLLMchat.History.Session) {
-				var real_session = session as OLLMchat.History.Session;
-				foreach (var msg in real_session.chat.messages) {
-					if (msg.role == "user") {
-						this.chat_view.append_user_message(msg.content, msg.message_interface);
-					} else if (msg.role == "assistant") {
-						this.chat_view.append_complete_assistant_message(msg);
-					}
-					// Skip tool messages - they're not displayed
-				}
-			}
+			// load_session() is essentially the same as switch_to_session()
+			// Delegate to switch_to_session() which handles all the logic
+			yield this.switch_to_session(session);
 		}
 
 		/**

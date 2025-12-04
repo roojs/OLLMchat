@@ -237,15 +237,8 @@ namespace OLLMchat
 		public void connect_history_browser(OLLMchatGtk.HistoryBrowser history_browser)
 		{
 			history_browser.session_selected.connect((session) => {
-				// Load session data if needed, then switch to it
-				session.read.begin((obj, res) => {
-					try {
-						session.read.end(res);
-						this.chat_widget.switch_to_session.begin(session);
-					} catch (Error e) {
-						stderr.printf("Error loading session: %s\n", e.message);
-					}
-				});
+				// switch_to_session() handles loading internally via load()
+				this.chat_widget.switch_to_session.begin(session);
 			});
 		}
 		
