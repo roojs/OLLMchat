@@ -40,19 +40,17 @@ These signals are emitted by the `Client` class and represent events from the Ol
 **Listeners:**
 1. **SessionBase.on_stream_chunk()** (persistence handler)
    - Connected in `SessionBase.activate()` (line 129)
-   - Disconnected in `SessionBase.deactivate()` (line 169)
-   - Purpose: Captures streaming output for session persistence
+   - **Purpose:** Captures streaming output for session persistence
    - Implementation: `Session.on_stream_chunk()` creates "think-stream" or "content-stream" messages, tracks streaming state, and saves when done
 
 2. **Manager.stream_chunk()** (UI relay)
    - Connected via anonymous lambda in `SessionBase.activate()` (line 135-137)
-   - Disconnected in `SessionBase.deactivate()` (line 173)
-   - Purpose: Relays signal from active session's client to Manager
+   - **Purpose:** Relays signal from active session's client to Manager
    - Manager then emits its own `stream_chunk` signal (line 47)
 
 3. **Manager.stream_chunk → ChatWidget.on_stream_chunk_handler()** (UI consumption)
    - Connected in `ChatWidget` constructor (line 113)
-   - Purpose: Updates UI with streaming chunks
+   - **Purpose:** Updates UI with streaming chunks
    - Implementation: Calls `chat_view.append_assistant_chunk()` for each chunk, finalizes message when `response.done == true`
 
 #### `stream_content(string new_text, Response.Chat response)`
