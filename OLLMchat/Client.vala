@@ -333,12 +333,21 @@ namespace OLLMchat
 		{
 			// Create chat call
 			var call = new Call.Chat(this) {
-				cancellable = cancellable,
-				original_user_text = text  // Store original text before prompt engine modifies it
+				cancellable = cancellable
 			};
 			
-			// Fill chat call with prompts from prompt_assistant
+			// Create dummy user-sent Message with original text BEFORE prompt engine modification
+			var user_sent_msg = new Message(call, "user-sent", text);
+			this.message_created(user_sent_msg);
+			
+			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
 			this.prompt_assistant.fill(call, text);
+			
+			// If system_content is set, create system Message and emit message_created
+			if (call.system_content != "") {
+				var system_msg = new Message(call, "system", call.system_content);
+				this.message_created(system_msg);
+			}
 			
 			var result = yield call.exec_chat();
 
