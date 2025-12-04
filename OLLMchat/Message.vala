@@ -24,11 +24,10 @@ namespace OLLMchat
 	 */
 	public class Message : Object, Json.Serializable
 	{
-		private string _role = "";
 		public string role {
-			get { return _role; }
+			get;
 			set {
-				_role = value;
+				role = value;
 				// Reset all flags
 				is_thinking = false;
 				is_content = false;
