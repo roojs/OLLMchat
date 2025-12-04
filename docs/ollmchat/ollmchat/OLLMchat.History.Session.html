@@ -33,20 +33,25 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.Session.chat.html">chat</a></li>
           <li class="property"><a href="OLLMchat.History.Session.child_chats.html">child_chats</a></li>
+          <li class="property"><a href="OLLMchat.History.Session.client.html">client</a></li>
           <li class="property"><a href="OLLMchat.History.Session.display_date.html">display_date</a></li>
           <li class="property"><a href="OLLMchat.History.Session.display_info.html">display_info</a></li>
           <li class="property"><a href="OLLMchat.History.Session.display_title.html">display_title</a></li>
           <li class="property"><a href="OLLMchat.History.Session.duration_seconds.html">duration_seconds</a></li>
           <li class="property"><a href="OLLMchat.History.Session.fid.html">fid</a></li>
           <li class="property"><a href="OLLMchat.History.Session.id.html">id</a></li>
+          <li class="property"><a href="OLLMchat.History.Session.is_active.html">is_active</a></li>
           <li class="property"><a href="OLLMchat.History.Session.messages.html">messages</a></li>
           <li class="property"><a href="OLLMchat.History.Session.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.History.Session.title.html">title</a></li>
           <li class="property"><a href="OLLMchat.History.Session.total_messages.html">total_messages</a></li>
           <li class="property"><a href="OLLMchat.History.Session.total_tokens.html">total_tokens</a></li>
+          <li class="property"><a href="OLLMchat.History.Session.unread_count.html">unread_count</a></li>
           <li class="property"><a href="OLLMchat.History.Session.updated_at_timestamp.html">updated_at_timestamp</a></li>
           <li class="static_method"><a href="OLLMchat.History.Session.initDB.html">initDB</a></li>
           <li class="creation_method"><a href="OLLMchat.History.Session.Session.html">Session</a></li>
+          <li class="method"><a href="OLLMchat.History.Session.activate.html">activate</a></li>
+          <li class="method"><a href="OLLMchat.History.Session.deactivate.html">deactivate</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.deserialize_property.html">deserialize_property</a></li>
           <li class="method"><a href="OLLMchat.History.Session.read.html">read</a></li>
           <li class="method"><a href="OLLMchat.History.Session.saveToDB.html">saveToDB</a></li>
@@ -82,11 +87,15 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.History.Session.chat.html" class="property">chat</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.History.Session.chat.html" class="property">chat</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.History.Session.child_chats.html" class="property">child_chats</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><a href="OLLMchat.History.Session.client.html" class="property">client</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -114,7 +123,11 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; <b><a href="OLLMchat.History.Session.messages.html" class="property">messages</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.History.Session.is_active.html" class="property">is_active</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; <b><a href="OLLMchat.History.Session.messages.html" class="property">messages</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -134,6 +147,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.History.Session.unread_count.html" class="property">unread_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.History.Session.updated_at_timestamp.html" class="property">updated_at_timestamp</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -148,13 +165,23 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.History.Session.Session.html" class="creation_method">Session</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat, <span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> manager)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.History.Session.Session.html" class="creation_method">Session</a></b> (<span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> manager, <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? chat = <span class="main_literal">null</span>)
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.activate.html" class="method">activate</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Activates this session, connecting client signals to relay to UI. 
+                Called when the session becomes the active session in the UI.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.deactivate.html" class="method">deactivate</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Deactivates this session, disconnecting client signals. Called when 
+                the session is no longer the active session in the UI.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.History.Session.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Handle JSON property mapping and custom deserialization.</span>

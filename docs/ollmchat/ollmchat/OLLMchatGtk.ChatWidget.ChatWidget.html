@@ -28,16 +28,17 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchatGtk.ChatWidget.chat_view.html">chat_view</a></li>
-          <li class="property"><a href="OLLMchatGtk.ChatWidget.client.html">client</a></li>
-          <li class="property"><a href="OLLMchatGtk.ChatWidget.current_chat.html">current_chat</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.default_message.html">default_message</a></li>
+          <li class="property"><a href="OLLMchatGtk.ChatWidget.manager.html">manager</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.permission_widget.html">permission_widget</a></li>
+          <li class="property"><a href="OLLMchatGtk.ChatWidget.session.html">session</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.show_models.html">show_models</a></li>
           <li class="creation_method">ChatWidget</li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.clear_chat.html">clear_chat</a></li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.load_session.html">load_session</a></li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.request_permission.html">request_permission</a></li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.send_message.html">send_message</a></li>
+          <li class="method"><a href="OLLMchatGtk.ChatWidget.switch_to_session.html">switch_to_session</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.error_occurred.html">error_occurred</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.message_sent.html">message_sent</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.response_received.html">response_received</a></li>
@@ -47,16 +48,16 @@
         <h1 class="main_title">ChatWidget</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">ChatWidget</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">ChatWidget</span></b> (<span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> manager)
         </div>
         <div class="description">
           <p>Creates a new ChatWidget instance.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">client</td>
+              <td class="main_parameter_table_name">manager</td>
               <td>
-                <p>The Ollama client instance to use for API calls </p>
+                <p>The history manager instance </p>
               </td>
             </tr>
           </table>

@@ -27,22 +27,36 @@ namespace OLLMchat.History
 	public class Manager : Object
 	{
 		public string history_dir { get; private set; }
-		public Gee.ArrayList<Session> sessions { get; private set; default = new Gee.ArrayList<Session>(); }
+		public Gee.ArrayList<SessionBase> sessions { get; private set; default = new Gee.ArrayList<SessionBase>(); }
 		public SQ.Database db { get; private set; }
 		public TitleGenerator? title_generator { get; set; default = null; }
+		public Client base_client { get; private set; }
+		public SessionBase? session { get; private set; default = null; }
 		
 		// Signal emitted when a new session is added (for UI updates)
-		public signal void session_added(Session session);
+		public signal void session_added(SessionBase session);
 		
-		// HashMap to track sessions by fid
-		private Gee.HashMap<string, Session> sessions_by_fid = new Gee.HashMap<string, Session>();
+		// Signal emitted when a session is removed (for UI updates)
+		public signal void session_removed(SessionBase session);
 		
+		// Signal emitted when a session is activated
+		public signal void session_activated(SessionBase session);
+		
+		// Signals that relay client signals to UI (from active session)
+		public signal void chat_send(Call.Chat chat);
+		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+		public signal void stream_content(string new_text, Response.Chat response);
+		public signal void stream_start();
+		public signal void tool_message(string message, Object? widget = null);
+		
+		 
 		/**
 		 * Constructor.
 		 * 
+		 * @param base_client Base client to use for creating new session clients
 		 * @param directory Directory where history files are stored (will create history subdirectory if needed)
 		 */
-		public Manager(string directory)
+		public Manager(Client base_client, string directory)
 		{
 			if (directory == "") {
 				GLib.error("Manager: directory parameter cannot be empty");
@@ -67,72 +81,115 @@ namespace OLLMchat.History
 			
 			// Initialize sessions table in database
 			Session.initDB(this.db);
+			
+			// Store base client
+			this.base_client = base_client;
+
+            this.session = new EmptySession(this);
 		}
 		
 		/**
-		 * Register a Client to monitor for chat events.
-		 * Connects to Client signals to detect when new chats are created or messages are added.
+		 * Creates a new client instance from the base client.
+		 * Copies all properties and creates fresh tool instances.
 		 * 
-		 * @param client The Client to monitor
+		 * @return A new Client instance with copied properties and fresh tools
 		 */
-		public void register_client(Client client)
+		public Client new_client()
 		{
-			// Connect to chat_send signal to detect new chat sessions
-			client.chat_send.connect((chat) => {
-				// Check if session already exists for this chat
-				var existing_session = this.sessions_by_fid.get(chat.fid);
-				if (existing_session != null) {
-					// Session already exists - save it to update title/reply count
-					existing_session.save_async.begin();
-					// Notify that display properties may have changed
-					existing_session.notify_property("display_info");
-					existing_session.notify_property("display_title");
-					return;
-				}
-				
-				// Create new session with chat and manager
-				var session = new Session(chat, this);
-				
-				// Store in HashMap
-				this.sessions_by_fid.set(chat.fid, session);
-				
-				// Add to sessions list
-				this.sessions.add(session);
-				
-				// Emit signal for UI updates (HistoryBrowser can listen to this)
-				this.session_added(session);
-				
-				// Write initial session to DB and file
-				session.save_async.begin();
-			});
+			var client = new Client();
 			
-			// Connect to stream_chunk to detect response completion
-			client.stream_chunk.connect((new_text, is_thinking, response) => {
-				// Save when response is done (not streaming, but toolcalls or done response)
-				if (!response.done) {
-					return;
-				}
-				// Get session by fid from the chat object
-				var session = this.sessions_by_fid.get(response.call.fid);
-				if (session == null) {
-					return;
-				}
-				// Save session to DB and file
-				session.save_async.begin();
-				// Notify that display properties may have changed (reply count updated)
-				session.notify_property("display_info");
-				session.notify_property("title");
-			});
+			// Copy all properties
+			client.url = this.base_client.url;
+			client.api_key = this.base_client.api_key;
+			client.model = this.base_client.model;
+			client.stream = this.base_client.stream;
+			client.format = this.base_client.format;
+			client.think = this.base_client.think;
+			client.keep_alive = this.base_client.keep_alive;
+			client.prompt_assistant = this.base_client.prompt_assistant; // Shared reference
+			client.permission_provider = this.base_client.permission_provider; // Shared reference - MUST be shared
+			client.seed = this.base_client.seed;
+			client.temperature = this.base_client.temperature;
+			client.top_p = this.base_client.top_p;
+			client.top_k = this.base_client.top_k;
+			client.num_predict = this.base_client.num_predict;
+			client.repeat_penalty = this.base_client.repeat_penalty;
+			client.num_ctx = this.base_client.num_ctx;
+			client.stop = this.base_client.stop;
+			client.timeout = this.base_client.timeout;
+			
+			// Copy available_models (shared model data)
+			foreach (var entry in this.base_client.available_models.entries) {
+				client.available_models.set(entry.key, entry.value);
+			}
+			
+			// Create fresh tools using Object.new() with named parameters
+			foreach (var tool in this.base_client.tools.values) {
+				var tool_type = tool.get_type();
+				var new_tool = (Tool.Interface) Object.new(tool_type, client: client);
+				client.addTool(new_tool);
+			}
+			
+			// Properties NOT copied (and why):
+			// - streaming_response: Session-specific streaming state
+			// - session: Not applicable to new client instance
+			// - tools: Created fresh above (each session needs its own tool instances)
+			
+			return client;
+		}
+		
+		/**
+		 * Switches to a new session, deactivating the current one and activating the new one.
+		 * 
+		 * @param session The session to switch to
+		 */
+		public void switch_to_session(SessionBase session)
+		{
+			// Deactivate current session
+			 
+            this.session.deactivate();
+			 
+			
+			// Activate new session
+			this.session = session;
+			session.activate();
+			
+			// Emit signal for UI updates
+			this.session_activated(session);
+		}
+		
+		 
+		/**
+		 * Creates a new session for a new chat.
+		 * 
+		 * @return A new Session instance with a fresh client
+		 */
+		public Session create_new_session()
+		{
+			var session = new Session(this, new Call.Chat(this.new_client()));
+			this.sessions.add(session);
+			this.session_added(session);
+			
+			// When the first chat is created, it will have a fid and will be tracked
+			// via on_chat_send handler which will update sessions_by_fid
+			
+			return session;
 		}
 		
 		/**
 		 * Load all chat sessions from SQLite database and store in manager.
+		 * Sessions are loaded as SessionPlaceholder instances until load() is called.
 		 */
 		public void load_sessions()
 		{
 			this.sessions.clear();
-			var sq = new SQ.Query<Session>(this.db, "session");
+			var sq = new SQ.Query<SessionPlaceholder>(this.db, "session");
 			sq.select("ORDER BY updated_at_timestamp DESC", this.sessions);
+			
+			// Set manager for all loaded sessions
+			foreach (var session in this.sessions) {
+				session.manager = this;
+			}
 		}
 	}
 }

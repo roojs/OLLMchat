@@ -26,33 +26,21 @@ namespace OLLMchat.History
 	 * 
 	 * Properties are wrappers around this.chat.client.model, etc.
 	 * Messages come from this.chat.messages with a flag to include extra info during JSON encoding.
+	 * 
+	 * Session requires a Call.Chat object in its constructor.
 	 */
-	public class Session : Object, Json.Serializable
+	public class Session : SessionBase
 	{
-		public int64 id { get; set; default = -1; }
 		public Call.Chat chat { get; set; }
-		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
-		public string title { get; set; default = ""; }
 		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
 		// Computed property that returns chat.fid
-		public string fid {
+		public override string fid {
 			get { return this.chat.fid; }
 			set {}
-		} 
-		
-		// Wrapper properties around chat.client
-		public string model {
-			get { return this.chat.client.model; }
-			set { this.chat.client.model = value; }
 		}
 		
-		// Display properties for UI
-		public string display_title {
-			get { return this.title; }
-		}
-		
-		public string display_info {
+		public override string display_info {
 			owned get {
 				// Count assistant messages (replies)
 				int reply_count = 0;
@@ -63,75 +51,66 @@ namespace OLLMchat.History
 				}
 				
 				return "%s - %d %s".printf(
-					this.model ,
+					this.model,
 					reply_count,
 					reply_count == 1 ? "reply" : "replies"
 				);
 			}
 		}
 		
-		public string display_date {
-			owned get {
-				if (this.updated_at_timestamp == 0) {
-					return "";
-				}
-				
-				var dt = new DateTime.from_unix_local(this.updated_at_timestamp);
-				var now = new DateTime.now_local();
-				var diff = now.difference(dt);
-				var days = (int)(diff / TimeSpan.DAY);
-				var hours = (int)(diff / TimeSpan.HOUR);
-				var minutes = (int)(diff / TimeSpan.MINUTE);
-				
-				if (days > 7) {
-					return dt.format("%b %d, %Y");
-				}
-				if (days > 0) {
-					return days == 1 ? "Yesterday" : "%d days ago".printf(days);
-				}
-				if (hours > 0) {
-					return hours == 1 ? "1 hour ago" : "%d hours ago".printf(hours);
-				}
-				if (minutes > 0) {
-					return minutes == 1 ? "1 minute ago" : "%d minutes ago".printf(minutes);
-				}
-				return "Just now";
-			}
+		/**
+		 * Constructor requires a Call.Chat object.
+		 * Client is created from chat.client.
+		 * 
+		 * @param manager The history manager
+		 * @param chat The chat object (required)
+		 */
+		public Session(Manager manager, Call.Chat chat)
+		{
+			base(manager);
+			this.chat = chat;
+			this.client = chat.client;
 		}
-		
-		// Metadata flattened on session (not separate class)
-		public int total_messages { get; set; default = 0; }
-		public int64 total_tokens { get; set; default = 0; }
-		public int64 duration_seconds { get; set; default = 0; }
-		
-		// Child chats as array of filename paths (placeholder - not currently used)
-		// Format: "YYYY/mm/dd/h-i-s" (relative file path)
-		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
-		
-		// Manager reference for getting history directory
-		private Manager manager;
 		
 		/**
-		 * Convert file ID to path format.
-		 * Converts ID format "Y-m-d-H-i-s" to path format "YYYY/mm/dd/h-i-s"
-		 * 
-		 * @return File path relative to history directory
+		 * Handler for chat_send signal from this session's client.
+		 * Handles session creation and updates when a chat is sent.
 		 */
-		public string to_path()
+		protected override void on_chat_send(Call.Chat chat)
 		{
-			 
-			// Parse ID: "2025-01-15-14-30-45" -> "2025/01/15/14-30-45"
-			var parts = this.fid.split("-");
-			 
-            return parts[0] + "/" + parts[1] + "/" + parts[2] + "/" + parts[3] + "-" + parts[4] + "-" + parts[5];
-			  
+			// Update chat reference
+			this.chat = chat;
+			
+			// Ensure session is tracked in Manager
+			if (!this.manager.sessions.contains(this)) {
+				this.manager.sessions.add(this);
+				this.manager.session_added(this);
+			}
+			
+			// Save session
+			this.save_async.begin();
+			this.notify_property("display_info");
+			this.notify_property("display_title");
 		}
 		
-		public Session(Call.Chat chat, Manager manager)
+		/**
+		 * Handler for stream_chunk signal from this session's client.
+		 * Handles unread tracking and session saving.
+		 */
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
-			this.chat = chat;
-			this.manager = manager;
-			// fid is a computed property that returns chat.fid
+			// If session is inactive, increment unread count
+			if (!this.is_active) {
+				this.unread_count++;
+				this.notify_property("unread_count");
+			}
+			
+			// Save when response is done
+			if (response.done) {
+				this.save_async.begin();
+				this.notify_property("display_info");
+				this.notify_property("title");
+			}
 		}
 		
 		/**
@@ -158,7 +137,7 @@ namespace OLLMchat.History
 		/**
 		 * Save session to SQLite database.
 		 */
-		public void saveToDB()
+		public override void saveToDB()
 		{
 			if (this.manager == null) {
 				GLib.error("Session: manager is not set");
@@ -177,7 +156,7 @@ namespace OLLMchat.History
 		 * Save session to both DB and file asynchronously.
 		 * Updates metadata and saves to both database and JSON file.
 		 */
-		public async void save_async()
+		public override async void save_async()
 		{
 			try {
 				// Update timestamp
@@ -224,8 +203,10 @@ namespace OLLMchat.History
 		}
 		
 		// Messages wrapper - uses this.chat.messages
-		public Gee.ArrayList<Message> messages {
-			get { return this.chat.messages; }
+		public override Gee.ArrayList<Message> messages {
+			owned get {
+				return this.chat.messages;
+			}
 		}
 		
 		/**
@@ -235,7 +216,7 @@ namespace OLLMchat.History
 		 * 
 		 * @throws Error if write fails
 		 */
-		public async void write() throws Error
+		public override async void write() throws Error
 		{
 		 
 			
@@ -282,7 +263,7 @@ namespace OLLMchat.History
 		 * 
 		 * @throws Error if read fails
 		 */
-		public async void read() throws Error
+		public override async void read() throws Error
 		{
 			 
 			
@@ -315,38 +296,26 @@ namespace OLLMchat.History
 			}
 			
 			// Deserialize into a new temporary Session object
-			// Messages will be extracted in deserialize_property
+			// We need to create a temporary session with manager/client to deserialize properly
 			var temp_session = Json.gobject_deserialize(typeof(Session), root_node) as Session;
 			if (temp_session == null) {
-				throw new GLib.IOError.FAILED("Failed to deserialize session JSON");
+				throw new GLib.FileError.INVAL("Failed to deserialize Session from JSON");
 			}
 			
-			// Extract messages from JSON (temp_session.chat is null, so deserialize_property skipped them)
-			var root_obj = root_node.get_object();
-			var messages_node = root_obj.get_member("messages");
-			if (messages_node != null && messages_node.get_node_type() == Json.NodeType.ARRAY) {
-				this.chat.messages.clear();
-				var messages_array = messages_node.get_array();
-				for (uint i = 0; i < messages_array.get_length(); i++) {
-					var msg_node = messages_array.get_element(i);
-					var msg = Json.gobject_deserialize(typeof(Message), msg_node) as Message;
-					if (msg != null) {
-						msg.message_interface = this.chat;
-						this.chat.messages.add(msg);
-					}
-				}
-			}
-			// Database has: id, updated_at_timestamp, title, model, total_messages, total_tokens, duration_seconds, fid
-			// So we only copy: child_chats and messages
+			// Copy properties from temporary session
+			this.id = temp_session.id;
+			this.updated_at_timestamp = temp_session.updated_at_timestamp;
+			this.title = temp_session.title;
+			this.model = temp_session.model;
 			this.child_chats = temp_session.child_chats;
 			
-			// Copy messages to this.chat.messages
+			// Copy messages from temporary session to this.chat.messages
 			this.chat.messages.clear();
-			foreach (var msg in temp_session.messages) {
-				// Set the message_interface to this.chat
+			foreach (var msg in temp_session.chat.messages) {
 				msg.message_interface = this.chat;
 				this.chat.messages.add(msg);
 			}
+			 
 		}
 		
 		/**
@@ -359,8 +328,7 @@ namespace OLLMchat.History
                 return true;
             }
             
-				// Negative test: if chat is null (temp Session), skip processing
-			 
+				 
 				
             this.chat.messages.clear();
             var array = property_node.get_array();
@@ -412,6 +380,55 @@ namespace OLLMchat.History
 				default:
 					// Return null to exclude property from serialization
 					return null;
+			}
+		}
+		
+		/**
+		 * Sends a message using this session's client.
+		 * 
+		 * Sets streaming mode and either continues an existing conversation with reply()
+		 * or starts a new conversation with chat().
+		 * 
+		 * @param text The message text to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @return The response from the chat API
+		 * @throws Error if the request fails
+		 */
+		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Set streaming
+			this.client.stream = true;
+			
+			// Check if we should use reply() or chat()
+			if (this.chat.streaming_response != null &&
+				this.chat.streaming_response.done &&
+				this.chat.streaming_response.call != null) {
+				// Use reply to continue conversation
+				this.chat.cancellable = cancellable;
+				return yield this.chat.streaming_response.reply(text);
+			}
+			
+			// First message - use regular chat()
+			var response = yield this.client.chat(text, cancellable);
+			
+			// Store cancellable reference
+			if (response.call != null && response.call is Call.Chat) {
+				var chat = (Call.Chat) response.call;
+				chat.cancellable = cancellable;
+			}
+			
+			return response;
+		}
+		
+		/**
+		 * Cancels the current request if one is active.
+		 * 
+		 * Safe to call if no active request exists.
+		 */
+		public override void cancel_current_request()
+		{
+			if (this.chat.cancellable != null) {
+				this.chat.cancellable.cancel();
 			}
 		}
 	}
