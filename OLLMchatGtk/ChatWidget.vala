@@ -35,7 +35,6 @@ namespace OLLMchatGtk
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
 		private Gtk.Paned paned;
-		public OLLMchat.History.Session? session { get; private set; default = null; }
 		public OLLMchat.History.Manager manager { get; private set; }
 		
 		private bool is_streaming_active = false;
