@@ -79,9 +79,10 @@ namespace OLLMchat
 			};
 			header_bar.pack_start(new_chat_button);
 			
-			// Connect new chat button to clear current chat
+			// Connect new chat button to create new session
 			new_chat_button.clicked.connect(() => {
-				this.chat_widget.clear_chat();
+				var new_session = this.history_manager.create_new_session();
+				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			
 			// Add header bar to toolbar view's top slot
@@ -92,7 +93,7 @@ namespace OLLMchat
 			this.split_view.show_sidebar = false; // Hidden at start
 			// Set sidebar width as fraction of total width (0.25 = 25% of window width)
 			this.split_view.set_sidebar_width_fraction(0.25);
-			this.split_view.collapsed = true;
+			// this.split_view.collapsed = true; // should we do it as expandy or overlay
 			
 			// Connect toggle button to show/hide sidebar
 			toggle_button.toggled.connect(() => {
@@ -160,11 +161,8 @@ namespace OLLMchat
 				}
 			}
 			
-			// Create history manager
-			this.history_manager = new OLLMchat.History.Manager(data_dir);
-			
-			// Register client with history manager
-			this.history_manager.register_client(client);
+			// Create history manager with base client
+			this.history_manager = new OLLMchat.History.Manager(client, data_dir);
 			
 			// Create history browser and add to split view sidebar
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
@@ -181,19 +179,18 @@ namespace OLLMchat
 			client.addTool(new OLLMchat.Tools.EditMode(client));
 			client.addTool(new OLLMchatGtk.Tools.RunCommand(client));
 
-			// Create chat widget with client
-			this.chat_widget = new OLLMchatGtk.ChatWidget(client) {
+			// Create chat widget with manager
+			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager) {
 				default_message = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is"
 			};
 			
-			// Create ChatView permission provider and set it on the client
+			// Create ChatView permission provider and set it on the base client
 			var permission_provider = new OLLMchatGtk.Tools.Permission(
 				this.chat_widget,
 				Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"
 				)) {
 				application = app as GLib.Application,
-				
 			};
 			client.permission_provider = permission_provider;
 			
@@ -240,13 +237,8 @@ namespace OLLMchat
 		public void connect_history_browser(OLLMchatGtk.HistoryBrowser history_browser)
 		{
 			history_browser.session_selected.connect((session) => {
-				this.chat_widget.load_session.begin(session, (obj, res) => {
-					try {
-						this.chat_widget.load_session.end(res);
-					} catch (Error e) {
-						stderr.printf("Error loading session: %s\n", e.message);
-					}
-				});
+				// switch_to_session() handles loading internally via load()
+				this.chat_widget.switch_to_session.begin(session);
 			});
 		}
 		

@@ -28,9 +28,8 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchatGtk.ChatWidget.chat_view.html">chat_view</a></li>
-          <li class="property"><a href="OLLMchatGtk.ChatWidget.client.html">client</a></li>
-          <li class="property"><a href="OLLMchatGtk.ChatWidget.current_chat.html">current_chat</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.default_message.html">default_message</a></li>
+          <li class="property"><a href="OLLMchatGtk.ChatWidget.manager.html">manager</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.permission_widget.html">permission_widget</a></li>
           <li class="property"><a href="OLLMchatGtk.ChatWidget.show_models.html">show_models</a></li>
           <li class="creation_method"><a href="OLLMchatGtk.ChatWidget.ChatWidget.html">ChatWidget</a></li>
@@ -38,6 +37,7 @@
           <li class="method">load_session</li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.request_permission.html">request_permission</a></li>
           <li class="method"><a href="OLLMchatGtk.ChatWidget.send_message.html">send_message</a></li>
+          <li class="method"><a href="OLLMchatGtk.ChatWidget.switch_to_session.html">switch_to_session</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.error_occurred.html">error_occurred</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.message_sent.html">message_sent</a></li>
           <li class="signal"><a href="OLLMchatGtk.ChatWidget.response_received.html">response_received</a></li>
@@ -47,12 +47,11 @@
         <h1 class="main_title">load_session</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">load_session</span></b> (<span class="main_type"><a href="OLLMchat.History.Session.html" class="class">Session</a></span> session) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">load_session</span></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Loads a history session into the chat widget.</p>
-          <p>This method: - Cancels any active streaming - Loads the session's JSON file (if not already loaded) - Clears the current chat view - Sets
-            current_chat to the session's chat - Renders all messages from the session to ChatView</p>
+          <p>This method switches to the session and loads its data.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

@@ -35,10 +35,8 @@ namespace OLLMchatGtk
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
 		private Gtk.Paned paned;
-		[CCode (type = "OLLMchatOllamaClient*", transfer = "none")]
-		public OLLMchat.Client client { get; private set; }
-		[CCode (type = "OLLMchatOllamaChatCall*", transfer = "none")]
-		public OLLMchat.Call.Chat? current_chat { get; private set; default = null; }
+		public OLLMchat.History.Manager manager { get; private set; }
+		
 		private bool is_streaming_active = false;
 		private string? last_sent_text = null;
 		private int min_bottom_size = 115;
@@ -87,95 +85,133 @@ namespace OLLMchatGtk
 		/**
 		 * Creates a new ChatWidget instance.
 		 * 
-		 * @param client The Ollama client instance to use for API calls
+		 * @param manager The history manager instance
 		 * @since 1.0
 		 */
-	public ChatWidget(OLLMchat.Client client)
-	{
-		Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+		public ChatWidget(OLLMchat.History.Manager manager)
+		{
+			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 
-		this.client = client;
-		this.setup_streaming_callback();
+			this.manager = manager;
 
-		// Create paned widget to allow resizing between chat view and input area
-		this.paned = new Gtk.Paned(Gtk.Orientation.VERTICAL) {
-			hexpand = true,
-			vexpand = true
-		};
+			// Create paned widget to allow resizing between chat view and input area
+			this.paned = new Gtk.Paned(Gtk.Orientation.VERTICAL) {
+				hexpand = true,
+				vexpand = true
+			};
 
-		// Create chat view with reference to this widget
-		this.chat_view = new ChatView(this) {
-			hexpand = true,
-			vexpand = true
-		};
-		this.paned.set_start_child(this.chat_view);
-		// Allow start child to resize when paned resizes (top pane should grow/shrink)
-		this.paned.set_resize_start_child(true);
+			// Create chat view with reference to this widget
+			this.chat_view = new ChatView(this) {
+				hexpand = true,
+				vexpand = true
+			};
+			this.paned.set_start_child(this.chat_view);
+			// Allow start child to resize when paned resizes (top pane should grow/shrink)
+			this.paned.set_resize_start_child(true);
+			
+			// Connect to manager signals (which relay from active session)
+			this.manager.stream_chunk.connect(this.on_stream_chunk_handler);
+			this.manager.tool_message.connect(this.chat_view.append_tool_message);
+
+			// Create a box for the bottom pane containing permission widget and input
+			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true  // Allow vertical expansion
+			};
+			// Set minimum size request on the bottom box to enforce minimum height
+			// GTK4 Paned respects child widget size requests
+			bottom_box.set_size_request(-1, this.min_bottom_size);
+
+			// Create permission widget (hidden by default)
+			this.permission_widget = new ChatPermission() {
+				vexpand = false
+			};
+			bottom_box.append(this.permission_widget);
+
+			// Create chat input
+			this.chat_input = new ChatInput(this.manager) {
+				vexpand = true,
+				show_models = this.show_models
+			};
+			this.chat_input.send_clicked.connect(this.on_send_clicked);
+			this.chat_input.stop_clicked.connect(this.on_stop_clicked);
+			bottom_box.append(this.chat_input);
+
+			// Set bottom box as end child of paned
+			this.paned.set_end_child(bottom_box);
+			// Prevent end child from resizing when paned resizes - maintain fixed size
+			this.paned.set_resize_end_child(false);
+			// Set shrink-end-child to false to prevent shrinking below size request
+			// This ensures the bottom pane maintains its minimum height
+			this.paned.set_shrink_end_child(false);
+			
+			// Calculate minimum size based on component minimums:
+			// - ScrolledWindow minimum: 60px (from ChatInput scrolled.set_size_request)
+			// - Button box: ~50px (button height ~35px + margins 10px top + 5px bottom)
+			// - Spacing: 5px (from ChatInput spacing)
+			// - Permission widget: 0px (hidden by default)
+			// Total: ~115px minimum
+			// The minimum size is enforced via set_size_request() on bottom_box
+			// and set_shrink_end_child(false) on the paned
+
+			// Add paned to this widget
+			this.append(this.paned);
+
+			// Set up model dropdown
+			this.chat_input.setup_model_dropdown();
+
+			// Connect to notify signal to propagate default_message when property is set
+			// messy but usefull for testing.
+			this.notify["default-message"].connect(() => {
+				GLib.debug("[ChatWidget] default_message property set to '%s' (length=%d)", this.default_message, this.default_message.length);
+				if (this.chat_input != null) {
+					this.chat_input.default_message = this.default_message;
+				}
+			});
+		}
 		
-		// Connect tool_message signal after chat_view is created
-		this.client.tool_message.connect(this.chat_view.append_tool_message);
-		
-		// Connect chat_send signal to show waiting indicator
-		this.client.chat_send.connect((chat) => {
-			this.chat_view.show_waiting_indicator();
-		});
-
-		// Create a box for the bottom pane containing permission widget and input
-		var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-			hexpand = true,
-			vexpand = true  // Allow vertical expansion
-		};
-		// Set minimum size request on the bottom box to enforce minimum height
-		// GTK4 Paned respects child widget size requests
-		bottom_box.set_size_request(-1, this.min_bottom_size);
-
-		// Create permission widget (hidden by default)
-		this.permission_widget = new ChatPermission() {
-			vexpand = false
-		};
-		bottom_box.append(this.permission_widget);
-
-		// Create chat input
-		this.chat_input = new ChatInput() {
-			vexpand = true,
-			show_models = this.show_models
-		};
-		this.chat_input.send_clicked.connect(this.on_send_clicked);
-		this.chat_input.stop_clicked.connect(this.on_stop_clicked);
-		bottom_box.append(this.chat_input);
-
-		// Set bottom box as end child of paned
-		this.paned.set_end_child(bottom_box);
-		// Prevent end child from resizing when paned resizes - maintain fixed size
-		this.paned.set_resize_end_child(false);
-		// Set shrink-end-child to false to prevent shrinking below size request
-		// This ensures the bottom pane maintains its minimum height
-		this.paned.set_shrink_end_child(false);
-		
-		// Calculate minimum size based on component minimums:
-		// - ScrolledWindow minimum: 60px (from ChatInput scrolled.set_size_request)
-		// - Button box: ~50px (button height ~35px + margins 10px top + 5px bottom)
-		// - Spacing: 5px (from ChatInput spacing)
-		// - Permission widget: 0px (hidden by default)
-		// Total: ~115px minimum
-		// The minimum size is enforced via set_size_request() on bottom_box
-		// and set_shrink_end_child(false) on the paned
-
-		// Add paned to this widget
-		this.append(this.paned);
-
-		// Always set up model dropdown (widgets are always created, visibility is controlled)
-		this.chat_input.setup_model_dropdown(this.client);
-
-		// Connect to notify signal to propagate default_message when property is set
-		// messy but usefull for testing.
-		this.notify["default-message"].connect(() => {
-			GLib.debug("[ChatWidget] default_message property set to '%s' (length=%d)", this.default_message, this.default_message.length);
-			if (this.chat_input != null) {
-				this.chat_input.default_message = this.default_message;
+		/**
+		* Switches to a new session, deactivating the current one and activating the new one.
+		* 
+		* @param session The session to switch to
+		* @since 1.0
+		*/
+		public async void switch_to_session(OLLMchat.History.SessionBase session)
+		{
+			// Finalize any active streaming (but don't cancel - we might switch back)
+			this.chat_view.finalize_assistant_message();
+			this.chat_input.set_streaming(false);
+			this.is_streaming_active = false;
+			this.chat_input.sensitive = false;
+			
+			// Switch manager to new session (Manager handles deactivation/activation)
+			this.manager.switch_to_session(session);
+			this.clear_chat();
+			
+			// Manager signals are already connected in constructor
+			// Model dropdown is updated via session_activated signal
+			
+			// Lock input while loading
+			try {
+				// Load session data if needed (no-op for already loaded sessions)
+				yield this.manager.session.load();
+				
+				// Render all messages from the session
+				foreach (var msg in this.manager.session.messages) {
+					if (msg.role == "user") {
+						this.chat_view.append_user_message(msg.content, msg.message_interface);
+					} else if (msg.role == "assistant") {
+						this.chat_view.append_complete_assistant_message(msg);
+					}
+					// Skip tool messages - they're not displayed
+				}
+			} catch (Error e) {
+				GLib.warning("Error loading session: %s", e.message);
 			}
-		});
-	}
+			
+			// Unlock input after loading
+			this.chat_input.sensitive = true;
+		}
 
 		/**
 		 * Sends a message programmatically.
@@ -200,55 +236,23 @@ namespace OLLMchatGtk
 		public void clear_chat()
 		{
 			this.chat_view.clear();
-			this.current_chat = null;
 			this.last_sent_text = null;
 		}
 
 		/**
 		 * Loads a history session into the chat widget.
 		 * 
-		 * This method:
-		 * - Cancels any active streaming
-		 * - Loads the session's JSON file (if not already loaded)
-		 * - Clears the current chat view
-		 * - Sets current_chat to the session's chat
-		 * - Renders all messages from the session to ChatView
+		 * This method switches to the session and loads its data.
 		 * 
 		 * @param session The session to load
 		 * @throws Error if loading fails
 		 * @since 1.0
 		 */
-		public async void load_session(OLLMchat.History.Session session) throws Error
+		public async void load_session(OLLMchat.History.SessionBase session) throws Error
 		{
-			// Step 1: Cancel active streaming if any
-			if (this.is_streaming_active) {
-				this.is_streaming_active = false;
-				if (this.current_chat != null && this.current_chat.cancellable != null) {
-					this.current_chat.cancellable.cancel();
-				}
-				this.chat_view.finalize_assistant_message();
-				this.chat_input.set_streaming(false);
-			}
-
-			// Step 2: Load session JSON file if needed
-			yield session.read();
-
-			// Step 3: Clear current chat (clears view and resets current_chat)
-			// Note: clear_chat() calls chat_view.clear() which resets the renderer
-			this.clear_chat();
-
-			// Step 4: Set current_chat to session's chat
-			this.current_chat = session.chat;
-
-			// Step 6: Iterate through messages and render
-			foreach (var msg in session.chat.messages) {
-				if (msg.role == "user") {
-					this.chat_view.append_user_message(msg.content, msg.message_interface);
-				} else if (msg.role == "assistant") {
-					this.chat_view.append_complete_assistant_message(msg);
-				}
-				// Skip tool messages - they're not displayed
-			}
+			// load_session() is essentially the same as switch_to_session()
+			// Delegate to switch_to_session() which handles all the logic
+			yield this.switch_to_session(session);
 		}
 
 		/**
@@ -263,73 +267,69 @@ namespace OLLMchatGtk
 			return yield this.permission_widget.request(tool.permission_question);
 		}
 
-		private void setup_streaming_callback()
+	
+		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
-			this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				// Check if streaming is still active (might have been stopped)
-				if (!this.is_streaming_active) {
-					return;
-				}
+			// Check if streaming is still active (might have been stopped)
+			if (!this.is_streaming_active) {
+				return;
+			}
 
-				// Process chunk (even if done, there might be final text to process)
-				if (new_text.length > 0) {
-					this.chat_view.append_assistant_chunk(new_text, response);
-				}
+			// Process chunk (even if done, there might be final text to process)
+			if (new_text.length > 0) {
+				this.chat_view.append_assistant_chunk(new_text, response);
+			}
 
-				// If response is not done, continue waiting
-				if (!response.done) {
-					return;
-				}
+			// If response is not done, continue waiting
+			if (!response.done) {
+				return;
+			}
 
-				// Response is done - if we have tool_calls but no content was received, we still need to initialize
-				// the assistant message state so statistics can be displayed in finalize_assistant_message
-				// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
-				if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
-					this.chat_view.append_assistant_chunk("", response);
-				}
+			// Response is done - if we have tool_calls but no content was received, we still need to initialize
+			// the assistant message state so statistics can be displayed in finalize_assistant_message
+			// (append_assistant_chunk safely handles empty text and won't re-initialize if already initialized)
+			if (response.message.tool_calls.size > 0 && response.message.content.length == 0) {
+				this.chat_view.append_assistant_chunk("", response);
+			}
 
-				// Response is done - finalize the message
-				this.chat_view.finalize_assistant_message(response);
+			// Response is done - finalize the message
+			this.chat_view.finalize_assistant_message(response);
+			
+			// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
+			// Don't stop streaming yet if tools are being executed (they will auto-continue)
+			if (response.message.tool_calls.size > 0) {
+				// Clear waiting indicator so permission widgets can be shown
+				this.chat_view.clear_waiting_indicator();
 				
-				// Check if this response has tool_calls - if so, tools will be executed and conversation will continue
-				// Don't stop streaming yet if tools are being executed (they will auto-continue)
-				if (response.message.tool_calls.size > 0) {
-					// Clear waiting indicator so permission widgets can be shown
-					this.chat_view.clear_waiting_indicator();
-					
-					// Tools will be executed and conversation will continue automatically
-					// Keep streaming active so we can receive the final response
-					// Don't emit response_received signal yet - wait for final response after tool execution
-					GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
-					// Don't set streaming to false yet - tools will execute and continue
-					// Don't emit response_received - this is not the final response
-					return;
-				}
+				// Tools will be executed and conversation will continue automatically
+				// Keep streaming active so we can receive the final response
+				// Don't emit response_received signal yet - wait for final response after tool execution
+				GLib.debug("ChatWidget: Response has tool_calls, waiting for tool execution and continuation");
+				// Don't set streaming to false yet - tools will execute and continue
+				// Don't emit response_received - this is not the final response
+				return;
+			}
 
-				// No tool calls - this is the final response
-				this.chat_input.set_streaming(false);
-				this.is_streaming_active = false;
-				
-				// Clear last_sent_text on successful response
-				this.last_sent_text = null;
-				
-				// Emit response received signal only for final responses (no tool_calls)
-				this.response_received(response.message.content);
-			});
+			// No tool calls - this is the final response
+			this.chat_input.set_streaming(false);
+			this.is_streaming_active = false;
+			
+			// Clear last_sent_text on successful response
+			this.last_sent_text = null;
+			
+			// Emit response received signal only for final responses (no tool_calls)
+			this.response_received(response.message.content);
 		}
 
 		private void on_send_clicked(string text)
 		{
-			// Trim trailing line breaks from the message
-			 
-
 			// Store the text before clearing input (for error recovery)
 			this.last_sent_text = text;
 
-			// KLUDGE: Create a temporary ChatCall for displaying the user message
+			// Create a temporary ChatCall for displaying the user message
 			// This is a workaround just so the interface works - the actual ChatCall
-			// will be created later in client.chat()
-			var user_call = new OLLMchat.Call.Chat(this.client) {
+			// will be created later in send_message()
+			var user_call = new OLLMchat.Call.Chat(this.manager.session.client) {
 				chat_content = text
 			};
 			
@@ -344,7 +344,7 @@ namespace OLLMchatGtk
 			this.chat_input.set_streaming(true);
 			this.is_streaming_active = true;
 
-			// Send chat request asynchronously (this will call client.chat())
+			// Send chat request asynchronously (EmptySession will convert to Session on first message)
 			// The waiting indicator will be shown when send_starting signal is emitted
 			this.send_chat_request.begin(text);
 		}
@@ -357,38 +357,13 @@ namespace OLLMchatGtk
 					text.length > 50 ? text.substring(0, 50) + "..." : text);
 			}
 			
-			// Set streaming on client
-			this.client.stream = true;
-			
 			// Create cancellable for stop functionality
 			var cancellable = new GLib.Cancellable();
 			
 			try {
-				OLLMchat.Response.Chat response;
-				
-				// If we have a previous chat with a response, use reply() instead of chat()
-				if (this.current_chat != null && 
-					this.current_chat.streaming_response != null && 
-					this.current_chat.streaming_response.done &&
-					this.current_chat.streaming_response.call != null) {
-					// Use reply to continue the conversation
-					this.current_chat.cancellable = cancellable;
-					response = yield this.current_chat.streaming_response.reply(text);
-					// Update current_chat from response (should be the same call)
-					if (response.call != null && response.call is OLLMchat.Call.Chat) {
-						this.current_chat = (OLLMchat.Call.Chat) response.call;
-					}
-					return;
-				}
-				// First message or no previous response - use regular chat()
-				response = yield this.client.chat(text, cancellable);
-				
-				// Get the call from the response instead of tracking calls array
-				if (response.call != null && response.call is OLLMchat.Call.Chat) {
-					this.current_chat = (OLLMchat.Call.Chat) response.call;
-					this.current_chat.cancellable = cancellable;
-				}
-				
+				// Use session.send_message() - EmptySession will convert to Session on first message
+				// Session.send_message() handles streaming, reply() vs chat(), and cancellable
+				yield this.manager.session.send_message(text, cancellable);
 				
 				// Response is handled by streaming callback
 			} catch (GLib.IOError e) {
@@ -402,7 +377,7 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.client.url + ".";
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";
@@ -455,7 +430,7 @@ namespace OLLMchatGtk
 				this.chat_input.set_default_text(this.last_sent_text);
 			}
 			
-			// Note: current_chat is preserved to maintain conversation history
+			// Conversation history is preserved in session.chat
 			// User can retry or continue the conversation after the error
 		}
 
@@ -464,7 +439,7 @@ namespace OLLMchatGtk
 			// Reset all streaming-related state
 			this.chat_input.set_streaming(false);
 			this.is_streaming_active = false;
-			// Don't clear current_chat here - preserve conversation history even on error
+			// Conversation history is preserved in session.chat
 			// Only clear if explicitly requested via clear_chat()
 		}
 
@@ -473,16 +448,14 @@ namespace OLLMchatGtk
 			// Mark streaming as inactive to prevent callbacks from updating UI
 			this.is_streaming_active = false;
 
-			// Cancel the call's cancellable
-			if (this.current_chat != null && this.current_chat.cancellable != null) {
-				this.current_chat.cancellable.cancel();
-			}
+			// Cancel the current request via session
+			this.manager.session.cancel_current_request();
 
 			// Finalize current message
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
 			
-			// Note: We preserve current_chat to maintain conversation history
+			// Conversation history is preserved in session
 			// The user can continue the conversation after stopping
 		}
 

@@ -109,3 +109,4 @@ In `toPango()`, we need to close any remaining open tags. Since we track tag nam
 - Test BOLD_ITALIC format
 - Test HTML tags (opening and closing)
 - Test cleanup in PangoRender.toPango()
+

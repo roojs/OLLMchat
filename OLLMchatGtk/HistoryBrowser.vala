@@ -207,9 +207,12 @@ namespace OLLMchatGtk
 				// Load sessions from database
 				this.manager.load_sessions();
 				
-				// Add all sessions to ListStore
+				// Add all sessions to ListStore (only real Sessions, not SessionPlaceholder)
 				foreach (var session in this.manager.sessions) {
-					this.session_store.append(session);
+					if (session is OLLMchat.History.Session) {
+						var real_session = session as OLLMchat.History.Session;
+						this.session_store.append(real_session);
+					}
 				}
 				
 				callback();
@@ -224,14 +227,18 @@ namespace OLLMchatGtk
 		 * 
 		 * @param session The session that was added
 		 */
-		private void on_session_added(OLLMchat.History.Session session)
+		private void on_session_added(OLLMchat.History.SessionBase session)
 		{
-			// Use Idle to defer adding to listview, giving time for title to be set
-			Idle.add(() => {
-				// Insert at beginning (most recent first)
-				this.session_store.insert(0, session);
-				return false;
-			});
+			// Only add real Sessions (not EmptySession or SessionPlaceholder)
+			if (session is OLLMchat.History.Session) {
+				var real_session = session as OLLMchat.History.Session;
+				// Use Idle to defer adding to listview, giving time for title to be set
+				Idle.add(() => {
+					// Insert at beginning (most recent first)
+					this.session_store.insert(0, real_session);
+					return false;
+				});
+			}
 		}
 	}
 }
