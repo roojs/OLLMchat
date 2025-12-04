@@ -315,12 +315,15 @@ namespace OLLMchat.Call
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
 			 
-			// Add system message if system_content is set
+			// System and user messages are now created earlier via message_created signal
+			// But we still need to add API-compatible messages to messages array for the request
+			// Add system message if system_content is set (for API request)
 			if (this.system_content != "") {
 				this.messages.add(new Message(this, "system", this.system_content));
 			}
 			
-			// Always add the user message (this Chat)
+			// Add the user message with modified chat_content (for API request)
+			// Note: "user-sent" message was already created via signal with original text
 			var user_message = new Message(this, "user", this.chat_content);
 			this.messages.add(user_message);
 			
