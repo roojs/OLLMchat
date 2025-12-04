@@ -79,14 +79,14 @@ namespace OLLMchat
 		}
 		
 		// Public properties (without get/set)
-		public bool is_thinking;
-		public bool is_content;
-		public bool is_stream;
-		public bool is_user;
-		public bool is_hidden;  // For types that don't get sent to the API
-		public bool is_tool;
-		public bool is_agent;
-		public bool is_stream_end;
+		public bool is_thinking = false;
+		public bool is_content = false;
+		public bool is_stream = false;
+		public bool is_user = false;
+		public bool is_hidden = false;  // For types that don't get sent to the API
+		public bool is_tool = false;
+		public bool is_agent = false;
+		public bool is_stream_end = false;
 		
 		public string content { get; set; default = ""; }
 		public string thinking { get; set; default = ""; }
