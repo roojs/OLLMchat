@@ -30,7 +30,37 @@ this.chat_view.append_user_message(text, user_call);
 
 **Rationalization Consideration:** This temporary object creation could be simplified - we might be able to pass just the text and message_interface separately, or create a proper Message object here instead of a temporary ChatCall.
 
-### 2. Backend Message Creation
+### 2. Prompt Engine Modification
+
+#### Message Modification (Client.chat → prompt_assistant.fill)
+**Location:** `OLLMchat/Client.vala:321-335`
+
+**When:** After user sends message, before creating the Chat call
+
+**What happens:**
+```vala
+// Create chat call
+var call = new Call.Chat(this) {
+    cancellable = cancellable,
+    original_user_text = text  // Store original text before prompt engine modifies it
+};
+
+// Fill chat call with prompts from prompt_assistant
+this.prompt_assistant.fill(call, text);
+```
+
+**Purpose:** The prompt engine (`prompt_assistant`) modifies the user's text before it's sent to the API
+
+**Details:**
+- Original user text is stored in `call.original_user_text` before modification
+- `prompt_assistant.fill(call, text)` modifies `call.chat_content` (and may set `call.system_content`)
+- The prompt engine can add context, format the prompt, or inject additional instructions
+- Modified `chat_content` is what gets sent to the API in the user message
+- Original text is preserved in `original_user_text` for history persistence
+
+**Note:** This is why `Session.on_chat_send()` captures `original_user_text` as a "user-sent" message - to preserve what the user actually typed, separate from what was sent to the API.
+
+### 3. Backend Message Creation
 
 #### Initial Chat Request (Call.Chat.exec_chat)
 **Location:** `OLLMchat/Call/Chat.vala:312-344`
@@ -55,7 +85,7 @@ this.chat_view.append_user_message(text, user_call);
    ```
    - Added to `chat.messages` array
    - Role: "user"
-   - Content: `chat_content` (may be modified by prompt engine)
+   - Content: `chat_content` (modified by prompt engine - see "Prompt Engine Modification" section above)
    - Used for API request
 
 **Purpose:** Build message array for API request
@@ -142,7 +172,7 @@ this.chat_view.append_user_message(text, user_call);
 
 **Purpose:** Build message array for API request continuation after tool execution
 
-### 3. Session Persistence Message Creation
+### 4. Session Persistence Message Creation
 
 #### User Message Capture (Session.on_chat_send)
 **Location:** `OLLMchat/History/Session.vala:83-133`
@@ -254,7 +284,7 @@ this.chat_view.append_user_message(text, user_call);
 
 **Purpose:** Capture tool status messages for session persistence
 
-### 4. Response Message Creation
+### 5. Response Message Creation
 
 #### Streaming Response (Response.Chat.addChunk)
 **Location:** `OLLMchat/Response/Chat.vala:112-208`
