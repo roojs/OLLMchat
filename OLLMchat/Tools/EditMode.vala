@@ -401,7 +401,11 @@ When create=true, do not include line numbers in the code block. When create=fal
 			
 			// Log and notify that we're starting to write
 			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
-			this.client.tool_message("Applying changes to file " + this.normalized_path + "...");
+			this.client.tool_message(
+				new OLLMchat.Message(response.call, "ui",
+				"Applying changes to file " + this.normalized_path + "...")
+			);
+		
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
@@ -439,7 +443,11 @@ When create=true, do not include line numbers in the code block. When create=fal
 			
 			// Log and send status message after successful write
 			GLib.debug("Successfully applied changes to file %s", this.normalized_path);
-			this.client.tool_message("Applied changes to file " + this.normalized_path);
+			this.client.tool_message(
+				new OLLMchat.Message(response.call, "ui",
+				"Applied changes to file " + this.normalized_path)
+			);
+		
 		}
 		
 		/**

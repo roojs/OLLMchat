@@ -82,7 +82,7 @@ This will build:
   - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
   - `Prompt/` - Prompt generation system for different agent types (namespace: `OLLMchat.Prompt`)
-  - `Message.vala`, `MessageInterface.vala`, `OllamaBase.vala` - Core message and base classes
+  - `Message.vala`, `ChatContentInterface.vala`, `OllamaBase.vala` - Core message and base classes
 
 **OLLMchat UI Library (`libollmchat-ui.so`):**
 - `OLLMchatGtk/` - GTK UI components (namespace: `OLLMchatGtk`)

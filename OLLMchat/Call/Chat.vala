@@ -25,7 +25,7 @@ namespace OLLMchat.Call
 	 * streaming responses, and automatic tool execution. Manages the conversation
 	 * flow and tool call recursion.
 	 */
-	public class Chat : Base, MessageInterface
+	public class Chat : Base, ChatContentInterface
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
@@ -64,9 +64,6 @@ namespace OLLMchat.Call
 		}
 		public Response.Chat? streaming_response { get; set; default = null; }
 		public string system_content { get; set; default = ""; }
-		
-		// Store original user text before prompt engine modifies chat_content
-		public string original_user_text { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
@@ -92,7 +89,6 @@ namespace OLLMchat.Call
 				case "message":
 				case "streaming-response":
 				case "system-content":
-				case "original-user-text":
 					// Exclude these properties from serialization
 					return null;
 				
@@ -266,13 +262,15 @@ namespace OLLMchat.Call
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
 					GLib.warning("Tool '%s' not found in client tools", tool_call.function.name);
-					this.client.tool_message("Error: Tool '" + tool_call.function.name + "' not found");
+					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
+					this.client.message_created(error_msg);
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
 					continue;
 				}
 				
 				// Show message that tool is being executed
-				this.client.tool_message("Executing tool: `" + tool_call.function.name + "`");
+				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
+				this.client.message_created(exec_msg);
 				
 				// Execute the tool with chat as first parameter
 				try {
@@ -294,7 +292,8 @@ namespace OLLMchat.Call
 				} catch (Error e) {
 					GLib.warning("Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
-					this.client.tool_message("Error executing tool '" + tool_call.function.name + "': " + e.message);
+					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
+					this.client.message_created(error_msg);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}

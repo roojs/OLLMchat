@@ -106,10 +106,10 @@ namespace OLLMchatGtk
 		 * Appends a message to the chat view.
 		 * 
 		 * @param text The message text to display
-		 * @param message The MessageInterface object (ChatResponse for assistant messages)
+		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
 		 * @since 1.0
 		 */
-		public void append_user_message(string text, OLLMchat.MessageInterface message)
+		public void append_user_message(string text, OLLMchat.ChatContentInterface message)
 		{
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
@@ -164,10 +164,10 @@ namespace OLLMchatGtk
 		 * re-rendering markdown from the last double line break to the end.
 		 * 
 		 * @param new_text The new text chunk to append
-		 * @param message The MessageInterface object (ChatResponse for assistant messages)
+		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
 		 * @since 1.0
 		 */
-		public void append_assistant_chunk(string new_text, OLLMchat.MessageInterface message)
+		public void append_assistant_chunk(string new_text, OLLMchat.ChatContentInterface message)
 		{
 			var response = (OLLMchat.Response.Chat) message;
 
@@ -566,7 +566,9 @@ namespace OLLMchatGtk
 
 			// Display performance metrics if response is available and done
 			if (response != null && response.done && response.eval_duration > 0) {
-				this.append_tool_message(
+				var metrics_msg = new OLLMchat.Message(
+					response.call,
+					"ui",
 					"Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
 						response.total_duration_s,
 						response.prompt_eval_count,
@@ -574,6 +576,7 @@ namespace OLLMchatGtk
 						response.tokens_per_second
 					)
 				);
+				this.append_tool_message(metrics_msg);
 			} else {
 				// Add final newline if no summary
 				var buffer = this.get_current_buffer();
@@ -693,24 +696,23 @@ namespace OLLMchatGtk
 		 * Appends a tool message to the chat view in grey format (same as summary).
 		 * Tool messages are processed as markdown before display.
 		 * 
-		 * If a widget is provided and it's a Gtk.Widget, it will be wrapped in a Frame
-		 * (with the message as the title) and added as a framed widget instead of inserting markdown text.
+		 * This method checks if the message is a GTK Message with a widget attached,
+		 * and extracts the widget if present. If a widget is provided, it will be wrapped
+		 * in a Frame (with the message content as the title) and added as a framed widget
+		 * instead of inserting markdown text.
 		 * 
-		 * @param message The tool status message to display (may contain markdown).
-		 *                 If a widget is provided, this will be used as the Frame title.
-		 * @param widget Optional widget parameter (default null). If it's a Gtk.Widget,
-		 *               it will be wrapped in a Frame and added as a framed widget.
-		 *               Expected to be a Gtk.Widget, but typed as Object? since the Ollama
-		 *               base library should work without Gtk. A cast will be needed when using this parameter.
+		 * @param message The Message object to display
 		 * @since 1.0
 		 */
-		public void append_tool_message(string message, Object? widget = null)
+		public void append_tool_message(OLLMchat.Message message)
 		{
-			// If widget is provided and it's a Gtk.Widget, wrap it in a Frame and add it
-			if (widget is Gtk.Widget) {
+			// Check if this is a GTK Message with widget support
+			if (message is OLLMchatGtk.Message) {
+				var widget = (message as OLLMchatGtk.Message).widget;
+			 
 				
-				// Create Frame with message as title
-				var frame = new Gtk.Frame(message == "" ? null : message) {
+				// Create Frame with message content as title
+				var frame = new Gtk.Frame(message.content == "" ? null : message.content) {
 					hexpand = true,
 					margin_start = 5,
 					margin_end = 5,
@@ -736,9 +738,9 @@ namespace OLLMchatGtk
 			buffer.get_end_iter(out end_iter);
 			
 			// Create PangoRender instance and convert to Pango markup
-			GLib.debug("ChatView.append_tool_message: Input message: %s", message);
+			GLib.debug("ChatView.append_tool_message: Input message: %s", message.content);
 			var renderer = new Markdown.PangoRender();
-			var pango_result = renderer.toPango(message);
+			var pango_result = renderer.toPango(message.content);
 			GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
 			buffer.insert_markup(
 				ref end_iter,

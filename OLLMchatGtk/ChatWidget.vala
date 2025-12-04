@@ -112,6 +112,7 @@ namespace OLLMchatGtk
 			// Connect to manager signals (which relay from active session)
 			this.manager.stream_chunk.connect(this.on_stream_chunk_handler);
 			this.manager.tool_message.connect(this.chat_view.append_tool_message);
+			this.manager.message_created.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -218,41 +219,76 @@ namespace OLLMchatGtk
 		{
 			bool ignore_next_done = false;
 			foreach (var msg in this.manager.session.messages) {
-				switch (msg.role) {
-					case "end-stream":
-						// Flag to ignore the next "done" message from streaming
+				// Use is_ui_visible to filter messages
+				if (!msg.is_ui_visible) {
+					// Handle special case: "end-stream" flags next message to ignore
+					if (msg.role == "end-stream") {
 						ignore_next_done = true;
-						break;
+					}
+					continue;
+				}
+				
+				// Reset ignore flag for visible messages
+				ignore_next_done = false;
+				
+				 
+				// Display message based on role
+				switch (msg.role) {
 					case "assistant":
-						// Skip messages flagged by "end-stream" (empty assistant messages after streaming)
-						if (ignore_next_done && msg.content == "") {
-							ignore_next_done = false;
-							break;
-						}
-						ignore_next_done = false;
 						this.chat_view.append_complete_assistant_message(msg);
 						break;
 					case "user-sent":
-						ignore_next_done = false;
 						this.chat_view.append_user_message(msg.content, msg.message_interface);
 						break;
 					case "think-stream":
 					case "content-stream":
-						ignore_next_done = false;
 						// Render streaming messages as assistant messages
 						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content);
 						this.chat_view.append_complete_assistant_message(stream_msg);
 						break;
 					case "ui":
-						ignore_next_done = false;
-						// UI messages are already handled via tool_message signal, but we can display them if needed
-						// For now, skip them as they're handled by the tool_message signal
+						this.chat_view.append_tool_message(msg);
 						break;
 					default:
-						ignore_next_done = false;
-						// Skip: "system" (not displayed), "tool" (already handled), "user" (use "user-sent" instead)
+						// Should not reach here if is_ui_visible is working correctly
 						break;
 				}
+			}
+		}
+		
+		/**
+		 * Handler for message_created signal from manager.
+		 * Displays messages in the UI based on their role and is_ui_visible property.
+		 */
+		private void on_message_created(OLLMchat.Message m)
+		{
+			// Skip messages that shouldn't be displayed in UI
+			if (!m.is_ui_visible) {
+				return;
+			}
+			
+		
+			
+			// Display message based on role
+			switch (m.role) {
+				case "user-sent":
+					this.chat_view.append_user_message(m.content, m.message_interface);
+					break;
+				case "assistant":
+					this.chat_view.append_complete_assistant_message(m);
+					break;
+				case "ui":
+					this.chat_view.append_tool_message(m);
+					break;
+				case "think-stream":
+				case "content-stream":
+					// Render streaming messages as assistant messages
+					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content);
+					this.chat_view.append_complete_assistant_message(stream_msg);
+					break;
+				default:
+					// Should not reach here if is_ui_visible is working correctly
+					break;
 			}
 		}
 		
@@ -369,15 +405,7 @@ namespace OLLMchatGtk
 			// Store the text before clearing input (for error recovery)
 			this.last_sent_text = text;
 
-			// Create a temporary ChatCall for displaying the user message
-			// This is a workaround just so the interface works - the actual ChatCall
-			// will be created later in send_message()
-			var user_call = new OLLMchat.Call.Chat(this.manager.session.client) {
-				chat_content = text
-			};
-			
-			// Display user message
-			this.chat_view.append_user_message(text, user_call);
+			// Clear input - message will be displayed when message_created signal is received
 			this.chat_input.clear_input();
 
 			// Emit message sent signal

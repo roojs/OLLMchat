@@ -41,6 +41,7 @@
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.create_terminal_widget.html">create_terminal_widget</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute.html">execute</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute_tool.html">execute_tool</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.send_initial_tool_message.html">send_initial_tool_message</a></li>
           <li class="virtual_method">send_or_append_message</li>
         </ul>
       </div>
@@ -48,7 +49,7 @@
         <h1 class="main_title">send_or_append_message</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">send_or_append_message</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">send_or_append_message</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call)
         </div>
         <div class="description">
           <p>Sends or appends a message to the output. Base class sends via tool_message, GTK version appends to widget.</p>
@@ -58,6 +59,12 @@
               <td class="main_parameter_table_name">text</td>
               <td>
                 <p>The text to send or append </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">chat_call</td>
+              <td>
+                <p>The chat call context for creating messages </p>
               </td>
             </tr>
           </table>

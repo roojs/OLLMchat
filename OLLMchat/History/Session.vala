@@ -77,47 +77,27 @@ namespace OLLMchat.History
 		}
 		
 	/**
-	 * Handler for chat_send signal from this session's client.
-	 * Handles session creation and updates when a chat is sent.
+	 * Handler for message_created signal from this session's client.
+	 * Handles message persistence when a message is created.
 	 */
-	protected override void on_chat_send(Call.Chat chat)
+	protected override void on_message_created(Message m)
 	{
-		// Update chat reference
-		this.chat = chat;
-		
-		// Capture raw user text before prompt engine modification
-		// Create "user-sent" message with raw user text
-		if (chat.original_user_text != "") {
-			var user_sent_msg = new Message(chat, "user-sent", chat.original_user_text);
-			this.messages.add(user_sent_msg);
+		// Update chat reference if message_interface is a Chat
+		if (m.message_interface is Call.Chat) {
+			this.chat = (Call.Chat) m.message_interface;
 		}
 		
-		// Copy standard messages from chat.messages to session.messages
-		// This ensures we capture all API-compatible messages
-		foreach (var msg in chat.messages) {
-			// Only copy standard roles (system, user, assistant, tool)
-			// Skip if we already have a user-sent message for this user message
-			switch (msg.role) {
-				case "system":
-				case "user":
-				case "assistant":
-				case "tool":
-					// Check if this message is already in our list (avoid duplicates)
-					bool found = false;
-					foreach (var existing_msg in this.messages) {
-						if (existing_msg == msg) {
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						this.messages.add(msg);
-					}
-					break;
-				default:
-					// Skip non-standard roles
-					break;
+		// Add message to session.messages
+		// Check if message is already in list (avoid duplicates)
+		bool found = false;
+		foreach (var existing_msg in this.messages) {
+			if (existing_msg == m) {
+				found = true;
+				break;
 			}
+		}
+		if (!found) {
+			this.messages.add(m);
 		}
 		
 		// Ensure session is tracked in Manager
@@ -125,6 +105,9 @@ namespace OLLMchat.History
 			this.manager.sessions.add(this);
 			this.manager.session_added(this);
 		}
+		
+		// Relay to Manager for UI
+		this.manager.message_created(m);
 		
 		// Save session
 		this.save_async.begin();
@@ -169,23 +152,21 @@ namespace OLLMchat.History
 			this.current_stream_message = null;
 			this.current_stream_is_thinking = false;
 			
-			// Copy final assistant message from chat.messages if it exists
-			// This ensures we have the complete assistant response
-			foreach (var msg in chat.messages) {
-				if (msg.role == "assistant") {
-					// Check if this is the latest assistant message
-					// (we want the one that corresponds to this response)
-					bool found = false;
-					foreach (var existing_msg in this.messages) {
-						if (existing_msg == msg) {
-							found = true;
-							break;
-						}
-					}
-					if (!found && response.message == msg) {
-						this.messages.add(msg);
+			// Emit message_created for final assistant message if it exists and hasn't been emitted yet
+			if (response.message != null && response.message.is_llm) {
+				// Check if this message is already in our list (avoid duplicates)
+				bool found = false;
+				foreach (var existing_msg in this.messages) {
+					if (existing_msg == response.message) {
+						found = true;
 						break;
 					}
+				}
+				if (!found) {
+					// Ensure message_interface is set
+					response.message.message_interface = this.chat;
+					// Emit message_created signal
+					this.client.message_created(response.message);
 				}
 			}
 			

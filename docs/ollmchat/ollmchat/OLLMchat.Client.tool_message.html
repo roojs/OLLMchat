@@ -60,6 +60,7 @@
           <li class="method"><a href="OLLMchat.Client.set_model_from_ps.html">set_model_from_ps</a></li>
           <li class="method"><a href="OLLMchat.Client.show_model.html">show_model</a></li>
           <li class="signal"><a href="OLLMchat.Client.chat_send.html">chat_send</a></li>
+          <li class="signal"><a href="OLLMchat.Client.message_created.html">message_created</a></li>
           <li class="signal"><a href="OLLMchat.Client.stream_chunk.html">stream_chunk</a></li>
           <li class="signal"><a href="OLLMchat.Client.stream_content.html">stream_content</a></li>
           <li class="signal"><a href="OLLMchat.Client.stream_start.html">stream_start</a></li>
@@ -71,7 +72,7 @@
         <h1 class="main_title">tool_message</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">tool_message</span></b> (<span class="main_basic_type"><span class="class">string</span></span> message, <span class="main_type"><span class="class">Object</span></span>? widget = <span class="main_literal">null</span>)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">tool_message</span></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
         </div>
         <div class="description">
           <p>Emitted when a tool sends a status message during execution.</p>
@@ -80,14 +81,7 @@
             <tr>
               <td class="main_parameter_table_name">message</td>
               <td>
-                <p>The status message from the tool </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">widget</td>
-              <td>
-                <p>Optional widget parameter (default null). Expected to be a Gtk.Widget, but typed as Object? since the Ollama base library should 
-                  work without Gtk. A cast will be needed when using this parameter in Gtk-based applications. </p>
+                <p>The Message object from the tool (typically "ui" role) </p>
               </td>
             </tr>
           </table>

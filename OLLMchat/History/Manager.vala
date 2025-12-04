@@ -47,7 +47,8 @@ namespace OLLMchat.History
 		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
 		public signal void stream_content(string new_text, Response.Chat response);
 		public signal void stream_start();
-		public signal void tool_message(string message, Object? widget = null);
+		public signal void tool_message(OLLMchat.Message message);
+		public signal void message_created(Message m);
 		
 		 
 		/**

@@ -47,20 +47,11 @@ namespace OLLMchat.History
 			owned get { return "New Chat"; }
 		}
 		
-		public override async void save_async()
-		{
-			// No-op: EmptySession is never saved
-		}
+		public override async void save_async() { }  // No-op: EmptySession is never saved
 		
-		public override void saveToDB()
-		{
-			// No-op: EmptySession is never saved
-		}
+		public override void saveToDB() { }  // No-op: EmptySession is never saved
 		
-		public override async void write() throws Error
-		{
-			// No-op: EmptySession is never written
-		}
+		public override async void write() throws Error { }  // No-op: EmptySession is never written
 		
 		public override async void read() throws Error
 		{
@@ -114,25 +105,13 @@ namespace OLLMchat.History
 			return yield real_session.send_message(text, cancellable);
 		}
 		
-		public override async void load() throws Error
-		{
-			// No-op: EmptySession doesn't need loading
-		}
+		public override async void load() throws Error { }  // No-op: EmptySession doesn't need loading
 		
-		public override void cancel_current_request()
-		{
-			// No-op: EmptySession has no chat, so nothing to cancel
-		}
+		public override void cancel_current_request() { }  // No-op: EmptySession has no chat, so nothing to cancel
 		
-		protected override void on_chat_send(Call.Chat chat)
-		{
-			// No-op: EmptySession doesn't handle chat_send
-		}
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after conversion
 		
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
-		{
-			// No-op: EmptySession doesn't handle stream_chunk
-		}
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: EmptySession doesn't handle stream_chunk
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{

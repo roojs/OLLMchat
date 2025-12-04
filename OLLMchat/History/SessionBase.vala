@@ -97,6 +97,7 @@ namespace OLLMchat.History
 		protected ulong stream_content_id = 0;
 		protected ulong stream_start_id = 0;
 		protected ulong tool_message_id = 0;
+		protected ulong message_created_id = 0;
 		
 		// Abstract properties that depend on chat
 		public abstract string fid { get; set; }
@@ -125,8 +126,10 @@ namespace OLLMchat.History
 			this.unread_count = 0; // Clear unread count when activated
 			
 			// Connect client signals to Manager handlers (for persistence)
-			this.client.chat_send.connect(this.on_chat_send);
 			this.client.stream_chunk.connect(this.on_stream_chunk);
+			
+			// Connect message_created signal to handler
+			this.message_created_id = this.client.message_created.connect(this.on_message_created);
 			
 			// Connect client signals to relay to UI via Manager
 			this.chat_send_id = this.client.chat_send.connect((chat) => {
@@ -141,15 +144,8 @@ namespace OLLMchat.History
 			this.stream_start_id = this.client.stream_start.connect(() => {
 				this.manager.stream_start();
 			});
-			this.tool_message_id = this.client.tool_message.connect((message, widget) => {
-				// Capture UI messages as "ui" role messages in session.messages (only for Session instances)
-				if (this is Session) {
-					var session = this as Session;
-					var ui_msg = new Message(session.chat, "ui", message);
-					this.messages.add(ui_msg);
-				}
-				// Relay to manager for UI
-				this.manager.tool_message(message, widget);
+			this.tool_message_id = this.client.tool_message.connect((message) => {
+				this.manager.tool_message(message);
 			});
 		}
 		
@@ -165,8 +161,8 @@ namespace OLLMchat.History
 			this.is_active = false;
 			
 			// Disconnect client signals from Manager handlers
-			this.client.chat_send.disconnect(this.on_chat_send);
 			this.client.stream_chunk.disconnect(this.on_stream_chunk);
+			this.client.message_created.disconnect(this.on_message_created);
 			
 			// Disconnect client signals from UI relay
 			this.client.disconnect(this.chat_send_id);
@@ -174,14 +170,15 @@ namespace OLLMchat.History
 			this.client.disconnect(this.stream_content_id);
 			this.client.disconnect(this.stream_start_id);
 			this.client.disconnect(this.tool_message_id);
+			this.client.disconnect(this.message_created_id);
 		}
 		
 		/**
-		 * Handler for chat_send signal from this session's client.
-		 * Handles session creation and updates when a chat is sent.
+		 * Handler for message_created signal from this session's client.
+		 * Handles message persistence and relays to Manager.
 		 * Must be implemented by subclasses.
 		 */
-		protected abstract void on_chat_send(Call.Chat chat);
+		protected abstract void on_message_created(Message m);
 		
 		/**
 		 * Handler for stream_chunk signal from this session's client.

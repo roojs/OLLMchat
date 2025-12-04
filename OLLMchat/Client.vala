@@ -265,13 +265,10 @@ namespace OLLMchat
 		/**
 		 * Emitted when a tool sends a status message during execution.
 		 * 
-		 * @param message The status message from the tool
-		 * @param widget Optional widget parameter (default null). Expected to be a Gtk.Widget,
-		 *               but typed as Object? since the Ollama base library should work without Gtk.
-		 *               A cast will be needed when using this parameter in Gtk-based applications.
+		 * @param message The Message object from the tool (typically "ui" role)
 		 * @since 1.0
 		 */
-		public signal void tool_message(string message, Object? widget = null);
+		public signal void tool_message(Message message);
 
 		/**
 		 * Emitted when a chat request is sent to the server.

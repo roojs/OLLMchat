@@ -153,45 +153,24 @@ namespace OLLMchat.History
 			this.manager.session_added(real_session);
 		}
 		
-		protected override void on_chat_send(Call.Chat chat)
-		{
-			// No-op: SessionPlaceholder doesn't handle signals
-		}
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after load()
 		
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
-		{
-			// No-op: SessionPlaceholder doesn't handle signals
-		}
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: SessionPlaceholder doesn't handle signals
 		
-		public override void saveToDB()
-		{
-			// No-op: SessionPlaceholder is never saved (already in DB)
-		}
+		public override void saveToDB() { }  // No-op: SessionPlaceholder is never saved (already in DB)
 		
-		public override async void save_async()
-		{
-			// No-op: SessionPlaceholder is never saved
-		}
+		public override async void save_async() { }  // No-op: SessionPlaceholder is never saved
 		
-		public override async void write() throws Error
-		{
-			// No-op: SessionPlaceholder is never written
-		}
+		public override async void write() throws Error { }  // No-op: SessionPlaceholder is never written
 		
-		public override async void read() throws Error
-		{
-			// No-op: SessionPlaceholder doesn't read itself (use load() instead)
-		}
+		public override async void read() throws Error { }  // No-op: SessionPlaceholder doesn't read itself (use load() instead)
 		
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
 			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages");
 		}
 		
-		public override void cancel_current_request()
-		{
-			// No-op: SessionPlaceholder has no active requests
-		}
+		public override void cancel_current_request() { }  // No-op: SessionPlaceholder has no active requests
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{

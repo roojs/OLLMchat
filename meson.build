@@ -88,7 +88,7 @@ ollmchat_ollama_src = files([
   'OLLMchat/Call/Ps.vala',
   'OLLMchat/Call/ShowModel.vala',
   'OLLMchat/Message.vala',
-  'OLLMchat/MessageInterface.vala',
+  'OLLMchat/ChatContentInterface.vala',
   'OLLMchat/OllamaBase.vala',
   'OLLMchat/Response/Base.vala',
   'OLLMchat/Response/CallFunction.vala',
@@ -173,6 +173,7 @@ ollmchat_ui_src = files([
   'OLLMchatGtk/ChatInput.vala',
   'OLLMchatGtk/ChatPermission.vala',
   'OLLMchatGtk/HistoryBrowser.vala',
+  'OLLMchatGtk/Message.vala',
 ]) + ollmchat_tools_ui_src
 
 # Build omarkdown base library (libomarkdown.so) - no GTK dependencies

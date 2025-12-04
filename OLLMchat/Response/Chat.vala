@@ -24,7 +24,7 @@ namespace OLLMchat.Response
 	 * Contains the assistant's message, tool calls (if any), and metadata.
 	 * Handles streaming responses and tool call detection for automatic execution.
 	 */
-	public class Chat : Base, MessageInterface
+	public class Chat : Base, ChatContentInterface
 	{
 		public Message message { get; set; }
 		public Call.Chat? call { get; set; default = null; }
