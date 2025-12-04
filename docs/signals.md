@@ -17,14 +17,12 @@ These signals are emitted by the `Client` class and represent events from the Ol
 **Listeners:**
 1. **SessionBase.on_chat_send()** (persistence handler)
    - Connected in `SessionBase.activate()` (line 128)
-   - Disconnected in `SessionBase.deactivate()` (line 168)
-   - Purpose: Handles session creation and message capture for persistence
+   - **Purpose:** Handles session creation and message capture for persistence
    - Implementation: `Session.on_chat_send()` creates "user-sent" messages and copies standard messages to `session.messages`
 
 2. **Manager.chat_send()** (UI relay)
    - Connected via anonymous lambda in `SessionBase.activate()` (line 132-134)
-   - Disconnected in `SessionBase.deactivate()` (line 172)
-   - Purpose: Relays signal from active session's client to Manager
+   - **Purpose:** Relays signal from active session's client to Manager
    - Manager then emits its own `chat_send` signal (line 46)
 
 3. **Manager.chat_send → ChatWidget** (UI consumption)
