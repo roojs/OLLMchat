@@ -40,25 +40,15 @@ namespace OLLMchat.History
 				return true;
 			}
 			
-			GLib.debug("SessionJson.deserialize_property: Deserializing messages array");
 			this.messages.clear();
 			var array = property_node.get_array();
-			GLib.debug("SessionJson.deserialize_property: Messages array has %u elements", array.get_length());
-			
 			for (uint i = 0; i < array.get_length(); i++) {
 				var element_node = array.get_element(i);
 				var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
 				if (msg != null) {
 					this.messages.add(msg);
-					// Debug: Print truncated content for each message
-					string content_preview = msg.content.length > 20 ? msg.content.substring(0, 20) + "..." : msg.content;
-					GLib.debug("SessionJson.deserialize_property: Deserialized message %u/%u (role='%s', content='%s')", 
-						i + 1, array.get_length(), msg.role, content_preview);
-				} else {
-					GLib.debug("SessionJson.deserialize_property: Failed to deserialize message %u/%u", i + 1, array.get_length());
 				}
 			}
-			GLib.debug("SessionJson.deserialize_property: Successfully deserialized %d messages", this.messages.size);
 			value = Value(typeof(Gee.ArrayList));
 			value.set_object(this.messages);
 			return true;

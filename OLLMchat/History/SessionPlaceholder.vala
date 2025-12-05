@@ -77,7 +77,6 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
-			GLib.debug("SessionPlaceholder.load");
 			// a) Create a new Session with chat
 			var real_session = new Session(this.manager, new Call.Chat(this.manager.new_client()));
 			
