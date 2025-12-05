@@ -219,7 +219,14 @@ namespace OLLMchatGtk
 		private void load_messages()
 		{
 			bool ignore_next_done = false;
+			int total_messages = this.manager.session.messages.size;
+			int visible_count = 0;
+			int message_index = 0;
+			
+			GLib.debug("ChatWidget.load_messages: Starting to load %d messages from session", total_messages);
+			
 			foreach (var msg in this.manager.session.messages) {
+				message_index++;
 				// Use is_ui_visible to filter messages
 				if (!msg.is_ui_visible) {
 					// Handle special case: "end-stream" flags next message to ignore
@@ -231,7 +238,12 @@ namespace OLLMchatGtk
 				
 				// Reset ignore flag for visible messages
 				ignore_next_done = false;
+				visible_count++;
 				
+				// Truncate content for debug output (show first 20 chars)
+				string content_preview = msg.content.length > 20 ? msg.content.substring(0, 20) + "..." : msg.content;
+				GLib.debug("ChatWidget.load_messages: Adding message %d/%d (role=%s, content='%s')", 
+					message_index, total_messages, msg.role, content_preview);
 				 
 				// Display message based on role
 				switch (msg.role) {
@@ -255,6 +267,8 @@ namespace OLLMchatGtk
 						break;
 				}
 			}
+			
+			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
 		}
 		
 		/**

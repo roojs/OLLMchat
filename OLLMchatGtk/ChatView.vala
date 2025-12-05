@@ -111,6 +111,10 @@ namespace OLLMchatGtk
 		 */
 		public void append_user_message(string text, OLLMchat.ChatContentInterface message)
 		{
+			// Debug: Print truncated content
+			string content_preview = text.length > 20 ? text.substring(0, 20) + "..." : text;
+			GLib.debug("ChatView.append_user_message: Adding user message (content='%s')", content_preview);
+			
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
 				this.finalize_assistant_message();
@@ -605,6 +609,12 @@ namespace OLLMchatGtk
 		 */
 		public void append_complete_assistant_message(OLLMchat.Message message)
 		{
+			// Debug: Print truncated content
+			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
+			string thinking_preview = message.thinking.length > 20 ? message.thinking.substring(0, 20) + "..." : message.thinking;
+			GLib.debug("ChatView.append_complete_assistant_message: Adding assistant message (content='%s', thinking='%s')", 
+				content_preview, thinking_preview);
+			
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
 				this.finalize_assistant_message();
@@ -706,6 +716,10 @@ namespace OLLMchatGtk
 		 */
 		public void append_tool_message(OLLMchat.Message message)
 		{
+			// Debug: Print truncated content
+			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
+			GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
+			
 			// Check if this is a GTK Message with widget support
 			if (message is OLLMchatGtk.Message) {
 				var widget = (message as OLLMchatGtk.Message).widget;
