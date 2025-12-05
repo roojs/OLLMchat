@@ -139,10 +139,14 @@ namespace OLLMchat.History
 				msg.message_interface = real_session.chat;
 				real_session.messages.add(msg);
 			}
-			
+
+			// Debug: Print how many messages were loaded
+			GLib.debug("SessionPlaceholder.load: Loaded %d messages from JSON", real_session.messages.size);
+
 			// Filter messages to populate chat.messages with only API-compatible messages
 			// Filter out special session message types: "think-stream", "content-stream", "user-sent", "ui", "end-stream"
 			// Only include standard roles: "system", "user", "assistant", "tool"
+			int api_compatible_count = 0;
 			foreach (var msg in real_session.messages) {
 				switch (msg.role) {
 					case "system":
@@ -150,12 +154,14 @@ namespace OLLMchat.History
 					case "assistant":
 					case "tool":
 						real_session.chat.messages.add(msg);
+						api_compatible_count++;
 						break;
 					default:
 						// Skip non-standard roles
 						break;
 				}
 			}
+			GLib.debug("SessionPlaceholder.load: %d messages are API-compatible (added to chat.messages)", api_compatible_count);
 			
 			// d) Remove itself from manager.sessions and fire remove_chat signal
 			this.manager.sessions.remove(this);
