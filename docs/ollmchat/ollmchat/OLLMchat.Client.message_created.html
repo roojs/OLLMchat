@@ -72,7 +72,7 @@
         <h1 class="main_title">message_created</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">message_created</span></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><span class="signal">message_created</span></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m, <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? content_interface)
         </div>
         <div class="description">
           <p>Emitted when a message is created in the conversation. This signal is the primary driver for message creation events, used for both 
@@ -83,6 +83,12 @@
               <td class="main_parameter_table_name">m</td>
               <td>
                 <p>The Message object that was created </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">content_interface</td>
+              <td>
+                <p>The ChatContentInterface associated with this message (e.g., Response.Chat for assistant messages) </p>
               </td>
             </tr>
           </table>

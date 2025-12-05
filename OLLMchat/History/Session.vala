@@ -80,7 +80,7 @@ namespace OLLMchat.History
 	 * Handler for message_created signal from this session's client.
 	 * Handles message persistence when a message is created.
 	 */
-	protected override void on_message_created(Message m)
+	protected override void on_message_created(Message m, ChatContentInterface? content_interface)
 	{
 		// Update chat reference if message_interface is a Chat
 		if (m.message_interface is Call.Chat) {
@@ -107,7 +107,7 @@ namespace OLLMchat.History
 		}
 		
 		// Relay to Manager for UI
-		this.manager.message_created(m);
+		this.manager.message_created(m, content_interface);
 		
 		// Save session
 		this.save_async.begin();
@@ -165,8 +165,12 @@ namespace OLLMchat.History
 				if (!found) {
 					// Ensure message_interface is set
 					response.message.message_interface = this.chat;
-					// Emit message_created signal
-					this.client.message_created(response.message);
+					// Emit message_created signal with Response.Chat as content_interface
+					this.client.message_created(response.message, response);
+					
+					// Emit a "done" message after the real message
+					var done_msg = new Message(this.chat, "done", "");
+					this.client.message_created(done_msg, response);
 				}
 			}
 			

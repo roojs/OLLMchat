@@ -327,3 +327,4 @@ public class ChatWidget : Gtk.Box
 3. **Session Persistence**: When UI creates a new session, when does it get saved to database?
 
 
+

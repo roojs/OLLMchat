@@ -48,21 +48,21 @@ namespace OLLMchatGtk.Tools
 			this.chat_widget = chat_widget;
 		}
 		
-		protected override async OLLMchat.ChatPermission.PermissionResponse request_user(OLLMchat.Tool.Interface tool)
+		protected override async OLLMchat.ChatPermission.PermissionResponse request_user(OLLMchat.Tool.RequestBase request)
 		{
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Tool '%s', chat_widget=%p", 
-				tool.name, this.chat_widget);
+				request.tool.name, this.chat_widget);
 			
 			// Send notification if application is available
 			if (this.application != null) {
 				this.application.send_notification(
 					"ollmchat-permission-%u".printf((uint)GLib.get_real_time()),
-					new GLib.Notification(tool.permission_question)
+					new GLib.Notification(request.permission_question)
 				);
 			}
 			
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Calling chat_widget.request_permission");
-			var response = yield this.chat_widget.request_permission(tool);
+			var response = yield this.chat_widget.request_permission(request);
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Got response: %s", response.to_string());
 			return response;
 		}

@@ -72,6 +72,11 @@ namespace OLLMchat
 						is_hidden = true;
 						is_ui_visible = true;  // Display via tool_message
 						break;
+					case "done":
+						is_done = true;
+						is_hidden = true;
+						is_ui_visible = false;  // Not displayed in UI
+						break;
 					case "system":
 						// System messages are not hidden (they get sent to API)
 						// But not displayed in UI
@@ -89,6 +94,7 @@ namespace OLLMchat
 		public bool is_tool = false;
 		public bool is_llm = false;  // For messages from the LLM (assistant role)
 		public bool is_stream_end = false;
+		public bool is_done = false;  // For "done" role messages indicating completion
 		public bool is_ui_visible = false;  // For types that should be displayed in the UI
 		
 		public string content { get; set; default = ""; }

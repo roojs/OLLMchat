@@ -26,12 +26,6 @@ namespace OLLMchat.Tools
 	 */
 	public class ReadFile : OLLMchat.Tool.Interface
 	{
-		// Parameter properties
-		public string file_path { get; set; default = ""; }
-		public int64 start_line { get; set; default = -1; }
-		public int64 end_line { get; set; default = -1; }
-		public bool read_entire_file { get; set; default = false; }
-		
 		public override string name { get { return "read_file"; } }
 		
 		public override string description { get {
@@ -62,107 +56,9 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			base(client);
 		}
 		
-		protected override bool build_perm_question()
+		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
-			// Validate required parameter
-			if (this.file_path == "") {
-				return false;
-			}
-			
-			// Build permission question based on parameters
-			string question;
-			if (this.read_entire_file) {
-				question = "Read entire file '" + this.file_path + "'?";
-			} else if (this.start_line > 0 && this.end_line > 0) {
-				question = "Read file '" + this.file_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
-			} else {
-				question = "Read file '" + this.file_path + "'?";
-			}
-			
-			// Set permission properties
-			this.permission_target_path = this.file_path;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
-			this.permission_question = question;
-			
-			return true;
-		}
-		
-		protected override string execute_tool(OLLMchat.Call.Chat chat_call, Json.Object parameters) throws Error
-		{
-			// Normalize and validate file path
-			var file_path = this.normalize_file_path(this.file_path);
-			
-			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
-				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");
-			}
-			
-			// Validate line range if provided
-			if (this.start_line > 0 && this.end_line > 0) {
-				if (this.start_line > this.end_line) {
-					throw new GLib.IOError.INVALID_ARGUMENT(@"Invalid line range: start_line ($(this.start_line)) must be <= end_line ($(this.end_line))");
-				}
-				
-				if (this.start_line < 1) {
-					throw new GLib.IOError.INVALID_ARGUMENT(@"Invalid line range: start_line must be >= 1");
-				}
-			}
-			
-			// Read entire file if requested or no line range specified
-			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				string content;
-				GLib.FileUtils.get_contents(file_path, out content);
-				this.client.tool_message(
-					new OLLMchat.Message(chat_call, "ui",
-					"Read file " + file_path)
-				);
-				return content;
-			}
-			
-			// Read line range (1-based, inclusive start, exclusive end)
-			string content = "";
-			var file = GLib.File.new_for_path(file_path);
-			var file_stream = file.read(null);
-			var data_stream = new GLib.DataInputStream(file_stream);
-			
-			try {
-				int current_line = 0;
-				string? line;
-				size_t length;
-				
-				while ((line = data_stream.read_line(out length, null)) != null) {
-					current_line++;
-					
-					// Skip lines before start_line
-					if (current_line < this.start_line) {
-						continue;
-					}
-					
-					// Stop at end_line (exclusive)
-					if (current_line >= this.end_line) {
-						break;
-					}
-					
-					// Add line to content
-					if (content != "") {
-						content += "\n";
-					}
-					content += line;
-				}
-			} finally {
-				try {
-					data_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
-			
-			// Send status message after reading
-			this.client.tool_message(
-				new OLLMchat.Message(chat_call, "ui",
-				"Read file " + file_path + " (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")")
-			);
-			
-			return content;
+			return Json.gobject_deserialize(typeof(RequestReadFile), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
 	}
 }

@@ -134,20 +134,20 @@ namespace OLLMchat.ChatPermission
 		 * 2. Global (permanent)
 		 * 3. If not found, calls request_user() to ask user
 		 * 
-		 * @param tool The Tool instance requesting permission
+		 * @param request The Request instance requesting permission
 		 * @return true if permission is granted, false otherwise
 		 */
-		public async bool request(OLLMchat.Tool.Interface tool)
+		public async bool request(OLLMchat.Tool.RequestBase request)
 		{
 			// Normalize path
-			var normalized_path = this.normalize_path(tool.permission_target_path);
+			var normalized_path = this.normalize_path(request.permission_target_path);
 			
 			GLib.debug("Provider.request: Tool '%s' requesting permission for '%s' (operation: %s)",
-				tool.name, normalized_path, tool.permission_operation.to_string());
+				request.tool.name, normalized_path, request.permission_operation.to_string());
 			
 			// Check session permissions
 			if (Provider.session.has_key(normalized_path)) {
-				var result = this.check(Provider.session.get(normalized_path), tool.permission_operation);
+				var result = this.check(Provider.session.get(normalized_path), request.permission_operation);
 				GLib.debug("Provider.request: Found session permission for '%s': %s", normalized_path, result.to_string());
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
@@ -156,7 +156,7 @@ namespace OLLMchat.ChatPermission
 			
 			// Check global permissions
 			if (Provider.global.has_key(normalized_path)) {
-				var result = this.check(Provider.global.get(normalized_path), tool.permission_operation);
+				var result = this.check(Provider.global.get(normalized_path), request.permission_operation);
 				GLib.debug("Provider.request: Found global permission for '%s': %s", normalized_path, result.to_string());
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
@@ -164,10 +164,10 @@ namespace OLLMchat.ChatPermission
 			}
 			
 			// No stored permission found - ask user
-			GLib.debug("Provider.request: No stored permission found, asking user: '%s'", tool.permission_question);
-			var response = yield this.request_user(tool);
+			GLib.debug("Provider.request: No stored permission found, asking user: '%s'", request.permission_question);
+			var response = yield this.request_user(request);
 			GLib.debug("Provider.request: User responded with: %s", response.to_string());
-			this.handle_response(normalized_path, tool.permission_operation, response);
+			this.handle_response(normalized_path, request.permission_operation, response);
 			
 			return (response == PermissionResponse.ALLOW_ONCE || 
 			        response == PermissionResponse.ALLOW_SESSION || 
@@ -178,27 +178,27 @@ namespace OLLMchat.ChatPermission
 		 * Abstract method for requesting permission from user.
 		 * Subclasses implement this to show UI dialogs, prompts, etc.
 		 * 
-		 * @param tool The Tool instance requesting permission
+		 * @param request The Request instance requesting permission
 		 * @return PermissionResponse enum indicating user's choice
 		 */
-		protected abstract async PermissionResponse request_user(OLLMchat.Tool.Interface tool);
+		protected abstract async PermissionResponse request_user(OLLMchat.Tool.RequestBase request);
 		
 		/**
 		 * Checks if permission is currently granted for a tool operation.
 		 * This is a synchronous check that only looks at stored permissions,
 		 * it does not ask the user.
 		 * 
-		 * @param tool The Tool instance to check permissions for
+		 * @param request The Request instance to check permissions for
 		 * @return true if permission is granted, false if denied or unknown
 		 */
-		public bool check_permission(OLLMchat.Tool.Interface tool)
+		public bool check_permission(OLLMchat.Tool.RequestBase request)
 		{
 			// Normalize path
-			var normalized_path = this.normalize_path(tool.permission_target_path);
+			var normalized_path = this.normalize_path(request.permission_target_path);
 			
 			// Check session permissions
 			if (Provider.session.has_key(normalized_path)) {
-				var result = this.check(Provider.session.get(normalized_path), tool.permission_operation);
+				var result = this.check(Provider.session.get(normalized_path), request.permission_operation);
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
@@ -206,7 +206,7 @@ namespace OLLMchat.ChatPermission
 			
 			// Check global permissions
 			if (Provider.global.has_key(normalized_path)) {
-				var result = this.check(Provider.global.get(normalized_path), tool.permission_operation);
+				var result = this.check(Provider.global.get(normalized_path), request.permission_operation);
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}

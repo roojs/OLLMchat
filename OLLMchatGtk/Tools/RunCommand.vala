@@ -27,97 +27,14 @@ namespace OLLMchatGtk.Tools
 	 */
 	public class RunCommand : OLLMchat.Tools.RunCommand
 	{
-		private GtkSource.Buffer? source_buffer = null;
-		private GtkSource.View? source_view = null;
-		
-		public RunCommand(OLLMchat.Client client)
+		public RunCommand(OLLMchat.Client client, string base_directory) throws Error
 		{
-			base(client);
+			base(client, base_directory);
 		}
 		
-		/**
-		 * Creates a SourceView widget for displaying terminal output.
-		 */
-		protected override Object? create_terminal_widget()
+		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
-			// Create SourceView widget for terminal output
-			this.source_buffer = new GtkSource.Buffer(null);
-			this.source_view = new GtkSource.View() {
-				editable = false,
-				cursor_visible = false,
-				show_line_numbers = false,
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = false
-			};
-			this.source_view.set_buffer(this.source_buffer);
-			this.source_view.add_css_class("code-editor");
-			this.source_view.height_request = 25;
-			this.source_view.set_visible(true);
-			
-			return this.source_view;
-		}
-		
-		/**
-		 * Appends text to the SourceView buffer.
-		 * Handles newlines - if text starts with newline, it's added as-is.
-		 * Otherwise, adds newline before text if buffer has content.
-		 */
-		protected override void append_to_widget(string text)
-		{
-			if (this.source_buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter end_iter;
-			this.source_buffer.get_end_iter(out end_iter);
-			
-			// If text starts with newline, it's already formatted
-			if (text.has_prefix("\n")) {
-				this.source_buffer.insert(ref end_iter, text, -1);
-			} else {
-				// Add newline before text if buffer already has content
-				if (this.source_buffer.get_char_count() > 0) {
-					this.source_buffer.insert(ref end_iter, "\n", -1);
-					this.source_buffer.get_end_iter(out end_iter);
-				}
-				this.source_buffer.insert(ref end_iter, text, -1);
-			}
-		}
-		
-		/**
-		 * Override to create GTK Message with widget support for initial command message.
-		 */
-		protected override void send_initial_tool_message(OLLMchat.Call.Chat chat_call, string content)
-		{
-			// Create SourceView widget for terminal output
-			this.source_buffer = new GtkSource.Buffer(null);
-			this.source_view = new GtkSource.View() {
-				editable = false,
-				cursor_visible = false,
-				show_line_numbers = false,
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = false
-			};
-			this.source_view.set_buffer(this.source_buffer);
-			this.source_view.add_css_class("code-editor");
-			this.source_view.height_request = 25;
-			this.source_view.set_visible(true);
-			
-			this.client.tool_message(
-				new OLLMchatGtk.Message(chat_call, "ui",
-				content, this.source_view)
-			);
-		}
-		
-		/**
-		 * Appends message to the widget instead of sending via tool_message.
-		 */
-		protected override void send_or_append_message(string text, OLLMchat.Call.Chat chat_call)
-		{
-			// GTK version appends to widget
-			this.append_to_widget(text);
+			return Json.gobject_deserialize(typeof(RequestRunCommand), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
 	}
 }

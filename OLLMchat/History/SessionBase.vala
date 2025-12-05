@@ -142,8 +142,8 @@ namespace OLLMchat.History
 			});
 			
 			// Connect message_created signal to handler
-			this.message_created_id = this.client.message_created.connect((message) => {
-				this.on_message_created(message);
+			this.message_created_id = this.client.message_created.connect((message, content_interface) => {
+				this.on_message_created(message, content_interface);
 			});
 			
 			// Connect client signals to relay to UI via Manager
@@ -227,7 +227,7 @@ namespace OLLMchat.History
 		 * Handles message persistence and relays to Manager.
 		 * Must be implemented by subclasses.
 		 */
-		protected abstract void on_message_created(Message m);
+		protected abstract void on_message_created(Message m, ChatContentInterface? content_interface);
 		
 		/**
 		 * Handler for stream_chunk signal from this session's client.

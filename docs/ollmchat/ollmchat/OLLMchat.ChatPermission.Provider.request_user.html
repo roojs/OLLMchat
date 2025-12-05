@@ -51,16 +51,16 @@
         <h1 class="main_title">request_user</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.ChatPermission.PermissionResponse.html" class="enum">PermissionResponse</a></span> <b><span class="abstract_method">request_user</span></b> (<span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span> tool)
+        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.ChatPermission.PermissionResponse.html" class="enum">PermissionResponse</a></span> <b><span class="abstract_method">request_user</span></b> (<span class="main_type"><a href="OLLMchat.Tool.RequestBase.html" class="abstract_class">RequestBase</a></span> request)
         </div>
         <div class="description">
           <p>Abstract method for requesting permission from user. Subclasses implement this to show UI dialogs, prompts, etc.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">tool</td>
+              <td class="main_parameter_table_name">request</td>
               <td>
-                <p>The Tool instance requesting permission </p>
+                <p>The Request instance requesting permission </p>
               </td>
             </tr>
           </table>

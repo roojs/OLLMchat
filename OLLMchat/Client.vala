@@ -296,9 +296,10 @@ namespace OLLMchat
 		 * prompt engine modification to preserve original user text.
 		 * 
 		 * @param m The Message object that was created
+		 * @param content_interface The ChatContentInterface associated with this message (e.g., Response.Chat for assistant messages)
 		 * @since 1.0
 		 */
-		public signal void message_created(Message m);
+		public signal void message_created(Message m, ChatContentInterface? content_interface);
 
 		public Soup.Session? session = null;
 
@@ -335,7 +336,7 @@ namespace OLLMchat
 			
 			// Create dummy user-sent Message with original text BEFORE prompt engine modification
 			var user_sent_msg = new Message(call, "user-sent", text);
-			this.message_created(user_sent_msg);
+			this.message_created(user_sent_msg, call);
 			
 			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
 			this.prompt_assistant.fill(call, text);
@@ -343,7 +344,7 @@ namespace OLLMchat
 			// If system_content is set, create system Message and emit message_created
 			if (call.system_content != "") {
 				var system_msg = new Message(call, "system", call.system_content);
-				this.message_created(system_msg);
+				this.message_created(system_msg, call);
 			}
 			
 			var result = yield call.exec_chat();

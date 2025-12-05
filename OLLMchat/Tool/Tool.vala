@@ -39,10 +39,6 @@ namespace OLLMchat.Tool
 		
 		public Client client { get; set;  }
 		
-		public string permission_question { get; protected set; default = ""; }
-		public string permission_target_path { get; protected set; default = ""; }
-		public OLLMchat.ChatPermission.Operation permission_operation { get; protected set; default = OLLMchat.ChatPermission.Operation.READ; }
-		
 		public bool active { get; set; default = true; }
 
 		protected Interface(Client client)
@@ -412,9 +408,6 @@ namespace OLLMchat.Tool
 					return Json.gobject_serialize(this.function);
 					
 				case "client":
-				case "permission-question":
-				case "permission-target_path":
-				case "permission-operation":
 				case "active":
 					// Exclude these properties from serialization
 					return null;
@@ -425,102 +418,20 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
-		 * Generic method to read parameters from JSON and assign them to object properties.
+		 * Abstract method for tools to deserialize parameters into a Request object.
 		 * 
-		 * Loops through the function's parameter properties and assigns values from the JSON
-		 * parameters object to matching properties on this object.
+		 * Each tool implementation creates its specific Request type from the parameters JSON node.
 		 * 
-		 * @param parameters The JSON parameters object from the Ollama function call
+		 * @param parameters_node The parameters as a Json.Node (converted from Json.Object by execute())
+		 * @return A RequestBase instance or null if deserialization fails
 		 */
-		protected virtual void readParams(Json.Object parameters)
-		{
-			unowned var ocl = (GLib.ObjectClass) this.get_class();
-			
-			foreach (var param in this.function.parameters.properties) {
-				if (!(param is ParamSimple)) {
-					continue;
-				}
-				
-				var simple_param = (ParamSimple) param;
-				var param_name = simple_param.name;
-				
-				if (!parameters.has_member(param_name)) {
-					continue;
-				}
-				
-				var ps = ocl.find_property(param_name);
-				if (ps == null) {
-					continue;
-				}
-				
-				var value = Value(ps.value_type);
-				
-				switch (simple_param.x_type) {
-					case "string":
-						value.set_string(parameters.get_string_member(param_name));
-						break;
-					case "integer":
-						value.set_int64(parameters.get_int_member(param_name));
-						break;
-					case "boolean":
-						value.set_boolean(parameters.get_boolean_member(param_name));
-						break;
-					default:
-						continue;
-				}
-				
-				this.set_property(ps, value);
-			}
-		}
+		protected abstract RequestBase? deserialize(Json.Node parameters_node);
 		
 		/**
-		 * Normalizes a file path using the permission provider's normalization logic.
+		 * Public method that creates a Request and delegates execution to it.
 		 * 
-		 * @param path The path to normalize
-		 * @return The normalized path
-		 */
-		protected string normalize_file_path(string in_path)
-		{
-			
-			var path = in_path;
-			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
-			if (!GLib.Path.is_absolute(path) && this.client.permission_provider.relative_path != "") {
-				path = GLib.Path.build_filename(this.client.permission_provider.relative_path, path);
-			}
-			// if it's still absolute - return it we might have to fail at this point..
-			// llm should send valid paths, we should not try and solve it.
-			 
-			return path;
-		}
-		
-		/**
-		 * Reads parameters from JSON into object properties.
-		 * 
-		 * Tools can override this to read their specific parameters.
-		 * 
-		 * @param parameters The parameters from the Ollama function call
-		 */
-		protected virtual void prepare(Json.Object parameters)
-		{
-			this.readParams(parameters);
-		}
-		
-		/**
-		 * Abstract method for tools to build permission information.
-		 * 
-		 * Tools implement this method to build permission information
-		 * from their specific parameters. Sets permission_question, permission_target_path,
-		 * and permission_operation properties.
-		 * 
-		 * @return true if permission needs to be asked, false if permission check can be skipped
-		 */
-		protected abstract bool build_perm_question();
-		
-		/**
-		 * Public method that handles permission checking before execution.
-		 * 
-		 * Calls prepare() to read parameters, then build_perm_question() to populate permission properties,
-		 * checks permission if needed, and finally calls execute_tool() to perform the actual operation.
+		 * Converts parameters to Json.Node, calls deserialize() to create a Request object,
+		 * then sets tool and chat_call properties, and calls its execute() method.
 		 * 
 		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
@@ -528,45 +439,21 @@ namespace OLLMchat.Tool
 		 */
 		public virtual async string execute(Call.Chat chat_call, Json.Object parameters)
 		{
-			// Read parameters
-			this.prepare(parameters);
+			// Convert parameters Json.Object to Json.Node for deserialization
+			var parameters_node = new Json.Node(Json.NodeType.OBJECT);
+			parameters_node.set_object(parameters);
 			
-			// Check permission if needed
-			if (this.build_perm_question()) {
-				GLib.debug("Tool.execute: Tool '%s' requires permission: '%s'", this.name, this.permission_question);
-				GLib.debug("Tool.execute: Tool '%s' client=%p, permission_provider=%p (%s)", 
-					this.name, this.client, this.client.permission_provider, 
-					this.client.permission_provider.get_type().name());
-				if (!(yield this.client.permission_provider.request(this))) {
-					GLib.debug("Tool.execute: Permission denied for tool '%s'", this.name);
-					return "ERROR: Permission denied: " + this.permission_question;
-				}
-				GLib.debug("Tool.execute: Permission granted for tool '%s'", this.name);
-			} else {
-				GLib.debug("Tool.execute: Tool '%s' does not require permission", this.name);
+			// Deserialize parameters JSON into Request object
+			var request = this.deserialize(parameters_node);
+			if (request == null) {
+				return "ERROR: Failed to create request object";
 			}
 			
-			// Execute the tool
-			try {
-				var result = this.execute_tool(chat_call, parameters);
-				GLib.debug("Tool.execute: Tool '%s' executed successfully, result length: %zu", this.name, result.length);
-				return result;
-			} catch (Error e) {
-				GLib.debug("Tool.execute: Tool '%s' threw error: %s", this.name, e.message);
-				return "ERROR: " + e.message;
-			}
+			// Set tool and chat_call (not in JSON, set after deserialization)
+			request.tool = this;
+			request.chat_call = chat_call;
+			
+			return yield request.execute();
 		}
-		
-		/**
-		 * Abstract method for tools to implement their actual execution logic.
-		 * 
-		 * This method contains the tool-specific implementation that performs
-		 * the actual operation after permission has been granted.
-		 * 
-		 * @param chat_call The chat call context for this tool execution
-		 * @param parameters The parameters from the Ollama function call
-		 * @return String content result (will be wrapped in JSON by execute())
-		 */
-		protected abstract string execute_tool(Call.Chat chat_call, Json.Object parameters) throws Error;
 	}
 }

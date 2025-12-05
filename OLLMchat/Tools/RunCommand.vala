@@ -27,9 +27,6 @@ namespace OLLMchat.Tools
 	 */
 	public class RunCommand : OLLMchat.Tool.Interface
 	{
-		// Parameter properties
-		public string command { get; set; default = ""; }
-		
 		// Base description (without directory note)
 		private const string BASE_DESCRIPTION = """
 Run a terminal command in the project's root directory and return the output.
@@ -41,406 +38,50 @@ If you are unsure about the safety of a command, ask the user for confirmation b
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
 		
-		// Cached description (updated when path changes)
-		private string _description = BASE_DESCRIPTION;
+		// Base directory for command execution (must exist)
+		public string base_directory { get; private set; }
 		
 		public override string name { get { return "run_command"; } }
 		
-		public override string description { get {
-			var path = this.client.permission_provider.relative_path;
-			if (path != "" && !this._description.contains("Commands are executed in the directory:")) {
-				this._description = BASE_DESCRIPTION + "\n\nCommands are executed in the directory: " + path + " unless 'cd' is prefixed to the command.";
-			} else if (path == "" && this._description != BASE_DESCRIPTION) {
-				this._description = BASE_DESCRIPTION;
+		private string _description = "";
+		
+		public override string description { 
+			get {
+				if (this._description == "") {
+					this._description = BASE_DESCRIPTION + 
+					"\n\nCommands are executed in the directory: " +
+						 this.base_directory + " unless 'cd' is prefixed to the command.";
+				}
+				return this._description;
 			}
-			return this._description;
-		} }
+		}
 		
 		public override string parameter_description { get {
 			return """
 @param command {string} [required] The terminal command to run.""";
 		} }
 		
-		// Flag to track if this is a complex command (needs to bypass cache)
-		private bool is_complex_command = false;
-		
-		public RunCommand(OLLMchat.Client client)
+		public RunCommand(OLLMchat.Client client, string base_directory) throws Error
 		{
 			base(client);
-		}
-		
-		/**
-		 * Detects bash operators in a command string.
-		 * 
-		 * @param cmd The command string to check
-		 * @return true if bash operators are detected
-		 */
-		private bool has_bash_operators(string cmd)
-		{
-			// Check for common bash operators/separators
-			// Note: We need to be careful not to match these inside quotes
-			// For simplicity, we'll do a basic check - this could be improved
-			// | catches both | and ||
-			// > catches both > and >>
-			// < catches both < and <<
-			// & catches &, &&, and 2>&1 (but we exclude cd commands)
-			if (cmd.contains("|") || 
-			    cmd.contains(">") || 
-			    cmd.contains("<") || 
-			    cmd.contains(";") || 
-			    (cmd.contains("&") && !cmd.has_prefix("cd "))) {
-				return true;
-			}
-			return false;
-		}
-		
-		/**
-		 * Detects if command matches simple pattern for permission caching.
-		 * 
-		 * @param cmd The command to check
-		 * @return true if it's a simple pattern
-		 */
-		private bool is_simple_pattern(string cmd)
-		{
-			// Check for bash operators first - if present, it's complex
-			if (this.has_bash_operators(cmd)) {
-				return false;
+			
+			// Validate that base_directory exists
+			var dir = GLib.File.new_for_path(base_directory);
+			if (!dir.query_exists()) {
+				throw new GLib.IOError.NOT_FOUND("Base directory does not exist: " + base_directory);
 			}
 			
-			var parts = cmd.split(" && ");
-			
-			// Single command (no &&)
-			if (parts.length == 1) {
-				return true;
-			}
-			
-			// Pattern: cd <path> && <command>
-			if (parts.length != 2) {
-				return false;
-			}
-			
-			var first = parts[0].strip();
-			
-			// First part must start with "cd "
-			if (!first.has_prefix("cd ")) {
-				return false;
-			}
-			
-			return true;
-		}
-		
-		/**
-		 * Extracts the executable command from a simple pattern.
-		 * 
-		 * @param cmd The full command
-		 * @return The command part to resolve (without cd if present)
-		 */
-		private string extract_command_for_resolution(string cmd)
-		{
-			var parts = cmd.split("&&");
-			
-			if (parts.length == 1) {
-				return parts[0].strip();
-			}
-			
-			if (parts.length == 2) {
-				// Return the part aifter &&
-				return parts[1].strip();
-			}
-			
-			return cmd;
-		}
-		
-		/**
-		 * Extracts the executable name from a command string.
-		 * 
-		 * @param cmd The command string
-		 * @return The executable name (first word)
-		 */
-		private string extract_executable_name(string cmd)
-		{
-			var trimmed = cmd.strip();
-			if (trimmed == "") {
-				return "";
-			}
-			
-			// Find first space or end of string
-			int space_pos = trimmed.index_of(" ");
-			if (space_pos == -1) {
-				return trimmed;
-			}
-			
-			return trimmed.substring(0, space_pos);
-		}
-		
-		protected override bool build_perm_question()
-		{
-			// Validate required parameter
-			if (this.command == "") {
-				return false;
-			}
-			
-			// Check if this is a complex pattern
-			if (!this.is_simple_pattern(this.command)) {
-				// Complex pattern: always require approval
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
-				return true;
-			}
-			
-			// Simple pattern: extract command and resolve realpath
-			var cmd_to_resolve = this.extract_command_for_resolution(this.command);
-			var exec_name = this.extract_executable_name(cmd_to_resolve);
-			
-			if (exec_name == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
-				return true;
-			}
-			
-			var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
-			if (realpath == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
-				return true;
-			}
-			
-			// Simple pattern with resolved path
-			this.is_complex_command = false;
-			this.permission_target_path = realpath;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Run command: " + this.command + "?";
-			return true;
-		}
-		
-		/**
-		 * Override execute() to handle complex commands differently and execute async subprocess.
-		 * For complex commands, we use a unique path that won't match cache entries,
-		 * effectively forcing a new permission request each time.
-		 */
-		public override async string execute(OLLMchat.Call.Chat chat_call, Json.Object parameters)
-		{
-			// Read parameters
-			this.prepare(parameters);
-			
-			// Build permission question
-			if (!this.build_perm_question()) {
-				return "ERROR: Invalid parameters";
-			}
-			
-			// For complex commands, use a unique identifier to bypass cache
-			if (this.is_complex_command) {
-				// Add a timestamp to make the path unique (won't match cache)
-				var unique_path = this.permission_target_path + "#" + GLib.get_real_time().to_string();
-				this.permission_target_path = unique_path;
-			}
-			
-			// Request permission (will always ask for complex commands due to unique path)
-			if (!(yield this.client.permission_provider.request(this))) {
-				return "ERROR: Permission denied: " + this.permission_question;
-			}
-			
-			// Execute the tool async
+			// Get absolute path
 			try {
-				return yield this.execute_tool_async(parameters, chat_call);
+				this.base_directory = dir.resolve_relative_path(".").get_path();
 			} catch (Error e) {
-				return "ERROR: " + e.message;
+				throw new GLib.IOError.FAILED("Failed to resolve base directory path: " + e.message);
 			}
 		}
 		
-		/**
-		 * Async method to execute the command with non-blocking I/O.
-		 */
-		private async string execute_tool_async(
-			Json.Object parameters, OLLMchat.Call.Chat chat_call) throws Error
+		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
-			// Re-read parameters
-			this.readParams(parameters);
-			
-			if (this.command == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
-			}
-			
-			// Get working directory (project root)
-			var work_dir = this.client.permission_provider.relative_path;
-			if (work_dir == "") {
-				work_dir = GLib.Environment.get_current_dir();
-			}
-			
-			// Execute command using shell with working directory
-			// Build command with cd if needed
-			string shell_cmd = this.command;
-			if (work_dir != "" && !this.command.has_prefix("cd ")) {
-				// Prepend cd to command to set working directory
-				shell_cmd = "cd " + GLib.Shell.quote(work_dir) + " && " + this.command;
-			}
-			
-			string[] argv = { "/bin/sh", "-c", shell_cmd };
-			
-			GLib.Subprocess subprocess;
-			try {
-				subprocess = new GLib.Subprocess.newv(
-					argv,
-					GLib.SubprocessFlags.STDOUT_PIPE | 
-					GLib.SubprocessFlags.STDERR_PIPE |
-					GLib.SubprocessFlags.STDIN_INHERIT
-				);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
-			}
-			
-			// Send command start message (GTK version will override to add widget)
-			this.send_initial_tool_message(chat_call, "$ " + this.command);
-			
-			// Read from both streams concurrently using async I/O
-			var stdout_stream = subprocess.get_stdout_pipe();
-			var stderr_stream = subprocess.get_stderr_pipe();
-			
-			// Read from both streams concurrently
-			var stdout_output = yield this.read_stream_async(stdout_stream, chat_call);
-			var stderr_output = yield this.read_stream_async(stderr_stream, chat_call);
-			
-			// Wait for process to complete (async)
-			int exit_status = 0;
-			try {
-				if (!(yield subprocess.wait_async(null))) {
-					exit_status = subprocess.get_exit_status();
-				}
-			} catch (GLib.Error e) {
-				if (!subprocess.get_successful()) {
-					exit_status = subprocess.get_exit_status();
-				}
-				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
-			}
-			
-			// Append exit code to widget or send as message
-			this.send_or_append_message("\nExit code: " +
-				 exit_status.to_string(), chat_call);
-			
-			// Merge outputs: stdout first, then stderr
-			string merged_output = "";
-			if (stdout_output != "") {
-				merged_output = stdout_output;
-			}
-			if (stderr_output != "") {
-				if (merged_output != "") {
-					merged_output += "\n";
-				}
-				merged_output += stderr_output;
-			}
-			
-			// Return merged raw output to LLM
-			return merged_output;
-		}
-		
-		/**
-		 * Creates a terminal widget for displaying command output.
-		 * Returns null in base class, widget in GTK version.
-		 * 
-		 * @return Terminal widget or null
-		 */
-		protected virtual Object? create_terminal_widget()
-		{
-			return null;
-		}
-		
-		/**
-		 * Appends text to the terminal widget.
-		 * Does nothing in base class, appends to SourceView in GTK version.
-		 * 
-		 * @param text The text to append
-		 */
-		protected virtual void append_to_widget(string text)
-		{
-			// Base class does nothing - GTK version will override
-		}
-		
-		/**
-		 * Async method to read from a stream line by line and stream to chat.
-		 */
-		private async string read_stream_async(
-			InputStream? stream, OLLMchat.Call.Chat chat_call)
-		{
-			if (stream == null) {
-				return "";
-			}
-			
-			var data_input = new GLib.DataInputStream(stream);
-			string output = "";
-			
-			try {
-				while (true) {
-					string? line = yield data_input.read_line_async(GLib.Priority.DEFAULT, null);
-					
-					if (line == null) {
-						break;
-					}
-					
-					// Add to output
-					if (output != "") {
-						output += "\n";
-					}
-					output += line;
-					
-					// Append to widget (GTK version) or send as message (base version)
-					this.send_or_append_message(line, chat_call);
-				}
-			} catch (GLib.Error e) {
-				// Stream closed or error - return what we have
-				return output;
-			}
-			
-			return output;
-		}
-		
-		/**
-		 * Sends the initial tool message with optional widget.
-		 * GTK version can override to create GTK Message with widget support.
-		 * 
-		 * @param chat_call The chat call context
-		 * @param content The message content
-		 */
-		protected virtual void send_initial_tool_message(
-			OLLMchat.Call.Chat chat_call, string content)
-		{
-			this.client.tool_message(
-				new OLLMchat.Message(chat_call, "ui",
-				content)
-			);
-		}
-		
-		/**
-		 * Sends or appends a message to the output.
-		 * Base class sends via tool_message, GTK version appends to widget.
-		 * 
-		 * @param text The text to send or append
-		 * @param chat_call The chat call context for creating messages
-		 */
-		protected virtual void send_or_append_message(string text, 
-			OLLMchat.Call.Chat chat_call)
-		{
-			// Base class sends as tool message
-			this.client.tool_message(
-				new OLLMchat.Message(chat_call, "ui",
-				text)
-			);
-		}
-		
-		/**
-		 * Required by base class, but we handle everything in execute().
-		 */
-		protected override string execute_tool(OLLMchat.Call.Chat chat_call, Json.Object parameters) throws Error
-		{
-			// This should never be called since we override execute()
-			throw new GLib.IOError.NOT_SUPPORTED("execute_tool() should not be called");
+			return Json.gobject_deserialize(typeof(RequestRunCommand), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
 	}
 }

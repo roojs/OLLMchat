@@ -37,20 +37,13 @@
           <li class="property"><a href="OLLMchat.Tool.Interface.function.html">function</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.Interface.name.html">name</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.Interface.parameter_description.html">parameter_description</a></li>
-          <li class="property"><a href="OLLMchat.Tool.Interface.permission_operation.html">permission_operation</a></li>
-          <li class="property"><a href="OLLMchat.Tool.Interface.permission_question.html">permission_question</a></li>
-          <li class="property"><a href="OLLMchat.Tool.Interface.permission_target_path.html">permission_target_path</a></li>
           <li class="property"><a href="OLLMchat.Tool.Interface.tool_type.html">tool_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Tool.Interface.Interface.html">Interface</a></li>
-          <li class="abstract_method"><a href="OLLMchat.Tool.Interface.build_perm_question.html">build_perm_question</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Tool.Interface.deserialize.html">deserialize</a></li>
           <li class="virtual_method">execute</li>
-          <li class="abstract_method"><a href="OLLMchat.Tool.Interface.execute_tool.html">execute_tool</a></li>
           <li class="method"><a href="OLLMchat.Tool.Interface.find_property.html">find_property</a></li>
           <li class="method"><a href="OLLMchat.Tool.Interface.get_property.html">get_property</a></li>
-          <li class="method"><a href="OLLMchat.Tool.Interface.normalize_file_path.html">normalize_file_path</a></li>
           <li class="method"><a href="OLLMchat.Tool.Interface.parse_parameter_description_string.html">parse_parameter_description_string</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Tool.Interface.prepare.html">prepare</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Tool.Interface.readParams.html">readParams</a></li>
           <li class="method"><a href="OLLMchat.Tool.Interface.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Tool.Interface.set_property.html">set_property</a></li>
         </ul>
@@ -62,9 +55,9 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">execute</span></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call, <span class="main_type"><span class="class">Object</span></span> parameters)
         </div>
         <div class="description">
-          <p>Public method that handles permission checking before execution.</p>
-          <p>Calls prepare() to read parameters, then build_perm_question() to populate permission properties, checks permission if needed, and 
-            finally calls execute_tool() to perform the actual operation.</p>
+          <p>Public method that creates a Request and delegates execution to it.</p>
+          <p>Converts parameters to Json.Node, calls deserialize() to create a Request object, then sets tool and chat_call properties, and calls its 
+            execute() method.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

@@ -113,7 +113,7 @@ namespace OLLMchat.History
 		
 		public override void cancel_current_request() { }  // No-op: EmptySession has no chat, so nothing to cancel
 		
-		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after conversion
+		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after conversion
 		
 		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: EmptySession doesn't handle stream_chunk
 		

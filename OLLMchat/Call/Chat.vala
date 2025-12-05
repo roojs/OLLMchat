@@ -182,7 +182,7 @@ namespace OLLMchat.Call
 		{
 			// Create dummy user-sent Message with original text BEFORE prompt engine modification
 			var user_sent_msg = new Message(this, "user-sent", new_text);
-			this.client.message_created(user_sent_msg);
+			this.client.message_created(user_sent_msg, this);
 			
 			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
 			this.client.prompt_assistant.fill(this, new_text);
@@ -190,7 +190,7 @@ namespace OLLMchat.Call
 			// If system_content is set, create system Message and emit message_created
 			if (this.system_content != "") {
 				var system_msg = new Message(this, "system", this.system_content);
-				this.client.message_created(system_msg);
+				this.client.message_created(system_msg, this);
 			}
 			
 			// Append the assistant's response from the previous call
@@ -265,14 +265,14 @@ namespace OLLMchat.Call
 						tool_call.function.name, 
 						string.joinv(", ", this.client.tools.keys.to_array()));
 					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
-					this.client.message_created(error_msg);
+					this.client.message_created(error_msg, this);
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
 					continue;
 				}
 				
 				// Show message that tool is being executed
 				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
-				this.client.message_created(exec_msg);
+				this.client.message_created(exec_msg, this);
 				
 				// Execute the tool with chat as first parameter
 				try {
@@ -288,7 +288,7 @@ namespace OLLMchat.Call
 						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
 							tool_call.function.name, result);
 						var error_msg = new Message(this, "ui", result);
-						this.client.message_created(error_msg);
+						this.client.message_created(error_msg, this);
 					} else {
 						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
 							tool_call.function.name, result.length, result_summary);
@@ -304,7 +304,7 @@ namespace OLLMchat.Call
 					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
 					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
-					this.client.message_created(error_msg);
+					this.client.message_created(error_msg, this);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}

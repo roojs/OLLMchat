@@ -275,7 +275,7 @@ namespace OLLMchatGtk
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
 		 */
-		private void on_message_created(OLLMchat.Message m)
+		private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
 		{
 			// Skip messages that shouldn't be displayed in UI
 			if (!m.is_ui_visible) {
@@ -352,13 +352,13 @@ namespace OLLMchatGtk
 		/**
 		 * Requests permission from the user for a tool operation.
 		 * 
-		 * @param tool The tool requesting permission
+		 * @param request The request object requesting permission
 		 * @return The user's permission response
 		 * @since 1.0
 		 */
-		public async OLLMchat.ChatPermission.PermissionResponse request_permission(OLLMchat.Tool.Interface tool)
+		public async OLLMchat.ChatPermission.PermissionResponse request_permission(OLLMchat.Tool.RequestBase request)
 		{
-			return yield this.permission_widget.request(tool.permission_question);
+			return yield this.permission_widget.request(request.permission_question);
 		}
 
 	

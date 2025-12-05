@@ -180,7 +180,7 @@ namespace OLLMchat
 			// Add tools to the client
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
 			client.addTool(new OLLMchat.Tools.EditMode(client));
-			client.addTool(new OLLMchatGtk.Tools.RunCommand(client));
+			client.addTool(new OLLMchatGtk.Tools.RunCommand(client, GLib.Environment.get_home_dir()));
 
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager) {

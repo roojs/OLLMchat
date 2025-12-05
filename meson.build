@@ -96,6 +96,7 @@ ollmchat_ollama_src = files([
   'OLLMchat/Response/Embed.vala',
   'OLLMchat/Response/Model.vala',
   'OLLMchat/Response/ToolCall.vala',
+  'OLLMchat/Tool/RequestBase.vala',
   'OLLMchat/Tool/Tool.vala',
   'OLLMchat/Tool/Param.vala',
   'OLLMchat/Tool/ParamSimple.vala',
@@ -133,15 +134,19 @@ ollmchat_prompt_src = files([
 # Source files for Tools namespace (base, no GTK) - moved to OLLMchat.Tools
 ollmchat_tools_src = files([
   'OLLMchat/Tools/ReadFile.vala',
+  'OLLMchat/Tools/RequestReadFile.vala',
   'OLLMchat/Tools/EditMode.vala',
+  'OLLMchat/Tools/RequestEditMode.vala',
   'OLLMchat/Tools/EditModeChange.vala',
   'OLLMchat/Tools/RunCommand.vala',
+  'OLLMchat/Tools/RequestRunCommand.vala',
 ])
 
 
 # Source files for Tools namespace (GTK-dependent) - moved to OLLMchatGtk.Tools
 ollmchat_tools_ui_src = files([
   'OLLMchatGtk/Tools/RunCommand.vala',
+  'OLLMchatGtk/Tools/RequestRunCommand.vala',
   'OLLMchatGtk/Tools/Permission.vala',
 ])
 

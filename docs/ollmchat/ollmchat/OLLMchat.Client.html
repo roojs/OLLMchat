@@ -241,7 +241,7 @@
             <div class="leaf_brief_description"><span class="brief_description">Emitted when a chat request is sent to the server. This signal is 
                 emitted when the request is about to be sent, including initial chat requests and automatic continuations after tool execution.</span>
             </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Client.message_created.html" class="signal">message_created</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Client.message_created.html" class="signal">message_created</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m, <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? content_interface)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Emitted when a message is created in the conversation. This signal is 
                 the primary driver for message creation events, used for both persistence (Manager) and UI display. Messages are created before prompt

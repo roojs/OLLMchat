@@ -32,10 +32,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMchatGtk.Tools.RunCommand.RunCommand.html">RunCommand</a></li>
-          <li class="virtual_method"><a href="OLLMchatGtk.Tools.RunCommand.append_to_widget.html">append_to_widget</a></li>
-          <li class="virtual_method"><a href="OLLMchatGtk.Tools.RunCommand.create_terminal_widget.html">create_terminal_widget</a></li>
-          <li class="virtual_method"><a href="OLLMchatGtk.Tools.RunCommand.send_initial_tool_message.html">send_initial_tool_message</a></li>
-          <li class="virtual_method"><a href="OLLMchatGtk.Tools.RunCommand.send_or_append_message.html">send_or_append_message</a></li>
+          <li class="virtual_method"><a href="OLLMchatGtk.Tools.RunCommand.deserialize.html">deserialize</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -66,94 +63,66 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchatGtk.Tools.RunCommand.RunCommand.html" class="creation_method">RunCommand</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchatGtk.Tools.RunCommand.RunCommand.html" class="creation_method">RunCommand</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_basic_type"><span class="class">string</span></span> base_directory) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchatGtk.Tools.RunCommand.append_to_widget.html" class="virtual_method">append_to_widget</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_type"><a href="OLLMchat.Tool.RequestBase.html" class="abstract_class">RequestBase</a></span>? <b><a href="OLLMchatGtk.Tools.RunCommand.deserialize.html" class="virtual_method">deserialize</a></b> (<span class="main_type"><span class="class">Node</span></span> parameters_node)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Appends text to the SourceView buffer. Handles newlines - if text 
-                starts with newline, it's added as-is. Otherwise, adds newline before text if buffer has content.</span>
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Object</span></span>? <b><a href="OLLMchatGtk.Tools.RunCommand.create_terminal_widget.html" class="virtual_method">create_terminal_widget</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Creates a SourceView widget for displaying terminal output.</span>
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchatGtk.Tools.RunCommand.send_initial_tool_message.html" class="virtual_method">send_initial_tool_message</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call, <span class="main_basic_type"><span class="class">string</span></span> content)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Override to create GTK Message with widget support for initial command
-                message.</span>
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchatGtk.Tools.RunCommand.send_or_append_message.html" class="virtual_method">send_or_append_message</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat_call)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Appends message to the widget instead of sending via tool_message.
-              </span>
+            <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-155')">All known members inherited from class OLLMchat.Tools.RunCommand</div>
-          <div class="content" id="box-content-155">
+          <div class="headline" onclick="toggle_box (this, 'box-content-168')">All known members inherited from class OLLMchat.Tools.RunCommand</div>
+          <div class="content" id="box-content-168">
             <div class="column">
               <ul class="navi_inline">
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.append_to_widget.html">append_to_widget</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.build_perm_question.html">build_perm_question</a></li>
-                <li class="property"><a href="OLLMchat.Tools.RunCommand.command.html">command</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.create_terminal_widget.html">create_terminal_widget</a></li>
+                <li class="property"><a href="OLLMchat.Tools.RunCommand.base_directory.html">base_directory</a></li>
+                <li class="virtual_property"><a href="OLLMchat.Tools.RunCommand.description.html">description</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="virtual_property"><a href="OLLMchat.Tools.RunCommand.description.html">description</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute.html">execute</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.execute_tool.html">execute_tool</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.deserialize.html">deserialize</a></li>
                 <li class="virtual_property"><a href="OLLMchat.Tools.RunCommand.name.html">name</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
                 <li class="virtual_property"><a href="OLLMchat.Tools.RunCommand.parameter_description.html">parameter_description</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.send_initial_tool_message.html">send_initial_tool_message</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tools.RunCommand.send_or_append_message.html">send_or_append_message</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-156')">All known members inherited from class OLLMchat.Tool.Interface</div>
-          <div class="content" id="box-content-156">
+          <div class="headline" onclick="toggle_box (this, 'box-content-169')">All known members inherited from class OLLMchat.Tool.Interface</div>
+          <div class="content" id="box-content-169">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.Tool.Interface.active.html">active</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.build_perm_question.html">build_perm_question</a></li>
                 <li class="property"><a href="OLLMchat.Tool.Interface.client.html">client</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Tool.Interface.description.html">description</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.deserialize.html">deserialize</a></li>
                 <li class="virtual_method"><a href="OLLMchat.Tool.Interface.execute.html">execute</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.execute_tool.html">execute_tool</a></li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.find_property.html">find_property</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="method"><a href="OLLMchat.Tool.Interface.find_property.html">find_property</a></li>
                 <li class="property"><a href="OLLMchat.Tool.Interface.function.html">function</a></li>
                 <li class="method"><a href="OLLMchat.Tool.Interface.get_property.html">get_property</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Tool.Interface.name.html">name</a></li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.normalize_file_path.html">normalize_file_path</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Tool.Interface.parameter_description.html">parameter_description</a></li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.parse_parameter_description_string.html">parse_parameter_description_string</a>
-                </li>
-                <li class="property"><a href="OLLMchat.Tool.Interface.permission_operation.html">permission_operation</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.Tool.Interface.permission_question.html">permission_question</a></li>
-                <li class="property"><a href="OLLMchat.Tool.Interface.permission_target_path.html">permission_target_path</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.prepare.html">prepare</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.readParams.html">readParams</a></li>
+                <li class="method"><a href="OLLMchat.Tool.Interface.parse_parameter_description_string.html">parse_parameter_description_string</a>
+                </li>
                 <li class="method"><a href="OLLMchat.Tool.Interface.serialize_property.html">serialize_property</a></li>
                 <li class="method"><a href="OLLMchat.Tool.Interface.set_property.html">set_property</a></li>
                 <li class="property"><a href="OLLMchat.Tool.Interface.tool_type.html">tool_type</a></li>
@@ -162,8 +131,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-157')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-157">
+          <div class="headline" onclick="toggle_box (this, 'box-content-170')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-170">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -229,8 +198,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-158')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-158">
+          <div class="headline" onclick="toggle_box (this, 'box-content-171')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-171">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>
