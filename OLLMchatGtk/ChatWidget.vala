@@ -112,6 +112,7 @@ namespace OLLMchatGtk
 			// Connect to manager signals (which relay from active session)
 			this.manager.stream_chunk.connect(this.on_stream_chunk_handler);
 			this.manager.tool_message.connect(this.chat_view.append_tool_message);
+			this.manager.message_created.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -184,8 +185,7 @@ namespace OLLMchatGtk
 			this.is_streaming_active = false;
 			this.chat_input.sensitive = false;
 			
-			// Switch manager to new session (Manager handles deactivation/activation)
-			this.manager.switch_to_session(session);
+			// Switch manager to new session (Manager handles loading, deactivation/activation)
 			this.clear_chat();
 			
 			// Manager signals are already connected in constructor
@@ -193,26 +193,120 @@ namespace OLLMchatGtk
 			
 			// Lock input while loading
 			try {
-				// Load session data if needed (no-op for already loaded sessions)
-				yield this.manager.session.load();
-				
-				// Render all messages from the session
-				foreach (var msg in this.manager.session.messages) {
-					if (msg.role == "user") {
-						this.chat_view.append_user_message(msg.content, msg.message_interface);
-					} else if (msg.role == "assistant") {
-						this.chat_view.append_complete_assistant_message(msg);
-					}
-					// Skip tool messages - they're not displayed
-				}
+				// Manager handles loading and switching
+				yield this.manager.switch_to_session(session);
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
+				this.chat_input.sensitive = true;
+				return;
 			}
+
+			// Load and render messages from session
+			this.load_messages();
 			
 			// Unlock input after loading
 			this.chat_input.sensitive = true;
 		}
 
+		/**
+		 * Loads and renders messages from the current session.
+		 * 
+		 * Renders messages from session.messages with filtering for UI display.
+		 * Display special session types: "think-stream", "content-stream", "user-sent", "ui"
+		 * Handle "end-stream" message: when encountered, flag to ignore the next message if it's a "done" message from streaming
+		 * Skip certain chat message types: "system" (not displayed in UI), "tool" (already handled), "user" (use "user-sent" instead)
+		 */
+		private void load_messages()
+		{
+			bool ignore_next_done = false;
+			int total_messages = this.manager.session.messages.size;
+			int visible_count = 0;
+			int message_index = 0;
+			
+			GLib.debug("ChatWidget.load_messages: Starting to load %d messages from session", total_messages);
+			
+			foreach (var msg in this.manager.session.messages) {
+				message_index++;
+				// Use is_ui_visible to filter messages
+				if (!msg.is_ui_visible) {
+					// Handle special case: "end-stream" flags next message to ignore
+					if (msg.role == "end-stream") {
+						ignore_next_done = true;
+					}
+					continue;
+				}
+				
+				// Reset ignore flag for visible messages
+				ignore_next_done = false;
+				visible_count++;
+				
+				// Truncate content for debug output (show first 20 chars)
+				string content_preview = msg.content.length > 20 ? msg.content.substring(0, 20) + "..." : msg.content;
+				GLib.debug("ChatWidget.load_messages: Adding message %d/%d (role=%s, content='%s')", 
+					message_index, total_messages, msg.role, content_preview);
+				 
+				// Display message based on role
+				switch (msg.role) {
+					case "assistant":
+						this.chat_view.append_complete_assistant_message(msg);
+						break;
+					case "user-sent":
+						this.chat_view.append_user_message(msg.content, msg.message_interface);
+						break;
+					case "think-stream":
+					case "content-stream":
+						// Render streaming messages as assistant messages
+						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content);
+						this.chat_view.append_complete_assistant_message(stream_msg);
+						break;
+					case "ui":
+						this.chat_view.append_tool_message(msg);
+						break;
+					default:
+						// Should not reach here if is_ui_visible is working correctly
+						break;
+				}
+			}
+			
+			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
+		}
+		
+		/**
+		 * Handler for message_created signal from manager.
+		 * Displays messages in the UI based on their role and is_ui_visible property.
+		 */
+		private void on_message_created(OLLMchat.Message m)
+		{
+			// Skip messages that shouldn't be displayed in UI
+			if (!m.is_ui_visible) {
+				return;
+			}
+			
+		
+			
+			// Display message based on role
+			switch (m.role) {
+				case "user-sent":
+					this.chat_view.append_user_message(m.content, m.message_interface);
+					break;
+				case "assistant":
+					this.chat_view.append_complete_assistant_message(m);
+					break;
+				case "ui":
+					this.chat_view.append_tool_message(m);
+					break;
+				case "think-stream":
+				case "content-stream":
+					// Render streaming messages as assistant messages
+					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content);
+					this.chat_view.append_complete_assistant_message(stream_msg);
+					break;
+				default:
+					// Should not reach here if is_ui_visible is working correctly
+					break;
+			}
+		}
+		
 		/**
 		 * Sends a message programmatically.
 		 * 
@@ -326,15 +420,7 @@ namespace OLLMchatGtk
 			// Store the text before clearing input (for error recovery)
 			this.last_sent_text = text;
 
-			// Create a temporary ChatCall for displaying the user message
-			// This is a workaround just so the interface works - the actual ChatCall
-			// will be created later in send_message()
-			var user_call = new OLLMchat.Call.Chat(this.manager.session.client) {
-				chat_content = text
-			};
-			
-			// Display user message
-			this.chat_view.append_user_message(text, user_call);
+			// Clear input - message will be displayed when message_created signal is received
 			this.chat_input.clear_input();
 
 			// Emit message sent signal

@@ -39,19 +39,28 @@ namespace OLLMchat.History
 			}
 		}
 		
-		public override Gee.ArrayList<Message> messages {
-			owned get { return new Gee.ArrayList<Message>(); }
+		
+		/**
+		 * Default constructor for placeholder session loaded from database.
+		 * 
+		 * Used with Object.new_with_properties. Manager will be set as a construct property.
+		 */
+		public SessionPlaceholder(Manager manager)
+		{
+			base(manager);
+			// Manager will be set via Object.new_with_properties as a construct property
 		}
 		
 		/**
-		 * Constructor for placeholder session loaded from database.
+		 * Sets the client for this placeholder.
 		 * 
-		 * @param manager The history manager
-		 * @param fid The file ID from the database
+		 * Called after construction from database to set up the client.
+		 * 
+		 * @param client The client to set
 		 */
-		public SessionPlaceholder(Manager manager, string fid)
+		internal void set_client(Client client)
 		{
-			base(manager);
+			this.client = client;
 		}
 		
 		/**
@@ -66,11 +75,12 @@ namespace OLLMchat.History
 		 * 
 		 * @throws Error if loading fails
 		 */
-		public override async void load() throws Error
+		public override async SessionBase? load() throws Error
 		{
 			// a) Create a new Session with chat
 			var real_session = new Session(this.manager, new Call.Chat(this.manager.new_client()));
 			
+			// copy the tools
 			// Copy properties from placeholder to real session
 			real_session.id = this.id;
             real_session.fid = this.fid;
@@ -123,61 +133,58 @@ namespace OLLMchat.History
 			//real_session.child_chats = json_session.child_chats;
 			
 			// c) Copy messages from SessionJson into Session
-			real_session.chat.messages.clear();
+			// First, restore all messages to session.messages (including special types)
 			foreach (var msg in json_session.messages) {
 				msg.message_interface = real_session.chat;
-				real_session.chat.messages.add(msg);
+				real_session.messages.add(msg);
+			}
+
+			// Filter messages to populate chat.messages with only API-compatible messages
+			// Filter out special session message types: "think-stream", "content-stream", "user-sent", "ui", "end-stream"
+			// Only include standard roles: "system", "user", "assistant", "tool"
+			foreach (var msg in real_session.messages) {
+				switch (msg.role) {
+					case "system":
+					case "user":
+					case "assistant":
+					case "tool":
+						real_session.chat.messages.add(msg);
+						break;
+					default:
+						// Skip non-standard roles
+						break;
+				}
 			}
 			
 			// d) Remove itself from manager.sessions and fire remove_chat signal
 			this.manager.sessions.remove(this);
-            this.manager.session_removed(this);
+			this.manager.session_removed(this);
 			
 			
 			// e) Add the new Session to manager.sessions and fire add_chat signal
 			this.manager.sessions.add(real_session);
 			this.manager.session_added(real_session);
+			return real_session;
 		}
 		
-		protected override void on_chat_send(Call.Chat chat)
-		{
-			// No-op: SessionPlaceholder doesn't handle signals
-		}
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after load()
 		
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
-		{
-			// No-op: SessionPlaceholder doesn't handle signals
-		}
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: SessionPlaceholder doesn't handle signals
 		
-		public override void saveToDB()
-		{
-			// No-op: SessionPlaceholder is never saved (already in DB)
-		}
+		public override void saveToDB() { }  // No-op: SessionPlaceholder is never saved (already in DB)
 		
-		public override async void save_async()
-		{
-			// No-op: SessionPlaceholder is never saved
-		}
+		public override async void save_async() { }  // No-op: SessionPlaceholder is never saved
 		
-		public override async void write() throws Error
-		{
-			// No-op: SessionPlaceholder is never written
-		}
+		public override async void write() throws Error { }  // No-op: SessionPlaceholder is never written
 		
-		public override async void read() throws Error
-		{
-			// No-op: SessionPlaceholder doesn't read itself (use load() instead)
-		}
+		public override async void read() throws Error { }  // No-op: SessionPlaceholder doesn't read itself (use load() instead)
 		
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
 			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages");
 		}
 		
-		public override void cancel_current_request()
-		{
-			// No-op: SessionPlaceholder has no active requests
-		}
+		public override void cancel_current_request() { }  // No-op: SessionPlaceholder has no active requests
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{

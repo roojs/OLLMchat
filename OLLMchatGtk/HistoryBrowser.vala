@@ -36,10 +36,10 @@ namespace OLLMchatGtk
 		/**
 		 * Signal emitted when a session is selected.
 		 * 
-		 * @param session The selected Session object
+		 * @param session The selected SessionBase object (Session or SessionPlaceholder)
 		 * @since 1.0
 		 */
-		public signal void session_selected(OLLMchat.History.Session session);
+		public signal void session_selected(OLLMchat.History.SessionBase session);
 		
 		/**
 		 * Signal emitted when a chat is deleted.
@@ -60,8 +60,8 @@ namespace OLLMchatGtk
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			this.manager = manager;
 			
-			// Create ListStore for Session objects
-			this.session_store = new GLib.ListStore(typeof(OLLMchat.History.Session));
+			// Create ListStore for SessionBase objects (Session or SessionPlaceholder)
+			this.session_store = new GLib.ListStore(typeof(OLLMchat.History.SessionBase));
 			
 			// Create ListView with selection model
 			var selection_model = new Gtk.SingleSelection(this.session_store);
@@ -82,7 +82,7 @@ namespace OLLMchatGtk
 			selection_model.selection_changed.connect(() => {
 				var position = selection_model.selected;
 				if (position != Gtk.INVALID_LIST_POSITION) {
-					var session = this.session_store.get_item(position) as OLLMchat.History.Session;
+					var session = this.session_store.get_item(position) as OLLMchat.History.SessionBase;
 					if (session != null) {
 						this.session_selected(session);
 					}
@@ -164,7 +164,7 @@ namespace OLLMchatGtk
 		}
 		
 		/**
-		 * Bind callback for row factory - binds widget properties to Session properties.
+		 * Bind callback for row factory - binds widget properties to SessionBase properties.
 		 */
 		private void on_bind_row(Gtk.ListItem item)
 		{
@@ -173,7 +173,7 @@ namespace OLLMchatGtk
 				return;
 			}
 			
-			var session = list_item.item as OLLMchat.History.Session;
+			var session = list_item.item as OLLMchat.History.SessionBase;
 			if (session == null) {
 				return;
 			}
@@ -207,12 +207,11 @@ namespace OLLMchatGtk
 				// Load sessions from database
 				this.manager.load_sessions();
 				
-				// Add all sessions to ListStore (only real Sessions, not SessionPlaceholder)
+				// Add all sessions to ListStore (Session and SessionPlaceholder, but not EmptySession)
 				foreach (var session in this.manager.sessions) {
-					if (session is OLLMchat.History.Session) {
-						var real_session = session as OLLMchat.History.Session;
-						this.session_store.append(real_session);
-					}
+					// Exclude EmptySession from the list
+					this.session_store.append(session);
+					
 				}
 				
 				callback();
@@ -229,16 +228,14 @@ namespace OLLMchatGtk
 		 */
 		private void on_session_added(OLLMchat.History.SessionBase session)
 		{
-			// Only add real Sessions (not EmptySession or SessionPlaceholder)
-			if (session is OLLMchat.History.Session) {
-				var real_session = session as OLLMchat.History.Session;
+			// Add Session and SessionPlaceholder, but not EmptySession
 				// Use Idle to defer adding to listview, giving time for title to be set
-				Idle.add(() => {
-					// Insert at beginning (most recent first)
-					this.session_store.insert(0, real_session);
-					return false;
-				});
-			}
+			Idle.add(() => {
+				// Insert at beginning (most recent first)
+				this.session_store.insert(0, session);
+				return false;
+			});
+			
 		}
 	}
 }

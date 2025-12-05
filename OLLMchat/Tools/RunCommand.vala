@@ -250,7 +250,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			
 			// Execute the tool async
 			try {
-				return yield this.execute_tool_async(parameters);
+				return yield this.execute_tool_async(parameters, chat_call);
 			} catch (Error e) {
 				return "ERROR: " + e.message;
 			}
@@ -259,7 +259,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		/**
 		 * Async method to execute the command with non-blocking I/O.
 		 */
-		private async string execute_tool_async(Json.Object parameters) throws Error
+		private async string execute_tool_async(
+			Json.Object parameters, OLLMchat.Call.Chat chat_call) throws Error
 		{
 			// Re-read parameters
 			this.readParams(parameters);
@@ -296,16 +297,16 @@ If the command fails, you should handle the error gracefully and provide a helpf
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
 			
-			// Send command start message with widget (create_terminal_widget returns null in base class)
-			this.client.tool_message("$ " + this.command, this.create_terminal_widget());
+			// Send command start message (GTK version will override to add widget)
+			this.send_initial_tool_message(chat_call, "$ " + this.command);
 			
 			// Read from both streams concurrently using async I/O
 			var stdout_stream = subprocess.get_stdout_pipe();
 			var stderr_stream = subprocess.get_stderr_pipe();
 			
 			// Read from both streams concurrently
-			var stdout_output = yield this.read_stream_async(stdout_stream);
-			var stderr_output = yield this.read_stream_async(stderr_stream);
+			var stdout_output = yield this.read_stream_async(stdout_stream, chat_call);
+			var stderr_output = yield this.read_stream_async(stderr_stream, chat_call);
 			
 			// Wait for process to complete (async)
 			int exit_status = 0;
@@ -321,7 +322,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			}
 			
 			// Append exit code to widget or send as message
-			this.send_or_append_message("\nExit code: " + exit_status.to_string());
+			this.send_or_append_message("\nExit code: " +
+				 exit_status.to_string(), chat_call);
 			
 			// Merge outputs: stdout first, then stderr
 			string merged_output = "";
@@ -364,7 +366,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		/**
 		 * Async method to read from a stream line by line and stream to chat.
 		 */
-		private async string read_stream_async(InputStream? stream)
+		private async string read_stream_async(
+			InputStream? stream, OLLMchat.Call.Chat chat_call)
 		{
 			if (stream == null) {
 				return "";
@@ -388,7 +391,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 					output += line;
 					
 					// Append to widget (GTK version) or send as message (base version)
-					this.send_or_append_message(line);
+					this.send_or_append_message(line, chat_call);
 				}
 			} catch (GLib.Error e) {
 				// Stream closed or error - return what we have
@@ -399,15 +402,36 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		}
 		
 		/**
+		 * Sends the initial tool message with optional widget.
+		 * GTK version can override to create GTK Message with widget support.
+		 * 
+		 * @param chat_call The chat call context
+		 * @param content The message content
+		 */
+		protected virtual void send_initial_tool_message(
+			OLLMchat.Call.Chat chat_call, string content)
+		{
+			this.client.tool_message(
+				new OLLMchat.Message(chat_call, "ui",
+				content)
+			);
+		}
+		
+		/**
 		 * Sends or appends a message to the output.
 		 * Base class sends via tool_message, GTK version appends to widget.
 		 * 
 		 * @param text The text to send or append
+		 * @param chat_call The chat call context for creating messages
 		 */
-		protected virtual void send_or_append_message(string text)
+		protected virtual void send_or_append_message(string text, 
+			OLLMchat.Call.Chat chat_call)
 		{
 			// Base class sends as tool message
-			this.client.tool_message(text, null);
+			this.client.tool_message(
+				new OLLMchat.Message(chat_call, "ui",
+				text)
+			);
 		}
 		
 		/**

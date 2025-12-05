@@ -24,21 +24,86 @@ namespace OLLMchat
 	 */
 	public class Message : Object, Json.Serializable
 	{
-		public string role { get; set; default = ""; }
+		private string _role;
+		public string role {
+			get { return _role; }
+			set {
+				_role = value;
+				// Reset all flags
+			
+				
+				// Set flags based on role
+				switch (value) {
+					case "think-stream":
+						is_thinking = true;
+						is_stream = true;
+						is_hidden = true;
+						is_ui_visible = true;  // Display as assistant message
+						break;
+					case "content-stream":
+						is_content = true;
+						is_stream = true;
+						is_hidden = true;
+						is_ui_visible = true;  // Display as assistant message
+						break;
+					case "user":
+					case "user-sent":
+						is_user = true;
+						if (value == "user-sent") {
+							is_hidden = true;
+							is_ui_visible = true;  // Display user-sent messages
+						}
+						// "user" role is not UI visible (use "user-sent" instead)
+						break;
+					case "assistant":
+						is_llm = true;
+						is_ui_visible = true;
+						break;
+					case "tool":
+						is_tool = true;
+						// Tool messages are handled separately, not displayed directly
+						break;
+					case "end-stream":
+						is_stream_end = true;
+						is_hidden = true;
+						// Not displayed in UI
+						break;
+					case "ui":
+						is_hidden = true;
+						is_ui_visible = true;  // Display via tool_message
+						break;
+					case "system":
+						// System messages are not hidden (they get sent to API)
+						// But not displayed in UI
+						break;
+				}
+			}
+		}
+		
+		// Public properties (without get/set)
+		public bool is_thinking = false;
+		public bool is_content = false;
+		public bool is_stream = false;
+		public bool is_user = false;
+		public bool is_hidden = false;  // For types that don't get sent to the API
+		public bool is_tool = false;
+		public bool is_llm = false;  // For messages from the LLM (assistant role)
+		public bool is_stream_end = false;
+		public bool is_ui_visible = false;  // For types that should be displayed in the UI
+		
 		public string content { get; set; default = ""; }
-		public string original_content { get; set; default = ""; }  // Original user input before prompt engine modification
 		public string thinking { get; set; default = ""; }
 		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set; default = new Gee.ArrayList<Response.ToolCall>(); }
 		public string tool_call_id { get; set; default = ""; }
 		public string name { get; set; default = ""; }
-		public MessageInterface message_interface;
+		public ChatContentInterface message_interface;
 		
 		// History info (only included when include_history_info is true)
 		public bool include_history_info { get; set; default = false; }
 		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
 		public bool hidden { get; set; default = false; }
 
-		public Message(MessageInterface message_interface, string role, string content, string thinking = "")
+		public Message(ChatContentInterface message_interface, string role, string content, string thinking = "")
 		{
 			this.message_interface = message_interface;
 			this.role = role;
@@ -55,7 +120,7 @@ namespace OLLMchat
 		 * @param name The name of the tool function that was executed
 		 * @param content The result content from the tool execution
 		 */
-		public Message.tool_reply(MessageInterface message_interface, string tool_call_id, string name, string content)
+		public Message.tool_reply(ChatContentInterface message_interface, string tool_call_id, string name, string content)
 		{
 			this.message_interface = message_interface;
 			this.role = "tool";
@@ -73,7 +138,7 @@ namespace OLLMchat
 		 * @param tool_call The tool call that failed
 		 * @param e The error that occurred during execution
 		c */
-		public Message.tool_call_fail(MessageInterface message_interface, Response.ToolCall tool_call, Error e)
+		public Message.tool_call_fail(ChatContentInterface message_interface, Response.ToolCall tool_call, Error e)
 		{
 			this.message_interface = message_interface;
 			this.role = "tool";
@@ -89,7 +154,7 @@ namespace OLLMchat
 		 * @param message_interface The message interface
 		 * @param tool_call The tool call that is invalid
 		 */
-		public Message.tool_call_invalid(MessageInterface message_interface, Response.ToolCall tool_call)
+		public Message.tool_call_invalid(ChatContentInterface message_interface, Response.ToolCall tool_call)
 		{
 			this.message_interface = message_interface;
 			this.role = "tool";
@@ -97,8 +162,8 @@ namespace OLLMchat
 			this.name = tool_call.function.name;
 			this.content = "ERROR: Tool '" + tool_call.function.name + "' is not available";
 			
-			// Emit tool message (message_interface is always a Chat for tool-related messages)
-			((Call.Chat) message_interface).client.tool_message("Error: Tool '" + tool_call.function.name + "' not found");
+			// Emit message_created signal (message_interface is always a Chat for tool-related messages)
+			// Note: UI message is already emitted in toolsReply(), so this is just for the tool message itself
 		}
 		
 		/**
@@ -108,13 +173,13 @@ namespace OLLMchat
 		 * @param message_interface The message interface
 		 * @param tool_calls The list of tool calls requested by the assistant
 		 */
-		public Message.with_tools(MessageInterface message_interface, Gee.ArrayList<Response.ToolCall> tool_calls)
+		public Message.with_tools(ChatContentInterface message_interface, Gee.ArrayList<Response.ToolCall> tool_calls)
 		{
 			this.message_interface = message_interface;
 			this.role = "assistant";
 			this.tool_calls = tool_calls;
 		}
-
+		
 		/**
 		 * Extracts code content from markdown code block syntax in this message's content.
 		 * Handles both ```language and ``` formats.
@@ -162,10 +227,6 @@ namespace OLLMchat
 			switch (property_name) {
 				case "include-history-info":
 					// Exclude the flag itself from serialization
-					return null;
-				
-				case "original-content":
-					// Exclude original_content from serialization (internal use only)
 					return null;
 				
 				case "timestamp":

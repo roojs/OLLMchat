@@ -24,7 +24,7 @@ namespace OLLMchat
 	 * Used to unify access to message content across different types
 	 * (Message, Response.Chat, Call.Chat) for consistent content handling.
 	 */
-	public interface MessageInterface : Object
+	public interface ChatContentInterface : Object
 	{
 		public abstract string chat_content { get; set; default = ""; }
 	}

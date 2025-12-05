@@ -265,13 +265,10 @@ namespace OLLMchat
 		/**
 		 * Emitted when a tool sends a status message during execution.
 		 * 
-		 * @param message The status message from the tool
-		 * @param widget Optional widget parameter (default null). Expected to be a Gtk.Widget,
-		 *               but typed as Object? since the Ollama base library should work without Gtk.
-		 *               A cast will be needed when using this parameter in Gtk-based applications.
+		 * @param message The Message object from the tool (typically "ui" role)
 		 * @since 1.0
 		 */
-		public signal void tool_message(string message, Object? widget = null);
+		public signal void tool_message(Message message);
 
 		/**
 		 * Emitted when a chat request is sent to the server.
@@ -291,6 +288,17 @@ namespace OLLMchat
 		 * @since 1.0
 		 */
 		public signal void stream_start();
+
+		/**
+		 * Emitted when a message is created in the conversation.
+		 * This signal is the primary driver for message creation events, used for
+		 * both persistence (Manager) and UI display. Messages are created before
+		 * prompt engine modification to preserve original user text.
+		 * 
+		 * @param m The Message object that was created
+		 * @since 1.0
+		 */
+		public signal void message_created(Message m);
 
 		public Soup.Session? session = null;
 
@@ -322,12 +330,21 @@ namespace OLLMchat
 		{
 			// Create chat call
 			var call = new Call.Chat(this) {
-				cancellable = cancellable,
-				original_user_text = text  // Store original text before prompt engine modifies it
+				cancellable = cancellable
 			};
 			
-			// Fill chat call with prompts from prompt_assistant
+			// Create dummy user-sent Message with original text BEFORE prompt engine modification
+			var user_sent_msg = new Message(call, "user-sent", text);
+			this.message_created(user_sent_msg);
+			
+			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
 			this.prompt_assistant.fill(call, text);
+			
+			// If system_content is set, create system Message and emit message_created
+			if (call.system_content != "") {
+				var system_msg = new Message(call, "system", call.system_content);
+				this.message_created(system_msg);
+			}
 			
 			var result = yield call.exec_chat();
 
@@ -409,7 +426,7 @@ namespace OLLMchat
 		*/
 		public async Response.Model show_model(string model_name) throws Error
 		{
-			GLib.debug("show_model: %s", model_name);
+			//GLib.debug("show_model: %s", model_name);
 			
 			// Check if model already exists in available_models
 			Response.Model model;
@@ -424,7 +441,7 @@ namespace OLLMchat
 			
 			// Try to load from cache first
 			if (model.load_from_cache()) {
-				GLib.debug("Loaded model '%s' from cache", model_name);
+				//GLib.debug("Loaded model '%s' from cache", model_name);
 				return model;
 			}
 			

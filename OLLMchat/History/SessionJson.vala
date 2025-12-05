@@ -50,7 +50,7 @@ namespace OLLMchat.History
 				}
 			}
 			value = Value(typeof(Gee.ArrayList));
-			value.set_object(new Gee.ArrayList<Message>());
+			value.set_object(this.messages);
 			return true;
 		}
 		

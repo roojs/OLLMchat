@@ -33,18 +33,22 @@ namespace OLLMchat.History
 	{
 		public Call.Chat chat { get; set; }
 		
+		// Streaming state tracking
+		private Message? current_stream_message = null;
+		private bool current_stream_is_thinking = false;
+		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
 		// Computed property that returns chat.fid
 		public override string fid {
 			get { return this.chat.fid; }
 			set {}
 		}
-		
+			
 		public override string display_info {
 			owned get {
-				// Count assistant messages (replies)
+				// Count assistant messages (replies) from session messages
 				int reply_count = 0;
-				foreach (var msg in this.chat.messages) {
+				foreach (var msg in this.messages) {
 					if (msg.role == "assistant") {
 						reply_count++;
 					}
@@ -56,7 +60,7 @@ namespace OLLMchat.History
 					reply_count == 1 ? "reply" : "replies"
 				);
 			}
-		}
+		}	
 		
 		/**
 		 * Constructor requires a Call.Chat object.
@@ -72,46 +76,105 @@ namespace OLLMchat.History
 			this.client = chat.client;
 		}
 		
-		/**
-		 * Handler for chat_send signal from this session's client.
-		 * Handles session creation and updates when a chat is sent.
-		 */
-		protected override void on_chat_send(Call.Chat chat)
-		{
-			// Update chat reference
-			this.chat = chat;
-			
-			// Ensure session is tracked in Manager
-			if (!this.manager.sessions.contains(this)) {
-				this.manager.sessions.add(this);
-				this.manager.session_added(this);
-			}
-			
-			// Save session
-			this.save_async.begin();
-			this.notify_property("display_info");
-			this.notify_property("display_title");
+	/**
+	 * Handler for message_created signal from this session's client.
+	 * Handles message persistence when a message is created.
+	 */
+	protected override void on_message_created(Message m)
+	{
+		// Update chat reference if message_interface is a Chat
+		if (m.message_interface is Call.Chat) {
+			this.chat = (Call.Chat) m.message_interface;
 		}
 		
-		/**
-		 * Handler for stream_chunk signal from this session's client.
-		 * Handles unread tracking and session saving.
-		 */
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
-		{
-			// If session is inactive, increment unread count
-			if (!this.is_active) {
-				this.unread_count++;
-				this.notify_property("unread_count");
-			}
-			
-			// Save when response is done
-			if (response.done) {
-				this.save_async.begin();
-				this.notify_property("display_info");
-				this.notify_property("title");
+		// Add message to session.messages
+		// Check if message is already in list (avoid duplicates)
+		bool found = false;
+		foreach (var existing_msg in this.messages) {
+			if (existing_msg == m) {
+				found = true;
+				break;
 			}
 		}
+		if (!found) {
+			this.messages.add(m);
+		}
+		
+		// Ensure session is tracked in Manager
+		if (!this.manager.sessions.contains(this)) {
+			this.manager.sessions.add(this);
+			this.manager.session_added(this);
+		}
+		
+		// Relay to Manager for UI
+		this.manager.message_created(m);
+		
+		// Save session
+		this.save_async.begin();
+		this.notify_property("display_info");
+		this.notify_property("display_title");
+	}
+		
+	/**
+	 * Handler for stream_chunk signal from this session's client.
+	 * Handles unread tracking and session saving.
+	 */
+	protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+	{
+		// If session is inactive, increment unread count
+		if (!this.is_active) {
+			this.unread_count++;
+			this.notify_property("unread_count");
+		}
+		
+		// Capture streaming output
+		if (new_text.length > 0) {
+			// Check if stream type has changed
+			if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
+				// Stream type changed or first chunk - create new stream message
+				string stream_role = is_thinking ? "think-stream" : "content-stream";
+				this.current_stream_message = new Message(this.chat, stream_role, new_text);
+				this.current_stream_is_thinking = is_thinking;
+				this.messages.add(this.current_stream_message);
+			} else {
+				// Same stream type - append to existing message
+				this.current_stream_message.content += new_text;
+			}
+		}
+		
+		// When response is done, finalize streaming
+		if (response.done) {
+			// Create "end-stream" message to signal renderer
+			var end_stream_msg = new Message(this.chat, "end-stream", "");
+			this.messages.add(end_stream_msg);
+			
+			// Finalize current stream message
+			this.current_stream_message = null;
+			this.current_stream_is_thinking = false;
+			
+			// Emit message_created for final assistant message if it exists and hasn't been emitted yet
+			if (response.message != null && response.message.is_llm) {
+				// Check if this message is already in our list (avoid duplicates)
+				bool found = false;
+				foreach (var existing_msg in this.messages) {
+					if (existing_msg == response.message) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					// Ensure message_interface is set
+					response.message.message_interface = this.chat;
+					// Emit message_created signal
+					this.client.message_created(response.message);
+				}
+			}
+			
+			this.save_async.begin();
+			this.notify_property("display_info");
+			this.notify_property("title");
+		}
+	}
 		
 		/**
 		 * Initialize database table for sessions.
@@ -171,14 +234,20 @@ namespace OLLMchat.History
 				if (this.title == "" && this.manager.title_generator == null) {
 					this.title = "Unknown Chat";
 					foreach (var msg in this.messages) {
-						// Skip system and assistant messages, only use user messages for title
-						if (msg.role == "user") {
-							// Use original_content if available (before prompt engine modification), otherwise use content
-							var title_text = (msg.original_content != "") ? msg.original_content : msg.content;
-							if (title_text.strip().length > 0) {
-								this.title = title_text;
-								break;
-							}
+						// Use "user-sent" messages for title (raw user text before prompt engine modification)
+						// Fall back to "user" messages if no "user-sent" messages exist
+						if (msg.role == "user-sent") {
+							 
+							this.title = msg.content;
+							break;
+						
+						} 
+						 if (msg.role == "user") {
+							// Fallback to regular user messages
+						 
+							this.title = msg.content;
+							break;
+							
 						}
 					}
 				} 
@@ -199,13 +268,6 @@ namespace OLLMchat.History
 				yield this.write();
 			} catch (Error e) {
 				GLib.warning("Failed to save session: %s", e.message);
-			}
-		}
-		
-		// Messages wrapper - uses this.chat.messages
-		public override Gee.ArrayList<Message> messages {
-			owned get {
-				return this.chat.messages;
 			}
 		}
 		
@@ -256,93 +318,23 @@ namespace OLLMchat.History
 		
 		/**
 		 * Read session from JSON file.
-		 * Uses this.fid and to_path() to determine where to read from.
-		 * Loads into a temporary Session object using Json.Serializable,
-		 * copies messages from loaded object to this.chat.messages,
-		 * then disposes of the temporary object.
+		 * No-op for Session - sessions are loaded once via SessionPlaceholder.load() and never again.
 		 * 
 		 * @throws Error if read fails
 		 */
 		public override async void read() throws Error
 		{
-			 
-			
-			 
-			
-			// Build full file path
-			var full_path = GLib.Path.build_filename(this.manager.history_dir, this.to_path() + ".json");
-			
-			var file = GLib.File.new_for_path(full_path);
-			if (!file.query_exists()) {
-				throw new GLib.FileError.NOENT("File not found: " + full_path);
-			}
-			
-			// Read file contents
-			uint8[] data;
-			string etag;
-			yield file.load_contents_async(null, out data, out etag);
-			
-			// Parse JSON
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data((string)data, -1);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to parse JSON: " + e.message);
-			}
-			
-			var root_node = parser.get_root();
-			if (root_node == null || root_node.get_node_type() != Json.NodeType.OBJECT) {
-				throw new GLib.FileError.INVAL("Invalid JSON: root is not an object");
-			}
-			
-			// Deserialize into a new temporary Session object
-			// We need to create a temporary session with manager/client to deserialize properly
-			var temp_session = Json.gobject_deserialize(typeof(Session), root_node) as Session;
-			if (temp_session == null) {
-				throw new GLib.FileError.INVAL("Failed to deserialize Session from JSON");
-			}
-			
-			// Copy properties from temporary session
-			this.id = temp_session.id;
-			this.updated_at_timestamp = temp_session.updated_at_timestamp;
-			this.title = temp_session.title;
-			this.model = temp_session.model;
-			this.child_chats = temp_session.child_chats;
-			
-			// Copy messages from temporary session to this.chat.messages
-			this.chat.messages.clear();
-			foreach (var msg in temp_session.chat.messages) {
-				msg.message_interface = this.chat;
-				this.chat.messages.add(msg);
-			}
-			 
+			// No-op: Session is already loaded (via SessionPlaceholder.load())
 		}
 		
 		/**
 		 * Handle JSON property mapping and custom deserialization.
+		 * No-op for Session - sessions are never deserialized (only SessionJson is used).
 		 */
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			if (property_name != "messages") {
-                value = Value(pspec.value_type);
-                return true;
-            }
-            
-				 
-				
-            this.chat.messages.clear();
-            var array = property_node.get_array();
-            for (uint i = 0; i < array.get_length(); i++) {
-                var element_node = array.get_element(i);
-                var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
-                this.chat.messages.add(msg);
-                 
-            } 
-            // Return a dummy value since messages aren't a settable property
-            value = Value(typeof(Gee.ArrayList));
-            value.set_object(new Gee.ArrayList<Message>());
-            return true;
-			  
+			value = Value(pspec.value_type);
+			return true;
 		}
 		
 		/**
@@ -423,10 +415,13 @@ namespace OLLMchat.History
 		/**
 		 * Loads the session data if needed.
 		 * No-op for Session (already loaded).
+		 * 
+		 * @return This session (already loaded)
 		 */
-		public override async void load() throws Error
+		public override async SessionBase? load() throws Error
 		{
 			// No-op: Session is already loaded
+			return this;
 		}
 		
 		/**
@@ -440,6 +435,7 @@ namespace OLLMchat.History
 				this.chat.cancellable.cancel();
 			}
 		}
+		
 	}
 }
 

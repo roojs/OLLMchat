@@ -34,13 +34,12 @@
           <li class="property"><a href="OLLMchat.History.Session.chat.html">chat</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.display_info.html">display_info</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.fid.html">fid</a></li>
-          <li class="virtual_property"><a href="OLLMchat.History.Session.messages.html">messages</a></li>
           <li class="static_method"><a href="OLLMchat.History.Session.initDB.html">initDB</a></li>
           <li class="creation_method"><a href="OLLMchat.History.Session.Session.html">Session</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.cancel_current_request.html">cancel_current_request</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.deserialize_property.html">deserialize_property</a></li>
           <li class="virtual_method">load</li>
-          <li class="virtual_method"><a href="OLLMchat.History.Session.on_chat_send.html">on_chat_send</a></li>
+          <li class="virtual_method"><a href="OLLMchat.History.Session.on_message_created.html">on_message_created</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.on_stream_chunk.html">on_stream_chunk</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.read.html">read</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.saveToDB.html">saveToDB</a></li>
@@ -54,10 +53,18 @@
         <h1 class="main_title">load</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="virtual_method">load</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span>? <b><span class="virtual_method">load</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Loads the session data if needed. No-op for Session (already loaded).</p>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>This session (already loaded) </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

@@ -60,8 +60,8 @@ namespace OLLMchat.Response
 		 */
 		public bool is_thinking {
 			get {
-				GLib.debug("is_thinking: %s %s", this.name, 
-					this.capabilities.contains("thinking") ? "1" : "0");
+				//GLib.debug("is_thinking: %s %s", this.name, 
+				//	this.capabilities.contains("thinking") ? "1" : "0");
 				return this.capabilities.contains("thinking");
 			}
 			private set { }
@@ -72,8 +72,8 @@ namespace OLLMchat.Response
 		 */
 		public bool can_call {
 			get {
-				GLib.debug("can_call: %s %s", this.name, 
-					this.capabilities.contains("tools") ? "1" : "0");
+				//GLib.debug("can_call: %s %s", this.name, 
+				//	this.capabilities.contains("tools") ? "1" : "0");
 				return this.capabilities.contains("tools");
 			}
 			private set { }

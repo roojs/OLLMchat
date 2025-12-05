@@ -25,7 +25,7 @@ namespace OLLMchat.Call
 	 * streaming responses, and automatic tool execution. Manages the conversation
 	 * flow and tool call recursion.
 	 */
-	public class Chat : Base, MessageInterface
+	public class Chat : Base, ChatContentInterface
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
@@ -64,9 +64,6 @@ namespace OLLMchat.Call
 		}
 		public Response.Chat? streaming_response { get; set; default = null; }
 		public string system_content { get; set; default = ""; }
-		
-		// Store original user text before prompt engine modifies chat_content
-		public string original_user_text { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
@@ -92,7 +89,6 @@ namespace OLLMchat.Call
 				case "message":
 				case "streaming-response":
 				case "system-content":
-				case "original-user-text":
 					// Exclude these properties from serialization
 					return null;
 				
@@ -184,6 +180,19 @@ namespace OLLMchat.Call
 		 */
 		public async Response.Chat reply(string new_text, Response.Chat previous_response) throws Error
 		{
+			// Create dummy user-sent Message with original text BEFORE prompt engine modification
+			var user_sent_msg = new Message(this, "user-sent", new_text);
+			this.client.message_created(user_sent_msg);
+			
+			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
+			this.client.prompt_assistant.fill(this, new_text);
+			
+			// If system_content is set, create system Message and emit message_created
+			if (this.system_content != "") {
+				var system_msg = new Message(this, "system", this.system_content);
+				this.client.message_created(system_msg);
+			}
+			
 			// Append the assistant's response from the previous call
 			// If it had tool_calls, preserve them in the conversation history
 			if (previous_response.message.tool_calls.size > 0) {
@@ -194,10 +203,9 @@ namespace OLLMchat.Call
 					 previous_response.message.thinking));
 			}
 
-			// Append the new user message
-			var user_message = new Message(this, "user", new_text);
-			// For replies, the new_text is already the original (not modified by prompt engine)
-			user_message.original_content = new_text;
+			// Append the new user message with modified chat_content (for API request)
+			// Note: "user-sent" message was already created via signal with original text
+			var user_message = new Message(this, "user", this.chat_content);
 			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
@@ -253,14 +261,18 @@ namespace OLLMchat.Call
 					tool_call.function.name, tool_call.id);
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
-					GLib.warning("Tool '%s' not found in client tools", tool_call.function.name);
-					this.client.tool_message("Error: Tool '" + tool_call.function.name + "' not found");
+					GLib.debug("Chat.toolsReply: Tool '%s' not found in client tools (available tools: %s)", 
+						tool_call.function.name, 
+						string.joinv(", ", this.client.tools.keys.to_array()));
+					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
+					this.client.message_created(error_msg);
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
 					continue;
 				}
 				
 				// Show message that tool is being executed
-				this.client.tool_message("Executing tool: `" + tool_call.function.name + "`");
+				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
+				this.client.message_created(exec_msg);
 				
 				// Execute the tool with chat as first parameter
 				try {
@@ -270,8 +282,17 @@ namespace OLLMchat.Call
 					
 					// Log result summary (truncate if too long)
 					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
-					GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
-						tool_call.function.name, result.length, result_summary);
+					
+					// Check if result is an error and display it in UI
+					if (result.has_prefix("ERROR:")) {
+						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
+							tool_call.function.name, result);
+						var error_msg = new Message(this, "ui", result);
+						this.client.message_created(error_msg);
+					} else {
+						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
+							tool_call.function.name, result.length, result_summary);
+					}
 					
 					this.messages.add(
 						new Message.tool_reply(
@@ -280,9 +301,10 @@ namespace OLLMchat.Call
 							result
 						));
 				} catch (Error e) {
-					GLib.warning("Error executing tool '%s' (id='%s'): %s", 
+					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
-					this.client.tool_message("Error executing tool '" + tool_call.function.name + "': " + e.message);
+					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
+					this.client.message_created(error_msg);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}
@@ -317,17 +339,16 @@ namespace OLLMchat.Call
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
 			 
-			// Add system message if system_content is set
+			// System and user messages are now created earlier via message_created signal
+			// But we still need to add API-compatible messages to messages array for the request
+			// Add system message if system_content is set (for API request)
 			if (this.system_content != "") {
 				this.messages.add(new Message(this, "system", this.system_content));
 			}
 			
-			// Always add the user message (this Chat)
+			// Add the user message with modified chat_content (for API request)
+			// Note: "user-sent" message was already created via signal with original text
 			var user_message = new Message(this, "user", this.chat_content);
-			// Store original user text if available (before prompt engine modification)
-			if (this.original_user_text != "") {
-				user_message.original_content = this.original_user_text;
-			}
 			this.messages.add(user_message);
 			
 			// Debug: output messages being sent

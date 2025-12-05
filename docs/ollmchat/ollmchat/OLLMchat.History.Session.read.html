@@ -34,13 +34,12 @@
           <li class="property"><a href="OLLMchat.History.Session.chat.html">chat</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.display_info.html">display_info</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.fid.html">fid</a></li>
-          <li class="virtual_property"><a href="OLLMchat.History.Session.messages.html">messages</a></li>
           <li class="static_method"><a href="OLLMchat.History.Session.initDB.html">initDB</a></li>
           <li class="creation_method"><a href="OLLMchat.History.Session.Session.html">Session</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.cancel_current_request.html">cancel_current_request</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.deserialize_property.html">deserialize_property</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.load.html">load</a></li>
-          <li class="virtual_method"><a href="OLLMchat.History.Session.on_chat_send.html">on_chat_send</a></li>
+          <li class="virtual_method"><a href="OLLMchat.History.Session.on_message_created.html">on_message_created</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.on_stream_chunk.html">on_stream_chunk</a></li>
           <li class="virtual_method">read</li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.saveToDB.html">saveToDB</a></li>
@@ -57,8 +56,7 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="virtual_method">read</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Read session from JSON file. Uses this.fid and to_path() to determine where to read from. Loads into a temporary Session object using 
-            Json.Serializable, copies messages from loaded object to this.chat.messages, then disposes of the temporary object.</p>
+          <p>Read session from JSON file. No-op for Session - sessions are loaded once via SessionPlaceholder.load() and never again.</p>
           <h2 class="main_title">Exceptions:</h2>
           <table class="main_parameter_table">
             <tr>

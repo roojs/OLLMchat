@@ -43,6 +43,7 @@
           <li class="method"><a href="OLLMchat.History.Manager.new_client.html">new_client</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.switch_to_session.html">switch_to_session</a></li>
           <li class="signal"><a href="OLLMchat.History.Manager.chat_send.html">chat_send</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.message_created.html">message_created</a></li>
           <li class="signal"><a href="OLLMchat.History.Manager.session_activated.html">session_activated</a></li>
           <li class="signal"><a href="OLLMchat.History.Manager.session_added.html">session_added</a></li>
           <li class="signal"><a href="OLLMchat.History.Manager.session_removed.html">session_removed</a></li>
@@ -125,7 +126,7 @@
             <div class="leaf_brief_description"><span class="brief_description">Creates a new client instance from the base client. Copies all 
                 properties and creates fresh tool instances.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.switch_to_session.html" class="method">switch_to_session</a></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.switch_to_session.html" class="method">switch_to_session</a></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Switches to a new session, deactivating the current one and activating
                 the new one.</span>
@@ -134,6 +135,10 @@
         <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
           <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.chat_send.html" class="signal">chat_send</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.message_created.html" class="signal">message_created</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -161,15 +166,15 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.tool_message.html" class="signal">tool_message</a></b> (<span class="main_basic_type"><span class="class">string</span></span> message, <span class="main_type"><span class="class">Object</span></span>? widget = <span class="main_literal">null</span>)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.tool_message.html" class="signal">tool_message</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-84')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-84">
+          <div class="headline" onclick="toggle_box (this, 'box-content-85')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-85">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

@@ -34,13 +34,12 @@
           <li class="property"><a href="OLLMchat.History.Session.chat.html">chat</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.display_info.html">display_info</a></li>
           <li class="virtual_property"><a href="OLLMchat.History.Session.fid.html">fid</a></li>
-          <li class="virtual_property"><a href="OLLMchat.History.Session.messages.html">messages</a></li>
           <li class="static_method"><a href="OLLMchat.History.Session.initDB.html">initDB</a></li>
           <li class="creation_method"><a href="OLLMchat.History.Session.Session.html">Session</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.cancel_current_request.html">cancel_current_request</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.deserialize_property.html">deserialize_property</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.load.html">load</a></li>
-          <li class="virtual_method"><a href="OLLMchat.History.Session.on_chat_send.html">on_chat_send</a></li>
+          <li class="virtual_method"><a href="OLLMchat.History.Session.on_message_created.html">on_message_created</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.on_stream_chunk.html">on_stream_chunk</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.read.html">read</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.saveToDB.html">saveToDB</a></li>
@@ -90,10 +89,6 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; <b><a href="OLLMchat.History.Session.messages.html" class="virtual_property">messages</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
         </ul>
         <h3 class="main_title">Static methods:</h3>
         <ul class="navi_inline">
@@ -118,17 +113,18 @@
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.History.Session.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handle JSON property mapping and custom deserialization.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Handle JSON property mapping and custom deserialization. No-op for 
+                Session - sessions are never deserialized (only SessionJson is used).</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.load.html" class="virtual_method">load</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span>? <b><a href="OLLMchat.History.Session.load.html" class="virtual_method">load</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Loads the session data if needed. No-op for Session (already loaded).
               </span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.on_chat_send.html" class="virtual_method">on_chat_send</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.on_message_created.html" class="virtual_method">on_message_created</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handler for chat_send signal from this session's client. Handles 
-                session creation and updates when a chat is sent.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Handler for message_created signal from this session's client. Handles
+                message persistence when a message is created.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.on_stream_chunk.html" class="virtual_method">on_stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
             </span>
@@ -137,9 +133,8 @@
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.read.html" class="virtual_method">read</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Read session from JSON file. Uses this.fid and to_path() to determine 
-                where to read from. Loads into a temporary Session object using Json.Serializable, copies messages from loaded object to 
-                this.chat.messages, then disposes of the temporary object.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Read session from JSON file. No-op for Session - sessions are loaded 
+                once via SessionPlaceholder.load() and never again.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.saveToDB.html" class="virtual_method">saveToDB</a></b> ()
             </span>
@@ -166,9 +161,9 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-88')">All known members inherited from class OLLMchat.History.SessionBase
+          <div class="headline" onclick="toggle_box (this, 'box-content-89')">All known members inherited from class OLLMchat.History.SessionBase
           </div>
-          <div class="content" id="box-content-88">
+          <div class="content" id="box-content-89">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method"><a href="OLLMchat.History.SessionBase.activate.html">activate</a></li>
@@ -183,16 +178,18 @@
                 <li class="property"><a href="OLLMchat.History.SessionBase.display_title.html">display_title</a></li>
                 <li class="property"><a href="OLLMchat.History.SessionBase.duration_seconds.html">duration_seconds</a></li>
                 <li class="abstract_property"><a href="OLLMchat.History.SessionBase.fid.html">fid</a></li>
+                <li class="property"><a href="OLLMchat.History.SessionBase.id.html">id</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.History.SessionBase.id.html">id</a></li>
                 <li class="property"><a href="OLLMchat.History.SessionBase.is_active.html">is_active</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.load.html">load</a></li>
-                <li class="abstract_property"><a href="OLLMchat.History.SessionBase.messages.html">messages</a></li>
+                <li class="property"><a href="OLLMchat.History.SessionBase.manager.html">manager</a></li>
+                <li class="field"><a href="OLLMchat.History.SessionBase.message_created_id.html">message_created_id</a></li>
+                <li class="property"><a href="OLLMchat.History.SessionBase.messages.html">messages</a></li>
                 <li class="property"><a href="OLLMchat.History.SessionBase.model.html">model</a></li>
-                <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_chat_send.html">on_chat_send</a></li>
+                <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_message_created.html">on_message_created</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_stream_chunk.html">on_stream_chunk</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
@@ -203,6 +200,7 @@
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_handler_id.html">stream_chunk_handler_id</a></li>
                 <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_id.html">stream_chunk_id</a></li>
                 <li class="field"><a href="OLLMchat.History.SessionBase.stream_content_id.html">stream_content_id</a></li>
                 <li class="field"><a href="OLLMchat.History.SessionBase.stream_start_id.html">stream_start_id</a></li>
@@ -219,8 +217,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-89')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-89">
+          <div class="headline" onclick="toggle_box (this, 'box-content-90')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-90">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -286,8 +284,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-90')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-90">
+          <div class="headline" onclick="toggle_box (this, 'box-content-91')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-91">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>
