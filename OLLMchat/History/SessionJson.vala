@@ -60,7 +60,7 @@ namespace OLLMchat.History
 			}
 			GLib.debug("SessionJson.deserialize_property: Successfully deserialized %d messages", this.messages.size);
 			value = Value(typeof(Gee.ArrayList));
-			value.set_object(new Gee.ArrayList<Message>());
+			value.set_object(this.messages);
 			return true;
 		}
 		
