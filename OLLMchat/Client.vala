@@ -426,7 +426,7 @@ namespace OLLMchat
 		*/
 		public async Response.Model show_model(string model_name) throws Error
 		{
-			GLib.debug("show_model: %s", model_name);
+			//GLib.debug("show_model: %s", model_name);
 			
 			// Check if model already exists in available_models
 			Response.Model model;
@@ -441,7 +441,7 @@ namespace OLLMchat
 			
 			// Try to load from cache first
 			if (model.load_from_cache()) {
-				GLib.debug("Loaded model '%s' from cache", model_name);
+				//GLib.debug("Loaded model '%s' from cache", model_name);
 				return model;
 			}
 			
