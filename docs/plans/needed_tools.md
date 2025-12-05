@@ -1035,7 +1035,7 @@ src/OLLMchat/
       - [ ] If Content-Type starts with `image/` → automatically convert to base64 (ignore format parameter)
       - [ ] If Content-Type is `application/json` → convert to raw string (UTF-8)
       - [ ] If Content-Type starts with `text/`:
-        - [ ] If `text/html` and format is "markdown": Use `Markdown.FromHTML` to convert to markdown
+        - [ ] If `text/html` and format is "markdown": Use `Markdown.HtmlParser` to convert to markdown
         - [ ] Otherwise: Convert to raw string (UTF-8)
       - [ ] If Content-Type is any other non-text type → automatically convert to base64 (ignore format parameter)
     - [ ] **Base64 conversion**:
@@ -1047,7 +1047,7 @@ src/OLLMchat/
       - [ ] Return raw string
     - [ ] **Markdown conversion**:
       - [ ] Convert bytes to string (UTF-8)
-      - [ ] Use `Markdown.FromHTML` to convert HTML to markdown
+      - [ ] Use `Markdown.HtmlParser` to convert HTML to markdown
       - [ ] Return markdown string
   
   **Step 5: Tool Execution**
@@ -1084,7 +1084,7 @@ src/OLLMchat/
   
   **Dependencies**:
   - `libsoup-3.0` (already in base_deps)
-  - `Markdown.FromHTML` (already exists in codebase)
+  - `Markdown.HtmlParser` (already exists in codebase)
   - `json-glib-1.0` (already in base_deps)
   
   **Files to Create**:

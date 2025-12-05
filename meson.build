@@ -151,7 +151,7 @@ omarkdown_src = files([
   'Markdown/RenderBase.vala',
   'Markdown/PangoRender.vala',
   'Markdown/DummyRenderer.vala',
-  'Markdown/FromHTML.vala',
+  'Markdown/HtmlParser.vala',
   'Markdown/Tags.vala',
   'Markdown/TagsTable.vala',
   'Markdown/Writer.vala',
