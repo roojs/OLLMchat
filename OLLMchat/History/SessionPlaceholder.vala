@@ -41,14 +41,26 @@ namespace OLLMchat.History
 		
 		
 		/**
-		 * Constructor for placeholder session loaded from database.
+		 * Default constructor for placeholder session loaded from database.
 		 * 
-		 * @param manager The history manager
-		 * @param fid The file ID from the database
+		 * Used with Object.new_with_properties. Manager will be set as a construct property.
 		 */
-		public SessionPlaceholder(Manager manager, string fid)
+		public SessionPlaceholder(Manager manager)
 		{
 			base(manager);
+			// Manager will be set via Object.new_with_properties as a construct property
+		}
+		
+		/**
+		 * Sets the client for this placeholder.
+		 * 
+		 * Called after construction from database to set up the client.
+		 * 
+		 * @param client The client to set
+		 */
+		internal void set_client(Client client)
+		{
+			this.client = client;
 		}
 		
 		/**
@@ -63,11 +75,13 @@ namespace OLLMchat.History
 		 * 
 		 * @throws Error if loading fails
 		 */
-		public override async void load() throws Error
+		public override async SessionBase? load() throws Error
 		{
+			GLib.debug("SessionPlaceholder.load");
 			// a) Create a new Session with chat
 			var real_session = new Session(this.manager, new Call.Chat(this.manager.new_client()));
 			
+			// copy the tools
 			// Copy properties from placeholder to real session
 			real_session.id = this.id;
             real_session.fid = this.fid;
@@ -151,6 +165,7 @@ namespace OLLMchat.History
 			// e) Add the new Session to manager.sessions and fire add_chat signal
 			this.manager.sessions.add(real_session);
 			this.manager.session_added(real_session);
+			return real_session;
 		}
 		
 		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after load()
