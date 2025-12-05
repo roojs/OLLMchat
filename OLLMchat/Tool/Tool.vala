@@ -533,15 +533,26 @@ namespace OLLMchat.Tool
 			
 			// Check permission if needed
 			if (this.build_perm_question()) {
+				GLib.debug("Tool.execute: Tool '%s' requires permission: '%s'", this.name, this.permission_question);
+				GLib.debug("Tool.execute: Tool '%s' client=%p, permission_provider=%p (%s)", 
+					this.name, this.client, this.client.permission_provider, 
+					this.client.permission_provider.get_type().name());
 				if (!(yield this.client.permission_provider.request(this))) {
+					GLib.debug("Tool.execute: Permission denied for tool '%s'", this.name);
 					return "ERROR: Permission denied: " + this.permission_question;
 				}
+				GLib.debug("Tool.execute: Permission granted for tool '%s'", this.name);
+			} else {
+				GLib.debug("Tool.execute: Tool '%s' does not require permission", this.name);
 			}
 			
 			// Execute the tool
 			try {
-				return this.execute_tool(chat_call, parameters);
+				var result = this.execute_tool(chat_call, parameters);
+				GLib.debug("Tool.execute: Tool '%s' executed successfully, result length: %zu", this.name, result.length);
+				return result;
 			} catch (Error e) {
+				GLib.debug("Tool.execute: Tool '%s' threw error: %s", this.name, e.message);
 				return "ERROR: " + e.message;
 			}
 		}

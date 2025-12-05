@@ -51,6 +51,16 @@ namespace SQ {
 		 * The database instance to use for queries.
 		 */
 		Database db;
+		
+		/**
+		 * Property names to pass to Object.new_with_properties when constructing objects.
+		 */
+		string[]? property_names = null;
+		
+		/**
+		 * Property values to pass to Object.new_with_properties when constructing objects.
+		 */
+		Value[]? property_values = null;
 		  
 		/**
 		 * Creates a new Query instance for the specified table.
@@ -62,7 +72,25 @@ namespace SQ {
 		{
 			this.db = db;
 			this.table = table;
-
+		}
+		
+		/**
+		 * Creates a new Query instance with property initialization.
+		 * 
+		 * Properties specified here will be set on objects when they are constructed
+		 * from database rows using Object.new_with_properties.
+		 * 
+		 * @param db The database instance to use
+		 * @param table The name of the table to query
+		 * @param names Array of property names to set on constructed objects
+		 * @param values Array of property values (must match names array length)
+		 */
+		public Query.with_properties(Database db, string table, string[] names, Value[] values)
+		{
+			this.db = db;
+			this.table = table;
+			this.property_names = names;
+			this.property_values = values;
 		}
 		
 		/**
@@ -465,12 +493,19 @@ namespace SQ {
  		 * @param stmt The prepared statement to execute
  		 * @param ret The list to populate with result objects
  		 */
- 		public void selectExecute(Sqlite.Statement stmt, Gee.ArrayList<T> ret )
- 		{
+		public void selectExecute(Sqlite.Statement stmt, Gee.ArrayList<T> ret )
+		{
 			GLib.debug("Execute %s", stmt.expanded_sql());	
 			while (stmt.step() == Sqlite.ROW) {
-		 		var row =   Object.new (typeof(T));
-				this.fetchRow(stmt, row); 
+		 		T row;
+		 		if (this.property_names != null && this.property_values != null) {
+					GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
+		 			row = (T) Object.new_with_properties(typeof(T), this.property_names, this.property_values);
+		 		} else {
+					GLib.debug("new %s", typeof(T).name());
+		 			row = (T) Object.new(typeof(T));
+		 		}
+				this.fetchRow(stmt, row);
 		 		ret.add( row);
 		 		
 			}
@@ -531,11 +566,11 @@ namespace SQ {
 		 * @return true if a row was found and populated, false otherwise
 		 */
 		public bool selectExecuteInto(Sqlite.Statement stmt,  T row )
- 		{
+		{
 			GLib.debug("Execute INTO %s", stmt.expanded_sql());	
 			if (stmt.step() == Sqlite.ROW) {
 		 		 
-				this.fetchRow(stmt, row); 
+				this.fetchRow(stmt, row);
 		 		return true;
 		 		
 			}

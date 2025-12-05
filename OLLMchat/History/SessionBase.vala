@@ -35,9 +35,11 @@ namespace OLLMchat.History
 		public bool is_active { get; protected set; default = false; }
 		
 		// Wrapper properties around client
+		//fixme have to set th emodel correctly when we init theclient..
+		private string _model  = "";
 		public string model {
-			get { return this.client.model; }
-			set { this.client.model = value; }
+			get { return this.client != null ? this.client.model : this._model; }
+			set { if (this.client != null) { this.client.model = value; } else { this._model = value; } }	
 		}
 		
 		// Display properties for UI
@@ -89,15 +91,20 @@ namespace OLLMchat.History
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
 		// Manager reference for getting history directory
-		internal Manager manager { get; set; }
+		// Made a construct property so it can be set via Object.new_with_properties
+		// Note: construct properties must be public in Vala
+		public Manager manager { get; construct set; }
 		
-		// Signal handler IDs for disconnection (UI relay signals)
+		// Signal handler IDs for disconnection
+		// Manager handlers (for persistence)
+		protected ulong stream_chunk_handler_id = 0;
+		protected ulong message_created_id = 0;
+		// UI relay signals
 		protected ulong chat_send_id = 0;
 		protected ulong stream_chunk_id = 0;
 		protected ulong stream_content_id = 0;
 		protected ulong stream_start_id = 0;
 		protected ulong tool_message_id = 0;
-		protected ulong message_created_id = 0;
 		
 		// Abstract properties that depend on chat
 		public abstract string fid { get; set; }
@@ -106,7 +113,7 @@ namespace OLLMchat.History
 		/**
 		 * Constructor for base class.
 		 * 
-		 * @param manager The history manager
+		 * @param manager The history manager (can be set via construct property)
 		 */
 		protected SessionBase(Manager manager)
 		{
@@ -124,12 +131,20 @@ namespace OLLMchat.History
 			}
 			this.is_active = true;
 			this.unread_count = 0; // Clear unread count when activated
+			if (this.client == null) {
+				return;
+			}
+
 			
 			// Connect client signals to Manager handlers (for persistence)
-			this.client.stream_chunk.connect(this.on_stream_chunk);
+			this.stream_chunk_handler_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
+				this.on_stream_chunk(new_text, is_thinking, response);
+			});
 			
 			// Connect message_created signal to handler
-			this.message_created_id = this.client.message_created.connect(this.on_message_created);
+			this.message_created_id = this.client.message_created.connect((message) => {
+				this.on_message_created(message);
+			});
 			
 			// Connect client signals to relay to UI via Manager
 			this.chat_send_id = this.client.chat_send.connect((chat) => {
@@ -155,22 +170,56 @@ namespace OLLMchat.History
 		 */
 		public void deactivate()
 		{
+			// Check if already deactivated (stream_chunk_handler_id will be 0 if not connected)
+			if (this.stream_chunk_handler_id == 0) {
+				return;
+			}
+			
 			if (!this.is_active) {
 				return;
 			}
 			this.is_active = false;
+
+			if (this.client == null) {
+				return;
+			}
+
+			// Disconnect client signals from Manager handlers (check if connected first)
+			if (this.stream_chunk_handler_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_handler_id)) {
+				this.client.disconnect(this.stream_chunk_handler_id);
+			}
+			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
+				this.client.disconnect(this.message_created_id);
+			}
 			
-			// Disconnect client signals from Manager handlers
-			this.client.stream_chunk.disconnect(this.on_stream_chunk);
-			this.client.message_created.disconnect(this.on_message_created);
+			// Disconnect client signals from UI relay (check if connected first)
+			if (this.chat_send_id != 0 && GLib.SignalHandler.is_connected(this.client, this.chat_send_id)) {
+				this.client.disconnect(this.chat_send_id);
+			}
+			if (this.stream_chunk_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_id)) {
+				this.client.disconnect(this.stream_chunk_id);
+			}
+			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_content_id)) {
+				this.client.disconnect(this.stream_content_id);
+			}
+			if (this.stream_start_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_start_id)) {
+				this.client.disconnect(this.stream_start_id);
+			}
+			if (this.tool_message_id != 0 && GLib.SignalHandler.is_connected(this.client, this.tool_message_id)) {
+				this.client.disconnect(this.tool_message_id);
+			}
+			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
+				this.client.disconnect(this.message_created_id);
+			}
 			
-			// Disconnect client signals from UI relay
-			this.client.disconnect(this.chat_send_id);
-			this.client.disconnect(this.stream_chunk_id);
-			this.client.disconnect(this.stream_content_id);
-			this.client.disconnect(this.stream_start_id);
-			this.client.disconnect(this.tool_message_id);
-			this.client.disconnect(this.message_created_id);
+			// Reset all IDs to 0
+			this.stream_chunk_handler_id = 0;
+			this.message_created_id = 0;
+			this.chat_send_id = 0;
+			this.stream_chunk_id = 0;
+			this.stream_content_id = 0;
+			this.stream_start_id = 0;
+			this.tool_message_id = 0;
 		}
 		
 		/**
@@ -234,9 +283,10 @@ namespace OLLMchat.History
 		 * Loads the session data if needed (e.g., for SessionPlaceholder).
 		 * No-op for sessions that are already loaded.
 		 * 
+		 * @return The loaded session (may be a new Session object for SessionPlaceholder, or this for already-loaded sessions)
 		 * @throws Error if loading fails
 		 */
-		public abstract async void load() throws Error;
+		public abstract async SessionBase? load() throws Error;
 		
 		/**
 		 * Sends a message using this session's client.

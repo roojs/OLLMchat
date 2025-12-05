@@ -125,17 +125,16 @@ namespace OLLMchat.History
 				client.available_models.set(entry.key, entry.value);
 			}
 			
-			// Create fresh tools using Object.new() with named parameters
+			// Reuse the same tools, just set the client to the new value (leave active the same)
 			foreach (var tool in this.base_client.tools.values) {
-				var tool_type = tool.get_type();
-				var new_tool = (Tool.Interface) Object.new(tool_type, client: client);
-				client.addTool(new_tool);
+				//tool.active = this.session.client.tools.get(tool.name).active;
+				client.addTool(tool);
 			}
 			
 			// Properties NOT copied (and why):
 			// - streaming_response: Session-specific streaming state
 			// - session: Not applicable to new client instance
-			// - tools: Created fresh above (each session needs its own tool instances)
+			// - tools: Reused above (just set client property)
 			
 			return client;
 		}
@@ -144,37 +143,36 @@ namespace OLLMchat.History
 		 * Switches to a new session, deactivating the current one and activating the new one.
 		 * 
 		 * When switching to EmptySession, preserves model and tool states from the previous session.
+		 * Loads the session if needed (e.g., for SessionPlaceholder).
 		 * 
 		 * @param session The session to switch to
+		 * @throws Error if loading fails
 		 */
-		public void switch_to_session(SessionBase session)
+		public async void switch_to_session(SessionBase session) throws Error
 		{
 			// Store previous session's client for state preservation
 			 
 			// Deactivate current session
 			this.session.deactivate();
 			
-			// If switching to EmptySession, copy model and tool states from previous session
-			if (session is EmptySession) {
-			 
-				// Copy model
-				session.client.model = this.session.client.model;
-				session.client.think = this.session.client.think;
-				// Copy tool active states (match by tool name)
-				foreach (var prev_tool in this.session.client.tools.values) {
-					if (!session.client.tools.has_key(prev_tool.name)) {
-						continue; //should not happen
-					}
-					session.client.tools.get(prev_tool.name).active = prev_tool.active;
-				}
+			// Load session data if needed (no-op for already loaded sessions)
+			// For SessionPlaceholder, this returns a new Session object
+			// For Session, this returns the same session
+			SessionBase? loaded_session = yield session.load();
+			
+			if (loaded_session == null) {
+				throw new GLib.IOError.FAILED("Session load returned null");
 			}
 			
+			// If switching to EmptySession, copy model and tool states from previous session
+			 
+			  
 			// Activate new session
-			this.session = session;
-			session.activate();
+			this.session = loaded_session;
+			loaded_session.activate();
 			
 			// Emit signal for UI updates
-			this.session_activated(session);
+			this.session_activated(loaded_session);
 		}
 		
 		 
@@ -202,13 +200,20 @@ namespace OLLMchat.History
 		public void load_sessions()
 		{
 			this.sessions.clear();
-			var sq = new SQ.Query<SessionPlaceholder>(this.db, "session");
+			
+			// Prepare property names and values for Object.new_with_properties
+			// We pass manager so SessionPlaceholder can access it during construction
+			string[] property_names = { "manager" };
+			Value[] property_values = { Value(typeof(Manager)) };
+			property_values[0].set_object(this);
+			
+			var sq = new SQ.Query<SessionPlaceholder>.with_properties(this.db, "session", property_names, property_values);
+			
 			var placeholder_list = new Gee.ArrayList<SessionPlaceholder>();
 			sq.select("ORDER BY updated_at_timestamp DESC", placeholder_list);
 			
 			// Add placeholders to sessions list and set manager
 			foreach (var placeholder in placeholder_list) {
-				placeholder.manager = this;
 				this.sessions.add(placeholder);
 			}
 		}

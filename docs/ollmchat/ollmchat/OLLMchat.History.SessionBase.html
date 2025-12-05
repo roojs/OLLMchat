@@ -40,6 +40,7 @@
           <li class="abstract_property"><a href="OLLMchat.History.SessionBase.fid.html">fid</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.id.html">id</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.is_active.html">is_active</a></li>
+          <li class="property"><a href="OLLMchat.History.SessionBase.manager.html">manager</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.messages.html">messages</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.title.html">title</a></li>
@@ -64,6 +65,7 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.write.html">write</a></li>
           <li class="field"><a href="OLLMchat.History.SessionBase.chat_send_id.html">chat_send_id</a></li>
           <li class="field"><a href="OLLMchat.History.SessionBase.message_created_id.html">message_created_id</a></li>
+          <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_handler_id.html">stream_chunk_handler_id</a></li>
           <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_id.html">stream_chunk_id</a></li>
           <li class="field"><a href="OLLMchat.History.SessionBase.stream_content_id.html">stream_content_id</a></li>
           <li class="field"><a href="OLLMchat.History.SessionBase.stream_start_id.html">stream_start_id</a></li>
@@ -153,6 +155,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> <b><a href="OLLMchat.History.SessionBase.manager.html" class="property">manager</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span> <span class="main_keyword">construct</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; <b><a href="OLLMchat.History.SessionBase.messages.html" class="property">messages</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -211,7 +217,7 @@
             <div class="leaf_brief_description"><span class="brief_description">Handle JSON property mapping and custom deserialization. Must be 
                 implemented by subclasses.</span>
             </div></li>
-          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.load.html" class="abstract_method">load</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_type"><span class="abstract_class">SessionBase</span></span>? <b><a href="OLLMchat.History.SessionBase.load.html" class="abstract_method">load</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Loads the session data if needed (e.g., for SessionPlaceholder). No-op
                 for sessions that are already loaded.</span>
@@ -267,6 +273,10 @@
             <div class="leaf_brief_description">
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_basic_type"><span class="struct">ulong</span></span> <b><a href="OLLMchat.History.SessionBase.message_created_id.html" class="field">message_created_id</a></b>
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_basic_type"><span class="struct">ulong</span></span> <b><a href="OLLMchat.History.SessionBase.stream_chunk_handler_id.html" class="field">stream_chunk_handler_id</a></b>
             </span>
             <div class="leaf_brief_description">
             </div></li>

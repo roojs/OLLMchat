@@ -415,10 +415,13 @@ namespace OLLMchat.History
 		/**
 		 * Loads the session data if needed.
 		 * No-op for Session (already loaded).
+		 * 
+		 * @return This session (already loaded)
 		 */
-		public override async void load() throws Error
+		public override async SessionBase? load() throws Error
 		{
 			// No-op: Session is already loaded
+			return this;
 		}
 		
 		/**

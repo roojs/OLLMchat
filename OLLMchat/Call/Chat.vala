@@ -261,7 +261,9 @@ namespace OLLMchat.Call
 					tool_call.function.name, tool_call.id);
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
-					GLib.warning("Tool '%s' not found in client tools", tool_call.function.name);
+					GLib.debug("Chat.toolsReply: Tool '%s' not found in client tools (available tools: %s)", 
+						tool_call.function.name, 
+						string.joinv(", ", this.client.tools.keys.to_array()));
 					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
 					this.client.message_created(error_msg);
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
@@ -280,8 +282,17 @@ namespace OLLMchat.Call
 					
 					// Log result summary (truncate if too long)
 					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
-					GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
-						tool_call.function.name, result.length, result_summary);
+					
+					// Check if result is an error and display it in UI
+					if (result.has_prefix("ERROR:")) {
+						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
+							tool_call.function.name, result);
+						var error_msg = new Message(this, "ui", result);
+						this.client.message_created(error_msg);
+					} else {
+						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
+							tool_call.function.name, result.length, result_summary);
+					}
 					
 					this.messages.add(
 						new Message.tool_reply(
@@ -290,7 +301,7 @@ namespace OLLMchat.Call
 							result
 						));
 				} catch (Error e) {
-					GLib.warning("Error executing tool '%s' (id='%s'): %s", 
+					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
 					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.client.message_created(error_msg);

@@ -185,8 +185,7 @@ namespace OLLMchatGtk
 			this.is_streaming_active = false;
 			this.chat_input.sensitive = false;
 			
-			// Switch manager to new session (Manager handles deactivation/activation)
-			this.manager.switch_to_session(session);
+			// Switch manager to new session (Manager handles loading, deactivation/activation)
 			this.clear_chat();
 			
 			// Manager signals are already connected in constructor
@@ -194,12 +193,14 @@ namespace OLLMchatGtk
 			
 			// Lock input while loading
 			try {
-				// Load session data if needed (no-op for already loaded sessions)
-				yield this.manager.session.load();
+				// Manager handles loading and switching
+				yield this.manager.switch_to_session(session);
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
+				this.chat_input.sensitive = true;
+				return;
 			}
-			
+
 			// Load and render messages from session
 			this.load_messages();
 			

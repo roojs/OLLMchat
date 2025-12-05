@@ -142,9 +142,13 @@ namespace OLLMchat.ChatPermission
 			// Normalize path
 			var normalized_path = this.normalize_path(tool.permission_target_path);
 			
+			GLib.debug("Provider.request: Tool '%s' requesting permission for '%s' (operation: %s)",
+				tool.name, normalized_path, tool.permission_operation.to_string());
+			
 			// Check session permissions
 			if (Provider.session.has_key(normalized_path)) {
 				var result = this.check(Provider.session.get(normalized_path), tool.permission_operation);
+				GLib.debug("Provider.request: Found session permission for '%s': %s", normalized_path, result.to_string());
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
@@ -153,13 +157,16 @@ namespace OLLMchat.ChatPermission
 			// Check global permissions
 			if (Provider.global.has_key(normalized_path)) {
 				var result = this.check(Provider.global.get(normalized_path), tool.permission_operation);
+				GLib.debug("Provider.request: Found global permission for '%s': %s", normalized_path, result.to_string());
 				if (result == PermissionResult.YES || result == PermissionResult.NO) {
 					return result == PermissionResult.YES;
 				}
 			}
 			
 			// No stored permission found - ask user
+			GLib.debug("Provider.request: No stored permission found, asking user: '%s'", tool.permission_question);
 			var response = yield this.request_user(tool);
+			GLib.debug("Provider.request: User responded with: %s", response.to_string());
 			this.handle_response(normalized_path, tool.permission_operation, response);
 			
 			return (response == PermissionResponse.ALLOW_ONCE || 

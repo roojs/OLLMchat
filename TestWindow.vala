@@ -23,6 +23,9 @@ namespace OLLMchat
 		// Set up debug handler to print all GLib.debug output to stderr
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
 			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
+			if ((lvl & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
+				GLib.error("critical");
+			}
 		});
 
 		var app = new Gtk.Application("org.roojs.roobuilder.test", GLib.ApplicationFlags.DEFAULT_FLAGS);

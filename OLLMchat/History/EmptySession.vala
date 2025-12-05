@@ -105,7 +105,11 @@ namespace OLLMchat.History
 			return yield real_session.send_message(text, cancellable);
 		}
 		
-		public override async void load() throws Error { }  // No-op: EmptySession doesn't need loading
+		public override async SessionBase? load() throws Error
+		{
+			// No-op: EmptySession doesn't need loading
+			return this;
+		}
 		
 		public override void cancel_current_request() { }  // No-op: EmptySession has no chat, so nothing to cancel
 		
