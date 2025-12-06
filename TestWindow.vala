@@ -28,13 +28,13 @@ namespace OLLMchat
 	 * Also writes to stderr for immediate console output.
 	 * To disable, comment out the function body or the call to this function.
 	 */
-	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
+	private void debug_log(string? in_domain, GLib.LogLevelFlags level, string message)
 	{
 		// Prevent recursive logging if an error occurs during logging
 		if (debug_log_in_progress) {
 			return;
 		}
-
+		var domain = in_domain == null ? "" : in_domain;
 		// Always write to stderr for immediate console output
 		var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
 		stderr.printf(timestamp + ": " + level.to_string() + " : " + message + "\n");
