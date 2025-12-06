@@ -18,11 +18,14 @@
 
 namespace OLLMchat 
 {
+	// Global log stream (opened at startup, kept open for app lifetime)
+	private GLib.DataOutputStream? debug_log_stream = null;
+
 	/**
-	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
-	 * To disable, comment out the function body or the call to this function.
+	 * Opens the debug log file at startup.
+	 * To disable logging, comment out the call to this function in main().
 	 */
-	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
+	private void open_debug_log()
 	{
 		try {
 			// Build log file path in cache directory
@@ -36,16 +39,34 @@ namespace OLLMchat
 				dir.make_directory_with_parents(null);
 			}
 			
-			// Append to log file
-			var data_stream = new GLib.DataOutputStream(
+			// Open log file for appending (keep it open)
+			debug_log_stream = new GLib.DataOutputStream(
 				GLib.File.new_for_path(
 					GLib.Path.build_filename(log_dir, "ollmchat.debug.log")
 				).append_to(GLib.FileCreateFlags.NONE, null)
 			);
-			data_stream.put_string(
+		} catch (GLib.Error e) {
+			stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: %s\n", e.message);
+			debug_log_stream = null;
+		}
+	}
+
+	/**
+	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
+	 * To disable, comment out the function body or the call to this function.
+	 */
+	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
+	{
+		if (debug_log_stream == null) {
+			return;
+		}
+		
+		try {
+			debug_log_stream.put_string(
 				@"$(new DateTime.now_local().format("%H:%M:%S.%f")): $level.to_string() : $message\n"
 			);
-			data_stream.close(null);
+			// Flush to ensure data is written immediately
+			debug_log_stream.flush();
 		} catch (GLib.Error e) {
 			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: %s\n", e.message);
 		}
@@ -53,10 +74,13 @@ namespace OLLMchat
 
 	int main(string[] args)
 	{
+		// Open debug log file at startup
+		// To disable logging, comment out the open_debug_log() call below
+		open_debug_log();  // Comment out this line to disable file logging
+		
 		// Set up debug handler to write to ~/.cache/ollmchat/ollmchat.debug.log
-		// To disable logging, comment out the debug_log() call below
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
+			debug_log(dom, lvl, msg);
 			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
 			if ((lvl & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
 				GLib.error("critical");
