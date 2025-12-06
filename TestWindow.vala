@@ -47,7 +47,7 @@ namespace OLLMchat
 			);
 			data_stream.close(null);
 		} catch (GLib.Error e) {
-			// Silently fail if we can't write to log file
+			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: %s\n", e.message);
 		}
 	}
 
