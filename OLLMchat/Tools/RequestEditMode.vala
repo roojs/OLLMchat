@@ -91,17 +91,24 @@ namespace OLLMchat.Tools
 		 */
 		public void connect_signals()
 		{
+			GLib.debug("RequestEditMode.connect_signals: Connecting signals for file %s (stream=%s)", 
+				this.normalized_path, this.chat_call.client.stream.to_string());
+			
 			// Connect to stream_content signal only if streaming is enabled
 			if (this.chat_call.client.stream) {
 				this.stream_content_id = this.chat_call.client.stream_content.connect((new_text, response) => {
 					this.process_streaming_content(new_text);
 				});
+				GLib.debug("RequestEditMode.connect_signals: Connected stream_content signal (id=%lu)", this.stream_content_id);
+			} else {
+				GLib.debug("RequestEditMode.connect_signals: Streaming disabled, skipping stream_content connection");
 			}
 			
 			// Connect to message_created signal to process final content and apply changes
 			this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
 				this.on_message_created(message, content_interface);
 			});
+			GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
 		}
 		
 		/**
@@ -135,6 +142,7 @@ namespace OLLMchat.Tools
 		{
 			// Only process if tool is active
 			if (!this.tool.active) {
+				GLib.debug("RequestEditMode.process_streaming_content: Tool not active, skipping (file=%s)", this.normalized_path);
 				return;
 			}
 			
@@ -258,6 +266,8 @@ namespace OLLMchat.Tools
 				}
 				
 				// Create EditModeChange
+				GLib.debug("RequestEditMode.add_linebreak: Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
+					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
 				this.changes.add(new EditModeChange() {
 					start = this.current_start_line,
 					end = this.current_end_line,
