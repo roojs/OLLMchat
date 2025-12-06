@@ -59,10 +59,16 @@ namespace OLLMchat
 	 */
 	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
 	{
+		// Prevent recursive logging if an error occurs during logging
+		if (debug_log_in_progress) {
+			return;
+		}
+		
 		if (debug_log_stream == null) {
 			return;
 		}
 		
+		debug_log_in_progress = true;
 		try {
 			debug_log_stream.put_string(
 				@"$(new DateTime.now_local().format("%H:%M:%S.%f")): $level.to_string() : $message\n"
@@ -70,7 +76,10 @@ namespace OLLMchat
 			// Flush to ensure data is written immediately
 			debug_log_stream.flush();
 		} catch (GLib.Error e) {
+			// Use stderr directly to avoid recursive logging
 			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: %s\n", e.message);
+		} finally {
+			debug_log_in_progress = false;
 		}
 	}
 
