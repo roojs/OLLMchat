@@ -20,6 +20,8 @@ namespace OLLMchat
 {
 	// Global log stream (opened at startup, kept open for app lifetime)
 	private GLib.DataOutputStream? debug_log_stream = null;
+	// Flag to prevent recursive logging when errors occur in debug_log itself
+	private bool debug_log_in_progress = false;
 
 	/**
 	 * Opens the debug log file at startup.
