@@ -43,7 +43,7 @@ namespace OLLMchat
 		if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
 			GLib.error("critical");
 		}
-
+		debug_log_in_progress = true;
 		// Open log file lazily on first use
 		if (debug_log_stream == null) {
 			try {
@@ -68,7 +68,7 @@ namespace OLLMchat
 		}
 
 		// Write to log file
-		debug_log_in_progress = true;
+		
 		try {
 			debug_log_stream.put_string(
 				timestamp + ": " + level.to_string() + " : " + message + "\n"
