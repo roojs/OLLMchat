@@ -48,31 +48,39 @@ namespace OLLMchat
 
 		// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)
 		if (debug_log_file == null) {
-			try {
-				var log_dir = GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(), ".cache", "ollmchat"
-				);
-				var log_file_path = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
+			var log_dir = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
+			);
+			var log_file_path = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
 
-				// Try to create directory if it doesn't exist (using Posix to avoid GIO)
-				if (GLib.FileUtils.test(log_dir, GLib.FileTest.IS_DIR) == false) {
-					Posix.mkdir(log_dir, 0755);
-					// Try parent directories if needed
-					var parent = GLib.Path.get_dirname(log_dir);
-					if (parent != log_dir && GLib.FileUtils.test(parent, GLib.FileTest.IS_DIR) == false) {
-						Posix.mkdir(parent, 0755);
+			// Try to create directory if it doesn't exist (simple recursive approach)
+			var parts = log_dir.split("/");
+			var current_path = "";
+			foreach (var part in parts) {
+				if (part == "") {
+					current_path = "/";
+					continue;
+				}
+				if (current_path == "") {
+					current_path = part;
+				} else {
+					current_path = current_path + "/" + part;
+				}
+				// Try to create directory (ignore errors if it already exists)
+				try {
+					GLib.DirUtils.create(current_path, 0755);
+				} catch (GLib.FileError e) {
+					// Ignore if directory already exists
+					if (e.code != GLib.FileError.EXIST) {
+						// For other errors, continue anyway - file open might still work
 					}
 				}
+			}
 
-				// Open file in append mode using FileStream (doesn't require GIO initialization)
-				debug_log_file = GLib.FileStream.open(log_file_path, "a");
-				if (debug_log_file == null) {
-					stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
-					debug_log_in_progress = false;
-					return;
-				}
-			} catch (GLib.Error e) {
-				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: " + e.message + "\n");
+			// Open file in append mode using FileStream (doesn't require GIO initialization)
+			debug_log_file = GLib.FileStream.open(log_file_path, "a");
+			if (debug_log_file == null) {
+				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
 				debug_log_in_progress = false;
 				return;
 			}
