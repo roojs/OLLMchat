@@ -19,13 +19,26 @@
 namespace OLLMchat 
 {
 	/**
-	 * Debug logging function that writes to /tmp/ollama.log
+	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
 	 * To disable, comment out the function body or the call to this function.
 	 */
 	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
 	{
 		try {
-			var file = GLib.File.new_for_path("/tmp/ollama.log");
+			// Build log file path in cache directory
+			var log_dir = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
+			);
+			var log_file = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
+			
+			// Ensure directory exists
+			var dir = GLib.File.new_for_path(log_dir);
+			if (!dir.query_exists()) {
+				dir.make_directory_with_parents(null);
+			}
+			
+			// Append to log file
+			var file = GLib.File.new_for_path(log_file);
 			var output_stream = file.append_to(GLib.FileCreateFlags.NONE, null);
 			var data_stream = new GLib.DataOutputStream(output_stream);
 			var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
@@ -39,7 +52,7 @@ namespace OLLMchat
 
 	int main(string[] args)
 	{
-		// Set up debug handler to write to /tmp/ollama.log
+		// Set up debug handler to write to ~/.cache/ollmchat/ollmchat.debug.log
 		// To disable logging, comment out the debug_log() call below
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
 			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
