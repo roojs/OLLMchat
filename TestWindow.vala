@@ -18,43 +18,14 @@
 
 namespace OLLMchat 
 {
-	// Global log stream (opened at startup, kept open for app lifetime)
+	// Global log stream (opened lazily on first use, kept open for app lifetime)
 	private GLib.DataOutputStream? debug_log_stream = null;
 	// Flag to prevent recursive logging when errors occur in debug_log itself
 	private bool debug_log_in_progress = false;
 
 	/**
-	 * Opens the debug log file at startup.
-	 * To disable logging, comment out the call to this function in main().
-	 */
-	private void open_debug_log()
-	{
-		try {
-			// Build log file path in cache directory
-			var log_dir = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
-			);
-			
-			// Ensure directory exists
-			var dir = GLib.File.new_for_path(log_dir);
-			if (!dir.query_exists()) {
-				dir.make_directory_with_parents(null);
-			}
-			
-			// Open log file for appending (keep it open)
-			debug_log_stream = new GLib.DataOutputStream(
-				GLib.File.new_for_path(
-					GLib.Path.build_filename(log_dir, "ollmchat.debug.log")
-				).append_to(GLib.FileCreateFlags.NONE, null)
-			);
-		} catch (GLib.Error e) {
-			stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: %s\n", e.message);
-			debug_log_stream = null;
-		}
-	}
-
-	/**
 	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
+	 * Also writes to stderr for immediate console output.
 	 * To disable, comment out the function body or the call to this function.
 	 */
 	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
@@ -63,21 +34,48 @@ namespace OLLMchat
 		if (debug_log_in_progress) {
 			return;
 		}
-		
-		if (debug_log_stream == null) {
-			return;
+
+		// Always write to stderr for immediate console output
+		var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
+		stderr.printf(timestamp + ": " + level.to_string() + " : " + message + "\n");
+
+		// Handle critical errors
+		if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
+			GLib.error("critical");
 		}
-		
+
+		// Open log file lazily on first use
+		if (debug_log_stream == null) {
+			try {
+				var log_dir = GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(), ".cache", "ollmchat"
+				);
+
+				var dir = GLib.File.new_for_path(log_dir);
+				if (!dir.query_exists()) {
+					dir.make_directory_with_parents(null);
+				}
+
+				debug_log_stream = new GLib.DataOutputStream(
+					GLib.File.new_for_path(
+						GLib.Path.build_filename(log_dir, "ollmchat.debug.log")
+					).append_to(GLib.FileCreateFlags.NONE, null)
+				);
+			} catch (GLib.Error e) {
+				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: " + e.message + "\n");
+				return;
+			}
+		}
+
+		// Write to log file
 		debug_log_in_progress = true;
 		try {
 			debug_log_stream.put_string(
-				@"$(new DateTime.now_local().format("%H:%M:%S.%f")): $level.to_string() : $message\n"
+				timestamp + ": " + level.to_string() + " : " + message + "\n"
 			);
-			// Flush to ensure data is written immediately
 			debug_log_stream.flush();
 		} catch (GLib.Error e) {
-			// Use stderr directly to avoid recursive logging
-			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: %s\n", e.message);
+			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: " + e.message + "\n");
 		} finally {
 			debug_log_in_progress = false;
 		}
@@ -85,17 +83,10 @@ namespace OLLMchat
 
 	int main(string[] args)
 	{
-		// Open debug log file at startup
-		// To disable logging, comment out the open_debug_log() call below
-		open_debug_log();  // Comment out this line to disable file logging
-		
 		// Set up debug handler to write to ~/.cache/ollmchat/ollmchat.debug.log
+		// To disable logging, comment out the debug_log() call below
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			debug_log(dom, lvl, msg);
-			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
-			if ((lvl & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
-				GLib.error("critical");
-			}
+			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
 		});
 
 		var app = new Gtk.Application("org.roojs.roobuilder.test", GLib.ApplicationFlags.DEFAULT_FLAGS);
