@@ -44,7 +44,14 @@ namespace OLLMchat.History
 		
 		// Display properties for UI
 		public string display_title {
-			get { return this.title; }
+			owned get {
+				// Return only first line for display in history widget
+				if (this.title == "") {
+					return "";
+				}
+				var lines = this.title.split("\n");
+				return lines[0];
+			}
 		}
 		
 		public string display_date {
