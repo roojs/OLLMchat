@@ -188,6 +188,20 @@ namespace OLLMchat.Tools
 		private bool try_parse_code_block_opener(string stripped_line)
 		{
 			var tag = stripped_line.substring(3).strip(); // Remove ```
+			GLib.debug("RequestEditMode.try_parse_code_block_opener: Parsing code block opener (file=%s, tag='%s', create=%s)", 
+				this.normalized_path, tag, this.create.to_string());
+			
+			// For create mode, accept language-only tags (no colons)
+			if (this.create && !tag.contains(":")) {
+				GLib.debug("RequestEditMode.try_parse_code_block_opener: Create mode - accepting language-only tag '%s'", tag);
+				this.current_start_line = -1;
+				this.current_end_line = -1;
+				this.in_code_block = true;
+				this.current_line = "";
+				this.current_block = "";
+				return true;
+			}
+			
 			if (!tag.contains(":")) {
 				return false;
 			}
@@ -297,17 +311,26 @@ namespace OLLMchat.Tools
 		 */
 		private void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
+			GLib.debug("RequestEditMode.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
+				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
+			
 			// Only process "done" messages - this indicates the assistant message is complete
 			if (!message.is_done) {
+				GLib.debug("RequestEditMode.on_message_created: Message is not 'done', skipping (role=%s)", message.role);
 				return;
 			}
 			
 			// content_interface should be Response.Chat for assistant messages
 			if (content_interface == null || !(content_interface is OLLMchat.Response.Chat)) {
+				GLib.debug("RequestEditMode.on_message_created: Invalid content_interface (null=%s, is_Response.Chat=%s)", 
+					(content_interface == null).to_string(), 
+					(content_interface != null && content_interface is OLLMchat.Response.Chat).to_string());
 				return;
 			}
 			
 			var response = content_interface as OLLMchat.Response.Chat;
+			GLib.debug("RequestEditMode.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
+				this.normalized_path, this.changes.size);
 			
 			// If not streaming, process the full content at once
 			if (!this.chat_call.client.stream && response.message != null && response.message.content != "") {
@@ -324,10 +347,15 @@ namespace OLLMchat.Tools
 			// Check if we have any changes - store error if not
 			if (this.changes.size == 0) {
 				// No changes were captured
+				GLib.debug("RequestEditMode.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu)", 
+					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
 				this.error_messages.add("There was a problem applying the changes. (no changes were captured)");
 				this.reply_with_errors(response);
 				return;
 			}
+			
+			GLib.debug("RequestEditMode.on_message_created: Found %zu changes, applying to file %s", 
+				this.changes.size, this.normalized_path);
 			
 			// Apply changes
 			try {
