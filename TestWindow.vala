@@ -18,8 +18,8 @@
 
 namespace OLLMchat 
 {
-	// Global log stream (opened lazily on first use, kept open for app lifetime)
-	private GLib.DataOutputStream? debug_log_stream = null;
+	// Global log file stream (opened lazily on first use, kept open for app lifetime)
+	private GLib.FileStream? debug_log_file = null;
 	// Flag to prevent recursive logging when errors occur in debug_log itself
 	private bool debug_log_in_progress = false;
 
@@ -43,37 +43,47 @@ namespace OLLMchat
 		if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
 			GLib.error("critical");
 		}
+
 		debug_log_in_progress = true;
-		// Open log file lazily on first use
-		if (debug_log_stream == null) {
+
+		// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)
+		if (debug_log_file == null) {
 			try {
 				var log_dir = GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(), ".cache", "ollmchat"
 				);
+				var log_file_path = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
 
-				var dir = GLib.File.new_for_path(log_dir);
-				if (!dir.query_exists()) {
-					dir.make_directory_with_parents(null);
+				// Try to create directory if it doesn't exist (using Posix to avoid GIO)
+				if (GLib.FileUtils.test(log_dir, GLib.FileTest.IS_DIR) == false) {
+					Posix.mkdir(log_dir, 0755);
+					// Try parent directories if needed
+					var parent = GLib.Path.get_dirname(log_dir);
+					if (parent != log_dir && GLib.FileUtils.test(parent, GLib.FileTest.IS_DIR) == false) {
+						Posix.mkdir(parent, 0755);
+					}
 				}
 
-				debug_log_stream = new GLib.DataOutputStream(
-					GLib.File.new_for_path(
-						GLib.Path.build_filename(log_dir, "ollmchat.debug.log")
-					).append_to(GLib.FileCreateFlags.NONE, null)
-				);
+				// Open file in append mode using FileStream (doesn't require GIO initialization)
+				debug_log_file = GLib.FileStream.open(log_file_path, "a");
+				if (debug_log_file == null) {
+					stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
+					debug_log_in_progress = false;
+					return;
+				}
 			} catch (GLib.Error e) {
 				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: " + e.message + "\n");
+				debug_log_in_progress = false;
 				return;
 			}
 		}
 
 		// Write to log file
-		
 		try {
-			debug_log_stream.put_string(
-				timestamp + ": " + level.to_string() + " : " + message + "\n"
-			);
-			debug_log_stream.flush();
+			if (debug_log_file != null) {
+				debug_log_file.puts(timestamp + ": " + level.to_string() + " : " + message + "\n");
+				debug_log_file.flush();
+			}
 		} catch (GLib.Error e) {
 			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: " + e.message + "\n");
 		} finally {
