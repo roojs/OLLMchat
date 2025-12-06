@@ -93,16 +93,24 @@ namespace OLLMchat.History
 			// Create chat with new client
 			var chat = new Call.Chat(new_client);
 			
-			// Convert EmptySession to real Session
-			var real_session = new Session(this.manager, chat);
-			
-			// Replace EmptySession with real Session in manager
-			this.manager.session = real_session;
-			real_session.activate();
-			this.manager.session_activated(real_session);
-			
-			// Now call send_message on the real session
-			return yield real_session.send_message(text, cancellable);
+		// Convert EmptySession to real Session
+		var real_session = new Session(this.manager, chat);
+		
+		// Replace EmptySession with real Session in manager
+		this.manager.session = real_session;
+		
+		// Add session to manager.sessions and emit session_added signal immediately
+		// This ensures the history widget updates right away
+		if (!this.manager.sessions.contains(real_session)) {
+			this.manager.sessions.add(real_session);
+			this.manager.session_added(real_session);
+		}
+		
+		real_session.activate();
+		this.manager.session_activated(real_session);
+		
+		// Now call send_message on the real session
+		return yield real_session.send_message(text, cancellable);
 		}
 		
 		public override async SessionBase? load() throws Error

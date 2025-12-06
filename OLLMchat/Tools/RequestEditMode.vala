@@ -23,9 +23,13 @@ namespace OLLMchat.Tools
 	 */
 	public class RequestEditMode : OLLMchat.Tool.RequestBase
 	{
+		// Static list to keep active requests alive so signal handlers can be called
+		private static Gee.ArrayList<RequestEditMode> active_requests = new Gee.ArrayList<RequestEditMode>();
+		
 		// Parameter properties
 		public string file_path { get; set; default = ""; }
-		public bool create { get; set; default = false; }
+		public bool complete_file { get; set; default = false; }
+		public bool overwrite { get; set; default = false; }
 		
 		// Normalized path (set during permission building)
 		private string normalized_path = "";
@@ -79,10 +83,38 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.INVALID_ARGUMENT("file_path parameter is required");
 			}
 			
+			// Build instructions based on mode
+			string instructions;
+			if (this.complete_file) {
+				instructions = "Since complete_file=true is enabled, code blocks should only have the language tag (e.g., ```javascript, ```python). Do not include line numbers. The entire file content will be replaced.";
+			} else {
+				instructions = "Code blocks must include line range in format type:startline:endline (e.g., ```javascript:10:15, ```python:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.";
+			}
+			
+			// Build the message string
+			string message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
+			if (this.complete_file) {
+				message += "You should now output the content of the file you want to write in a code block.\n\n";
+			}
+			message += instructions + "\n\n";
+			if (this.overwrite && GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR)) {
+				message += "You set overwrite=true, so we will overwrite the existing file when you complete your message.";
+			}
+			
+			// Emit to UI
+			this.chat_call.client.tool_message(
+				new OLLMchat.Message(this.chat_call, "ui", message)
+			);
+			
+			// Keep this request alive so signal handlers can be called
+			active_requests.add(this);
+			GLib.debug("RequestEditMode.execute_request: Added request to active_requests (total=%zu, file=%s)", 
+				active_requests.size, this.normalized_path);
+			
 			// Connect signals for this request
 			this.connect_signals();
 			
-			return "Edit mode activated for file: " + this.normalized_path;
+			return message;
 		}
 		
 		/**
@@ -91,21 +123,38 @@ namespace OLLMchat.Tools
 		 */
 		public void connect_signals()
 		{
-			GLib.debug("RequestEditMode.connect_signals: Connecting signals for file %s (stream=%s)", 
-				this.normalized_path, this.chat_call.client.stream.to_string());
+			GLib.debug("RequestEditMode.connect_signals: Connecting signals for file %s (tool.active=%s)", 
+				this.normalized_path, this.tool.active.to_string());
 			
-			// Connect to stream_content signal only if streaming is enabled
+			// Connect to stream_content signal to capture code blocks as they stream in
 			if (this.chat_call.client.stream) {
 				this.stream_content_id = this.chat_call.client.stream_content.connect((new_text, response) => {
+					// Check if this request is still valid before processing
+					if (this.chat_call == null || this.chat_call.client == null) {
+						return;
+					}
+					// Only process if this response belongs to our chat_call
+					if (response.call != this.chat_call) {
+						return;
+					}
 					this.process_streaming_content(new_text);
 				});
-				GLib.debug("RequestEditMode.connect_signals: Connected stream_content signal (id=%lu)", this.stream_content_id);
-			} else {
-				GLib.debug("RequestEditMode.connect_signals: Streaming disabled, skipping stream_content connection");
 			}
 			
-			// Connect to message_created signal to process final content and apply changes
+			// Connect to message_created signal to detect when message is done and apply changes
 			this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
+				// Check if this request is still valid before processing
+				if (this.chat_call == null || this.chat_call.client == null) {
+					GLib.debug("RequestEditMode: message_created handler called but chat_call/client is null (file=%s)", 
+						this.normalized_path);
+					return;
+				}
+				// Only process if this message belongs to our chat_call
+				if (message.message_interface != this.chat_call) {
+					GLib.debug("RequestEditMode: message_created handler called for different chat_call, skipping (file=%s, message_interface=%p, our_chat_call=%p)", 
+						this.normalized_path, message.message_interface, this.chat_call);
+					return;
+				}
 				this.on_message_created(message, content_interface);
 			});
 			GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
@@ -114,6 +163,10 @@ namespace OLLMchat.Tools
 		/**
 		 * Disconnects client signals from this request's handlers.
 		 * Called when edit mode is deactivated for this request.
+		 */
+		/**
+		 * Disconnects signal handlers but keeps the object alive.
+		 * Call this before sending the final reply to stop processing new content.
 		 */
 		public void disconnect_signals()
 		{
@@ -132,6 +185,9 @@ namespace OLLMchat.Tools
 				this.chat_call.client.disconnect(this.message_created_id);
 			}
 			this.message_created_id = 0;
+			
+			GLib.debug("RequestEditMode.disconnect_signals: Disconnected signals (file=%s, still in active_requests=%s)", 
+				this.normalized_path, active_requests.contains(this).to_string());
 		}
 		
 		/**
@@ -140,9 +196,13 @@ namespace OLLMchat.Tools
 		 */
 		public void process_streaming_content(string new_text)
 		{
+			// Check if request is still valid
+			if (this.chat_call == null || this.chat_call.client == null) {
+				return;
+			}
+			
 			// Only process if tool is active
 			if (!this.tool.active) {
-				GLib.debug("RequestEditMode.process_streaming_content: Tool not active, skipping (file=%s)", this.normalized_path);
 				return;
 			}
 			
@@ -165,6 +225,7 @@ namespace OLLMchat.Tools
 			}
 		}
 		
+		
 		/**
 		 * Adds text to current_line and to current_block if in code block.
 		 */
@@ -179,8 +240,8 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Tries to parse a code block opener.
-		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when create=false
-		 * Language tag format: ```type (e.g., ```python) when create=true
+		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when complete_file=false
+		 * Language tag format: ```type (e.g., ```python) when complete_file=true
 		 * 
 		 * @param line The line that starts with ```
 		 * @return true if successfully parsed and entered code block, false otherwise
@@ -188,12 +249,12 @@ namespace OLLMchat.Tools
 		private bool try_parse_code_block_opener(string stripped_line)
 		{
 			var tag = stripped_line.substring(3).strip(); // Remove ```
-			GLib.debug("RequestEditMode.try_parse_code_block_opener: Parsing code block opener (file=%s, tag='%s', create=%s)", 
-				this.normalized_path, tag, this.create.to_string());
+			GLib.debug("RequestEditMode.try_parse_code_block_opener: Parsing code block opener (file=%s, tag='%s', complete_file=%s)", 
+				this.normalized_path, tag, this.complete_file.to_string());
 			
-			// For create mode, accept language-only tags (no colons)
-			if (this.create && !tag.contains(":")) {
-				GLib.debug("RequestEditMode.try_parse_code_block_opener: Create mode - accepting language-only tag '%s'", tag);
+			// For complete_file mode, accept language-only tags (no colons)
+			if (this.complete_file && !tag.contains(":")) {
+				GLib.debug("RequestEditMode.try_parse_code_block_opener: Complete file mode - accepting language-only tag '%s'", tag);
 				this.current_start_line = -1;
 				this.current_end_line = -1;
 				this.in_code_block = true;
@@ -237,7 +298,7 @@ namespace OLLMchat.Tools
 			}
 			
 			// No line numbers - language-only tag
-			// Accept it (we'll validate later if create mode requires line numbers)
+			// Accept it (we'll validate later if complete_file mode requires line numbers)
 			this.current_start_line = -1;
 			this.current_end_line = -1;
 			this.in_code_block = true;
@@ -311,6 +372,13 @@ namespace OLLMchat.Tools
 		 */
 		private void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
+			// Check if request is still valid
+			if (this.chat_call == null || this.chat_call.client == null) {
+				GLib.debug("RequestEditMode.on_message_created: chat_call/client is null, skipping (file=%s)", 
+					this.normalized_path);
+				return;
+			}
+			
 			GLib.debug("RequestEditMode.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
 				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
 			
@@ -329,10 +397,17 @@ namespace OLLMchat.Tools
 			}
 			
 			var response = content_interface as OLLMchat.Response.Chat;
+			
+			// Double-check chat_call is still valid before accessing client
+			if (this.chat_call == null || this.chat_call.client == null) {
+				return;
+			}
+			
 			GLib.debug("RequestEditMode.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
 				this.normalized_path, this.changes.size);
 			
 			// If not streaming, process the full content at once
+			// If streaming, we should have already captured everything via stream_content
 			if (!this.chat_call.client.stream && response.message != null && response.message.content != "") {
 				var parts = response.message.content.split("\n");
 				for (int i = 0; i < parts.length; i++) {
@@ -341,7 +416,7 @@ namespace OLLMchat.Tools
 				}
 			}
 			
-			// Process any remaining current_line
+			// Process any remaining current_line (for both streaming and non-streaming)
 			this.add_linebreak();
 			
 			// Check if we have any changes - store error if not
@@ -349,7 +424,7 @@ namespace OLLMchat.Tools
 				// No changes were captured
 				GLib.debug("RequestEditMode.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu)", 
 					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
-				this.error_messages.add("There was a problem applying the changes. (no changes were captured)");
+				this.error_messages.add("There was a problem: we could not read the content you sent.\n\nYou should call edit mode again, and follow the instructions that you receive.");
 				this.reply_with_errors(response);
 				return;
 			}
@@ -362,14 +437,23 @@ namespace OLLMchat.Tools
 				this.apply_all_changes();
 				
 				// Calculate success message with line count and send
+				string success_message;
 				try {
 					int line_count = this.count_file_lines();
-					this.reply_with_errors(response, @"File '`$(this.normalized_path)`' has been updated. It now has `$(line_count)` lines.");
+					success_message = @"File '`$(this.normalized_path)`' has been updated. It now has `$(line_count)` lines.";
 				} catch (Error e) {
 					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
 					// Send success message without line count
-					this.reply_with_errors(response, @"File '`$(this.normalized_path)`' has been updated.");
+					success_message = @"File '`$(this.normalized_path)`' has been updated.";
 				}
+				
+				// Emit UI message
+				this.chat_call.client.tool_message(
+					new OLLMchat.Message(this.chat_call, "ui", success_message)
+				);
+				
+				// Send tool reply to LLM
+				this.reply_with_errors(response, success_message);
 			} catch (Error e) {
 				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
 				// Store error message instead of sending immediately
@@ -380,27 +464,47 @@ namespace OLLMchat.Tools
 		}
 		
 		/**
-		 * Sends a message (if provided) and any stored error messages to the LLM, then disconnects signals.
-		 * If both message and errors exist, they are combined.
+		 * Sends a message to continue the conversation and disconnects signals.
 		 * This method should be called on both success and error paths to ensure signals are always disconnected.
+		 * Uses chat_call.reply() to continue the conversation with the LLM's response.
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
 			if (this.chat_call == null) {
 				this.disconnect_signals();
+				active_requests.remove(this);
+				GLib.debug("RequestEditMode.reply_with_errors: Removed request from active_requests (remaining=%zu, file=%s)", 
+					active_requests.size, this.normalized_path);
 				return;
 			}
 			
-			// Build reply: errors first (if any), then message
-			this.chat_call.reply.begin(
-				((this.error_messages.size > 0 
-					? string.joinv("\n", this.error_messages.to_array()) + (message != "" ? "\n" : "") 
-					: "") + message),
-				response
-			);
-			
-			// Always disconnect signals - this request is done
+			// Disconnect signals first - we're done processing new content
 			this.disconnect_signals();
+			
+			// Build reply: errors first (if any), then message
+			string reply_text = (this.error_messages.size > 0 
+				? string.joinv("\n", this.error_messages.to_array()) + (message != "" ? "\n" : "") 
+				: "") + message;
+			
+			// Schedule reply() to run on idle to avoid race condition:
+			// The previous response's final chunk (done=true) may still be processing in the event loop,
+			// which sets is_streaming_active=false. If we call reply() immediately, it sets is_streaming_active=true,
+			// but then the final chunk processing overwrites it back to false. By deferring to idle, we ensure
+			// the final chunk processing completes first, then reply() sets is_streaming_active=true before
+			// the continuation response starts streaming.
+			GLib.Idle.add(() => {
+				this.chat_call.reply.begin(
+					reply_text,
+					response,
+					(obj, res) => {
+						// Remove from active requests after reply completes
+						active_requests.remove(this);
+						GLib.debug("RequestEditMode.reply_with_errors: Removed request from active_requests (remaining=%zu, file=%s)", 
+							active_requests.size, this.normalized_path);
+					}
+				);
+				return false; // Don't repeat
+			});
 		}
 		
 		/**
@@ -428,34 +532,40 @@ namespace OLLMchat.Tools
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
 			// Validate and apply changes
-			if (this.create) {
-				// Create mode: only allow a single change
+			if (this.complete_file) {
+				// Complete file mode: only allow a single change
 				if (this.changes.size > 1) {
-					throw new GLib.IOError.INVALID_ARGUMENT("Cannot create/overwrite file: multiple changes detected. Create mode only allows a single code block.");
+					throw new GLib.IOError.INVALID_ARGUMENT("Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
 				}
-				// Check if code block had line numbers (invalid in create mode)
-				// In create mode, start and end should both be -1 (not set) when no line numbers provided
+				// Check if code block had line numbers (invalid in complete_file mode)
+				// In complete_file mode, start and end should both be -1 (not set) when no line numbers provided
 				// If they sent line numbers, start would be >= 1
 				if (this.changes[0].start != -1 || this.changes[0].end != -1) {
-					throw new GLib.IOError.INVALID_ARGUMENT("Cannot use line numbers in create mode. When create=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
+					throw new GLib.IOError.INVALID_ARGUMENT("Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
+				}
+				// Check if file exists and overwrite is not allowed
+				if (file_exists && !this.overwrite) {
+					throw new GLib.IOError.EXISTS("File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
 				}
 				// Create new file or overwrite existing file
 				this.create_new_file_with_changes();
 			} else {
 				// Normal mode: file must exist
 				if (!file_exists) {
-					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use create=true to create a new file.");
+					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
 				}
 				// Apply edits to existing file
 				this.apply_edits();
 			}
 			
 			// Log and send status message after successful write
-			GLib.debug("Successfully applied changes to file %s", this.normalized_path);
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui",
-				"Applied changes to file " + this.normalized_path)
-			);
+			GLib.debug("RequestEditMode.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
+			var message = new OLLMchat.Message(this.chat_call, "ui",
+				"Applied changes to file " + this.normalized_path);
+			GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
+				message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
+			this.chat_call.client.tool_message(message);
+			GLib.debug("RequestEditMode.apply_all_changes: Emitted tool_message signal");
 			
 			// Emit change_done signal for each change
 			var edit_tool = (EditMode) this.tool;
@@ -525,8 +635,16 @@ namespace OLLMchat.Tools
 			
 			 
 			
-			// Create new file and write all changes
+			// Create new file and write all changes (overwrite if exists)
+			// If overwrite is true and file exists, delete it first
 			var output_file = GLib.File.new_for_path(this.normalized_path);
+			if (this.overwrite && output_file.query_exists()) {
+				try {
+					output_file.delete(null);
+				} catch (GLib.Error e) {
+					throw new GLib.IOError.FAILED("Failed to delete existing file: " + e.message);
+				}
+			}
 			var output_stream = new GLib.DataOutputStream(
 				output_file.create(GLib.FileCreateFlags.NONE, null)
 			);

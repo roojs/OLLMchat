@@ -77,8 +77,8 @@ namespace OLLMchat
 				}
 			}
 
-			// Open file in append mode using FileStream (doesn't require GIO initialization)
-			debug_log_file = GLib.FileStream.open(log_file_path, "a");
+			// Open file in write mode (truncates existing file) using FileStream (doesn't require GIO initialization)
+			debug_log_file = GLib.FileStream.open(log_file_path, "w");
 			if (debug_log_file == null) {
 				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
 				debug_log_in_progress = false;
@@ -262,9 +262,7 @@ namespace OLLMchat
 			client.addTool(new OLLMchatGtk.Tools.RunCommand(client, GLib.Environment.get_home_dir()));
 
 			// Create chat widget with manager
-			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager) {
-				default_message = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is"
-			};
+			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
 			
 			// Create ChatView permission provider and set it on the base client
 			var permission_provider = new OLLMchatGtk.Tools.Permission(
@@ -276,22 +274,13 @@ namespace OLLMchat
 			};
 			client.permission_provider = permission_provider;
 			
-			// Track if we've sent the first query to automatically send the reply
-			bool first_response_received = false;
-
-		// Connect widget signals for testing (optional: print to stdout)
+			// Connect widget signals for testing (optional: print to stdout)
 			this.chat_widget.message_sent.connect((text) => {
 				stdout.printf("Message sent: %s\n", text);
 			});
 
 			this.chat_widget.response_received.connect((text) => {
 				stdout.printf("Response received: %s\n", text);
-				// Fill in the second prompt in the input field after first response
-				if (!first_response_received) {
-					first_response_received = true;
-					// Set the second prompt in the input field (user must click send)
-					this.chat_widget.default_message = "Please read the first few lines of /var/log/dmesg and tell me what kernel version we are running";
-				}
 			});
 
 			this.chat_widget.error_occurred.connect((error) => {

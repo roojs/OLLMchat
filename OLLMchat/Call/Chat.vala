@@ -270,10 +270,6 @@ namespace OLLMchat.Call
 					continue;
 				}
 				
-				// Show message that tool is being executed
-				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
-				this.client.message_created(exec_msg, this);
-				
 				// Execute the tool with chat as first parameter
 				try {
 					var result = yield this.client.tools

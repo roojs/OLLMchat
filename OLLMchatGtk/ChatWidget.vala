@@ -111,7 +111,12 @@ namespace OLLMchatGtk
 			
 			// Connect to manager signals (which relay from active session)
 			this.manager.stream_chunk.connect(this.on_stream_chunk_handler);
-			this.manager.tool_message.connect(this.chat_view.append_tool_message);
+			this.manager.tool_message.connect((message) => {
+				if (this.chat_view == null) {
+					return;
+				}
+				this.chat_view.append_tool_message(message);
+			});
 			this.manager.message_created.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
@@ -179,6 +184,9 @@ namespace OLLMchatGtk
 		*/
 		public async void switch_to_session(OLLMchat.History.SessionBase session)
 		{
+			// Disable scrolling when loading history - set flag before loading
+			this.chat_view.scroll_enabled = false;
+			
 			// Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
@@ -198,6 +206,8 @@ namespace OLLMchatGtk
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
 				this.chat_input.sensitive = true;
+				// Re-enable scrolling on error
+				this.chat_view.scroll_enabled = true;
 				return;
 			}
 
@@ -218,6 +228,7 @@ namespace OLLMchatGtk
 		 */
 		private void load_messages()
 		{
+			// Scrolling is already disabled in switch_to_session() before this is called
 			bool ignore_next_done = false;
 			int total_messages = this.manager.session.messages.size;
 			int visible_count = 0;
@@ -269,25 +280,35 @@ namespace OLLMchatGtk
 			}
 			
 			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
+			
+			// Don't re-enable scrolling here - keep it disabled after loading history
+			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
 		}
 		
 		/**
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
 		 */
-		private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
-		{
-			// Skip messages that shouldn't be displayed in UI
-			if (!m.is_ui_visible) {
-				return;
-			}
-			
-			// Display message based on role
-			switch (m.role) {
+	private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
+	{
+		// Re-enable scrolling when new messages arrive (not from history loading)
+		// This ensures scrolling works for new messages but stays disabled after loading history
+		this.chat_view.scroll_enabled = true;
+		
+		// Skip messages that shouldn't be displayed in UI
+		if (!m.is_ui_visible) {
+			return;
+		}
+		
+		// Display message based on role
+		switch (m.role) {
 				case "user-sent":
 					this.chat_view.append_user_message(m.content, m.message_interface);
-					// Show waiting indicator when user sends a message
 					this.chat_view.show_waiting_indicator();
+					// Activate streaming so we can receive and display the response
+					// This handles both normal user messages and tool continuation replies
+					this.chat_input.set_streaming(true);
+					this.is_streaming_active = true;
 					break;
 				case "assistant":
 					this.chat_view.append_complete_assistant_message(m);
@@ -322,16 +343,37 @@ namespace OLLMchatGtk
 			this.on_send_clicked(text);
 		}
 
-		/**
-		 * Clears the chat history.
-		 * 
-		 * @since 1.0
-		 */
-		public void clear_chat()
-		{
-			this.chat_view.clear();
-			this.last_sent_text = null;
-		}
+	/**
+	 * Clears the chat history.
+	 * 
+	 * @since 1.0
+	 */
+	public void clear_chat()
+	{
+		this.chat_view.clear();
+		this.last_sent_text = null;
+	}
+
+	/**
+	 * Starts a new chat with the given text in the input field.
+	 * 
+	 * Clears the current chat and fills the input field with the text,
+	 * but does not send it.
+	 * 
+	 * @param text The text to put in the input field
+	 * @since 1.0
+	 */
+	public async void start_new_chat_with_text(string text)
+	{
+		// Create a new session (like the + button does)
+		var new_session = this.manager.create_new_session();
+		
+		// Switch to the new session (this clears the chat)
+		yield this.switch_to_session(new_session);
+		
+		// Set the text in the input field
+		this.chat_input.set_default_text(text);
+	}
 
 		/**
 		 * Loads a history session into the chat widget.

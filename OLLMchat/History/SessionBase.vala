@@ -167,7 +167,14 @@ namespace OLLMchat.History
 				this.manager.stream_start();
 			});
 			this.tool_message_id = this.client.tool_message.connect((message) => {
+				GLib.debug("SessionBase.tool_message handler: Received tool_message from client (role=%s, content='%.50s', manager=%p, session=%p)", 
+					message.role, message.content, this.manager, this);
+				if (this.manager == null) {
+					GLib.debug("SessionBase.tool_message handler: ERROR - manager is null!");
+					return;
+				}
 				this.manager.tool_message(message);
+				GLib.debug("SessionBase.tool_message handler: Relayed to manager.tool_message signal");
 			});
 		}
 		
