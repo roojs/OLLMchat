@@ -240,18 +240,15 @@ namespace OLLMchat.History
 					foreach (var msg in this.messages) {
 						// Use "user-sent" messages for title (raw user text before prompt engine modification)
 						// Fall back to "user" messages if no "user-sent" messages exist
-						if (msg.role == "user-sent") {
-							 
-							this.title = msg.content;
+						if (msg.role == "user-sent" || msg.role == "user") {
+							// Limit title to first 3 lines
+							var lines = msg.content.split("\n");
+							var title_lines = new string[0];
+							for (int i = 0; i < lines.length && i < 3; i++) {
+								title_lines += lines[i];
+							}
+							this.title = string.joinv("\n", title_lines);
 							break;
-						
-						} 
-						 if (msg.role == "user") {
-							// Fallback to regular user messages
-						 
-							this.title = msg.content;
-							break;
-							
 						}
 					}
 				} 

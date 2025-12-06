@@ -282,12 +282,12 @@ namespace OLLMchatGtk
 				return;
 			}
 			
-		
-			
 			// Display message based on role
 			switch (m.role) {
 				case "user-sent":
 					this.chat_view.append_user_message(m.content, m.message_interface);
+					// Show waiting indicator when user sends a message
+					this.chat_view.show_waiting_indicator();
 					break;
 				case "assistant":
 					this.chat_view.append_complete_assistant_message(m);

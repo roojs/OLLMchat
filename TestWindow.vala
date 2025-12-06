@@ -18,10 +18,31 @@
 
 namespace OLLMchat 
 {
+	/**
+	 * Debug logging function that writes to /tmp/ollama.log
+	 * To disable, comment out the function body or the call to this function.
+	 */
+	private void debug_log(string domain, GLib.LogLevelFlags level, string message)
+	{
+		try {
+			var file = GLib.File.new_for_path("/tmp/ollama.log");
+			var output_stream = file.append_to(GLib.FileCreateFlags.NONE, null);
+			var data_stream = new GLib.DataOutputStream(output_stream);
+			var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
+			var log_line = @"$timestamp: $level.to_string() : $message\n";
+			data_stream.put_string(log_line);
+			data_stream.close(null);
+		} catch (GLib.Error e) {
+			// Silently fail if we can't write to log file
+		}
+	}
+
 	int main(string[] args)
 	{
-		// Set up debug handler to print all GLib.debug output to stderr
+		// Set up debug handler to write to /tmp/ollama.log
+		// To disable logging, comment out the debug_log() call below
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
+			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
 			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
 			if ((lvl & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
 				GLib.error("critical");
