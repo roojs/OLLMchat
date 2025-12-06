@@ -29,7 +29,6 @@ namespace OLLMchat
 			var log_dir = GLib.Path.build_filename(
 				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
 			);
-			var log_file = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
 			
 			// Ensure directory exists
 			var dir = GLib.File.new_for_path(log_dir);
@@ -38,12 +37,14 @@ namespace OLLMchat
 			}
 			
 			// Append to log file
-			var file = GLib.File.new_for_path(log_file);
-			var output_stream = file.append_to(GLib.FileCreateFlags.NONE, null);
-			var data_stream = new GLib.DataOutputStream(output_stream);
-			var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
-			var log_line = @"$timestamp: $level.to_string() : $message\n";
-			data_stream.put_string(log_line);
+			var data_stream = new GLib.DataOutputStream(
+				GLib.File.new_for_path(
+					GLib.Path.build_filename(log_dir, "ollmchat.debug.log")
+				).append_to(GLib.FileCreateFlags.NONE, null)
+			);
+			data_stream.put_string(
+				@"$(new DateTime.now_local().format("%H:%M:%S.%f")): $level.to_string() : $message\n"
+			);
 			data_stream.close(null);
 		} catch (GLib.Error e) {
 			// Silently fail if we can't write to log file
