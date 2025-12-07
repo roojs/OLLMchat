@@ -5,8 +5,7 @@ this is code from a google sheets script (i dont have direct access on the machi
     rather than keep adding i want to use  PropertiesService.getScriptProperties(); so we dont keep trying to add it, we detect that it's aready added by checking those values and do an update instead
     
     
-    I need small chunks with context on what to replace - avoid creating temporary variable that are just used once test on existing values if the exist
-    
+      
     write this code to /tmp/test.gs
     and the updated version to /tmp/test-changed.gs
     

@@ -66,6 +66,28 @@ namespace OLLMchat.Tools
 			// Normalize and validate file path
 			var file_path = this.normalize_file_path(this.file_path);
 			
+			// Emit execution message with human-friendly tool name and file path
+			var message = "Executing %s on file: %s".printf(
+					this.tool.description.strip().split("\n")[0],
+					file_path
+				);
+			if (this.read_entire_file) {
+				message = "Executing %s on file: %s".printf(
+					this.tool.description.strip().split("\n")[0],
+					file_path
+				);
+			} else if (this.start_line > 0 && this.end_line > 0) {
+				message = "Executing %s on file: %s (lines %lld-%lld)".printf(
+					this.tool.description.strip().split("\n")[0],
+					file_path,
+					this.start_line,
+					this.end_line
+				);
+			} 
+			this.chat_call.client.tool_message(
+				new OLLMchat.Message(this.chat_call, "ui", message)
+			);
+			
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");
 			}
@@ -85,10 +107,6 @@ namespace OLLMchat.Tools
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
 				string content;
 				GLib.FileUtils.get_contents(file_path, out content);
-				this.chat_call.client.tool_message(
-					new OLLMchat.Message(this.chat_call, "ui",
-					"Read file " + file_path)
-				);
 				return content;
 			}
 			
@@ -129,12 +147,6 @@ namespace OLLMchat.Tools
 					// Ignore close errors
 				}
 			}
-			
-			// Send status message after reading
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui",
-				"Read file " + file_path + " (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")")
-			);
 			
 			return content;
 		}

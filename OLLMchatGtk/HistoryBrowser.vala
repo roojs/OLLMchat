@@ -64,7 +64,9 @@ namespace OLLMchatGtk
 			this.session_store = new GLib.ListStore(typeof(OLLMchat.History.SessionBase));
 			
 			// Create ListView with selection model
-			var selection_model = new Gtk.SingleSelection(this.session_store);
+			var selection_model = new Gtk.SingleSelection(this.session_store) {
+				autoselect = false
+			};
 			this.list_view = new Gtk.ListView(selection_model, null);
 			
 			// Create row factory

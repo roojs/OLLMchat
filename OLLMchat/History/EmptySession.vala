@@ -98,6 +98,13 @@ namespace OLLMchat.History
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
+			
+			// Add session to manager.sessions and emit session_added signal immediately
+			// This ensures the history widget updates right away
+			this.manager.sessions.add(real_session);
+			this.manager.session_added(real_session);
+		
+			
 			real_session.activate();
 			this.manager.session_activated(real_session);
 			

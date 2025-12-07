@@ -36,6 +36,14 @@ namespace OLLMchatGtk
 			CONTENT,
 			CODE_BLOCK
 		}
+		
+		private enum ResizeMode
+		{
+			INITIAL,    // Initial sizing: min(natural, max_height), hide button if fits
+			EXPAND,     // Expand: natural height, vexpand = true
+			COLLAPSE,   // Collapse: min(natural, max_height), vexpand = false
+			FINAL       // Final sizing: min(natural, max_height), hide button if fits
+		}
 
 		private ChatWidget? chat_widget = null;
 		private Gtk.ScrolledWindow scrolled_window;
@@ -55,7 +63,24 @@ namespace OLLMchatGtk
 		private GtkSource.Buffer? current_source_buffer = null;
 		private Gtk.TextMark? code_block_end_mark = null;
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
+		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
+		public bool scroll_enabled = true;
+		
+		// Store source view info for expand/collapse functionality
+		private class SourceViewInfo {
+			public GtkSource.View source_view;
+			public Gtk.ScrolledWindow scrolled_window;
+			public Gtk.Button expand_button;
+			
+			public SourceViewInfo(GtkSource.View sv, Gtk.ScrolledWindow sw, Gtk.Button eb) {
+				this.source_view = sv;
+				this.scrolled_window = sw;
+				this.expand_button = eb;
+			}
+		}
+		
+		private Gee.ArrayList<SourceViewInfo> source_view_infos = new Gee.ArrayList<SourceViewInfo>();
 
 		/**
 		 * Creates a new ChatView instance.
@@ -129,7 +154,7 @@ namespace OLLMchatGtk
 				cursor_visible = false,
 				wrap_mode = Gtk.WrapMode.WORD,
 				hexpand = true,
-				vexpand = false
+				vexpand = true
 			};
 			// Set internal padding (space between text and TextView edges)
 			user_text_view.set_left_margin(12);
@@ -140,19 +165,153 @@ namespace OLLMchatGtk
 			user_text_view.add_css_class("user-message-text");
 			user_text_view.buffer.text = text;
 
+			// Create ScrolledWindow for the TextView with height constraints
+			var user_scrolled = new Gtk.ScrolledWindow() {
+				hexpand = true,
+				vexpand = false
+			};
+			user_scrolled.set_child(user_text_view);
+			user_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+
+			// Track expanded state
+			bool is_expanded = false;
+			
+			// Check if this is the first user message we've displayed
+			bool is_first_message = !this.has_displayed_user_message;
+			this.has_displayed_user_message = true;
+			
+			// Create header box with title on left and buttons on right
+			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
+				hexpand = true,
+				vexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				margin_top = 5,
+				margin_bottom = 2
+			};
+			
+			// Add title label on the left
+			var title_label = new Gtk.Label("You said:") {
+				hexpand = false,
+				halign = Gtk.Align.START,
+				valign = Gtk.Align.CENTER
+			};
+			header_box.append(title_label);
+			
+			// Add spacer to push buttons to the right
+			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true
+			});
+			
+			// Create horizontal box for buttons at top-right
+			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = false,
+				vexpand = false
+			};
+			
+			// Create Copy to Clipboard button with icon
+			var copy_button = new Gtk.Button() {
+				icon_name = "edit-copy-symbolic",
+				tooltip_text = "Copy to Clipboard",
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				can_focus = false,
+				focus_on_click = false
+			};
+			
+			// Connect copy button click handler
+			copy_button.clicked.connect(() => {
+				this.copy_text_to_clipboard(text);
+			});
+			
+			// Create Expand/Collapse button with icon
+			var expand_button = new Gtk.Button() {
+				icon_name = "pan-down-symbolic",
+				tooltip_text = "Expand",
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				can_focus = false,
+				focus_on_click = false
+			};
+			
+			// Calculate natural height of the text content
+			// Use Idle to wait for layout, then set height based on natural size
+			GLib.Idle.add(() => {
+				return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.INITIAL, expand_button);
+			});
+			
+			// Connect expand/collapse button click handler
+			expand_button.clicked.connect(() => {
+				is_expanded = !is_expanded;
+				if (is_expanded) {
+					expand_button.icon_name = "pan-up-symbolic";
+					expand_button.tooltip_text = "Collapse";
+					// Set height to natural height of content
+					GLib.Idle.add(() => {
+						return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.EXPAND);
+					});
+					return;
+				} 
+				expand_button.icon_name = "pan-down-symbolic";
+				expand_button.tooltip_text = "Expand";
+				// Recalculate natural height and set collapsed height
+				GLib.Idle.add(() => {
+					return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.COLLAPSE);
+				});
+			});
+			
+			// Add buttons to button box
+			button_box.append(copy_button);
+			
+			// Add "Start new chat with this" button if this is the first message (before expand button)
+			if (is_first_message && this.chat_widget != null) {
+				var new_chat_button = new Gtk.Button() {
+					icon_name = "list-add-symbolic",
+					tooltip_text = "Start new chat with this",
+					hexpand = false,
+					margin_start = 5,
+					margin_end = 5,
+					can_focus = false,
+					focus_on_click = false
+				};
+				
+				// Connect new chat button click handler
+				new_chat_button.clicked.connect(() => {
+					this.chat_widget.start_new_chat_with_text.begin(text);
+				});
+				
+				button_box.append(new_chat_button);
+			}
+			
+			button_box.append(expand_button);
+			
+			// Add button box to header
+			header_box.append(button_box);
+			
+			// Create vertical container box for header and ScrolledWindow
+			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Add header box to container
+			container_box.append(header_box);
+			
+			// Add ScrolledWindow to container
+			container_box.append(user_scrolled);
+
 			// Wrap in Frame for visibility and styling (like code blocks)
 			var user_frame = new Gtk.Frame(null) {
 				margin_top = 16,
 				hexpand = true
 			};
-			user_frame.set_child(user_text_view);
+			user_frame.set_child(container_box);
 
 			// Style the frame with white background and rounded corners
 			// CSS is loaded from resource file in constructor
 			user_frame.add_css_class("user-message-box");
-
-			// Don't set height_request - let TextView size naturally to content
-			// With vexpand = false, it will size to fit the text content
 			
 			user_text_view.set_visible(true);
 			
@@ -267,6 +426,8 @@ namespace OLLMchatGtk
 					Gtk.TextIter end_iter;
 					this.current_source_buffer.get_end_iter(out end_iter);
 					this.current_source_buffer.insert(ref end_iter, text, -1);
+					// Scroll SourceView to bottom after inserting text
+					this.scroll_source_view_to_bottom();
 					return;
 					
 				case ContentState.THINKING:
@@ -326,6 +487,8 @@ namespace OLLMchatGtk
 					Gtk.TextIter end_iter;
 					this.current_source_buffer.get_end_iter(out end_iter);
 					this.current_source_buffer.insert(ref end_iter, "\n", -1);
+					// Scroll SourceView to bottom after inserting newline
+					this.scroll_source_view_to_bottom();
 				}
 				return;
 			}
@@ -671,6 +834,12 @@ namespace OLLMchatGtk
 		 */
 		public void clear()
 		{
+			// Reset flags when clearing chat
+			this.has_displayed_user_message = false;
+			this.scroll_enabled = true;
+			
+			// Clear source view infos
+			this.source_view_infos.clear();
 			
 			// Reset markdown renderer state if there's an active block
 			if (this.renderer.current_textview != null) {
@@ -832,7 +1001,7 @@ namespace OLLMchatGtk
 				buffer.insert(ref end_iter, "\n", -1);
 			}
 			buffer.get_end_iter(out end_iter);
-			this.waiting_mark = buffer.create_mark(null, end_iter, true);
+			this.waiting_mark = buffer.create_mark("waiting-indicator", end_iter, true);
 			this.waiting_dots = 0;
 			this.update_waiting_dots();
 
@@ -908,10 +1077,20 @@ namespace OLLMchatGtk
 			if (this.waiting_mark == null) {
 				return false; // Stop timer
 			}
+			if (!this.is_waiting) {
+				return false; // Stop timer
+			}
 
 			var buffer = this.renderer.current_buffer;
 			if (buffer == null) {
 				return false; // Stop timer if buffer is gone
+			}
+
+			// Check if mark is still valid (hasn't been deleted)
+			var mark = buffer.get_mark("waiting-indicator");
+			if (mark == null || mark != this.waiting_mark) {
+				this.waiting_mark = null;
+				return false; // Stop timer
 			}
 
 			// Update dots (cycle through 1-6)
@@ -941,22 +1120,79 @@ namespace OLLMchatGtk
 
 		public void scroll_to_bottom()
 		{
-			// Use timeout to scroll after layout is updated (500ms delay)
-			GLib.Timeout.add(500, () => {
+			// Skip scrolling if disabled (e.g., when loading history)
+			if (!this.scroll_enabled) {
+				return;
+			}
+			
+			// Use Idle to scroll after layout is updated, with retry logic
+			GLib.Idle.add(() => {
+				// Check if scrolling is still enabled (might have been disabled during loading)
+				if (!this.scroll_enabled) {
+					return false;
+				}
+				
 				// Set vertical adjustment to 100% (maximum value)
 				var vadjustment = this.scrolled_window.vadjustment;
 				
-
 				if (vadjustment == null) {
 					GLib.debug("ChatView: scroll_to_bottom: vadjustment is null");
 					return false;
 				}
-
+				
+				// Check if layout is ready by verifying upper bound is reasonable
+				// If upper is 0 or very small, layout might not be complete yet
+				if (vadjustment.upper < 100.0) {
+					// Layout not ready yet, try again on next idle (but only if scrolling is still enabled)
+					return this.scroll_enabled;
+				}
+				
 				// Set value higher than upper to force scroll to maximum
 				// This ensures we scroll to bottom even if layout hasn't fully updated
 				vadjustment.value = vadjustment.upper + 1000.0;
 				this.last_scroll_pos = vadjustment.upper + 1000.0;
-			//	GLib.debug("vadjustment.value=%f, vadjustment.upper=%f", vadjustment.value, vadjustment.upper);
+				
+				// Also use a timeout as backup in case Idle doesn't catch all layout updates
+				GLib.Timeout.add(100, () => {
+					// Check if scrolling is still enabled (might have been disabled during loading)
+					if (!this.scroll_enabled) {
+						return false;
+					}
+					
+					if (vadjustment != null && vadjustment.upper > 100.0) {
+						vadjustment.value = vadjustment.upper + 1000.0;
+						this.last_scroll_pos = vadjustment.upper + 1000.0;
+					}
+					return false;
+				});
+				
+				return false;
+			});
+		}
+
+		/**
+		* Scrolls the current SourceView to the bottom.
+		* 
+		* This is used when streaming code blocks to keep the latest content visible.
+		*/
+		private void scroll_source_view_to_bottom()
+		{
+			if (this.current_source_view == null || this.current_source_buffer == null) {
+				return;
+			}
+			
+			// Use Idle to scroll after layout is updated
+			GLib.Idle.add(() => {
+				if (this.current_source_view == null || this.current_source_buffer == null) {
+					return false;
+				}
+				
+				// Get the end of the buffer
+				Gtk.TextIter end_iter;
+				this.current_source_buffer.get_end_iter(out end_iter);
+				
+				// Scroll the SourceView to show the end
+				this.current_source_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 0.0);
 			
 				return false;
 			});
@@ -1086,10 +1322,12 @@ namespace OLLMchatGtk
 				hexpand = true
 			});
 			
-			// Create Copy to Clipboard button
+			// Create Copy to Clipboard button with icon
 			// Capture the specific source_buffer for this code block (not the class member)
 			var source_buffer_for_button = this.current_source_buffer;
-			var copy_button = new Gtk.Button.with_label("Copy to Clipboard") {
+			var copy_button = new Gtk.Button() {
+				icon_name = "edit-copy-symbolic",
+				tooltip_text = "Copy to Clipboard",
 				hexpand = false,
 				margin_start = 5,
 				margin_end = 5,
@@ -1099,11 +1337,6 @@ namespace OLLMchatGtk
 				focus_on_click = false  // Prevent focus on click
 			};
 			
-			// Set cursor to pointer (fixes issue with TextView showing text cursor)
-			var cursor = new Gdk.Cursor.from_name("pointer", null);
-			if (cursor != null) {
-				copy_button.set_cursor(cursor);
-			}
 			
 			// Connect button click handler - use the captured buffer, not the class member
 			copy_button.clicked.connect(() => {
@@ -1126,16 +1359,78 @@ namespace OLLMchatGtk
 				});
 			});
 			
-			// Add button to button box (right side)
+			// Track expanded state for this code block
+			bool is_expanded = false;
+			
+			// Create Expand/Collapse button with icon
+			var expand_button = new Gtk.Button() {
+				icon_name = "pan-down-symbolic",
+				tooltip_text = "Expand",
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				margin_top = 5,
+				margin_bottom = 2,
+				can_focus = false,
+				focus_on_click = false
+			};
+			
+			
+			// Create ScrolledWindow for the SourceView with height constraints
+			var max_height = this.get_max_collapsed_height();
+			if (max_height < 0) {
+				max_height = 300; // Fallback to 300px if we can't determine window height
+			}
+			
+			var code_scrolled = new Gtk.ScrolledWindow() {
+				hexpand = true,
+				vexpand = false
+			};
+			code_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			
+			// Set initial height to 50% of window
+			code_scrolled.set_size_request(-1, max_height);
+			
+			// Store source view info for expand/collapse functionality
+			var source_view_info = new SourceViewInfo(this.current_source_view, code_scrolled, expand_button);
+			this.source_view_infos.add(source_view_info);
+			
+			// Connect expand/collapse button click handler
+			expand_button.clicked.connect(() => {
+				is_expanded = !is_expanded;
+				if (is_expanded) {
+					expand_button.icon_name = "pan-up-symbolic";
+					expand_button.tooltip_text = "Collapse";
+					// Expand to show all content - remove size constraint and allow expansion
+					GLib.Idle.add(() => {
+						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.EXPAND);
+					});
+				} else {
+					expand_button.icon_name = "pan-down-symbolic";
+					expand_button.tooltip_text = "Expand";
+					// Recalculate natural height and set collapsed height
+					GLib.Idle.add(() => {
+						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.COLLAPSE);
+					});
+				}
+			});
+			
+			// Add buttons to button box (right side)
 			button_box.append(copy_button);
+			button_box.append(expand_button);
 			
 			// Add button box to container
 			container_box.append(button_box);
 			
-			// Add SourceView to container (expanding)
+			// Set SourceView properties
 			this.current_source_view.hexpand = true;
-			this.current_source_view.vexpand = true;
-			container_box.append(this.current_source_view);
+			this.current_source_view.vexpand = false; // Don't expand vertically - let ScrolledWindow control height
+			
+			// Add SourceView to ScrolledWindow
+			code_scrolled.set_child(this.current_source_view);
+			
+			// Add ScrolledWindow to container
+			container_box.append(code_scrolled);
 
 			// Wrap in Frame for visibility and styling
 			var frame = new Gtk.Frame(null) {
@@ -1171,10 +1466,10 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Copies the content of a SourceView buffer to the clipboard.
-		 * 
-		 * @param source_buffer The SourceView buffer to copy from
-		 */
+		* Copies the content of a SourceView buffer to the clipboard.
+		* 
+		* @param source_buffer The SourceView buffer to copy from
+		*/
 		private void copy_source_view_to_clipboard(GtkSource.Buffer? source_buffer)
 		{
 			if (source_buffer == null) {
@@ -1202,6 +1497,116 @@ namespace OLLMchatGtk
 		}
 
 		/**
+		* Copies text to the clipboard.
+		* 
+		* @param text The text to copy
+		*/
+		private void copy_text_to_clipboard(string text)
+		{
+			if (text.length == 0) {
+				return;
+			}
+			
+			// Get the clipboard and set the text
+			var display = Gdk.Display.get_default();
+			if (display == null) {
+				return;
+			}
+			
+			var clipboard = display.get_clipboard();
+			clipboard.set_text(text);
+		}
+
+		/**
+		* Gets the maximum height for collapsed view (50% of window height).
+		* 
+		* @return Maximum height in pixels, or -1 if window height cannot be determined
+		*/
+		private int get_max_collapsed_height()
+		{
+			// Get the window height from the scrolled window
+			if (this.scrolled_window == null) {
+				return -1;
+			}
+			
+			// Get the allocation height of the scrolled window
+			int window_height = this.scrolled_window.get_allocated_height();
+			if (window_height <= 0) {
+				// If not allocated yet, try to get from parent
+				var parent = this.scrolled_window.get_parent();
+				if (parent != null) {
+					window_height = parent.get_allocated_height();
+				}
+			}
+			
+			if (window_height <= 0) {
+				return -1;
+			}
+			
+			// Return 50% of window height
+			return (int)(window_height * 0.5);
+		}
+		
+		/**
+		* Generic function to handle resize calculations for widgets.
+		* 
+		* This function creates an Idle callback that measures a widget and resizes
+		* a ScrolledWindow based on the specified mode.
+		* 
+		* @param widget The widget to measure (e.g., TextView, SourceView)
+		* @param scrolled_window The ScrolledWindow to resize
+		* @param mode The resize mode (INITIAL, EXPAND, COLLAPSE, or FINAL)
+		* @param expand_button Optional expand button to show/hide based on content size
+		* @return A function suitable for use with GLib.Idle.add()
+		*/
+		private bool resize_widget_callback(Gtk.Widget? widget, Gtk.ScrolledWindow scrolled_window, ResizeMode mode, Gtk.Button? expand_button = null)
+		{
+			// Check if widget is valid and realized
+			if (widget == null || !widget.get_realized()) {
+				return true; // Try again next time
+			}
+			
+			// Get preferred height of the widget
+			int min_natural = 0;
+			int nat_natural = 0;
+			widget.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
+			int natural_height = nat_natural;
+			
+			switch (mode) {
+				case ResizeMode.EXPAND:
+					// Set height to natural height to show all content
+					scrolled_window.set_size_request(-1, natural_height > 0 ? natural_height : -1);
+					scrolled_window.vexpand = true; // Allow expansion to natural height
+					return false;
+					
+				case ResizeMode.INITIAL:
+				case ResizeMode.COLLAPSE:
+				case ResizeMode.FINAL:
+					// Get max height (50% of window)
+					int max_height = this.get_max_collapsed_height();
+					if (max_height < 0) {
+						max_height = 300; // Fallback
+					}
+					
+					// Use the smaller of max_height (50% window) or natural height for collapsed state
+					int target_height = (natural_height > 0 && natural_height < max_height) ? natural_height : max_height;
+					scrolled_window.set_size_request(-1, target_height);
+					scrolled_window.vexpand = false; // Prevent expansion in collapsed state
+					
+					// Hide expand button if content fits in collapsed view (for INITIAL and FINAL modes)
+					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && expand_button != null) {
+						if (natural_height > 0 && natural_height <= max_height) {
+							expand_button.visible = false;
+						}
+					}
+					
+					return false;
+			}
+			
+			return false;
+		}
+
+		/**
 		 * Handles closing a code block by cleaning up state.
 		 */
 		private void close_code_block()
@@ -1209,6 +1614,22 @@ namespace OLLMchatGtk
 			// Debug: Print code block being finalized
 			string lang_str = (this.code_block_language != null) ? this.code_block_language : "unknown";
 			stdout.printf("[ChatView] Finalizing CODE_BLOCK: language='%s'\n", lang_str);
+			
+			// Find the source view info for the current source view and resize based on content rules
+			SourceViewInfo? info_to_resize = null;
+			foreach (var info in this.source_view_infos) {
+				if (info.source_view == this.current_source_view) {
+					info_to_resize = info;
+					break;
+				}
+			}
+			
+			// Resize based on content rules when code block is complete
+			if (info_to_resize != null && info_to_resize.source_view != null) {
+				GLib.Idle.add(() => {
+					return this.resize_widget_callback(info_to_resize.source_view, info_to_resize.scrolled_window, ResizeMode.FINAL, info_to_resize.expand_button);
+				});
+			}
 			
 			// With box model, no need to update marks - Render handles it
 			// Clean up code block marks (no longer needed with box model)

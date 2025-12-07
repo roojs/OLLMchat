@@ -31,8 +31,9 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Tools.RequestEditMode.create.html">create</a></li>
+          <li class="property"><a href="OLLMchat.Tools.RequestEditMode.complete_file.html">complete_file</a></li>
           <li class="property"><a href="OLLMchat.Tools.RequestEditMode.file_path.html">file_path</a></li>
+          <li class="property"><a href="OLLMchat.Tools.RequestEditMode.overwrite.html">overwrite</a></li>
           <li class="creation_method"><a href="OLLMchat.Tools.RequestEditMode.RequestEditMode.html">RequestEditMode</a></li>
           <li class="virtual_method"><a href="OLLMchat.Tools.RequestEditMode.build_perm_question.html">build_perm_question</a></li>
           <li class="method"><a href="OLLMchat.Tools.RequestEditMode.connect_signals.html">connect_signals</a></li>
@@ -67,11 +68,15 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.RequestEditMode.create.html" class="property">create</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.RequestEditMode.complete_file.html" class="property">complete_file</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RequestEditMode.file_path.html" class="property">file_path</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Tools.RequestEditMode.overwrite.html" class="property">overwrite</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -96,8 +101,8 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tools.RequestEditMode.disconnect_signals.html" class="method">disconnect_signals</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Disconnects client signals from this request's handlers. Called when 
-                edit mode is deactivated for this request.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Disconnects signal handlers but keeps the object alive. Call this 
+                before sending the final reply to stop processing new content.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tools.RequestEditMode.execute_request.html" class="virtual_method">execute_request</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

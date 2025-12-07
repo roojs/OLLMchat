@@ -1,4 +1,9 @@
-<!-- 56dfe8b7-227b-413c-bd88-da762428729d b1890391-d432-43c1-81eb-6f77cac51c23 -->
+---
+name: ChatPermission ChatView Implementation
+overview: ""
+todos: []
+---
+
 # ChatPermission ChatView Implementation
 
 ## Overview

@@ -540,4 +540,3 @@ namespace Markdown
 		// Public methods for tag handlers
 	}
 }
-

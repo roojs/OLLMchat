@@ -37,17 +37,18 @@ While edit mode is active, code blocks will be automatically captured and applie
 
 To apply changes, just end the chat (send chat done signal). All captured code blocks will be applied to the file automatically.
 
-Code block format depends on the create parameter:
-- If create=false (default): Code blocks must include line range in format type:startline:endline (e.g., python:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
-- If create=true: Code blocks should only have the language tag (e.g., ```python, ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists, it will be overwritten.
+Code block format depends on the complete_file parameter:
+- If complete_file=false (default): Code blocks must include line range in format type:startline:endline (e.g., python:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+- If complete_file=true: Code blocks should only have the language tag (e.g., ```python, ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
 
-When create=true, do not include line numbers in the code block. When create=false, line numbers are required.""";
+When complete_file=true, do not include line numbers in the code block. When complete_file=false, line numbers are required.""";
 		} }
 		
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] The path to the file to edit.
-@param create {boolean} [optional] If true, create or overwrite the entire file. Code blocks should only have language tag (no line numbers). Default is false.""";
+@param complete_file {boolean} [optional] If true, create or overwrite the entire file. Code blocks should only have language tag (no line numbers). Default is false.
+@param overwrite {boolean} [optional] If true and complete_file=true, overwrite existing file. If false and file exists, return error. Default is false.""";
 		} }
 		
 		/**

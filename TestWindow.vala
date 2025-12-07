@@ -18,14 +18,93 @@
 
 namespace OLLMchat 
 {
+	// Global log file stream (opened lazily on first use, kept open for app lifetime)
+	private GLib.FileStream? debug_log_file = null;
+	// Flag to prevent recursive logging when errors occur in debug_log itself
+	private bool debug_log_in_progress = false;
+
+	/**
+	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
+	 * Also writes to stderr for immediate console output.
+	 * To disable, comment out the function body or the call to this function.
+	 */
+	private void debug_log(string? in_domain, GLib.LogLevelFlags level, string message)
+	{
+		// Prevent recursive logging if an error occurs during logging
+		if (debug_log_in_progress) {
+			return;
+		}
+		var domain = in_domain == null ? "" : in_domain;
+		// Always write to stderr for immediate console output
+		var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
+		stderr.printf(timestamp + ": " + level.to_string() + " : " + message + "\n");
+
+		// Handle critical errors
+		if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
+			GLib.error("critical");
+		}
+
+		debug_log_in_progress = true;
+
+		// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)
+		if (debug_log_file == null) {
+			var log_dir = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
+			);
+			var log_file_path = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
+
+			// Try to create directory if it doesn't exist (simple recursive approach)
+			var parts = log_dir.split("/");
+			var current_path = "";
+			foreach (var part in parts) {
+				if (part == "") {
+					current_path = "/";
+					continue;
+				}
+				if (current_path == "") {
+					current_path = part;
+				} else {
+					current_path = current_path + "/" + part;
+				}
+				// Try to create directory (ignore errors if it already exists)
+				try {
+					GLib.DirUtils.create(current_path, 0755);
+				} catch (GLib.FileError e) {
+					// Ignore if directory already exists
+					if (e.code != GLib.FileError.EXIST) {
+						// For other errors, continue anyway - file open might still work
+					}
+				}
+			}
+
+			// Open file in write mode (truncates existing file) using FileStream (doesn't require GIO initialization)
+			debug_log_file = GLib.FileStream.open(log_file_path, "w");
+			if (debug_log_file == null) {
+				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
+				debug_log_in_progress = false;
+				return;
+			}
+		}
+
+		// Write to log file
+		try {
+			if (debug_log_file != null) {
+				debug_log_file.puts(timestamp + ": " + level.to_string() + " : " + message + "\n");
+				debug_log_file.flush();
+			}
+		} catch (GLib.Error e) {
+			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: " + e.message + "\n");
+		}  
+		debug_log_in_progress = false;
+		
+	}
+
 	int main(string[] args)
 	{
-		// Set up debug handler to print all GLib.debug output to stderr
+		// Set up debug handler to write to ~/.cache/ollmchat/ollmchat.debug.log
+		// To disable logging, comment out the debug_log() call below
 		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
-			if ((lvl & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
-				GLib.error("critical");
-			}
+			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
 		});
 
 		var app = new Gtk.Application("org.roojs.roobuilder.test", GLib.ApplicationFlags.DEFAULT_FLAGS);
@@ -183,9 +262,7 @@ namespace OLLMchat
 			client.addTool(new OLLMchatGtk.Tools.RunCommand(client, GLib.Environment.get_home_dir()));
 
 			// Create chat widget with manager
-			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager) {
-				default_message = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is"
-			};
+			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
 			
 			// Create ChatView permission provider and set it on the base client
 			var permission_provider = new OLLMchatGtk.Tools.Permission(
@@ -197,24 +274,8 @@ namespace OLLMchat
 			};
 			client.permission_provider = permission_provider;
 			
-			// Track if we've sent the first query to automatically send the reply
-			bool first_response_received = false;
-
-		// Connect widget signals for testing (optional: print to stdout)
-			this.chat_widget.message_sent.connect((text) => {
-				stdout.printf("Message sent: %s\n", text);
-			});
-
-			this.chat_widget.response_received.connect((text) => {
-				stdout.printf("Response received: %s\n", text);
-				// Fill in the second prompt in the input field after first response
-				if (!first_response_received) {
-					first_response_received = true;
-					// Set the second prompt in the input field (user must click send)
-					this.chat_widget.default_message = "Please read the first few lines of /var/log/dmesg and tell me what kernel version we are running";
-				}
-			});
-
+		 
+		
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
 			});
