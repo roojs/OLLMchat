@@ -38,7 +38,9 @@
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_a.html">on_a</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_br.html">on_br</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_code.html">on_code</a></li>
+          <li class="virtual_method"><a href="MarkdownGtk.Render.on_code_block.html">on_code_block</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_code_span.html">on_code_span</a></li>
+          <li class="virtual_method"><a href="MarkdownGtk.Render.on_code_text.html">on_code_text</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_del.html">on_del</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_em.html">on_em</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_entity.html">on_entity</a></li>
@@ -147,9 +149,17 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Callback for code blocks.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.on_code_block.html" class="virtual_method">on_code_block</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="class">string</span></span> lang)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.on_code_span.html" class="virtual_method">on_code_span</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Callback for inline code spans.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.on_code_text.html" class="virtual_method">on_code_text</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text)
+            </span>
+            <div class="leaf_brief_description">
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.on_del.html" class="virtual_method">on_del</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start)
             </span>
@@ -238,14 +248,16 @@
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_a.html">on_a</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_br.html">on_br</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_code.html">on_code</a></li>
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_code_block.html">on_code_block</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_code_span.html">on_code_span</a></li>
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_code_text.html">on_code_text</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_del.html">on_del</a></li>
-                <li class="abstract_method"><a href="Markdown.RenderBase.on_em.html">on_em</a></li>
-                <li class="virtual_method"><a href="Markdown.RenderBase.on_entity.html">on_entity</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="abstract_method"><a href="Markdown.RenderBase.on_em.html">on_em</a></li>
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_entity.html">on_entity</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_h.html">on_h</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_hr.html">on_hr</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_html.html">on_html</a></li>
@@ -253,11 +265,11 @@
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_li.html">on_li</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_ol.html">on_ol</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_other.html">on_other</a></li>
-                <li class="virtual_method"><a href="Markdown.RenderBase.on_p.html">on_p</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_p.html">on_p</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_quote.html">on_quote</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_softbr.html">on_softbr</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_strong.html">on_strong</a></li>
