@@ -136,23 +136,182 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		// Placeholder implementations for block-level callbacks
-		public override void on_h(bool is_start, uint level) {}
-		public override void on_p(bool is_start) {}
-		public override void on_ul(bool is_start, bool is_tight, char mark) {}
-		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
-		public override void on_code(bool is_start, string? lang, char fence_char) {}
-		public override void on_code_text(string text) {}
-		public override void on_code_block(bool is_start, string lang) {}
-		public override void on_quote(bool is_start) {}
-		public override void on_hr() {}
-		public override void on_a(bool is_start, string href, string title, bool is_autolink) {}
-		public override void on_img(string src, string? title) {}
-		public override void on_br() {}
-		public override void on_softbr() {}
-		public override void on_entity(string text) {}
-		public override void on_u(bool is_start) {}
+		// Block-level callbacks - print with indentation
+		public override void on_h(bool is_start, uint level)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <h%u>\n", level);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <h%u>\n", level);
+			indent_level++;
+		}
+		
+		public override void on_p(bool is_start)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <p>\n");
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <p>\n");
+			indent_level++;
+		}
+		
+		public override void on_ul(bool is_start, bool is_tight, char mark)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <ul> (tight=%s, mark='%c')\n", is_tight.to_string(), mark);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <ul> (tight=%s, mark='%c')\n", is_tight.to_string(), mark);
+			indent_level++;
+		}
+		
+		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <ol> (start=%u, tight=%s, delimiter='%c')\n", start, is_tight.to_string(), mark_delimiter);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <ol> (start=%u, tight=%s, delimiter='%c')\n", start, is_tight.to_string(), mark_delimiter);
+			indent_level++;
+		}
+		
+		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <li> (task=%s, mark='%c', offset=%u)\n", is_task.to_string(), task_mark, task_mark_offset);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <li> (task=%s, mark='%c', offset=%u)\n", is_task.to_string(), task_mark, task_mark_offset);
+			indent_level++;
+		}
+		
+		public override void on_code(bool is_start, string? lang, char fence_char)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+			indent_level++;
+		}
+		
+		public override void on_code_text(string text)
+		{
+			print_indent();
+			stdout.printf("CODE_TEXT: \"%s\"\n", text);
+		}
+		
+		public override void on_code_block(bool is_start, string lang)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <code_block> (lang=%s)\n", lang);
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <code_block> (lang=%s)\n", lang);
+			indent_level++;
+		}
+		
+		public override void on_quote(bool is_start)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <blockquote>\n");
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <blockquote>\n");
+			indent_level++;
+		}
+		
+		public override void on_hr()
+		{
+			print_indent();
+			stdout.printf("<hr>\n");
+		}
+		
+		public override void on_a(bool is_start, string href, string title, bool is_autolink)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", autolink=%s)\n", href, title, is_autolink.to_string());
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", autolink=%s)\n", href, title, is_autolink.to_string());
+			indent_level++;
+		}
+		
+		public override void on_img(string src, string? title)
+		{
+			print_indent();
+			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title ?? "null");
+		}
+		
+		public override void on_br()
+		{
+			print_indent();
+			stdout.printf("<br>\n");
+		}
+		
+		public override void on_softbr()
+		{
+			print_indent();
+			stdout.printf("<softbr>\n");
+		}
+		
+		public override void on_entity(string text)
+		{
+			print_indent();
+			stdout.printf("ENTITY: \"%s\"\n", text);
+		}
+		
+		public override void on_u(bool is_start)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <u>\n");
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <u>\n");
+			indent_level++;
+		}
 	}
 }
 

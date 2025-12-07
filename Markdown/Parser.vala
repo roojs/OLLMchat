@@ -217,14 +217,14 @@ namespace Markdown
 		} 
 
 		
-		private RenderBase renderer;
-		private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
-	 
-		private string leftover_chunk = "";
-		private bool in_literal = false;
-		private FormatType last_line_block = FormatType.NONE;
-		private FormatType current_block = FormatType.NONE;
-		private bool at_line_start = true;
+	private RenderBase renderer;
+	private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
+ 
+	private string leftover_chunk = "";
+	private bool in_literal = false;
+	private FormatType last_line_block = FormatType.NONE;
+	private FormatType current_block = FormatType.NONE;
+	private bool at_line_start = true;
 	
 		/**
 		 * Creates a new Parser instance.
@@ -249,15 +249,15 @@ namespace Markdown
 		* Resets the parser's internal state, clears the state stack,
 		* and sets the current state to NONE.
 		*/
-		public void start()
-		{
-			this.in_literal = false;
-			this.leftover_chunk = "";
-			this.state_stack.clear();
-			this.last_line_block = FormatType.NONE;
-			this.current_block = FormatType.NONE;
-			this.at_line_start = true;
-		}
+	public void start()
+	{
+		this.in_literal = false;
+		this.leftover_chunk = "";
+		this.state_stack.clear();
+		this.last_line_block = FormatType.NONE;
+		this.current_block = FormatType.NONE;
+		this.at_line_start = true;
+	}
 
 		/**
 		 * Determines if characters at a given position match a format tag.
@@ -289,10 +289,10 @@ namespace Markdown
 				return 0; // No match
 			}
 			
-			// Handle LITERAL (backtick) - toggle in_literal and return 0
+			// Handle LITERAL (backtick) - return match length 1, don't add to text
 			if (format_map.get(single_char) == FormatType.LITERAL) {
-				this.in_literal = !this.in_literal;
-				return 0; // Return 0 so caller will consume the char
+				matched_format = FormatType.LITERAL;
+				return 1; // Return 1 to indicate match, but don't add backtick to text
 			}
 			
 			// If in literal mode, ignore all other format matches
@@ -540,6 +540,7 @@ namespace Markdown
 			var chunk_pos = 0;
 			var escape_next = false;
 			var str = "";
+			GLib.debug("  [str] INIT: str='%s' (empty)", str);
 			
 			while (chunk_pos < chunk.length) {
 				var c = chunk.get_char(chunk_pos);
@@ -555,12 +556,23 @@ namespace Markdown
 						continue;
 					}
 					
-					// Not in fenced code - end current block if any
-					if (this.current_block != FormatType.NONE) {
-						this.do_block(false, this.current_block);
-						this.last_line_block = this.current_block;
-						this.current_block = FormatType.NONE;
-					}
+				// Not in fenced code - flush any accumulated text before closing block
+				GLib.debug("  [str] NEWLINE: str='%s', current_block=%s", str, this.current_block.to_string());
+				if (str != "") {
+					GLib.debug("  [str] FLUSH before block close: str='%s'", str);
+					this.renderer.on_text(str);
+					str = "";
+					GLib.debug("  [str] RESET after flush: str='%s'", str);
+				} else {
+					GLib.debug("  [str] EMPTY at newline - nothing to flush");
+				}
+				
+				// End current block if any
+				if (this.current_block != FormatType.NONE) {
+					this.do_block(false, this.current_block);
+					this.last_line_block = this.current_block;
+					this.current_block = FormatType.NONE;
+				}
 					
 					// Pass the newline as text to the renderer
 					this.renderer.on_text("\n");
@@ -574,6 +586,7 @@ namespace Markdown
 				
 				// If we're in a fenced code block, check for closing fence only at line start
 				if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
+					GLib.debug("  [code] In code block, at_line_start=%s, chunk_pos=%d, char='%s'", this.at_line_start.to_string(), chunk_pos, chunk_pos < chunk.length ? chunk.get_char(chunk_pos).to_string() : "EOF");
 					if (!this.at_line_start) {
 						// Not at line start - collect code text
 						// First check if remaining chunk doesn't contain newline - send everything and return
@@ -602,8 +615,10 @@ namespace Markdown
 					if (fence_result == 0) {
 						// Not a closing fence - send text up to newline (or end of chunk) to on_code_text
 						var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						GLib.debug("  [code] At line start, not closing fence, remaining='%s'", remaining.replace("\n", "\\n"));
 						if (!remaining.contains("\n")) {
 							// No newline - send everything and return
+							GLib.debug("  [code] No newline, sending all: '%s'", remaining);
 							this.renderer.on_code_text(remaining);
 							return;
 						}
@@ -611,6 +626,7 @@ namespace Markdown
 						// Has newline - send text before newline
 						var newline_pos = chunk.index_of_char('\n', chunk_pos);
 						var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+						GLib.debug("  [code] Sending line: '%s'", code_text);
 						this.renderer.on_code_text(code_text);
 						// Move pos to newline (will be handled in next iteration)
 						chunk_pos = newline_pos;
@@ -666,7 +682,9 @@ namespace Markdown
 				
 				
 				if (escape_next) {
-					str += c.to_string();
+					var char_str = c.to_string();
+					str += char_str;
+					GLib.debug("  [str] ADD escaped char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
 					escape_next = false;
 					chunk_pos += c.to_string().length;
 					continue;
@@ -685,22 +703,26 @@ namespace Markdown
 				if (match_len == -1) {
 					// Cannot determine - need more characters
 					// Flush accumulated text and save to leftover_chunk
+					GLib.debug("  [str] FLUSH (need more data): str='%s'", str);
 					this.renderer.on_text(str);
 					this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 					return;
 				}
 				
 				if (match_len == 0) {
-					// No match or LITERAL (backtick) or in_literal mode - add as text and consume the character
-					// For LITERAL, peekFormat already toggled in_literal
-					str += c.to_string();
+					// No match - add as text and consume the character
+					var char_str = c.to_string();
+					str += char_str;
+					GLib.debug("  [str] ADD char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
 					chunk_pos += c.to_string().length;
 					continue;
 				}
 				
 				// We have a match - flush accumulated text first
+				GLib.debug("  [str] FLUSH (format match): str='%s'", str);
 				this.renderer.on_text(str);
 				str = "";
+				GLib.debug("  [str] RESET after format flush: str='%s'", str);
 				
 				// Calculate byte length for advancing chunk_pos
 				var seq_pos = chunk_pos;
@@ -721,7 +743,9 @@ namespace Markdown
 					
 					if (html_res == 0) {
 						// Not a valid HTML tag start - treat as text
-						str += chunk.substring(chunk_pos, seq_pos - chunk_pos);
+						var html_text = chunk.substring(chunk_pos, seq_pos - chunk_pos);
+						str += html_text;
+						GLib.debug("  [str] ADD HTML-as-text '%s': str='%s'", html_text, str);
 						chunk_pos = seq_pos;
 						continue;
 					}
@@ -749,6 +773,7 @@ namespace Markdown
 			}
 			
 			// Flush any remaining text
+			GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_text(str);
 		}
 	
@@ -803,6 +828,11 @@ namespace Markdown
 					this.renderer.on_strong(is_start);
 					break;
 				case FormatType.CODE:
+					this.renderer.on_code_span(is_start);
+					break;
+				case FormatType.LITERAL:
+					// Toggle in_literal flag when entering/leaving code span
+					this.in_literal = is_start;
 					this.renderer.on_code_span(is_start);
 					break;
 				case FormatType.STRIKETHROUGH:
@@ -894,16 +924,13 @@ namespace Markdown
 					this.current_block = matched_block;
 					this.do_block(true, matched_block, block_lang);
 					
-					// Skip to newline
-					var newline_pos = chunk.index_of_char('\n', seq_pos);
-					if (newline_pos != -1) {
-						var newline_char = chunk.get_char(newline_pos);
-						this.at_line_start = true;
-						return newline_pos + newline_char.to_string().length - chunk_pos;
-					}
-					// No newline found - advance to end of chunk
+					// seq_pos is already after the opening fence, language, and newline
+					// (peekBlock includes the newline in byte_length)
+					// So seq_pos points to the first character of the code content
+					// We just need to advance to seq_pos and set at_line_start
+					GLib.debug("  [code] Starting code block, chunk_pos=%d, seq_pos=%d, byte_length=%d, next_char='%s'", chunk_pos, seq_pos, byte_length, seq_pos < chunk.length ? chunk.get_char(seq_pos).to_string() : "EOF");
 					this.at_line_start = true;
-					return chunk.length - chunk_pos;
+					return seq_pos - chunk_pos;
 				
 				default:
 					// Start the new block

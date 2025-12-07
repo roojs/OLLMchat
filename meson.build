@@ -225,6 +225,13 @@ omarkdown_vapi = custom_target('omarkdown-vapi',
   build_by_default: true
 )
 
+# Create dependency that only includes manually generated VAPI (not meson-generated one)
+# This avoids duplicate definition errors when both VAPI files are found
+omarkdown_vapi_only_dep = declare_dependency(
+  link_args: ['-L' + meson.current_build_dir(), '-lomarkdown'],
+  sources: [omarkdown_vapi[0]]  # Use manually generated VAPI only
+)
+
 # Build omarkdown UI library (libomarkdown-ui.so) - depends on omarkdown base library
 # We'll generate VAPI manually via custom_target to control command line order
 # Meson will generate a VAPI with default name 'omarkdown-ui.vapi', but we override it
@@ -452,10 +459,10 @@ test_window = executable('test-window',
 )
 
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
+# Use declare_dependency to avoid meson auto-including omarkdown-meson.vapi
 test_html_parser_to_md = executable('test-html-parser-to-md',
-  dependencies: base_deps,
+  dependencies: [base_deps, omarkdown_vapi_only_dep],
   sources: ['examples/TestHtmlParserToMd.vala'],
-  link_with: [omarkdown_base_lib],
   vala_args: ['--pkg=omarkdown', '--vapidir', meson.current_build_dir()],
   install: false
 )
@@ -470,10 +477,6 @@ test_markdown_parser = executable('test-markdown-parser',
 
 # Build vmd2html executable (Markdown to HTML converter)
 # Use declare_dependency to avoid meson auto-including omarkdown-meson.vapi
-omarkdown_vapi_only_dep = declare_dependency(
-  link_args: ['-L' + meson.current_build_dir(), '-lomarkdown'],
-  sources: [omarkdown_vapi[0]]  # Use manually generated VAPI only
-)
 vmd2html = executable('vmd2html',
   dependencies: [base_deps, omarkdown_vapi_only_dep],
   sources: ['examples/vmd2html.vala'],
