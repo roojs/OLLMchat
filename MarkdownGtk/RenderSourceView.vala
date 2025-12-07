@@ -96,6 +96,10 @@ namespace MarkdownGtk
 				source_buffer.changed.connect(() => {
 					// Use Idle to scroll after layout is updated
 					GLib.Idle.add(() => {
+						// Check if buffer still exists (may have been cleaned up)
+						if (this.source_buffer == null || this.source_view == null) {
+							return false;
+						}
 						Gtk.TextIter end_iter;
 						this.source_buffer.get_end_iter(out end_iter);
 						this.source_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 0.0);
@@ -347,6 +351,8 @@ namespace MarkdownGtk
 		 */
 		public void end_code_block()
 		{
+			// Disconnect signal handler if it exists
+			
 			// Notify renderer with content and language
 			var content = this.code_content.str;
 			this.renderer.code_block_ended(content, this.code_language);
@@ -359,8 +365,7 @@ namespace MarkdownGtk
 			}
 			
 			// Clean up
-			this.source_view = null;
-			this.source_buffer = null;
+		
 			this.code_language = "";
 			this.code_content = new StringBuilder();
 		}

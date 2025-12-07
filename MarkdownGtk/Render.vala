@@ -77,9 +77,8 @@ namespace MarkdownGtk
 			base();
 			this.box = box;
 			
-			// Create top_state early (it won't initialize tag/marks until buffer is ready)
-			this.top_state = new TopState(this);
-			this.current_state = this.top_state;
+			// Don't create top_state here - wait until start() when buffer is ready
+			// top_state will be null until start() is called
 		}
 		
 		/**
@@ -115,6 +114,10 @@ namespace MarkdownGtk
 			// Add TextView to box at bottom
 			this.box.append(this.current_textview);
 			
+			// Create TopState now that buffer is ready (will initialize tag/marks)
+			this.top_state = new TopState(this);
+			this.current_state = this.top_state;
+			
 			// Initialize TopState's tag and marks now that buffer is ready
 			this.top_state.initialize();
 		}
@@ -131,9 +134,9 @@ namespace MarkdownGtk
 			this.current_textview = null;
 			this.current_buffer = null;
 			
-			// Create new TopState (will be initialized when start() is called)
-			this.top_state = new TopState(this);
-			this.current_state = this.top_state;
+			// Clear TopState - will be recreated in start() when buffer is ready
+			this.top_state = null;
+			this.current_state = null;
 		}
 		
 		/**

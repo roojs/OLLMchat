@@ -33,8 +33,7 @@ namespace OLLMchatGtk
 		{
 			NONE,
 			THINKING,
-			CONTENT,
-			CODE_BLOCK
+			CONTENT
 		}
 		
 		private enum ResizeMode
@@ -58,29 +57,11 @@ namespace OLLMchatGtk
 		private Gtk.TextMark? waiting_mark = null;
 		private uint waiting_timer = 0;
 		private int waiting_dots = 0;
-		private string? code_block_language = null;
-		private GtkSource.View? current_source_view = null;
-		private GtkSource.Buffer? current_source_buffer = null;
-		private Gtk.TextMark? code_block_end_mark = null;
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
 		public bool scroll_enabled = true;
 		
-		// Store source view info for expand/collapse functionality
-		private class SourceViewInfo {
-			public GtkSource.View source_view;
-			public Gtk.ScrolledWindow scrolled_window;
-			public Gtk.Button expand_button;
-			
-			public SourceViewInfo(GtkSource.View sv, Gtk.ScrolledWindow sw, Gtk.Button eb) {
-				this.source_view = sv;
-				this.scrolled_window = sw;
-				this.expand_button = eb;
-			}
-		}
-		
-		private Gee.ArrayList<SourceViewInfo> source_view_infos = new Gee.ArrayList<SourceViewInfo>();
 
 		/**
 		 * Creates a new ChatView instance.
@@ -113,7 +94,9 @@ namespace OLLMchatGtk
 			};
 
 			// Create single Render instance for assistant messages (uses text_view_box)
-			this.renderer = new MarkdownGtk.Render(this.text_view_box);
+			this.renderer = new MarkdownGtk.Render(this.text_view_box) {
+				scroll_to_end = this.scroll_enabled
+			};
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
@@ -418,21 +401,9 @@ namespace OLLMchatGtk
 			this.last_line += text;
 			
 			switch (this.content_state) {
-				case ContentState.CODE_BLOCK:
-					// Append directly to code block buffer (current_markdown_content not used for code blocks)
-					if (this.current_source_buffer == null) {
-						return;
-					}
-					Gtk.TextIter end_iter;
-					this.current_source_buffer.get_end_iter(out end_iter);
-					this.current_source_buffer.insert(ref end_iter, text, -1);
-					// Scroll SourceView to bottom after inserting text
-					this.scroll_source_view_to_bottom();
-					return;
-					
 				case ContentState.THINKING:
 				case ContentState.CONTENT:
-					// Send new text directly to progressive renderer
+					// Send new text directly to progressive renderer (handles code blocks automatically)
 					this.renderer.add(text);
 					// No need to update end_mark anymore (box model handles it)
 					return;
@@ -454,10 +425,6 @@ namespace OLLMchatGtk
 		private void process_new_line(OLLMchat.Response.Chat response)
 		{
 			switch (this.content_state) {
-				case ContentState.CODE_BLOCK:
-					this.process_new_line_code_block(response);
-					break;
-					
 				case ContentState.THINKING:
 					this.process_new_line_thinking(response);
 					break;
@@ -475,91 +442,6 @@ namespace OLLMchatGtk
 			this.last_line = "";
 		}
 		
-		/**
-		* Handles newline when in CODE_BLOCK state.
-		*/
-		private void process_new_line_code_block(OLLMchat.Response.Chat response)
-		{
-			// Check for closing code block marker (trim first to handle spaces before ```)
-			if (!this.last_line.strip().has_prefix("```")) {
-				// Insert newline into source buffer (current_markdown_content not used for code blocks)
-				if (this.current_source_buffer != null) {
-					Gtk.TextIter end_iter;
-					this.current_source_buffer.get_end_iter(out end_iter);
-					this.current_source_buffer.insert(ref end_iter, "\n", -1);
-					// Scroll SourceView to bottom after inserting newline
-					this.scroll_source_view_to_bottom();
-				}
-				return;
-			}
-			
-			// Closing marker detected - check last line in source buffer and remove it if it's ```
-			if (this.current_source_buffer != null) {
-				Gtk.TextIter start_iter, end_iter;
-				this.current_source_buffer.get_bounds(out start_iter, out end_iter);
-				if (!start_iter.equal(end_iter)) {
-					int line_count = this.current_source_buffer.get_line_count();
-					if (line_count > 0) {
-						Gtk.TextIter last_line_start, last_line_end;
-						this.current_source_buffer.get_iter_at_line(out last_line_start, line_count - 1);
-						last_line_end = last_line_start;
-						last_line_end.forward_to_line_end();
-						
-						// Get the text of the last line
-						string last_line_text = this.current_source_buffer.get_text(last_line_start, last_line_end, false);
-						
-						// If it starts with ```, remove it
-						if (last_line_text.strip().has_prefix("```")) {
-							this.remove_last_source_view_line();
-						}
-					}
-				}
-			}
-			
-			this.end_block(response); // End code block first
-			this.content_state = ContentState.NONE; // Set to NONE after ending
-			// Reset source view references as we're no longer working with the code block
-			this.current_source_view = null;
-			this.current_source_buffer = null;
-			// Add newline to current buffer after closing code block
-			var buffer = this.get_current_buffer();
-			if (buffer != null) {
-				Gtk.TextIter end_iter;
-				buffer.get_end_iter(out end_iter);
-				buffer.insert(ref end_iter, "\n", -1);
-			}
-		}
-		
-		/**
-		* Removes the last line from the source view buffer.
-		*/
-		private void remove_last_source_view_line()
-		{
-			if (this.current_source_buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter start_iter, end_iter;
-			this.current_source_buffer.get_bounds(out start_iter, out end_iter);
-			if (start_iter.equal(end_iter)) {
-				return; // Buffer is empty
-			}
-			
-			// Get line count and go directly to the start of the last line
-			int line_count = this.current_source_buffer.get_line_count();
-			if (line_count <= 1) {
-				// Single line or empty - clear entire buffer
-				this.current_source_buffer.delete(ref start_iter, ref end_iter);
-				return;
-			}
-			
-			// Get iterator at start of last line (line_count - 1 is the last line, 0-indexed)
-			Gtk.TextIter last_line_start;
-			this.current_source_buffer.get_iter_at_line(out last_line_start, line_count - 1);
-			
-			// Delete from start of last line to end
-			this.current_source_buffer.delete(ref last_line_start, ref end_iter);
-		}
 		
 		/**
 		* Handles newline when in THINKING state.
@@ -585,39 +467,9 @@ namespace OLLMchatGtk
 		*/
 		private void process_new_line_content(OLLMchat.Response.Chat response)
 		{
-			// Check for code block marker (trim first to handle spaces before ```)
-			if (this.last_line.strip().has_prefix("```")) {
-				// Extract language before ending content block
-				string language = "";
-				if (this.last_line.strip().length > 3) {
-					language = this.last_line.strip().substring(3).strip();
-				}
-				// Use language mapping kludge to get reasonable language value
-				var mapped_language = this.map_language_id(language);
-				this.code_block_language = mapped_language ?? language;
-				
-				// TODO: Remove the marker from the buffer (it was already rendered)
-				// Temporarily disabled - will revisit later
-				// if (this.current_source_view == null) {
-				// 	// Remove last_line.length characters from the end of rendered content
-				// 	Gtk.TextIter start_iter, end_iter;
-				// 	this.buffer.get_iter_at_mark(out end_iter, this.renderer.end_mark);
-				// 	start_iter = end_iter;
-				// 	start_iter.backward_chars(this.last_line.length);
-				// 	this.buffer.delete(ref start_iter, ref end_iter);
-				// 	// Update renderer's end_mark to point to the new end position (so end_block() reads correct position)
-				// 	this.buffer.move_mark(this.renderer.end_mark, start_iter);
-				// }
-				// Now end the content block and start code block
-				this.end_block(response);
-				this.content_state = ContentState.CODE_BLOCK;
-				this.start_block(response);
-				return;
-			}
-			
-			// Empty lines are just regular content - add newline and continue
+			// Code blocks are now automatically handled by Render/RenderSourceView
+			// Just add newline - Render will detect and handle code blocks
 			this.renderer.add("\n");
-			// No need to update end_mark anymore (box model handles it)
 		}
 		/**
 		* Starts a new block based on current state.
@@ -646,21 +498,6 @@ namespace OLLMchatGtk
 					
 					this.last_chunk_start = 0;
 					return;
-						
-				case ContentState.CODE_BLOCK:
-					// Use the language already extracted in process_new_line_content
-					// (code_block_language should already be set)
-					if (this.code_block_language == null) {
-						// Fallback: extract from last_line if not already set (trim first to handle spaces)
-						string language = "";
-						if (this.last_line.strip().length > 3) {
-							language = this.last_line.strip().substring(3).strip();
-						}
-						var mapped_language = this.map_language_id(language);
-						this.code_block_language = mapped_language ?? language;
-					}
-					this.open_code_block(this.code_block_language ?? "");
-				return;
 						
 				case ContentState.NONE:
 					// Nothing to start
@@ -694,10 +531,6 @@ namespace OLLMchatGtk
 					// Reset content_state to NONE so new blocks can be started
 					this.content_state = ContentState.NONE;
 					return;
-				case ContentState.CODE_BLOCK:
-					this.close_code_block();
-					this.code_block_language = null;
-					return;
 					
 				case ContentState.NONE:
 					// Nothing to end
@@ -723,12 +556,6 @@ namespace OLLMchatGtk
 				if (response != null) {
 					this.end_block(response);
 				}
-			}
-
-			// If we're still in a code block, close it
-			if (this.content_state == ContentState.CODE_BLOCK) {
-				this.close_code_block();
-				this.code_block_language = null;
 			}
 
 			// Display performance metrics if response is available and done
@@ -758,9 +585,6 @@ namespace OLLMchatGtk
 			this.is_assistant_message = false;
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
-			this.code_block_language = null;
-			this.current_source_view = null;
-			this.current_source_buffer = null;
 		}
 
 		/**
@@ -838,13 +662,8 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
 			
-			// Clear source view infos
-			this.source_view_infos.clear();
-			
-			// Reset markdown renderer state if there's an active block
-			if (this.renderer.current_textview != null) {
-				this.renderer.end_block();
-			}
+			// Clear renderer state (includes sourceview handlers)
+			this.renderer.clear();
 			
 			// Clear all widgets from the box
 			var children = this.text_view_box.get_first_child();
@@ -858,9 +677,6 @@ namespace OLLMchatGtk
 			this.last_chunk_start = 0;
 			this.is_assistant_message = false;
 			this.content_state = ContentState.NONE;
-			this.code_block_language = null;
-			this.current_source_view = null;
-			this.current_source_buffer = null;
 			this.clear_waiting_indicator();
 		}
 
@@ -1170,331 +986,6 @@ namespace OLLMchatGtk
 			});
 		}
 
-		/**
-		* Scrolls the current SourceView to the bottom.
-		* 
-		* This is used when streaming code blocks to keep the latest content visible.
-		*/
-		private void scroll_source_view_to_bottom()
-		{
-			if (this.current_source_view == null || this.current_source_buffer == null) {
-				return;
-			}
-			
-			// Use Idle to scroll after layout is updated
-			GLib.Idle.add(() => {
-				if (this.current_source_view == null || this.current_source_buffer == null) {
-					return false;
-				}
-				
-				// Get the end of the buffer
-				Gtk.TextIter end_iter;
-				this.current_source_buffer.get_end_iter(out end_iter);
-				
-				// Scroll the SourceView to show the end
-				this.current_source_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 0.0);
-			
-				return false;
-			});
-		}
-
-		/**
-		 * Maps language identifiers to GtkSource language IDs.
-		 * Handles common mistakes like 'val' -> 'vala', and matches val* patterns.
-		 * 
-		 * @param lang_id The language identifier from markdown code block
-		 * @return The mapped language ID for GtkSource, or null if not found
-		 */
-		private string? map_language_id(string lang_id)
-		{
-			// Map val* patterns to vala (handles val, vala, valac, etc.)
-			if (lang_id.has_prefix("val")) {
-				return "vala";
-			}
-			return lang_id;
-		}
-
-		/**
-		 * Creates a SourceView widget for code blocks.
-		 * 
-		 * @param language_id The language identifier for syntax highlighting
-		 * @return A configured SourceView widget
-		 */
-		[CCode (return_value_type = "GtkSourceView*", transfer = "full")]
-		public GtkSource.View create_source_view(string? language_id)
-		{
-			// Create buffer with language if specified
-			GtkSource.Buffer source_buffer;
-			if (language_id != null && language_id != "") {
-				var mapped_id = this.map_language_id(language_id);
-				var lang_manager = GtkSource.LanguageManager.get_default();
-				var language = lang_manager.get_language(mapped_id);
-				if (language != null) {
-					source_buffer = new GtkSource.Buffer.with_language(language);
-				} else {
-					source_buffer = new GtkSource.Buffer(null);
-				}
-			} else {
-				source_buffer = new GtkSource.Buffer(null);
-			}
-
-			// Create view
-			var source_view = new GtkSource.View() {
-				editable = false,
-				cursor_visible = false,
-				show_line_numbers = false,
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = false,
-				can_focus = false,  // Prevent sourceview from grabbing focus
-				focus_on_click = false,  // Prevent focus on click
-				css_classes = { "code-editor" }
-			};
-			source_view.set_buffer(source_buffer);
-			
-			// Prevent clicks in sourceview from causing textview to scroll
-			// Store scroll position before any interaction and restore it
-			var click_controller = new Gtk.GestureClick();
-			double stored_scroll_pos = 0.0;
-			click_controller.pressed.connect((n_press, x, y) => {
-				// Store current scroll position
-				var vadjustment = this.scrolled_window.vadjustment;
-				if (vadjustment != null) {
-					stored_scroll_pos = vadjustment.value;
-				}
-			});
-			click_controller.released.connect((n_press, x, y) => {
-				// Restore scroll position after click to prevent jump
-				var vadjustment = this.scrolled_window.vadjustment;
-				if (vadjustment != null) {
-					GLib.Idle.add(() => {
-						if (vadjustment != null) {
-							vadjustment.value = stored_scroll_pos;
-						}
-						return false;
-					});
-				}
-			});
-			source_view.add_controller(click_controller);
-			
-			// Connect to buffer changes to ensure TextView scrolls correctly
-			// When SourceView content changes, scroll TextView to show the bottom of the SourceView
-			source_buffer.changed.connect(() => {
-				// Use Idle to scroll after layout is updated
-				GLib.Idle.add(() => {
-					// Scroll to the end mark which is positioned right after the SourceView widget
-					// With box model, just scroll to bottom
-					this.scroll_to_bottom();
-					return false;
-				});
-			});
-
-			// Set monospace font for code display using CSS
-			// CSS is loaded from resource file in constructor
-			source_view.add_css_class("code-editor");
-
-			return source_view;
-		}
-
-		/**
-		 * Handles opening a code block by creating and inserting a SourceView widget.
-		 */
-		private void open_code_block(string language_id)
-		{
-			// Create SourceView widget
-			this.current_source_view = this.create_source_view(language_id);
-			this.current_source_buffer = (GtkSource.Buffer) this.current_source_view.buffer;
-
-			// Create a vertical container box for button header and SourceView
-			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = false
-			};
-			
-			// Create horizontal box for button at top-right
-			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true,
-				vexpand = false
-			};
-			
-			// Add spacer to push button to the right
-			button_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true
-			});
-			
-			// Create Copy to Clipboard button with icon
-			// Capture the specific source_buffer for this code block (not the class member)
-			var source_buffer_for_button = this.current_source_buffer;
-			var copy_button = new Gtk.Button() {
-				icon_name = "edit-copy-symbolic",
-				tooltip_text = "Copy to Clipboard",
-				hexpand = false,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 2,
-				can_focus = false,  // Prevent button from grabbing focus
-				focus_on_click = false  // Prevent focus on click
-			};
-			
-			
-			// Connect button click handler - use the captured buffer, not the class member
-			copy_button.clicked.connect(() => {
-				// Store current scroll position to restore it after copy
-				var vadjustment = this.scrolled_window.vadjustment;
-				double scroll_position = 0.0;
-				if (vadjustment != null) {
-					scroll_position = vadjustment.value;
-				}
-				
-				// Copy to clipboard
-				this.copy_source_view_to_clipboard(source_buffer_for_button);
-				
-				// Restore scroll position after a brief delay to prevent jump
-				GLib.Idle.add(() => {
-					if (vadjustment != null) {
-						vadjustment.value = scroll_position;
-					}
-					return false;
-				});
-			});
-			
-			// Track expanded state for this code block
-			bool is_expanded = false;
-			
-			// Create Expand/Collapse button with icon
-			var expand_button = new Gtk.Button() {
-				icon_name = "pan-down-symbolic",
-				tooltip_text = "Expand",
-				hexpand = false,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 2,
-				can_focus = false,
-				focus_on_click = false
-			};
-			
-			
-			// Create ScrolledWindow for the SourceView with height constraints
-			var max_height = this.get_max_collapsed_height();
-			if (max_height < 0) {
-				max_height = 300; // Fallback to 300px if we can't determine window height
-			}
-			
-			var code_scrolled = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = false
-			};
-			code_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-			
-			// Set initial height to 50% of window
-			code_scrolled.set_size_request(-1, max_height);
-			
-			// Store source view info for expand/collapse functionality
-			var source_view_info = new SourceViewInfo(this.current_source_view, code_scrolled, expand_button);
-			this.source_view_infos.add(source_view_info);
-			
-			// Connect expand/collapse button click handler
-			expand_button.clicked.connect(() => {
-				is_expanded = !is_expanded;
-				if (is_expanded) {
-					expand_button.icon_name = "pan-up-symbolic";
-					expand_button.tooltip_text = "Collapse";
-					// Expand to show all content - remove size constraint and allow expansion
-					GLib.Idle.add(() => {
-						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.EXPAND);
-					});
-				} else {
-					expand_button.icon_name = "pan-down-symbolic";
-					expand_button.tooltip_text = "Expand";
-					// Recalculate natural height and set collapsed height
-					GLib.Idle.add(() => {
-						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.COLLAPSE);
-					});
-				}
-			});
-			
-			// Add buttons to button box (right side)
-			button_box.append(copy_button);
-			button_box.append(expand_button);
-			
-			// Add button box to container
-			container_box.append(button_box);
-			
-			// Set SourceView properties
-			this.current_source_view.hexpand = true;
-			this.current_source_view.vexpand = false; // Don't expand vertically - let ScrolledWindow control height
-			
-			// Add SourceView to ScrolledWindow
-			code_scrolled.set_child(this.current_source_view);
-			
-			// Add ScrolledWindow to container
-			container_box.append(code_scrolled);
-
-			// Wrap in Frame for visibility and styling
-			var frame = new Gtk.Frame(null) {
-				hexpand = true,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 5
-			};
-			frame.set_child(container_box);
-			
-			// Style the frame with white background and rounded corners
-			frame.add_css_class("code-block-box");
-
-			// Add frame directly to renderer.box
-			// Track this frame for width updates
-			this.message_widgets.add(frame);
-			
-			// Add frame to box
-			this.renderer.box.append(frame);
-			
-			frame.set_visible(true);
-			
-			// Scroll to bottom to show new content
-			this.scroll_to_bottom();
-			
-			// No anchor needed for box-based approach
-			this.code_block_end_mark = null;
-
-			// Set reasonable size for code block (smaller for single-line content)
-			this.current_source_view.height_request = 25;
-			this.current_source_view.set_visible(true);
-		}
-
-		/**
-		* Copies the content of a SourceView buffer to the clipboard.
-		* 
-		* @param source_buffer The SourceView buffer to copy from
-		*/
-		private void copy_source_view_to_clipboard(GtkSource.Buffer? source_buffer)
-		{
-			if (source_buffer == null) {
-				return;
-			}
-			
-			// Get all text from the buffer
-			Gtk.TextIter start_iter, end_iter;
-			source_buffer.get_start_iter(out start_iter);
-			source_buffer.get_end_iter(out end_iter);
-			string text = source_buffer.get_text(start_iter, end_iter, false);
-			
-			if (text.length == 0) {
-				return;
-			}
-			
-			// Get the clipboard and set the text
-			var display = Gdk.Display.get_default();
-			if (display == null) {
-				return;
-			}
-			
-			var clipboard = display.get_clipboard();
-			clipboard.set_text(text);
-		}
 
 		/**
 		* Copies text to the clipboard.
@@ -1606,39 +1097,6 @@ namespace OLLMchatGtk
 			return false;
 		}
 
-		/**
-		 * Handles closing a code block by cleaning up state.
-		 */
-		private void close_code_block()
-		{
-			// Debug: Print code block being finalized
-			string lang_str = (this.code_block_language != null) ? this.code_block_language : "unknown";
-			stdout.printf("[ChatView] Finalizing CODE_BLOCK: language='%s'\n", lang_str);
-			
-			// Find the source view info for the current source view and resize based on content rules
-			SourceViewInfo? info_to_resize = null;
-			foreach (var info in this.source_view_infos) {
-				if (info.source_view == this.current_source_view) {
-					info_to_resize = info;
-					break;
-				}
-			}
-			
-			// Resize based on content rules when code block is complete
-			if (info_to_resize != null && info_to_resize.source_view != null) {
-				GLib.Idle.add(() => {
-					return this.resize_widget_callback(info_to_resize.source_view, info_to_resize.scrolled_window, ResizeMode.FINAL, info_to_resize.expand_button);
-				});
-			}
-			
-			// With box model, no need to update marks - Render handles it
-			// Clean up code block marks (no longer needed with box model)
-			this.code_block_end_mark = null;
-
-			// SourceView widget will remain in TextView, just stop writing to it
-			this.current_source_view = null;
-			this.current_source_buffer = null;
-		}
 
 		/**
 		 * Updates the width of a single user message widget to match available space.
