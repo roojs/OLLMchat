@@ -84,6 +84,8 @@ namespace Markdown
 		public virtual void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
 		public virtual void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
 		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
+		public virtual void on_code_text(string text) {}
+		public virtual void on_code_block(bool is_start, string lang) {}
 		public virtual void on_quote(bool is_start) {}
 		public virtual void on_hr() {}
 		public virtual void on_a(bool is_start, string href, string title, bool is_autolink) {}

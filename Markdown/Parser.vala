@@ -45,11 +45,22 @@ namespace Markdown
 		PARAGRAPH,
 		UNORDERED_LIST,
 		ORDERED_LIST,
+		ORDERED_LIST_1,
+		ORDERED_LIST__1,
+		ORDERED_LIST___1,
+		ORDERED_LIST____1,
+		ORDERED_LIST_____1,
+		ORDERED_LIST_11,
+		ORDERED_LIST__11,
+		ORDERED_LIST___11,
+		ORDERED_LIST____11,
+		ORDERED_LIST_____11,
 		CONTINUE_LIST,
 		TASK_LIST,
 		DEFINITION_LIST,
 		INDENTED_CODE,
-		FENCED_CODE,
+		FENCED_CODE_QUOTE,
+		FENCED_CODE_TILD,
 		BLOCKQUOTE,
 		TABLE
     }
@@ -140,35 +151,35 @@ namespace Markdown
 			// Need both "1." and "11." to handle single and double digit numbers
 			block_map["1"] = FormatType.INVALID;
 			block_map["1."] = FormatType.INVALID;
-			block_map["1. "] = FormatType.ORDERED_LIST;
+			block_map["1. "] = FormatType.ORDERED_LIST_1;
 			block_map["11"] = FormatType.INVALID;
 			block_map["11."] = FormatType.INVALID;
-			block_map["11. "] = FormatType.ORDERED_LIST;
+			block_map["11. "] = FormatType.ORDERED_LIST_11;
 			// Indented versions: 1-4 spaces before number
 			block_map[" 1"] = FormatType.INVALID;
 			block_map[" 1."] = FormatType.INVALID;
-			block_map[" 1. "] = FormatType.ORDERED_LIST;
+			block_map[" 1. "] = FormatType.ORDERED_LIST__1;
 			block_map["  1"] = FormatType.INVALID;
 			block_map["  1."] = FormatType.INVALID;
-			block_map["  1. "] = FormatType.ORDERED_LIST;
+			block_map["  1. "] = FormatType.ORDERED_LIST___1;
 			block_map["   1"] = FormatType.INVALID;
 			block_map["   1."] = FormatType.INVALID;
-			block_map["   1. "] = FormatType.ORDERED_LIST;
+			block_map["   1. "] = FormatType.ORDERED_LIST____1;
 			block_map["    1"] = FormatType.INVALID;
 			block_map["    1."] = FormatType.INVALID;
-			block_map["    1. "] = FormatType.ORDERED_LIST;
+			block_map["    1. "] = FormatType.ORDERED_LIST_____1;
 			block_map[" 11"] = FormatType.INVALID;
 			block_map[" 11."] = FormatType.INVALID;
-			block_map[" 11. "] = FormatType.ORDERED_LIST;
+			block_map[" 11. "] = FormatType.ORDERED_LIST__11;
 			block_map["  11"] = FormatType.INVALID;
 			block_map["  11."] = FormatType.INVALID;
-			block_map["  11. "] = FormatType.ORDERED_LIST;
+			block_map["  11. "] = FormatType.ORDERED_LIST___11;
 			block_map["   11"] = FormatType.INVALID;
 			block_map["   11."] = FormatType.INVALID;
-			block_map["   11. "] = FormatType.ORDERED_LIST;
+			block_map["   11. "] = FormatType.ORDERED_LIST____11;
 			block_map["    11"] = FormatType.INVALID;
 			block_map["    11."] = FormatType.INVALID;
-			block_map["    11. "] = FormatType.ORDERED_LIST;
+			block_map["    11. "] = FormatType.ORDERED_LIST_____11;
 			
 			// Continue list: 2 spaces to continue list items
 			block_map[" "] = FormatType.INVALID;
@@ -181,28 +192,28 @@ namespace Markdown
 			// (handled by pattern matching)
 			
 			// Indented Code: 4 spaces or 1 tab
-			block_map["   "] = FormatType.INVALID;
-			block_map["    "] = FormatType.INDENTED_CODE;
-			block_map["\t"] = FormatType.INDENTED_CODE;
+			// block_map["   "] = FormatType.INVALID;
+			// block_map["    "] = FormatType.INDENTED_CODE;
+			// block_map["\t"] = FormatType.INDENTED_CODE;
 			
 			// Fenced Code: ``` or ~~~ with optional language
 			block_map["`"] = FormatType.INVALID;
 			block_map["``"] = FormatType.INVALID;
-			block_map["```"] = FormatType.FENCED_CODE;
+			block_map["```"] = FormatType.FENCED_CODE_QUOTE;
 			block_map["~"] = FormatType.INVALID;
 			block_map["~~"] = FormatType.INVALID;
-			block_map["~~~"] = FormatType.FENCED_CODE;
+			block_map["~~~"] = FormatType.FENCED_CODE_TILD;
 			
 			// Code Attributes: ```python, ``` {.language-python}
 			// (handled as part of FENCED_CODE processing)
 			
 			// Blockquotes: > quote text
-			block_map[">"] = FormatType.INVALID;
-			block_map["> "] = FormatType.BLOCKQUOTE;
+			// block_map[">"] = FormatType.INVALID;
+			// block_map["> "] = FormatType.BLOCKQUOTE;
 			
 			// Tables: | Header | Header | with | --- | --- | (GFM)
-			block_map["|"] = FormatType.INVALID;
-			block_map["| "] = FormatType.TABLE;
+			// block_map["|"] = FormatType.INVALID;
+			// block_map["| "] = FormatType.TABLE;
 		} 
 
 		
@@ -212,6 +223,8 @@ namespace Markdown
 		private string leftover_chunk = "";
 		private bool in_literal = false;
 		private FormatType last_line_block = FormatType.NONE;
+		private FormatType current_block = FormatType.NONE;
+		private bool at_line_start = true;
 	
 		/**
 		 * Creates a new Parser instance.
@@ -242,6 +255,8 @@ namespace Markdown
 			this.leftover_chunk = "";
 			this.state_stack.clear();
 			this.last_line_block = FormatType.NONE;
+			this.current_block = FormatType.NONE;
+			this.at_line_start = true;
 		}
 
 		/**
@@ -251,13 +266,16 @@ namespace Markdown
 		 * @param chunk The text chunk to examine
 		 * @param chunk_pos The position in the chunk to check
 		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @param matched_format Output parameter for the matched format type (NONE if no match)
 		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
 		 */
 		private int peekFormat(
 			string chunk, 
 			int chunk_pos, 
-			bool is_end_of_chunks
+			bool is_end_of_chunks,
+			out FormatType matched_format
 		) {
+			matched_format = FormatType.NONE;
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
 				return 0;
@@ -290,8 +308,8 @@ namespace Markdown
 					return -1; // Might be longer match
 				}
 				// At end of chunks - check if single char FormatType is INVALID → return 0
-				 
-				if (format_map.get(single_char) == FormatType.INVALID) {
+				matched_format = format_map.get(single_char);
+				if (matched_format == FormatType.INVALID) {
 					return 0;
 				}
 				return 1; // Definitive single char match
@@ -299,6 +317,7 @@ namespace Markdown
 			
 			// Loop-based sequence matching
 			int max_match_length = 0;
+			int char_count = 0;
 			var sequence = "";
 			
 			for (var cp = chunk_pos; cp < chunk.length; ) {
@@ -306,6 +325,7 @@ namespace Markdown
 				var char_at_cp = chunk.get_char(cp);
 				sequence += char_at_cp.to_string();
 				cp += char_at_cp.to_string().length;
+				char_count++;
 				
 				// Optimize: skip has_key check if last character is alphabetic
 				var last_char = char_at_cp;
@@ -315,16 +335,10 @@ namespace Markdown
 				}
 				
 				// Sequence is in format_map
+				matched_format = format_map.get(sequence);
  				
 				// If FormatType is NOT INVALID, update max_match_length
-				if (format_map.get(sequence) != FormatType.INVALID) {
-					// Count characters, not bytes
-					int char_count = 0;
-					for (var i = chunk_pos; i < cp; ) {
-						var char_at_i = chunk.get_char(i);
-						i += char_at_i.to_string().length;
-						char_count++;
-					}
+				if (matched_format != FormatType.INVALID) {
 					max_match_length = char_count;
 				}
 			}
@@ -346,13 +360,21 @@ namespace Markdown
 		 * @param chunk The text chunk to examine
 		 * @param chunk_pos The position in the chunk to check
 		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @param lang_out Output parameter for fenced code language (empty string if not present)
+		 * @param matched_block Output parameter for the matched block type (NONE if no match)
 		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
 		 */
 		private int peekBlock(
 			string chunk, 
 			int chunk_pos, 
-			bool is_end_of_chunks
+			bool is_end_of_chunks,
+			out string lang_out,
+			out FormatType matched_block,
+			out int byte_length
 		) {
+			lang_out = "";
+			matched_block = FormatType.NONE;
+			byte_length = 0;
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
 				return 0;
@@ -375,14 +397,17 @@ namespace Markdown
 					return -1; // Might be longer match
 				}
 				// At end of chunks - check if single char FormatType is INVALID → return 0
-				if (block_map.get(single_char) == FormatType.INVALID) {
+				matched_block= block_map.get(single_char);
+				if (matched_block == FormatType.INVALID) {
 					return 0;
 				}
+				byte_length = next_pos - chunk_pos;
 				return 1; // Definitive single char match
 			}
 			
 			// Loop-based sequence matching
 			int max_match_length = 0;
+			int char_count = 0;
 			var sequence = "";
 			
 			for (var cp = chunk_pos; cp < chunk.length; ) {
@@ -391,6 +416,7 @@ namespace Markdown
 				// Normalize digits to '1' for ordered list matching
 				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
 				cp += char_at_cp.to_string().length;
+				char_count++;
 				
 				// Optimize: skip has_key check if last character is alphabetic
 				// Note: we allow digits and spaces as they can be part of block markers
@@ -402,26 +428,63 @@ namespace Markdown
 				
 				// Sequence is in block_map
 				
-				var block_type = block_map.get(sequence);
+				matched_block = block_map.get(sequence);
+				
+				// Special handling for fenced code blocks - need to see newline
+				if (matched_block == FormatType.FENCED_CODE_QUOTE
+					 || matched_block == FormatType.FENCED_CODE_TILD) {
+					// Check if chunk contains a newline - if not, need more data
+					if (!chunk.contains("\n")) {
+						return -1;
+					}
+					
+					// Find the newline position
+					var newline_pos = chunk.index_of_char('\n', chunk_pos);
+					if (newline_pos == -1) {
+						return -1;
+					}
+					
+					// Extract language if present (substring from after fence to before \n)
+					var newline_char = chunk.get_char(newline_pos);
+					var newline_byte_len = newline_char.to_string().length;
+					byte_length = newline_pos + newline_byte_len - chunk_pos;
+					if (cp >= newline_pos) {
+						// No language, just return the length to consume
+						return newline_pos - chunk_pos + 1;
+					}
+					
+					var unstripped_lang = chunk.substring(cp, newline_pos - cp);
+					
+					lang_out = unstripped_lang.strip();
+					
+					// Return the length to consume: from chunk_pos to after newline
+					// Use byte positions directly
+					return newline_pos - chunk_pos + 1;
+				}
 				
 				// Check if CONTINUE_LIST is valid (only if last line was ORDERED_LIST or UNORDERED_LIST)
-				if (block_type == FormatType.CONTINUE_LIST) {
-					if (this.last_line_block != FormatType.ORDERED_LIST && this.last_line_block != FormatType.UNORDERED_LIST) {
+				if (matched_block == FormatType.CONTINUE_LIST) {
+					if (this.last_line_block != FormatType.ORDERED_LIST && 
+					    this.last_line_block != FormatType.ORDERED_LIST_1 &&
+					    this.last_line_block != FormatType.ORDERED_LIST__1 &&
+					    this.last_line_block != FormatType.ORDERED_LIST___1 &&
+					    this.last_line_block != FormatType.ORDERED_LIST____1 &&
+					    this.last_line_block != FormatType.ORDERED_LIST_____1 &&
+					    this.last_line_block != FormatType.ORDERED_LIST_11 &&
+					    this.last_line_block != FormatType.ORDERED_LIST__11 &&
+					    this.last_line_block != FormatType.ORDERED_LIST___11 &&
+					    this.last_line_block != FormatType.ORDERED_LIST____11 &&
+					    this.last_line_block != FormatType.ORDERED_LIST_____11 &&
+					    this.last_line_block != FormatType.UNORDERED_LIST) {
 						// CONTINUE_LIST not valid - return longest valid match found (0 if none)
 						return max_match_length;
 					}
 				}
 				
 				// If FormatType is NOT INVALID, update max_match_length
-				if (block_type != FormatType.INVALID) {
-					// Count characters, not bytes
-					int char_count = 0;
-					for (var i = chunk_pos; i < cp; ) {
-						var char_at_i = chunk.get_char(i);
-						i += char_at_i.to_string().length;
-						char_count++;
-					}
+				if (matched_block != FormatType.INVALID) {
 					max_match_length = char_count;
+					byte_length = cp - chunk_pos;
 				}
 			}
 			
@@ -459,18 +522,16 @@ namespace Markdown
 				return 1; // Valid HTML tag start
 			}
 			
-			return 0; // Not a valid HTML tag start
-		}
+		return 0; // Not a valid HTML tag start
+	}
 
-		 
-		 
 		/**
-		 * Parses text and calls specific callbacks on Render.
-		 * Uses peekFormat to detect format sequences.
-		 * 
-		 * @param in_chunk The markdown text to parse
-		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive (no more data coming)
-		 */
+		* Parses text and calls specific callbacks on Render.
+		* Uses peekFormat to detect format sequences.
+		* 
+		* @param in_chunk The markdown text to parse
+		* @param is_end_of_chunks If true, format markers at the end are treated as definitive (no more data coming)
+		*/
 		public void add(string in_chunk, bool is_end_of_chunks = false)
 		{
 			GLib.debug("add(%s)", in_chunk);
@@ -482,6 +543,96 @@ namespace Markdown
 			
 			while (chunk_pos < chunk.length) {
 				var c = chunk.get_char(chunk_pos);
+				
+				// Handle newline - end current block and prepare for next line
+				if (c == '\n') {
+					// End current block if any
+					if (this.current_block != FormatType.NONE) {
+						this.do_block(false, this.current_block);
+						this.last_line_block = this.current_block;
+						this.current_block = FormatType.NONE;
+					}
+					
+					// Set at_line_start for next iteration
+					this.at_line_start = true;
+					chunk_pos += c.to_string().length;
+					escape_next = false;
+					continue;
+				}
+				
+				// If we're in a fenced code block, collect text until closing fence
+				if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
+					var fence_result = this.peekFencedEnd(chunk, chunk_pos, this.current_block, is_end_of_chunks);
+					if (fence_result == -1) {
+						// Need more data - standard -1 behavior: save to leftover_chunk and return
+						this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						return;
+					}
+					if (fence_result > 0) {
+						// Found closing fence - end the block
+						// Find the newline after the fence
+						var newline_pos = chunk.index_of_char('\n', chunk_pos);
+						if (newline_pos != -1) {
+							// Skip to after the newline
+							var newline_char = chunk.get_char(newline_pos);
+							chunk_pos = newline_pos + newline_char.to_string().length;
+						} else {
+							// No newline found (shouldn't happen if is_closing_fence validated correctly)
+							chunk_pos += 3;
+						}
+						
+						this.do_block(false, this.current_block);
+						this.last_line_block = this.current_block;
+						this.current_block = FormatType.NONE;
+						this.at_line_start = true;
+						continue;
+					}
+					
+					// fence_result == 0: not a closing fence
+					// Check if there is a line break in the code
+					var newline_pos = chunk.index_of_char('\n', chunk_pos);
+					if (newline_pos == -1) {
+						// No line break - send the rest of the string to on_code_text and return
+						var code_text = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						if (code_text.length > 0) {
+							this.renderer.on_code_text(code_text);
+						}
+						return;
+					}
+					
+					// Send everything before the line break to on_code_text
+					var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+					if (code_text.length > 0) {
+						this.renderer.on_code_text(code_text);
+					}
+					// Move pos to after newline and continue
+					chunk_pos = newline_pos + 1;
+					continue;
+				}
+				
+				// At line start - check for block markers
+				if (this.at_line_start) {
+					var saved_chunk_pos = chunk_pos;
+					var block_result = this.peekBlockHandler(chunk, chunk_pos, is_end_of_chunks);
+					if (block_result == -1) {
+						// Need more data - standard -1 behavior: save to leftover_chunk and return
+						this.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
+						return;
+					}
+					if (block_result == 0) {
+						// No block detected - start a paragraph
+						if (this.current_block == FormatType.NONE) {
+							this.current_block = FormatType.PARAGRAPH;
+							this.do_block(true, FormatType.PARAGRAPH);
+						}
+						this.at_line_start = false;
+						continue;
+					}
+					// Block processed - advance chunk_pos by the returned byte length
+					chunk_pos += block_result;
+					// After block handling, continue with normal processing
+					continue;
+				}
 				
 				if (escape_next) {
 					str += c.to_string();
@@ -497,7 +648,8 @@ namespace Markdown
 				}
 				
 				// Use peekFormat to detect format sequences (needed even in literal mode for backtick toggle)
-				var match_len = this.peekFormat(chunk, chunk_pos, is_end_of_chunks);
+				FormatType matched_format = FormatType.NONE;
+				var match_len = this.peekFormat(chunk, chunk_pos, is_end_of_chunks, out matched_format);
 				
 				if (match_len == -1) {
 					// Cannot determine - need more characters
@@ -519,18 +671,15 @@ namespace Markdown
 				this.renderer.on_text(str);
 				str = "";
 				
-				// Get the format type from the matched sequence
-				var matched_sequence = "";
+				// Calculate byte length for advancing chunk_pos
 				var seq_pos = chunk_pos;
 				for (int i = 0; i < match_len; i++) {
 					var ch = chunk.get_char(seq_pos);
-					matched_sequence += ch.to_string();
 					seq_pos += ch.to_string().length;
 				}
-				var format_type = format_map.get(matched_sequence);
 				
 				// Handle HTML specially
-				if (format_type == FormatType.HTML) {
+				if (matched_format == FormatType.HTML) {
 					var html_res = this.peekHTML(chunk, seq_pos, is_end_of_chunks);
 					
 					if (html_res == -1) {
@@ -541,7 +690,7 @@ namespace Markdown
 					
 					if (html_res == 0) {
 						// Not a valid HTML tag start - treat as text
-						str += matched_sequence;
+						str += chunk.substring(chunk_pos, seq_pos - chunk_pos);
 						chunk_pos = seq_pos;
 						continue;
 					}
@@ -564,14 +713,15 @@ namespace Markdown
 				}
 				
 				// Handle other format types
-				this.got_format(format_type);
+				this.got_format(matched_format);
 				chunk_pos = seq_pos;
 			}
 			
 			// Flush any remaining text
 			this.renderer.on_text(str);
 		}
-		
+	
+
 		/**
 		 * Handles format markers by checking the stack.
 		 * If the same format is on top of stack, removes it and calls on_end.
@@ -585,45 +735,54 @@ namespace Markdown
 			if (this.state_stack.size == 0 || this.state_stack.get(this.state_stack.size - 1) != format_type) {
 				// Different state - add to stack and call do_XXX
 				this.state_stack.add(format_type);
-				this.do_format_start(format_type);
+				this.do_format(true, format_type);
 				return;
 			}
 			
 			// Same state - remove from stack and call do_end
 			this.state_stack.remove_at(this.state_stack.size - 1);
-			this.do_format_end(format_type);
+			this.do_format(false, format_type);
 		}
 		
 		/**
-		 * Calls the appropriate end method based on format type.
-		 * For BOLD_ITALIC, calls on_em(false) then on_strong(false) in reverse order.
+		 * Calls the appropriate renderer method based on format type.
+		 * For BOLD_ITALIC, handles both bold and italic states correctly.
 		 * 
-		 * @param format_type The format type to end
+		 * @param is_start True to start the format, false to end it
+		 * @param format_type The format type
 		 */
-		private void do_format_end(FormatType format_type)
+		private void do_format(bool is_start, FormatType format_type)
 		{
-			if (format_type == FormatType.BOLD_ITALIC) {
-				// BOLD_ITALIC opened two states, so close both in reverse order
-				this.renderer.on_em(false); // Close italic
-				this.renderer.on_strong(false); // Close bold
-				return;
-			}
-			
-			// Single state, close once
 			switch (format_type) {
+				case FormatType.BOLD_ITALIC:
+					if (is_start) {
+						// Push both bold and italic states
+						this.renderer.on_strong(true);
+						this.renderer.on_em(true);
+					} else {
+						// BOLD_ITALIC opened two states, so close both in reverse order
+						this.renderer.on_em(false); // Close italic
+						this.renderer.on_strong(false); // Close bold
+					}
+					break;
 				case FormatType.ITALIC:
-					this.renderer.on_em(false);
+					this.renderer.on_em(is_start);
 					break;
 				case FormatType.BOLD:
-					this.renderer.on_strong(false);
+					this.renderer.on_strong(is_start);
 					break;
 				case FormatType.CODE:
-					this.renderer.on_code_span(false);
+					this.renderer.on_code_span(is_start);
 					break;
 				case FormatType.STRIKETHROUGH:
-					this.renderer.on_del(false);
+					this.renderer.on_del(is_start);
 					break;
 				case FormatType.HTML:
+					if (is_start) {
+						// HTML needs special handling - for now use on_other
+						// TODO: Parse HTML tag and attributes
+						this.renderer.on_other(true, "html");
+					}
 					// HTML closing is handled in add_html()
 					break;
 				case FormatType.INVALID:
@@ -636,54 +795,251 @@ namespace Markdown
 		}
 		
 		/**
-		 * Calls the appropriate renderer method based on format type.
-		 * Highlights formats that don't have renderer support.
+		 * Handles block detection when at line start.
 		 * 
-		 * @param format_type The format type to start
+		 * @param chunk The text chunk
+		 * @param chunk_pos Current position
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @return -1 if need more data, 0 if no block detected, >0 byte length to advance if block processed
 		 */
-		private void do_format_start(FormatType format_type)
+		private int peekBlockHandler(string chunk, int chunk_pos, bool is_end_of_chunks)
 		{
-			switch (format_type) {
-				case FormatType.ITALIC:
-					this.renderer.on_em(true);
+			string block_lang = "";
+			FormatType matched_block = FormatType.NONE;
+			int byte_length = 0;
+			var block_match = this.peekBlock(chunk, chunk_pos, is_end_of_chunks, out block_lang, out matched_block, out byte_length);
+			
+			if (block_match < 1) {
+				// Need more data (-1) or no block detected (0) - return for caller to handle
+				return block_match;
+			}
+			
+			// Block detected - use byte_length from peekBlock
+			var seq_pos = chunk_pos + byte_length;
+			
+			switch (matched_block) {
+				case FormatType.HORIZONTAL_RULE:
+					this.do_block(true, matched_block);
+					// Skip the rule and any whitespace until newline
+					var pos = seq_pos;
+					
+					// Check if chunk contains newline or is end of stream first
+					if (!chunk.contains("\n") && !is_end_of_chunks) {
+						// Need more data
+						return -1;
+					}
+					
+					var newline_pos = chunk.index_of_char('\n', pos);
+					if (newline_pos != -1) {
+						// Found newline - skip to after it
+						var newline_char = chunk.get_char(newline_pos);
+						this.at_line_start = true;
+						return newline_pos + newline_char.to_string().length - chunk_pos;
+					}
+					
+					// No newline found - check if end of chunks
+					if (!is_end_of_chunks) {
+						// Need more data
+						return -1;
+					}
+					
+					// End of stream - check if only whitespace remains
+					while (pos < chunk.length) {
+						var ch = chunk.get_char(pos);
+						if (!ch.isspace()) {
+							// Invalid - horizontal rule must be followed by newline or whitespace
+							return -1;
+						}
+						pos += ch.to_string().length;
+					}
+					
+					// Only whitespace found - valid at end of stream
+					this.at_line_start = true;
+					return pos - chunk_pos;
+				
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+					// Start the new block
+					this.current_block = matched_block;
+					this.do_block(true, matched_block, block_lang);
+					
+					// Skip to newline
+					var newline_pos = chunk.index_of_char('\n', seq_pos);
+					if (newline_pos != -1) {
+						var newline_char = chunk.get_char(newline_pos);
+						this.at_line_start = true;
+						return newline_pos + newline_char.to_string().length - chunk_pos;
+					}
+					// No newline found - advance to end of chunk
+					this.at_line_start = true;
+					return chunk.length - chunk_pos;
+				
+				default:
+					// Start the new block
+					this.current_block = matched_block;
+					this.do_block(true, matched_block, block_lang);
+					
+					// For other blocks, continue with normal inline processing
+					this.at_line_start = false;
+					return seq_pos - chunk_pos;
+			}
+		}
+
+		/**
+		 * Handles block start/end by calling the appropriate renderer method.
+		 * 
+		 * @param is_start True to start the block, false to end it
+		 * @param block_type The block type
+		 * @param lang Language for fenced code blocks (only used when is_start is true)
+		 */
+		private void do_block(bool is_start, FormatType block_type, string lang = "")
+		{
+			switch (block_type) {
+				case FormatType.HEADING_1:
+					this.renderer.on_h(is_start, 1);
 					break;
-				case FormatType.BOLD:
-					this.renderer.on_strong(true);
+				case FormatType.HEADING_2:
+					this.renderer.on_h(is_start, 2);
 					break;
-				case FormatType.BOLD_ITALIC:
-					// Push both bold and italic states
-					this.renderer.on_strong(true);
-					this.renderer.on_em(true);
+				case FormatType.HEADING_3:
+					this.renderer.on_h(is_start, 3);
 					break;
-				case FormatType.CODE:
-					this.renderer.on_code_span(true);
+				case FormatType.HEADING_4:
+					this.renderer.on_h(is_start, 4);
 					break;
-				case FormatType.STRIKETHROUGH:
-					this.renderer.on_del(true);
+				case FormatType.HEADING_5:
+					this.renderer.on_h(is_start, 5);
 					break;
-				// case FormatType.HIGHLIGHT:
-				// 	// HIGHLIGHT not supported in renderer - use on_other
-				// 	this.renderer.on_other(true, "highlight");
-				// 	break;
-				// case FormatType.SUPERSCRIPT:
-				// 	// SUPERSCRIPT not supported in renderer - use on_other
-				// 	this.renderer.on_other(true, "sup");
-				// 	break;
-				// case FormatType.SUBSCRIPT:
-				// 	// SUBSCRIPT not supported in renderer - use on_other
-				// 	this.renderer.on_other(true, "sub");
-				// 	break;
-				case FormatType.HTML:
-					// HTML needs special handling - for now use on_other
-					// TODO: Parse HTML tag and attributes
-					this.renderer.on_other(true, "html");
+				case FormatType.HEADING_6:
+					this.renderer.on_h(is_start, 6);
 					break;
-				case FormatType.INVALID:
-					// Should not reach here
+				case FormatType.PARAGRAPH:
+					this.renderer.on_p(is_start);
+					break;
+				case FormatType.UNORDERED_LIST:
+					this.renderer.on_ul(is_start, false, '-');
+					break;
+				case FormatType.ORDERED_LIST:
+				case FormatType.ORDERED_LIST_1:
+				case FormatType.ORDERED_LIST__1:
+				case FormatType.ORDERED_LIST___1:
+				case FormatType.ORDERED_LIST____1:
+				case FormatType.ORDERED_LIST_____1:
+				case FormatType.ORDERED_LIST_11:
+				case FormatType.ORDERED_LIST__11:
+				case FormatType.ORDERED_LIST___11:
+				case FormatType.ORDERED_LIST____11:
+				case FormatType.ORDERED_LIST_____11:
+					this.renderer.on_ol(is_start, 1, false, '.');
+					break;
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+					this.renderer.on_code_block(is_start, lang);
+					break;
+				case FormatType.HORIZONTAL_RULE:
+					this.renderer.on_hr();
+					break;
+				case FormatType.NONE:
+					// No block to handle
+					break;
+				default:
+					// Unknown block type
 					break;
 			}
 		}
-	 
+
+		/**
+		 * Checks if we're at a closing fenced code fence.
+		 * 
+		 * @param chunk The text chunk
+		 * @param chunk_pos The position to check
+		 * @param fence_type The type of fence we're looking for (FENCED_CODE_QUOTE or FENCED_CODE_TILD)
+		 * @param is_end_of_chunks If true, end of stream indicator
+		 * @return -1 if need more data, 0 if not a match, 3 if match found
+		 */
+		private int peekFencedEnd(string chunk, int chunk_pos, FormatType fence_type, bool is_end_of_chunks)
+		{
+			// Does string have \n (or end of stream indicator)?
+			if (!chunk.contains("\n") && !is_end_of_chunks) {
+				return -1;
+			}
+			
+			if (chunk_pos >= chunk.length) {
+				return 0;
+			}
+			
+			var fence_str = (fence_type == FormatType.FENCED_CODE_QUOTE) ? "```" : "~~~";
+			var fence_char = fence_str.substring(0, 1);
+			
+			// Is first char the same as opener?
+			var first_char = chunk.get_char(chunk_pos);
+			if (first_char.to_string() != fence_char) {
+				return 0;
+			}
+			
+			// Check if we have at least 3 bytes available for the fence string
+			// If chunk_pos + 3 > chunk.length, we don't have enough bytes
+			if (chunk_pos + 3 > chunk.length) {
+				// Not enough bytes available
+				if (is_end_of_chunks) {
+					// At end of stream - definitely not a match (we need 3 bytes but don't have them)
+					return 0;
+				}
+				// More data might come - need to wait to see if we get the remaining bytes
+				return -1;
+			}
+			
+			// Do the first 3 chars match our end of block?
+			// Fence strings are ASCII (3 bytes), so we can use substring directly
+			var match_str = chunk.substring(chunk_pos, 3);
+			
+			if (match_str != fence_str) {
+				// Not a match - return 0
+				return 0;
+			}
+			
+			// Match found - check if followed by whitespace and newline
+			var pos = chunk_pos + 3;
+			if (pos >= chunk.length) {
+				// At end of chunk - if is_end_of_chunks, it's valid
+				if (is_end_of_chunks) {
+					return 3;
+				}
+				return -1;
+			}
+			
+			// Find newline position
+			var newline_pos = chunk.index_of_char('\n', pos);
+			if (newline_pos == pos) {
+				// Starts with newline - valid
+				return 3;
+			}
+			
+			if (newline_pos != -1) {
+				// Found newline - check if everything between pos and newline is whitespace
+				var between = chunk.substring(pos, newline_pos - pos);
+				if (between.strip().length == 0) {
+					// All whitespace before newline - valid
+					return 3;
+				}
+				// Non-whitespace found before newline - invalid
+				return 0;
+			}
+			
+			// No newline found - check if remaining is all whitespace
+			var remaining = chunk.substring(pos);
+			if (remaining.strip().length == 0) {
+				// All whitespace - valid if end of chunks
+				if (is_end_of_chunks) {
+					return 3;
+				}
+				return -1;
+			}
+			
+			// Non-whitespace found - invalid
+			return 0;
+		}
+
 		private string add_html(string chunk)
 		{
 			// If chunk is empty, return "<" to be picked up next time
