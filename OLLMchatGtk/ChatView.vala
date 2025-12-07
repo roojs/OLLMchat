@@ -36,6 +36,14 @@ namespace OLLMchatGtk
 			CONTENT,
 			CODE_BLOCK
 		}
+		
+		private enum ResizeMode
+		{
+			INITIAL,    // Initial sizing: min(natural, max_height), hide button if fits
+			EXPAND,     // Expand: natural height, vexpand = true
+			COLLAPSE,   // Collapse: min(natural, max_height), vexpand = false
+			FINAL       // Final sizing: min(natural, max_height), hide button if fits
+		}
 
 		private ChatWidget? chat_widget = null;
 		private Gtk.ScrolledWindow scrolled_window;
@@ -158,9 +166,6 @@ namespace OLLMchatGtk
 			user_text_view.buffer.text = text;
 
 			// Create ScrolledWindow for the TextView with height constraints
-			var max_height = (this.get_max_collapsed_height() < 0) ? 300 : 
-				this.get_max_collapsed_height();
-			
 			var user_scrolled = new Gtk.ScrolledWindow() {
 				hexpand = true,
 				vexpand = false
@@ -234,26 +239,7 @@ namespace OLLMchatGtk
 			// Calculate natural height of the text content
 			// Use Idle to wait for layout, then set height based on natural size
 			GLib.Idle.add(() => {
-				// Check if widget is valid and realized
-				if (user_text_view == null || !user_text_view.get_realized()) {
-					return true; // Try again next time
-				}
-				
-				// Get preferred height of the TextView
-				int min_natural = 0;
-				int nat_natural = 0;
-				user_text_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-				int natural_height = nat_natural;
-				
-				// Use the smaller of max_height (50% window) or natural height for collapsed state
-				user_scrolled.set_size_request(-1, (natural_height > 0 && natural_height < max_height) ? natural_height : max_height);
-				
-				// Hide expand button if content fits in collapsed view
-				if (natural_height > 0 && natural_height <= max_height) {
-					expand_button.visible = false;
-				}
-				
-				return false;
+				return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.INITIAL, expand_button);
 			});
 			
 			// Connect expand/collapse button click handler
@@ -264,20 +250,7 @@ namespace OLLMchatGtk
 					expand_button.tooltip_text = "Collapse";
 					// Set height to natural height of content
 					GLib.Idle.add(() => {
-						// Check if widget is valid and realized
-						if (user_text_view == null || !user_text_view.get_realized()) {
-							return true; // Try again next time
-						}
-						
-						// Get current natural height
-						int min_natural = 0;
-						int nat_natural = 0;
-						user_text_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-						
-						// Set height to natural height
-						user_scrolled.set_size_request(-1, nat_natural > 0 ? nat_natural : -1);
-						user_scrolled.vexpand = false;
-						return false;
+						return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.EXPAND);
 					});
 					return;
 				} 
@@ -285,27 +258,8 @@ namespace OLLMchatGtk
 				expand_button.tooltip_text = "Expand";
 				// Recalculate natural height and set collapsed height
 				GLib.Idle.add(() => {
-					// Check if widget is valid and realized
-					if (user_text_view == null || !user_text_view.get_realized()) {
-						return true; // Try again next time
-					}
-					
-					int local_max_height = this.get_max_collapsed_height();
-					if (local_max_height < 0) {
-						local_max_height = 300; // Fallback
-					}
-					
-					// Get current natural height
-					int min_natural = 0;
-					int nat_natural = 0;
-					user_text_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-					
-					// Use the smaller of local_max_height (50% window) or natural height for collapsed state
-					user_scrolled.set_size_request(-1, (nat_natural > 0 && nat_natural < local_max_height) ? nat_natural : local_max_height);
-					user_scrolled.vexpand = false;
-					return false;
+					return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.COLLAPSE);
 				});
-				}
 			});
 			
 			// Add buttons to button box
@@ -1449,46 +1403,14 @@ namespace OLLMchatGtk
 					expand_button.tooltip_text = "Collapse";
 					// Expand to show all content - remove size constraint and allow expansion
 					GLib.Idle.add(() => {
-						// Check if widget is valid and realized
-						if (source_view_info.source_view == null || !source_view_info.source_view.get_realized()) {
-							return true; // Try again next time
-						}
-						
-						// Get current natural height
-						int min_natural = 0;
-						int nat_natural = 0;
-						source_view_info.source_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-						
-						// Set height to natural height to show all content
-						source_view_info.scrolled_window.set_size_request(-1, nat_natural > 0 ? nat_natural : -1);
-						source_view_info.scrolled_window.vexpand = true; // Allow expansion to natural height
-						return false;
+						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.EXPAND);
 					});
 				} else {
 					expand_button.icon_name = "pan-down-symbolic";
 					expand_button.tooltip_text = "Expand";
 					// Recalculate natural height and set collapsed height
 					GLib.Idle.add(() => {
-						// Check if widget is valid and realized
-						if (source_view_info.source_view == null || !source_view_info.source_view.get_realized()) {
-							GLib.debug("ChatView.close_code_block: SourceView is not valid or realized");
-							return true; // Try again next time
-						}
-						
-						int local_max_height = this.get_max_collapsed_height();
-						if (local_max_height < 0) {
-							local_max_height = 300; // Fallback
-						}
-						
-						// Get current natural height
-						int min_natural = 0;
-						int nat_natural = 0;
-						source_view_info.source_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-						
-						// Use the smaller of local_max_height (50% window) or natural height for collapsed state
-						source_view_info.scrolled_window.set_size_request(-1, (nat_natural > 0 && nat_natural < local_max_height) ? nat_natural : local_max_height);
-						source_view_info.scrolled_window.vexpand = false; // Prevent expansion in collapsed state
-						return false;
+						return this.resize_widget_callback(source_view_info.source_view, source_view_info.scrolled_window, ResizeMode.COLLAPSE);
 					});
 				}
 			});
@@ -1624,6 +1546,65 @@ namespace OLLMchatGtk
 			// Return 50% of window height
 			return (int)(window_height * 0.5);
 		}
+		
+		/**
+		* Generic function to handle resize calculations for widgets.
+		* 
+		* This function creates an Idle callback that measures a widget and resizes
+		* a ScrolledWindow based on the specified mode.
+		* 
+		* @param widget The widget to measure (e.g., TextView, SourceView)
+		* @param scrolled_window The ScrolledWindow to resize
+		* @param mode The resize mode (INITIAL, EXPAND, COLLAPSE, or FINAL)
+		* @param expand_button Optional expand button to show/hide based on content size
+		* @return A function suitable for use with GLib.Idle.add()
+		*/
+		private bool resize_widget_callback(Gtk.Widget? widget, Gtk.ScrolledWindow scrolled_window, ResizeMode mode, Gtk.Button? expand_button = null)
+		{
+			// Check if widget is valid and realized
+			if (widget == null || !widget.get_realized()) {
+				return true; // Try again next time
+			}
+			
+			// Get preferred height of the widget
+			int min_natural = 0;
+			int nat_natural = 0;
+			widget.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
+			int natural_height = nat_natural;
+			
+			switch (mode) {
+				case ResizeMode.EXPAND:
+					// Set height to natural height to show all content
+					scrolled_window.set_size_request(-1, natural_height > 0 ? natural_height : -1);
+					scrolled_window.vexpand = true; // Allow expansion to natural height
+					return false;
+					
+				case ResizeMode.INITIAL:
+				case ResizeMode.COLLAPSE:
+				case ResizeMode.FINAL:
+					// Get max height (50% of window)
+					int max_height = this.get_max_collapsed_height();
+					if (max_height < 0) {
+						max_height = 300; // Fallback
+					}
+					
+					// Use the smaller of max_height (50% window) or natural height for collapsed state
+					int target_height = (natural_height > 0 && natural_height < max_height) ? natural_height : max_height;
+					scrolled_window.set_size_request(-1, target_height);
+					scrolled_window.vexpand = false; // Prevent expansion in collapsed state
+					
+					// Hide expand button if content fits in collapsed view (for INITIAL and FINAL modes)
+					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && expand_button != null) {
+						if (natural_height > 0 && natural_height <= max_height) {
+							expand_button.visible = false;
+						}
+					}
+					
+					return false;
+			}
+			
+			return false;
+		}
 
 		/**
 		 * Handles closing a code block by cleaning up state.
@@ -1646,34 +1627,7 @@ namespace OLLMchatGtk
 			// Resize based on content rules when code block is complete
 			if (info_to_resize != null && info_to_resize.source_view != null) {
 				GLib.Idle.add(() => {
-					// Check if widget is valid and realized
-					if (info_to_resize.source_view == null || !info_to_resize.source_view.get_realized()) {
-						return true; // Try again next time
-					}
-					
-					// Get preferred height of the SourceView
-					int min_natural = 0;
-					int nat_natural = 0;
-					info_to_resize.source_view.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
-					int natural_height = nat_natural;
-					
-					// Get max height (50% of window)
-					int local_max_height = this.get_max_collapsed_height();
-					if (local_max_height < 0) {
-						local_max_height = 300; // Fallback
-					}
-					
-					// Resize based on content rules: smaller of max_height (50% window) or natural height
-					if (natural_height > 0 && natural_height < local_max_height) {
-						info_to_resize.scrolled_window.set_size_request(-1, natural_height);
-						// Hide expand button if content fits in collapsed view
-						info_to_resize.expand_button.visible = false;
-					} else {
-						// Keep at max_height (50% window) - content is larger
-						info_to_resize.scrolled_window.set_size_request(-1, local_max_height);
-					}
-					
-					return false;
+					return this.resize_widget_callback(info_to_resize.source_view, info_to_resize.scrolled_window, ResizeMode.FINAL, info_to_resize.expand_button);
 				});
 			}
 			
