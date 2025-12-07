@@ -185,7 +185,6 @@ namespace OLLMchatGtk
 		public async void switch_to_session(OLLMchat.History.SessionBase session)
 		{
 			// Disable scrolling when loading history - set flag before loading
-			this.chat_view.scroll_enabled = false;
 			
 			// Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
@@ -194,11 +193,12 @@ namespace OLLMchatGtk
 			this.chat_input.sensitive = false;
 			
 			// Switch manager to new session (Manager handles loading, deactivation/activation)
-			this.clear_chat();
+			this.clear_chat(); // this enables scolling
 			
 			// Manager signals are already connected in constructor
 			// Model dropdown is updated via session_activated signal
-			
+			this.chat_view.scroll_enabled = false;
+
 			// Lock input while loading
 			try {
 				// Manager handles loading and switching
@@ -213,9 +213,12 @@ namespace OLLMchatGtk
 
 			// Load and render messages from session
 			this.load_messages();
-			
-			// Unlock input after loading
-			this.chat_input.sensitive = true;
+			GLib.Idle.add(() => {
+				// Unlock input after loading
+				// since scrolling happesn in scroll_tobottom in idle we need this
+				this.chat_input.sensitive = true;
+				return false;
+			});
 		}
 
 		/**

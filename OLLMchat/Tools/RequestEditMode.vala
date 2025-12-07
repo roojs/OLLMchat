@@ -433,27 +433,39 @@ namespace OLLMchat.Tools
 				this.changes.size, this.normalized_path);
 			
 			// Apply changes
+			int line_count = 0;
 			try {
 				this.apply_all_changes();
 				
-				// Calculate success message with line count and send
-				string success_message;
+				// Calculate line count for success message
 				try {
-					int line_count = this.count_file_lines();
-					success_message = @"File '`$(this.normalized_path)`' has been updated. It now has `$(line_count)` lines.";
+					line_count = this.count_file_lines();
 				} catch (Error e) {
 					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
-					// Send success message without line count
-					success_message = @"File '`$(this.normalized_path)`' has been updated.";
 				}
 				
-				// Emit UI message
+				// Build and emit UI message
 				this.chat_call.client.tool_message(
-					new OLLMchat.Message(this.chat_call, "ui", success_message)
+					new OLLMchat.Message(
+						this.chat_call,
+						"ui",
+						(line_count > 0)
+							? "File '" + this.normalized_path + 
+								"' has been updated. It now has " + 
+								line_count.to_string() + " lines."
+							: "File '" + this.normalized_path + "' has been updated."
+					)
 				);
 				
 				// Send tool reply to LLM
-				this.reply_with_errors(response, success_message);
+				this.reply_with_errors(
+					response,
+					(line_count > 0)
+						? "File '" + this.normalized_path + 
+							"' has been updated. It now has " + 
+							line_count.to_string() + " lines."
+						: "File '" + this.normalized_path + "' has been updated."
+				);
 			} catch (Error e) {
 				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
 				// Store error message instead of sending immediately

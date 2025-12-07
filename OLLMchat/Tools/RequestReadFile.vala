@@ -67,7 +67,10 @@ namespace OLLMchat.Tools
 			var file_path = this.normalize_file_path(this.file_path);
 			
 			// Emit execution message with human-friendly tool name and file path
-			string message;
+			var message = "Executing %s on file: %s".printf(
+					this.tool.description.strip().split("\n")[0],
+					file_path
+				);
 			if (this.read_entire_file) {
 				message = "Executing %s on file: %s".printf(
 					this.tool.description.strip().split("\n")[0],
@@ -80,12 +83,7 @@ namespace OLLMchat.Tools
 					this.start_line,
 					this.end_line
 				);
-			} else {
-				message = "Executing %s on file: %s".printf(
-					this.tool.description.strip().split("\n")[0],
-					file_path
-				);
-			}
+			} 
 			this.chat_call.client.tool_message(
 				new OLLMchat.Message(this.chat_call, "ui", message)
 			);

@@ -94,9 +94,9 @@ namespace OLLMchat
 			}
 		} catch (GLib.Error e) {
 			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: " + e.message + "\n");
-		} finally {
-			debug_log_in_progress = false;
-		}
+		}  
+		debug_log_in_progress = false;
+		
 	}
 
 	int main(string[] args)
@@ -274,15 +274,8 @@ namespace OLLMchat
 			};
 			client.permission_provider = permission_provider;
 			
-			// Connect widget signals for testing (optional: print to stdout)
-			this.chat_widget.message_sent.connect((text) => {
-				stdout.printf("Message sent: %s\n", text);
-			});
-
-			this.chat_widget.response_received.connect((text) => {
-				stdout.printf("Response received: %s\n", text);
-			});
-
+		 
+		
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
 			});
