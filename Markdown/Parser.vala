@@ -546,69 +546,98 @@ namespace Markdown
 				
 				// Handle newline - end current block and prepare for next line
 				if (c == '\n') {
-					// End current block if any
+					// If we're in a fenced code block, send the newline as code text and set at_line_start
+					if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
+						this.renderer.on_code_text("\n");
+						this.at_line_start = true;
+						chunk_pos += 1; // \n is always 1 byte
+						escape_next = false;
+						continue;
+					}
+					
+					// Not in fenced code - end current block if any
 					if (this.current_block != FormatType.NONE) {
 						this.do_block(false, this.current_block);
 						this.last_line_block = this.current_block;
 						this.current_block = FormatType.NONE;
 					}
 					
+					// Pass the newline as text to the renderer
+					this.renderer.on_text("\n");
+					
 					// Set at_line_start for next iteration
 					this.at_line_start = true;
-					chunk_pos += c.to_string().length;
+					chunk_pos += 1; // \n is always 1 byte
 					escape_next = false;
 					continue;
 				}
 				
-				// If we're in a fenced code block, collect text until closing fence
+				// If we're in a fenced code block, check for closing fence only at line start
 				if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
+					if (!this.at_line_start) {
+						// Not at line start - collect code text
+						// First check if remaining chunk doesn't contain newline - send everything and return
+						var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						if (!remaining.contains("\n")) {
+							this.renderer.on_code_text(remaining);
+							return;
+						}
+						
+						// Remaining chunk contains newline - get text before newline and send it
+						var newline_pos = chunk.index_of_char('\n', chunk_pos);
+						var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+						this.renderer.on_code_text(code_text);
+						// Move pos to newline (will be handled in next iteration)
+						chunk_pos = newline_pos;
+						continue;
+					}
+					
+					// At line start - check for closing fence
 					var fence_result = this.peekFencedEnd(chunk, chunk_pos, this.current_block, is_end_of_chunks);
 					if (fence_result == -1) {
 						// Need more data - standard -1 behavior: save to leftover_chunk and return
 						this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 						return;
 					}
-					if (fence_result > 0) {
-						// Found closing fence - end the block
-						// Find the newline after the fence
-						var newline_pos = chunk.index_of_char('\n', chunk_pos);
-						if (newline_pos != -1) {
-							// Skip to after the newline
-							var newline_char = chunk.get_char(newline_pos);
-							chunk_pos = newline_pos + newline_char.to_string().length;
-						} else {
-							// No newline found (shouldn't happen if is_closing_fence validated correctly)
-							chunk_pos += 3;
+					if (fence_result == 0) {
+						// Not a closing fence - send text up to newline (or end of chunk) to on_code_text
+						var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						if (!remaining.contains("\n")) {
+							// No newline - send everything and return
+							this.renderer.on_code_text(remaining);
+							return;
 						}
 						
-						this.do_block(false, this.current_block);
-						this.last_line_block = this.current_block;
-						this.current_block = FormatType.NONE;
-						this.at_line_start = true;
+						// Has newline - send text before newline
+						var newline_pos = chunk.index_of_char('\n', chunk_pos);
+						var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+						this.renderer.on_code_text(code_text);
+						// Move pos to newline (will be handled in next iteration)
+						chunk_pos = newline_pos;
+						this.at_line_start = false;
 						continue;
 					}
-					
-					// fence_result == 0: not a closing fence
-					// Check if there is a line break in the code
-					var newline_pos = chunk.index_of_char('\n', chunk_pos);
-					if (newline_pos == -1) {
-						// No line break - send the rest of the string to on_code_text and return
-						var code_text = chunk.substring(chunk_pos, chunk.length - chunk_pos);
-						if (code_text.length > 0) {
-							this.renderer.on_code_text(code_text);
-						}
-						return;
+					// fence_result > 0: Found closing fence - end the block
+					// Find the newline after the fence (fence is 3 chars, so start after it)
+					var after_fence = chunk_pos + 3;
+					var remaining = chunk.substring(after_fence, chunk.length - after_fence);
+					var newline_pos_in_substring = remaining.index_of_char('\n');
+					if (newline_pos_in_substring != -1) {
+						// Skip to after the newline
+						chunk_pos = after_fence + newline_pos_in_substring + 1;
+					} else {
+						// No newline found (shouldn't happen if is_closing_fence validated correctly)
+						chunk_pos = after_fence;
 					}
 					
-					// Send everything before the line break to on_code_text
-					var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-					if (code_text.length > 0) {
-						this.renderer.on_code_text(code_text);
-					}
-					// Move pos to after newline and continue
-					chunk_pos = newline_pos + 1;
+					this.do_block(false, this.current_block);
+					this.last_line_block = this.current_block;
+					this.current_block = FormatType.NONE;
+					this.at_line_start = true;
 					continue;
 				}
+				
+		
 				
 				// At line start - check for block markers
 				if (this.at_line_start) {
@@ -626,6 +655,7 @@ namespace Markdown
 							this.do_block(true, FormatType.PARAGRAPH);
 						}
 						this.at_line_start = false;
+						// Pass control back to main loop to handle span formatting (inline formatting)
 						continue;
 					}
 					// Block processed - advance chunk_pos by the returned byte length
@@ -633,6 +663,7 @@ namespace Markdown
 					// After block handling, continue with normal processing
 					continue;
 				}
+				
 				
 				if (escape_next) {
 					str += c.to_string();

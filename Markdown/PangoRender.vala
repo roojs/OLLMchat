@@ -68,7 +68,7 @@ namespace Markdown
 		}
 		
 		/**
-		 * Converts HTML text to Pango markup string.
+		 * Converts Markup text to Pango string.
 		 * 
 		 * @param html_text The HTML text to convert
 		 * @return Pango markup string
@@ -289,22 +289,194 @@ namespace Markdown
 			this.pango_markup.append(escaped);
 		}
 		
-		// Placeholder implementations for block-level callbacks
-		public override void on_h(bool is_start, uint level) {}
-		public override void on_p(bool is_start) {}
-		public override void on_ul(bool is_start, bool is_tight, char mark) {}
-		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
-		public override void on_code(bool is_start, string? lang, char fence_char) {}
-		public override void on_code_text(string text) {}
-		public override void on_code_block(bool is_start, string lang) {}
-		public override void on_quote(bool is_start) {}
-		public override void on_hr() {}
-		public override void on_a(bool is_start, string href, string title, bool is_autolink) {}
-		public override void on_img(string src, string? title) {}
-		public override void on_br() {}
-		public override void on_softbr() {}
-		public override void on_u(bool is_start) {}
+		// Block-level callbacks - convert to Pango markup
+		public override void on_h(bool is_start, uint level)
+		{
+			if (!is_start) {
+				this.close_tag("span");
+				this.pango_markup.append("\n");
+				return;
+			}
+			
+			// Use span with size attribute based on heading level
+			string size_attr = "";
+			switch (level) {
+				case 1:
+					size_attr = "size=\"xx-large\"";
+					break;
+				case 2:
+					size_attr = "size=\"x-large\"";
+					break;
+				case 3:
+					size_attr = "size=\"large\"";
+					break;
+				case 4:
+					size_attr = "size=\"medium\"";
+					break;
+				case 5:
+					size_attr = "size=\"small\"";
+					break;
+				case 6:
+					size_attr = "size=\"x-small\"";
+					break;
+				default:
+					size_attr = "size=\"large\"";
+					break;
+			}
+			
+			this.pango_markup.append("<span " + size_attr + " weight=\"bold\">");
+			this.open_tags.add("span");
+		}
+		
+		public override void on_p(bool is_start)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n\n");
+				return;
+			}
+			// Paragraph start - no markup needed, just content
+		}
+		
+		public override void on_ul(bool is_start, bool is_tight, char mark)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n");
+				return;
+			}
+			// List start - no markup needed, markers added in on_li
+		}
+		
+		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n");
+				return;
+			}
+			// List start - no markup needed, numbers added in on_li
+		}
+		
+		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n");
+				return;
+			}
+			
+			// List item start - add marker
+			if (is_task) {
+				// Task list item - add checkbox marker
+				string marker = (task_mark == 'x' || task_mark == 'X') ? "[✓] " : "[ ] ";
+				this.pango_markup.append(marker);
+			} else {
+				// Regular list item - marker will be added by context (ul/ol)
+				// For now, use bullet point
+				this.pango_markup.append("• ");
+			}
+		}
+		
+		public override void on_code(bool is_start, string? lang, char fence_char)
+		{
+			// Inline code - handled by on_code_span
+			// This is for compatibility
+			this.on_code_span(is_start);
+		}
+		
+		public override void on_code_text(string text)
+		{
+			// Code block text content - escape and add as monospace
+			var escaped = GLib.Markup.escape_text(text, -1);
+			this.pango_markup.append(escaped);
+		}
+		
+		public override void on_code_block(bool is_start, string lang)
+		{
+			if (!is_start) {
+				this.close_tag("tt");
+				this.pango_markup.append("\n");
+				return;
+			}
+			
+			// Code block start - use monospace font
+			this.pango_markup.append("<tt>");
+			this.open_tags.add("tt");
+		}
+		
+		public override void on_quote(bool is_start)
+		{
+			if (!is_start) {
+				this.close_tag("span");
+				this.pango_markup.append("\n");
+				return;
+			}
+			
+			// Blockquote - use italic style and add quote marker
+			this.pango_markup.append("<span style=\"italic\">");
+			this.open_tags.add("span");
+		}
+		
+		public override void on_hr()
+		{
+			// Horizontal rule - use a line of characters
+			this.pango_markup.append("<span>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n");
+		}
+		
+		public override void on_a(bool is_start, string href, string title, bool is_autolink)
+		{
+			if (!is_start) {
+				this.close_tag("span");
+				return;
+			}
+			
+			// Link - use blue color and underline
+			this.pango_markup.append("<span foreground=\"blue\" underline=\"single\">");
+			this.open_tags.add("span");
+			// Add the href text
+			var escaped_href = GLib.Markup.escape_text(href, -1);
+			this.pango_markup.append(escaped_href);
+			this.close_tag("span");
+			// If there's a title, add it after
+			if (title != "") {
+				this.pango_markup.append(" ");
+				var escaped_title = GLib.Markup.escape_text(title, -1);
+				this.pango_markup.append("<b>" + escaped_title + "</b>");
+			}
+		}
+		
+		public override void on_img(string src, string? title)
+		{
+			// Image - use placeholder text
+			var escaped_src = GLib.Markup.escape_text(src, -1);
+			if (title != null && title != "") {
+				var escaped_title = GLib.Markup.escape_text(title, -1);
+				this.pango_markup.append("[IMG: " + escaped_title + " (" + escaped_src + ")]");
+			} else {
+				this.pango_markup.append("[IMG: " + escaped_src + "]");
+			}
+		}
+		
+		public override void on_br()
+		{
+			// Hard line break
+			this.pango_markup.append("\n");
+		}
+		
+		public override void on_softbr()
+		{
+			// Soft line break - use space (or newline in some contexts)
+			this.pango_markup.append(" ");
+		}
+		
+		public override void on_u(bool is_start)
+		{
+			if (!is_start) {
+				this.close_tag("u");
+				return;
+			}
+			
+			// Underline
+			this.pango_markup.append("<u>");
+			this.open_tags.add("u");
+		}
 	}
 }
 

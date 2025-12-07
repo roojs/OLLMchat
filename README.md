@@ -17,7 +17,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds four shared libraries with headers, VAPI, and GIR files. Includes test executables (`test-ollama`, `test-window`, and `test-markdown-parser`)
+- **Current Status** - Builds four shared libraries with headers, VAPI, and GIR files. Includes test executables (`test-ollama`, `test-window`, `test-markdown-parser`, `test-html-parser-to-md`) and example tools (`vmd2html`)
 
 ## Demo
 
@@ -65,6 +65,8 @@ This will build:
 - `test-ollama` - Command-line test executable
 - `test-window` - GTK UI test executable
 - `test-markdown-parser` - Markdown parser test executable
+- `test-html-parser-to-md` - HTML to Markdown converter (reads from stdin)
+- `vmd2html` - Markdown to HTML converter (takes file as argument)
 - Valadoc documentation (in `docs/ollmchat/`)
 
 ## Project Structure
@@ -97,6 +99,7 @@ This will build:
 **Resources and Documentation:**
 - `resources/` - Resource files including prompt templates
 - `docs/` - Generated documentation (Valadoc) and implementation plans
+- `examples/` - Example programs and test code
 
 ## Dependencies
 

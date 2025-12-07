@@ -31,9 +31,11 @@
           <li class="property"><a href="MarkdownGtk.Render.current_buffer.html">current_buffer</a></li>
           <li class="property"><a href="MarkdownGtk.Render.current_state.html">current_state</a></li>
           <li class="property"><a href="MarkdownGtk.Render.current_textview.html">current_textview</a></li>
+          <li class="property"><a href="MarkdownGtk.Render.scroll_to_end.html">scroll_to_end</a></li>
           <li class="property"><a href="MarkdownGtk.Render.top_state.html">top_state</a></li>
           <li class="creation_method"><a href="MarkdownGtk.Render.Render.html">Render</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.add.html">add</a></li>
+          <li class="method"><a href="MarkdownGtk.Render.clear.html">clear</a></li>
           <li class="method"><a href="MarkdownGtk.Render.end_block.html">end_block</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_a.html">on_a</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_br.html">on_br</a></li>
@@ -59,6 +61,7 @@
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_u.html">on_u</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_ul.html">on_ul</a></li>
           <li class="method"><a href="MarkdownGtk.Render.start.html">start</a></li>
+          <li class="signal"><a href="MarkdownGtk.Render.code_block_ended.html">code_block_ended</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -114,6 +117,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="MarkdownGtk.Render.scroll_to_end.html" class="property">scroll_to_end</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="MarkdownGtk.TopState.html" class="class">TopState</a></span>? <b><a href="MarkdownGtk.Render.top_state.html" class="property">top_state</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -132,6 +139,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Override add() to check that TextView is created (programming error if
                 not).</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.clear.html" class="method">clear</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Clears all state, including sourceviews.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.end_block.html" class="method">end_block</a></b> ()
             </span>
@@ -237,10 +248,17 @@
             <div class="leaf_brief_description"><span class="brief_description">Starts/initializes the renderer for a new block.</span>
             </div></li>
         </ul>
+        <h3 class="main_title">Signals:</h3>
+        <ul class="navi_inline">
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="MarkdownGtk.Render.code_block_ended.html" class="signal">code_block_ended</a></b> (<span class="main_basic_type"><span class="class">string</span></span> content, <span class="main_basic_type"><span class="class">string</span></span> language)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+        </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-230')">All known members inherited from class Markdown.RenderBase</div>
-          <div class="content" id="box-content-230">
+          <div class="headline" onclick="toggle_box (this, 'box-content-232')">All known members inherited from class Markdown.RenderBase</div>
+          <div class="content" id="box-content-232">
             <div class="column">
               <ul class="navi_inline">
                 <li class="virtual_method"><a href="Markdown.RenderBase.add.html">add</a></li>
@@ -283,8 +301,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-231')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-231">
+          <div class="headline" onclick="toggle_box (this, 'box-content-233')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-233">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

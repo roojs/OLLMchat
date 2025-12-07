@@ -157,6 +157,7 @@ omarkdown_src = files([
   'Markdown/PangoRender.vala',
   'Markdown/DummyRenderer.vala',
   'Markdown/HtmlParser.vala',
+  'Markdown/HtmlRender.vala',
   'Markdown/Tags.vala',
   'Markdown/TagsTable.vala',
   'Markdown/Writer.vala',
@@ -165,6 +166,7 @@ omarkdown_src = files([
 # Source files for MarkdownGtk namespace (GTK-dependent) - for libomarkdown-ui
 omarkdown_ui_src = files([
   'MarkdownGtk/Render.vala',
+  'MarkdownGtk/RenderSourceView.vala',
   'MarkdownGtk/State.vala',
   'MarkdownGtk/TopState.vala',
   'MarkdownGtk/Table.vala',
@@ -431,7 +433,7 @@ valadoc_docs = custom_target('valadoc',
 # Build test-ollama executable (command-line test)
 test_ollama = executable('test-ollama',
   dependencies: test_ollama_deps,
-  sources: ['TestOllama.vala'],
+  sources: ['examples/TestOllama.vala'],
   link_with: [ollmchat_base_lib],
   vala_args: ['--pkg=sqlite3'],
   install: false
@@ -442,19 +444,40 @@ test_ollama = executable('test-ollama',
 # Use omarkdown_ui_vapi_dep which provides link_with but with sources to prevent VAPI being added
 test_window = executable('test-window',
   dependencies: [test_window_deps, omarkdown_ui_vapi_dep],
-  sources: ['TestWindow.vala', ollmchat_resources],
+  sources: ['examples/TestWindow.vala', ollmchat_resources],
   link_with: [ollmchat_base_lib, ollmchat_ui_lib],
   # Use --pkg for VAPI access (uses manually generated VAPI files)
   vala_args: ['--pkg=omarkdown', '--pkg=omarkdown-ui', '--pkg=sqlite3', '--vapidir', meson.current_build_dir()],
   install: false
 )
 
+# Build test-html-parser-to-md executable (HTML to Markdown converter)
+test_html_parser_to_md = executable('test-html-parser-to-md',
+  dependencies: base_deps,
+  sources: ['examples/TestHtmlParserToMd.vala'],
+  link_with: [omarkdown_base_lib],
+  vala_args: ['--pkg=omarkdown', '--vapidir', meson.current_build_dir()],
+  install: false
+)
 
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
 test_markdown_parser = executable('test-markdown-parser',
   dependencies: test_window_deps,
-  sources: ['test-markdown-parser.vala'],
+  sources: ['examples/test-markdown-parser.vala'],
   link_with: [omarkdown_base_lib, omarkdown_ui_lib],
+  install: false
+)
+
+# Build vmd2html executable (Markdown to HTML converter)
+# Use declare_dependency to avoid meson auto-including omarkdown-meson.vapi
+omarkdown_vapi_only_dep = declare_dependency(
+  link_args: ['-L' + meson.current_build_dir(), '-lomarkdown'],
+  sources: [omarkdown_vapi[0]]  # Use manually generated VAPI only
+)
+vmd2html = executable('vmd2html',
+  dependencies: [base_deps, omarkdown_vapi_only_dep],
+  sources: ['examples/vmd2html.vala'],
+  vala_args: ['--pkg=omarkdown', '--vapidir', meson.current_build_dir()],
   install: false
 )
 

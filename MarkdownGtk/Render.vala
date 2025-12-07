@@ -55,6 +55,16 @@ namespace MarkdownGtk
 		public Gtk.TextView? current_textview { get; private set; default = null; }
 		public Gtk.TextBuffer? current_buffer { get; private set; default = null; }
 		
+		// Configuration
+		public bool scroll_to_end { get; set; default = true; }
+		
+		// Code block handlers (kept in array to prevent going out of scope)
+		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
+		private RenderSourceView? current_source_view_handler = null;
+		
+		// Signal emitted when code block ends (delegates to source_view_handler)
+		public signal void code_block_ended(string content, string language);
+		
 		/**
 		 * Creates a new Render instance with a Gtk.Box.
 		 * 
@@ -124,6 +134,23 @@ namespace MarkdownGtk
 			// Create new TopState (will be initialized when start() is called)
 			this.top_state = new TopState(this);
 			this.current_state = this.top_state;
+		}
+		
+		/**
+		 * Clears all state, including sourceviews.
+		 * 
+		 * Resets the renderer to a clean state, clearing all sourceview handlers.
+		 */
+		public void clear()
+		{
+			// Clear current sourceview handler
+			this.current_source_view_handler = null;
+			
+			// Clear all sourceview handlers
+			this.source_view_handlers.clear();
+			
+			// Clear current block state
+			this.end_block();
 		}
 		
 		/**
@@ -459,8 +486,33 @@ namespace MarkdownGtk
 			
 		}
 		
-		// Placeholder implementations for block-level callbacks
-		public override void on_code_text(string text) {}
-		public override void on_code_block(bool is_start, string lang) {}
+		// Code block callbacks
+		public override void on_code_block(bool is_start, string lang)
+		{
+			if (!is_start) {
+				// Code block ended - delegate to current_source_view_handler
+				if (this.current_source_view_handler != null) {
+					this.current_source_view_handler.end_code_block();
+					// Keep handler in array so it doesn't go out of scope
+					// (buttons and other handlers need to remain functional)
+					this.current_source_view_handler = null;
+				}
+				return;
+			}
+			
+			// Code block started - create new source_view_handler
+			this.current_source_view_handler = new RenderSourceView(this, lang);
+			
+			// Keep handler in array so it doesn't go out of scope
+			this.source_view_handlers.add(this.current_source_view_handler);
+		}
+		
+		public override void on_code_text(string text)
+		{
+			// Delegate to current_source_view_handler
+			if (this.current_source_view_handler != null) {
+				this.current_source_view_handler.add_code_text(text);
+			}
+		}
 	}
 }
