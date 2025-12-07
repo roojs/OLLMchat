@@ -288,6 +288,23 @@ namespace Markdown
 			var escaped = GLib.Markup.escape_text(text, -1);
 			this.pango_markup.append(escaped);
 		}
+		
+		// Placeholder implementations for block-level callbacks
+		public override void on_h(bool is_start, uint level) {}
+		public override void on_p(bool is_start) {}
+		public override void on_ul(bool is_start, bool is_tight, char mark) {}
+		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
+		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
+		public override void on_code(bool is_start, string? lang, char fence_char) {}
+		public override void on_code_text(string text) {}
+		public override void on_code_block(bool is_start, string lang) {}
+		public override void on_quote(bool is_start) {}
+		public override void on_hr() {}
+		public override void on_a(bool is_start, string href, string title, bool is_autolink) {}
+		public override void on_img(string src, string? title) {}
+		public override void on_br() {}
+		public override void on_softbr() {}
+		public override void on_u(bool is_start) {}
 	}
 }
 

@@ -458,5 +458,9 @@ namespace MarkdownGtk
 			this.current_state.add_state();
 			
 		}
+		
+		// Placeholder implementations for block-level callbacks
+		public override void on_code_text(string text) {}
+		public override void on_code_block(bool is_start, string lang) {}
 	}
 }
