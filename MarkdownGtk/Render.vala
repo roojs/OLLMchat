@@ -82,23 +82,13 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Starts/initializes the renderer for a new block.
+		 * Creates a new TextView and initializes TopState.
 		 * 
-		 * Creates the TextView and initializes TopState.
-		 * Must be called before add() for each new block.
-		 * 
-		 * If a TextView already exists, ends the current block first.
+		 * This is a helper method used by start() and when code blocks end.
+		 * It does NOT reset the parser state (unlike start() which calls base.start()).
 		 */
-		public void start()
+		private void create_textview()
 		{
-			// If TextView already exists, end the current block first
-			if (this.current_textview != null) {
-				this.end_block();
-			}
-			
-			// Initialize parser state
-			base.start();
-			
 			// Create new TextView
 			this.current_textview = new Gtk.TextView() {
 				editable = false,
@@ -120,6 +110,28 @@ namespace MarkdownGtk
 			
 			// Initialize TopState's tag and marks now that buffer is ready
 			this.top_state.initialize();
+		}
+		
+		/**
+		 * Starts/initializes the renderer for a new block.
+		 * 
+		 * Creates the TextView and initializes TopState.
+		 * Must be called before add() for each new block.
+		 * 
+		 * If a TextView already exists, ends the current block first.
+		 */
+		public void start()
+		{
+			// If TextView already exists, end the current block first
+			if (this.current_textview != null) {
+				this.end_block();
+			}
+			
+			// Initialize parser state
+			base.start();
+			
+			// Create new TextView and TopState
+			this.create_textview();
 		}
 		
 		/**
@@ -158,11 +170,15 @@ namespace MarkdownGtk
 		
 		/**
 		 * Override add() to check that TextView is created (programming error if not).
+		 * 
+		 * Note: current_textview may be null when a code block is active,
+		 * which is valid - code block text goes to the sourceview instead.
 		 */
 		public override void add(string text)
 		{
-			// Check that TextView is created - this is a programming error if not
-			if (this.current_textview == null) {
+			// Check that TextView is created OR a code block is active
+			// (code blocks use sourceview instead of textview)
+			if (this.current_textview == null && this.current_source_view_handler == null) {
 				GLib.error("Render.add() called before start() - TextView not initialized. Call start() before adding text.");
 			}
 			
@@ -500,14 +516,29 @@ namespace MarkdownGtk
 					// (buttons and other handlers need to remain functional)
 					this.current_source_view_handler = null;
 				}
+				
+				// Textview and states were already created when code block started,
+				// so they're ready for text that comes after the code block
 				return;
 			}
 			
-			// Code block started - create new source_view_handler
+			// Code block started - clear old textview/buffer/states
+			// During the code block, all text goes to sourceview, not textview
+			this.current_textview = null;
+			this.current_buffer = null;
+			this.top_state = null;
+			this.current_state = null;
+			
+			// Create new source_view_handler for the code block FIRST
+			// (so it appears before the textview that will be created after)
 			this.current_source_view_handler = new RenderSourceView(this, lang);
 			
 			// Keep handler in array so it doesn't go out of scope
 			this.source_view_handlers.add(this.current_source_view_handler);
+			
+			// Create new textview and states immediately (ready for text after code block)
+			// This will be added to the box AFTER the sourceview, which is correct
+			this.create_textview();
 		}
 		
 		public override void on_code_text(string text)
