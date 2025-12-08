@@ -78,7 +78,9 @@ ocmarkdowngtk_vapi = custom_target('ocmarkdowngtk-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  build_by_default: true
+  build_by_default: true,
+  install: true,
+  install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
 # Create a dependency that includes the VAPI files to ensure build order

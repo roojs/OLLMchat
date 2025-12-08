@@ -1,0 +1,117 @@
+Source: ollmchat
+Section: libs
+Priority: optional
+Maintainer: OLLMchat Maintainers <ollmchat@example.com>
+Build-Depends: debhelper-compat (= 13),
+               meson,
+               ninja-build,
+               pkg-config,
+               valac,
+               libgee-0.8-dev,
+               libglib2.0-dev,
+               libgobject-2.0-dev,
+               libgio-2.0-dev,
+               libjson-glib-dev,
+               libsoup-3.0-dev,
+               libxml2-dev,
+               libsqlite3-dev,
+               libgtk-4-dev,
+               libgtksourceview-5-dev,
+               libadwaita-1-dev,
+               gobject-introspection,
+               libgirepository1.0-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/roojs/OLLMchat
+Vcs-Browser: https://github.com/roojs/OLLMchat
+Vcs-Git: https://github.com/roojs/OLLMchat.git
+
+Package: libocmarkdown1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: Markdown parsing and rendering library
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the base markdown parsing library (libocmarkdown.so).
+
+Package: libocmarkdown-dev
+Architecture: any
+Depends: libocmarkdown1 (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocmarkdown
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocmarkdown.
+
+Package: libocmarkdowngtk1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libocmarkdown1 (= ${binary:Version})
+Description: GTK markdown rendering library
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the GTK-specific markdown rendering library
+ (libocmarkdowngtk.so).
+
+Package: libocmarkdowngtk-dev
+Architecture: any
+Depends: libocmarkdowngtk1 (= ${binary:Version}),
+         libocmarkdown-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libocmarkdowngtk
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libocmarkdowngtk.
+
+Package: libollmchat1
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: Base library for Ollama/OpenAI API access
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the base library for LLM API access (libollmchat.so)
+ and the GTK library with chat widgets (libollmchatgtk.so).
+
+Package: libollmchat-dev
+Architecture: any
+Depends: libollmchat1 (= ${binary:Version}),
+         libocmarkdown-dev (= ${binary:Version}),
+         libocmarkdowngtk-dev (= ${binary:Version}),
+         ${misc:Depends}
+Description: Development files for libollmchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the development files for libollmchat and libollmchatgtk.
+
+Package: ollmchat-tools
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libocmarkdown1 (= ${binary:Version})
+Description: Command-line tools for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains command-line tools:
+  - oc-md2html: Markdown to HTML converter
+  - oc-html2md: HTML to Markdown converter
+
+Package: ollmchat-doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: Test executables and documentation for OLLMchat
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains test executables and documentation:
+  - oc-test-cli: Command-line test executable
+  - oc-test-window: GTK UI test executable
+  - oc-markdown-test: Markdown parser test executable

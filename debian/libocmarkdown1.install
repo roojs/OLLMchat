@@ -1,0 +1,6 @@
+usr/lib/*/libocmarkdown.so.*
+usr/share/vala/vapi/ocmarkdown.vapi
+usr/share/vala/vapi/ocmarkdown-meson.vapi
+usr/include/ocmarkdown.h
+usr/share/gir-1.0/OCMarkdown-1.0.gir
+usr/lib/*/girepository-1.0/OCMarkdown-1.0.typelib

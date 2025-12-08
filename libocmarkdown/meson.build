@@ -73,7 +73,9 @@ ocmarkdown_vapi = custom_target('ocmarkdown-vapi',
     '@INPUT@'
   ],
   depends: [ocmarkdown_base_lib],  # Ensure library is built first (so header exists)
-  build_by_default: true
+  build_by_default: true,
+  install: true,
+  install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
 # Create a dependency that includes the VAPI file to ensure build order

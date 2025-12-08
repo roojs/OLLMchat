@@ -1,0 +1,6 @@
+usr/lib/*/libocmarkdowngtk.so.*
+usr/share/vala/vapi/ocmarkdowngtk.vapi
+usr/share/vala/vapi/ocmarkdowngtk-meson.vapi
+usr/include/ocmarkdowngtk.h
+usr/share/gir-1.0/OCMarkdownGtk-1.0.gir
+usr/lib/*/girepository-1.0/OCMarkdownGtk-1.0.typelib

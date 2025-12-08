@@ -1,0 +1,16 @@
+usr/lib/*/libollmchat.so.*
+usr/lib/*/libollmchatgtk.so.*
+usr/lib/*/libocsqlite.so.*
+usr/share/vala/vapi/ollmchat.vapi
+usr/share/vala/vapi/ollmchatgtk.vapi
+usr/share/vala/vapi/ocsqlite.vapi
+usr/share/vala/vapi/ocsqlite-meson.vapi
+usr/include/ollmchat.h
+usr/include/ollmchatgtk.h
+usr/include/ocsqlite.h
+usr/share/gir-1.0/OLLMchat-1.0.gir
+usr/share/gir-1.0/OLLMchatGtk-1.0.gir
+usr/share/gir-1.0/OCSqlite-1.0.gir
+usr/lib/*/girepository-1.0/OLLMchat-1.0.typelib
+usr/lib/*/girepository-1.0/OLLMchatGtk-1.0.typelib
+usr/lib/*/girepository-1.0/OCSqlite-1.0.typelib

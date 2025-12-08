@@ -58,7 +58,8 @@ test_ollama = executable('oc-test-cli',
     '--pkg=ocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
   ],
-  install: false
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
 # Build test-window executable (GTK UI test)
@@ -85,7 +86,8 @@ test_window = executable('oc-test-window',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
   ],
-  install: false
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
@@ -98,7 +100,8 @@ test_html_parser_to_md = executable('oc-html2md',
     '--pkg=ocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
   ],
-  install: false
+  install: true,
+  install_dir: get_option('bindir')
 )
 
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
@@ -108,7 +111,8 @@ test_markdown_parser = executable('oc-markdown-test',
   link_with: [ocmarkdown_base_lib, ocmarkdowngtk_lib],
   include_directories: include_directories('../libocmarkdown'),
   build_rpath: build_rpath,
-  install: false
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
 # Build vmd2html executable (Markdown to HTML converter)
@@ -121,6 +125,7 @@ vmd2html = executable('oc-md2html',
     '--pkg=ocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
   ],
-  install: false
+  install: true,
+  install_dir: get_option('bindir')
 )
 

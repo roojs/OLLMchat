@@ -1,0 +1,55 @@
+Debian Package Building Instructions
+====================================
+
+This directory contains the Debian packaging files for OLLMchat.
+
+Package Structure
+-----------------
+
+The source package builds the following binary packages:
+
+1. **libocmarkdown1** - Base markdown parsing library (libocmarkdown.so)
+2. **libocmarkdown-dev** - Development files for libocmarkdown
+3. **libocmarkdowngtk1** - GTK markdown rendering library (libocmarkdowngtk.so)
+4. **libocmarkdowngtk-dev** - Development files for libocmarkdowngtk
+5. **libollmchat1** - Base LLM library (libollmchat.so), GTK widgets (libollmchatgtk.so), and SQLite library (libocsqlite.so)
+6. **libollmchat-dev** - Development files for libollmchat, libollmchatgtk, and libocsqlite
+7. **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md)
+8. **ollmchat-doc** - Test executables (oc-test-cli, oc-test-window, oc-markdown-test)
+
+Building Packages
+------------------
+
+To build the Debian packages:
+
+1. Install build dependencies:
+   ```bash
+   sudo apt-get install build-essential devscripts debhelper meson ninja-build \
+     pkg-config valac libgee-0.8-dev libglib2.0-dev libgobject-2.0-dev \
+     libgio-2.0-dev libjson-glib-dev libsoup-3.0-dev libxml2-dev libsqlite3-dev \
+     libgtk-4-dev libgtksourceview-5-dev libadwaita-1-dev gobject-introspection \
+     libgirepository1.0-dev
+   ```
+
+2. Build the packages:
+   ```bash
+   dpkg-buildpackage -us -uc -b
+   ```
+
+   Or for a source package:
+   ```bash
+   dpkg-buildpackage -us -uc -S
+   ```
+
+3. The resulting .deb files will be in the parent directory.
+
+Install Locations
+-----------------
+
+- Libraries: /usr/lib/
+- Headers: /usr/include/
+- VAPI files: /usr/share/vala/vapi/
+- GIR files: /usr/share/gir-1.0/
+- Typelib files: /usr/lib/*/girepository-1.0/
+- Tools: /usr/bin/ (oc-md2html, oc-html2md)
+- Test executables: /usr/share/doc/ollmchat/ (oc-test-*)

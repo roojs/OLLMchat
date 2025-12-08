@@ -1,0 +1,7 @@
+usr/share/vala/vapi/ollmchat.vapi
+usr/share/vala/vapi/ollmchatgtk.vapi
+usr/share/vala/vapi/ocsqlite.vapi
+usr/share/vala/vapi/ocsqlite-meson.vapi
+usr/include/ollmchat.h
+usr/include/ollmchatgtk.h
+usr/include/ocsqlite.h

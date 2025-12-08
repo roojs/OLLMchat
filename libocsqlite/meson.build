@@ -64,7 +64,9 @@ ocsqlite_vapi = custom_target('ocsqlite-vapi',
     '@INPUT@'
   ],
   depends: [ocsqlite_base_lib],  # Ensure library is built first (so header exists)
-  build_by_default: true
+  build_by_default: true,
+  install: true,
+  install_dir: get_option('datadir') / 'vala' / 'vapi'
 )
 
 # Create a dependency that includes the VAPI file to ensure build order

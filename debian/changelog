@@ -1,0 +1,11 @@
+ollmchat (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Separate packages for libraries:
+    - libocmarkdown1: Base markdown parsing library
+    - libocmarkdowngtk1: GTK markdown rendering library
+    - libollmchat1: Base LLM library and GTK widgets
+  * Tools package (ollmchat-tools) with oc-md2html and oc-html2md
+  * Documentation package (ollmchat-doc) with test executables
+
+ -- OLLMchat Maintainers <ollmchat@example.com>  Mon, 01 Jan 2024 12:00:00 +0000
