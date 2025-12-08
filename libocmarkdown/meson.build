@@ -28,11 +28,21 @@ ocmarkdown_src = files([
   'Writer.vala',
 ])
 
+# Build rpath for libraries to find each other in build directory
+lib_build_rpath = ':'.join([
+  meson.current_build_dir(),
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
 ocmarkdown_base_lib = library('ocmarkdown',
   dependencies: ocmarkdown_deps,
   sources: ocmarkdown_src,
   vala_header: 'ocmarkdown.h',
   vala_vapi: 'ocmarkdown-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdown.vapi'
+  build_rpath: lib_build_rpath,
   install: true
 )
 

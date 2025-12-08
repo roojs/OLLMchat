@@ -27,6 +27,15 @@ ocmarkdowngtk_src = files([
   'TableCell.vala',
 ])
 
+# Build rpath for libraries to find each other in build directory
+lib_build_rpath = ':'.join([
+  meson.current_build_dir(),
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
 ocmarkdowngtk_lib = library('ocmarkdowngtk',
   dependencies: ocmarkdowngtk_deps,
   sources: ocmarkdowngtk_src,
@@ -34,6 +43,7 @@ ocmarkdowngtk_lib = library('ocmarkdowngtk',
   vala_vapi: 'ocmarkdowngtk-meson.vapi',  # Use different name so our custom_target can use 'ocmarkdowngtk.vapi'
   link_with: [ocmarkdown_base_lib],
   include_directories: include_directories('../libocmarkdown'),  # Include ocmarkdown headers from build directory
+  build_rpath: lib_build_rpath,
   install: true
 )
 

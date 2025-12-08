@@ -25,4 +25,61 @@ subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libollmchat')      # Depends on libocsqlite
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('examples')          # Depends on all libraries
+
+# Create wrapper scripts in top-level build directory for easier access
+# These wrappers set up LD_LIBRARY_PATH and execute the real binaries from examples/
+wrapper_template = '''#!/bin/bash
+# Wrapper script for @EXECUTABLE@
+# This script sets up the library path and runs the actual executable
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXECUTABLE="@EXECUTABLE_PATH@"
+
+# Set LD_LIBRARY_PATH as fallback (rpath should work, but this ensures compatibility)
+export LD_LIBRARY_PATH="@LIB_PATH@${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+# Execute the real binary with all arguments
+exec "$EXECUTABLE" "$@"
+'''
+
+# List of executables and their paths
+executables_info = [
+  ['oc-test-cli', 'examples/oc-test-cli'],
+  ['oc-test-window', 'examples/oc-test-window'],
+  ['oc-markdown-test', 'examples/oc-markdown-test'],
+  ['oc-html2md', 'examples/oc-html2md'],
+  ['oc-md2html', 'examples/oc-md2html']
+]
+
+# Library paths for LD_LIBRARY_PATH
+lib_path = ':'.join([
+  meson.current_build_dir() / 'libocsqlite',
+  meson.current_build_dir() / 'libocmarkdown',
+  meson.current_build_dir() / 'libocmarkdowngtk',
+  meson.current_build_dir() / 'libollmchat',
+  meson.current_build_dir() / 'libollmchatgtk'
+])
+
+# Create wrapper scripts in top-level build directory
+foreach exe_info : executables_info
+  exe_name = exe_info[0]
+  exe_path = exe_info[1]
+  wrapper_content = wrapper_template.replace('@EXECUTABLE@', exe_name)
+  wrapper_content = wrapper_content.replace('@EXECUTABLE_PATH@', meson.current_build_dir() / exe_path)
+  wrapper_content = wrapper_content.replace('@LIB_PATH@', lib_path)
+  
+  wrapper_script = custom_target('wrapper-script-' + exe_name,
+    output: exe_name,
+    input: [],
+    command: [
+      find_program('bash'),
+      '-c',
+      'cat > @OUTPUT@ << \'EOF\'\n' + wrapper_content + 'EOF\nchmod +x @OUTPUT@'
+    ],
+    build_by_default: true,
+    install: false,
+    build_always_stale: false
+  )
+endforeach
+
 subdir('docs')             # Depends on all source files

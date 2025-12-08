@@ -20,12 +20,22 @@ ocsqlite_src = files([
   'Schema.vala',
 ])
 
+# Build rpath for libraries to find each other in build directory
+lib_build_rpath = ':'.join([
+  meson.current_build_dir(),
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
 ocsqlite_base_lib = library('ocsqlite',
   dependencies: ocsqlite_deps,
   sources: ocsqlite_src,
   vala_header: 'ocsqlite.h',
   vala_vapi: 'ocsqlite-meson.vapi',  # Use different name so our custom_target can use 'ocsqlite.vapi'
   vala_args: ['--pkg=sqlite3'],
+  build_rpath: lib_build_rpath,
   install: true
 )
 

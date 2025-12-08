@@ -1,5 +1,15 @@
 # Build test executables
 
+# Build rpath for executables to find libraries in build directory
+# This allows running executables without installing libraries
+build_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
 # Dependencies for test executables
 valac = meson.get_compiler('vala')
 test_ollama_deps = [
@@ -42,6 +52,7 @@ test_ollama = executable('oc-test-cli',
   sources: ['oc-test-cli.vala'],
   link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
   include_directories: include_directories('../libollmchat'),
+  build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
@@ -63,6 +74,7 @@ test_window = executable('oc-test-window',
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk')
   ],
+  build_rpath: build_rpath,
   # Use --pkg for VAPI access (uses manually generated VAPI files)
   vala_args: [
     '--pkg=ocmarkdown',
@@ -78,9 +90,10 @@ test_window = executable('oc-test-window',
 
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
-test_html_parser_to_md = executable('oc-markdown-html-to-md',
+test_html_parser_to_md = executable('oc-html2md',
   dependencies: [base_deps, ocmarkdown_vapi_dep],
-  sources: ['oc-markdown-html-to-md.vala'],
+  sources: ['oc-html2md.vala'],
+  build_rpath: build_rpath,
   vala_args: [
     '--pkg=ocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
@@ -94,6 +107,7 @@ test_markdown_parser = executable('oc-markdown-test',
   sources: ['oc-markdown-test.vala'],
   link_with: [ocmarkdown_base_lib, ocmarkdowngtk_lib],
   include_directories: include_directories('../libocmarkdown'),
+  build_rpath: build_rpath,
   install: false
 )
 
@@ -102,9 +116,11 @@ test_markdown_parser = executable('oc-markdown-test',
 vmd2html = executable('oc-md2html',
   dependencies: [base_deps, ocmarkdown_vapi_dep],
   sources: ['oc-md2html.vala'],
+  build_rpath: build_rpath,
   vala_args: [
     '--pkg=ocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
   ],
   install: false
 )
+

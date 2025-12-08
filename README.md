@@ -18,7 +18,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes test executables (`oc-test-cli`, `oc-test-window`, `oc-markdown-test`, `oc-markdown-html-to-md`) and example tools (`oc-md2html`)
+- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes test executables (`oc-test-cli`, `oc-test-window`, `oc-markdown-test`, `oc-html2md`) and example tools (`oc-md2html`)
 
 ## Demo
 
@@ -67,9 +67,24 @@ This will build:
 - `oc-test-cli` - Command-line test executable
 - `oc-test-window` - GTK UI test executable
 - `oc-markdown-test` - Markdown parser test executable
-- `oc-markdown-html-to-md` - HTML to Markdown converter (reads from stdin)
+- `oc-html2md` - HTML to Markdown converter (reads from stdin)
 - `oc-md2html` - Markdown to HTML converter (takes file as argument)
 - Valadoc documentation (in `docs/ollmchat/`)
+
+### 3. Running executables without installing
+
+The executables are configured with `build_rpath` so they can find the libraries in the build directory without needing to install them. Wrapper scripts are automatically created in the top-level `build/` directory for easy access:
+
+```bash
+# Run from top-level build directory
+./build/oc-test-cli --help
+./build/oc-test-window
+./build/oc-markdown-test
+./build/oc-html2md
+./build/oc-md2html
+```
+
+The wrapper scripts are automatically generated during the build process and set up the library paths correctly.
 
 ## Project Structure
 

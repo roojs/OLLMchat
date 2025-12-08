@@ -79,6 +79,15 @@ ollmchat_tools_src = files([
   'Tools/RequestRunCommand.vala',
 ])
 
+# Build rpath for libraries to find each other in build directory
+lib_build_rpath = ':'.join([
+  meson.current_build_dir(),
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
 ollmchat_base_lib = library('ollmchat',
   dependencies: [ollmchat_deps, ocsqlite_vapi_dep],
   sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
@@ -86,6 +95,7 @@ ollmchat_base_lib = library('ollmchat',
   vala_vapi: 'ollmchat.vapi',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
+  build_rpath: lib_build_rpath,
   vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
   install: true
 )

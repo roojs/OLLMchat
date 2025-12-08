@@ -32,6 +32,15 @@ ollmchatgtk_src = files([
   'Message.vala',
 ]) + ollmchat_tools_gtk_src
 
+# Build rpath for libraries to find each other in build directory
+lib_build_rpath = ':'.join([
+  meson.current_build_dir(),
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat'
+])
+
 ollmchatgtk_lib = library('ollmchatgtk',
   dependencies: ollmchatgtk_deps,
   sources: [ollmchat_tools_gtk_src, ollmchatgtk_src],
@@ -44,6 +53,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
     include_directories('../libocmarkdowngtk'),
     include_directories('../libocsqlite')
   ],
+  build_rpath: lib_build_rpath,
   # When using link_with, meson auto-includes the meson-generated VAPIs from linked libraries
   # We only need --pkg for ocsqlite since ollmchat_base_lib doesn't link_with it (uses link_args instead)
   vala_args: [
