@@ -5,10 +5,11 @@
 OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications. The project focuses on Vala and GTK4, with the main library written in pure Vala.
 
 - **Libraries** - A set of libraries for LLM access, tool integration, and markdown processing
-  - `libomarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
-  - `libomarkdown-ui.so` - Markdown GTK rendering library (depends on libomarkdown, includes GTK components)
-  - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libomarkdown, no GTK dependencies)
-  - `libollmchat-ui.so` - UI library with chat widgets (depends on libollmchat and libomarkdown-ui, includes GTK components)
+  - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
+  - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
+  - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
+  - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
+  - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
 - **Tool Dependencies** - Some tools will rely on third-party applications (e.g., semantic code search which is in another repository)
 - **Tool Calling** - Supports tool calling functionality
@@ -17,7 +18,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds four shared libraries with headers, VAPI, and GIR files. Includes test executables (`test-ollama`, `test-window`, `test-markdown-parser`, `test-html-parser-to-md`) and example tools (`vmd2html`)
+- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes test executables (`oc-test-cli`, `oc-test-window`, `oc-markdown-test`, `oc-markdown-html-to-md`) and example tools (`oc-md2html`)
 
 ## Demo
 
@@ -58,25 +59,31 @@ ninja -C build
 ```
 
 This will build:
-- `libomarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
-- `libomarkdown-ui.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
+- `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
+- `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
+- `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
-- `libollmchat-ui.so` - UI library with chat widgets (with headers, VAPI, and GIR files)
-- `test-ollama` - Command-line test executable
-- `test-window` - GTK UI test executable
-- `test-markdown-parser` - Markdown parser test executable
-- `test-html-parser-to-md` - HTML to Markdown converter (reads from stdin)
-- `vmd2html` - Markdown to HTML converter (takes file as argument)
+- `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
+- `oc-test-cli` - Command-line test executable
+- `oc-test-window` - GTK UI test executable
+- `oc-markdown-test` - Markdown parser test executable
+- `oc-markdown-html-to-md` - HTML to Markdown converter (reads from stdin)
+- `oc-md2html` - Markdown to HTML converter (takes file as argument)
 - Valadoc documentation (in `docs/ollmchat/`)
 
 ## Project Structure
 
+The project is organized into component directories, each with its own `meson.build` file:
+
 **Markdown Libraries:**
-- `Markdown/` - Markdown parsing and rendering (libomarkdown, namespace: `Markdown`)
-- `MarkdownGtk/` - GTK-specific markdown rendering (libomarkdown-ui, namespace: `MarkdownGtk`)
+- `libocmarkdown/` - Markdown parsing and rendering (libocmarkdown.so, namespace: `Markdown`)
+- `libocmarkdowngtk/` - GTK-specific markdown rendering (libocmarkdowngtk.so, namespace: `MarkdownGtk`)
+
+**SQLite Library:**
+- `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
 
 **OLLMchat Base Library (`libollmchat.so`):**
-- `OLLMchat/` - Main namespace (`OLLMchat`)
+- `libollmchat/` - Main namespace (`OLLMchat`)
   - `Client.vala` - Main client class for Ollama/OpenAI API access
   - `Call/` - API call implementations (Chat, Embed, Generate, etc.)
   - `Response/` - Response handling classes
@@ -84,46 +91,61 @@ This will build:
   - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
   - `Prompt/` - Prompt generation system for different agent types (namespace: `OLLMchat.Prompt`)
+  - `History/` - Chat history management (namespace: `OLLMchat.History`)
   - `Message.vala`, `ChatContentInterface.vala`, `OllamaBase.vala` - Core message and base classes
 
-**OLLMchat UI Library (`libollmchat-ui.so`):**
-- `OLLMchatGtk/` - GTK UI components (namespace: `OLLMchatGtk`)
+**OLLMchat GTK Library (`libollmchatgtk.so`):**
+- `libollmchatgtk/` - GTK UI components (namespace: `OLLMchatGtk`)
   - `ChatWidget.vala` - Main chat widget
   - `ChatView.vala` - Chat view component
   - `ChatInput.vala` - Chat input component
   - `ChatPermission.vala` - Permission UI component
+  - `HistoryBrowser.vala` - History browser component
   - `Tools/` - GTK-specific tool UI components (namespace: `OLLMchatGtk.Tools`)
     - `Permission.vala` - Permission provider UI
     - `RunCommand.vala` - Run command tool UI
 
-**Resources and Documentation:**
-- `resources/` - Resource files including prompt templates
+**Other Directories:**
+- `examples/` - Example programs and test code (each with its own meson.build)
 - `docs/` - Generated documentation (Valadoc) and implementation plans
-- `examples/` - Example programs and test code
+- `resources/` - Resource files including prompt templates
+- `vapi/` - VAPI files for external dependencies
 
 ## Dependencies
 
-**Markdown base library (`libomarkdown.so`)**:
+**Markdown base library (`libocmarkdown.so`)**:
 - Gee
 - GLib/GIO
 - libxml-2.0
+- libsoup-3.0
+- json-glib
 
-**Markdown UI library (`libomarkdown-ui.so`)**:
+**Markdown GTK library (`libocmarkdowngtk.so`)**:
 - All markdown base library dependencies
 - GTK4
-
-**OLLMchat base library (`libollmchat.so`)**:
-- All markdown base library dependencies
-- json-glib
-- libsoup-3.0
-
-**OLLMchat UI library (`libollmchat-ui.so`)**:
-- All OLLMchat base library dependencies
-- All markdown UI library dependencies
 - gtksourceview-5
 
+**SQLite library (`libocsqlite.so`)**:
+- Gee
+- GLib/GIO
+- sqlite3
+
+**OLLMchat base library (`libollmchat.so`)**:
+- Gee
+- GLib/GIO
+- json-glib
+- libsoup-3.0
+- libocsqlite (depends on libocsqlite.so)
+
+**OLLMchat GTK library (`libollmchatgtk.so`)**:
+- All OLLMchat base library dependencies
+- All markdown GTK library dependencies
+- GTK4
+- gtksourceview-5
+- libadwaita-1 (for test executables)
+
 **Test executables**:
-- All dependencies above (test-window and test-markdown-parser require GTK4 and gtksourceview-5)
+- All dependencies above (oc-test-window and oc-markdown-test require GTK4, gtksourceview-5, and libadwaita-1)
 
 ## License
 
@@ -132,10 +154,13 @@ This project is licensed under the GNU Lesser General Public License version 3.0
 
 ## Notes
 
-- The build system uses Meson and Ninja
+- The build system uses Meson and Ninja with a modular structure
+- Each library component has its own directory with its own `meson.build` file
 - Resources are compiled into the binary using GLib's resource system
 - The prompt system loads agent-specific sections from resource files
 - Libraries are built as shared libraries with C headers, VAPI files, and GObject Introspection (GIR) files
-- Markdown functionality is split into separate libraries (libomarkdown and libomarkdown-ui) for better modularity
+- Markdown functionality is split into separate libraries (libocmarkdown and libocmarkdowngtk) for better modularity
+- SQLite functionality is in a separate library (libocsqlite) for reuse
 - Valadoc documentation is automatically generated in `docs/ollmchat/` (unified documentation for all libraries)
+- Build order is managed automatically by Meson based on dependencies
 
