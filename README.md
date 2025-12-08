@@ -18,7 +18,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes test executables (`oc-test-cli`, `oc-test-window`, `oc-markdown-test`, `oc-html2md`) and example tools (`oc-md2html`)
+- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes the main `ollmchat` application, test executables (`oc-test-cli`, `oc-markdown-test`, `oc-html2md`) and example tools (`oc-md2html`)
 
 ## Demo
 
@@ -31,6 +31,10 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 Online API documentation is available:
 
 - **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/ollmchat/index.htm)** - Unified library documentation (base and UI)
+
+Implementation plans and roadmap:
+
+- **[Implementation Plans Summary](docs/plans/1.0-summary.md)** - Overview of all planned features with status indicators
 
 ## Build Instructions
 
@@ -64,8 +68,8 @@ This will build:
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
+- `ollmchat` - Main application executable
 - `oc-test-cli` - Command-line test executable
-- `oc-test-window` - GTK UI test executable
 - `oc-markdown-test` - Markdown parser test executable
 - `oc-html2md` - HTML to Markdown converter (reads from stdin)
 - `oc-md2html` - Markdown to HTML converter (takes file as argument)
@@ -77,8 +81,8 @@ The executables are configured with `build_rpath` so they can find the libraries
 
 ```bash
 # Run from top-level build directory
+./build/ollmchat
 ./build/oc-test-cli --help
-./build/oc-test-window
 ./build/oc-markdown-test
 ./build/oc-html2md
 ./build/oc-md2html
@@ -160,7 +164,7 @@ The project is organized into component directories, each with its own `meson.bu
 - libadwaita-1 (for test executables)
 
 **Test executables**:
-- All dependencies above (oc-test-window and oc-markdown-test require GTK4, gtksourceview-5, and libadwaita-1)
+- All dependencies above (ollmchat and oc-markdown-test require GTK4, gtksourceview-5, and libadwaita-1)
 
 ## License
 

@@ -91,6 +91,17 @@ Description: Development files for libollmchat
  .
  This package contains the development files for libollmchat and libollmchatgtk.
 
+Package: ollmchat
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libollmchat1 (= ${binary:Version})
+Description: OLLMchat - LLM chat application
+ OLLMchat is a library and embeddable widget that provides LLM access
+ and tool integration for applications.
+ .
+ This package contains the main ollmchat application.
+
 Package: ollmchat-tools
 Architecture: any
 Depends: ${shlibs:Depends},
@@ -113,5 +124,4 @@ Description: Test executables and documentation for OLLMchat
  .
  This package contains test executables and documentation:
   - oc-test-cli: Command-line test executable
-  - oc-test-window: GTK UI test executable
   - oc-markdown-test: Markdown parser test executable

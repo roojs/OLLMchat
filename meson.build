@@ -24,6 +24,7 @@ subdir('libocmarkdown')    # No dependencies
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libollmchat')      # Depends on libocsqlite
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
+subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
 
 # Create wrapper scripts in top-level build directory for easier access
@@ -44,8 +45,8 @@ exec "$EXECUTABLE" "$@"
 
 # List of executables and their paths
 executables_info = [
+  ['ollmchat', 'ollmchat/ollmchat'],
   ['oc-test-cli', 'examples/oc-test-cli'],
-  ['oc-test-window', 'examples/oc-test-window'],
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html']

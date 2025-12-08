@@ -16,9 +16,10 @@ The source package builds the following binary packages:
 - **libocmarkdowngtk-dev** - Development files for libocmarkdowngtk (headers, VAPI files)
 - **libollmchat-dev** - Development files for libollmchat, libollmchatgtk, and libocsqlite (headers, VAPI files)
 
-### Tools and Documentation
+### Application and Tools
+- **ollmchat** - Main application executable installed to `/usr/bin`
 - **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md) installed to `/usr/bin`
-- **ollmchat-doc** - Test executables (oc-test-cli, oc-test-window, oc-markdown-test) installed to `/usr/share/doc/ollmchat`
+- **ollmchat-doc** - Test executables (oc-test-cli, oc-markdown-test) installed to `/usr/share/doc/ollmchat`
 
 ## Prerequisites
 
@@ -88,6 +89,7 @@ Files are installed to standard Debian locations:
 - **VAPI files**: `/usr/share/vala/vapi/`
 - **GIR files**: `/usr/share/gir-1.0/`
 - **Typelib files**: `/usr/lib/<arch>/girepository-1.0/`
+- **Application**: `/usr/bin/` (ollmchat)
 - **Tools**: `/usr/bin/` (oc-md2html, oc-html2md)
 - **Test executables**: `/usr/share/doc/ollmchat/` (oc-test-*)
 
@@ -120,6 +122,7 @@ To change which files go into which packages, edit the corresponding `.install` 
 - `debian/libocmarkdowngtk-dev.install` - Development files for libocmarkdowngtk
 - `debian/libollmchat1.install` - Runtime files for libollmchat
 - `debian/libollmchat-dev.install` - Development files for libollmchat
+- `debian/ollmchat.install` - Main application executable
 - `debian/ollmchat-tools.install` - Command-line tools
 - `debian/ollmchat-doc.install` - Test executables
 
@@ -136,6 +139,7 @@ sudo dpkg -i ../libocmarkdowngtk1_*.deb
 sudo dpkg -i ../libocmarkdowngtk-dev_*.deb
 sudo dpkg -i ../libollmchat1_*.deb
 sudo dpkg -i ../libollmchat-dev_*.deb
+sudo dpkg -i ../ollmchat_*.deb
 sudo dpkg -i ../ollmchat-tools_*.deb
 sudo dpkg -i ../ollmchat-doc_*.deb
 ```

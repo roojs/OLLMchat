@@ -62,34 +62,6 @@ test_ollama = executable('oc-test-cli',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
-# Build test-window executable (GTK UI test)
-# Include resources directly in the executable to ensure they're registered
-# Use ocmarkdowngtk_vapi_dep which provides link_with but with sources to prevent VAPI being added
-test_window = executable('oc-test-window',
-  dependencies: [test_window_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep],
-  sources: ['oc-test-window.vala', ollmchat_resources],
-  link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Libraries already link with dependencies via link_args
-  include_directories: [
-    include_directories('../libollmchat'),
-    include_directories('../libollmchatgtk'),
-    include_directories('../libocmarkdown'),
-    include_directories('../libocmarkdowngtk')
-  ],
-  build_rpath: build_rpath,
-  # Use --pkg for VAPI access (uses manually generated VAPI files)
-  vala_args: [
-    '--pkg=ocmarkdown',
-    '--pkg=ocmarkdowngtk',
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
-  ],
-  install: true,
-  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
-)
-
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
 test_html_parser_to_md = executable('oc-html2md',

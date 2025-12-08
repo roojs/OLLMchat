@@ -18,130 +18,29 @@
 
 namespace OLLMchat 
 {
-	// Global log file stream (opened lazily on first use, kept open for app lifetime)
-	private GLib.FileStream? debug_log_file = null;
-	// Flag to prevent recursive logging when errors occur in debug_log itself
-	private bool debug_log_in_progress = false;
-
 	/**
-	 * Debug logging function that writes to ~/.cache/ollmchat/ollmchat.debug.log
-	 * Also writes to stderr for immediate console output.
-	 * To disable, comment out the function body or the call to this function.
-	 */
-	private void debug_log(string? in_domain, GLib.LogLevelFlags level, string message)
-	{
-		// Prevent recursive logging if an error occurs during logging
-		if (debug_log_in_progress) {
-			return;
-		}
-		var domain = in_domain == null ? "" : in_domain;
-		// Always write to stderr for immediate console output
-		var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
-		stderr.printf(timestamp + ": " + level.to_string() + " : " + message + "\n");
-
-		// Handle critical errors
-		if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
-			GLib.error("critical");
-		}
-
-		debug_log_in_progress = true;
-
-		// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)
-		if (debug_log_file == null) {
-			var log_dir = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".cache", "ollmchat"
-			);
-			var log_file_path = GLib.Path.build_filename(log_dir, "ollmchat.debug.log");
-
-			// Try to create directory if it doesn't exist (simple recursive approach)
-			var parts = log_dir.split("/");
-			var current_path = "";
-			foreach (var part in parts) {
-				if (part == "") {
-					current_path = "/";
-					continue;
-				}
-				if (current_path == "") {
-					current_path = part;
-				} else {
-					current_path = current_path + "/" + part;
-				}
-				// Try to create directory (ignore errors if it already exists)
-				try {
-					GLib.DirUtils.create(current_path, 0755);
-				} catch (GLib.FileError e) {
-					// Ignore if directory already exists
-					if (e.code != GLib.FileError.EXIST) {
-						// For other errors, continue anyway - file open might still work
-					}
-				}
-			}
-
-			// Open file in write mode (truncates existing file) using FileStream (doesn't require GIO initialization)
-			debug_log_file = GLib.FileStream.open(log_file_path, "w");
-			if (debug_log_file == null) {
-				stderr.printf("ERROR: FAILED TO OPEN DEBUG LOG FILE: Unable to open file stream\n");
-				debug_log_in_progress = false;
-				return;
-			}
-		}
-
-		// Write to log file
-		try {
-			if (debug_log_file != null) {
-				debug_log_file.puts(timestamp + ": " + level.to_string() + " : " + message + "\n");
-				debug_log_file.flush();
-			}
-		} catch (GLib.Error e) {
-			stderr.printf("ERROR: FAILED TO WRITE TO DEBUG LOG FILE: " + e.message + "\n");
-		}  
-		debug_log_in_progress = false;
-		
-	}
-
-	int main(string[] args)
-	{
-		// Set up debug handler to write to ~/.cache/ollmchat/ollmchat.debug.log
-		// To disable logging, comment out the debug_log() call below
-		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
-		});
-
-		var app = new Gtk.Application("org.roojs.roobuilder.test", GLib.ApplicationFlags.DEFAULT_FLAGS);
-
-		app.activate.connect(() => {
-			var window = new TestWindow(app);
-			app.add_window(window);
-			window.present();
-		});
-
-		return app.run(args);
-	}
-
-	/**
-	 * Test window for testing ChatWidget.
+	 * Main application window for OLLMchat.
 	 * 
-	 * This is a simple wrapper around ChatWidget for standalone testing.
-	 * It includes a main() function and can be compiled independently.
+	 * This is the primary window that provides the chat interface.
 	 * 
 	 * @since 1.0
 	 */
-		public class TestWindow : Adw.Window
-		{
-			private OLLMchatGtk.ChatWidget chat_widget;
-			private OLLMchat.History.Manager? history_manager = null;
-			private Adw.OverlaySplitView split_view;
-			private OLLMchatGtk.HistoryBrowser? history_browser = null;
+	public class OllmchatWindow : Adw.Window
+	{
+		private OLLMchatGtk.ChatWidget chat_widget;
+		private OLLMchat.History.Manager? history_manager = null;
+		private Adw.OverlaySplitView split_view;
+		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 
 		/**
-		 * Creates a new TestWindow instance.
+		 * Creates a new OllmchatWindow instance.
 		 * 
 		 * @param app The Gtk.Application instance
 		 * @since 1.0
 		 */
-		public TestWindow(Gtk.Application app)
+		public OllmchatWindow(Gtk.Application app)
 		{
-			this.title = "OLL Chat Test";
+			this.title = "OLLMchat";
 			this.set_default_size(800, 600);
 
 			// Create toolbar view to manage header bar and content
@@ -350,4 +249,3 @@ namespace OLLMchat
 		}
 	}
 }
-

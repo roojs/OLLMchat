@@ -1,0 +1,53 @@
+# Build ollmchat executable (primary application)
+
+# Build rpath for executable to find libraries in build directory
+# This allows running executable without installing libraries
+build_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk'
+])
+
+# Dependencies for ollmchat executable
+valac = meson.get_compiler('vala')
+ollmchat_deps = [
+  dependency('gtk4'),
+  dependency('libadwaita-1'),
+  dependency('gtksourceview-5'),
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
+  valac.find_library('posix'),
+]
+
+# Build ollmchat executable (primary application)
+# Include resources directly in the executable to ensure they're registered
+ollmchat = executable('ollmchat',
+  dependencies: [ollmchat_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep],
+  sources: ['Application.vala', 'Window.vala', ollmchat_resources],
+  link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Libraries already link with dependencies via link_args
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libollmchatgtk'),
+    include_directories('../libocmarkdown'),
+    include_directories('../libocmarkdowngtk')
+  ],
+  build_rpath: build_rpath,
+  # Use --pkg for VAPI access (uses manually generated VAPI files)
+  vala_args: [
+    '--pkg=ocmarkdown',
+    '--pkg=ocmarkdowngtk',
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+  ],
+  install: true,
+  install_dir: get_option('bindir')
+)

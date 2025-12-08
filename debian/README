@@ -14,8 +14,9 @@ The source package builds the following binary packages:
 4. **libocmarkdowngtk-dev** - Development files for libocmarkdowngtk
 5. **libollmchat1** - Base LLM library (libollmchat.so), GTK widgets (libollmchatgtk.so), and SQLite library (libocsqlite.so)
 6. **libollmchat-dev** - Development files for libollmchat, libollmchatgtk, and libocsqlite
-7. **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md)
-8. **ollmchat-doc** - Test executables (oc-test-cli, oc-test-window, oc-markdown-test)
+7. **ollmchat** - Main application executable
+8. **ollmchat-tools** - Command-line tools (oc-md2html, oc-html2md)
+9. **ollmchat-doc** - Test executables (oc-test-cli, oc-markdown-test)
 
 Building Packages
 ------------------
@@ -51,5 +52,6 @@ Install Locations
 - VAPI files: /usr/share/vala/vapi/
 - GIR files: /usr/share/gir-1.0/
 - Typelib files: /usr/lib/*/girepository-1.0/
+- Application: /usr/bin/ (ollmchat)
 - Tools: /usr/bin/ (oc-md2html, oc-html2md)
 - Test executables: /usr/share/doc/ollmchat/ (oc-test-*)
