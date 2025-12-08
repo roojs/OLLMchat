@@ -39,17 +39,18 @@
         <h1 class="main_title">to_title</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="method">to_title</span></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="method">to_title</span></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session)
         </div>
         <div class="description">
           <p>Generate a title from a chat conversation.</p>
-          <p>Extracts the first user message and generates a concise title.</p>
+          <p>Extracts the first user message and generates a concise title. If client is not set or model is not available, returns a default title.
+          </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">chat</td>
+              <td class="main_parameter_table_name">session</td>
               <td>
-                <p>The Call.Chat object containing the conversation </p>
+                <p>The SessionBase object containing the conversation messages </p>
               </td>
             </tr>
           </table>
@@ -58,15 +59,6 @@
             <tr>
               <td>
                 <p>Generated title string </p>
-              </td>
-            </tr>
-          </table>
-          <h2 class="main_title">Exceptions:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">Error</td>
-              <td>
-                <p>if generation fails </p>
               </td>
             </tr>
           </table>

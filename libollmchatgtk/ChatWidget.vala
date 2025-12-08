@@ -325,6 +325,11 @@ namespace OLLMchatGtk
 					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content);
 					this.chat_view.append_complete_assistant_message(stream_msg);
 					break;
+				case "done":
+				case "end-stream":
+					// These are internal signal messages - never display them
+					// They're kept in history for tracking but should never be shown in UI
+					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
 					break;
@@ -508,7 +513,7 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.url + ".";
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.config.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";

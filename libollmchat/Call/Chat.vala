@@ -29,7 +29,7 @@ namespace OLLMchat.Call
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
-			get { return this.client.model; }
+			get { return this.client.config.model; }
 			set { } // Fake setter for serialization
 		}
 		
@@ -101,11 +101,11 @@ namespace OLLMchat.Call
 				
 				case "tools":
 					// Only serialize tools if model is set and tools exist
-					if (this.client.model == "" || this.tools.size == 0) {
+					if (this.client.config.model == "" || this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.client.model) 
-						|| !this.client.available_models.get(this.client.model).can_call) {
+					if (!this.client.available_models.has_key(this.client.config.model) 
+						|| !this.client.available_models.get(this.client.config.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -466,8 +466,10 @@ namespace OLLMchat.Call
 		{
 			var message = new Soup.Message(this.http_method, url);
 
-			if (this.client.api_key != null && this.client.api_key != "") {
-				message.request_headers.append("Authorization", @"Bearer $(this.client.api_key)");
+			if (this.client.config.api_key != "") {
+				message.request_headers.append("Authorization", 
+					"Bearer " + this.client.config.api_key 
+				);
 			}
 
 			message.set_request_body_from_bytes("application/json", new Bytes(request_body.data));

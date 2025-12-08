@@ -31,6 +31,8 @@ namespace OLLMchat
 		private OLLMchat.History.Manager? history_manager = null;
 		private Adw.OverlaySplitView split_view;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
+		private Gtk.Button new_chat_button;
+		private Gtk.Application app;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -40,6 +42,7 @@ namespace OLLMchat
 		 */
 		public OllmchatWindow(Gtk.Application app)
 		{
+			this.app = app;
 			this.title = "OLLMchat";
 			this.set_default_size(800, 600);
 
@@ -54,14 +57,15 @@ namespace OLLMchat
 			};
 			header_bar.pack_start(toggle_button);
 			
-			var new_chat_button = new Gtk.Button() {
+			this.new_chat_button = new Gtk.Button() {
 				icon_name = "list-add-symbolic",
-				tooltip_text = "New Chat"
+				tooltip_text = "New Chat",
+				sensitive = false
 			};
-			header_bar.pack_start(new_chat_button);
+			header_bar.pack_start(this.new_chat_button);
 			
 			// Connect new chat button to create new session
-			new_chat_button.clicked.connect(() => {
+			this.new_chat_button.clicked.connect(() => {
 				var new_session = this.history_manager.create_new_session();
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
@@ -74,7 +78,6 @@ namespace OLLMchat
 			this.split_view.show_sidebar = false; // Hidden at start
 			// Set sidebar width as fraction of total width (0.25 = 25% of window width)
 			this.split_view.set_sidebar_width_fraction(0.25);
-			// this.split_view.collapsed = true; // should we do it as expandy or overlay
 			
 			// Connect toggle button to show/hide sidebar
 			toggle_button.toggled.connect(() => {
@@ -82,48 +85,111 @@ namespace OLLMchat
 				toggle_button.icon_name = toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
 			});
 
-			// Read configuration from ~/.config/ollmchat/ollama.json
-			// Example file content:
-			/* 
-{
-	"url": "http://192.168.88.14:11434/api",
-	//"model": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
-	"api_key": "your-api-key-here"
-}
-			 */
-			var config_path = Path.build_filename(
-				GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
-			);
-			if (!File.new_for_path(config_path).query_exists()) {
-				throw new GLib.FileError.NOENT("Missing file: ~/.config/ollmchat/ollama.json");
-			}
+			// Set split view as toolbar view content
+			toolbar_view.content = this.split_view;
 			
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_file(config_path);
-			} catch (GLib.Error e) {
-				throw new GLib.FileError.FAILED("Failed to load ollama.json: %s", e.message);
-			}
-			
-			var obj = parser.get_root().get_object();
-			if (obj == null) {
-				throw new GLib.FileError.INVAL("Invalid ollama.json: file is empty or not valid JSON");
-			}
+			// Set toolbar view as window content
+			this.set_content(toolbar_view);
 
+			// Load configuration and initialize
+			this.load_config_and_initialize.begin();
+		}
+
+		/**
+		 * Loads configuration and initializes the client.
+		 * Shows bootstrap dialog if config is missing or connection fails.
+		 */
+		private async void load_config_and_initialize()
+		{
+			// Load configuration from ~/.config/ollmchat/config.json
+			var config_path = Path.build_filename(
+				GLib.Environment.get_home_dir(), ".config", "ollmchat", "config.json"
+			);
+			
+			GLib.debug("Loading config from %s", config_path);
+			var config = new OLLMchat.Config();
+			config.load(config_path);
+			GLib.debug("After loading config.json - loaded=%s, url=%s", config.loaded.to_string(), config.url);
+			
+			// Show bootstrap dialog if config was not loaded
+			if (!config.loaded) {
+				GLib.debug("Config not loaded, showing bootstrap dialog");
+				this.show_bootstrap_dialog.begin(config_path, null);
+				return;
+			}
+			
+			GLib.debug("Config loaded successfully, initializing client");
+			// Initialize client and test connection
+			yield this.initialize_client(config);
+		}
+
+		/**
+		 * Shows the bootstrap dialog for initial setup.
+		 * 
+		 * @param config_path Path to the configuration file
+		 * @param error_message Optional error message to display if connection failed
+		 */
+		private async void show_bootstrap_dialog(string config_path, string? error_message)
+		{
+			var dialog = new BootstrapDialog(config_path);
+			
+			if (error_message != null) {
+				// Show error alert before dialog
+				var alert_message = error_message + " Please configure your connection settings.";
+				var alert = new Adw.AlertDialog(
+					"Connection Failed",
+					alert_message
+				);
+				alert.add_response("ok", "Configure");
+				yield alert.choose(this, null);
+			}
+			
+			dialog.config_saved.connect((config) => {
+				this.initialize_client.begin(config);
+			});
+			
+			dialog.error_occurred.connect((error_msg) => {
+				var alert = new Adw.AlertDialog(
+					"Configuration Error",
+					error_msg
+				);
+				alert.add_response("ok", "OK");
+				alert.choose.begin(this, null);
+			});
+			
+			dialog.present(this);
+		}
+		
+		/**
+		 * Initializes the client and sets up the UI.
+		 * Tests connection and shows bootstrap dialog if connection fails.
+		 * 
+		 * @param config The configuration object
+		 */
+		private async void initialize_client(OLLMchat.Config config)
+		{
 			// Create CodeAssistant prompt generator with dummy provider
-			var code_assistant = new Prompt.CodeAssistant(new Prompt.CodeAssistantDummy()) {
+			var code_assistant = new OLLMchat.Prompt.CodeAssistant(
+				new OLLMchat.Prompt.CodeAssistantDummy()
+			) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
 			};
 			
-			var client = new OLLMchat.Client() {
-				url = obj.get_string_member("url"),
-				//model = obj.get_string_member("model"),
-				api_key = obj.get_string_member("api_key"),
+			var client = new OLLMchat.Client(config) {
 				stream = true,
-				think =  obj.has_member("think") ?  obj.get_boolean_member("api_key") : false,
 				keep_alive = "5m",
 				prompt_assistant = code_assistant
 			};
+			
+			// Test connection
+			try {
+				yield client.version();
+			} catch (Error e) {
+				// Connection failed - show bootstrap dialog with error
+				var error_msg = "Failed to connect to server: " + e.message;
+				this.show_bootstrap_dialog.begin(config.config_path, error_msg);
+				return;
+			}
 			
 			// Try to set model from running models on server
 			client.set_model_from_ps();
@@ -145,15 +211,18 @@ namespace OLLMchat
 			// Create history manager with base client
 			this.history_manager = new OLLMchat.History.Manager(client, data_dir);
 			
+			// Enable new chat button now that history manager is ready
+			this.new_chat_button.sensitive = true;
+			
 			// Create history browser and add to split view sidebar
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
 			this.split_view.sidebar = this.history_browser;
 			
 			// Connect history browser to load sessions
-			this.connect_history_browser(this.history_browser);
-			
-			// Set up title generator if configured (async, don't wait)
-			this.setup_title_generator.begin(obj);
+			this.history_browser.session_selected.connect((session) => {
+				// switch_to_session() handles loading internally via load()
+				this.chat_widget.switch_to_session.begin(session);
+			});
 			
 			// Add tools to the client
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
@@ -169,83 +238,17 @@ namespace OLLMchat
 				Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"
 				)) {
-				application = app as GLib.Application,
+				application = this.app as GLib.Application,
 			};
 			client.permission_provider = permission_provider;
 			
-		 
-		
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
 			});
 
 			// Set chat widget as main content
 			this.split_view.content = this.chat_widget;
-
-			// Set split view as toolbar view content
-			toolbar_view.content = this.split_view;
-			
-			// Set toolbar view as window content
-			this.set_content(toolbar_view);
-		}
-
-		/**
-		 * Connects a HistoryBrowser to load sessions when selected.
-		 * 
-		 * Call this method after creating a HistoryBrowser to enable session loading.
-		 * 
-		 * @param history_browser The HistoryBrowser instance to connect
-		 * @since 1.0
-		 */
-		public void connect_history_browser(OLLMchatGtk.HistoryBrowser history_browser)
-		{
-			history_browser.session_selected.connect((session) => {
-				// switch_to_session() handles loading internally via load()
-				this.chat_widget.switch_to_session.begin(session);
-			});
 		}
 		
-		/**
-		 * Set up title generator if title_model is configured.
-		 * Only sets up title generator if title_model is valid.
-		 * Uses early returns for fail-fast pattern.
-		 * 
-		 * @param obj The JSON config object
-		 */
-		private async void setup_title_generator(Json.Object obj)
-		{
-			// Fail fast: check if title_model is configured
-			if (!obj.has_member("title_model")) {
-				GLib.warning("title_model not set in config - title generation disabled");
-				return;
-			}
-			
-			var title_model = obj.get_string_member("title_model");
-			if (title_model == "") {
-				GLib.warning("title_model is set but empty in config - title generation disabled");
-				return;
-			}
-			
-			// Create separate client for title generation
-			var title_client = new OLLMchat.Client() {
-				url = obj.get_string_member("url"),
-				api_key = obj.get_string_member("api_key"),
-				model = title_model,
-				stream = false
-			};
-			
-			// Fail fast: verify model exists on server
-			try {
-				yield title_client.show_model(title_model);
-			} catch (Error e) {
-				GLib.warning("title_model '%s' not found on server - title generation disabled: %s", title_model, e.message);
-				return;
-			}
-			
-			// Model exists - set up title generator
-			if (this.history_manager != null) {
-				this.history_manager.title_generator = new OLLMchat.History.TitleGenerator(title_client);
-			}
-		}
 	}
 }

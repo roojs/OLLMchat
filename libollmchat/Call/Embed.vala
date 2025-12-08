@@ -28,7 +28,7 @@ namespace OLLMchat.Call
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
-			get { return this.client.model; }
+			get { return this.client.config.model; }
 			set { } // Fake setter for serialization
 		}
 		

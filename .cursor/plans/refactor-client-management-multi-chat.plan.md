@@ -34,6 +34,7 @@ Refactor the UI-Client interaction architecture so Manager acts as a signal gate
   - tools: Created fresh (each session needs its own tool instances)
 
 **Implementation**:
+
 ```vala
 private Client create_client()
 {
@@ -93,6 +94,7 @@ private Client create_client()
 - Add `unread_count` property for inactive sessions
 
 **Changes**:
+
 ```vala
 public class Session : Object
 {
@@ -156,6 +158,7 @@ public class Session : Object
 - Track unread messages when session is inactive
 
 **Implementation**:
+
 ```vala
 private void connect_session_signals(Session session)
 {
@@ -243,6 +246,7 @@ private void on_stream_chunk(string new_text, bool is_thinking, Response.Chat re
 - Manager handles signal connection/disconnection via session activate/deactivate
 
 **Changes**:
+
 ```vala
 public class ChatWidget : Gtk.Box
 {
@@ -325,6 +329,3 @@ public class ChatWidget : Gtk.Box
 1. **Session Creation Flow**: How does UI create new sessions? Does Manager provide a method, or does UI create Session directly?
 2. **Chat Detection**: How does Manager detect new chats if not auto-creating from signals? Does it listen to session clients?
 3. **Session Persistence**: When UI creates a new session, when does it get saved to database?
-
-
-

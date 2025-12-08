@@ -107,7 +107,7 @@ namespace OLLMchat
 			debug_log(dom, lvl, msg);  // Comment out this line to disable file logging
 		});
 
-		var app = new Gtk.Application("org.roojs.ollmchat", GLib.ApplicationFlags.DEFAULT_FLAGS);
+		var app = new Adw.Application("org.roojs.ollmchat", GLib.ApplicationFlags.DEFAULT_FLAGS);
 
 		app.activate.connect(() => {
 			var window = new OllmchatWindow(app);

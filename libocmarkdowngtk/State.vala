@@ -176,6 +176,32 @@ namespace MarkdownGtk
 			this.render.current_state = this.parent;
 		}
 		
+		/**
+		 * Copies style properties from this state to the target state.
+		 * Used to restore default formatting when new textviews are created.
+		 * 
+		 * @param target The target state to copy style properties to
+		 */
+		public void copy_style_to(State target)
+		{
+			if (this.style == null || target.style == null) {
+				return;
+			}
+			
+			// Copy foreground color using rgba (readable property)
+			if (this.style.foreground_set) {
+				target.style.foreground_rgba = this.style.foreground_rgba;
+			}
+			
+			// Copy Pango style (italic, etc.)
+			if (this.style.style_set) {
+				target.style.style = this.style.style;
+			}
+			
+			// Copy other text tag properties as needed
+			// (weight, scale, etc. can be added if needed in the future)
+		}
+		
 	}
 }
 

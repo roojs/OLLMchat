@@ -70,7 +70,7 @@ namespace OLLMchat.History
 			var new_client = this.manager.new_client();
 			
 			// Copy client properties from EmptySession
-			new_client.model = this.client.model;
+			new_client.config.model = this.client.config.model;
 			new_client.think = this.client.think;
 			new_client.stream = this.client.stream;
 			new_client.format = this.client.format;

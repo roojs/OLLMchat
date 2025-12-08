@@ -29,7 +29,7 @@ namespace OLLMchat.History
 		public string history_dir { get; private set; }
 		public Gee.ArrayList<SessionBase> sessions { get; private set; default = new Gee.ArrayList<SessionBase>(); }
 		public SQ.Database db { get; private set; }
-		public TitleGenerator? title_generator { get; set; default = null; }
+		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
 		public SessionBase session { get; internal set; }
 		
@@ -88,6 +88,9 @@ namespace OLLMchat.History
 
             this.session = new EmptySession(this);
 			this.session.activate(); // contects signals alhtough to nowhere..
+			
+			// Set up title generator from config
+			this.title_generator = new TitleGenerator(this.base_client.config);
 		}
 		
 		/**
@@ -98,12 +101,13 @@ namespace OLLMchat.History
 		 */
 		public Client new_client()
 		{
-			var client = new Client();
+			// Create new config by copying from base client
+			var new_config = new OLLMchat.Config();
+			this.base_client.config.copy_to(new_config);
 			
-			// Copy all properties
-			client.url = this.base_client.url;
-			client.api_key = this.base_client.api_key;
-			client.model = this.base_client.model;
+			var client = new OLLMchat.Client(new_config);
+			
+			// Copy all other properties
 			client.stream = this.base_client.stream;
 			client.format = this.base_client.format;
 			client.think = this.base_client.think;

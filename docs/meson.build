@@ -10,87 +10,19 @@ valadoc_clean = custom_target('valadoc-clean',
   build_by_default: false
 )
 
+# Build valadoc input list from source file variables defined in subdirs
+# Combine all source files - Meson will resolve paths correctly
+valadoc_input_src = []
+valadoc_input_src += ollmchat_ollama_src
+valadoc_input_src += ollmchat_prompt_src
+valadoc_input_src += ollmchat_tools_src
+valadoc_input_src += ollmchatgtk_src
+valadoc_input_src += ocmarkdown_src
+valadoc_input_src += ocmarkdowngtk_src
+valadoc_input_src += ocsqlite_src
+
 valadoc_docs = custom_target('valadoc',
-  input: files(
-    # libollmchat sources
-    '../libollmchat/Client.vala',
-    '../libollmchat/Call/Base.vala',
-    '../libollmchat/Call/Chat.vala',
-    '../libollmchat/Call/Embed.vala',
-    '../libollmchat/Call/Models.vala',
-    '../libollmchat/Call/Options.vala',
-    '../libollmchat/Call/Ps.vala',
-    '../libollmchat/Call/ShowModel.vala',
-    '../libollmchat/Message.vala',
-    '../libollmchat/ChatContentInterface.vala',
-    '../libollmchat/OllamaBase.vala',
-    '../libollmchat/Response/Base.vala',
-    '../libollmchat/Response/CallFunction.vala',
-    '../libollmchat/Response/Chat.vala',
-    '../libollmchat/Response/Embed.vala',
-    '../libollmchat/Response/Model.vala',
-    '../libollmchat/Response/ToolCall.vala',
-    '../libollmchat/Tool/RequestBase.vala',
-    '../libollmchat/Tool/Tool.vala',
-    '../libollmchat/Tool/Param.vala',
-    '../libollmchat/Tool/ParamSimple.vala',
-    '../libollmchat/Tool/ParamObject.vala',
-    '../libollmchat/Tool/ParamArray.vala',
-    '../libollmchat/Tool/Function.vala',
-    '../libollmchat/ChatPermission/Provider.vala',
-    '../libollmchat/ChatPermission/Dummy.vala',
-    '../libollmchat/History/Manager.vala',
-    '../libollmchat/History/SessionBase.vala',
-    '../libollmchat/History/Session.vala',
-    '../libollmchat/History/EmptySession.vala',
-    '../libollmchat/History/SessionJson.vala',
-    '../libollmchat/History/SessionPlaceholder.vala',
-    '../libollmchat/History/TitleGenerator.vala',
-    '../libollmchat/Call/Generate.vala',
-    '../libollmchat/Response/Generate.vala',
-    '../libollmchat/Prompt/BaseAgent.vala',
-    '../libollmchat/Prompt/AgentInterface.vala',
-    '../libollmchat/Prompt/CodeAssistantDummy.vala',
-    '../libollmchat/Prompt/CodeAssistant.vala',
-    '../libollmchat/Tools/ReadFile.vala',
-    '../libollmchat/Tools/RequestReadFile.vala',
-    '../libollmchat/Tools/EditMode.vala',
-    '../libollmchat/Tools/RequestEditMode.vala',
-    '../libollmchat/Tools/EditModeChange.vala',
-    '../libollmchat/Tools/RunCommand.vala',
-    '../libollmchat/Tools/RequestRunCommand.vala',
-    # libollmchatgtk sources
-    '../libollmchatgtk/ChatWidget.vala',
-    '../libollmchatgtk/ChatView.vala',
-    '../libollmchatgtk/ChatInput.vala',
-    '../libollmchatgtk/ChatPermission.vala',
-    '../libollmchatgtk/HistoryBrowser.vala',
-    '../libollmchatgtk/Message.vala',
-    '../libollmchatgtk/Tools/RunCommand.vala',
-    '../libollmchatgtk/Tools/RequestRunCommand.vala',
-    '../libollmchatgtk/Tools/Permission.vala',
-    # libocmarkdown sources
-    '../libocmarkdown/Parser.vala',
-    '../libocmarkdown/RenderBase.vala',
-    '../libocmarkdown/PangoRender.vala',
-    '../libocmarkdown/DummyRenderer.vala',
-    '../libocmarkdown/HtmlParser.vala',
-    '../libocmarkdown/HtmlRender.vala',
-    '../libocmarkdown/Tags.vala',
-    '../libocmarkdown/TagsTable.vala',
-    '../libocmarkdown/Writer.vala',
-    # libocmarkdowngtk sources
-    '../libocmarkdowngtk/Render.vala',
-    '../libocmarkdowngtk/RenderSourceView.vala',
-    '../libocmarkdowngtk/State.vala',
-    '../libocmarkdowngtk/TopState.vala',
-    '../libocmarkdowngtk/Table.vala',
-    '../libocmarkdowngtk/TableCell.vala',
-    # libocsqlite sources
-    '../libocsqlite/Database.vala',
-    '../libocsqlite/Query.vala',
-    '../libocsqlite/Schema.vala',
-  ),
+  input: valadoc_input_src,
   output: ['valadoc'],
   depends: [valadoc_clean],
   command: [

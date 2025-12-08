@@ -58,6 +58,9 @@ namespace MarkdownGtk
 		// Configuration
 		public bool scroll_to_end { get; set; default = true; }
 		
+		// Default state to restore when new textviews are created (e.g., after code blocks)
+		public State? default_state { get; set; default = null; }
+		
 		// Code block handlers (kept in array to prevent going out of scope)
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
 		private RenderSourceView? current_source_view_handler = null;
@@ -110,6 +113,13 @@ namespace MarkdownGtk
 			
 			// Initialize TopState's tag and marks now that buffer is ready
 			this.top_state.initialize();
+			
+			// If default_state is set, apply its style to the new top_state
+			if (this.default_state != null && this.top_state != null) {
+				// Create a new state under top_state and copy the default style
+				var new_state = this.top_state.add_state();
+				this.default_state.copy_style_to(new_state);
+			}
 		}
 		
 		/**

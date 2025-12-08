@@ -41,7 +41,7 @@ namespace OLLMchat.Call
 			if (this.client == null) {
 				return "";
 			}
-			var base_url = this.client.url;
+			var base_url = this.client.config.url;
 			if (!base_url.has_suffix("/")) {
 				base_url += "/";
 			}
@@ -63,8 +63,10 @@ namespace OLLMchat.Call
 			
 			var message = new Soup.Message(this.http_method, url);
 
-			if (this.client.api_key != null && this.client.api_key != "") {
-				message.request_headers.append("Authorization", @"Bearer $(this.client.api_key)");
+			if (this.client.config.api_key != "") {
+				message.request_headers.append("Authorization",
+				 	"Bearer " + this.client.config.api_key 
+				);
 			}
 
 			if (needs_body && this.http_method == "POST") {

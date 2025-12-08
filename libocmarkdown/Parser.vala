@@ -713,7 +713,7 @@ namespace Markdown
 					// No match - add as text and consume the character
 					var char_str = c.to_string();
 					str += char_str;
-					GLib.debug("  [str] ADD char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
+					//GLib.debug("  [str] ADD char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
 					chunk_pos += c.to_string().length;
 					continue;
 				}

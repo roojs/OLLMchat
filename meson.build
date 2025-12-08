@@ -47,6 +47,7 @@ exec "$EXECUTABLE" "$@"
 executables_info = [
   ['ollmchat', 'ollmchat/ollmchat'],
   ['oc-test-cli', 'examples/oc-test-cli'],
+  ['ollmchat.bin', 'ollmchat/ollmchat'],  # Wrapper for testing ollama chat with latest code
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html']

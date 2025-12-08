@@ -27,34 +27,15 @@ namespace OLLMchat
 	 */
 	public class Client : Object
 	{
-		/**
-		 * Base URL for the Ollama API endpoint.
+			/**
+		 * Configuration object for this client.
 		 * 
-		 * Defaults to localhost:11434/api for local Ollama instances.
-		 * Can be set to point to remote Ollama servers or OpenAI-compatible APIs.
-		 * 
-		 * @since 1.0
-		 */
-		public string url { get; set; default = "http://localhost:11434/api"; }
-		
-		/**
-		 * API key for authentication (optional).
-		 * 
-		 * Used for authenticated API requests. Set to null if no authentication is required.
+		 * Contains URL, API key, and other client settings.
 		 * 
 		 * @since 1.0
 		 */
-		public string? api_key { get; set; }
-		
-		/**
-		 * Model name to use for chat requests.
-		 * 
-		 * Required for chat operations. Must be a valid model name available on the Ollama server.
-		 * See the Ollama API documentation for details.
-		 * 
-		 * @since 1.0
-		 */
-		public string model { get; set; default = ""; }
+		public Config config { get; set; }
+
 		
 		/**
 		 * Whether to stream responses from the API.
@@ -235,9 +216,11 @@ namespace OLLMchat
 		 */
 		public uint timeout { get; set; default = 300; }
 
-		public Client()
+		public Client(Config config)
 		{
+			this.config = config;
 		}
+
 
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.
@@ -377,10 +360,30 @@ namespace OLLMchat
 		}
 
 		/**
+		 * Gets the version of the Ollama server.
+		 * 
+		 * Calls the /api/version endpoint to retrieve the server version.
+		 * Useful for verifying connectivity during bootstrap.
+		 * 
+		 * @param cancellable Optional cancellable for cancelling the request
+		 * @return Version string from the server (e.g., "0.12.6")
+		 * @throws Error if the request fails or response is invalid
+		 * @since 1.0
+		 */
+		public async string version(GLib.Cancellable? cancellable = null) throws Error
+		{
+			var call = new OLLMchat.Call.Version(this) {
+				cancellable = cancellable
+			};
+			var result = yield call.exec_version();
+			return result;
+		}
+
+		/**
 		 * Sets the model from the first running model on the server (ps()).
 		 * 
 		 * Only sets the model if it's not already configured (empty string).
-		 * If running models are found and model is empty, sets this.model to the first model's name.
+		 * If running models are found and model is empty, sets this.config.model to the first model's name.
 		 * If no running models are found or an error occurs, leaves model unchanged.
 		 * 
 		 * Note: Always uses model.name (not model.model) to ensure consistency.
@@ -390,7 +393,7 @@ namespace OLLMchat
 		public void set_model_from_ps()
 		{
 			// Don't override model if it's already set (e.g., from config)
-			if (this.model != "") {
+			if (this.config.model != "") {
 				return;
 			}
 			
@@ -402,7 +405,7 @@ namespace OLLMchat
 					running_models = this.ps.end(res);
 					if (running_models.size > 0) {
 						// Always use model.name for consistency (not model.model)
-						this.model = running_models[0].name;
+						this.config.model = running_models[0].name;
 					}
 				} catch (Error e) {
 					GLib.warning("Failed to set model from ps(): %s", e.message);

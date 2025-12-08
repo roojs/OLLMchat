@@ -87,6 +87,13 @@ namespace OLLMchat.History
 			this.chat = (Call.Chat) m.message_interface;
 		}
 		
+		// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
+		if (m.role == "done") {
+			// Still relay to Manager for UI (though it will be filtered out there too)
+			this.manager.message_created(m, content_interface);
+			return;
+		}
+		
 		// Add message to session.messages
 		// Check if message is already in list (avoid duplicates)
 		bool found = false;
@@ -235,30 +242,9 @@ namespace OLLMchat.History
 				// TODO: Calculate total_tokens and duration_seconds from response metadata
 				
 				// Generate title if not set
-				if (this.title == "" && this.manager.title_generator == null) {
-					this.title = "Unknown Chat";
-					foreach (var msg in this.messages) {
-						// Use "user-sent" messages for title (raw user text before prompt engine modification)
-						// Fall back to "user" messages if no "user-sent" messages exist
-						if (msg.role == "user-sent") {
-							 
-							this.title = msg.content;
-							break;
-						
-						} 
-						 if (msg.role == "user") {
-							// Fallback to regular user messages
-						 
-							this.title = msg.content;
-							break;
-							
-						}
-					}
-				} 
 				if (this.title == "") {
-					// Use generator to create title
 					try {
-						this.title = yield this.manager.title_generator.to_title(this.chat);
+						this.title = yield this.manager.title_generator.to_title(this);
 					} catch (Error e) {
 						GLib.warning("Failed to generate title: %s", e.message);
 						this.title = "Untitled Chat";

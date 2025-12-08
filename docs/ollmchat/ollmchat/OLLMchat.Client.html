@@ -27,11 +27,10 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Client.api_key.html">api_key</a></li>
           <li class="property"><a href="OLLMchat.Client.available_models.html">available_models</a></li>
+          <li class="property"><a href="OLLMchat.Client.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.Client.format.html">format</a></li>
           <li class="property"><a href="OLLMchat.Client.keep_alive.html">keep_alive</a></li>
-          <li class="property"><a href="OLLMchat.Client.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.Client.num_ctx.html">num_ctx</a></li>
           <li class="property"><a href="OLLMchat.Client.num_predict.html">num_predict</a></li>
           <li class="property"><a href="OLLMchat.Client.permission_provider.html">permission_provider</a></li>
@@ -47,7 +46,6 @@
           <li class="property"><a href="OLLMchat.Client.tools.html">tools</a></li>
           <li class="property"><a href="OLLMchat.Client.top_k.html">top_k</a></li>
           <li class="property"><a href="OLLMchat.Client.top_p.html">top_p</a></li>
-          <li class="property"><a href="OLLMchat.Client.url.html">url</a></li>
           <li class="creation_method"><a href="OLLMchat.Client.Client.html">Client</a></li>
           <li class="method"><a href="OLLMchat.Client.addTool.html">addTool</a></li>
           <li class="method"><a href="OLLMchat.Client.chat.html">chat</a></li>
@@ -59,6 +57,7 @@
           <li class="method"><a href="OLLMchat.Client.ps.html">ps</a></li>
           <li class="method"><a href="OLLMchat.Client.set_model_from_ps.html">set_model_from_ps</a></li>
           <li class="method"><a href="OLLMchat.Client.show_model.html">show_model</a></li>
+          <li class="method"><a href="OLLMchat.Client.version.html">version</a></li>
           <li class="signal"><a href="OLLMchat.Client.chat_send.html">chat_send</a></li>
           <li class="signal"><a href="OLLMchat.Client.message_created.html">message_created</a></li>
           <li class="signal"><a href="OLLMchat.Client.stream_chunk.html">stream_chunk</a></li>
@@ -93,13 +92,13 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Client.api_key.html" class="property">api_key</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">API key for authentication (optional).</span>
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Response.Model.html" class="class">Model</a></span>&gt; <b><a href="OLLMchat.Client.available_models.html" class="property">available_models</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Available models loaded from the server, keyed by model name.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Config.html" class="class">Config</a></span> <b><a href="OLLMchat.Client.config.html" class="property">config</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Configuration object for this client.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Client.format.html" class="property">format</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -108,10 +107,6 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Client.keep_alive.html" class="property">keep_alive</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Model keep-alive duration.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Client.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model name to use for chat requests.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Client.num_ctx.html" class="property">num_ctx</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -176,14 +171,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Top-p (nucleus) sampling parameter (0.0 to 1.0).</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Client.url.html" class="property">url</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Base URL for the Ollama API endpoint.</span>
-            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Client.Client.html" class="creation_method">Client</a></b> ()
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Client.Client.html" class="creation_method">Client</a></b> (<span class="main_type"><a href="OLLMchat.Config.html" class="class">Config</a></span> config)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -233,6 +224,10 @@
             <div class="leaf_brief_description"><span class="brief_description">Gets detailed information about a specific model including 
                 capabilities and stores it in available_models.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Client.version.html" class="method">version</a></b> (<span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the version of the Ollama server.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
@@ -276,8 +271,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-0')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-0">
+          <div class="headline" onclick="toggle_box (this, 'box-content-2')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-2">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

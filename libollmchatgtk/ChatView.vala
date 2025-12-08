@@ -483,6 +483,7 @@ namespace OLLMchatGtk
 					this.renderer.start();
 					
 					// Set up styling for thinking/content blocks using TextTags
+					 
 					if (this.is_thinking) {
 						// Create span state for green color
 						var color_state = this.renderer.current_state.add_state();
@@ -490,10 +491,14 @@ namespace OLLMchatGtk
 						// Create italic state nested inside
 						var italic_state = color_state.add_state();
 						italic_state.style.style = Pango.Style.ITALIC;
+						// Store the color_state as default (not italic_state, so we get color + italic)
+						this.renderer.default_state = color_state;
 					} else {
 						// Create span state for blue color
-						var color_state = this.renderer.current_state.add_state();
-						color_state.style.foreground = "blue";
+						var ms = this.renderer.current_state.add_state();
+						ms.style.foreground = "blue";
+						// Store as default state
+						this.renderer.default_state = ms;
 					}
 					
 					this.last_chunk_start = 0;
@@ -525,6 +530,9 @@ namespace OLLMchatGtk
 					// Call renderer.end_block() to end current block
 					// (start() will be called when starting the next block)
 					this.renderer.end_block();
+					
+					// Clear default state when block ends
+					this.renderer.default_state = null;
 					
 					// Reset last_line for next block
 					this.last_line = "";

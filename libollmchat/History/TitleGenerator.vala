@@ -25,56 +25,105 @@ namespace OLLMchat.History
 	 */
 	public class TitleGenerator : Object
 	{
-		private Client client;
+		private OLLMchat.Config config;
+		private OLLMchat.Client client;
 		
-		public TitleGenerator(Client client)
+		public TitleGenerator(OLLMchat.Config config)
 		{
-			this.client = client;
+			this.config = config;
+			// Create a config for the title generation client with title_model
+			var title_config = new OLLMchat.Config();
+			config.copy_to(title_config);
+			title_config.model = this.config.title_model;
+			this.client = new OLLMchat.Client(title_config) {
+				stream = false
+			};
 		}
 		
 		/**
 		 * Generate a title from a chat conversation.
 		 * 
 		 * Extracts the first user message and generates a concise title.
+		 * If client is not set or model is not available, returns a default title.
 		 * 
-		 * @param chat The Call.Chat object containing the conversation
+		 * @param session The SessionBase object containing the conversation messages
 		 * @return Generated title string
-		 * @throws Error if generation fails
 		 */
-		public async string to_title(Call.Chat chat) throws Error
+		public async string to_title(SessionBase session)
 		{
-			// Find first user message
+			// If model is empty, return default title
+			if (this.client.config.model == "") {
+				return this.get_default_title(session);
+			}
+			
+			// Find first user-sent message from session.messages (not chat.messages)
+			// because "user-sent" messages are only in session.messages
 			string first_message = "";
-			foreach (var msg in chat.messages) {
-				if (msg.role == "user") {
-					first_message = msg.content;
-					break;
+			foreach (var msg in session.messages) {
+				if (msg.role != "user-sent") {
+					continue;
 				}
+				first_message = msg.content;
+				break;
 			}
 			
+			// Exit early if no user-sent message found
 			if (first_message == "") {
-				return "Untitled Chat";
+				return this.get_default_title(session);
 			}
 			
-			// Build prompt for title generation
-			var prompt = "Generate a concise title (maximum 8 words) for this chat conversation based on the first user message:\n\n" +
-				"\"" + first_message + "\"\n\n" +
-				"Respond with ONLY the title, no explanation or quotes.";
-			
-			// Use generate API to get title
-			var response = yield this.client.generate(prompt);
-			
-			// Extract and clean the title
-			var title = response.response.strip();
-			// Remove quotes if present
-			if (title.has_prefix("\"") && title.has_suffix("\"")) {
-				title = title.substring(1, title.length - 2);
+			// Try to generate title, fall back to default on error
+			try {
+				// Build prompt for title generation
+				var prompt = "Generate a concise title (maximum 8 words) for this chat conversation based on the first user message:\n\n" +
+					"\"" + first_message + "\"\n\n" +
+					"Respond with ONLY the title, no explanation or quotes.";
+				
+				// Use generate API to get title
+				var response = yield this.client.generate(prompt);
+				
+				// Extract and clean the title
+				var title = response.response.strip();
+				// Remove quotes if present
+				if (title.has_prefix("\"") && title.has_suffix("\"")) {
+					title = title.substring(1, title.length - 2);
+				}
+				if (title.has_prefix("'") && title.has_suffix("'")) {
+					title = title.substring(1, title.length - 2);
+				}
+				
+				return title.strip();
+			} catch (Error e) {
+				GLib.warning("Title generation failed: %s", e.message);
+				return this.get_default_title(session);
 			}
-			if (title.has_prefix("'") && title.has_suffix("'")) {
-				title = title.substring(1, title.length - 2);
+		}
+		
+		/**
+		 * Gets a default title from the first user-sent message.
+		 */
+		private string get_default_title(SessionBase session)
+		{
+			// Find first user-sent message from session.messages (not chat.messages)
+			// because "user-sent" messages are only in session.messages
+			foreach (var msg in session.messages) {
+				if (msg.role != "user-sent") {
+					continue;
+				}
+				
+				var content = msg.content.strip();
+				if (content == "") {
+					return "Untitled Chat";
+				}
+				// Use first line or first 50 characters
+				var lines = content.split("\n");
+				var title = lines[0].strip();
+				if (title.length > 50) {
+					title = title.substring(0, 47) + "...";
+				}
+				return title;
 			}
-			
-			return title.strip();
+			return "Untitled Chat";
 		}
 	}
 }

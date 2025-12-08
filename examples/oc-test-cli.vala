@@ -120,12 +120,14 @@ namespace OLLMchat
 			GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
 		));
 		var obj = parser.get_root().get_object();
-		var client = new OLLMchat.Client() {
+		var config = new OLLMchat.Config() {
 			url = obj.get_string_member("url"),
 			model = obj.get_string_member("model"),
 			api_key = obj.get_string_member("api_key"),
+			think = true
+		};
+		var client = new OLLMchat.Client(config) {
 			stream = true,
-			think = true,
 			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};
 		client.stream_chunk.connect(on_stream);
