@@ -18,6 +18,11 @@
 
 int main(string[] args)
 {
+	// Set up debug handler to output to stderr
+	GLib.Log.set_default_handler((dom, lvl, msg) => {
+		stderr.printf(lvl.to_string() + " : " + msg + "\n");
+	});
+
 	if (args.length < 2) {
 		stderr.printf("Usage: %s <markdown_file>\n", args[0]);
 		stderr.printf("Converts markdown file to HTML and outputs to stdout.\n");

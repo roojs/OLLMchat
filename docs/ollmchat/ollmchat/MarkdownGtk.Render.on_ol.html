@@ -69,28 +69,16 @@
         <h1 class="main_title">on_ol</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">on_ol</span></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="struct">uint</span></span> start, <span class="main_basic_type"><span class="struct">bool</span></span> is_tight, <span class="main_basic_type"><span class="struct">char</span></span> mark_delimiter)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">on_ol</span></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="struct">uint</span></span> indentation)
         </div>
         <div class="description">
           <p>Callback for ordered list blocks.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">start</td>
+              <td class="main_parameter_table_name">indentation</td>
               <td>
-                <p>The starting number </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">is_tight</td>
-              <td>
-                <p>Whether the list is tight </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">mark_delimiter</td>
-              <td>
-                <p>The delimiter character </p>
+                <p>The indentation level </p>
               </td>
             </tr>
           </table>

@@ -65,6 +65,13 @@ namespace MarkdownGtk
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
 		private RenderSourceView? current_source_view_handler = null;
 		
+		// List stack: stores list numbers at each indentation level
+		// 0 = unordered list, >0 = ordered list (number is the counter)
+		private Gee.ArrayList<int> list_stack = new Gee.ArrayList<int>();
+		
+		// Track the current indentation level for the next on_li call
+		private uint current_list_indentation = 0;
+		
 		// Signal emitted when code block ends (delegates to source_view_handler)
 		public signal void code_block_ended(string content, string language);
 		
@@ -134,6 +141,10 @@ namespace MarkdownGtk
 		{
 			// End the current block first (safe to call even if already null)
 			this.end_block();
+			
+			// Clear list stack
+			this.list_stack.clear();
+			this.current_list_indentation = 0;
 			
 			// Initialize parser state
 			base.start();
@@ -227,17 +238,72 @@ namespace MarkdownGtk
 		}
 		
 		/**
+		 * Resets all list numbers above the specified level to 0.
+		 * 
+		 * @param level The indentation level (1-based) - resets levels above this
+		 */
+		private void reset_lists_above_level(uint level)
+		{
+			// Convert to 0-based index
+			int target_index = (int)level - 1;
+			// Reset all levels above this one (indices < target_index)
+			for (int i = 0; i < target_index && i < this.list_stack.size; i++) {
+				this.list_stack.set(i, 0);
+			}
+		}
+		
+		/**
+		 * Closes lists that are deeper than the specified indentation level.
+		 * 
+		 * @param level The indentation level - only closes lists deeper than this
+		 */
+		private void close_lists_to_level(uint level)
+		{
+			int min_index = (int)level - 1; // Convert to 0-based index
+			// Only close lists that are deeper (stack size > min_index + 1)
+			while (this.list_stack.size > min_index + 1) {
+				this.list_stack.remove_at(this.list_stack.size - 1);
+			}
+		}
+		
+		/**
 		 * Callback for unordered list blocks.
 		 * 
-		 * @param is_tight Whether the list is tight
-		 * @param mark The list marker character
+		 * @param indentation The indentation level
 		 */
-		public override void on_ul(bool is_start, bool is_tight, char mark)
+		public override void on_ul(bool is_start, uint indentation)
 		{
+			GLib.debug("Render.on_ul: is_start=%s, indentation=%u, list_stack.size=%d", is_start ? "true" : "false", indentation, this.list_stack.size);
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
 			}
+			
+			// Close lists that are deeper than this indentation
+			this.close_lists_to_level(indentation);
+			
+			// Convert indentation (1-based) to array index (0-based)
+			int target_index = (int)indentation - 1;
+			
+			// Ensure we have enough levels in the stack
+			while (this.list_stack.size <= target_index) {
+				this.list_stack.add(0);
+			}
+			
+			// Set this level to 0 (unordered list)
+			this.list_stack.set(target_index, 0);
+			
+			// Reset all levels above this one
+			this.reset_lists_above_level(indentation);
+			
+			// Track the current indentation for the next on_li call
+			this.current_list_indentation = indentation;
+			
+			GLib.debug("Render.on_ul: after setup, list_stack.size=%d, current_list_indentation=%u, stack[%d]=%d", 
+				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index));
+			
+			// Always open a list item when we see a list marker (like HTML renderer does)
+			this.on_li(true, false, ' ', 0);
 			
 			this.current_state.add_state();
 		}
@@ -245,16 +311,42 @@ namespace MarkdownGtk
 		/**
 		 * Callback for ordered list blocks.
 		 * 
-		 * @param start The starting number
-		 * @param is_tight Whether the list is tight
-		 * @param mark_delimiter The delimiter character
+		 * @param indentation The indentation level
 		 */
-		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
+		public override void on_ol(bool is_start, uint indentation)
 		{
+			GLib.debug("Render.on_ol: is_start=%s, indentation=%u, list_stack.size=%d", is_start ? "true" : "false", indentation, this.list_stack.size);
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
 			}
+			
+			// Close lists that are deeper than this indentation
+			this.close_lists_to_level(indentation);
+			
+			// Convert indentation (1-based) to array index (0-based)
+			int target_index = (int)indentation - 1;
+			
+			// Ensure we have enough levels in the stack
+			while (this.list_stack.size <= target_index) {
+				this.list_stack.add(0);
+			}
+			
+			// If this is an ordered list, increment the counter
+			int old_value = this.list_stack.get(target_index);
+			this.list_stack.set(target_index, old_value + 1);
+			
+			// Reset all levels above this one
+			this.reset_lists_above_level(indentation);
+			
+			// Track the current indentation for the next on_li call
+			this.current_list_indentation = indentation;
+			
+			GLib.debug("Render.on_ol: after setup, list_stack.size=%d, current_list_indentation=%u, stack[%d]=%d (was %d)", 
+				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index), old_value);
+			
+			// Always open a list item when we see a list marker (like HTML renderer does)
+			this.on_li(true, false, ' ', 0);
 			
 			this.current_state.add_state();
 		}
@@ -268,10 +360,70 @@ namespace MarkdownGtk
 		 */
 		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
 		{
+			GLib.debug("Render.on_li: is_start=%s, is_task=%s, task_mark='%c', task_mark_offset=%u, current_list_indentation=%u, list_stack.size=%d", 
+				is_start ? "true" : "false", is_task ? "true" : "false", task_mark, task_mark_offset, 
+				this.current_list_indentation, this.list_stack.size);
+			
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
 			}
+			
+			// Use the tracked indentation level from the last on_ul/on_ol call
+			uint current_level = this.current_list_indentation;
+			if (current_level == 0) {
+				// No list context - just add state
+				GLib.debug("Render.on_li: no list context (current_level=0), just adding state");
+				this.current_state.add_state();
+				return;
+			}
+			
+			// Convert indentation (1-based) to array index (0-based)
+			int target_index = (int)current_level - 1;
+			
+			// Ensure the stack has this level
+			if (target_index >= this.list_stack.size) {
+				// Stack not set up - just add state without marker
+				GLib.debug("Render.on_li: stack not set up (target_index=%d >= stack.size=%d), adding state without marker", 
+					target_index, this.list_stack.size);
+				this.current_state.add_state();
+				return;
+			}
+			
+			// Get the list type and number for the current level
+			int list_number = this.list_stack.get(target_index);
+			
+			GLib.debug("Render.on_li: current_level=%u, target_index=%d, list_number=%d", 
+				current_level, target_index, list_number);
+			
+			// Add tabs for indentation
+			// Level 1 gets 1 tab, level 2 gets 2 tabs, etc.
+			uint indent_tabs = current_level;
+			GLib.debug("Render.on_li: adding %u tabs for indentation (level %u)", indent_tabs, current_level);
+			for (uint i = 0; i < indent_tabs; i++) {
+				this.current_state.add_text("\t");
+			}
+			
+			// Add marker based on list type
+			if (is_task) {
+				// Task list item - add checkbox marker
+				// Use ✅ (U+2705) for checked, [_] for unchecked
+				string marker = (task_mark == 'x' || task_mark == 'X') ? "✅" : "[_]";
+				GLib.debug("Render.on_li: adding task marker '%s'", marker);
+				this.current_state.add_text(marker);
+			} else if (list_number == 0) {
+				// Unordered list - use bullet point (circle)
+				GLib.debug("Render.on_li: adding unordered list bullet '•'");
+				this.current_state.add_text("•");
+			} else {
+				// Ordered list - use number + "."
+				string number_marker = list_number.to_string() + ".";
+				GLib.debug("Render.on_li: adding ordered list marker '%s'", number_marker);
+				this.current_state.add_text(number_marker);
+			}
+			
+			// Add tab after marker before content
+			this.current_state.add_text("\t");
 			
 			this.current_state.add_state();
 		}

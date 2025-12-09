@@ -165,31 +165,31 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_ul(bool is_start, bool is_tight, char mark)
+		public override void on_ul(bool is_start, uint indentation)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <ul> (tight=%s, mark='%c')\n", is_tight.to_string(), mark);
+				stdout.printf("END: <ul> (indentation=%u)\n", indentation);
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <ul> (tight=%s, mark='%c')\n", is_tight.to_string(), mark);
+			stdout.printf("START: <ul> (indentation=%u)\n", indentation);
 			indent_level++;
 		}
 		
-		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
+		public override void on_ol(bool is_start, uint indentation)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <ol> (start=%u, tight=%s, delimiter='%c')\n", start, is_tight.to_string(), mark_delimiter);
+				stdout.printf("END: <ol> (indentation=%u)\n", indentation);
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <ol> (start=%u, tight=%s, delimiter='%c')\n", start, is_tight.to_string(), mark_delimiter);
+			stdout.printf("START: <ol> (indentation=%u)\n", indentation);
 			indent_level++;
 		}
 		

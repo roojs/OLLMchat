@@ -43,6 +43,7 @@ namespace Markdown
 	{
 		private StringBuilder pango_markup;
 		private Gee.ArrayList<string> open_tags;
+		private Gee.ArrayList<int> list_stack; // Stack of list numbers: 0 = ul, >0 = ol (number is the counter)
 		
 		/**
 		 * Creates a new PangoRender instance.
@@ -52,6 +53,7 @@ namespace Markdown
 			base();
 			this.pango_markup = new StringBuilder();
 			this.open_tags = new Gee.ArrayList<string>();
+			this.list_stack = new Gee.ArrayList<int>();
 		}
 		
 		/**
@@ -77,6 +79,7 @@ namespace Markdown
 		{
 			this.pango_markup = new StringBuilder();
 			this.open_tags.clear();
+			this.list_stack.clear();
 			
 			// Use parser to process HTML tags
 			this.start();
@@ -337,22 +340,83 @@ namespace Markdown
 			// Paragraph start - no markup needed, just content
 		}
 		
-		public override void on_ul(bool is_start, bool is_tight, char mark)
+		/**
+		 * Resets all list numbers above the specified level to 0.
+		 * 
+		 * @param level The indentation level (1-based) - resets levels above this
+		 */
+		private void reset_lists_above_level(uint level)
 		{
-			if (!is_start) {
-				this.pango_markup.append("\n");
-				return;
+			// Convert to 0-based index
+			int target_index = (int)level - 1;
+			// Reset all levels above this one (indices < target_index)
+			for (int i = 0; i < target_index && i < this.list_stack.size; i++) {
+				this.list_stack.set(i, 0);
 			}
-			// List start - no markup needed, markers added in on_li
 		}
 		
-		public override void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter)
+		/**
+		 * Closes lists that are deeper than the specified indentation level.
+		 * 
+		 * @param level The indentation level - only closes lists deeper than this
+		 */
+		private void close_lists_to_level(uint level)
+		{
+			int min_index = (int)level - 1; // Convert to 0-based index
+			// Only close lists that are deeper (stack size > min_index + 1)
+			while (this.list_stack.size > min_index + 1) {
+				this.list_stack.remove_at(this.list_stack.size - 1);
+			}
+		}
+		
+		public override void on_ul(bool is_start, uint indentation)
 		{
 			if (!is_start) {
 				this.pango_markup.append("\n");
 				return;
 			}
-			// List start - no markup needed, numbers added in on_li
+			
+			// Close lists that are deeper than this indentation
+			this.close_lists_to_level(indentation);
+			
+			// Convert indentation (1-based) to array index (0-based)
+			int target_index = (int)indentation - 1;
+			
+			// Ensure we have enough levels in the stack
+			while (this.list_stack.size <= target_index) {
+				this.list_stack.add(0);
+			}
+			
+			// Set this level to 0 (unordered list)
+			this.list_stack.set(target_index, 0);
+			
+			// Reset all levels above this one
+			this.reset_lists_above_level(indentation);
+		}
+		
+		public override void on_ol(bool is_start, uint indentation)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n");
+				return;
+			}
+			
+			// Close lists that are deeper than this indentation
+			this.close_lists_to_level(indentation);
+			
+			// Convert indentation (1-based) to array index (0-based)
+			int target_index = (int)indentation - 1;
+			
+			// Ensure we have enough levels in the stack
+			while (this.list_stack.size <= target_index) {
+				this.list_stack.add(0);
+			}
+			
+			// If this is an ordered list, increment the counter
+			this.list_stack.set(target_index, this.list_stack.get(target_index) + 1);
+			
+			// Reset all levels above this one
+			this.reset_lists_above_level(indentation);
 		}
 		
 		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
@@ -362,16 +426,39 @@ namespace Markdown
 				return;
 			}
 			
-			// List item start - add marker
+			// Get the current indentation level (based on list_stack size)
+			uint current_level = (uint)this.list_stack.size;
+			if (current_level == 0) {
+				// No list context - just add content
+				return;
+			}
+			
+			// Get the list type and number for the current level
+			int list_number = this.list_stack.get((int)(current_level - 1));
+			
+			// Add tabs for indentation (1 + indent size)
+			// indent size is current_level - 1 (since level 1 has 0 indent)
+			uint indent_tabs = 1 + (current_level - 1);
+			for (uint i = 0; i < indent_tabs; i++) {
+				this.pango_markup.append("\t");
+			}
+			
+			// Add marker based on list type
 			if (is_task) {
 				// Task list item - add checkbox marker
-				string marker = (task_mark == 'x' || task_mark == 'X') ? "[✓] " : "[ ] ";
+				// Use ✅ (U+2705) for checked, [_] for unchecked
+				string marker = (task_mark == 'x' || task_mark == 'X') ? "✅" : "[_]";
 				this.pango_markup.append(marker);
+			} else if (list_number == 0) {
+				// Unordered list - use bullet point
+				this.pango_markup.append("•");
 			} else {
-				// Regular list item - marker will be added by context (ul/ol)
-				// For now, use bullet point
-				this.pango_markup.append("• ");
+				// Ordered list - use number + "."
+				this.pango_markup.append(list_number.to_string() + ".");
 			}
+			
+			// Add tab after marker before content
+			this.pango_markup.append("\t");
 		}
 		
 		public override void on_code(bool is_start, string? lang, char fence_char)

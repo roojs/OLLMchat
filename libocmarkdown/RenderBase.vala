@@ -80,8 +80,8 @@ namespace Markdown
 		// Block-level callbacks (can have default empty implementations)
 		public virtual void on_h(bool is_start, uint level) {}
 		public virtual void on_p(bool is_start) {}
-		public virtual void on_ul(bool is_start, bool is_tight, char mark) {}
-		public virtual void on_ol(bool is_start, uint start, bool is_tight, char mark_delimiter) {}
+		public virtual void on_ul(bool is_start, uint indentation) {}
+		public virtual void on_ol(bool is_start, uint indentation) {}
 		public virtual void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset) {}
 		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
 		public virtual void on_code_text(string text) {}

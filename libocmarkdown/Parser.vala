@@ -45,16 +45,6 @@ namespace Markdown
 		PARAGRAPH,
 		UNORDERED_LIST,
 		ORDERED_LIST,
-		ORDERED_LIST_1,
-		ORDERED_LIST__1,
-		ORDERED_LIST___1,
-		ORDERED_LIST____1,
-		ORDERED_LIST_____1,
-		ORDERED_LIST_11,
-		ORDERED_LIST__11,
-		ORDERED_LIST___11,
-		ORDERED_LIST____11,
-		ORDERED_LIST_____11,
 		CONTINUE_LIST,
 		TASK_LIST,
 		DEFINITION_LIST,
@@ -143,6 +133,7 @@ namespace Markdown
 			// Unordered Lists: - item, * item, + item
 			block_map["-"] = FormatType.INVALID;
 			block_map["- "] = FormatType.UNORDERED_LIST;
+			block_map["*"] = FormatType.INVALID;
 			block_map["* "] = FormatType.UNORDERED_LIST;
 			block_map["+"] = FormatType.INVALID;
 			block_map["+ "] = FormatType.UNORDERED_LIST;
@@ -151,35 +142,10 @@ namespace Markdown
 			// Need both "1." and "11." to handle single and double digit numbers
 			block_map["1"] = FormatType.INVALID;
 			block_map["1."] = FormatType.INVALID;
-			block_map["1. "] = FormatType.ORDERED_LIST_1;
+			block_map["1. "] = FormatType.ORDERED_LIST;
 			block_map["11"] = FormatType.INVALID;
 			block_map["11."] = FormatType.INVALID;
-			block_map["11. "] = FormatType.ORDERED_LIST_11;
-			// Indented versions: 1-4 spaces before number
-			block_map[" 1"] = FormatType.INVALID;
-			block_map[" 1."] = FormatType.INVALID;
-			block_map[" 1. "] = FormatType.ORDERED_LIST__1;
-			block_map["  1"] = FormatType.INVALID;
-			block_map["  1."] = FormatType.INVALID;
-			block_map["  1. "] = FormatType.ORDERED_LIST___1;
-			block_map["   1"] = FormatType.INVALID;
-			block_map["   1."] = FormatType.INVALID;
-			block_map["   1. "] = FormatType.ORDERED_LIST____1;
-			block_map["    1"] = FormatType.INVALID;
-			block_map["    1."] = FormatType.INVALID;
-			block_map["    1. "] = FormatType.ORDERED_LIST_____1;
-			block_map[" 11"] = FormatType.INVALID;
-			block_map[" 11."] = FormatType.INVALID;
-			block_map[" 11. "] = FormatType.ORDERED_LIST__11;
-			block_map["  11"] = FormatType.INVALID;
-			block_map["  11."] = FormatType.INVALID;
-			block_map["  11. "] = FormatType.ORDERED_LIST___11;
-			block_map["   11"] = FormatType.INVALID;
-			block_map["   11."] = FormatType.INVALID;
-			block_map["   11. "] = FormatType.ORDERED_LIST____11;
-			block_map["    11"] = FormatType.INVALID;
-			block_map["    11."] = FormatType.INVALID;
-			block_map["    11. "] = FormatType.ORDERED_LIST_____11;
+			block_map["11. "] = FormatType.ORDERED_LIST;
 			
 			// Continue list: 2 spaces to continue list items
 			block_map[" "] = FormatType.INVALID;
@@ -216,16 +182,16 @@ namespace Markdown
 			// block_map["| "] = FormatType.TABLE;
 		} 
 
-		
-	private RenderBase renderer;
-	private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
- 
-	private string leftover_chunk = "";
-	private bool in_literal = false;
-	private FormatType last_line_block = FormatType.NONE;
-	private FormatType current_block = FormatType.NONE;
-	private bool at_line_start = true;
+			
+		private RenderBase renderer;
+		private Gee.ArrayList<FormatType> state_stack { set; get; default = new Gee.ArrayList<FormatType>(); }
 	
+		private string leftover_chunk = "";
+		private bool in_literal = false;
+		private FormatType last_line_block = FormatType.NONE;
+		private FormatType current_block = FormatType.NONE;
+		private bool at_line_start = true;
+		
 		/**
 		 * Creates a new Parser instance.
 		 * 
@@ -465,20 +431,24 @@ namespace Markdown
 				// Check if CONTINUE_LIST is valid (only if last line was ORDERED_LIST or UNORDERED_LIST)
 				if (matched_block == FormatType.CONTINUE_LIST) {
 					if (this.last_line_block != FormatType.ORDERED_LIST && 
-					    this.last_line_block != FormatType.ORDERED_LIST_1 &&
-					    this.last_line_block != FormatType.ORDERED_LIST__1 &&
-					    this.last_line_block != FormatType.ORDERED_LIST___1 &&
-					    this.last_line_block != FormatType.ORDERED_LIST____1 &&
-					    this.last_line_block != FormatType.ORDERED_LIST_____1 &&
-					    this.last_line_block != FormatType.ORDERED_LIST_11 &&
-					    this.last_line_block != FormatType.ORDERED_LIST__11 &&
-					    this.last_line_block != FormatType.ORDERED_LIST___11 &&
-					    this.last_line_block != FormatType.ORDERED_LIST____11 &&
-					    this.last_line_block != FormatType.ORDERED_LIST_____11 &&
 					    this.last_line_block != FormatType.UNORDERED_LIST) {
 						// CONTINUE_LIST not valid - return longest valid match found (0 if none)
 						return max_match_length;
 					}
+					// CONTINUE_LIST is valid - use peekListBlock to determine what comes next
+					var continue_length = cp - chunk_pos;
+					var list_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out matched_block, out byte_length);
+					if (list_result == -1) {
+						// Cannot determine - need more data
+						return -1;
+					}
+					// list_result == 0 or > 0: matched_block and byte_length are set
+					// If matched_block is CONTINUE_LIST, it was handled recursively
+					// If matched_block is ORDERED_LIST or UNORDERED_LIST, we'll handle it
+					// If matched_block is NONE, we'll emit continue block
+					// Adjust byte_length to be relative to chunk_pos (includes the CONTINUE_LIST part)
+					byte_length += continue_length;
+					return continue_length + list_result;
 				}
 				
 				// If FormatType is NOT INVALID, update max_match_length
@@ -495,6 +465,133 @@ namespace Markdown
 			}
 			// At end of chunks - return what we found (0 if only INVALID matches)
 			return max_match_length;
+		}
+
+		/**
+		 * Determines if characters at a given position match a list-related block tag.
+		 * Only matches CONTINUE_LIST, ORDERED_LIST, or UNORDERED_LIST.
+		 * If CONTINUE_LIST is found, recursively calls itself to check what follows.
+		 * 
+		 * @param chunk The text chunk to examine
+		 * @param chunk_pos The position in the chunk to check
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @param matched_block Output parameter for the matched block type (NONE if no match)
+		 * @param byte_length Output parameter for the byte length of the match
+		 * @return 1-N: Length of the match, 0: No match found (emit continue block), -1: Cannot determine (need more characters)
+		 */
+		private int peekListBlock(
+			string chunk, 
+			int chunk_pos, 
+			bool is_end_of_chunks,
+			out FormatType matched_block,
+			out int byte_length
+		) {
+			matched_block = FormatType.NONE;
+			byte_length = 0;
+			
+			// Check bounds
+			if (chunk_pos >= chunk.length) {
+				return 0; // No match - emit continue block
+			}
+			
+			// Check if first character could start a list block
+			// List blocks require at least 2 characters: "  " (CONTINUE), "- " (UNORDERED), "1. " (ORDERED)
+			var first_char = chunk.get_char(chunk_pos);
+			
+			// Only check for list-related markers: space (for CONTINUE), digit (for ORDERED), or -* + - (for UNORDERED)
+			if (!first_char.isspace() && !first_char.isdigit() && 
+			    first_char != '-' && first_char != '*' && first_char != '+') {
+				return 0; // No match - emit continue block
+			}
+			
+			// Need at least 2 characters for any list block (CONTINUE: "  ", UNORDERED: "- ", ORDERED: "1. ")
+			// Check if we have at least 2 characters available
+			var ch = chunk.get_char(chunk_pos);
+			var first_char_len = ch.to_string().length;
+			if ( chunk_pos + first_char_len >= chunk.length) {
+				if (!is_end_of_chunks) {
+					return -1; // Need more data to form a valid list block
+				}
+				// At end of chunks with only 1 character - no valid list block match
+				return 0; // No match - emit continue block
+			}
+			
+			// Loop-based sequence matching
+			int max_match_length = 0;
+			int char_count = 0;
+			var sequence = "";
+			
+			for (var cp = chunk_pos; cp < chunk.length; ) {
+				// Build sequence incrementally by appending current character
+				var char_at_cp = chunk.get_char(cp);
+				// Normalize digits to '1' for ordered list matching
+				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
+				cp += char_at_cp.to_string().length;
+				char_count++;
+				
+				// Check if sequence is in block_map
+				if (!block_map.has_key(sequence)) {
+					// Sequence not in block_map - return longest valid match found (0 if none)
+					if (max_match_length > 0) {
+						return max_match_length;
+					}
+					return 0; // No match - emit continue block
+				}
+				
+				// Sequence is in block_map
+				var block_type = block_map.get(sequence);
+				
+				// Only accept CONTINUE_LIST, ORDERED_LIST, or UNORDERED_LIST
+				switch (block_type) {
+					case FormatType.CONTINUE_LIST:
+						// Found CONTINUE_LIST - keep eating continue blocks recursively
+						// Either recurse again to eat the next continue block, or return if it's a list
+						var continue_byte_length = cp - chunk_pos;
+						FormatType recursive_matched_block;
+						int recursive_byte_length;
+						var recursive_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out recursive_matched_block, out recursive_byte_length);
+						if (recursive_result == -1) {
+							// Cannot determine what's next - need more data
+							return -1;
+						}
+						// recursive_result == 0 or > 0
+						// If recursive call found ORDERED/UNORDERED, return that (we'll emit continue block before handling it)
+						// If recursive call found nothing (0), we emit continue block
+						matched_block = recursive_matched_block;
+						byte_length = continue_byte_length + recursive_byte_length;
+						return continue_byte_length + recursive_result;
+					
+					case FormatType.ORDERED_LIST:
+					case FormatType.UNORDERED_LIST:
+						// Found ORDERED_LIST or UNORDERED_LIST - return this match
+						matched_block = block_type;
+						byte_length = cp - chunk_pos;
+						return char_count;
+					
+					default:
+						if (block_type != FormatType.INVALID) {
+							// Found something else (not a list type) - emit continue block
+							matched_block = FormatType.NONE;
+							byte_length = 0;
+							return 0;
+						}
+						// block_type is INVALID - continue building sequence
+						break;
+				}
+				
+				// block_type is INVALID - continue building sequence
+			}
+			
+			// Reached end of chunk
+			if (!is_end_of_chunks) {
+				// Not end of chunks - might be longer match
+				return -1;
+			}
+			// At end of chunks - return what we found (0 if only INVALID matches)
+			if (max_match_length > 0) {
+				return max_match_length;
+			}
+			return 0; // No match - emit continue block
 		}
 
 		/**
@@ -935,7 +1032,14 @@ namespace Markdown
 				default:
 					// Start the new block
 					this.current_block = matched_block;
-					this.do_block(true, matched_block, block_lang);
+					
+					// For list blocks, extract the marker string to calculate indentation
+					if (matched_block == FormatType.ORDERED_LIST || matched_block == FormatType.UNORDERED_LIST) {
+						var marker_string = chunk.substring(chunk_pos, byte_length);
+						this.do_block(true, matched_block, marker_string);
+					} else {
+						this.do_block(true, matched_block, block_lang);
+					}
 					
 					// For other blocks, continue with normal inline processing
 					this.at_line_start = false;
@@ -952,6 +1056,8 @@ namespace Markdown
 		 */
 		private void do_block(bool is_start, FormatType block_type, string lang = "")
 		{
+			var sl = lang.strip().length;
+
 			switch (block_type) {
 				case FormatType.HEADING_1:
 					this.renderer.on_h(is_start, 1);
@@ -974,22 +1080,15 @@ namespace Markdown
 				case FormatType.PARAGRAPH:
 					this.renderer.on_p(is_start);
 					break;
+
+				// we are going to send 1 as to lowest level of indentation
+				// to make it a bit easier for the users to indent correctly.		
 				case FormatType.UNORDERED_LIST:
-					this.renderer.on_ul(is_start, false, '-');
+					this.renderer.on_ul(is_start, (uint)((lang.length - sl + 1) / 2));
 					break;
 				case FormatType.ORDERED_LIST:
-				case FormatType.ORDERED_LIST_1:
-				case FormatType.ORDERED_LIST__1:
-				case FormatType.ORDERED_LIST___1:
-				case FormatType.ORDERED_LIST____1:
-				case FormatType.ORDERED_LIST_____1:
-				case FormatType.ORDERED_LIST_11:
-				case FormatType.ORDERED_LIST__11:
-				case FormatType.ORDERED_LIST___11:
-				case FormatType.ORDERED_LIST____11:
-				case FormatType.ORDERED_LIST_____11:
-					this.renderer.on_ol(is_start, 1, false, '.');
-					break;
+					this.renderer.on_ol(is_start, (uint)((lang.length - sl + 1) / 2));
+				break;
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
 					this.renderer.on_code_block(is_start, lang);
