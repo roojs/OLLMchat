@@ -64,7 +64,7 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Loads the session from JSON file and converts to a real Session.
+		 * Converts this(a placeholder)int a real Session by loading it from JSON.
 		 * 
 		 * This method:
 		 * a) Creates a new Session with chat
@@ -156,14 +156,16 @@ namespace OLLMchat.History
 				}
 			}
 			
-			// d) Remove itself from manager.sessions and fire remove_chat signal
-			this.manager.sessions.remove(this);
-			this.manager.session_removed(this);
+			// d) Find the index of this placeholder in manager.sessions
+			var index = this.manager.sessions.index_of(this);
+			 
 			
+			// e) Replace the placeholder with the real session in manager.sessions
+			this.manager.sessions[index] = real_session;
 			
-			// e) Add the new Session to manager.sessions and fire add_chat signal
-			this.manager.sessions.add(real_session);
-			this.manager.session_added(real_session);
+			// Emit session_replaced signal for UI updates
+			this.manager.session_replaced(index, real_session);
+			
 			return real_session;
 		}
 		
@@ -173,7 +175,7 @@ namespace OLLMchat.History
 		
 		public override void saveToDB() { }  // No-op: SessionPlaceholder is never saved (already in DB)
 		
-		public override async void save_async() { }  // No-op: SessionPlaceholder is never saved
+		public override async void save_async(bool update_timestamp = true) { }  // No-op: SessionPlaceholder is never saved
 		
 		public override async void write() throws Error { }  // No-op: SessionPlaceholder is never written
 		

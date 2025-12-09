@@ -30,8 +30,10 @@ namespace OLLMchatGtk
 	{
 		private OLLMchat.History.Manager manager;
 		private GLib.ListStore session_store;
+		private Gtk.SortListModel sorted_store;
 		private Gtk.ListView list_view;
 		private Gtk.ScrolledWindow scrolled_window;
+		private bool changing_selection = false;
 		
 		/**
 		 * Signal emitted when a session is selected.
@@ -63,8 +65,24 @@ namespace OLLMchatGtk
 			// Create ListStore for SessionBase objects (Session or SessionPlaceholder)
 			this.session_store = new GLib.ListStore(typeof(OLLMchat.History.SessionBase));
 			
-			// Create ListView with selection model
-			var selection_model = new Gtk.SingleSelection(this.session_store) {
+			// Create CustomSorter that sorts by updated_at_timestamp DESC (most recent first)
+		 
+			
+			// Create SortListModel that wraps the session_store and sorts by updated_at_timestamp DESC
+			this.sorted_store = new Gtk.SortListModel(this.session_store,
+				new Gtk.CustomSorter((a, b) => {
+					var aa = a as OLLMchat.History.SessionBase;
+					var bb = b as OLLMchat.History.SessionBase;
+					if (aa.updated_at_timestamp == bb.updated_at_timestamp) {
+						return Gtk.Ordering.EQUAL;
+					}
+					return aa.updated_at_timestamp > bb.updated_at_timestamp ? 
+						Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				})
+			);
+			
+			// Create ListView with selection model using the sorted store
+			var selection_model = new Gtk.SingleSelection(this.sorted_store) {
 				autoselect = false
 			};
 			this.list_view = new Gtk.ListView(selection_model, null);
@@ -82,12 +100,16 @@ namespace OLLMchatGtk
 			
 			// Connect selection changed signal
 			selection_model.selection_changed.connect(() => {
+				if (this.changing_selection) {
+					return;
+				}
 				var position = selection_model.selected;
 				if (position != Gtk.INVALID_LIST_POSITION) {
-					var session = this.session_store.get_item(position) as OLLMchat.History.SessionBase;
-					if (session != null) {
-						this.session_selected(session);
-					}
+					// Use sorted_store to get the item at the selected position
+					var session = this.sorted_store.get_item(position) as OLLMchat.History.SessionBase;
+					
+					this.session_selected(session);
+					
 				}
 			});
 			
@@ -104,6 +126,9 @@ namespace OLLMchatGtk
 			
 			// Connect to Manager's session_added signal
 			this.manager.session_added.connect(this.on_session_added);
+			
+			// Connect to Manager's session_replaced signal
+			this.manager.session_replaced.connect(this.on_session_replaced);
 			
 			// Load sessions asynchronously
 			this.load_sessions_async.begin();
@@ -230,14 +255,54 @@ namespace OLLMchatGtk
 		 */
 		private void on_session_added(OLLMchat.History.SessionBase session)
 		{
-			// Add Session and SessionPlaceholder, but not EmptySession
-				// Use Idle to defer adding to listview, giving time for title to be set
+			this.session_store.insert(0, session);
+			// EmptySession is never added to manager.sessions, so we don't need to filter it
+			// Use Idle to defer adding to listview, giving time for title to be set
 			Idle.add(() => {
 				// Insert at beginning (most recent first)
-				this.session_store.insert(0, session);
+				
+				
+				// Find position in sorted_store (should be 0 since it's the most recent)
+			 
+				 
+				
+				// Set selection to the new session and scroll to top
+				this.changing_selection = true;
+				var selection = this.list_view.model as Gtk.SingleSelection;
+				selection.selected = 0;
+				
+				// Scroll to top
+				this.scrolled_window.vadjustment.value = 0;
+				
+				this.changing_selection = false;
 				return false;
 			});
 			
+		}
+		
+		/**
+		 * Handler for Manager's session_replaced signal.
+		 * 
+		 * @param index The index in manager.sessions where the replacement occurred
+		 * @param session The new session that replaced the old one
+		 */
+		private void on_session_replaced(int index, OLLMchat.History.SessionBase session)
+		{
+			// Save the currently selected session ID before replacing
+			 
+			
+			// Set flag to prevent selection_changed from firing
+			this.changing_selection = true;
+			var position = (this.list_view.model as Gtk.SingleSelection).selected;
+
+			// Replace the session in the store
+			this.session_store.remove(index);
+			this.session_store.insert(index, session);
+			 
+			(this.list_view.model as Gtk.SingleSelection).selected = position;
+					 
+			// Clear the flag
+			this.changing_selection = false;
 		}
 	}
 }

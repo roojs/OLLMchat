@@ -157,6 +157,12 @@ namespace OLLMchat
 				alert.choose.begin(this, null);
 			});
 			
+			// Close application when dialog is closed via 'x' button
+			((Gtk.Window) dialog).close_request.connect(() => {
+				this.app.quit();
+				return true; // Prevent default close behavior
+			});
+			
 			dialog.present(this);
 		}
 		

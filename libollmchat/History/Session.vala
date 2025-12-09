@@ -236,13 +236,17 @@ namespace OLLMchat.History
 		/**
 		 * Save session to both DB and file asynchronously.
 		 * Updates metadata and saves to both database and JSON file.
+		 * 
+		 * @param update_timestamp If true, update the updated_at_timestamp to current time. Should be true only when there's actual chat activity.
 		 */
-		public override async void save_async()
+		public override async void save_async(bool update_timestamp = true)
 		{
 			try {
-				// Update timestamp
-				var now = new DateTime.now_local();
-				this.updated_at_timestamp = now.to_unix();
+				// Update timestamp only if requested (i.e., when there's actual chat activity)
+				if (update_timestamp) {
+					var now = new DateTime.now_local();
+					this.updated_at_timestamp = now.to_unix();
+				}
 				
 				// Update metadata
 				this.total_messages = this.messages.size;

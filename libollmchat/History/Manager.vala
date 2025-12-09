@@ -27,7 +27,14 @@ namespace OLLMchat.History
 	public class Manager : Object
 	{
 		public string history_dir { get; private set; }
-		public Gee.ArrayList<SessionBase> sessions { get; private set; default = new Gee.ArrayList<SessionBase>(); }
+		public Gee.ArrayList<SessionBase> sessions { 
+			get; 
+			private set; 
+			default = new Gee.ArrayList<SessionBase>((a, b) => {
+				return a.id == b.id;
+				 
+			});
+		}
 		public SQ.Database db { get; private set; }
 		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
@@ -41,6 +48,11 @@ namespace OLLMchat.History
 		
 		// Signal emitted when a session is removed (for UI updates)
 		public signal void session_removed(SessionBase session);
+		
+		// Signal emitted when a session is replaced (for UI updates)
+		// @param index The index in manager.sessions where the replacement occurred
+		// @param session The new session that replaced the old one
+		public signal void session_replaced(int index, SessionBase session);
 		
 		// Signal emitted when a session is activated
 		public signal void session_activated(SessionBase session);
@@ -191,7 +203,7 @@ namespace OLLMchat.History
 		 
 		/**
 		 * Creates a new session for a new chat.
-		 * Uses the current session's agent_name if available, otherwise defaults to "just-ask".
+		 * Uses the current session's agent_name and model if available, otherwise defaults to "just-ask".
 		 * 
 		 * @return A new Session instance with a fresh client
 		 */
@@ -206,6 +218,13 @@ namespace OLLMchat.History
 			// Create client with the agent
 			var client = this.new_client();
 			client.prompt_assistant = this.agents.get(agent_name);
+			
+			// Copy model from current session if available
+			if (this.session != null &&
+				this.session.client != null &&
+				this.session.client.config.model != "") {
+				client.config.model = this.session.client.config.model;
+			}
 			
 			var session = new Session(this, new Call.Chat(client));
 			session.agent_name = agent_name;
@@ -242,6 +261,7 @@ namespace OLLMchat.History
 				this.sessions.add(placeholder);
 			}
 		}
+		
 	}
 }
 

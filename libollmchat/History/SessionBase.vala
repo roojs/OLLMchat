@@ -275,8 +275,10 @@ namespace OLLMchat.History
 		/**
 		 * Save session to both DB and file asynchronously.
 		 * Must be implemented by subclasses.
+		 * 
+		 * @param update_timestamp If true, update the updated_at_timestamp to current time. Should be true only when there's actual chat activity.
 		 */
-		public abstract async void save_async();
+		public abstract async void save_async(bool update_timestamp = true);
 		
 		/**
 		 * Write session to JSON file.

@@ -375,11 +375,23 @@ namespace OLLMchatGtk
 		*/
 		public async void start_new_chat_with_text(string text)
 		{
-			// Create a new session (like the + button does)
-			var new_session = this.manager.create_new_session();
+			// Create a new EmptySession (not a real Session yet - that happens when message is sent)
+			// Copy model and agent from current session
+			var empty_session = new OLLMchat.History.EmptySession(this.manager);
 			
-			// Switch to the new session (this clears the chat)
-			yield this.switch_to_session(new_session);
+			// Copy model and agent from current session if available
+			if (this.manager.session != null && this.manager.session.client != null) {
+				if (this.manager.session.client.config.model != "") {
+					empty_session.client.config.model = this.manager.session.client.config.model;
+				}
+				if (this.manager.session.agent_name != "") {
+					empty_session.agent_name = this.manager.session.agent_name;
+					empty_session.client.prompt_assistant = this.manager.agents.get(this.manager.session.agent_name);
+				}
+			}
+			
+			// Switch to the EmptySession (this clears the chat)
+			yield this.switch_to_session(empty_session);
 			
 			// Set the text in the input field
 			this.chat_input.set_default_text(text);

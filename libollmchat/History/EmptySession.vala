@@ -47,7 +47,7 @@ namespace OLLMchat.History
 			owned get { return "New Chat"; }
 		}
 		
-		public override async void save_async() { }  // No-op: EmptySession is never saved
+		public override async void save_async(bool update_timestamp = true) { }  // No-op: EmptySession is never saved
 		
 		public override void saveToDB() { }  // No-op: EmptySession is never saved
 		
@@ -96,14 +96,20 @@ namespace OLLMchat.History
 			// Convert EmptySession to real Session
 			var real_session = new Session(this.manager, chat);
 			
+			// Copy agent_name from EmptySession
+			real_session.agent_name = this.agent_name;
+			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
 			
 			// Add session to manager.sessions and emit session_added signal immediately
 			// This ensures the history widget updates right away
+			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
+				real_session.fid, real_session.agent_name, new_client.config.model);
 			this.manager.sessions.add(real_session);
 			this.manager.session_added(real_session);
-		
+			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");
+			
 			
 			real_session.activate();
 			this.manager.session_activated(real_session);
