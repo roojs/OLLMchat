@@ -31,6 +31,7 @@ namespace OLLMchat.History
 		
 		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
 		public string title { get; set; default = ""; }
+		public string agent_name { get; set; default = "just-ask"; }
 		public int unread_count { get; set; default = 0; }
 		public bool is_active { get; protected set; default = false; }
 		

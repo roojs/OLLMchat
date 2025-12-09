@@ -31,6 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.History.Manager.agents.html">agents</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.base_client.html">base_client</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
@@ -60,7 +61,7 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.History.Session.html" class="class">Session</a></span> <b><span class="method">create_new_session</span></b> ()
         </div>
         <div class="description">
-          <p>Creates a new session for a new chat.</p>
+          <p>Creates a new session for a new chat. Uses the current session's agent_name if available, otherwise defaults to "just-ask".</p>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

@@ -199,6 +199,7 @@ namespace OLLMchat.History
 				"updated_at_timestamp INT64 NOT NULL DEFAULT 0, " +
 				"title TEXT NOT NULL DEFAULT '', " +
 				"model TEXT NOT NULL DEFAULT '', " +
+				"agent_name TEXT NOT NULL DEFAULT 'just-ask', " +
 				"total_messages INTEGER NOT NULL DEFAULT 0, " +
 				"total_tokens INT64 NOT NULL DEFAULT 0, " +
 				"duration_seconds INT64 NOT NULL DEFAULT 0, " +
@@ -207,6 +208,11 @@ namespace OLLMchat.History
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create session table: %s", db.db.errmsg());
 			}
+			
+			// Add agent_name column if it doesn't exist (for existing databases)
+			var alter_query = "ALTER TABLE session ADD COLUMN agent_name TEXT NOT NULL DEFAULT 'just-ask'";
+			db.db.exec(alter_query, null, out errmsg);
+			// Ignore error if column already exists
 		}
 		
 		/**

@@ -31,7 +31,12 @@ namespace OLLMchat.Prompt
 		 * The name of the agent (e.g., "code-assistant").
 		 * Used to derive the resource path.
 		 */
-		protected virtual string agent_name { get; set; default = ""; }
+		public string name { get; protected set; default = ""; }
+		
+		/**
+		 * Display name for UI (e.g., "Code Assistant", "Just Ask").
+		 */
+		public string title { get; protected set; default = ""; }
 		
 		/**
 		 * User's shell (optional, can be set after construction).
@@ -87,8 +92,8 @@ namespace OLLMchat.Prompt
 			// Try resource:// URI first (bundled resources)
 			var resource_path = GLib.Path.build_filename(
 				RESOURCE_BASE_PREFIX,
-				this.agent_name,
-				@"$(section_name).md"
+				this.name,
+				section_name + ".md"
 			);
 			var file = GLib.File.new_for_uri(@"resource://$(resource_path)");
 			
@@ -107,7 +112,9 @@ namespace OLLMchat.Prompt
 			// Note: This requires BuilderApplication which may not be available in standalone build
 			// For now, only use resource:// URI
 			
-			throw new GLib.IOError.NOT_FOUND(@"Resource section '$(section_name)' not found for agent '$(this.agent_name)'");
+			throw new GLib.IOError.NOT_FOUND(
+				"Resource section '"+ section_name + "' not found for agent '" + 
+					this.name +"'");
 		}
 		
 		/**

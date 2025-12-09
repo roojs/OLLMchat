@@ -68,6 +68,7 @@ ollmchat_prompt_src = files([
   'Prompt/AgentInterface.vala',
   'Prompt/CodeAssistantDummy.vala',
   'Prompt/CodeAssistant.vala',
+  'Prompt/JustAsk.vala',
 ])
 
 # Source files for Tools namespace (base, no GTK)

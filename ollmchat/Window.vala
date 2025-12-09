@@ -168,17 +168,10 @@ namespace OLLMchat
 		 */
 		private async void initialize_client(OLLMchat.Config config)
 		{
-			// Create CodeAssistant prompt generator with dummy provider
-			var code_assistant = new OLLMchat.Prompt.CodeAssistant(
-				new OLLMchat.Prompt.CodeAssistantDummy()
-			) {
-				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
-			};
-			
 			var client = new OLLMchat.Client(config) {
 				stream = true,
 				keep_alive = "5m",
-				prompt_assistant = code_assistant
+				prompt_assistant = new OLLMchat.Prompt.JustAsk()  // Default to Just Ask
 			};
 			
 			// Test connection
@@ -208,8 +201,16 @@ namespace OLLMchat
 				}
 			}
 			
-			// Create history manager with base client
+			// Create history manager with base client (JustAsk is registered in constructor)
 			this.history_manager = new OLLMchat.History.Manager(client, data_dir);
+			
+			// Register CodeAssistant agent
+			var code_assistant = new OLLMchat.Prompt.CodeAssistant(
+				new OLLMchat.Prompt.CodeAssistantDummy()
+			) {
+				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
+			};
+			this.history_manager.agents.set(code_assistant.name, code_assistant);
 			
 			// Enable new chat button now that history manager is ready
 			this.new_chat_button.sensitive = true;

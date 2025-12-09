@@ -534,13 +534,13 @@ namespace Markdown
 		*/
 		public void add(string in_chunk, bool is_end_of_chunks = false)
 		{
-			GLib.debug("add(%s)", in_chunk);
+			//GLib.debug("add(%s)", in_chunk);
 			var chunk = this.leftover_chunk + in_chunk; // Prepend leftover_chunk so it's processed first
 			this.leftover_chunk = ""; // Clear leftover_chunk after using it
 			var chunk_pos = 0;
 			var escape_next = false;
 			var str = "";
-			GLib.debug("  [str] INIT: str='%s' (empty)", str);
+			//GLib.debug("  [str] INIT: str='%s' (empty)", str);
 			
 			while (chunk_pos < chunk.length) {
 				var c = chunk.get_char(chunk_pos);
@@ -557,14 +557,14 @@ namespace Markdown
 					}
 					
 				// Not in fenced code - flush any accumulated text before closing block
-				GLib.debug("  [str] NEWLINE: str='%s', current_block=%s", str, this.current_block.to_string());
+				//GLib.debug("  [str] NEWLINE: str='%s', current_block=%s", str, this.current_block.to_string());
 				if (str != "") {
-					GLib.debug("  [str] FLUSH before block close: str='%s'", str);
+					//GLib.debug("  [str] FLUSH before block close: str='%s'", str);
 					this.renderer.on_text(str);
 					str = "";
-					GLib.debug("  [str] RESET after flush: str='%s'", str);
+					//GLib.debug("  [str] RESET after flush: str='%s'", str);
 				} else {
-					GLib.debug("  [str] EMPTY at newline - nothing to flush");
+					//GLib.debug("  [str] EMPTY at newline - nothing to flush");
 				}
 				
 				// End current block if any
@@ -586,7 +586,7 @@ namespace Markdown
 				
 				// If we're in a fenced code block, check for closing fence only at line start
 				if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
-					GLib.debug("  [code] In code block, at_line_start=%s, chunk_pos=%d, char='%s'", this.at_line_start.to_string(), chunk_pos, chunk_pos < chunk.length ? chunk.get_char(chunk_pos).to_string() : "EOF");
+					//GLib.debug("  [code] In code block, at_line_start=%s, chunk_pos=%d, char='%s'", this.at_line_start.to_string(), chunk_pos, chunk_pos < chunk.length ? chunk.get_char(chunk_pos).to_string() : "EOF");
 					if (!this.at_line_start) {
 						// Not at line start - collect code text
 						// First check if remaining chunk doesn't contain newline - send everything and return
@@ -615,10 +615,10 @@ namespace Markdown
 					if (fence_result == 0) {
 						// Not a closing fence - send text up to newline (or end of chunk) to on_code_text
 						var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
-						GLib.debug("  [code] At line start, not closing fence, remaining='%s'", remaining.replace("\n", "\\n"));
+						//GLib.debug("  [code] At line start, not closing fence, remaining='%s'", remaining.replace("\n", "\\n"));
 						if (!remaining.contains("\n")) {
 							// No newline - send everything and return
-							GLib.debug("  [code] No newline, sending all: '%s'", remaining);
+							//GLib.debug("  [code] No newline, sending all: '%s'", remaining);
 							this.renderer.on_code_text(remaining);
 							return;
 						}
@@ -626,7 +626,7 @@ namespace Markdown
 						// Has newline - send text before newline
 						var newline_pos = chunk.index_of_char('\n', chunk_pos);
 						var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-						GLib.debug("  [code] Sending line: '%s'", code_text);
+						//GLib.debug("  [code] Sending line: '%s'", code_text);
 						this.renderer.on_code_text(code_text);
 						// Move pos to newline (will be handled in next iteration)
 						chunk_pos = newline_pos;
@@ -684,7 +684,7 @@ namespace Markdown
 				if (escape_next) {
 					var char_str = c.to_string();
 					str += char_str;
-					GLib.debug("  [str] ADD escaped char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
+					//GLib.debug("  [str] ADD escaped char '%s': str='%s'", char_str.replace("\n", "\\n").replace("\r", "\\r"), str);
 					escape_next = false;
 					chunk_pos += c.to_string().length;
 					continue;
@@ -703,7 +703,7 @@ namespace Markdown
 				if (match_len == -1) {
 					// Cannot determine - need more characters
 					// Flush accumulated text and save to leftover_chunk
-					GLib.debug("  [str] FLUSH (need more data): str='%s'", str);
+					//GLib.debug("  [str] FLUSH (need more data): str='%s'", str);
 					this.renderer.on_text(str);
 					this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 					return;
@@ -719,10 +719,10 @@ namespace Markdown
 				}
 				
 				// We have a match - flush accumulated text first
-				GLib.debug("  [str] FLUSH (format match): str='%s'", str);
+				//GLib.debug("  [str] FLUSH (format match): str='%s'", str);
 				this.renderer.on_text(str);
 				str = "";
-				GLib.debug("  [str] RESET after format flush: str='%s'", str);
+				//GLib.debug("  [str] RESET after format flush: str='%s'", str);
 				
 				// Calculate byte length for advancing chunk_pos
 				var seq_pos = chunk_pos;
@@ -745,7 +745,7 @@ namespace Markdown
 						// Not a valid HTML tag start - treat as text
 						var html_text = chunk.substring(chunk_pos, seq_pos - chunk_pos);
 						str += html_text;
-						GLib.debug("  [str] ADD HTML-as-text '%s': str='%s'", html_text, str);
+						//GLib.debug("  [str] ADD HTML-as-text '%s': str='%s'", html_text, str);
 						chunk_pos = seq_pos;
 						continue;
 					}
@@ -773,7 +773,7 @@ namespace Markdown
 			}
 			
 			// Flush any remaining text
-			GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
+			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_text(str);
 		}
 	
@@ -928,7 +928,7 @@ namespace Markdown
 					// (peekBlock includes the newline in byte_length)
 					// So seq_pos points to the first character of the code content
 					// We just need to advance to seq_pos and set at_line_start
-					GLib.debug("  [code] Starting code block, chunk_pos=%d, seq_pos=%d, byte_length=%d, next_char='%s'", chunk_pos, seq_pos, byte_length, seq_pos < chunk.length ? chunk.get_char(seq_pos).to_string() : "EOF");
+					//GLib.debug("  [code] Starting code block, chunk_pos=%d, seq_pos=%d, byte_length=%d, next_char='%s'", chunk_pos, seq_pos, byte_length, seq_pos < chunk.length ? chunk.get_char(seq_pos).to_string() : "EOF");
 					this.at_line_start = true;
 					return seq_pos - chunk_pos;
 				

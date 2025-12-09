@@ -32,6 +32,9 @@ namespace OLLMchat.History
 		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
 		public SessionBase session { get; internal set; }
+		public Gee.HashMap<string, Prompt.BaseAgent> agents { 
+			get; private set; default = new Gee.HashMap<string, Prompt.BaseAgent>(); 
+		}
 		
 		// Signal emitted when a new session is added (for UI updates)
 		public signal void session_added(SessionBase session);
@@ -91,6 +94,9 @@ namespace OLLMchat.History
 			
 			// Set up title generator from config
 			this.title_generator = new TitleGenerator(this.base_client.config);
+			
+			// Register JustAsk agent (always available as default)
+			this.agents.set("just-ask", new Prompt.JustAsk());
 		}
 		
 		/**
@@ -112,7 +118,10 @@ namespace OLLMchat.History
 			client.format = this.base_client.format;
 			client.think = this.base_client.think;
 			client.keep_alive = this.base_client.keep_alive;
-			client.prompt_assistant = this.base_client.prompt_assistant; // Shared reference
+			
+			// Set prompt_assistant to just-ask (default agent)
+			client.prompt_assistant = this.agents.get("just-ask");
+			
 			client.permission_provider = this.base_client.permission_provider; // Shared reference - MUST be shared
 			client.seed = this.base_client.seed;
 			client.temperature = this.base_client.temperature;
@@ -182,12 +191,24 @@ namespace OLLMchat.History
 		 
 		/**
 		 * Creates a new session for a new chat.
+		 * Uses the current session's agent_name if available, otherwise defaults to "just-ask".
 		 * 
 		 * @return A new Session instance with a fresh client
 		 */
 		public Session create_new_session()
 		{
-			var session = new Session(this, new Call.Chat(this.new_client()));
+			// Get agent name from current session, default to "just-ask"
+			var agent_name = "just-ask";
+			if (this.session != null && this.session.agent_name != "") {
+				agent_name = this.session.agent_name;
+			}
+			
+			// Create client with the agent
+			var client = this.new_client();
+			client.prompt_assistant = this.agents.get(agent_name);
+			
+			var session = new Session(this, new Call.Chat(client));
+			session.agent_name = agent_name;
 			this.sessions.add(session);
 			this.session_added(session);
 			

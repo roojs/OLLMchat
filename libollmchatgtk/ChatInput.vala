@@ -32,6 +32,7 @@ namespace OLLMchatGtk
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private Gtk.Button action_button;
+		private Gtk.DropDown agent_dropdown;
 		private Gtk.DropDown model_dropdown;
 		private Gtk.Label model_loading_label;
 		private GLib.ListStore? model_store = null;
@@ -135,6 +136,11 @@ namespace OLLMchatGtk
 				hexpand = true
 			};
 
+			// Create agent dropdown (will be set up in setup_agent_dropdown)
+			this.agent_dropdown = new Gtk.DropDown(null, null) {
+				hexpand = false
+			};
+			
 			// Create model-related widgets (always created, visibility controlled later)
 			this.model_loading_label = new Gtk.Label("Loading Model data...") {
 				visible = false,
@@ -155,7 +161,8 @@ namespace OLLMchatGtk
 				hexpand = false
 			};
 			
-			// Always add widgets to button box in order (visibility controlled by show_models and other conditions)
+			// Always add widgets to button box in order (agent dropdown before model dropdown)
+			button_box.append(this.agent_dropdown);
 			button_box.append(this.model_loading_label);
 			button_box.append(this.model_dropdown);
 			button_box.append(this.tools_menu_button);
@@ -310,6 +317,95 @@ namespace OLLMchatGtk
 			}
 		}
 
+		/**
+		 * Sets up the agent dropdown widget.
+		 * 
+		 * @since 1.0
+		 */
+		public void setup_agent_dropdown()
+		{
+			// Create ListStore for agents
+			var agent_store = new GLib.ListStore(typeof(OLLMchat.Prompt.BaseAgent));
+			
+			// Add all registered agents to the store and set selection during load
+			uint selected_index = 0;
+			uint i = 0;
+			foreach (var agent in this.manager.agents.values) {
+				agent_store.append(agent);
+				if (agent.name == this.manager.session.agent_name) {
+					selected_index = i;
+				}
+				i++;
+			}
+			
+			// Create factory for agent dropdown
+			var factory = new Gtk.SignalListItemFactory();
+			factory.setup.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null) {
+					return;
+				}
+				
+				var label = new Gtk.Label("") {
+					halign = Gtk.Align.START
+				};
+				list_item.set_data<Gtk.Label>("label", label);
+				list_item.child = label;
+			});
+			
+			factory.bind.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item == null || list_item.item == null) {
+					return;
+				}
+				
+				var agent = list_item.item as OLLMchat.Prompt.BaseAgent;
+				var label = list_item.get_data<Gtk.Label>("label");
+				
+				if (label != null && agent != null) {
+					label.label = agent.title;
+				}
+			});
+			
+			// Set up dropdown with agents
+			this.agent_dropdown.model = agent_store;
+			this.agent_dropdown.set_factory(factory);
+			this.agent_dropdown.set_list_factory(factory);
+			this.agent_dropdown.selected = selected_index;
+			
+			// Connect selection change to update session's agent_name and client
+			this.agent_dropdown.notify["selected"].connect(() => {
+				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
+					return;
+				}
+				
+				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
+				  
+				this.manager.session.agent_name = agent.name;
+				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
+				this.manager.session.client.prompt_assistant = agent;
+			});
+			
+			// Connect to session_activated signal to update when session changes
+			this.manager.session_activated.connect((session) => {
+				// Update agent selection to match session's agent
+				var store = this.agent_dropdown.model as GLib.ListStore;
+				if (store == null) {
+					return;
+				}
+				
+ 				for (uint j = 0; j < store.get_n_items(); j++) {
+					
+					if (((OLLMchat.Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
+						continue;
+					}
+					this.agent_dropdown.selected = j;
+					break;
+					
+				}
+			});
+		}
+		
 		/**
 		 * Sets up the model dropdown widget.
 		 * 

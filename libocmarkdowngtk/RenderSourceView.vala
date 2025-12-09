@@ -148,7 +148,7 @@ namespace MarkdownGtk
 			// Track expanded state for this code block
 			bool is_expanded = false;
 			
-			// Create Expand/Collapse button with icon
+			// Create Expand/Collapse button with icon (created hidden, made visible by other code)
 			var expand_button = new Gtk.Button() {
 				icon_name = "pan-down-symbolic",
 				tooltip_text = "Expand",
@@ -158,7 +158,8 @@ namespace MarkdownGtk
 				margin_top = 0,
 				margin_bottom = 0,
 				can_focus = false,
-				focus_on_click = false
+				focus_on_click = false,
+				visible = false
 			};
 			
 			// Create ScrolledWindow for the SourceView
@@ -319,10 +320,12 @@ namespace MarkdownGtk
 					this.scrolled_window.set_size_request(-1, target_height);
 					this.scrolled_window.vexpand = false; // Prevent expansion in collapsed state
 					
-					// Hide expand button if content fits in collapsed view (for INITIAL and FINAL modes)
+					// Show/hide expand button based on content size (for INITIAL and FINAL modes)
 					if ((mode == ResizeMode.INITIAL || mode == ResizeMode.FINAL) && this.expand_button != null) {
 						if (natural_height > 0 && natural_height <= max_height) {
 							this.expand_button.visible = false;
+						} else {
+							this.expand_button.visible = true;
 						}
 					}
 					

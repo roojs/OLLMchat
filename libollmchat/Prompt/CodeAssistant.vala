@@ -32,18 +32,14 @@ namespace OLLMchat.Prompt
 		private AgentInterface provider;
 		
 		/**
-		 * Agent name used to derive resource path.
-		 */
-		protected override string agent_name { get; set; default = "code-assistant"; }
-		
-		/**
 		 * Constructor.
 		 * 
 		 * @param provider The provider for context data. If null, a dummy provider will be used.
 		 */
 		public CodeAssistant(AgentInterface? provider = null)
 		{
-			base();
+			this.name = "code-assistant";
+			this.title = "Coding Assistant";
 			this.provider = provider ?? new CodeAssistantDummy();
 		}
 		

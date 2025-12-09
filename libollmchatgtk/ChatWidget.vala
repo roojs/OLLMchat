@@ -163,6 +163,9 @@ namespace OLLMchatGtk
 			// Add paned to this widget
 			this.append(this.paned);
 
+			// Set up agent dropdown
+			this.chat_input.setup_agent_dropdown();
+			
 			// Set up model dropdown
 			this.chat_input.setup_model_dropdown();
 
