@@ -9,35 +9,90 @@
 }
 .chat-view-text > viewport {
 	margin-left: 10px;
-	margin-right: 10px;
+	margin-right: 5px;
 }
 
 
+/* Shared frame header styling - layout and sizing */
+.oc-frame-header {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none;
+}
+
 /* User message box styling - matches role name 'user-sent' */
-.user-sent {
+.oc-user-sent-frame {
   border-radius: 8px;
   border: 3px solid #3584E4;
   box-shadow: 0 2px 4px rgba(53, 132, 228, 0.3);
+  background-color: #E6F3FF;
+  margin-bottom: 10px;
 }
 
-.user-sent text {
+.oc-user-sent-frame text {
   background-color: white;
 }
 
+/* User frame header - light blue background */
+.oc-user-sent-frame .oc-frame-header {
+  background-color: #E6F3FF;
+}
+
+/* User container box - match frame background */
+.oc-user-sent-frame > box {
+  background-color: #E6F3FF;
+}
+
+/* User frame title label - smaller font */
+.oc-user-frame-title {
+  font-size: 0.85em;
+}
+
+/* User frame buttons - 30% smaller */
+.oc-user-sent-frame button {
+  transform: scale(0.7);
+  transform-origin: center;
+}
+
 /* User message text view styling */
-.user-message-text text {
+.oc-user-message-text text {
   background-color: white;
 }
 
 /* Code block frame styling - blockcode-frame */
-.blockcode-frame {
+.oc-blockcode-frame {
   border-radius: 8px;
   border: 2px solid #FFD700;
   box-shadow: 0 1px 3px rgba(255, 215, 0, 0.3);
+  background-color: #fffacd;
 }
 
-.blockcode-frame text {
+.oc-blockcode-frame text {
   background-color: white;
+}
+
+/* Code block frame header - light yellow background */
+.oc-blockcode-frame .oc-frame-header {
+  background-color: #fffacd;
+  border: none;
+}
+
+/* Code block container box - match frame background */
+.oc-blockcode-frame > box {
+  background-color: #fffacd;
+}
+
+/* Code block frame title label - smaller font */
+.oc-code-frame-title {
+  font-size: 0.9em;
+}
+
+/* Code block buttons - 30% smaller */
+.oc-blockcode-frame button {
+  transform: scale(0.7);
+  transform-origin: center;
 }
 
 /* Code editor styling */

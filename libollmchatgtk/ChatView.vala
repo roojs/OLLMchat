@@ -91,6 +91,8 @@ namespace OLLMchatGtk
 			this.text_view_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true,
+				margin_start = 2,
+				margin_end = 0
 			};
 
 			// Create single Render instance for assistant messages (uses text_view_box)
@@ -145,7 +147,7 @@ namespace OLLMchatGtk
 			user_text_view.set_top_margin(8);
 			user_text_view.set_bottom_margin(8);
 			// Add CSS class to ensure proper background styling
-			user_text_view.add_css_class("user-message-text");
+			user_text_view.add_css_class("oc-user-message-text");
 			user_text_view.buffer.text = text;
 
 			// Create ScrolledWindow for the TextView with height constraints
@@ -164,21 +166,24 @@ namespace OLLMchatGtk
 			this.has_displayed_user_message = true;
 			
 			// Create header box with title on left and buttons on right
-			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
+			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true,
 				vexpand = false,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 2
+				margin_start = 0,
+				margin_end = 0,
+				margin_top = 0,
+				margin_bottom = 0
 			};
+			header_box.add_css_class("oc-frame-header");
 			
 			// Add title label on the left
 			var title_label = new Gtk.Label("You said:") {
 				hexpand = false,
 				halign = Gtk.Align.START,
-				valign = Gtk.Align.CENTER
+				valign = Gtk.Align.CENTER,
+				margin_start = 5
 			};
+			title_label.add_css_class("oc-user-frame-title");
 			header_box.append(title_label);
 			
 			// Add spacer to push buttons to the right
@@ -198,7 +203,9 @@ namespace OLLMchatGtk
 				tooltip_text = "Copy to Clipboard",
 				hexpand = false,
 				margin_start = 5,
-				margin_end = 5,
+				margin_end = 0,
+				margin_top = 0,
+				margin_bottom = 0,
 				can_focus = false,
 				focus_on_click = false
 			};
@@ -215,6 +222,8 @@ namespace OLLMchatGtk
 				hexpand = false,
 				margin_start = 5,
 				margin_end = 5,
+				margin_top = 0,
+				margin_bottom = 0,
 				can_focus = false,
 				focus_on_click = false
 			};
@@ -287,7 +296,8 @@ namespace OLLMchatGtk
 
 			// Wrap in Frame for visibility and styling (like code blocks)
 			var user_frame = new Gtk.Frame(null) {
-				margin_top = 16,
+				margin_top = 0,
+				margin_bottom = 0,
 				hexpand = true
 			};
 			user_frame.set_child(container_box);
@@ -295,7 +305,7 @@ namespace OLLMchatGtk
 			// Style the frame with white background and rounded corners
 			// CSS is loaded from resource file in constructor
 			// Use CSS class matching the chat role name
-			user_frame.add_css_class("user-sent");
+			user_frame.add_css_class("oc-user-sent-frame");
 			
 			user_text_view.set_visible(true);
 			
@@ -731,7 +741,7 @@ namespace OLLMchatGtk
 					margin_bottom = 5
 				};
 				frame.set_child( (Gtk.Widget) widget);
-				frame.add_css_class("blockcode-frame");
+				frame.add_css_class("oc-blockcode-frame");
 				
 				// Add the framed widget
 				this.add_widget_frame(frame);

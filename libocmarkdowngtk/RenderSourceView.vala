@@ -90,41 +90,41 @@ namespace MarkdownGtk
 
 			// Set monospace font for code display using CSS
 			this.source_view.add_css_class("code-editor");
-			
-			// Connect to buffer changes to scroll to end if configured
-			if (this.renderer.scroll_to_end) {
-				source_buffer.changed.connect(() => {
-					// Use Idle to scroll after layout is updated
-					GLib.Idle.add(() => {
-						// Check if buffer still exists (may have been cleaned up)
-						if (this.source_buffer == null || this.source_view == null) {
-							return false;
-						}
-						Gtk.TextIter end_iter;
-						this.source_buffer.get_end_iter(out end_iter);
-						this.source_view.scroll_to_iter(end_iter, 0.0, false, 0.0, 0.0);
-						return false;
-					});
-				});
-			}
+
 
 			// Create widget structure and add to box
-			// Create a vertical container box for button header and SourceView
-			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+			// Create header box with title on left and buttons on right (like user messages)
+			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true,
-				vexpand = false
+				vexpand = false,
+				margin_start = 0,
+				margin_end = 0,
+				margin_top = 0,
+				margin_bottom = 0
 			};
+			header_box.add_css_class("oc-frame-header");
 			
-			// Create horizontal box for button at top-right
-			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true,
-				vexpand = false
+			// Add title label on the left (language name)
+			string language_label_text = (this.code_language != null && this.code_language != "") ? this.code_language : "code";
+			var title_label = new Gtk.Label(language_label_text) {
+				hexpand = false,
+				halign = Gtk.Align.START,
+				valign = Gtk.Align.CENTER,
+				margin_start = 5
 			};
+			title_label.add_css_class("oc-code-frame-title");
+			header_box.append(title_label);
 			
-			// Add spacer to push button to the right
-			button_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+			// Add spacer to push buttons to the right
+			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true
 			});
+			
+			// Create horizontal box for buttons at top-right
+			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = false,
+				vexpand = false
+			};
 			
 			// Create Copy to Clipboard button with icon
 			var source_buffer_for_button = this.source_buffer;
@@ -133,9 +133,9 @@ namespace MarkdownGtk
 				tooltip_text = "Copy to Clipboard",
 				hexpand = false,
 				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 2,
+				margin_end = 0,
+				margin_top = 0,
+				margin_bottom = 0,
 				can_focus = false,
 				focus_on_click = false
 			};
@@ -155,22 +155,20 @@ namespace MarkdownGtk
 				hexpand = false,
 				margin_start = 5,
 				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 2,
+				margin_top = 0,
+				margin_bottom = 0,
 				can_focus = false,
 				focus_on_click = false
 			};
 			
-			// Create ScrolledWindow for the SourceView with height constraints
-			var max_height = this.get_max_collapsed_height();
+			// Create ScrolledWindow for the SourceView
+			// Start with vexpand = true (no fixed height) - will clamp when it reaches max_height
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
-				vexpand = false
+				vexpand = true,
+				margin_start = 2
 			};
 			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-			
-			// Set initial height
-			this.scrolled_window.set_size_request(-1, max_height);
 			
 			// Store expand button reference
 			this.expand_button = expand_button;
@@ -193,12 +191,21 @@ namespace MarkdownGtk
 				}
 			});
 			
-			// Add buttons to button box (right side)
+			// Add buttons to button box
 			button_box.append(copy_button);
 			button_box.append(expand_button);
 			
-			// Add button box to container
-			container_box.append(button_box);
+			// Add button box to header
+			header_box.append(button_box);
+			
+			// Create vertical container box for header and SourceView
+			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			
+			// Add header box to container
+			container_box.append(header_box);
 			
 			// Set SourceView properties
 			this.source_view.hexpand = true;
@@ -210,26 +217,24 @@ namespace MarkdownGtk
 			// Add ScrolledWindow to container
 			container_box.append(this.scrolled_window);
 
-			// Wrap in Frame for visibility and styling
+			// Wrap in Frame for visibility and styling (no label - title is in header box)
+			// Match user box structure: same margins
 			var frame = new Gtk.Frame(null) {
-				hexpand = true,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 5
+				margin_top = 0,
+				margin_bottom = 0,
+				hexpand = true
 			};
 			frame.set_child(container_box);
 			
 			// Style the frame with blockcode-frame CSS class
-			frame.add_css_class("blockcode-frame");
+			frame.add_css_class("oc-blockcode-frame");
 
 			// Add frame to box
 			this.renderer.box.append(frame);
 			
 			frame.set_visible(true);
 
-			// Set reasonable size for code block
-			this.source_view.height_request = 25;
+			// Source view will size naturally - no fixed height
 			this.source_view.set_visible(true);
 		}
 		
@@ -342,6 +347,13 @@ namespace MarkdownGtk
 				Gtk.TextIter end_iter;
 				this.source_buffer.get_end_iter(out end_iter);
 				this.source_buffer.insert(ref end_iter, text, -1);
+			}
+			
+			// Check if text contains a line break - if so, check if we need to clamp height
+			if (text.contains("\n")) {
+				GLib.Idle.add(() => {
+					return this.resize_widget_callback(this.source_view, ResizeMode.INITIAL);
+				});
 			}
 		}
 		
