@@ -1,3 +1,10 @@
+# Test case for extra space handling (3 spaces instead of 4)
+1. First ordered item
+2. Second ordered item
+  1. Sub-first (3 spaces - should work with extra space handling)
+  2. Sub-second (3 spaces)
+3. Third ordered item
+
 - First unordered item
 - Second unordered item
   1. First nested ordered item

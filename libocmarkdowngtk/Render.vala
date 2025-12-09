@@ -240,16 +240,17 @@ namespace MarkdownGtk
 		/**
 		 * Resets all list numbers above the specified level to 0.
 		 * 
+		 * Actually, we don't want to reset parent list counters when nesting,
+		 * as that would break continuation when returning to parent level.
+		 * This method is kept for potential future use but currently does nothing.
+		 * 
 		 * @param level The indentation level (1-based) - resets levels above this
 		 */
 		private void reset_lists_above_level(uint level)
 		{
-			// Convert to 0-based index
-			int target_index = (int)level - 1;
-			// Reset all levels above this one (indices < target_index)
-			for (int i = 0; i < target_index && i < this.list_stack.size; i++) {
-				this.list_stack.set(i, 0);
-			}
+			// Don't reset parent levels - we want to preserve their counters
+			// so that when we return to a parent level, numbering continues correctly
+			// (e.g., 1, 2, nested items, 3 should continue from 2, not reset to 1)
 		}
 		
 		/**
@@ -260,10 +261,13 @@ namespace MarkdownGtk
 		private void close_lists_to_level(uint level)
 		{
 			int min_index = (int)level - 1; // Convert to 0-based index
+			GLib.debug("Render.close_lists_to_level: level=%u, min_index=%d, stack.size=%d", level, min_index, this.list_stack.size);
 			// Only close lists that are deeper (stack size > min_index + 1)
 			while (this.list_stack.size > min_index + 1) {
-				this.list_stack.remove_at(this.list_stack.size - 1);
+				var removed = this.list_stack.remove_at(this.list_stack.size - 1);
+				GLib.debug("Render.close_lists_to_level: removed stack entry, new size=%d", this.list_stack.size);
 			}
+			GLib.debug("Render.close_lists_to_level: after closing, stack.size=%d", this.list_stack.size);
 		}
 		
 		/**
@@ -333,8 +337,17 @@ namespace MarkdownGtk
 			}
 			
 			// If this is an ordered list, increment the counter
+			// But only if it's already > 0 (continuing a list) or if we're starting fresh
+			// Actually, we should always increment - if it's 0, it becomes 1, if it's > 0, it increments
 			int old_value = this.list_stack.get(target_index);
-			this.list_stack.set(target_index, old_value + 1);
+			GLib.debug("Render.on_ol: before increment, stack[%d]=%d", target_index, old_value);
+			// Only increment if this level was already an ordered list (> 0)
+			// If it was 0 (unordered or new), start at 1
+			if (old_value > 0) {
+				this.list_stack.set(target_index, old_value + 1);
+			} else {
+				this.list_stack.set(target_index, 1);
+			}
 			
 			// Reset all levels above this one
 			this.reset_lists_above_level(indentation);

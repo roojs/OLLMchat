@@ -437,10 +437,23 @@ namespace Markdown
 					}
 					// CONTINUE_LIST is valid - use peekListBlock to determine what comes next
 					var continue_length = cp - chunk_pos;
+					GLib.debug("Parser.do_block: CONTINUE_LIST detected, calling peekListBlock at cp=%d", cp);
 					var list_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out matched_block, out byte_length);
+					GLib.debug("Parser.do_block: CONTINUE_LIST peekListBlock result=%d, matched_block=%s", list_result, matched_block.to_string());
 					if (list_result == -1) {
 						// Cannot determine - need more data
 						return -1;
+					}
+					// If no list found (result == 0) and next char is a space, try peeking one character ahead
+					if (list_result == 0) {
+						FormatType extra_matched_block;
+						int extra_byte_length;
+						var extra_result = this.tryExtraSpacePeek(chunk, cp, is_end_of_chunks, out extra_matched_block, out extra_byte_length, continue_length);
+						if (extra_result > 0) {
+							matched_block = extra_matched_block;
+							byte_length = extra_byte_length;
+							return extra_result;
+						}
 					}
 					// list_result == 0 or > 0: matched_block and byte_length are set
 					// If matched_block is CONTINUE_LIST, it was handled recursively
@@ -467,6 +480,60 @@ namespace Markdown
 			return max_match_length;
 		}
 
+		/**
+		 * Helper method to try peeking ahead one space if no list was found.
+		 * This makes the parser more flexible with spacing (e.g., 3 spaces instead of 4 for nested lists).
+		 * 
+		 * @param chunk The text chunk to examine
+		 * @param pos The position to check for an extra space
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @param matched_block Output parameter for the matched block type (if found)
+		 * @param byte_length Output parameter for the byte length (if found)
+		 * @param base_length The base length to add to byte_length if a list is found
+		 * @return The result length if a list is found after extra space, or 0 if not found
+		 */
+		private int tryExtraSpacePeek(
+			string chunk,
+			int pos,
+			bool is_end_of_chunks,
+			out FormatType matched_block,
+			out int byte_length,
+			int base_length
+		) {
+			matched_block = FormatType.NONE;
+			byte_length = 0;
+			
+			if (pos >= chunk.length) {
+				return 0;
+			}
+			
+			var next_char = chunk.get_char(pos);
+			GLib.debug("Parser.tryExtraSpacePeek: checking next char at pos=%d: '%s' (isspace=%s)", 
+				pos, next_char.to_string(), next_char.isspace().to_string());
+			
+			if (!next_char.isspace()) {
+				return 0;
+			}
+			
+			var next_char_len = next_char.to_string().length;
+			GLib.debug("Parser.tryExtraSpacePeek: next char is space, trying peek at pos+%d", next_char_len);
+			
+			FormatType extra_matched_block;
+			int extra_byte_length;
+			var extra_space_result = this.peekListBlock(chunk, pos + next_char_len, is_end_of_chunks, out extra_matched_block, out extra_byte_length);
+			GLib.debug("Parser.tryExtraSpacePeek: extra_space_result=%d, matched_block=%s", extra_space_result, extra_matched_block.to_string());
+			
+			if (extra_space_result > 0) {
+				// Found a list item after the extra space
+				GLib.debug("Parser.tryExtraSpacePeek: found list after extra space");
+				matched_block = extra_matched_block;
+				byte_length = base_length + next_char_len + extra_byte_length;
+				return base_length + next_char_len + extra_space_result;
+			}
+			
+			return 0;
+		}
+		
 		/**
 		 * Determines if characters at a given position match a list-related block tag.
 		 * Only matches CONTINUE_LIST, ORDERED_LIST, or UNORDERED_LIST.
@@ -549,14 +616,34 @@ namespace Markdown
 						var continue_byte_length = cp - chunk_pos;
 						FormatType recursive_matched_block;
 						int recursive_byte_length;
+						GLib.debug("Parser.peekListBlock: CONTINUE_LIST at cp=%d, trying recursive peek", cp);
 						var recursive_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out recursive_matched_block, out recursive_byte_length);
+						GLib.debug("Parser.peekListBlock: CONTINUE_LIST recursive_result=%d, matched_block=%s", recursive_result, recursive_matched_block.to_string());
 						if (recursive_result == -1) {
 							// Cannot determine what's next - need more data
 							return -1;
 						}
-						// recursive_result == 0 or > 0
-						// If recursive call found ORDERED/UNORDERED, return that (we'll emit continue block before handling it)
-						// If recursive call found nothing (0), we emit continue block
+						// If recursive call found ORDERED/UNORDERED (result > 0), return that immediately
+						if (recursive_result > 0) {
+							GLib.debug("Parser.peekListBlock: CONTINUE_LIST found list (result=%d), returning", recursive_result);
+							matched_block = recursive_matched_block;
+							byte_length = continue_byte_length + recursive_byte_length;
+							return continue_byte_length + recursive_result;
+						}
+						// recursive_result == 0: no list found
+						// If next char is a space, try peeking one character ahead to be more flexible with spacing
+						if (recursive_result == 0) {
+							FormatType extra_matched_block;
+							int extra_byte_length;
+							var extra_result = this.tryExtraSpacePeek(chunk, cp, is_end_of_chunks, out extra_matched_block, out extra_byte_length, continue_byte_length);
+							if (extra_result > 0) {
+								matched_block = extra_matched_block;
+								byte_length = extra_byte_length;
+								return extra_result;
+							}
+						}
+						// No list found (recursive_result == 0) - emit continue block
+						GLib.debug("Parser.peekListBlock: CONTINUE_LIST no list found, emitting continue block");
 						matched_block = recursive_matched_block;
 						byte_length = continue_byte_length + recursive_byte_length;
 						return continue_byte_length + recursive_result;
