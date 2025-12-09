@@ -294,7 +294,8 @@ namespace OLLMchatGtk
 
 			// Style the frame with white background and rounded corners
 			// CSS is loaded from resource file in constructor
-			user_frame.add_css_class("user-message-box");
+			// Use CSS class matching the chat role name
+			user_frame.add_css_class("user-sent");
 			
 			user_text_view.set_visible(true);
 			

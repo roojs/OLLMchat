@@ -61,8 +61,8 @@ namespace OLLMchatGtk.Tools
 				);
 			}
 			
-			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Calling chat_widget.request_permission");
-			var response = yield this.chat_widget.request_permission(request);
+			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Calling permission_widget.request");
+			var response = yield this.chat_widget.permission_widget.request(request.permission_question);
 			GLib.debug("OLLMchatGtk.Tools.Permission.request_user: Got response: %s", response.to_string());
 			return response;
 		}

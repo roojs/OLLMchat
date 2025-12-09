@@ -132,10 +132,8 @@ namespace MarkdownGtk
 		 */
 		public void start()
 		{
-			// If TextView already exists, end the current block first
-			if (this.current_textview != null) {
-				this.end_block();
-			}
+			// End the current block first (safe to call even if already null)
+			this.end_block();
 			
 			// Initialize parser state
 			base.start();
@@ -319,16 +317,28 @@ namespace MarkdownGtk
 			
 			this.current_state.add_state();
 		}
-		
+			
 		/**
-		 * Callback for horizontal rule blocks.
-		 */
+		* Callback for horizontal rule blocks.
+		*/
 		public override void on_hr()
 		{
-			var hr_state = this.current_state.add_state();
-			hr_state.style.scale = Pango.Scale.LARGE;
-			hr_state.add_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-			hr_state.close_state();
+			// End the current block to finalize any pending text
+			this.end_block();
+			
+			// Create a proper separator widget instead of text
+			var separator = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
+				margin_top = 6,
+				margin_bottom = 6,
+				hexpand = true
+			};
+			
+			// Add separator to the box
+			this.box.append(separator);
+			
+			// Create a new textview for future text (similar to code block handling)
+			// Don't call start() as that would reset the parser state
+			this.create_textview();
 		}
 		
 		/**
@@ -427,7 +437,9 @@ namespace MarkdownGtk
 				return;
 			}
 			
-			this.current_state.add_state();
+			var del_state = this.current_state.add_state();
+			del_state.style.strikethrough = true;
+			del_state.style.strikethrough_set = true;
 		}
 		
 		/**

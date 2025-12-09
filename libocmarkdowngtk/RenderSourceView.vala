@@ -220,8 +220,8 @@ namespace MarkdownGtk
 			};
 			frame.set_child(container_box);
 			
-			// Style the frame
-			frame.add_css_class("code-block-box");
+			// Style the frame with blockcode-frame CSS class
+			frame.add_css_class("blockcode-frame");
 
 			// Add frame to box
 			this.renderer.box.append(frame);

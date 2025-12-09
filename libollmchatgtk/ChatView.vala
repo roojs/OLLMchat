@@ -294,7 +294,8 @@ namespace OLLMchatGtk
 
 			// Style the frame with white background and rounded corners
 			// CSS is loaded from resource file in constructor
-			user_frame.add_css_class("user-message-box");
+			// Use CSS class matching the chat role name
+			user_frame.add_css_class("user-sent");
 			
 			user_text_view.set_visible(true);
 			
@@ -483,26 +484,29 @@ namespace OLLMchatGtk
 					this.renderer.start();
 					
 					// Set up styling for thinking/content blocks using TextTags
-					 
+					// Note: default_state is set AFTER renderer.start() because we need a buffer
+					// to create the TextTag. The default_state will be used for future TextViews
+					// created after code blocks, not the current one.
 					if (this.is_thinking) {
-						// Create span state for green color
-						var color_state = this.renderer.current_state.add_state();
-						color_state.style.foreground = "green";
-						// Create italic state nested inside
-						var italic_state = color_state.add_state();
-						italic_state.style.style = Pango.Style.ITALIC;
-						// Store the color_state as default (not italic_state, so we get color + italic)
-						this.renderer.default_state = color_state;
-					} else {
-						// Create span state for blue color
-						var ms = this.renderer.current_state.add_state();
-						ms.style.foreground = "blue";
-						// Store as default state
-						this.renderer.default_state = ms;
-					}
-					
+						// Create span state for thinking with both color (#767676) and italic
+						var style_state = this.renderer.current_state.add_state();
+						style_state.style.foreground = "#767676";
+						style_state.style.style = Pango.Style.ITALIC;
+						// Store as default state (for future TextViews created after code blocks)
+						this.renderer.default_state = style_state;
+						this.last_chunk_start = 0;
+						return;
+					} 
+					// Create span state for content color (#333333)
+					var xstyle_state = this.renderer.current_state.add_state();
+					xstyle_state.style.foreground = "#333333";
+					// Store as default state (for future TextViews created after code blocks)
+					this.renderer.default_state = xstyle_state;
 					this.last_chunk_start = 0;
 					return;
+					
+					
+					
 						
 				case ContentState.NONE:
 					// Nothing to start
@@ -568,17 +572,15 @@ namespace OLLMchatGtk
 
 			// Display performance metrics if response is available and done
 			if (response != null && response.done && response.eval_duration > 0) {
-				var metrics_msg = new OLLMchat.Message(
-					response.call,
-					"ui",
-					"Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
-						response.total_duration_s,
-						response.prompt_eval_count,
-						response.eval_count,
-						response.tokens_per_second
-					)
-				);
-				this.append_tool_message(metrics_msg);
+				var summary = response.get_summary();
+				if (summary != "") {
+					var metrics_msg = new OLLMchat.Message(
+						response.call,
+						"ui",
+						summary
+					);
+					this.append_tool_message(metrics_msg);
+				}
 			} else {
 				// Add final newline if no summary
 				var buffer = this.get_current_buffer();
@@ -635,12 +637,13 @@ namespace OLLMchatGtk
 			// Initialize assistant message state
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
-			this.is_thinking = message.thinking != "";
 			this.content_state = ContentState.NONE;
-			this.renderer.start();
+			// Don't call renderer.start() here - let start_block() handle it
+			// so default_state can be set before TextView creation
 
 			// Process thinking content first if present
 			if (message.thinking != "") {
+				this.is_thinking = true;
 				response.is_thinking = true;
 				this.process_new_chunk(message.thinking, response);
 				// Ensure thinking block is finalized
@@ -651,6 +654,7 @@ namespace OLLMchatGtk
 
 			// Process regular content
 			if (message.content != "") {
+				this.is_thinking = false;
 				response.is_thinking = false;
 				this.process_new_chunk(message.content, response);
 			}
@@ -727,7 +731,7 @@ namespace OLLMchatGtk
 					margin_bottom = 5
 				};
 				frame.set_child( (Gtk.Widget) widget);
-				frame.add_css_class("code-block-box");
+				frame.add_css_class("blockcode-frame");
 				
 				// Add the framed widget
 				this.add_widget_frame(frame);

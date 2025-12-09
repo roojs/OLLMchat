@@ -46,6 +46,11 @@ namespace OLLMchat
 						is_hidden = true;
 						is_ui_visible = true;  // Display as assistant message
 						break;
+					case "content-non-stream":
+						is_content = true;
+						is_hidden = true;
+						is_ui_visible = true;  // Display as assistant message
+						break;
 					case "user":
 					case "user-sent":
 						is_user = true;
@@ -57,7 +62,7 @@ namespace OLLMchat
 						break;
 					case "assistant":
 						is_llm = true;
-						is_ui_visible = true;
+						is_ui_visible = false;  // Not displayed in UI (use content-stream or content-non-stream instead)
 						break;
 					case "tool":
 						is_tool = true;

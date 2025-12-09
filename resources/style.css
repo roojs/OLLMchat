@@ -1,10 +1,10 @@
 /* Main chat view text view styling */
 .chat-view-text text {
-  background-color: #dcdcdcf3;
+  background-color: white;
 }
  
 .chat-view-text  {
-	background-color: #dcdcdcf3;
+	background-color: white;
  
 }
 .chat-view-text > viewport {
@@ -13,12 +13,14 @@
 }
 
 
-/* User message box styling */
-.user-message-box {
+/* User message box styling - matches role name 'user-sent' */
+.user-sent {
   border-radius: 8px;
+  border: 3px solid #3584E4;
+  box-shadow: 0 2px 4px rgba(53, 132, 228, 0.3);
 }
 
-.user-message-box text {
+.user-sent text {
   background-color: white;
 }
 
@@ -27,12 +29,14 @@
   background-color: white;
 }
 
-/* Code block box styling */
-.code-block-box {
+/* Code block frame styling - blockcode-frame */
+.blockcode-frame {
   border-radius: 8px;
+  border: 2px solid #FFD700;
+  box-shadow: 0 1px 3px rgba(255, 215, 0, 0.3);
 }
 
-.code-block-box text {
+.blockcode-frame text {
   background-color: white;
 }
 

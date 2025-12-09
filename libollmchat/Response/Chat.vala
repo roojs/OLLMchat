@@ -67,6 +67,25 @@ namespace OLLMchat.Response
 			}
 		}
 
+		/**
+		 * Generates a summary string with performance metrics.
+		 * 
+		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s"
+		 *         Returns empty string if eval_duration is 0 (no metrics available)
+		 */
+		public string get_summary()
+		{
+			if (this.eval_duration <= 0) {
+				return "";
+			}
+			return "Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
+				this.total_duration_s,
+				this.prompt_eval_count,
+				this.eval_count,
+				this.tokens_per_second
+			);
+		}
+
 		public Chat(Client client, Call.Chat call)
 		{
 			base(client);

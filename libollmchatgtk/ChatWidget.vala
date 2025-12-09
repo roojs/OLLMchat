@@ -259,22 +259,24 @@ namespace OLLMchatGtk
 				GLib.debug("ChatWidget.load_messages: Adding message %d/%d (role=%s, content='%s')", 
 					message_index, total_messages, msg.role, content_preview);
 				 
-				// Display message based on role
+				// Display message based on role (only UI-visible messages reach here)
 				switch (msg.role) {
-					case "assistant":
-						this.chat_view.append_complete_assistant_message(msg);
-						break;
 					case "user-sent":
 						this.chat_view.append_user_message(msg.content, msg.message_interface);
 						break;
-					case "think-stream":
-					case "content-stream":
-						// Render streaming messages as assistant messages
-						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content);
-						this.chat_view.append_complete_assistant_message(stream_msg);
-						break;
 					case "ui":
 						this.chat_view.append_tool_message(msg);
+						break;
+					case "think-stream":
+						// For think-stream, content is the thinking text
+						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", "", msg.content);
+						this.chat_view.append_complete_assistant_message(stream_msg);
+						break;
+					case "content-stream":
+					case "content-non-stream":
+						// Render streaming/non-streaming messages as assistant messages
+						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content, msg.thinking);
+						this.chat_view.append_complete_assistant_message(stream_msg);
 						break;
 					default:
 						// Should not reach here if is_ui_visible is working correctly
@@ -292,19 +294,19 @@ namespace OLLMchatGtk
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
 		 */
-	private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
-	{
-		// Re-enable scrolling when new messages arrive (not from history loading)
-		// This ensures scrolling works for new messages but stays disabled after loading history
-		this.chat_view.scroll_enabled = true;
-		
-		// Skip messages that shouldn't be displayed in UI
-		if (!m.is_ui_visible) {
-			return;
-		}
-		
-		// Display message based on role
-		switch (m.role) {
+		private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
+		{
+			// Re-enable scrolling when new messages arrive (not from history loading)
+			// This ensures scrolling works for new messages but stays disabled after loading history
+			this.chat_view.scroll_enabled = true;
+			
+			// Skip messages that shouldn't be displayed in UI
+			if (!m.is_ui_visible) {
+				return;
+			}
+			
+			// Display message based on role (only UI-visible messages reach here)
+			switch (m.role) {
 				case "user-sent":
 					this.chat_view.append_user_message(m.content, m.message_interface);
 					this.chat_view.show_waiting_indicator();
@@ -313,22 +315,19 @@ namespace OLLMchatGtk
 					this.chat_input.set_streaming(true);
 					this.is_streaming_active = true;
 					break;
-				case "assistant":
-					this.chat_view.append_complete_assistant_message(m);
-					break;
 				case "ui":
 					this.chat_view.append_tool_message(m);
 					break;
 				case "think-stream":
-				case "content-stream":
-					// Render streaming messages as assistant messages
-					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content);
+					// For think-stream, content is the thinking text
+					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", "", m.content);
 					this.chat_view.append_complete_assistant_message(stream_msg);
 					break;
-				case "done":
-				case "end-stream":
-					// These are internal signal messages - never display them
-					// They're kept in history for tracking but should never be shown in UI
+				case "content-stream":
+				case "content-non-stream":
+					// Render streaming/non-streaming messages as assistant messages
+					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(stream_msg);
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
@@ -351,37 +350,37 @@ namespace OLLMchatGtk
 			this.on_send_clicked(text);
 		}
 
-	/**
-	 * Clears the chat history.
-	 * 
-	 * @since 1.0
-	 */
-	public void clear_chat()
-	{
-		this.chat_view.clear();
-		this.last_sent_text = null;
-	}
+		/**
+		* Clears the chat history.
+		* 
+		* @since 1.0
+		*/
+		public void clear_chat()
+		{
+			this.chat_view.clear();
+			this.last_sent_text = null;
+		}
 
-	/**
-	 * Starts a new chat with the given text in the input field.
-	 * 
-	 * Clears the current chat and fills the input field with the text,
-	 * but does not send it.
-	 * 
-	 * @param text The text to put in the input field
-	 * @since 1.0
-	 */
-	public async void start_new_chat_with_text(string text)
-	{
-		// Create a new session (like the + button does)
-		var new_session = this.manager.create_new_session();
-		
-		// Switch to the new session (this clears the chat)
-		yield this.switch_to_session(new_session);
-		
-		// Set the text in the input field
-		this.chat_input.set_default_text(text);
-	}
+		/**
+		* Starts a new chat with the given text in the input field.
+		* 
+		* Clears the current chat and fills the input field with the text,
+		* but does not send it.
+		* 
+		* @param text The text to put in the input field
+		* @since 1.0
+		*/
+		public async void start_new_chat_with_text(string text)
+		{
+			// Create a new session (like the + button does)
+			var new_session = this.manager.create_new_session();
+			
+			// Switch to the new session (this clears the chat)
+			yield this.switch_to_session(new_session);
+			
+			// Set the text in the input field
+			this.chat_input.set_default_text(text);
+		}
 
 		/**
 		 * Loads a history session into the chat widget.
@@ -399,17 +398,6 @@ namespace OLLMchatGtk
 			yield this.switch_to_session(session);
 		}
 
-		/**
-		 * Requests permission from the user for a tool operation.
-		 * 
-		 * @param request The request object requesting permission
-		 * @return The user's permission response
-		 * @since 1.0
-		 */
-		public async OLLMchat.ChatPermission.PermissionResponse request_permission(OLLMchat.Tool.RequestBase request)
-		{
-			return yield this.permission_widget.request(request.permission_question);
-		}
 
 	
 		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)

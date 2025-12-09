@@ -61,7 +61,7 @@ namespace OLLMchat
 			this.config_path = config_path;
 			this.title = "Set up initial connect";
 			this.set_content_height(400);
-			this.set_content_width(400);
+			this.set_content_width(800);
 
 			// Create preferences page
 			var page = new Adw.PreferencesPage();
@@ -75,7 +75,7 @@ namespace OLLMchat
 			this.host_entry = new Gtk.Entry() {
 				placeholder_text = "http://127.0.0.1:11434/api",
 				text = "http://127.0.0.1:11434/api",
-				height_request = 36
+				width_request = 250
 			};
 			this.host_row = new Adw.ActionRow() {
 				title = "Host",
@@ -87,7 +87,7 @@ namespace OLLMchat
 			// API Key entry row
 			this.api_key_entry = new Gtk.Entry() {
 				placeholder_text = "(optional)",
-				height_request = 36
+				width_request = 250
 			};
 			this.api_key_row = new Adw.ActionRow() {
 				title = "API Key",

@@ -175,8 +175,9 @@ namespace OLLMchat.History
 					// Emit message_created signal with Response.Chat as content_interface
 					this.client.message_created(response.message, response);
 					
-					// Emit a "done" message after the real message
-					var done_msg = new Message(this.chat, "done", "");
+					// Emit a "done" message after the real message with summary
+					var summary = response.get_summary();
+					var done_msg = new Message(this.chat, "done", summary);
 					this.client.message_created(done_msg, response);
 				}
 			}
