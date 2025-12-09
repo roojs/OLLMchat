@@ -47,24 +47,22 @@ namespace OLLMchat.Prompt
 		}
 		
 		/**
-		 * Gets the cursor position for a given file.
-		 * 
-		 * @param file The file path (ignored)
-		 * @return Always returns empty string
-		 */
-		public string get_cursor_position(string file)
+		* Gets the cursor position for the currently active file.
+		* 
+		* @return Always returns empty string
+		*/
+		public string get_current_cursor_position()
 		{
 			return "";
 		}
 		
 		/**
-		 * Gets the content of a specific line in a file.
-		 * 
-		 * @param file The file path (ignored)
-		 * @param cursor_pos The cursor position (ignored)
-		 * @return Always returns empty string
-		 */
-		public string get_line_content(string file, string cursor_pos)
+		* Gets the content of a specific line in the currently active file.
+		* 
+		* @param cursor_pos The cursor position (ignored)
+		* @return Always returns empty string
+		*/
+		public string get_current_line_content(string cursor_pos)
 		{
 			return "";
 		}

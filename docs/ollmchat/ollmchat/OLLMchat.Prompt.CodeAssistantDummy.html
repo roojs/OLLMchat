@@ -32,9 +32,9 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMchat.Prompt.CodeAssistantDummy.CodeAssistantDummy.html">CodeAssistantDummy</a></li>
-          <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_cursor_position.html">get_cursor_position</a></li>
+          <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_current_cursor_position.html">get_current_cursor_position</a></li>
+          <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_current_line_content.html">get_current_line_content</a></li>
           <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_file_contents.html">get_file_contents</a></li>
-          <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_line_content.html">get_line_content</a></li>
           <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_open_files.html">get_open_files</a></li>
           <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_selected_code.html">get_selected_code</a></li>
           <li class="method"><a href="OLLMchat.Prompt.CodeAssistantDummy.get_workspace_path.html">get_workspace_path</a></li>
@@ -74,17 +74,18 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_cursor_position.html" class="method">get_cursor_position</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_current_cursor_position.html" class="method">get_current_cursor_position</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the cursor position for a given file.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the cursor position for the currently active file.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_current_line_content.html" class="method">get_current_line_content</a></b> (<span class="main_basic_type"><span class="class">string</span></span> cursor_pos)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the content of a specific line in the currently active file.
+              </span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_file_contents.html" class="method">get_file_contents</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Gets the full contents of a file.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_line_content.html" class="method">get_line_content</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file, <span class="main_basic_type"><span class="class">string</span></span> cursor_pos)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the content of a specific line in a file.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Prompt.CodeAssistantDummy.get_open_files.html" class="method">get_open_files</a></b> ()
             </span>
@@ -173,13 +174,14 @@
           <div class="content" id="box-content-113">
             <div class="column">
               <ul class="navi_inline">
-                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_cursor_position.html">get_cursor_position</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_file_contents.html">get_file_contents</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_current_cursor_position.html">get_current_cursor_position</a>
+                </li>
+                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_current_line_content.html">get_current_line_content</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_line_content.html">get_line_content</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_file_contents.html">get_file_contents</a></li>
                 <li class="abstract_method"><a href="OLLMchat.Prompt.AgentInterface.get_open_files.html">get_open_files</a></li>
               </ul>
             </div>

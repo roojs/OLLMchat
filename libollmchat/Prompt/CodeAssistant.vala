@@ -127,14 +127,14 @@ namespace OLLMchat.Prompt
 			var open_files = this.provider.get_open_files();
 			if (open_files.size > 0) {
 				var current_file = open_files[0];
-				var cursor_pos = this.provider.get_cursor_position(current_file);
+				var cursor_pos = this.provider.get_current_cursor_position();
 				
 				result += "<current_file>\n" +
 					"Path: " + current_file + "\n";
 				if (cursor_pos != "") {
 					result += "Line: " + cursor_pos + "\n";
 				}
-				var line_content = this.provider.get_line_content(current_file, cursor_pos);
+				var line_content = this.provider.get_current_line_content(cursor_pos);
 				if (line_content != "") {
 					result += "Line Content: `" + line_content + "`\n";
 				}

@@ -41,21 +41,19 @@ namespace OLLMchat.Prompt
 		public abstract Gee.ArrayList<string> get_open_files();
 		
 		/**
-		 * Gets the cursor position for a given file.
-		 * 
-		 * @param file The file path
-		 * @return The cursor position (e.g., line number), or empty string if not available
-		 */
-		public abstract string get_cursor_position(string file);
+		* Gets the cursor position for the currently active file.
+		* 
+		* @return The cursor position (e.g., line number), or empty string if not available
+		*/
+		public abstract string get_current_cursor_position();
 		
 		/**
-		 * Gets the content of a specific line in a file.
-		 * 
-		 * @param file The file path
-		 * @param cursor_pos The cursor position (e.g., line number)
-		 * @return The line content, or empty string if not available
-		 */
-		public abstract string get_line_content(string file, string cursor_pos);
+		* Gets the content of a specific line in the currently active file.
+		* 
+		* @param cursor_pos The cursor position (e.g., line number)
+		* @return The line content, or empty string if not available
+		*/
+		public abstract string get_current_line_content(string cursor_pos);
 		
 		/**
 		 * Gets the full contents of a file.

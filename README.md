@@ -16,7 +16,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Permission System** - Includes a permission system for secure tool access
 - **Prompt Manipulation** - Provides prompt manipulation capabilities
 - **Generation** - Supports text generation from LLM models
-- **Sample Tools** - Includes working tools: ReadFile, EditFile, RunTerminalCommand
+- **Sample Tools** - Includes working tools: ReadFile, EditMode, RunCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
 - **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes the main `ollmchat` application, test executables (`oc-test-cli`, `oc-markdown-test`, `oc-html2md`) and example tools (`oc-md2html`)
 
@@ -81,14 +81,15 @@ The executables are configured with `build_rpath` so they can find the libraries
 
 ```bash
 # Run from top-level build directory
-./build/ollmchat
-./build/oc-test-cli --help
-./build/oc-markdown-test
-./build/oc-html2md
-./build/oc-md2html
+# Note: For testing uninstalled, use the .bin executables directly
+./build/ollmchat.bin
+./build/oc-test-cli.bin --help
+./build/oc-markdown-test.bin
+./build/oc-html2md.bin
+./build/oc-md2html.bin
 ```
 
-The wrapper scripts are automatically generated during the build process and set up the library paths correctly.
+The wrapper scripts (without `.bin` extension) are automatically generated during the build process and set up the library paths correctly. For direct testing, use the `.bin` executables.
 
 ## Project Structure
 
@@ -109,7 +110,7 @@ The project is organized into component directories, each with its own `meson.bu
   - `Tool/` - Tool interface and base classes (namespace: `OLLMchat.Tool`)
   - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
-  - `Prompt/` - Prompt generation system for different agent types (namespace: `OLLMchat.Prompt`)
+  - `Prompt/` - Prompt generation system for different agent types with agent management (namespace: `OLLMchat.Prompt`)
   - `History/` - Chat history management (namespace: `OLLMchat.History`)
   - `Message.vala`, `ChatContentInterface.vala`, `OllamaBase.vala` - Core message and base classes
 
