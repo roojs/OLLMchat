@@ -425,10 +425,14 @@ namespace MarkdownGtk
 				GLib.debug("Render.on_li: adding unordered list bullet '•'");
 				this.current_state.add_text("●");
 			} else {
-				// Ordered list - use number + "."
+				// Ordered list - use number + "." with bold formatting
 				string number_marker = list_number.to_string() + ".";
 				GLib.debug("Render.on_li: adding ordered list marker '%s'", number_marker);
-				this.current_state.add_text(number_marker);
+				// Create a new state with bold formatting for the number marker
+				var bold_state = this.current_state.add_state();
+				bold_state.style.weight = Pango.Weight.BOLD;
+				bold_state.add_text(number_marker);
+				bold_state.close_state();
 			}
 			
 			// Add tab after marker before content
@@ -503,7 +507,7 @@ namespace MarkdownGtk
 				// Create a new state
 				var bg_state = this.current_state.add_state();
 				bg_state.style.background = "#FFE5CC";
-				bg_state.add_text("  ");
+				bg_state.add_text("   ");
 				bg_state.close_state();
 				this.current_state.add_text("  ");
 			}

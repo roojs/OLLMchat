@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OLLMchat
+Comment=LLM chat application with tool integration
+Exec=ollmchat
+Icon=org.roojs.ollmchat
+Terminal=false
+Categories=Network;Chat;
+StartupNotify=true

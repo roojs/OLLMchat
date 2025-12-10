@@ -51,3 +51,15 @@ ollmchat = executable('ollmchat',
   install: true,
   install_dir: get_option('bindir')
 )
+
+# Install application icon
+install_data(
+  '../pixmaps/scalable/apps/org.roojs.ollmchat.svg',
+  install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps'
+)
+
+# Install desktop file
+install_data(
+  'org.roojs.ollmchat.desktop',
+  install_dir: get_option('datadir') / 'applications'
+)

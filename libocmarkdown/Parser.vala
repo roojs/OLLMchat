@@ -155,8 +155,8 @@ namespace Markdown
 			block_map["•"] = FormatType.INVALID;
 			block_map[" •"] = FormatType.INVALID;
 			
-			block_map["• "] = FormatType.UNORDERED_LIST;
-			block_map[" • "] = FormatType.UNORDERED_LIST;
+			block_map["• "] = FormatType.INVALID;
+			block_map[" • "] = FormatType.INVALID;
 					
 
 
@@ -222,7 +222,31 @@ namespace Markdown
 			
 			// Tables: | Header | Header | with | --- | --- | (GFM)
 			// block_map["|"] = FormatType.INVALID;
-			// block_map["| "] = FormatType.TABLE;
+			// block_map["| "] = FormatType.TABLE;Table
+			// |--- at start puts you in a table
+			// after that we will have to eat -- and | and ... until end of line
+			// that will determine how many columsn we have
+			// after that each line 
+			// | cell | cell | cell |
+			// and allignment row.. (optional)
+			// | :---        |    :----:   |          ---: |
+
+			// | --- | --- | --- |
+			//"| " << mean start/end of Cell
+
+			/*
+			what we can emit
+			-> table start (wil column number)
+			-> cell alignment (left, center, right) with column number
+			-> start cell
+			    ->  the table parser can the do the parseFormat loop for the cell contnet
+				-> we should build a table_content_map (from format and add '|' to end the cell
+				-> cell end..
+
+			  -> 
+			*/
+			// | cell | cell | cell |
+			// | cell | cell | cell |
 		} 
 
 			

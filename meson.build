@@ -85,3 +85,9 @@ foreach exe_info : executables_info
 endforeach
 
 subdir('docs')             # Depends on all source files
+
+# Post-install script to update icon cache and desktop database
+gnome.post_install(
+  gtk_update_icon_cache: true,
+  update_desktop_database: true
+)
