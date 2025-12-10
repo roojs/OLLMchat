@@ -1,5 +1,9 @@
 # OLLMchat
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/roojs/OLLMchat/fdae4de262289db49def51443d6b28be06b9eece/pixmaps/scalable/apps/org.roojs.ollmchat.svg" alt="OLLMchat Logo" width="200">
+</div>
+
 ## Summary
 
 OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications. The project focuses on Vala and GTK4, with the main library written in pure Vala.
