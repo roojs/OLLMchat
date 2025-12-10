@@ -47,6 +47,7 @@ namespace Markdown
 		ORDERED_LIST,
 		CONTINUE_LIST,
 		TASK_LIST,
+		TASK_LIST_DONE,
 		DEFINITION_LIST,
 		INDENTED_CODE,
 		FENCED_CODE_QUOTE,
@@ -103,9 +104,15 @@ namespace Markdown
 			// Note: "~" for subscript conflicts with "~~" for strikethrough
 			// Single "~" is not valid, so we don't map it
 			
+
 			// Task list checkboxes: [ ], [x] (GFM)
+			format_map["["] = FormatType.INVALID;
+			format_map["[x"] = FormatType.INVALID;
+			format_map["[X"] = FormatType.INVALID;
+			format_map["[ "] = FormatType.INVALID;
 			format_map["[ ]"] = FormatType.TASK_LIST;
-			format_map["[x]"] = FormatType.TASK_LIST;
+			format_map["[x]"] = FormatType.TASK_LIST_DONE;
+			format_map["[X]"] = FormatType.TASK_LIST_DONE;
 			
 			format_map["<"] = FormatType.HTML;
 			
@@ -146,6 +153,17 @@ namespace Markdown
 			block_map["11"] = FormatType.INVALID;
 			block_map["11."] = FormatType.INVALID;
 			block_map["11. "] = FormatType.ORDERED_LIST;
+			
+			// handle 3 spaces (after CONTINUE_LIST matches 2 spaces, we have 1 space remaining)
+			// For ordered lists: 1 space + "1. " = " 1. "
+			block_map[" 1"] = FormatType.INVALID;
+			block_map[" 1."] = FormatType.INVALID;
+			block_map[" 1. "] = FormatType.ORDERED_LIST;
+			block_map[" 11"] = FormatType.INVALID;
+			block_map[" 11."] = FormatType.INVALID;
+			block_map[" 11. "] = FormatType.ORDERED_LIST;
+			// For unordered lists: 1 space + "- " = " - " (or "* ", "+ ")
+		 
 			
 			// Continue list: 2 spaces to continue list items
 			block_map[" "] = FormatType.INVALID;
@@ -215,143 +233,51 @@ namespace Markdown
 		* Resets the parser's internal state, clears the state stack,
 		* and sets the current state to NONE.
 		*/
-	public void start()
-	{
-		this.in_literal = false;
-		this.leftover_chunk = "";
-		this.state_stack.clear();
-		this.last_line_block = FormatType.NONE;
-		this.current_block = FormatType.NONE;
-		this.at_line_start = true;
-	}
-
-		/**
-		 * Determines if characters at a given position match a format tag.
-		 * Uses a loop-based approach to handle variable-length format sequences.
-		 * 
-		 * @param chunk The text chunk to examine
-		 * @param chunk_pos The position in the chunk to check
-		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
-		 * @param matched_format Output parameter for the matched format type (NONE if no match)
-		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
-		 */
-		private int peekFormat(
-			string chunk, 
-			int chunk_pos, 
-			bool is_end_of_chunks,
-			out FormatType matched_format
-		) {
-			matched_format = FormatType.NONE;
-			// Check bounds
-			if (chunk_pos >= chunk.length) {
-				return 0;
-			}
-			
-			// Check if single character is in format_map
-			var first_char = chunk.get_char(chunk_pos);
-			var single_char = first_char.to_string();
-			// Optimize: skip has_key check if character is alphabetic (format markers are typically punctuation)
-			if (first_char.isalpha() || !format_map.has_key(single_char)) {
-				return 0; // No match
-			}
-			
-			// Handle LITERAL (backtick) - return match length 1, don't add to text
-			if (format_map.get(single_char) == FormatType.LITERAL) {
-				matched_format = FormatType.LITERAL;
-				return 1; // Return 1 to indicate match, but don't add backtick to text
-			}
-			
-			// If in literal mode, ignore all other format matches
-			if (this.in_literal) {
-				return 0; // Return 0 so caller will treat as text
-			}
-			
-			// Edge case: At end of chunk
-			var ch = chunk.get_char(chunk_pos);
-			var next_pos = chunk_pos + ch.to_string().length;
-			if (next_pos >= chunk.length) {
-				if (!is_end_of_chunks) {
-					return -1; // Might be longer match
-				}
-				// At end of chunks - check if single char FormatType is INVALID → return 0
-				matched_format = format_map.get(single_char);
-				if (matched_format == FormatType.INVALID) {
-					return 0;
-				}
-				return 1; // Definitive single char match
-			}
-			
-			// Loop-based sequence matching
-			int max_match_length = 0;
-			int char_count = 0;
-			var sequence = "";
-			
-			for (var cp = chunk_pos; cp < chunk.length; ) {
-				// Build sequence incrementally by appending current character
-				var char_at_cp = chunk.get_char(cp);
-				sequence += char_at_cp.to_string();
-				cp += char_at_cp.to_string().length;
-				char_count++;
-				
-				// Optimize: skip has_key check if last character is alphabetic
-				var last_char = char_at_cp;
-				if (last_char.isalpha() || !format_map.has_key(sequence)) {
-					// Sequence not in format_map - return longest valid match found (0 if none)
-					return max_match_length;
-				}
-				
-				// Sequence is in format_map
-				matched_format = format_map.get(sequence);
- 				
-				// If FormatType is NOT INVALID, update max_match_length
-				if (matched_format != FormatType.INVALID) {
-					max_match_length = char_count;
-				}
-			}
-			
-			// Reached end of chunk
-			if (!is_end_of_chunks) {
-				// Not end of chunks - might be longer match
-				return -1;
-			}
-			// At end of chunks - return what we found (0 if only INVALID matches)
-			return max_match_length;
+		public void start()
+		{
+			this.in_literal = false;
+			this.leftover_chunk = "";
+			this.state_stack.clear();
+			this.last_line_block = FormatType.NONE;
+			this.current_block = FormatType.NONE;
+			this.at_line_start = true;
 		}
 
 		/**
-		 * Determines if characters at a given position match a block tag.
-		 * Uses a loop-based approach to handle variable-length block sequences.
-		 * Includes number normalization for ordered lists.
+		 * Generic method to determine if characters at a given position match entries in a map.
+		 * Uses a loop-based approach to handle variable-length sequences.
+		 * Always normalizes digits to "1" for matching (harmless for maps without digit entries).
 		 * 
 		 * @param chunk The text chunk to examine
 		 * @param chunk_pos The position in the chunk to check
-		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
-		 * @param lang_out Output parameter for fenced code language (empty string if not present)
-		 * @param matched_block Output parameter for the matched block type (NONE if no match)
+		 * @param is_end_of_chunks If true, markers at the end are treated as definitive
+		 * @param map The map to search (format_map or block_map)
+		 * @param matched_type Output parameter for the matched format type (NONE if no match)
+		 * @param byte_length Output parameter for the byte length of the match
 		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
 		 */
-		private int peekBlock(
-			string chunk, 
-			int chunk_pos, 
+		private int peekMap(
+			string chunk,
+			int chunk_pos,
 			bool is_end_of_chunks,
-			out string lang_out,
-			out FormatType matched_block,
+			Gee.HashMap<string, FormatType> map,
+			out FormatType matched_type,
 			out int byte_length
 		) {
-			lang_out = "";
-			matched_block = FormatType.NONE;
+			matched_type = FormatType.NONE;
 			byte_length = 0;
+			
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
 				return 0;
 			}
 			
-			// Check if single character is in block_map
+			// Check if single character is in map
 			var first_char = chunk.get_char(chunk_pos);
 			var single_char = first_char.isdigit() ? "1" : first_char.to_string();
-			// Optimize: skip has_key check if character is alphabetic (block markers are typically punctuation/spaces)
-			// Note: we allow digits and spaces as they can be part of block markers (ordered lists, indented code)
-			if (first_char.isalpha() || !block_map.has_key(single_char)) {
+			// Optimize: skip has_key check if character is alphabetic (markers are typically punctuation/spaces)
+			// Note: we allow digits and spaces as they can be part of markers (ordered lists, indented code)
+			if (first_char.isalpha() || !map.has_key(single_char)) {
 				return 0; // No match
 			}
 			
@@ -363,8 +289,8 @@ namespace Markdown
 					return -1; // Might be longer match
 				}
 				// At end of chunks - check if single char FormatType is INVALID → return 0
-				matched_block= block_map.get(single_char);
-				if (matched_block == FormatType.INVALID) {
+				matched_type = map.get(single_char);
+				if (matched_type == FormatType.INVALID) {
 					return 0;
 				}
 				byte_length = next_pos - chunk_pos;
@@ -379,93 +305,30 @@ namespace Markdown
 			for (var cp = chunk_pos; cp < chunk.length; ) {
 				// Build sequence incrementally by appending current character
 				var char_at_cp = chunk.get_char(cp);
-				// Normalize digits to '1' for ordered list matching
+				// Normalize digits to '1' for ordered list matching (harmless for format_map)
 				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
 				cp += char_at_cp.to_string().length;
 				char_count++;
 				
-				// Optimize: skip has_key check if last character is alphabetic
-				// Note: we allow digits and spaces as they can be part of block markers
+				// Optimize: skip has_key check if last character is alphabetic and not 'x' or 'X'
+				// (task lists use "[x]" and "[X]" which contain alphabetic characters)
 				var last_char = char_at_cp;
-				if (last_char.isalpha() || !block_map.has_key(sequence)) {
-					// Sequence not in block_map - return longest valid match found (0 if none)
+				if (last_char.isalpha() && last_char.tolower() != 'x') {
+					// Alphabetic character that's not 'x' or 'X' - return longest valid match found (0 if none)
 					return max_match_length;
 				}
 				
-				// Sequence is in block_map
-				
-				matched_block = block_map.get(sequence);
-				
-				// Special handling for fenced code blocks - need to see newline
-				if (matched_block == FormatType.FENCED_CODE_QUOTE
-					 || matched_block == FormatType.FENCED_CODE_TILD) {
-					// Check if chunk contains a newline - if not, need more data
-					if (!chunk.contains("\n")) {
-						return -1;
-					}
-					
-					// Find the newline position
-					var newline_pos = chunk.index_of_char('\n', chunk_pos);
-					if (newline_pos == -1) {
-						return -1;
-					}
-					
-					// Extract language if present (substring from after fence to before \n)
-					var newline_char = chunk.get_char(newline_pos);
-					var newline_byte_len = newline_char.to_string().length;
-					byte_length = newline_pos + newline_byte_len - chunk_pos;
-					if (cp >= newline_pos) {
-						// No language, just return the length to consume
-						return newline_pos - chunk_pos + 1;
-					}
-					
-					var unstripped_lang = chunk.substring(cp, newline_pos - cp);
-					
-					lang_out = unstripped_lang.strip();
-					
-					// Return the length to consume: from chunk_pos to after newline
-					// Use byte positions directly
-					return newline_pos - chunk_pos + 1;
+				// Check if sequence is in map
+				if (!map.has_key(sequence)) {
+					// Sequence not in map - return longest valid match found (0 if none)
+					return max_match_length;
 				}
 				
-				// Check if CONTINUE_LIST is valid (only if last line was ORDERED_LIST or UNORDERED_LIST)
-				if (matched_block == FormatType.CONTINUE_LIST) {
-					if (this.last_line_block != FormatType.ORDERED_LIST && 
-					    this.last_line_block != FormatType.UNORDERED_LIST) {
-						// CONTINUE_LIST not valid - return longest valid match found (0 if none)
-						return max_match_length;
-					}
-					// CONTINUE_LIST is valid - use peekListBlock to determine what comes next
-					var continue_length = cp - chunk_pos;
-					GLib.debug("Parser.do_block: CONTINUE_LIST detected, calling peekListBlock at cp=%d", cp);
-					var list_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out matched_block, out byte_length);
-					GLib.debug("Parser.do_block: CONTINUE_LIST peekListBlock result=%d, matched_block=%s", list_result, matched_block.to_string());
-					if (list_result == -1) {
-						// Cannot determine - need more data
-						return -1;
-					}
-					// If no list found (result == 0) and next char is a space, try peeking one character ahead
-					if (list_result == 0) {
-						FormatType extra_matched_block;
-						int extra_byte_length;
-						var extra_result = this.tryExtraSpacePeek(chunk, cp, is_end_of_chunks, out extra_matched_block, out extra_byte_length, continue_length);
-						if (extra_result > 0) {
-							matched_block = extra_matched_block;
-							byte_length = extra_byte_length;
-							return extra_result;
-						}
-					}
-					// list_result == 0 or > 0: matched_block and byte_length are set
-					// If matched_block is CONTINUE_LIST, it was handled recursively
-					// If matched_block is ORDERED_LIST or UNORDERED_LIST, we'll handle it
-					// If matched_block is NONE, we'll emit continue block
-					// Adjust byte_length to be relative to chunk_pos (includes the CONTINUE_LIST part)
-					byte_length += continue_length;
-					return continue_length + list_result;
-				}
+				// Sequence is in map
+				matched_type = map.get(sequence);
 				
 				// If FormatType is NOT INVALID, update max_match_length
-				if (matched_block != FormatType.INVALID) {
+				if (matched_type != FormatType.INVALID) {
 					max_match_length = char_count;
 					byte_length = cp - chunk_pos;
 				}
@@ -481,58 +344,148 @@ namespace Markdown
 		}
 
 		/**
-		 * Helper method to try peeking ahead one space if no list was found.
-		 * This makes the parser more flexible with spacing (e.g., 3 spaces instead of 4 for nested lists).
+		 * Determines if characters at a given position match a format tag.
+		 * Uses peekMap for the common matching logic.
 		 * 
 		 * @param chunk The text chunk to examine
-		 * @param pos The position to check for an extra space
+		 * @param chunk_pos The position in the chunk to check
 		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
-		 * @param matched_block Output parameter for the matched block type (if found)
-		 * @param byte_length Output parameter for the byte length (if found)
-		 * @param base_length The base length to add to byte_length if a list is found
-		 * @return The result length if a list is found after extra space, or 0 if not found
+		 * @param matched_format Output parameter for the matched format type (NONE if no match)
+		 * @param byte_length Output parameter for byte length (ignored, kept for compatibility)
+		 * @param lang_out Output parameter for language (ignored, kept for compatibility)
+		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
 		 */
-		private int tryExtraSpacePeek(
-			string chunk,
-			int pos,
+		private int peekFormat(
+			string chunk, 
+			int chunk_pos, 
 			bool is_end_of_chunks,
-			out FormatType matched_block,
+			out FormatType matched_format,
 			out int byte_length,
-			int base_length
+			out string lang_out
 		) {
+			matched_format = FormatType.NONE;
+			byte_length = 0;
+			lang_out = "";
+			
+			// If in literal mode, ignore all other format matches
+			if (this.in_literal) {
+				return 0; // Return 0 so caller will treat as text
+			}
+			
+			// Use peekMap for the common matching logic
+			int result = this.peekMap(chunk, chunk_pos, is_end_of_chunks, format_map, out matched_format, out byte_length);
+			
+			// Handle LITERAL (backtick) - return match length 1, don't add to text
+			// This check happens after peekMap so we can detect single backtick
+			if (result > 0 && matched_format == FormatType.LITERAL) {
+				return 1; // Return 1 to indicate match, but don't add backtick to text
+			}
+			
+			return result;
+		}
+
+		/**
+		 * Determines if characters at a given position match a block tag.
+		 * Uses peekMap for the common matching logic, with special handling for
+		 * fenced code blocks and CONTINUE_LIST.
+		 * 
+		 * @param chunk The text chunk to examine
+		 * @param chunk_pos The position in the chunk to check
+		 * @param is_end_of_chunks If true, format markers at the end are treated as definitive
+		 * @param lang_out Output parameter for fenced code language (empty string if not present)
+		 * @param matched_block Output parameter for the matched block type (NONE if no match)
+		 * @param byte_length Output parameter for the byte length of the match
+		 * @return 1-N: Length of the match, 0: No match found, -1: Cannot determine (need more characters)
+		 */
+		private int peekBlock(
+			string chunk, 
+			int chunk_pos, 
+			bool is_end_of_chunks,
+			out string lang_out,
+			out FormatType matched_block,
+			out int byte_length
+		) {
+			lang_out = "";
 			matched_block = FormatType.NONE;
 			byte_length = 0;
 			
-			if (pos >= chunk.length) {
-				return 0;
+			// Use peekMap for the common matching logic
+			int result = this.peekMap(chunk, chunk_pos, is_end_of_chunks, block_map, out matched_block, out byte_length);
+			
+			// Early return if no match or need more data
+			if (result <  1) {
+				return result;
 			}
 			
-			var next_char = chunk.get_char(pos);
-			GLib.debug("Parser.tryExtraSpacePeek: checking next char at pos=%d: '%s' (isspace=%s)", 
-				pos, next_char.to_string(), next_char.isspace().to_string());
-			
-			if (!next_char.isspace()) {
-				return 0;
+			// Handle special cases that need additional processing
+			// Special handling for fenced code blocks - need to see newline
+			if (matched_block == FormatType.FENCED_CODE_QUOTE
+				 || matched_block == FormatType.FENCED_CODE_TILD) {
+				// Check if chunk contains a newline - if not, need more data
+				if (!chunk.contains("\n")) {
+					return -1;
+				}
+				
+				// Find the newline position
+				var newline_pos = chunk.index_of_char('\n', chunk_pos);
+				if (newline_pos == -1) {
+					return -1;
+				}
+				
+				// Calculate position after the fence using byte_length from peekMap
+				var fence_end_pos = chunk_pos + byte_length;
+				
+				// Extract language if present (substring from after fence to before \n)
+				var newline_char = chunk.get_char(newline_pos);
+				var newline_byte_len = newline_char.to_string().length;
+				byte_length = newline_pos + newline_byte_len - chunk_pos;
+				
+				if (fence_end_pos >= newline_pos) {
+					// No language, just return the length to consume
+					return newline_pos - chunk_pos + 1;
+				}
+				
+				var unstripped_lang = chunk.substring(fence_end_pos, newline_pos - fence_end_pos);
+				lang_out = unstripped_lang.strip();
+				
+				// Return the length to consume: from chunk_pos to after newline
+				return newline_pos - chunk_pos + 1;
 			}
 			
-			var next_char_len = next_char.to_string().length;
-			GLib.debug("Parser.tryExtraSpacePeek: next char is space, trying peek at pos+%d", next_char_len);
-			
-			FormatType extra_matched_block;
-			int extra_byte_length;
-			var extra_space_result = this.peekListBlock(chunk, pos + next_char_len, is_end_of_chunks, out extra_matched_block, out extra_byte_length);
-			GLib.debug("Parser.tryExtraSpacePeek: extra_space_result=%d, matched_block=%s", extra_space_result, extra_matched_block.to_string());
-			
-			if (extra_space_result > 0) {
-				// Found a list item after the extra space
-				GLib.debug("Parser.tryExtraSpacePeek: found list after extra space");
-				matched_block = extra_matched_block;
-				byte_length = base_length + next_char_len + extra_byte_length;
-				return base_length + next_char_len + extra_space_result;
+			// Check if CONTINUE_LIST is valid (only if last line was ORDERED_LIST or UNORDERED_LIST)
+			if (matched_block == FormatType.CONTINUE_LIST) {
+				if (this.last_line_block != FormatType.ORDERED_LIST && 
+				    this.last_line_block != FormatType.UNORDERED_LIST) {
+					// CONTINUE_LIST not valid - need to recalculate without CONTINUE_LIST
+					// This is a bit tricky - we need to find the longest valid match that's not CONTINUE_LIST
+					// For now, return 0 to indicate no valid block
+					GLib.debug("Parser.peekBlock: CONTINUE_LIST not valid (last_line_block=%s)", this.last_line_block.to_string());
+					return 0;
+				}
+				
+				// CONTINUE_LIST is valid - use peekListBlock to determine what comes next
+				// Calculate position after the continue marker using byte_length from peekMap
+				var continue_end_pos = chunk_pos + byte_length;
+				var continue_length = byte_length;
+				
+				GLib.debug("Parser.do_block: CONTINUE_LIST detected, calling peekListBlock at cp=%d", continue_end_pos);
+				var list_result = this.peekListBlock(chunk, continue_end_pos, is_end_of_chunks, out matched_block, out byte_length);
+				GLib.debug("Parser.do_block: CONTINUE_LIST peekListBlock result=%d, matched_block=%s", list_result, matched_block.to_string());
+				
+				if (list_result == -1) {
+					// Cannot determine - need more data
+					return -1;
+				}
+				
+				// list_result == 0 or > 0: matched_block and byte_length are set
+				// Adjust byte_length to be relative to chunk_pos (includes the CONTINUE_LIST part)
+				byte_length += continue_length;
+				return continue_length + list_result;
 			}
 			
-			return 0;
+			return result;
 		}
+ 
 		
 		/**
 		 * Determines if characters at a given position match a list-related block tag.
@@ -558,6 +511,7 @@ namespace Markdown
 			
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
+				GLib.debug("Parser.peekListBlock: chunk_pos=%d >= chunk.length=%d", chunk_pos, chunk.length);
 				return 0; // No match - emit continue block
 			}
 			
@@ -568,6 +522,7 @@ namespace Markdown
 			// Only check for list-related markers: space (for CONTINUE), digit (for ORDERED), or -* + - (for UNORDERED)
 			if (!first_char.isspace() && !first_char.isdigit() && 
 			    first_char != '-' && first_char != '*' && first_char != '+') {
+				GLib.debug("Parser.peekListBlock: first_char='%s' not a list marker, returning 0", first_char.to_string());
 				return 0; // No match - emit continue block
 			}
 			
@@ -596,17 +551,26 @@ namespace Markdown
 				cp += char_at_cp.to_string().length;
 				char_count++;
 				
+				// Debug: show sequence being built
+				var seq_display = sequence.replace(" ", ".");
+				GLib.debug("Parser.peekListBlock: char_count=%d, sequence='%s' (len=%d)", 
+					char_count, seq_display, sequence.length);
+				
 				// Check if sequence is in block_map
 				if (!block_map.has_key(sequence)) {
 					// Sequence not in block_map - return longest valid match found (0 if none)
+					GLib.debug("Parser.peekListBlock: sequence='%s' not in block_map, max_match_length=%d", seq_display, max_match_length);
 					if (max_match_length > 0) {
 						return max_match_length;
 					}
+					
+					
 					return 0; // No match - emit continue block
 				}
 				
 				// Sequence is in block_map
 				var block_type = block_map.get(sequence);
+				GLib.debug("Parser.peekListBlock: sequence='%s' -> block_type=%s", seq_display, block_type.to_string());
 				
 				// Only accept CONTINUE_LIST, ORDERED_LIST, or UNORDERED_LIST
 				switch (block_type) {
@@ -630,18 +594,7 @@ namespace Markdown
 							byte_length = continue_byte_length + recursive_byte_length;
 							return continue_byte_length + recursive_result;
 						}
-						// recursive_result == 0: no list found
-						// If next char is a space, try peeking one character ahead to be more flexible with spacing
-						if (recursive_result == 0) {
-							FormatType extra_matched_block;
-							int extra_byte_length;
-							var extra_result = this.tryExtraSpacePeek(chunk, cp, is_end_of_chunks, out extra_matched_block, out extra_byte_length, continue_byte_length);
-							if (extra_result > 0) {
-								matched_block = extra_matched_block;
-								byte_length = extra_byte_length;
-								return extra_result;
-							}
-						}
+						 
 						// No list found (recursive_result == 0) - emit continue block
 						GLib.debug("Parser.peekListBlock: CONTINUE_LIST no list found, emitting continue block");
 						matched_block = recursive_matched_block;
@@ -653,6 +606,8 @@ namespace Markdown
 						// Found ORDERED_LIST or UNORDERED_LIST - return this match
 						matched_block = block_type;
 						byte_length = cp - chunk_pos;
+						GLib.debug("Parser.peekListBlock: Found %s at char_count=%d, byte_length=%d, sequence='%s'", 
+							block_type.to_string(), char_count, byte_length, sequence.replace(" ", "."));
 						return char_count;
 					
 					default:
@@ -882,7 +837,16 @@ namespace Markdown
 				
 				// Use peekFormat to detect format sequences (needed even in literal mode for backtick toggle)
 				FormatType matched_format = FormatType.NONE;
-				var match_len = this.peekFormat(chunk, chunk_pos, is_end_of_chunks, out matched_format);
+				int unused_byte_length;
+				string unused_lang_out;
+				var match_len = this.peekFormat(
+					chunk, 
+					chunk_pos, 
+					is_end_of_chunks, 
+					out matched_format, 
+					out unused_byte_length, 
+					out unused_lang_out
+				);
 				
 				if (match_len == -1) {
 					// Cannot determine - need more characters
@@ -1021,6 +985,18 @@ namespace Markdown
 					break;
 				case FormatType.STRIKETHROUGH:
 					this.renderer.on_del(is_start);
+					break;
+				case FormatType.TASK_LIST:
+					// Task lists only send start (end is handled by list item)
+					if (is_start) {
+						this.renderer.on_task_list(true, false);
+					}
+					break;
+				case FormatType.TASK_LIST_DONE:
+					// Task lists only send start (end is handled by list item)
+					if (is_start) {
+						this.renderer.on_task_list(true, true);
+					}
 					break;
 				case FormatType.HTML:
 					if (is_start) {

@@ -193,18 +193,28 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		public override void on_li(bool is_start)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <li> (task=%s, mark='%c', offset=%u)\n", is_task.to_string(), task_mark, task_mark_offset);
+				stdout.printf("END: <li>\n");
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <li> (task=%s, mark='%c', offset=%u)\n", is_task.to_string(), task_mark, task_mark_offset);
+			stdout.printf("START: <li>\n");
 			indent_level++;
+		}
+		
+		public override void on_task_list(bool is_start, bool is_checked)
+		{
+			if (!is_start) {
+				return;
+			}
+			
+			print_indent();
+			stdout.printf("START: <task_list> (checked=%s)\n", is_checked.to_string());
 		}
 		
 		public override void on_code(bool is_start, string? lang, char fence_char)

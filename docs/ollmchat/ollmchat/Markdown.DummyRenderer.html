@@ -48,6 +48,7 @@
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_quote.html">on_quote</a></li>
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_softbr.html">on_softbr</a></li>
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_strong.html">on_strong</a></li>
+          <li class="virtual_method"><a href="Markdown.DummyRenderer.on_task_list.html">on_task_list</a></li>
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_text.html">on_text</a></li>
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_u.html">on_u</a></li>
           <li class="virtual_method"><a href="Markdown.DummyRenderer.on_ul.html">on_ul</a></li>
@@ -136,7 +137,7 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="Markdown.DummyRenderer.on_li.html" class="virtual_method">on_li</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="struct">bool</span></span> is_task, <span class="main_basic_type"><span class="struct">char</span></span> task_mark, <span class="main_basic_type"><span class="struct">uint</span></span> task_mark_offset)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="Markdown.DummyRenderer.on_li.html" class="virtual_method">on_li</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -161,6 +162,10 @@
             <div class="leaf_brief_description">
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="Markdown.DummyRenderer.on_strong.html" class="virtual_method">on_strong</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="Markdown.DummyRenderer.on_task_list.html" class="virtual_method">on_task_list</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="struct">bool</span></span> is_checked)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -192,11 +197,11 @@
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_code_span.html">on_code_span</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_code_text.html">on_code_text</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_del.html">on_del</a></li>
+                <li class="abstract_method"><a href="Markdown.RenderBase.on_em.html">on_em</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="abstract_method"><a href="Markdown.RenderBase.on_em.html">on_em</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_entity.html">on_entity</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_h.html">on_h</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_hr.html">on_hr</a></li>
@@ -205,14 +210,15 @@
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_li.html">on_li</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_ol.html">on_ol</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_other.html">on_other</a></li>
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_p.html">on_p</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="virtual_method"><a href="Markdown.RenderBase.on_p.html">on_p</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_quote.html">on_quote</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_softbr.html">on_softbr</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_strong.html">on_strong</a></li>
+                <li class="virtual_method"><a href="Markdown.RenderBase.on_task_list.html">on_task_list</a></li>
                 <li class="abstract_method"><a href="Markdown.RenderBase.on_text.html">on_text</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_u.html">on_u</a></li>
                 <li class="virtual_method"><a href="Markdown.RenderBase.on_ul.html">on_ul</a></li>

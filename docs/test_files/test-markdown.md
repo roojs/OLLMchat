@@ -180,3 +180,23 @@ This is a ~~deprecated~~ feature, use **new_feature** instead.
 
 Visit <a href="https://example.com">example.com</a> for more info.
 
+## Task Lists
+
+- [x] Completed task
+- [ ] Incomplete task
+- [ ] Sub‑task
+  - [x] Done sub‑task
+  - [ ] Still pending
+
+## Nested Lists
+
+- Unordered item 1
+  - Nested unordered
+    - Deeply nested
+- Unordered item 2
+1. Ordered item 1
+2. Ordered item 2
+   1. Nested ordered (type‑1)
+   2. Another nested ordered
+3. Ordered item 3
+

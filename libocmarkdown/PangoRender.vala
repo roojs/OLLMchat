@@ -419,7 +419,7 @@ namespace Markdown
 			this.reset_lists_above_level(indentation);
 		}
 		
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		public override void on_li(bool is_start)
 		{
 			if (!is_start) {
 				this.pango_markup.append("\n");
@@ -444,12 +444,7 @@ namespace Markdown
 			}
 			
 			// Add marker based on list type
-			if (is_task) {
-				// Task list item - add checkbox marker
-				// Use ✅ (U+2705) for checked, [_] for unchecked
-				string marker = (task_mark == 'x' || task_mark == 'X') ? "✅" : "[_]";
-				this.pango_markup.append(marker);
-			} else if (list_number == 0) {
+			if (list_number == 0) {
 				// Unordered list - use bullet point
 				this.pango_markup.append("•");
 			} else {
@@ -459,6 +454,18 @@ namespace Markdown
 			
 			// Add tab after marker before content
 			this.pango_markup.append("\t");
+		}
+		
+		public override void on_task_list(bool is_start, bool is_checked)
+		{
+			if (!is_start) {
+				return;
+			}
+			
+			// Task list item - add checkbox marker
+			// Use ✅ (U+2705) for checked, [_] for unchecked
+			string marker = is_checked ? "✅" : "[_]";
+			this.pango_markup.append(marker);
 		}
 		
 		public override void on_code(bool is_start, string? lang, char fence_char)

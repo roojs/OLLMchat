@@ -58,6 +58,7 @@
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_quote.html">on_quote</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_softbr.html">on_softbr</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_strong.html">on_strong</a></li>
+          <li class="virtual_method"><a href="MarkdownGtk.Render.on_task_list.html">on_task_list</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_text.html">on_text</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_u.html">on_u</a></li>
           <li class="virtual_method"><a href="MarkdownGtk.Render.on_ul.html">on_ul</a></li>
@@ -69,28 +70,16 @@
         <h1 class="main_title">on_li</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">on_li</span></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start, <span class="main_basic_type"><span class="struct">bool</span></span> is_task, <span class="main_basic_type"><span class="struct">char</span></span> task_mark, <span class="main_basic_type"><span class="struct">uint</span></span> task_mark_offset)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><span class="virtual_method">on_li</span></b> (<span class="main_basic_type"><span class="struct">bool</span></span> is_start)
         </div>
         <div class="description">
-          <p>Callback for list item blocks.</p>
+          <p>Handles list item start/end.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">is_task</td>
+              <td class="main_parameter_table_name">is_start</td>
               <td>
-                <p>Whether this is a task list item </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">task_mark</td>
-              <td>
-                <p>The task marker character </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">task_mark_offset</td>
-              <td>
-                <p>The offset of the task marker </p>
+                <p>Whether this is the start of a list item </p>
               </td>
             </tr>
           </table>

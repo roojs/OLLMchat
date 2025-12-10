@@ -179,7 +179,7 @@ namespace Markdown
 			this.close_li_if_needed(indentation);
 			
 			// Always open a list item when we see a list marker
-			this.on_li(true, false, ' ', 0);
+			this.on_li(true);
 		}
 			
 		public override void on_ol(bool is_start, uint indentation)
@@ -196,7 +196,7 @@ namespace Markdown
 			this.close_li_if_needed(indentation);
 			
 			// Always open a list item when we see a list marker
-			this.on_li(true, false, ' ', 0);
+			this.on_li(true);
 		}
 		
 		/**
@@ -219,7 +219,7 @@ namespace Markdown
 			}
 			
 			// Same or shallower level - close the previous list item
-			this.on_li(false, false, ' ', 0);
+			this.on_li(false);
 		}
 		
 		/**
@@ -320,7 +320,7 @@ namespace Markdown
 					}
 					// If it's a list item, use on_li to close it properly
 					if (tag_to_close == "li") {
-						this.on_li(false, false, ' ', 0);
+						this.on_li(false);
 					} else {
 						this.close_tag(tag_to_close);
 					}
@@ -347,7 +347,7 @@ namespace Markdown
 			}
 		}
 		
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		public override void on_li(bool is_start)
 		{
 			if (!is_start) {
 				this.close_tag("li");
@@ -355,14 +355,18 @@ namespace Markdown
 			}
 			
 			this.append_indent(true);
-			if (is_task) {
-				// Task list item - use checkbox
-				bool checked = (task_mark == 'x' || task_mark == 'X');
-				this.html_output.append("<li><input type=\"checkbox\" disabled" + (checked ? " checked" : "") + ">");
-			} else {
-				this.html_output.append("<li>");
-			}
+			this.html_output.append("<li>");
 			this.open_tags.add("li");
+		}
+		
+		public override void on_task_list(bool is_start, bool is_checked)
+		{
+			if (!is_start) {
+				return;
+			}
+			
+			// Task list checkbox - add to current list item
+			this.html_output.append("<input type=\"checkbox\" disabled" + (is_checked ? " checked" : "") + ">");
 		}
 		
 		public override void on_code(bool is_start, string? lang, char fence_char)
@@ -536,7 +540,7 @@ namespace Markdown
 			if (has_double_newline) {
 				// Close all list items first
 				while (this.open_tags.size > 0 && this.open_tags[this.open_tags.size - 1] == "li") {
-					this.on_li(false, false, ' ', 0);
+					this.on_li(false);
 				}
 				// Close all lists on double newline (end of list block)
 				if (this.list_stack.size > 0) {

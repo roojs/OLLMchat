@@ -307,7 +307,7 @@ namespace MarkdownGtk
 				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index));
 			
 			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true, false, ' ', 0);
+			this.on_li(true);
 			
 			this.current_state.add_state();
 		}
@@ -359,7 +359,7 @@ namespace MarkdownGtk
 				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index), old_value);
 			
 			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true, false, ' ', 0);
+			this.on_li(true);
 			
 			this.current_state.add_state();
 		}
@@ -371,12 +371,14 @@ namespace MarkdownGtk
 		 * @param task_mark The task marker character
 		 * @param task_mark_offset The offset of the task marker
 		 */
-		public override void on_li(bool is_start, bool is_task, char task_mark, uint task_mark_offset)
+		/**
+		 * Handles list item start/end.
+		 * 
+		 * @param is_start Whether this is the start of a list item
+		 */
+		public override void on_li(bool is_start)
 		{
-			GLib.debug("Render.on_li: is_start=%s, is_task=%s, task_mark='%c', task_mark_offset=%u, current_list_indentation=%u, list_stack.size=%d", 
-				is_start ? "true" : "false", is_task ? "true" : "false", task_mark, task_mark_offset, 
-				this.current_list_indentation, this.list_stack.size);
-			
+			 
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
@@ -418,13 +420,7 @@ namespace MarkdownGtk
 			}
 			
 			// Add marker based on list type
-			if (is_task) {
-				// Task list item - add checkbox marker
-				// Use ✅ (U+2705) for checked, [_] for unchecked
-				string marker = (task_mark == 'x' || task_mark == 'X') ? "✅" : "[_]";
-				GLib.debug("Render.on_li: adding task marker '%s'", marker);
-				this.current_state.add_text(marker);
-			} else if (list_number == 0) {
+			if (list_number == 0) {
 				// Unordered list - use bullet point (circle)
 				GLib.debug("Render.on_li: adding unordered list bullet '•'");
 				this.current_state.add_text("•");
@@ -439,6 +435,26 @@ namespace MarkdownGtk
 			this.current_state.add_text("\t");
 			
 			this.current_state.add_state();
+		}
+		
+		public override void on_task_list(bool is_start, bool is_checked)
+		{
+			if (!is_start) {
+				return;
+			}
+			
+			// Create a new state for the task marker with formatting
+			var task_state = this.current_state.add_state();
+			task_state.style.weight = Pango.Weight.BOLD;
+			task_state.style.family = "monospace";
+			
+			// Task list item - add checkbox marker
+			// Use ✅ (U+2705) for checked, [_] for unchecked
+		 
+			this.current_state.add_text(is_checked ? "✅" : "⬜");
+			
+			// Close the formatting state
+			this.current_state.close_state();
 		}
 		
 		/**
