@@ -329,3 +329,4 @@ public class ChatWidget : Gtk.Box
 1. **Session Creation Flow**: How does UI create new sessions? Does Manager provide a method, or does UI create Session directly?
 2. **Chat Detection**: How does Manager detect new chats if not auto-creating from signals? Does it listen to session clients?
 3. **Session Persistence**: When UI creates a new session, when does it get saved to database?
+

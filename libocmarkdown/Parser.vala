@@ -267,6 +267,7 @@ namespace Markdown
 			matched_type = FormatType.NONE;
 			byte_length = 0;
 			
+			
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
 				return 0;
@@ -367,19 +368,20 @@ namespace Markdown
 			byte_length = 0;
 			lang_out = "";
 			
-			// If in literal mode, ignore all other format matches
-			if (this.in_literal) {
-				return 0; // Return 0 so caller will treat as text
-			}
+			GLib.debug("Parser.peekFormat: chunk_pos=%d, in_literal=%s", chunk_pos, this.in_literal.to_string());
 			
 			// Use peekMap for the common matching logic
 			int result = this.peekMap(chunk, chunk_pos, is_end_of_chunks, format_map, out matched_format, out byte_length);
 			
-			// Handle LITERAL (backtick) - return match length 1, don't add to text
-			// This check happens after peekMap so we can detect single backtick
-			if (result > 0 && matched_format == FormatType.LITERAL) {
-				return 1; // Return 1 to indicate match, but don't add backtick to text
+			
+			// If we were in literal mode, ignore all matches except LITERAL (to close literal mode)
+			if (this.in_literal) {
+				if (matched_format != FormatType.LITERAL) {
+					return 0; // Ignore this match
+				}
+				return 1;
 			}
+			
 			
 			return result;
 		}
@@ -459,7 +461,6 @@ namespace Markdown
 					// CONTINUE_LIST not valid - need to recalculate without CONTINUE_LIST
 					// This is a bit tricky - we need to find the longest valid match that's not CONTINUE_LIST
 					// For now, return 0 to indicate no valid block
-					GLib.debug("Parser.peekBlock: CONTINUE_LIST not valid (last_line_block=%s)", this.last_line_block.to_string());
 					return 0;
 				}
 				
@@ -468,9 +469,7 @@ namespace Markdown
 				var continue_end_pos = chunk_pos + byte_length;
 				var continue_length = byte_length;
 				
-				GLib.debug("Parser.do_block: CONTINUE_LIST detected, calling peekListBlock at cp=%d", continue_end_pos);
 				var list_result = this.peekListBlock(chunk, continue_end_pos, is_end_of_chunks, out matched_block, out byte_length);
-				GLib.debug("Parser.do_block: CONTINUE_LIST peekListBlock result=%d, matched_block=%s", list_result, matched_block.to_string());
 				
 				if (list_result == -1) {
 					// Cannot determine - need more data
@@ -511,7 +510,6 @@ namespace Markdown
 			
 			// Check bounds
 			if (chunk_pos >= chunk.length) {
-				GLib.debug("Parser.peekListBlock: chunk_pos=%d >= chunk.length=%d", chunk_pos, chunk.length);
 				return 0; // No match - emit continue block
 			}
 			
@@ -522,7 +520,6 @@ namespace Markdown
 			// Only check for list-related markers: space (for CONTINUE), digit (for ORDERED), or -* + - (for UNORDERED)
 			if (!first_char.isspace() && !first_char.isdigit() && 
 			    first_char != '-' && first_char != '*' && first_char != '+') {
-				GLib.debug("Parser.peekListBlock: first_char='%s' not a list marker, returning 0", first_char.to_string());
 				return 0; // No match - emit continue block
 			}
 			
@@ -551,15 +548,9 @@ namespace Markdown
 				cp += char_at_cp.to_string().length;
 				char_count++;
 				
-				// Debug: show sequence being built
-				var seq_display = sequence.replace(" ", ".");
-				GLib.debug("Parser.peekListBlock: char_count=%d, sequence='%s' (len=%d)", 
-					char_count, seq_display, sequence.length);
-				
 				// Check if sequence is in block_map
 				if (!block_map.has_key(sequence)) {
 					// Sequence not in block_map - return longest valid match found (0 if none)
-					GLib.debug("Parser.peekListBlock: sequence='%s' not in block_map, max_match_length=%d", seq_display, max_match_length);
 					if (max_match_length > 0) {
 						return max_match_length;
 					}
@@ -570,7 +561,6 @@ namespace Markdown
 				
 				// Sequence is in block_map
 				var block_type = block_map.get(sequence);
-				GLib.debug("Parser.peekListBlock: sequence='%s' -> block_type=%s", seq_display, block_type.to_string());
 				
 				// Only accept CONTINUE_LIST, ORDERED_LIST, or UNORDERED_LIST
 				switch (block_type) {
@@ -580,23 +570,19 @@ namespace Markdown
 						var continue_byte_length = cp - chunk_pos;
 						FormatType recursive_matched_block;
 						int recursive_byte_length;
-						GLib.debug("Parser.peekListBlock: CONTINUE_LIST at cp=%d, trying recursive peek", cp);
 						var recursive_result = this.peekListBlock(chunk, cp, is_end_of_chunks, out recursive_matched_block, out recursive_byte_length);
-						GLib.debug("Parser.peekListBlock: CONTINUE_LIST recursive_result=%d, matched_block=%s", recursive_result, recursive_matched_block.to_string());
 						if (recursive_result == -1) {
 							// Cannot determine what's next - need more data
 							return -1;
 						}
 						// If recursive call found ORDERED/UNORDERED (result > 0), return that immediately
 						if (recursive_result > 0) {
-							GLib.debug("Parser.peekListBlock: CONTINUE_LIST found list (result=%d), returning", recursive_result);
 							matched_block = recursive_matched_block;
 							byte_length = continue_byte_length + recursive_byte_length;
 							return continue_byte_length + recursive_result;
 						}
 						 
 						// No list found (recursive_result == 0) - emit continue block
-						GLib.debug("Parser.peekListBlock: CONTINUE_LIST no list found, emitting continue block");
 						matched_block = recursive_matched_block;
 						byte_length = continue_byte_length + recursive_byte_length;
 						return continue_byte_length + recursive_result;
@@ -606,8 +592,6 @@ namespace Markdown
 						// Found ORDERED_LIST or UNORDERED_LIST - return this match
 						matched_block = block_type;
 						byte_length = cp - chunk_pos;
-						GLib.debug("Parser.peekListBlock: Found %s at char_count=%d, byte_length=%d, sequence='%s'", 
-							block_type.to_string(), char_count, byte_length, sequence.replace(" ", "."));
 						return char_count;
 					
 					default:
@@ -711,6 +695,8 @@ namespace Markdown
 					this.do_block(false, this.current_block);
 					this.last_line_block = this.current_block;
 					this.current_block = FormatType.NONE;
+					// Clear in_literal when block ends (e.g., two line breaks)
+					this.in_literal = false;
 				}
 					
 					// Pass the newline as text to the renderer
@@ -788,6 +774,8 @@ namespace Markdown
 					this.do_block(false, this.current_block);
 					this.last_line_block = this.current_block;
 					this.current_block = FormatType.NONE;
+					// Clear in_literal when block ends
+					this.in_literal = false;
 					this.at_line_start = true;
 					continue;
 				}
@@ -989,12 +977,14 @@ namespace Markdown
 				case FormatType.TASK_LIST:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
+						GLib.debug("Parser.do_format: TASK_LIST called");
 						this.renderer.on_task_list(true, false);
 					}
 					break;
 				case FormatType.TASK_LIST_DONE:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
+						GLib.debug("Parser.do_format: TASK_LIST_DONE called");
 						this.renderer.on_task_list(true, true);
 					}
 					break;
