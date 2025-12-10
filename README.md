@@ -85,15 +85,15 @@ The executables are configured with `build_rpath` so they can find the libraries
 
 ```bash
 # Run from top-level build directory
-# Note: For testing uninstalled, use the .bin executables directly
+# Note: For testing uninstalled, use the executables directly
 ./build/ollmchat.bin
-./build/oc-test-cli.bin --help
-./build/oc-markdown-test.bin
-./build/oc-html2md.bin
-./build/oc-md2html.bin
+./build/oc-test-cli --help
+./build/oc-markdown-test
+./build/oc-html2md
+./build/oc-md2html
 ```
 
-The wrapper scripts (without `.bin` extension) are automatically generated during the build process and set up the library paths correctly. For direct testing, use the `.bin` executables.
+The wrapper scripts are automatically generated during the build process and set up the library paths correctly. Note that only `ollmchat` has a `.bin` wrapper; the other executables can be run directly from the build directory.
 
 ## Project Structure
 
