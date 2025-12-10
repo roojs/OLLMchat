@@ -38,6 +38,7 @@ namespace Markdown
 		private StringBuilder html_output;
 		private Gee.ArrayList<string> open_tags;
 		private Gee.ArrayList<int> list_stack; // Stack of open lists: 0 = ul, 1 = ol, index = indentation level - 1
+		private uint current_blockquote_level = 0; // Track current blockquote nesting level (1-6)
 		private bool prev_text_ended_with_newline = false; // Track if previous on_text call ended with \n
 		private bool prev_line_was_empty = false; // Track if previous line was empty
 		
@@ -347,6 +348,28 @@ namespace Markdown
 			}
 		}
 		
+		/**
+		 * Closes all blockquotes deeper than the specified level.
+		 * 
+		 * @param level The blockquote level - only closes blockquotes deeper than this
+		 */
+		private void close_blockquotes_to_level(uint level)
+		{
+			// Close blockquotes that are deeper than the target level
+			while (this.current_blockquote_level > level) {
+				this.append_indent();
+				this.html_output.append("</blockquote>");
+				// Remove from open_tags
+				for (int i = this.open_tags.size - 1; i >= 0; i--) {
+					if (this.open_tags[i] == "blockquote") {
+						this.open_tags.remove_at(i);
+						break;
+					}
+				}
+				this.current_blockquote_level--;
+			}
+		}
+		
 		public override void on_li(bool is_start)
 		{
 			if (!is_start) {
@@ -401,15 +424,24 @@ namespace Markdown
 			this.open_tags.add("pre");
 		}
 			
-		public override void on_quote(bool is_start)
+		public override void on_quote(bool is_start, uint level)
 		{
 			if (!is_start) {
-				this.close_tag("blockquote");
+				// End of blockquote line is meaningless - closing happens when
+				// we see a new blockquote level or on blank lines
 				return;
 			}
 			
-			this.html_output.append("<blockquote>");
-			this.open_tags.add("blockquote");
+			// Close blockquotes that are deeper than the new level
+			this.close_blockquotes_to_level(level);
+			
+			// Open blockquotes to reach the target level
+			while (this.current_blockquote_level < level) {
+				this.current_blockquote_level++;
+				this.append_indent(true);
+				this.html_output.append("<blockquote>");
+				this.open_tags.add("blockquote");
+			}
 		}
 		
 		public override void on_hr()
@@ -545,6 +577,10 @@ namespace Markdown
 				// Close all lists on double newline (end of list block)
 				if (this.list_stack.size > 0) {
 					this.close_lists_to_level(0);
+				}
+				// Close all blockquotes on double newline (blank line)
+				if (this.current_blockquote_level > 0) {
+					this.close_blockquotes_to_level(0);
 				}
 			}
 			

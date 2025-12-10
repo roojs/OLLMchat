@@ -251,7 +251,7 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_quote(bool is_start)
+		public override void on_quote(bool is_start, uint level)
 		{
 			if (!is_start) {
 				indent_level--;
@@ -261,7 +261,7 @@ namespace Markdown
 			}
 			
 			print_indent();
-			stdout.printf("START: <blockquote>\n");
+			stdout.printf("START: <blockquote level=%u>\n", level);
 			indent_level++;
 		}
 		

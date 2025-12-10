@@ -423,7 +423,7 @@ namespace MarkdownGtk
 			if (list_number == 0) {
 				// Unordered list - use bullet point (circle)
 				GLib.debug("Render.on_li: adding unordered list bullet '•'");
-				this.current_state.add_text("•");
+				this.current_state.add_text("●");
 			} else {
 				// Ordered list - use number + "."
 				string number_marker = list_number.to_string() + ".";
@@ -489,14 +489,24 @@ namespace MarkdownGtk
 		/**
 		 * Callback for blockquote blocks.
 		 */
-		public override void on_quote(bool is_start)
+		public override void on_quote(bool is_start, uint level)
 		{
 			if (!is_start) {
-				this.current_state.close_state();
+				// End of blockquote line - add newline
+			//  //	this.current_state.add_text("\n");
 				return;
 			}
 			
-			this.current_state.add_state();
+			// For each level, create a state with light orange background
+			// Add 2 spaces to that state, close it, then add 2 spaces to current state
+			for (uint i = 0; i < level; i++) {
+				// Create a new state
+				var bg_state = this.current_state.add_state();
+				bg_state.style.background = "#FFE5CC";
+				bg_state.add_text("  ");
+				bg_state.close_state();
+				this.current_state.add_text("  ");
+			}
 		}
 			
 		/**

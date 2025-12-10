@@ -495,17 +495,19 @@ namespace Markdown
 			this.open_tags.add("tt");
 		}
 		
-		public override void on_quote(bool is_start)
+		public override void on_quote(bool is_start, uint level)
 		{
 			if (!is_start) {
-				this.close_tag("span");
+				// End of blockquote line - add newline
 				this.pango_markup.append("\n");
 				return;
 			}
 			
-			// Blockquote - use italic style and add quote marker
-			this.pango_markup.append("<span style=\"italic\">");
-			this.open_tags.add("span");
+			// Blockquote - add light orange background spans with spacing
+			// Repeat for each level: <span background="#lightorange">{2 spaces}</span>{2 spaces}
+			for (uint i = 0; i < level; i++) {
+				this.pango_markup.append("<span background=\"#FFE5CC\">  </span>  ");
+			}
 		}
 		
 		public override void on_hr()

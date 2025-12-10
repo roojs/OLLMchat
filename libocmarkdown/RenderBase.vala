@@ -87,7 +87,7 @@ namespace Markdown
 		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
 		public virtual void on_code_text(string text) {}
 		public virtual void on_code_block(bool is_start, string lang) {}
-		public virtual void on_quote(bool is_start) {}
+		public virtual void on_quote(bool is_start, uint level) {}
 		public virtual void on_hr() {}
 		public virtual void on_a(bool is_start, string href, string title, bool is_autolink) {}
 		public virtual void on_img(string src, string? title) {}

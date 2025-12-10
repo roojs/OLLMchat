@@ -151,7 +151,13 @@ namespace Markdown
 			block_map[" * "] = FormatType.UNORDERED_LIST;
 			block_map[" +"] = FormatType.INVALID;
 			block_map[" + "] = FormatType.UNORDERED_LIST;
+		
+			block_map["•"] = FormatType.INVALID;
+			block_map[" •"] = FormatType.INVALID;
 			
+			block_map["• "] = FormatType.UNORDERED_LIST;
+			block_map[" • "] = FormatType.UNORDERED_LIST;
+					
 
 
 			// Ordered Lists: 1. item, 2. item, etc. (treat any number as 1.)
@@ -200,9 +206,19 @@ namespace Markdown
 			// Code Attributes: ```python, ``` {.language-python}
 			// (handled as part of FENCED_CODE processing)
 			
-			// Blockquotes: > quote text
-			// block_map[">"] = FormatType.INVALID;
-			// block_map["> "] = FormatType.BLOCKQUOTE;
+			// Blockquotes: > quote text (up to 6 levels deep, like headers)
+			block_map[">"] = FormatType.INVALID;
+			block_map["> "] = FormatType.BLOCKQUOTE;
+			block_map["> >"] = FormatType.INVALID;
+			block_map["> > "] = FormatType.BLOCKQUOTE;
+			block_map["> > >"] = FormatType.INVALID;
+			block_map["> > > "] = FormatType.BLOCKQUOTE;
+			block_map["> > > >"] = FormatType.INVALID;
+			block_map["> > > > "] = FormatType.BLOCKQUOTE;
+			block_map["> > > > >"] = FormatType.INVALID;
+			block_map["> > > > > "] = FormatType.BLOCKQUOTE;
+			block_map["> > > > > >"] = FormatType.INVALID;
+			block_map["> > > > > > "] = FormatType.BLOCKQUOTE;
 			
 			// Tables: | Header | Header | with | --- | --- | (GFM)
 			// block_map["|"] = FormatType.INVALID;
@@ -791,6 +807,7 @@ namespace Markdown
 				}
 				
 		
+				 
 				
 				// At line start - check for block markers
 				if (this.at_line_start) {
@@ -1107,17 +1124,36 @@ namespace Markdown
 					this.at_line_start = true;
 					return seq_pos - chunk_pos;
 				
+				case FormatType.BLOCKQUOTE:
+					// Check that previous block is NONE (nothing can go before blockquote)
+					if (this.current_block != FormatType.NONE) {
+						// Reject the match - not a valid blockquote
+						this.at_line_start = false;
+						return 0;
+					}
+					// Start the new block
+					this.current_block = matched_block;
+					// Extract the marker string to calculate level
+					var marker_string = chunk.substring(chunk_pos, byte_length);
+					this.do_block(true, matched_block, marker_string);
+					// Don't reset at_line_start for blockquotes - continue processing
+					return seq_pos - chunk_pos;
+				
+				case FormatType.ORDERED_LIST:
+				case FormatType.UNORDERED_LIST:
+					// Start the new block
+					this.current_block = matched_block;
+					// Extract the marker string to calculate indentation
+					var marker_string = chunk.substring(chunk_pos, byte_length);
+					this.do_block(true, matched_block, marker_string);
+					// Continue with normal inline processing
+					this.at_line_start = false;
+					return seq_pos - chunk_pos;
+				
 				default:
 					// Start the new block
 					this.current_block = matched_block;
-					
-					// For list blocks, extract the marker string to calculate indentation
-					if (matched_block == FormatType.ORDERED_LIST || matched_block == FormatType.UNORDERED_LIST) {
-						var marker_string = chunk.substring(chunk_pos, byte_length);
-						this.do_block(true, matched_block, marker_string);
-					} else {
-						this.do_block(true, matched_block, block_lang);
-					}
+					this.do_block(true, matched_block, block_lang);
 					
 					// For other blocks, continue with normal inline processing
 					this.at_line_start = false;
@@ -1173,6 +1209,10 @@ namespace Markdown
 					break;
 				case FormatType.HORIZONTAL_RULE:
 					this.renderer.on_hr();
+					break;
+				case FormatType.BLOCKQUOTE:
+			
+					this.renderer.on_quote(is_start, lang.length /2 );
 					break;
 				case FormatType.NONE:
 					// No block to handle
