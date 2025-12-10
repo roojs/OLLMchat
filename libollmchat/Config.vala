@@ -101,22 +101,24 @@ namespace OLLMchat
 		}
 
 		/**
-		 * Loads configuration from file into this Config object.
+		 * Creates a new Config object loaded from a file.
 		 * 
-		 * If the file doesn't exist or cannot be read/parsed, this Config object
-		 * remains with its default values and loaded is set to false.
+		 * If the file doesn't exist or cannot be read/parsed, returns a Config
+		 * object with default values and loaded set to false.
 		 * 
 		 * @param config_path Path to the configuration file
+		 * @return A new Config instance loaded from the file
 		 */
-		public void load(string config_path)
+		public static Config from_file(string config_path)
 		{
-			this.config_path = config_path;
-			this.loaded = false;
+			var config = new Config();
+			config.config_path = config_path;
+			config.loaded = false;
 			
 			var file = File.new_for_path(config_path);
 			
 			if (!file.query_exists()) {
-				return;
+				return config;
 			}
 
 			try {
@@ -126,10 +128,10 @@ namespace OLLMchat
 				var root = parser.get_root();
 				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
 					GLib.warning("Invalid config file: file is empty or not valid JSON");
-					return;
+					return config;
 				}
 
-				// Deserialize JSON to temporary Config object
+				// Deserialize JSON to Config object
 				var generator = new Json.Generator();
 				generator.set_root(root);
 				var json_str = generator.to_data(null);
@@ -137,29 +139,38 @@ namespace OLLMchat
 				var loaded_config = Json.gobject_from_data(typeof(Config), json_str, -1) as Config;
 				if (loaded_config == null) {
 					GLib.warning("Failed to deserialize config file");
-					return;
+					return config;
 				}
 
-				// Copy properties from loaded config to this object
-				loaded_config.copy_to(this);
-				this.loaded = true;
+				// Clone the loaded config and set metadata properties
+				config = loaded_config.clone();
+				config.config_path = config_path;
+				config.loaded = true;
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load config: %s", e.message);
 			}
+			
+			return config;
 		}
 
 		/**
-		 * Copies properties from this config to another config object.
+		 * Creates a clone of this Config object with all properties copied.
 		 * 
-		 * @param target The target config object to copy to
+		 * Uses GObject introspection to iterate through all properties and copy them.
+		 * 
+		 * @return A new Config instance with all properties copied from this object
 		 */
-		public void copy_to(Config target)
+		public Config clone()
 		{
-			target.url = this.url;
-			target.api_key = this.api_key;
-			target.model = this.model;
-			target.title_model = this.title_model;
-			target.think = this.think;
+			var new_obj = new Config();
+			
+			foreach (unowned ParamSpec pspec in this.get_class().list_properties()) {
+				var value = Value(pspec.value_type);
+				this.get_property(pspec.get_name(), ref value);
+				new_obj.set_property(pspec.get_name(), value);
+			}
+			
+			return new_obj;
 		}
 
 		/**

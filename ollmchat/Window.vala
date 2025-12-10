@@ -107,8 +107,7 @@ namespace OLLMchat
 			);
 			
 			GLib.debug("Loading config from %s", config_path);
-			var config = new OLLMchat.Config();
-			config.load(config_path);
+			var config = OLLMchat.Config.from_file(config_path);
 			GLib.debug("After loading config.json - loaded=%s, url=%s", config.loaded.to_string(), config.url);
 			
 			// Show bootstrap dialog if config was not loaded

@@ -32,8 +32,7 @@ namespace OLLMchat.History
 		{
 			this.config = config;
 			// Create a config for the title generation client with title_model
-			var title_config = new OLLMchat.Config();
-			config.copy_to(title_config);
+			var title_config = config.clone();
 			title_config.model = this.config.title_model;
 			this.client = new OLLMchat.Client(title_config) {
 				stream = false

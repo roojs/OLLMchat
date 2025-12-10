@@ -120,10 +120,7 @@ namespace OLLMchat.History
 		public Client new_client()
 		{
 			// Create new config by copying from base client
-			var new_config = new OLLMchat.Config();
-			this.base_client.config.copy_to(new_config);
-			
-			var client = new OLLMchat.Client(new_config);
+			var client = new OLLMchat.Client(this.base_client.config.clone());
 			
 			// Copy all other properties
 			client.stream = this.base_client.stream;
