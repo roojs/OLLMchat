@@ -23,27 +23,44 @@ namespace OLLMchat.Call
 	 * 
 	 * This is technically accessed through call.options (e.g., chatCall.options, embedCall.options).
 	 * Contains all runtime parameters that can be passed to Ollama API.
-	 * All properties are read-only getters from the client, with blank setters
-	 * for serialization purposes. Default values are -1 for numbers (indicating
-	 * no value set) or empty string for strings.
+	 * Default values are -1 for numbers (indicating no value set) or empty string for strings.
 	 */
-	public class Options : OllamaBase
+	public class Options : Object, Json.Serializable
 	{
 		// Numeric options - default to -1 (no value set)
-		public int seed { get { return this.client.seed; } set { } }
-		public double temperature { get { return this.client.temperature; } set { } }
-		public double top_p { get { return this.client.top_p; } set { } }
-		public int top_k { get { return this.client.top_k; } set { } }
-		public int num_predict { get { return this.client.num_predict; } set { } }
-		public double repeat_penalty { get { return this.client.repeat_penalty; } set { } }
-		public int num_ctx { get { return this.client.num_ctx; } set { } }
+		public int seed { get; set; default = -1; }
+		public double temperature { get; set; default = -1.0; }
+		public double top_p { get; set; default = -1.0; }
+		public int top_k { get; set; default = -1; }
+		public int num_predict { get; set; default = -1; }
+		public double repeat_penalty { get; set; default = -1.0; }
+		public int num_ctx { get; set; default = -1; }
 		
 		// String options - default to empty string (no value set)
-		public string stop { get { return this.client.stop; } set { } }
+		public string stop { get; set; default = ""; }
 
-		public Options(Client client)
+		public Options()
 		{
-			base(client);
+		}
+
+		/**
+		 * Creates a clone of this Options object with all properties copied.
+		 * 
+		 * Uses GObject introspection to iterate through all properties and copy them.
+		 * 
+		 * @return A new Options instance with all properties copied from this object
+		 */
+		public Options clone()
+		{
+			var new_obj = new Options();
+			
+			foreach (unowned ParamSpec pspec in this.get_class().list_properties()) {
+				var value = Value(pspec.value_type);
+				this.get_property(pspec.get_name(), ref value);
+				new_obj.set_property(pspec.get_name(), value);
+			}
+			
+			return new_obj;
 		}
 
 		/**
@@ -67,13 +84,27 @@ namespace OLLMchat.Call
 				|| this.stop != "";
 		}
 
-		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			// Group cases by type and check default values
 			switch (property_name) {
-				case "client":
-					return null;
-				
 				// Integer properties - default -1
 				case "seed":
 				case "top_k":
@@ -103,6 +134,11 @@ namespace OLLMchat.Call
 				default:
 					return null;
 			}
+		}
+
+		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}
 }

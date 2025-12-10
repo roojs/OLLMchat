@@ -75,14 +75,7 @@ namespace OLLMchat.History
 			new_client.stream = this.client.stream;
 			new_client.format = this.client.format;
 			new_client.keep_alive = this.client.keep_alive;
-			new_client.seed = this.client.seed;
-			new_client.temperature = this.client.temperature;
-			new_client.top_p = this.client.top_p;
-			new_client.top_k = this.client.top_k;
-			new_client.num_predict = this.client.num_predict;
-			new_client.repeat_penalty = this.client.repeat_penalty;
-			new_client.num_ctx = this.client.num_ctx;
-			new_client.stop = this.client.stop;
+			new_client.options = this.client.options.clone();
 			new_client.timeout = this.client.timeout;
 			
 			// Copy available_models

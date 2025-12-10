@@ -135,14 +135,7 @@ namespace OLLMchat.History
 			client.prompt_assistant = this.agents.get("just-ask");
 			
 			client.permission_provider = this.base_client.permission_provider; // Shared reference - MUST be shared
-			client.seed = this.base_client.seed;
-			client.temperature = this.base_client.temperature;
-			client.top_p = this.base_client.top_p;
-			client.top_k = this.base_client.top_k;
-			client.num_predict = this.base_client.num_predict;
-			client.repeat_penalty = this.base_client.repeat_penalty;
-			client.num_ctx = this.base_client.num_ctx;
-			client.stop = this.base_client.stop;
+			client.options = this.base_client.options.clone();
 			client.timeout = this.base_client.timeout;
 			
 			// Copy available_models (shared model data)

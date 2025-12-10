@@ -55,7 +55,7 @@ namespace OLLMchat.Call
 		}
 		
 		internal Call.Options options { 
-			owned get { return new Call.Options(this.client); }
+			get { return this.client.options; }
 			set { } // Fake setter for serialization
 		}
 

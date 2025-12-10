@@ -126,86 +126,14 @@ namespace OLLMchat
 		/**
 		 * Runtime options for text generation.
 		 * 
-		 * These properties control various aspects of text generation behavior.
+		 * Contains all runtime parameters that can be passed to Ollama API.
 		 * Default values (-1 for numbers, empty string for strings) indicate no value set,
 		 * and the option will not be included in API requests.
 		 * See the Ollama API documentation for details on the options parameter.
-		 */
-		
-		/**
-		 * Random seed for reproducible outputs.
-		 * 
-		 * Set to -1 (default) to use random seed. Set to a positive integer for deterministic outputs.
 		 * 
 		 * @since 1.0
 		 */
-		public int seed { get; set; default = -1; }
-		
-		/**
-		 * Temperature for sampling (0.0 to 1.0).
-		 * 
-		 * Controls randomness in output. Lower values make output more deterministic.
-		 * Set to -1.0 (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public double temperature { get; set; default = -1.0; }
-		
-		/**
-		 * Top-p (nucleus) sampling parameter (0.0 to 1.0).
-		 * 
-		 * Controls diversity via nucleus sampling. Set to -1.0 (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public double top_p { get; set; default = -1.0; }
-		
-		/**
-		 * Top-k sampling parameter.
-		 * 
-		 * Limits sampling to the top k most likely tokens. Set to -1 (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public int top_k { get; set; default = -1; }
-		
-		/**
-		 * Maximum number of tokens to predict.
-		 * 
-		 * Limits the length of generated responses. Set to -1 (default) for no limit.
-		 * 
-		 * @since 1.0
-		 */
-		public int num_predict { get; set; default = -1; }
-		
-		/**
-		 * Repeat penalty for reducing repetition.
-		 * 
-		 * Penalty applied to repeated tokens. Values > 1.0 reduce repetition.
-		 * Set to -1.0 (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public double repeat_penalty { get; set; default = -1.0; }
-		
-		/**
-		 * Context window size.
-		 * 
-		 * Maximum number of tokens in the context window. Set to -1 (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public int num_ctx { get; set; default = -1; }
-		
-		/**
-		 * Stop sequences.
-		 * 
-		 * Comma-separated list of strings that will stop generation when encountered.
-		 * Set to empty string (default) to use model default.
-		 * 
-		 * @since 1.0
-		 */
-		public string stop { get; set; default = ""; }
+		public Call.Options options { get; set; default = new Call.Options(); }
 		
 		/**
 		 * HTTP request timeout in seconds.
