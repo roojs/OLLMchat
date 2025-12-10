@@ -144,7 +144,16 @@ namespace Markdown
 			block_map["* "] = FormatType.UNORDERED_LIST;
 			block_map["+"] = FormatType.INVALID;
 			block_map["+ "] = FormatType.UNORDERED_LIST;
+			// with extra spaces
+			block_map[" -"] = FormatType.INVALID;
+			block_map[" - "] = FormatType.UNORDERED_LIST;
+			block_map[" *"] = FormatType.INVALID;
+			block_map[" * "] = FormatType.UNORDERED_LIST;
+			block_map[" +"] = FormatType.INVALID;
+			block_map[" + "] = FormatType.UNORDERED_LIST;
 			
+
+
 			// Ordered Lists: 1. item, 2. item, etc. (treat any number as 1.)
 			// Need both "1." and "11." to handle single and double digit numbers
 			block_map["1"] = FormatType.INVALID;
@@ -669,6 +678,8 @@ namespace Markdown
 				var c = chunk.get_char(chunk_pos);
 				
 				// Handle newline - end current block and prepare for next line
+				GLib.debug("chunk_pos=%d, c='%s', at_line_start=%s, current_block=%s",
+					 chunk_pos, c.to_string(), this.at_line_start.to_string(), this.current_block.to_string());
 				if (c == '\n') {
 					// If we're in a fenced code block, send the newline as code text and set at_line_start
 					if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
@@ -686,9 +697,7 @@ namespace Markdown
 					this.renderer.on_text(str);
 					str = "";
 					//GLib.debug("  [str] RESET after flush: str='%s'", str);
-				} else {
-					//GLib.debug("  [str] EMPTY at newline - nothing to flush");
-				}
+				} 
 				
 				// End current block if any
 				if (this.current_block != FormatType.NONE) {
@@ -710,7 +719,8 @@ namespace Markdown
 				}
 				
 				// If we're in a fenced code block, check for closing fence only at line start
-				if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
+				if (this.current_block == FormatType.FENCED_CODE_QUOTE
+					 || this.current_block == FormatType.FENCED_CODE_TILD) {
 					//GLib.debug("  [code] In code block, at_line_start=%s, chunk_pos=%d, char='%s'", this.at_line_start.to_string(), chunk_pos, chunk_pos < chunk.length ? chunk.get_char(chunk_pos).to_string() : "EOF");
 					if (!this.at_line_start) {
 						// Not at line start - collect code text
@@ -836,6 +846,9 @@ namespace Markdown
 					out unused_lang_out
 				);
 				
+				GLib.debug("after peekformat chunk_pos=%d, c='%s', at_line_start=%s, matched_format=%s, match_len=%d",
+					 chunk_pos, c.to_string(), this.at_line_start.to_string(), matched_format.to_string(), match_len);
+				
 				if (match_len == -1) {
 					// Cannot determine - need more characters
 					// Flush accumulated text and save to leftover_chunk
@@ -923,8 +936,20 @@ namespace Markdown
 		 */
 		private void got_format(FormatType format_type)
 		{
+			// some format types dont have start and end flags..
+			switch (format_type) {
+				case FormatType.TASK_LIST:
+				case FormatType.TASK_LIST_DONE:
+					GLib.debug("got_format: TASK_LIST_DONE called");
+					this.do_format(true, format_type);
+					return;
+				default:
+					break;
+			}
+			
 			// Check if stack is empty or top is different
-			if (this.state_stack.size == 0 || this.state_stack.get(this.state_stack.size - 1) != format_type) {
+			if (this.state_stack.size == 0 
+				|| this.state_stack.get(this.state_stack.size - 1) != format_type) {
 				// Different state - add to stack and call do_XXX
 				this.state_stack.add(format_type);
 				this.do_format(true, format_type);
