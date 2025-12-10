@@ -31,21 +31,14 @@
           <li class="property"><a href="OLLMchat.Client.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.Client.format.html">format</a></li>
           <li class="property"><a href="OLLMchat.Client.keep_alive.html">keep_alive</a></li>
-          <li class="property"><a href="OLLMchat.Client.num_ctx.html">num_ctx</a></li>
-          <li class="property"><a href="OLLMchat.Client.num_predict.html">num_predict</a></li>
+          <li class="property"><a href="OLLMchat.Client.options.html">options</a></li>
           <li class="property"><a href="OLLMchat.Client.permission_provider.html">permission_provider</a></li>
           <li class="property"><a href="OLLMchat.Client.prompt_assistant.html">prompt_assistant</a></li>
-          <li class="property"><a href="OLLMchat.Client.repeat_penalty.html">repeat_penalty</a></li>
-          <li class="property"><a href="OLLMchat.Client.seed.html">seed</a></li>
-          <li class="property"><a href="OLLMchat.Client.stop.html">stop</a></li>
           <li class="property"><a href="OLLMchat.Client.stream.html">stream</a></li>
           <li class="property"><a href="OLLMchat.Client.streaming_response.html">streaming_response</a></li>
-          <li class="property"><a href="OLLMchat.Client.temperature.html">temperature</a></li>
           <li class="property"><a href="OLLMchat.Client.think.html">think</a></li>
           <li class="property"><a href="OLLMchat.Client.timeout.html">timeout</a></li>
           <li class="property"><a href="OLLMchat.Client.tools.html">tools</a></li>
-          <li class="property"><a href="OLLMchat.Client.top_k.html">top_k</a></li>
-          <li class="property"><a href="OLLMchat.Client.top_p.html">top_p</a></li>
           <li class="creation_method"><a href="OLLMchat.Client.Client.html">Client</a></li>
           <li class="method"><a href="OLLMchat.Client.addTool.html">addTool</a></li>
           <li class="method"><a href="OLLMchat.Client.chat.html">chat</a></li>
@@ -108,13 +101,9 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Model keep-alive duration.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Client.num_ctx.html" class="property">num_ctx</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span> <b><a href="OLLMchat.Client.options.html" class="property">options</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Context window size.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Client.num_predict.html" class="property">num_predict</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Maximum number of tokens to predict.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Runtime options for text generation.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.ChatPermission.Provider.html" class="abstract_class">Provider</a></span> <b><a href="OLLMchat.Client.permission_provider.html" class="property">permission_provider</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -124,18 +113,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Prompt generator for agent-based conversations.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Client.repeat_penalty.html" class="property">repeat_penalty</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Repeat penalty for reducing repetition.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Client.seed.html" class="property">seed</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Random seed for reproducible outputs.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Client.stop.html" class="property">stop</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Stop sequences.</span>
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Client.stream.html" class="property">stream</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether to stream responses from the API.</span>
@@ -143,10 +120,6 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.Client.streaming_response.html" class="property">streaming_response</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Current streaming response object (internal use).</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Client.temperature.html" class="property">temperature</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Temperature for sampling (0.0 to 1.0).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Client.think.html" class="property">think</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -162,14 +135,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Map of available tools (functions) that the model can call during 
                 chat.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Client.top_k.html" class="property">top_k</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Top-k sampling parameter.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Client.top_p.html" class="property">top_p</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Top-p (nucleus) sampling parameter (0.0 to 1.0).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>

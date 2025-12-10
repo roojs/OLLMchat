@@ -55,9 +55,8 @@ namespace OLLMchat.Call
 			var new_obj = new Options();
 			
 			foreach (unowned ParamSpec pspec in this.get_class().list_properties()) {
-				var value = Value(pspec.value_type);
-				this.get_property(pspec.get_name(), ref value);
-				new_obj.set_property(pspec.get_name(), value);
+				var value = this.get_property(pspec);
+				new_obj.set_property(pspec, value);
 			}
 			
 			return new_obj;
