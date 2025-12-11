@@ -29,7 +29,13 @@ ollmchat_deps = [
 # Include resources directly in the executable to ensure they're registered
 ollmchat = executable('ollmchat',
   dependencies: [ollmchat_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep],
-  sources: ['Application.vala', 'Window.vala', 'BootstrapDialog.vala', ollmchat_resources],
+  sources: [
+    'Application.vala',
+    'Window.vala',
+    'BootstrapDialog.vala',
+    'WindowPane.vala',
+    ollmchat_resources
+  ],
   link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Libraries already link with dependencies via link_args
   include_directories: [
     include_directories('../libollmchat'),

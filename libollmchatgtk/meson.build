@@ -5,6 +5,7 @@
 valac = meson.get_compiler('vala')
 ollmchatgtk_deps = [
   dependency('gtk4'),
+  dependency('libadwaita-1'),
   dependency('gtksourceview-5'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
