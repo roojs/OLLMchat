@@ -34,6 +34,7 @@ namespace OLLMcoder.Files
 		public File(OLLMcoder.ProjectManager manager)
 		{
 			base(manager);
+			this.base_type = "f";
 		}
 		/**
 		 * Programming language (optional, for files).
@@ -51,9 +52,75 @@ namespace OLLMcoder.Files
 		public bool is_active { get; set; default = false; }
 		
 		/**
+		 * Whether the file has been approved.
+		 */
+		public bool is_approved { get; set; default = false; }
+		
+		/**
+		 * Whether the file has unsaved changes.
+		 */
+		public bool is_unsaved { get; set; default = false; }
+		
+		/**
 		 * Filename of last approved copy (default: empty string).
 		 */
 		public string last_approved_copy_path { get; set; default = ""; }
+		
+		private string _icon_name = "";
+		/**
+		 * Icon name for binding in lists.
+		 * Returns icon_name if set, otherwise derives from file content type.
+		 */
+		public override string icon_name {
+			get {
+				if (this._icon_name != "") {
+					return this._icon_name;
+				}
+				if (this.path == "") {
+					return "text-x-generic";
+				}
+				// Use Gio.ContentType to guess content type from filename
+				string? content_type = null;
+				try {
+					var file = GLib.File.new_for_path(this.path);
+					var file_info = file.query_info(
+						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					content_type = file_info.get_content_type();
+				} catch {
+					// If we can't query, try guessing from filename
+					content_type = GLib.ContentType.guess(this.path, null, null);
+				}
+				if (content_type != null && content_type != "") {
+					// Get generic icon name from content type
+					var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
+					if (icon_name != null && icon_name != "") {
+						this._icon_name = icon_name;
+						return this._icon_name;
+					}
+				}
+				// Default fallback
+				return "text-x-generic";
+			}
+			set {
+				this._icon_name = value; // as we can save it in the DB to save time..
+			}
+		}
+		
+		private string _display_text_with_indicators = "";
+		/**
+		 * Display text with status indicators (approved, unsaved).
+		 */
+		public override string display_text_with_indicators {
+			get {
+				this._display_text_with_indicators = 
+					this.display_name + (this.is_approved ? " ✓" : "") 
+					+ (this.is_unsaved ? " ●" : "");
+				return this._display_text_with_indicators; // Checkmark for approved
+			}
+		}
 		
 		/**
 		 * Emitted when file content changes.

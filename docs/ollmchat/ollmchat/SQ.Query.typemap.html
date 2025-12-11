@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>SQ.Query.typemap &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">SQ.Query.typemap &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="SQ.html">SQ</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="class"><a href="SQ.Query.html">Query</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="creation_method"><a href="SQ.Query.Query.html">Query</a></li>
+          <li class="creation_method"><a href="SQ.Query.Query.with_properties.html">Query.with_properties</a></li>
+          <li class="method"><a href="SQ.Query.compareProperty.html">compareProperty</a></li>
+          <li class="method"><a href="SQ.Query.deleteId.html">deleteId</a></li>
+          <li class="method"><a href="SQ.Query.fetchAllInt64.html">fetchAllInt64</a></li>
+          <li class="method"><a href="SQ.Query.fetchAllString.html">fetchAllString</a></li>
+          <li class="method"><a href="SQ.Query.getColsExcept.html">getColsExcept</a></li>
+          <li class="method"><a href="SQ.Query.getInt.html">getInt</a></li>
+          <li class="method"><a href="SQ.Query.getText.html">getText</a></li>
+          <li class="method"><a href="SQ.Query.insert.html">insert</a></li>
+          <li class="method"><a href="SQ.Query.select.html">select</a></li>
+          <li class="method"><a href="SQ.Query.selectExecute.html">selectExecute</a></li>
+          <li class="method"><a href="SQ.Query.selectExecuteInto.html">selectExecuteInto</a></li>
+          <li class="method"><a href="SQ.Query.selectPrepare.html">selectPrepare</a></li>
+          <li class="method"><a href="SQ.Query.selectQuery.html">selectQuery</a></li>
+          <li class="method"><a href="SQ.Query.updateById.html">updateById</a></li>
+          <li class="method"><a href="SQ.Query.updateOld.html">updateOld</a></li>
+          <li class="field"><a href="SQ.Query.typekey.html">typekey</a></li>
+          <li class="field">typemap</li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">typemap</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="struct">Type</span></span>&gt;? <b><span class="field">typemap</span></b>
+        </div>
+        <div class="description">
+          <p>Typemap for polymorphic deserialization.</p>
+          <p>Maps type identifier strings (e.g., "p", "f", "d") to GObject types. This allows Query to instantiate the correct subclass when 
+            deserializing from a database table that stores multiple types in a single table.</p>
+          <p>**Why this is needed:**</p>
+          <p>When you have a base class (e.g., `FileBase`) with multiple subclasses (e.g., `File`, `Folder`, `Project`), and all are stored in the 
+            same database table, SQLite can only return generic rows. Without type information, you cannot know which subclass to instantiate when 
+            deserializing.</p>
+          <p>**How it works:**</p>
+          <p>1. The database table must include a column (specified by `typekey`) that stores a type identifier string (e.g., "p" for Project, "f" for
+            File, "d" for Folder).</p>
+          <p>2. Before executing a query, you populate `typemap` with mappings from these identifier strings to the actual GObject types.</p>
+          <p>3. When `selectExecute` processes each row, it reads the type identifier from the `typekey` column, looks it up in `typemap`, and 
+            instantiates the correct subclass instead of the base class.</p>
+          <p>**Example:**</p>
+          <p><pre class="main_source"><code><span class="main_comment">// Database table: files</span><br/><span class="main_comment">// Columns: id, path, parent_id, base_type, ...</span><br/><span class="main_comment">// base_type column contains: "p", "f", or "d"</span><br/><br/><span class="main_keyword">var</span> query = <span class="main_keyword">new</span> SQ.Query&lt;FileBase&gt;(db, <span class="main_literal">"files"</span>);<br/><br/><span class="main_comment">// Set up polymorphic type mapping</span><br/>query.typemap = <span class="main_keyword">new</span> Gee.HashMap&lt;<span class="main_basic_type">string</span>, Type&gt;();<br/>query.typemap[<span class="main_literal">"p"</span>] = <span class="main_keyword">typeof</span>(Project);<br/>query.typemap[<span class="main_literal">"f"</span>] = <span class="main_keyword">typeof</span>(File);<br/>query.typemap[<span class="main_literal">"d"</span>] = <span class="main_keyword">typeof</span>(Folder);<br/>query.typekey = <span class="main_literal">"base_type"</span>;  <span class="main_comment">// Column name containing type identifier</span><br/><br/><span class="main_comment">// Now when you query, each row will be instantiated as the correct subclass</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">new</span> Gee.ArrayList&lt;FileBase&gt;();<br/>query.select(<span class="main_literal">"parent_id = ?"</span>, results);<br/><span class="main_comment">// Results will contain Project, File, and Folder instances as appropriate</span></code></pre>
+          </p>
+          <p>**Important:**</p>
+          <p>- The `typekey` column must exist in the SELECT query results - The type identifier values in the database must match the keys in 
+            `typemap` - If a type identifier is not found in `typemap`, the base type `T` will be used - This only affects object instantiation; 
+            property mapping works the same way</p>
+        </div>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

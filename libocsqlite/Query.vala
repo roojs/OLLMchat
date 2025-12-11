@@ -38,6 +38,12 @@ namespace SQ {
 	 * - string (maps to TEXT)
 	 * - enum (maps to INTEGER)
 	 * 
+	 * **Important:** SQ.Query only works with GObject properties. When deserializing
+	 * from the database (SELECT operations), all properties found in the result set
+	 * will be set on the object. If a property is read-only (`get;` only), GObject
+	 * will throw an error when attempting to set it. Therefore, properties that appear
+	 * in SELECT queries must be settable (`get; set;`).
+	 * 
 	 * @param T The GObject type to work with
 	 */
 	public class Query < T > {
@@ -61,6 +67,77 @@ namespace SQ {
 		 * Property values to pass to Object.new_with_properties when constructing objects.
 		 */
 		Value[]? property_values = null;
+		
+		/**
+		 * Typemap for polymorphic deserialization.
+		 * 
+		 * Maps type identifier strings (e.g., "p", "f", "d") to GObject types.
+		 * This allows Query to instantiate the correct subclass when deserializing
+		 * from a database table that stores multiple types in a single table.
+		 * 
+		 * **Why this is needed:**
+		 * 
+		 * When you have a base class (e.g., `FileBase`) with multiple subclasses
+		 * (e.g., `File`, `Folder`, `Project`), and all are stored in the same database
+		 * table, SQLite can only return generic rows. Without type information, you
+		 * cannot know which subclass to instantiate when deserializing.
+		 * 
+		 * **How it works:**
+		 * 
+		 * 1. The database table must include a column (specified by `typekey`) that
+		 * stores a type identifier string (e.g., "p" for Project, "f" for File, "d" for Folder).
+		 * 
+		 * 2. Before executing a query, you populate `typemap` with mappings from these
+		 * identifier strings to the actual GObject types.
+		 * 
+		 * 3. When `selectExecute` processes each row, it reads the type identifier
+		 * from the `typekey` column, looks it up in `typemap`, and instantiates
+		 * the correct subclass instead of the base class.
+		 * 
+		 * **Example:**
+		 * 
+		 * {{{
+		 * // Database table: files
+		 * // Columns: id, path, parent_id, base_type, ...
+		 * // base_type column contains: "p", "f", or "d"
+		 * 
+		 * var query = new SQ.Query<FileBase>(db, "files");
+		 * 
+		 * // Set up polymorphic type mapping
+		 * query.typemap = new Gee.HashMap<string, Type>();
+		 * query.typemap["p"] = typeof(Project);
+		 * query.typemap["f"] = typeof(File);
+		 * query.typemap["d"] = typeof(Folder);
+		 * query.typekey = "base_type";  // Column name containing type identifier
+		 * 
+		 * // Now when you query, each row will be instantiated as the correct subclass
+		 * var results = new Gee.ArrayList<FileBase>();
+		 * query.select("parent_id = ?", results);
+		 * // Results will contain Project, File, and Folder instances as appropriate
+		 * }}}
+		 * 
+		 * **Important:**
+		 * 
+		 * - The `typekey` column must exist in the SELECT query results
+		 * - The type identifier values in the database must match the keys in `typemap`
+		 * - If a type identifier is not found in `typemap`, the base type `T` will be used
+		 * - This only affects object instantiation; property mapping works the same way
+		 */
+		public Gee.HashMap<string, Type>? typemap = null;
+		
+		/**
+		 * Column name that contains the type identifier for polymorphic deserialization.
+		 * 
+		 * This should be set to the name of the database column that stores the type
+		 * identifier string (e.g., "base_type", "type", "class_type").
+		 * 
+		 * The column must be included in the SELECT query results for polymorphic
+		 * deserialization to work. The value in this column will be looked up in
+		 * `typemap` to determine which GObject type to instantiate.
+		 * 
+		 * See `typemap` documentation for a complete example.
+		 */
+		public string? typekey = null;
 		  
 		/**
 		 * Creates a new Query instance for the specified table.
@@ -141,23 +218,22 @@ namespace SQ {
 				if (s.name == "id" ){
 					continue;
 				}
-				var ps = ocl.find_property( s.name );
-				if (ps == null) {
-					GLib.debug("could not find property %s in object interface", s.name);
+				Type value_type;
+				if (!this.has_property(s.name, out value_type)) {
 					continue;
 				}
 				switch(s.ctype) {
 					case "INTEGER":
 					case "INT2":
 
-						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, s.name,ps.value_type));
+						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, s.name, value_type));
 					 	break;
 					case "INT64":
 						// might be better to have getInt64
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ s.name), (int64) this.getInt(newer, s.name,ps.value_type));
+						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ s.name), (int64) this.getInt(newer, s.name, value_type));
 					 	break;
 					case "TEXT":
-						stmt.bind_text (stmt.bind_parameter_index ("$"+ s.name), this.getText(newer, s.name, ps.value_type));
+						stmt.bind_text (stmt.bind_parameter_index ("$"+ s.name), this.getText(newer, s.name, value_type));
 						break;
 					default:
 					    GLib.error("Column %s : %s has Unhandled SQlite type : %s", 
@@ -207,13 +283,12 @@ namespace SQ {
 					continue;
 				}
 			
-				var ps = ocl.find_property( s.name );
-				if (ps == null) {
-					GLib.debug("could not find property %s in object interface",  s.name);
+				Type value_type;
+				if (!this.has_property(s.name, out value_type)) {
 					continue;
 				}
 				
-				if (old ==null || !this.compareProperty(old, newer, s.name, ps.value_type)) {
+				if (old ==null || !this.compareProperty(old, newer, s.name, value_type)) {
 					setter += (s.name +  " = $" + s.name);
 					types.set(s.name,s.ctype);
 				}
@@ -222,8 +297,11 @@ namespace SQ {
 				return;
 			}
 
-			var id = this.getInt(old == null ? newer : old, "id",
-				ocl.find_property("id").value_type);
+			Type id_type;
+			if (!this.has_property("id", out id_type)) {
+				GLib.error("Property 'id' not found on object");
+			}
+			var id = this.getInt(old == null ? newer : old, "id", id_type);
 				
 			this.updateImp(newer, types, setter, id);
 			
@@ -254,9 +332,8 @@ namespace SQ {
 					continue;
 				}
 			
-				var ps = ocl.find_property( s.name );
-				if (ps == null) {
-					GLib.debug("could not find property %s in object interface",  s.name);
+				Type value_type;
+				if (!this.has_property(s.name, out value_type)) {
 					continue;
 				}
 				
@@ -269,8 +346,11 @@ namespace SQ {
 				return;
 			}
 
-			var id = this.getInt(newer, "id",
-				ocl.find_property("id").value_type);
+			Type id_type;
+			if (!this.has_property("id", out id_type)) {
+				GLib.error("Property 'id' not found on object");
+			}
+			var id = this.getInt(newer, "id", id_type);
 			this.updateImp(newer, types, setter, id);
 		}
 		
@@ -295,22 +375,21 @@ namespace SQ {
 			}
 			
 			foreach(var n in types.keys) {
-				var ps = ocl.find_property( n );
-				if (ps == null) {
-					GLib.debug("could not find property %s in object interface", n);
+				Type value_type;
+				if (!this.has_property(n, out value_type)) {
 					continue;
 				}
 				switch(types.get(n)) {
 					case "INTEGER":
 					case "INT2":
-						stmt.bind_int (stmt.bind_parameter_index ("$"+ n), this.getInt(newer, n,ps.value_type));
+						stmt.bind_int (stmt.bind_parameter_index ("$"+ n), this.getInt(newer, n, value_type));
 					 	break;
 					case "INT64":
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ n), (int64) this.getInt(newer, n,ps.value_type));
+						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ n), (int64) this.getInt(newer, n, value_type));
 						break;
 					
 					case "TEXT":
-						stmt.bind_text (stmt.bind_parameter_index ("$"+ n), this.getText(newer, n, ps.value_type));
+						stmt.bind_text (stmt.bind_parameter_index ("$"+ n), this.getText(newer, n, value_type));
 						break;
 					default:
 					    GLib.error("Unhandled SQlite type : %s", types.get(n));
@@ -495,15 +574,37 @@ namespace SQ {
  		 */
 		public void selectExecute(Sqlite.Statement stmt, Gee.ArrayList<T> ret )
 		{
-			GLib.debug("Execute %s", stmt.expanded_sql());	
+			GLib.debug("Execute %s", stmt.expanded_sql());
+			
+			// Find the typekey column index once (column positions don't change between rows)
+			int typekey_index = -1;
+			if (this.typemap != null && this.typekey != null) {
+				for (int i = 0; i < stmt.column_count(); i++) {
+					if (stmt.column_name(i) == this.typekey) {
+						typekey_index = i;
+						break;
+					}
+				}
+			}
+			
 			while (stmt.step() == Sqlite.ROW) {
 		 		T row;
+		 		
+		 		// Check if we need to use polymorphic type mapping
+		 		Type object_type = typeof(T);
+		 		if (typekey_index >= 0) {
+		 			var type_id = stmt.column_text(typekey_index);
+		 			if (type_id != null && this.typemap.has_key(type_id)) {
+		 				object_type = this.typemap.get(type_id);
+		 			}
+		 		}
+		 		
 		 		if (this.property_names != null && this.property_values != null) {
 					GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
-		 			row = (T) Object.new_with_properties(typeof(T), this.property_names, this.property_values);
+		 			row = (T) Object.new_with_properties(object_type, this.property_names, this.property_values);
 		 		} else {
-					GLib.debug("new %s", typeof(T).name());
-		 			row = (T) Object.new(typeof(T));
+					GLib.debug("new %s", object_type.name());
+		 			row = (T) Object.new(object_type);
 		 		}
 				this.fetchRow(stmt, row);
 		 		ret.add( row);
@@ -625,16 +726,44 @@ namespace SQ {
 				
 				var type_id = stmt.column_type (i);
 				// Sqlite.INTEGER, Sqlite.FLOAT, Sqlite.TEXT,Sqlite.BLOB, or Sqlite.NULL. 
-				var prop = col_name == "type" ? "ctype" : col_name; 
-				var ps = ocl.find_property( prop );
-				if (ps == null) {
-					GLib.debug("could not find property %s in object interface", prop);
-					continue;
-				}
-				 
-				this.setObjectProperty(stmt, row, i, col_name, type_id, ps.value_type);
+				this.setObjectProperty(stmt, row, i, col_name, type_id);
 			}
 			 
+		}
+		
+		private Gee.HashMap<string, int> has_prop { get; set; 
+			default = new Gee.HashMap<string, int>(); }
+		
+		/**
+		 * Check if a property exists and is writable, using a cache to avoid repeated lookups.
+		 * 
+		 * @param prop The property name to check
+		 * @param value_type Output parameter for the property's value type (0 if not found/read-only)
+		 * @return true if the property exists and is writable, false otherwise
+		 */
+		bool has_property(string prop, out Type value_type)
+		{
+			if (!this.has_prop.has_key(prop)) {
+				// Check if property exists and is writable
+				var ocl = (GLib.ObjectClass) typeof(T).class_ref();
+				var ps = ocl.find_property(prop);
+				if (ps == null) {
+					this.has_prop[prop] = 0;
+					value_type = 0;
+					GLib.warning("Property '%s' not found on object, skipping", prop);
+					return false;
+				}
+				
+				if ((ps.flags & GLib.ParamFlags.WRITABLE) == 0) {
+					this.has_prop[prop] = 0;
+					value_type = 0;
+					GLib.warning("Property '%s' is read-only, skipping", prop);
+					return false;
+				}
+				this.has_prop[prop] = (int) ps.value_type;
+			}
+ 			value_type = (Type) this.has_prop[prop] ;
+			return value_type > 0  ? true : false;
 		}
 		
 		/**
@@ -642,20 +771,29 @@ namespace SQ {
 		 * 
 		 * This internal method handles type conversion from SQLite column types
 		 * to GObject property types, including boolean, int, int64, enum, and string.
+		 * Handles column name to property name mapping (e.g., "type" -> "ctype").
 		 * 
 		 * @param stmt The prepared statement
 		 * @param in_row The object to set the property on
 		 * @param pos The column index in the statement
-		 * @param col_name The name of the column (used for property name)
+		 * @param col_name The name of the column
 		 * @param stype The SQLite column type
-		 * @param gtype The GType of the property to set
 		 */
-		void setObjectProperty(Sqlite.Statement stmt, T in_row, int pos, string col_name, int stype, Type gtype) 
+		void setObjectProperty(Sqlite.Statement stmt, T in_row, int pos, string col_name, int stype) 
 		{
+			// Map column name to property name (e.g., "type" -> "ctype")
+			var prop = col_name == "type" ? "ctype" : col_name;
+			
+			// Check if property exists and is writable
+			Type gtype;
+			if (!this.has_property(prop, out gtype)) {
+				return;
+			}
+
 			var  newv = GLib.Value ( gtype );
 			var row = (Object) in_row;
 			gtype = gtype.is_enum()  ? GLib.Type.ENUM : gtype;
-			
+				
 			switch (gtype) {
 				case GLib.Type.BOOLEAN:
  				 	if (stype == Sqlite.INTEGER) {			 	
@@ -708,8 +846,8 @@ namespace SQ {
 					//return;
 				
 			}
-			// as we cant use 'type' as a vala object property..
-			var prop = col_name == "type" ? "ctype" : col_name; 
+			
+			
 			row.set_property(prop, newv);
 		
 		

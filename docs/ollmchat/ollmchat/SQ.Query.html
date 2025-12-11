@@ -44,6 +44,8 @@
           <li class="method"><a href="SQ.Query.selectQuery.html">selectQuery</a></li>
           <li class="method"><a href="SQ.Query.updateById.html">updateById</a></li>
           <li class="method"><a href="SQ.Query.updateOld.html">updateOld</a></li>
+          <li class="field"><a href="SQ.Query.typekey.html">typekey</a></li>
+          <li class="field"><a href="SQ.Query.typemap.html">typemap</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -66,6 +68,9 @@
             types.</p>
           <p>Supported GObject property types: - boolean (maps to INTEGER 0/1) - int (maps to INTEGER) - int64 (maps to INT64) - string (maps to TEXT)
             - enum (maps to INTEGER)</p>
+          <p>**Important:** SQ.Query only works with GObject properties. When deserializing from the database (SELECT operations), all properties 
+            found in the result set will be set on the object. If a property is read-only (`get;` only), GObject will throw an error when attempting 
+            to set it. Therefore, properties that appear in SELECT queries must be settable (`get; set;`).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr class="main_parameter_table_unknown_parameter">
@@ -159,6 +164,18 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Updates an existing object in the database, only changing modified 
                 fields.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Fields:</h3>
+        <ul class="navi_inline">
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="SQ.Query.typekey.html" class="field">typekey</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Column name that contains the type identifier for polymorphic 
+                deserialization.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="struct">Type</span></span>&gt;? <b><a href="SQ.Query.typemap.html" class="field">typemap</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Typemap for polymorphic deserialization.</span>
             </div></li>
         </ul>
       </div>

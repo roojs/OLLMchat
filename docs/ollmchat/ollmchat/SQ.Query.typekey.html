@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>SQ.Query.selectExecuteInto &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>SQ.Query.typekey &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">SQ.Query.selectExecuteInto &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">SQ.Query.typekey &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -39,48 +39,28 @@
           <li class="method"><a href="SQ.Query.insert.html">insert</a></li>
           <li class="method"><a href="SQ.Query.select.html">select</a></li>
           <li class="method"><a href="SQ.Query.selectExecute.html">selectExecute</a></li>
-          <li class="method">selectExecuteInto</li>
+          <li class="method"><a href="SQ.Query.selectExecuteInto.html">selectExecuteInto</a></li>
           <li class="method"><a href="SQ.Query.selectPrepare.html">selectPrepare</a></li>
           <li class="method"><a href="SQ.Query.selectQuery.html">selectQuery</a></li>
           <li class="method"><a href="SQ.Query.updateById.html">updateById</a></li>
           <li class="method"><a href="SQ.Query.updateOld.html">updateOld</a></li>
-          <li class="field"><a href="SQ.Query.typekey.html">typekey</a></li>
+          <li class="field">typekey</li>
           <li class="field"><a href="SQ.Query.typemap.html">typemap</a></li>
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">selectExecuteInto</h1>
+        <h1 class="main_title">typekey</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="method">selectExecuteInto</span></b> (<span class="main_type"><span class="class">Statement</span></span> stmt, <span class="main_type"><span>T</span></span> row)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><span class="field">typekey</span></b>
         </div>
         <div class="description">
-          <p>Executes a prepared SELECT statement and populates a single object.</p>
-          <p>This method is useful for queries that are expected to return exactly one row (e.g., "SELECT * FROM table WHERE id = 5"). The first row 
-            is used to populate the provided object.</p>
-          <h2 class="main_title">Parameters:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">stmt</td>
-              <td>
-                <p>The prepared statement to execute </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">row</td>
-              <td>
-                <p>The object to populate with the first row's data </p>
-              </td>
-            </tr>
-          </table>
-          <h2 class="main_title">Returns:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td>
-                <p>true if a row was found and populated, false otherwise </p>
-              </td>
-            </tr>
-          </table>
+          <p>Column name that contains the type identifier for polymorphic deserialization.</p>
+          <p>This should be set to the name of the database column that stores the type identifier string (e.g., "base_type", "type", "class_type").
+          </p>
+          <p>The column must be included in the SELECT query results for polymorphic deserialization to work. The value in this column will be looked 
+            up in `typemap` to determine which GObject type to instantiate.</p>
+          <p>See `typemap` documentation for a complete example.</p>
         </div>
       </div>
     </div><br/>

@@ -27,6 +27,12 @@ namespace OLLMcoder
 	public class ProjectManager : Object
 	{
 		/**
+		 * Database instance for persistence.
+		 * Set this to enable database operations.
+		 */
+		public SQ.Database? db { get; set; default = null; }
+		
+		/**
 		 * Hashmap of path => FileBase for quick lookup.
 		 */
 		public Gee.HashMap<string, OLLMcoder.Files.FileBase> path_map { get; private set;
@@ -46,9 +52,16 @@ namespace OLLMcoder
 		
 		/**
 		 * Constructor.
+		 * 
+		 * @param db Optional database instance for persistence
 		 */
-		public ProjectManager()
+		public ProjectManager(SQ.Database? db = null)
 		{
+			this.db = db;
+			if (this.db != null) {
+				// Initialize database tables
+				OLLMcoder.Files.FileBase.initDB(this.db);
+			}
 		}
 		
 		/**
@@ -87,10 +100,10 @@ namespace OLLMcoder
 			var ar = new Gee.ArrayList<string>();
 			foreach (var entry in this.alias_map.keys) {
 				if (this.alias_map.get(entry) == path) {
-					array.add(entry);
+					ar.add(entry);
 				}
 			}
-			foreach(var entry in ar.values) {
+			foreach(var entry in ar) {
 				this.alias_map.unset(entry);
 			}
 		}

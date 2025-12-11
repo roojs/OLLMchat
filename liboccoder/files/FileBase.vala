@@ -58,18 +58,32 @@ namespace OLLMcoder.Files
 		 */
 		protected FileBase(OLLMcoder.ProjectManager manager)
 		{
-			this.manager = manager;
+			Object(manager: manager);
 		}
 		
 		/**
 		 * Icon name for binding in lists.
+		 * Returns icon_name if set, otherwise a default based on type.
 		 */
-		public string icon_name { get; set; default = ""; }
-		
+		public virtual string icon_name {
+			get { return "folder"; }
+			set {}
+		}
+ 		
 		/**
 		 * Display name for binding in lists.
 		 */
 		public string display_name { get; set; default = ""; }
+		
+		/**
+		 * Display text with status indicators.
+		 * Base implementation just returns display_name.
+		 */
+		public virtual string display_text_with_indicators {
+			get {
+				return this.display_name;
+			}
+		}
 		
 		/**
 		 * Tooltip text for binding in lists.
@@ -94,9 +108,58 @@ namespace OLLMcoder.Files
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
-				return info.get_modification_time().tv_sec;
+				var date_time = info.get_modification_date_time();
+				return date_time.to_unix();
 			} catch (GLib.Error e) {
 				return 0;
+			}
+		}
+		
+		/**
+		 * Base type identifier for serialization.
+		 * 
+		 * Returns "p" for Project, "f" for File, "d" for Folder/Directory.
+		 */
+		public string base_type { get; set; default = ""; }
+		
+		/**
+		 * Initialize database table for filebase objects.
+		 */
+		public static void initDB(SQ.Database db)
+		{
+			string errmsg;
+			var query = "CREATE TABLE IF NOT EXISTS filebase (" +
+				"id INTEGER PRIMARY KEY, " +
+				"path TEXT NOT NULL DEFAULT '', " +
+				"parent_id INT64 NOT NULL DEFAULT 0, " +
+				"base_type TEXT NOT NULL DEFAULT '', " +
+				"language TEXT, " +
+				"last_approved_copy_path TEXT NOT NULL DEFAULT '', " +
+				"is_active INTEGER NOT NULL DEFAULT 0" +
+				");";
+			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
+				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
+			}
+		}
+		
+		/**
+		 * Save filebase object to SQLite database.
+		 * 
+		 * @param db The database instance to save to
+		 * @param sync If true, backup the in-memory database to disk immediately. 
+		 *              Set to false when saving multiple items to avoid frequent disk writes.
+		 */
+		public void saveToDB(SQ.Database db, bool sync = true)
+		{
+			var sq = new SQ.Query<FileBase>(db, "filebase");
+			if (this.id <= 0) {
+				this.id = sq.insert(this);
+			} else {
+				sq.updateById(this);
+			}
+			// Backup in-memory database to disk only if sync is true
+			if (sync) {
+				db.backupDB();
 			}
 		}
 	}

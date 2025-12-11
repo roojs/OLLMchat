@@ -76,118 +76,118 @@ namespace OLLMchat.History
 			this.client = chat.client;
 		}
 		
-	/**
-	 * Handler for message_created signal from this session's client.
-	 * Handles message persistence when a message is created.
-	 */
-	protected override void on_message_created(Message m, ChatContentInterface? content_interface)
-	{
-		// Update chat reference if message_interface is a Chat
-		if (m.message_interface is Call.Chat) {
-			this.chat = (Call.Chat) m.message_interface;
-		}
-		
-		// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
-		if (m.role == "done") {
-			// Still relay to Manager for UI (though it will be filtered out there too)
+		/**
+		* Handler for message_created signal from this session's client.
+		* Handles message persistence when a message is created.
+		*/
+		protected override void on_message_created(Message m, ChatContentInterface? content_interface)
+		{
+			// Update chat reference if message_interface is a Chat
+			if (m.message_interface is Call.Chat) {
+				this.chat = (Call.Chat) m.message_interface;
+			}
+			
+			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
+			if (m.role == "done") {
+				// Still relay to Manager for UI (though it will be filtered out there too)
+				this.manager.message_created(m, content_interface);
+				return;
+			}
+			
+			// Add message to session.messages
+			// Check if message is already in list (avoid duplicates)
+			bool found = false;
+			foreach (var existing_msg in this.messages) {
+				if (existing_msg == m) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				this.messages.add(m);
+			}
+			
+			// Ensure session is tracked in Manager
+			if (!this.manager.sessions.contains(this)) {
+				this.manager.sessions.add(this);
+				this.manager.session_added(this);
+			}
+			
+			// Relay to Manager for UI
 			this.manager.message_created(m, content_interface);
-			return;
-		}
-		
-		// Add message to session.messages
-		// Check if message is already in list (avoid duplicates)
-		bool found = false;
-		foreach (var existing_msg in this.messages) {
-			if (existing_msg == m) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			this.messages.add(m);
-		}
-		
-		// Ensure session is tracked in Manager
-		if (!this.manager.sessions.contains(this)) {
-			this.manager.sessions.add(this);
-			this.manager.session_added(this);
-		}
-		
-		// Relay to Manager for UI
-		this.manager.message_created(m, content_interface);
-		
-		// Save session
-		this.save_async.begin();
-		this.notify_property("display_info");
-		this.notify_property("display_title");
-	}
-		
-	/**
-	 * Handler for stream_chunk signal from this session's client.
-	 * Handles unread tracking and session saving.
-	 */
-	protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
-	{
-		// If session is inactive, increment unread count
-		if (!this.is_active) {
-			this.unread_count++;
-			this.notify_property("unread_count");
-		}
-		
-		// Capture streaming output
-		if (new_text.length > 0) {
-			// Check if stream type has changed
-			if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
-				// Stream type changed or first chunk - create new stream message
-				string stream_role = is_thinking ? "think-stream" : "content-stream";
-				this.current_stream_message = new Message(this.chat, stream_role, new_text);
-				this.current_stream_is_thinking = is_thinking;
-				this.messages.add(this.current_stream_message);
-			} else {
-				// Same stream type - append to existing message
-				this.current_stream_message.content += new_text;
-			}
-		}
-		
-		// When response is done, finalize streaming
-		if (response.done) {
-			// Create "end-stream" message to signal renderer
-			var end_stream_msg = new Message(this.chat, "end-stream", "");
-			this.messages.add(end_stream_msg);
 			
-			// Finalize current stream message
-			this.current_stream_message = null;
-			this.current_stream_is_thinking = false;
-			
-			// Emit message_created for final assistant message if it exists and hasn't been emitted yet
-			if (response.message != null && response.message.is_llm) {
-				// Check if this message is already in our list (avoid duplicates)
-				bool found = false;
-				foreach (var existing_msg in this.messages) {
-					if (existing_msg == response.message) {
-						found = true;
-						break;
-					}
-				}
-				if (!found) {
-					// Ensure message_interface is set
-					response.message.message_interface = this.chat;
-					// Emit message_created signal with Response.Chat as content_interface
-					this.client.message_created(response.message, response);
-					
-					// Emit a "done" message after the real message with summary
-					var summary = response.get_summary();
-					var done_msg = new Message(this.chat, "done", summary);
-					this.client.message_created(done_msg, response);
-				}
-			}
-			
+			// Save session
 			this.save_async.begin();
 			this.notify_property("display_info");
-			this.notify_property("title");
+			this.notify_property("display_title");
 		}
-	}
-		
+			
+		/**
+		* Handler for stream_chunk signal from this session's client.
+		* Handles unread tracking and session saving.
+		*/
+		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		{
+			// If session is inactive, increment unread count
+			if (!this.is_active) {
+				this.unread_count++;
+				this.notify_property("unread_count");
+			}
+			
+			// Capture streaming output
+			if (new_text.length > 0) {
+				// Check if stream type has changed
+				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
+					// Stream type changed or first chunk - create new stream message
+					string stream_role = is_thinking ? "think-stream" : "content-stream";
+					this.current_stream_message = new Message(this.chat, stream_role, new_text);
+					this.current_stream_is_thinking = is_thinking;
+					this.messages.add(this.current_stream_message);
+				} else {
+					// Same stream type - append to existing message
+					this.current_stream_message.content += new_text;
+				}
+			}
+			
+			// When response is done, finalize streaming
+			if (response.done) {
+				// Create "end-stream" message to signal renderer
+				var end_stream_msg = new Message(this.chat, "end-stream", "");
+				this.messages.add(end_stream_msg);
+				
+				// Finalize current stream message
+				this.current_stream_message = null;
+				this.current_stream_is_thinking = false;
+				
+				// Emit message_created for final assistant message if it exists and hasn't been emitted yet
+				if (response.message != null && response.message.is_llm) {
+					// Check if this message is already in our list (avoid duplicates)
+					bool found = false;
+					foreach (var existing_msg in this.messages) {
+						if (existing_msg == response.message) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						// Ensure message_interface is set
+						response.message.message_interface = this.chat;
+						// Emit message_created signal with Response.Chat as content_interface
+						this.client.message_created(response.message, response);
+						
+						// Emit a "done" message after the real message with summary
+						var summary = response.get_summary();
+						var done_msg = new Message(this.chat, "done", summary);
+						this.client.message_created(done_msg, response);
+					}
+				}
+				
+				this.save_async.begin();
+				this.notify_property("display_info");
+				this.notify_property("title");
+			}
+		}
+			
 		/**
 		 * Initialize database table for sessions.
 		 */
