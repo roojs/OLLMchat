@@ -91,8 +91,7 @@ namespace OLLMchat
 			// Capture current start pane width
 			var start_child = this.paned.get_start_child();
 			if (start_child != null) {
-				var start_allocation = start_child.get_allocation();
-				this.saved_start_width = start_allocation.width;
+				this.saved_start_width = start_child.get_width();
 				
 				// Set minimum width of start pane to its current width
 				start_child.set_size_request(this.saved_start_width, -1);
@@ -139,8 +138,7 @@ namespace OLLMchat
 			// Capture current start pane width before hiding
 			var start_child = this.paned.get_start_child();
 			if (start_child != null) {
-				var start_allocation = start_child.get_allocation();
-				this.saved_start_width = start_allocation.width;
+				this.saved_start_width = start_child.get_width();
 			}
 			
 			// Hide right pane

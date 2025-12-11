@@ -29,8 +29,8 @@ namespace OLLMcoder.Files
 		/**
 		 * ListStore of all files in project (used by dropdowns).
 		 */
-		public Gee.ListStore<File> all_files { get; set; 
-			default = new Gee.ListStore<File>(); }
+		public GLib.ListStore all_files { get; set; 
+			default = new GLib.ListStore(typeof(FileBase)); }
 		
 		/**
 		 * Constructor.

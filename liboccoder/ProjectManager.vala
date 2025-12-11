@@ -87,10 +87,10 @@ namespace OLLMcoder
 			var ar = new Gee.ArrayList<string>();
 			foreach (var entry in this.alias_map.keys) {
 				if (this.alias_map.get(entry) == path) {
-					array.add(entry);
+					ar.add(entry);
 				}
 			}
-			foreach(var entry in ar.values) {
+			foreach(var entry in ar) {
 				this.alias_map.unset(entry);
 			}
 		}

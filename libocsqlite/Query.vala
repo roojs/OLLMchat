@@ -85,18 +85,18 @@ namespace SQ {
 		 * **How it works:**
 		 * 
 		 * 1. The database table must include a column (specified by `typekey`) that
-		 *    stores a type identifier string (e.g., "p" for Project, "f" for File, "d" for Folder).
+		 * stores a type identifier string (e.g., "p" for Project, "f" for File, "d" for Folder).
 		 * 
 		 * 2. Before executing a query, you populate `typemap` with mappings from these
-		 *    identifier strings to the actual GObject types.
+		 * identifier strings to the actual GObject types.
 		 * 
 		 * 3. When `selectExecute` processes each row, it reads the type identifier
-		 *    from the `typekey` column, looks it up in `typemap`, and instantiates
-		 *    the correct subclass instead of the base class.
+		 * from the `typekey` column, looks it up in `typemap`, and instantiates
+		 * the correct subclass instead of the base class.
 		 * 
 		 * **Example:**
 		 * 
-		 * ```vala
+		 * {{{
 		 * // Database table: files
 		 * // Columns: id, path, parent_id, base_type, ...
 		 * // base_type column contains: "p", "f", or "d"
@@ -114,7 +114,7 @@ namespace SQ {
 		 * var results = new Gee.ArrayList<FileBase>();
 		 * query.select("parent_id = ?", results);
 		 * // Results will contain Project, File, and Folder instances as appropriate
-		 * ```
+		 * }}}
 		 * 
 		 * **Important:**
 		 * 
@@ -726,13 +726,7 @@ namespace SQ {
 				
 				var type_id = stmt.column_type (i);
 				// Sqlite.INTEGER, Sqlite.FLOAT, Sqlite.TEXT,Sqlite.BLOB, or Sqlite.NULL. 
-				// this fixes type->ctype and any other mapping.
-				var prop = col_name == "type" ? "ctype" : col_name;
-				Type value_type;
-				if (!this.has_property(prop, out value_type)) {
-					continue;
-				}
-				this.setObjectProperty(stmt, row, i, col_name, type_id, value_type);
+				this.setObjectProperty(stmt, row, i, col_name, type_id);
 			}
 			 
 		}
@@ -777,17 +771,24 @@ namespace SQ {
 		 * 
 		 * This internal method handles type conversion from SQLite column types
 		 * to GObject property types, including boolean, int, int64, enum, and string.
+		 * Handles column name to property name mapping (e.g., "type" -> "ctype").
 		 * 
 		 * @param stmt The prepared statement
 		 * @param in_row The object to set the property on
 		 * @param pos The column index in the statement
-		 * @param col_name The name of the column (used for property name)
+		 * @param col_name The name of the column
 		 * @param stype The SQLite column type
-		 * @param gtype The GType of the property to set
 		 */
-		void setObjectProperty(Sqlite.Statement stmt, T in_row, int pos, string col_name, int stype, Type gtype) 
+		void setObjectProperty(Sqlite.Statement stmt, T in_row, int pos, string col_name, int stype) 
 		{
-			// Property existence and writability is checked in fetchRow before calling this
+			// Map column name to property name (e.g., "type" -> "ctype")
+			var prop = col_name == "type" ? "ctype" : col_name;
+			
+			// Check if property exists and is writable
+			Type gtype;
+			if (!this.has_property(prop, out gtype)) {
+				return;
+			}
 
 			var  newv = GLib.Value ( gtype );
 			var row = (Object) in_row;

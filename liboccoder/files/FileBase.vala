@@ -58,7 +58,7 @@ namespace OLLMcoder.Files
 		 */
 		protected FileBase(OLLMcoder.ProjectManager manager)
 		{
-			this.manager = manager;
+			Object(manager: manager);
 		}
 		
 		/**

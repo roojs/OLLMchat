@@ -41,7 +41,7 @@ namespace OLLMcoder.Files
 		 */
 		public Gee.ArrayList<FileBase> children { get; set; 
 			default = new Gee.ArrayList<FileBase>((a, b) => {
-				return a.path == b.path ? 0 : (a.path < b.path ? -1 : 1);
+				return a.path == b.path;
 			}); }
 		
 		/**
@@ -104,7 +104,7 @@ namespace OLLMcoder.Files
 			
 			var enumerator = yield dir.enumerate_children_async(
 				GLib.FileAttribute.STANDARD_NAME + "," + 
-				GLib.FileAttribute.FILE_TYPE + "," +
+				GLib.FileAttribute.STANDARD_TYPE + "," +
 				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
 				GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
 				GLib.FileQueryInfoFlags.NONE,
@@ -117,10 +117,10 @@ namespace OLLMcoder.Files
 			foreach (var info in info_list) {
 				var name = info.get_name();
 				var file_type = info.get_file_type();
-				var child_path = GLib.Path.build_filename(this.path, name);
+				var cpath = GLib.Path.build_filename(this.path, name);
 				
 				// Get realpath (resolves symlinks)
-				var child_file = GLib.File.new_for_path(child_path);
+				var child_file = GLib.File.new_for_path(cpath);
 				
 				var is_symlink = info.get_is_symlink();
 				var symlink_target = info.get_symlink_target();
@@ -144,26 +144,17 @@ namespace OLLMcoder.Files
 				// it's new 
 
 
-				// Get realpath only if it's a symlink
-				string real_path = child_path;
-				if (is_symlink) {
-					var child_file = GLib.File.new_for_path(child_path);
-					try {
-						real_path = child_file.resolve_relative_path(".").get_path();
-					} catch (GLib.Error e) {
-						real_path = child_path; // Fallback to original path if resolution fails
-					}
-				}
+				 
 				
  				
 				// Check if this realpath already exists in manager (softlink to existing file)
-				if (is_symlink && this.manager.path_map.has_key(real_path)) {
+				if (is_symlink && this.manager.path_map.has_key(symlink_target)) {
 					// This is a softlink to an existing file - reuse that File object
-					var child = this.manager.path_map[real_path];
+					var tchild = this.manager.path_map[symlink_target];
 					// Add this path as an alias (pretend path => real path)
-					this.manager.add_path(child_path, child, true);
-					this.children.add(child);
-					this.child_map[name] = child;
+					this.manager.add_path(cpath, tchild, true);
+					this.children.add(tchild);
+					this.child_map[name] = tchild;
 					// this.child_added(child);
 					continue;
 				}
@@ -172,21 +163,23 @@ namespace OLLMcoder.Files
 				
 				// Create new child
 				if (file_type == GLib.FileType.DIRECTORY) {
-					child = new Folder(this.manager);
-					child.parent = this;
-					child.parent_id = this.id;
-					child.path = is_symlink ? real_path : child_path;
-					this.manager.add_path(child_path, child, is_symlink);
-					this.children.add(child);
-					this.child_map[name] = child;
+					var tchild = new Folder(this.manager);
+					tchild.parent = this;
+					tchild.parent_id = this.id;
+					tchild.path = is_symlink ? symlink_target : cpath;
+					this.manager.add_path(cpath, tchild, is_symlink);
+					this.children.add(tchild);
+					this.child_map[name] = tchild;
 					// this.child_added(child);
 					continue;
 									
 				} 
-				child = new File(this.manager);
+				var child = new File(this.manager);
 				child.parent = this;
 				child.parent_id = this.id;
-				this.manager.add_path(child_path, child, is_symlink);
+				child.path = is_symlink ? symlink_target : cpath;
+
+				this.manager.add_path(cpath, child, is_symlink);
 				this.children.add(child);
 				this.child_map[name] = child;
 				// this.child_added(child);
