@@ -34,6 +34,7 @@ namespace OLLMcoder.Files
 		public Folder(OLLMcoder.ProjectManager manager)
 		{
 			base(manager);
+			this.base_type = "d";
 		}
 		/**
 		 * List of children (files and subfolders).

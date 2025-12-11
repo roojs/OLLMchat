@@ -99,5 +99,12 @@ namespace OLLMcoder.Files
 				return 0;
 			}
 		}
+		
+		/**
+		 * Base type identifier for serialization.
+		 * 
+		 * Returns "p" for Project, "f" for File, "d" for Folder/Directory.
+		 */
+		public string base_type { get; set; default = ""; }
 	}
 }

@@ -40,6 +40,7 @@ namespace OLLMcoder.Files
 		public Project(OLLMcoder.ProjectManager manager)
 		{
 			base(manager);
+			this.base_type = "p";
 		}
 	}
 }

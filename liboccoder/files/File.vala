@@ -34,6 +34,7 @@ namespace OLLMcoder.Files
 		public File(OLLMcoder.ProjectManager manager)
 		{
 			base(manager);
+			this.base_type = "f";
 		}
 		/**
 		 * Programming language (optional, for files).
