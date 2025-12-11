@@ -47,8 +47,19 @@ namespace OLLMcoder.Files
 		
 		/**
 		 * Reference to ProjectManager.
+		 * 
 		 */
-		public weak OLLMcoder.ProjectManager? manager { get; set; default = null; }
+		public  OLLMcoder.ProjectManager manager { get; construct; }
+		
+		/**
+		 * Constructor.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 */
+		protected FileBase(OLLMcoder.ProjectManager manager)
+		{
+			this.manager = manager;
+		}
 		
 		/**
 		 * Icon name for binding in lists.

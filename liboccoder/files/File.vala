@@ -27,6 +27,15 @@ namespace OLLMcoder.Files
 	public class File : FileBase
 	{
 		/**
+		 * Constructor.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 */
+		public File(OLLMcoder.ProjectManager manager)
+		{
+			base(manager);
+		}
+		/**
 		 * Programming language (optional, for files).
 		 */
 		public string? language { get; set; default = null; }
