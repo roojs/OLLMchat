@@ -63,13 +63,27 @@ namespace OLLMcoder.Files
 		
 		/**
 		 * Icon name for binding in lists.
+		 * Returns icon_name if set, otherwise a default based on type.
 		 */
-		public string icon_name { get; set; default = ""; }
-		
+		public virtual string icon_name {
+			get { return "folder"; }
+			set {}
+		}
+ 		
 		/**
 		 * Display name for binding in lists.
 		 */
 		public string display_name { get; set; default = ""; }
+		
+		/**
+		 * Display text with status indicators.
+		 * Base implementation just returns display_name.
+		 */
+		public virtual string display_text_with_indicators {
+			get {
+				return this.display_name;
+			}
+		}
 		
 		/**
 		 * Tooltip text for binding in lists.
@@ -94,7 +108,8 @@ namespace OLLMcoder.Files
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
-				return info.get_modification_time().tv_sec;
+				var date_time = info.get_modification_date_time();
+				return date_time.to_unix();
 			} catch (GLib.Error e) {
 				return 0;
 			}

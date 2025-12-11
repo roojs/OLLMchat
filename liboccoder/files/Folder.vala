@@ -199,7 +199,7 @@ namespace OLLMcoder.Files
 				
 			}
 			
-			enumerator.close_async(GLib.Priority.DEFAULT, null);
+			yield enumerator.close_async(GLib.Priority.DEFAULT, null);
 			
 			// If recurse is true, recursively read all subdirectories
 			if (recurse) {

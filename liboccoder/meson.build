@@ -3,10 +3,12 @@
 # Dependencies for occoder library
 valac = meson.get_compiler('vala')
 occoder_deps = [
+  dependency('gtk4'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
   dependency('sqlite3'),
   valac.find_library('posix'),
 ]
@@ -17,6 +19,10 @@ occoder_src = files([
   'files/Folder.vala',
   'files/Project.vala',
   'ProjectManager.vala',
+  'ProjectMigrate.vala',
+  'SearchableDropdown.vala',
+  'ProjectDropdown.vala',
+  'FileDropdown.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -35,7 +41,7 @@ occoder_base_lib = library('occoder',
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=json-glib-1.0', '--pkg=gtk4', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
   install: true
 )
 
@@ -57,7 +63,9 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
+    '--pkg', 'json-glib-1.0',
     '--pkg', 'gee-0.8',
+    '--pkg', 'gtk4',
     '--library', 'occoder',
     '--header', meson.current_build_dir() / 'occoder.h',  # Use header from library
     '--vapi', '@OUTPUT@',
@@ -81,7 +89,7 @@ occoder_gir = gnome.generate_gir(occoder_base_lib,
     '--extra-library=ocsqlite',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', ocsqlite_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0]],
   install: true,
   fatal_warnings: false
 )
