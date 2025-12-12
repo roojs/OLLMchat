@@ -135,7 +135,11 @@ namespace OLLMcoder.Files
 				"base_type TEXT NOT NULL DEFAULT '', " +
 				"language TEXT, " +
 				"last_approved_copy_path TEXT NOT NULL DEFAULT '', " +
-				"is_active INTEGER NOT NULL DEFAULT 0" +
+				"is_active INTEGER NOT NULL DEFAULT 0, " +
+				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
+				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
+				"scroll_position REAL NOT NULL DEFAULT 0.0, " +
+				"last_viewed INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
