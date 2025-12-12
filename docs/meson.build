@@ -20,6 +20,7 @@ valadoc_input_src += ollmchatgtk_src
 valadoc_input_src += ocmarkdown_src
 valadoc_input_src += ocmarkdowngtk_src
 valadoc_input_src += ocsqlite_src
+valadoc_input_src += occoder_src
 
 valadoc_docs = custom_target('valadoc',
   input: valadoc_input_src,
