@@ -43,7 +43,14 @@ occoder_base_lib = library('occoder',
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=json-glib-1.0', '--pkg=gtk4', '--pkg=gtksourceview-5', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=json-glib-1.0',
+    '--pkg=gtk4',
+    '--pkg=gtksourceview-5',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+  ],
   install: true
 )
 

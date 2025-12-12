@@ -23,6 +23,20 @@ namespace OLLMcoder
 	 * 
 	 * Provides a code editor with project and file selection dropdowns.
 	 * Manages buffer switching, language detection, and state persistence.
+	 * 
+	 * FIXME: Error handling and user interaction
+	 * ===========================================
+	 * Currently, many operations that can fail (file reading, database operations, etc.)
+	 * silently fail or only log warnings. We need proper error handling with user
+	 * interaction (dialogs, notifications) for:
+	 * - File read/write failures
+	 * - Database operation failures
+	 * - File system errors
+	 * - Buffer modification conflicts
+	 * - Session restoration failures
+	 * 
+	 * Operations like refresh_file(), restore_session(), and file loading should
+	 * provide user feedback and allow recovery/retry options.
 	 */
 	public class SourceView : Gtk.Box
 	{
@@ -31,7 +45,25 @@ namespace OLLMcoder
 		private FileDropdown file_dropdown;
 		private GtkSource.View source_view;
 		private Gtk.ScrolledWindow scrolled_window;
-		private Files.File? current_file = null;
+		
+		/**
+		 * Currently active file.
+		 */
+		public Files.File? current_file { get; private set; default = null; }
+		
+		/**
+		 * Currently active project.
+		 */
+		public Files.Project? current_project {
+			get { return this.manager.active_project; }
+		}
+		
+		/**
+		 * Current buffer.
+		 */
+		public GtkSource.Buffer? current_buffer {
+			get { return this.source_view.buffer as GtkSource.Buffer; }
+		}
 		
 		/**
 		 * Constructor.
@@ -91,14 +123,16 @@ namespace OLLMcoder
 			this.append(this.scrolled_window);
 			
 			// Connect to buffer modified signal
-			this.source_view.buffer.notify["modified"].connect(() => {
+			var source_buffer = this.source_view.buffer as GtkSource.Buffer;
+			source_buffer.notify["modified"].connect(() => {
 				if (this.current_file != null) {
-					this.current_file.is_unsaved = this.source_view.buffer.modified;
+					this.current_file.is_unsaved = source_buffer.get_modified();
 				}
 			});
+		
 			
-			// Restore session on startup
-			this.restore_session();
+			// Restore session on startup (not sure if it should be done here..)
+			//this.restore_session();
 		}
 		
 		/**
@@ -139,11 +173,16 @@ namespace OLLMcoder
 			
 			// Check if file has existing buffer
 			if (file.text_buffer == null) {
-				// Create new buffer
-				var language = this.detect_language(file.path);
+				// Create new buffer using file's language property
 				GtkSource.Buffer buffer;
-				if (language != null) {
-					buffer = new GtkSource.Buffer.with_language(language);
+				if (file.language != null && file.language != "") {
+					var lang_manager = GtkSource.LanguageManager.get_default();
+					var language = lang_manager.get_language(file.language);
+					if (language != null) {
+						buffer = new GtkSource.Buffer.with_language(language);
+					} else {
+						buffer = new GtkSource.Buffer(null);
+					}
 				} else {
 					buffer = new GtkSource.Buffer(null);
 				}
@@ -197,36 +236,6 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Get currently active file.
-		 * 
-		 * @return The currently active File object, or null if none
-		 */
-		public Files.File? get_current_file()
-		{
-			return this.current_file;
-		}
-		
-		/**
-		 * Get currently active project.
-		 * 
-		 * @return The currently active Project object, or null if none
-		 */
-		public Files.Project? get_current_project()
-		{
-			return this.manager.get_active_project();
-		}
-		
-		/**
-		 * Get current buffer.
-		 * 
-		 * @return The current GtkSource.Buffer
-		 */
-		public GtkSource.Buffer? get_current_buffer()
-		{
-			return this.source_view.buffer as GtkSource.Buffer;
-		}
-		
-		/**
 		 * Navigate to a specific line in the current file.
 		 * 
 		 * @param line_number The line number to navigate to (0-based)
@@ -234,9 +243,6 @@ namespace OLLMcoder
 		public void navigate_to_line(int line_number)
 		{
 			var buffer = this.source_view.buffer;
-			if (buffer == null) {
-				return;
-			}
 			
 			Gtk.TextIter iter;
 			if (buffer.get_iter_at_line(out iter, line_number)) {
@@ -247,6 +253,9 @@ namespace OLLMcoder
 		
 		/**
 		 * Refresh current file from disk (if no unsaved changes).
+		 * 
+		 * FIXME: This should prompt the user about unsaved changes and handle errors
+		 * with user interaction (dialogs, notifications).
 		 */
 		public void refresh_file()
 		{
@@ -255,69 +264,24 @@ namespace OLLMcoder
 			}
 			
 			var buffer = this.source_view.buffer as GtkSource.Buffer;
-			if (buffer == null) {
-				return;
-			}
 			
-			if (buffer.modified) {
-				// TODO: Prompt user about unsaved changes
-				GLib.warning("File has unsaved changes, not reloading");
+			
+			if (buffer.get_modified()) {
+				// FIXME: Prompt user about unsaved changes
+				GLib.error("File has unsaved changes, not reloading");
 				return;
 			}
 			
 			try {
 				buffer.text = this.current_file.read();
 			} catch (Error e) {
+				// FIXME: Show error dialog to user
 				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
 			}
 		}
 		
 		/**
-		 * Restore session (active project and file) from database.
-		 */
-		public void restore_session()
-		{
-			if (this.manager.db == null) {
-				return;
-			}
-			
-			// Query for active project
-			var project_query = new SQ.Query<Files.FileBase>(this.manager.db, "filebase");
-			project_query.typemap = new Gee.HashMap<string, Type>();
-			project_query.typemap["p"] = typeof(Files.Project);
-			project_query.typemap["f"] = typeof(Files.File);
-			project_query.typemap["d"] = typeof(Files.Folder);
-			project_query.typekey = "base_type";
-			
-			var projects = project_query.selectExecute("base_type = 'p' AND is_active = 1 LIMIT 1");
-			if (projects.size > 0) {
-				var project = projects[0] as Files.Project;
-				if (project != null) {
-					// Restore project state (without saving, just setting)
-					project.is_active = true;
-					this.open_project(project);
-					
-					// Query for active file in this project
-					var file_query = new SQ.Query<Files.FileBase>(this.manager.db, "filebase");
-					file_query.typemap = new Gee.HashMap<string, Type>();
-					file_query.typemap["f"] = typeof(Files.File);
-					file_query.typekey = "base_type";
-					
-					var files = file_query.selectExecute("base_type = 'f' AND is_active = 1 LIMIT 1");
-					if (files.size > 0) {
-						var file = files[0] as Files.File;
-						if (file != null) {
-							// Restore file state (without saving, just setting)
-							file.is_active = true;
-							this.open_file(file);
-						}
-					}
-				}
-			}
-		}
-		
-		/**
-		 * Save current file state (cursor position, scroll position).
+		 * Save current file state (cursor position).
 		 */
 		private void save_current_file_state()
 		{
@@ -326,20 +290,11 @@ namespace OLLMcoder
 			}
 			
 			var buffer = this.source_view.buffer;
-			if (buffer == null) {
-				return;
-			}
-			
 			// Save cursor position
 			Gtk.TextIter cursor_iter;
 			buffer.get_iter_at_mark(out cursor_iter, buffer.get_insert());
 			this.current_file.cursor_line = cursor_iter.get_line();
 			this.current_file.cursor_offset = cursor_iter.get_line_offset();
-			
-			// Save scroll position (approximate, using visible area)
-			// Note: GtkSource.View doesn't provide direct scroll position access,
-			// so we'll use cursor line as a proxy
-			this.current_file.scroll_position = 0.0; // TODO: Implement proper scroll position tracking
 			
 			// Update last_viewed timestamp
 			var now = new DateTime.now_local();
@@ -350,122 +305,24 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Restore cursor position from file state.
+		 * Restore cursor position from file state and scroll it into view.
 		 */
 		private void restore_cursor_position(Files.File file)
 		{
 			var buffer = this.source_view.buffer;
-			if (buffer == null) {
-				return;
-			}
 			
-			// Restore cursor position
+			// Restore cursor position and scroll into view
 			if (file.cursor_line >= 0 && file.cursor_offset >= 0) {
+				// Use navigate_to_line to handle line navigation and scrolling
+				this.navigate_to_line(file.cursor_line);
+				
+				// Then adjust the offset (character position within the line)
 				Gtk.TextIter iter;
 				if (buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
 					buffer.place_cursor(iter);
-					this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.5);
 				}
 			}
 		}
 		
-		/**
-		 * Detect language from file path/extension.
-		 * 
-		 * @param path The file path
-		 * @return GtkSource.Language if detected, null otherwise
-		 */
-		private GtkSource.Language? detect_language(string path)
-		{
-			var lang_manager = GtkSource.LanguageManager.get_default();
-			
-			// Try to guess language from file path
-			var language = lang_manager.guess_language(path, null);
-			if (language != null) {
-				return language;
-			}
-			
-			// Fallback: try to extract extension and map common extensions
-			var file = GLib.File.new_for_path(path);
-			var basename = file.get_basename();
-			var last_dot = basename.last_index_of_char('.');
-			if (last_dot >= 0 && last_dot < basename.length - 1) {
-				var ext = basename.substring(last_dot + 1);
-				// Try common language IDs
-				var lang_id = this.map_extension_to_language_id(ext);
-				if (lang_id != null) {
-					return lang_manager.get_language(lang_id);
-				}
-			}
-			
-			return null;
-		}
-		
-		/**
-		 * Map file extension to GtkSource language ID.
-		 * 
-		 * @param ext File extension (without dot)
-		 * @return Language ID or null if not found
-		 */
-		private string? map_extension_to_language_id(string ext)
-		{
-			var ext_lower = ext.down();
-			
-			// Common mappings
-			switch (ext_lower) {
-				case "vala":
-				case "vapi":
-					return "vala";
-				case "c":
-					return "c";
-				case "h":
-					return "c";
-				case "cpp":
-				case "cc":
-				case "cxx":
-				case "hpp":
-					return "cpp";
-				case "js":
-					return "javascript";
-				case "ts":
-					return "typescript";
-				case "py":
-					return "python";
-				case "java":
-					return "java";
-				case "xml":
-					return "xml";
-				case "html":
-				case "htm":
-					return "html";
-				case "css":
-					return "css";
-				case "json":
-					return "json";
-				case "md":
-					return "markdown";
-				case "sh":
-				case "bash":
-					return "sh";
-				case "sql":
-					return "sql";
-				case "php":
-					return "php";
-				case "rb":
-					return "ruby";
-				case "go":
-					return "go";
-				case "rs":
-					return "rust";
-				case "swift":
-					return "swift";
-				case "kt":
-					return "kotlin";
-				case "scala":
-					return "scala";
-				default:
-					return null;
-			}
-		}
 	}
 }

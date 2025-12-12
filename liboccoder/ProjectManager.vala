@@ -53,12 +53,12 @@ namespace OLLMcoder
 		/**
 		 * Currently active project.
 		 */
-		private OLLMcoder.Files.Project? _active_project = null;
+		public OLLMcoder.Files.Project? active_project { get; private set; default = null; }
 		
 		/**
 		 * Currently active file.
 		 */
-		private OLLMcoder.Files.File? _active_file = null;
+		public OLLMcoder.Files.File? active_file { get; private set; default = null; }
 		
 		/**
 		 * Emitted when active file changes.
@@ -149,15 +149,15 @@ namespace OLLMcoder
 		public void activate_file(OLLMcoder.Files.File? file)
 		{
 			// Deactivate previous active file
-			if (this._active_file != null && this._active_file != file) {
-				this._active_file.is_active = false;
+			if (this.active_file != null && this.active_file != file) {
+				this.active_file.is_active = false;
 				if (this.db != null) {
-					this._active_file.saveToDB(this.db, false);
+					this.active_file.saveToDB(this.db, false);
 				}
 			}
 			
 			// Activate new file
-			this._active_file = file;
+			this.active_file = file;
 			if (file != null) {
 				file.is_active = true;
 				if (this.db != null) {
@@ -176,15 +176,15 @@ namespace OLLMcoder
 		public void activate_project(OLLMcoder.Files.Project? project)
 		{
 			// Deactivate previous active project
-			if (this._active_project != null && this._active_project != project) {
-				this._active_project.is_active = false;
+			if (this.active_project != null && this.active_project != project) {
+				this.active_project.is_active = false;
 				if (this.db != null) {
-					this._active_project.saveToDB(this.db, false);
+					this.active_project.saveToDB(this.db, false);
 				}
 			}
 			
 			// Activate new project
-			this._active_project = project;
+			this.active_project = project;
 			if (project != null) {
 				project.is_active = true;
 				if (this.db != null) {
@@ -220,23 +220,33 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Get active project.
+		 * Restore session (active project and file) from in-memory data structures.
 		 * 
-		 * @return The currently active project, or null if none
+		 * @return Tuple of (active_project, active_file) or (null, null) if none found
 		 */
-		public OLLMcoder.Files.Project? get_active_project()
+		public void restore_session(out OLLMcoder.Files.Project? project, out OLLMcoder.Files.File? file)
 		{
-			return this._active_project;
+			project = null;
+			file = null;
+			
+			// Find active project in memory
+			project = this.projects.first_match((p) => p.is_active);
+			
+			if (project == null) {
+				return;
+			}
+			
+			// Find active file in project's all_files
+			// pretty nasty way of doingit..
+			for (uint i = 0; i < project.all_files.get_n_items(); i++) {
+				var item = project.all_files.get_item(i);
+				var f = item as Files.File;
+				if ( f.is_active) {
+					file = f;
+					break;
+				}
+			}
 		}
 		
-		/**
-		 * Get active file.
-		 * 
-		 * @return The currently active file, or null if none
-		 */
-		public OLLMcoder.Files.File? get_active_file()
-		{
-			return this._active_file;
-		}
 	}
 }

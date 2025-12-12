@@ -82,10 +82,6 @@ namespace OLLMcoder.Files
 			}
 		}
 		
-		/**
-		 * Whether this is the currently active/viewed file.
-		 */
-		public bool is_active { get; set; default = false; }
 		
 		/**
 		 * Whether the file has been approved.
