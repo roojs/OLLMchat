@@ -173,6 +173,26 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Read file contents asynchronously.
+		 * 
+		 * @return File contents as string
+		 * @throws Error if file cannot be read
+		 */
+		public async string read_async() throws Error
+		{
+			var file = GLib.File.new_for_path(this.path);
+			if (!file.query_exists()) {
+				throw new GLib.FileError.NOENT("File not found: " + this.path);
+			}
+			
+			uint8[] data;
+			string etag;
+			yield file.load_contents_async(null, out data, out etag);
+			
+			return (string)data;
+		}
+		
+		/**
 		 * Write file contents.
 		 * 
 		 * @param contents Contents to write

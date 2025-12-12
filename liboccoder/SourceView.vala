@@ -161,7 +161,7 @@ namespace OLLMcoder
 		 * @param file The file to open
 		 * @param line_number Optional line number to navigate to (overrides saved position)
 		 */
-		public void open_file(Files.File file, int? line_number = null)
+		public async void open_file(Files.File file, int? line_number = null)
 		{
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
@@ -187,9 +187,9 @@ namespace OLLMcoder
 					buffer = new GtkSource.Buffer(null);
 				}
 				
-				// Load file content
+				// Load file content asynchronously
 				try {
-					buffer.text = file.read();
+					buffer.text = yield file.read_async();
 				} catch (Error e) {
 					GLib.warning("Failed to read file %s: %s", file.path, e.message);
 					buffer.text = "";
@@ -216,6 +216,13 @@ namespace OLLMcoder
 			
 			// Update dropdowns
 			this.file_dropdown.selected_file = file;
+			
+			// Update placeholder text with file basename
+			if (file != null && file.path != null && file.path != "") {
+				this.file_dropdown.placeholder_text = Path.get_basename(file.path);
+			} else {
+				this.file_dropdown.placeholder_text = "Search files...";
+			}
 		}
 		
 		/**
@@ -223,7 +230,7 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-		public void open_project(Files.Project project)
+		public async void open_project(Files.Project project)
 		{
 			// Notify manager to activate project
 			this.manager.activate_project(project);
@@ -233,6 +240,13 @@ namespace OLLMcoder
 			
 			// Update project dropdown
 			this.project_dropdown.selected_project = project;
+			
+			// Update placeholder text with project name
+			if (project != null && project.display_name != null && project.display_name != "") {
+				this.project_dropdown.placeholder_text = project.display_name;
+			} else {
+				this.project_dropdown.placeholder_text = "Search projects...";
+			}
 		}
 		
 		/**
