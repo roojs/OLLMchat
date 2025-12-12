@@ -4,6 +4,7 @@
 valac = meson.get_compiler('vala')
 occoder_deps = [
   dependency('gtk4'),
+  dependency('gtksourceview-5'),
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -23,6 +24,7 @@ occoder_src = files([
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
   'FileDropdown.vala',
+  'SourceView.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -41,7 +43,7 @@ occoder_base_lib = library('occoder',
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=json-glib-1.0', '--pkg=gtk4', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=json-glib-1.0', '--pkg=gtk4', '--pkg=gtksourceview-5', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
   install: true
 )
 
@@ -66,6 +68,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'json-glib-1.0',
     '--pkg', 'gee-0.8',
     '--pkg', 'gtk4',
+    '--pkg', 'gtksourceview-5',
     '--library', 'occoder',
     '--header', meson.current_build_dir() / 'occoder.h',  # Use header from library
     '--vapi', '@OUTPUT@',
