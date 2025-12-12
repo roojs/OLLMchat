@@ -12,6 +12,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
+  - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
   - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
   - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
@@ -70,6 +71,7 @@ This will build:
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
+- `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmchat` - Main application executable
@@ -105,6 +107,13 @@ The project is organized into component directories, each with its own `meson.bu
 
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
+
+**Code Editor Library (`liboccoder.so`):**
+- `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
+  - `files/` - File, folder, and project classes (namespace: `OLLMcoder.Files`)
+  - `ProjectManager.vala` - Project and file management
+  - `SourceView.vala` - Code editor component with syntax highlighting
+  - `SearchableDropdown.vala`, `ProjectDropdown.vala`, `FileDropdown.vala` - Dropdown widgets
 
 **OLLMchat Base Library (`libollmchat.so`):**
 - `libollmchat/` - Main namespace (`OLLMchat`)
@@ -153,6 +162,15 @@ The project is organized into component directories, each with its own `meson.bu
 - Gee
 - GLib/GIO
 - sqlite3
+
+**Code editor library (`liboccoder.so`)**:
+- Gee
+- GLib/GIO
+- GTK4
+- gtksourceview-5
+- sqlite3
+- json-glib
+- libocsqlite (depends on libocsqlite.so)
 
 **OLLMchat base library (`libollmchat.so`)**:
 - Gee
