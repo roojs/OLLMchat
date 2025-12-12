@@ -42,14 +42,46 @@ namespace OLLMcoder.Files
 		public string? language { get; set; default = null; }
 		
 		/**
-		 * Whether file is currently open in editor.
+		 * Text buffer for this file (GTK-specific, nullable, created when file is first opened).
 		 */
-		public bool is_open { get; set; default = false; }
+		public GtkSource.Buffer? text_buffer { get; set; default = null; }
 		
 		/**
-		 * Whether this is the currently active/viewed file.
+		 * Last cursor line number (stored in database, default: 0).
 		 */
-		public bool is_active { get; set; default = false; }
+		public int cursor_line { get; set; default = 0; }
+		
+		/**
+		 * Last cursor character offset (stored in database, default: 0).
+		 */
+		public int cursor_offset { get; set; default = 0; }
+		
+		/**
+		 * Last scroll position (stored in database, optional, default: 0.0).
+		 */
+		public double scroll_position { get; set; default = 0.0; }
+		
+		/**
+		 * Unix timestamp of last view (stored in database, default: 0).
+		 */
+		public int64 last_viewed { get; set; default = 0; }
+		
+		/**
+		 * Whether file is currently open in editor.
+		 * Computed property: Returns true if file was viewed within last week.
+		 */
+		public bool is_open {
+			get {
+				if (this.last_viewed == 0) {
+					return false;
+				}
+				var now = new DateTime.now_local();
+				var one_week_ago = now.add_days(-7);
+				var viewed_time = new DateTime.from_unix_local(this.last_viewed);
+				return viewed_time.compare(one_week_ago) > 0;
+			}
+		}
+		
 		
 		/**
 		 * Whether the file has been approved.

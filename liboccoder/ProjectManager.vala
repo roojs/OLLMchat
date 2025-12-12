@@ -51,6 +51,26 @@ namespace OLLMcoder
 			default = new Gee.ArrayList<OLLMcoder.Files.Project>(); }
 		
 		/**
+		 * Currently active project.
+		 */
+		public OLLMcoder.Files.Project? active_project { get; private set; default = null; }
+		
+		/**
+		 * Currently active file.
+		 */
+		public OLLMcoder.Files.File? active_file { get; private set; default = null; }
+		
+		/**
+		 * Emitted when active file changes.
+		 */
+		public signal void active_file_changed(OLLMcoder.Files.File? file);
+		
+		/**
+		 * Emitted when active project changes.
+		 */
+		public signal void active_project_changed(OLLMcoder.Files.Project? project);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param db Optional database instance for persistence
@@ -120,5 +140,113 @@ namespace OLLMcoder
 			this.remove_path(old_path);
 			this.add_path(new_file.path, new_file, is_symlink);
 		}
+		
+		/**
+		 * Activate a file (deactivates previous active file).
+		 * 
+		 * @param file The file to activate
+		 */
+		public void activate_file(OLLMcoder.Files.File? file)
+		{
+			// Deactivate previous active file
+			if (this.active_file != null && this.active_file != file) {
+				this.active_file.is_active = false;
+				if (this.db != null) {
+					this.active_file.saveToDB(this.db, false);
+				}
+			}
+			
+			// Activate new file
+			this.active_file = file;
+			if (file != null) {
+				file.is_active = true;
+				if (this.db != null) {
+					file.saveToDB(this.db, false);
+				}
+			}
+			
+			this.active_file_changed(file);
+		}
+		
+		/**
+		 * Activate a project (deactivates previous active project).
+		 * 
+		 * @param project The project to activate
+		 */
+		public void activate_project(OLLMcoder.Files.Project? project)
+		{
+			// Deactivate previous active project
+			if (this.active_project != null && this.active_project != project) {
+				this.active_project.is_active = false;
+				if (this.db != null) {
+					this.active_project.saveToDB(this.db, false);
+				}
+			}
+			
+			// Activate new project
+			this.active_project = project;
+			if (project != null) {
+				project.is_active = true;
+				if (this.db != null) {
+					project.saveToDB(this.db, false);
+				}
+			}
+			
+			this.active_project_changed(project);
+		}
+		
+		/**
+		 * Notify that a file's state has changed (save to database).
+		 * 
+		 * @param file The file that changed
+		 */
+		public void notify_file_changed(OLLMcoder.Files.File file)
+		{
+			if (this.db != null) {
+				file.saveToDB(this.db, false);
+			}
+		}
+		
+		/**
+		 * Notify that a project's state has changed (save to database).
+		 * 
+		 * @param project The project that changed
+		 */
+		public void notify_project_changed(OLLMcoder.Files.Project project)
+		{
+			if (this.db != null) {
+				project.saveToDB(this.db, false);
+			}
+		}
+		
+		/**
+		 * Restore session (active project and file) from in-memory data structures.
+		 * 
+		 * @return Tuple of (active_project, active_file) or (null, null) if none found
+		 */
+		public void restore_session(out OLLMcoder.Files.Project? project, out OLLMcoder.Files.File? file)
+		{
+			project = null;
+			file = null;
+			
+			// Find active project in memory
+			project = this.projects.first_match((p) => p.is_active);
+			
+			if (project == null) {
+				return;
+			}
+			
+			// Find active file in project's all_files
+			// pretty nasty way of doingit..
+			for (uint i = 0; i < project.all_files.get_n_items(); i++) {
+				var item = project.all_files.get_item(i);
+				var f = item as Files.File;
+				if ( f.is_active) {
+					file = f;
+					break;
+				}
+			}
+		}
+		
 	}
 }

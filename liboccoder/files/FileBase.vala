@@ -123,6 +123,11 @@ namespace OLLMcoder.Files
 		public string base_type { get; set; default = ""; }
 		
 		/**
+		 * Whether this is the currently active/viewed item.
+		 */
+		public bool is_active { get; set; default = false; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void initDB(SQ.Database db)
@@ -135,11 +140,32 @@ namespace OLLMcoder.Files
 				"base_type TEXT NOT NULL DEFAULT '', " +
 				"language TEXT, " +
 				"last_approved_copy_path TEXT NOT NULL DEFAULT '', " +
-				"is_active INTEGER NOT NULL DEFAULT 0" +
+				"is_active INTEGER NOT NULL DEFAULT 0, " +
+				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
+				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
+				"scroll_position REAL NOT NULL DEFAULT 0.0, " +
+				"last_viewed INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
 			}
+		}
+		
+		/**
+		 * Create a query object for filebase table with typemap configured.
+		 * 
+		 * @param db The database instance
+		 * @return A configured Query object ready to use
+		 */
+		public static SQ.Query<FileBase> query(SQ.Database db)
+		{
+			var query = new SQ.Query<FileBase>(db, "filebase");
+			query.typemap = new Gee.HashMap<string, Type>();
+			query.typemap["p"] = typeof(Project);
+			query.typemap["f"] = typeof(File);
+			query.typemap["d"] = typeof(Folder);
+			query.typekey = "base_type";
+			return query;
 		}
 		
 		/**
