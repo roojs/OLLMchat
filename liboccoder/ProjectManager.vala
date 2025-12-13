@@ -45,15 +45,15 @@ namespace OLLMcoder
 			default = new Gee.HashMap<string, string>(); }
 		
 		/**
-		 * List of all projects.
+		 * List of all projects (folders where is_project = true).
 		 */
-		public Gee.ArrayList<OLLMcoder.Files.Project> projects { get; private set;
-			default = new Gee.ArrayList<OLLMcoder.Files.Project>(); }
+		public Gee.ArrayList<OLLMcoder.Files.Folder> projects { get; private set;
+			default = new Gee.ArrayList<OLLMcoder.Files.Folder>(); }
 		
 		/**
-		 * Currently active project.
+		 * Currently active project (folder with is_project = true).
 		 */
-		public OLLMcoder.Files.Project? active_project { get; private set; default = null; }
+		public OLLMcoder.Files.Folder? active_project { get; private set; default = null; }
 		
 		/**
 		 * Currently active file.
@@ -67,8 +67,9 @@ namespace OLLMcoder
 		
 		/**
 		 * Emitted when active project changes.
+		 * Note: Projects are Folders with is_project = true.
 		 */
-		public signal void active_project_changed(OLLMcoder.Files.Project? project);
+		public signal void active_project_changed(OLLMcoder.Files.Folder? project);
 		
 		/**
 		 * Constructor.
@@ -170,10 +171,11 @@ namespace OLLMcoder
 		
 		/**
 		 * Activate a project (deactivates previous active project).
+		 * Note: Projects are Folders with is_project = true.
 		 * 
-		 * @param project The project to activate
+		 * @param project The project folder to activate (must have is_project = true)
 		 */
-		public async void activate_project(OLLMcoder.Files.Project? project)
+		public async void activate_project(OLLMcoder.Files.Folder? project)
 		{
 			// Deactivate previous active project
 			if (this.active_project != null && this.active_project != project) {
@@ -185,17 +187,28 @@ namespace OLLMcoder
 			
 			// Activate new project
 			this.active_project = project;
-			if (project != null) {
+			if (project != null && project.is_project) {
 				project.is_active = true;
+				
+				// Initialize ProjectFiles if not already set
+				if (project.project_files == null) {
+					project.project_files = new OLLMcoder.Files.ProjectFiles(project);
+				}
+				
 				if (this.db != null) {
 					project.saveToDB(this.db, false);
 					
-					// Load project files from database
-					project.load_files_from_db(this.db);
+					// Project files loading is now handled by ProjectFiles
+					// No need to call load_files_from_db() - ProjectFiles manages its own state
 				}
 				
 				// Start async directory scan (don't await - runs in background)
-				project.scan_files.begin();
+				if (project.project_files != null) {
+					project.project_files.scan_project.begin();
+				} else {
+					// Fallback to deprecated method
+					project.scan_files.begin();
+				}
 			}
 			
 			this.active_project_changed(project);
@@ -216,10 +229,11 @@ namespace OLLMcoder
 		
 		/**
 		 * Notify that a project's state has changed (save to database).
+		 * Note: Projects are Folders with is_project = true.
 		 * 
-		 * @param project The project that changed
+		 * @param project The project folder that changed (must have is_project = true)
 		 */
-		public void notify_project_changed(OLLMcoder.Files.Project project)
+		public void notify_project_changed(OLLMcoder.Files.Folder project)
 		{
 			if (this.db != null) {
 				project.saveToDB(this.db, false);
@@ -228,29 +242,36 @@ namespace OLLMcoder
 		
 		/**
 		 * Restore session (active project and file) from in-memory data structures.
+		 * Note: Projects are Folders with is_project = true.
 		 * 
 		 * @return Tuple of (active_project, active_file) or (null, null) if none found
 		 */
-		public void restore_session(out OLLMcoder.Files.Project? project, out OLLMcoder.Files.File? file)
+		public void restore_session(out OLLMcoder.Files.Folder? project, out OLLMcoder.Files.File? file)
 		{
 			project = null;
 			file = null;
 			
-			// Find active project in memory
-			project = this.projects.first_match((p) => p.is_active);
+			// Find active project in memory (folders where is_project = true)
+			project = this.projects.first_match((p) => p.is_active && p.is_project);
 			
 			if (project == null) {
 				return;
 			}
 			
-			// Find active file in project's all_files
-			// pretty nasty way of doingit..
-			for (uint i = 0; i < project.all_files.get_n_items(); i++) {
-				var item = project.all_files.get_item(i);
-				var f = item as Files.File;
-				if ( f.is_active) {
-					file = f;
-					break;
+			// Find active file - try project_files first, then fallback to all_files
+			if (project.project_files != null) {
+				file = project.project_files.file_map.values.first_match((f) => f.is_active);
+			}
+			
+			// Fallback to deprecated all_files
+			if (file == null) {
+				for (uint i = 0; i < project.all_files.get_n_items(); i++) {
+					var item = project.all_files.get_item(i);
+					var f = item as Files.File;
+					if (f != null && f.is_active) {
+						file = f;
+						break;
+					}
 				}
 			}
 		}

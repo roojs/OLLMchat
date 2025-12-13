@@ -52,9 +52,9 @@ namespace OLLMcoder
 		public Files.File? current_file { get; private set; default = null; }
 		
 		/**
-		 * Currently active project.
+		 * Currently active project (folder with is_project = true).
 		 */
-		public Files.Project? current_project {
+		public Files.Folder? current_project {
 			get { return this.manager.active_project; }
 		}
 		
@@ -138,7 +138,7 @@ namespace OLLMcoder
 		/**
 		 * Handle project selection change.
 		 */
-		private void on_project_selected(Files.Project? project)
+		private void on_project_selected(Files.Folder? project)
 		{
 			if (project == null) {
 				return;
@@ -256,7 +256,7 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-		public async void open_project(Files.Project project)
+		public async void open_project(Files.Folder project)
 		{
 			// Notify manager to activate project
 
@@ -272,7 +272,7 @@ namespace OLLMcoder
 			this.project_dropdown.placeholder_text = project.display_name;
 			
 			// Find and trigger active file (or null if none)
-			var active_file = project.get_active_file();
+			var active_file = project.project_files != null ? project.project_files.get_active_file() : null;
 			this.on_file_selected(active_file);
 		}
 		
@@ -298,7 +298,7 @@ namespace OLLMcoder
 		 * FIXME: This should prompt the user about unsaved changes and handle errors
 		 * with user interaction (dialogs, notifications).
 		 */
-		public void refresh_file()
+		public async void refresh_file()
 		{
 			if (this.current_file == null) {
 				return;
@@ -314,7 +314,7 @@ namespace OLLMcoder
 			}
 			
 			try {
-				buffer.text = this.current_file.read();
+				buffer.text = yield this.current_file.read_async();
 			} catch (Error e) {
 				// FIXME: Show error dialog to user
 				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);

@@ -46,6 +46,27 @@ namespace OLLMcoder.Files
 		public Folder? parent { get; set; default = null; }
 		
 		/**
+		 * Whether this is an alias/symlink.
+		 * Computed property: Returns true if this is a FileAlias or FolderAlias.
+		 */
+		public bool is_alias {
+			get {
+				return (this is FileAlias) || (this is FolderAlias);
+			}
+		}
+		
+		/**
+		 * Reference to the FileBase object this alias points to (nullable, only set when is_alias = true).
+		 * This is the actual object reference, loaded from database via points_to_id.
+		 */
+		public FileBase? points_to { get; set; default = null; }
+		
+		/**
+		 * The ID of the FileBase object this alias points to (foreign key reference).
+		 */
+		public int64 points_to_id { get; set; default = 0; }
+		
+		/**
 		 * Reference to ProjectManager.
 		 * 
 		 */
@@ -118,7 +139,8 @@ namespace OLLMcoder.Files
 		/**
 		 * Base type identifier for serialization.
 		 * 
-		 * Returns "p" for Project, "f" for File, "d" for Folder/Directory.
+		 * Returns "f" for File, "d" for Folder/Directory, "fa" for FileAlias, "da" for FolderAlias.
+		 * Projects are folders with is_project = true (no separate "p" type).
 		 */
 		public string base_type { get; set; default = ""; }
 		
@@ -144,7 +166,9 @@ namespace OLLMcoder.Files
 				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
 				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
 				"scroll_position REAL NOT NULL DEFAULT 0.0, " +
-				"last_viewed INT64 NOT NULL DEFAULT 0" +
+				"last_viewed INT64 NOT NULL DEFAULT 0, " +
+				"points_to TEXT NOT NULL DEFAULT '', " +
+				"points_to_id INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -161,9 +185,11 @@ namespace OLLMcoder.Files
 		{
 			var query = new SQ.Query<FileBase>(db, "filebase");
 			query.typemap = new Gee.HashMap<string, Type>();
-			query.typemap["p"] = typeof(Project);
+			// Note: Projects are now folders with is_project = true, no separate "p" type
 			query.typemap["f"] = typeof(File);
 			query.typemap["d"] = typeof(Folder);
+			query.typemap["fa"] = typeof(FileAlias);
+			query.typemap["da"] = typeof(FolderAlias);
 			query.typekey = "base_type";
 			return query;
 		}

@@ -280,7 +280,8 @@ namespace OLLMcoder
 			}
 			
 			// Create new Project
-			var project = new OLLMcoder.Files.Project(this.manager);
+			var project = new OLLMcoder.Files.Folder(this.manager);
+			project.is_project = true;
 			project.path = path;
 			project.display_name = GLib.Path.get_basename(path);
 			

@@ -17,8 +17,11 @@ occoder_deps = [
 occoder_src = files([
   'files/FileBase.vala',
   'files/File.vala',
+  'files/FileAlias.vala',
   'files/Folder.vala',
-  'files/Project.vala',
+  'files/FolderAlias.vala',
+  'files/FolderFiles.vala',
+  'files/ProjectFiles.vala',
   'ProjectManager.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',

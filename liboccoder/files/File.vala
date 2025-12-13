@@ -36,6 +36,7 @@ namespace OLLMcoder.Files
 			base(manager);
 			this.base_type = "f";
 		}
+		
 		/**
 		 * Programming language (optional, for files).
 		 */
@@ -84,9 +85,10 @@ namespace OLLMcoder.Files
 		
 		
 		/**
-		 * Whether the file has been approved.
+		 * Whether the file needs approval (inverted from is_approved).
+		 * true = needs approval, false = approved.
 		 */
-		public bool is_approved { get; set; default = false; }
+		public bool needs_approval { get; set; default = true; }
 		
 		/**
 		 * Whether the file has unsaved changes.
@@ -141,6 +143,40 @@ namespace OLLMcoder.Files
 			}
 		}
 		
+		/**
+		 * Display name with path: basename on first line, dirname on second line in grey.
+		 * Format: {basename}\n<span grey small dirname>
+		 */
+		public string display_name_with_path {
+			owned get {
+				if (this.path == "") {
+					return this.display_name;
+				}
+				var basename = GLib.Path.get_basename(this.path);
+				var dirname = GLib.Path.get_dirname(this.path);
+				if (dirname == "." || dirname == "/") {
+					return basename;
+				}
+				var escaped_dirname = GLib.Markup.escape_text(dirname);
+				return basename + "\n<span foreground=\"grey\" size=\"small\">" + 
+					escaped_dirname + "</span>";
+			}
+		}
+		
+		/**
+		 * Display name with basename only: basename on first line.
+		 * Format: {basename}\n
+		 */
+		public string display_name_basename {
+			owned get {
+				if (this.path == "") {
+					return this.display_name;
+				}
+				var basename = GLib.Path.get_basename(this.path);
+				return "%s\n".printf(basename);
+			}
+		}
+		
 		private string _display_text_with_indicators = "";
 		/**
 		 * Display text with status indicators (approved, unsaved).
@@ -148,9 +184,9 @@ namespace OLLMcoder.Files
 		public override string display_text_with_indicators {
 			get {
 				this._display_text_with_indicators = 
-					this.display_name + (this.is_approved ? " ✓" : "") 
+					this.display_name + (!this.needs_approval ? " ✓" : "") 
 					+ (this.is_unsaved ? " ●" : "");
-				return this._display_text_with_indicators; // Checkmark for approved
+				return this._display_text_with_indicators; // Checkmark when approved (not needs_approval)
 			}
 		}
 		
@@ -158,19 +194,6 @@ namespace OLLMcoder.Files
 		 * Emitted when file content changes.
 		 */
 		public signal void changed();
-		
-		/**
-		 * Read file contents.
-		 * 
-		 * @return File contents as string
-		 * @throws Error if file cannot be read
-		 */
-		public string read() throws Error
-		{
-			string contents;
-			GLib.FileUtils.get_contents(this.path, out contents);
-			return contents;
-		}
 		
 		/**
 		 * Read file contents asynchronously.

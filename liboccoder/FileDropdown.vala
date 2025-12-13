@@ -26,7 +26,7 @@ namespace OLLMcoder
 	 */
 	public class FileDropdown : SearchableDropdown
 	{
-		private Files.Project? current_project;
+		private Files.Folder? current_project;
 		private Gtk.SortListModel sorted_items;
 		private Gtk.CustomFilter? wildcard_filter;
 		
@@ -40,10 +40,15 @@ namespace OLLMcoder
 		
 		/**
 		 * Currently selected project (used to populate file list).
+		 * Note: Projects are Folders with is_project = true.
 		 */
-		public Files.Project? project {
+		public Files.Folder? project {
 			get { return this.current_project; }
 			set {
+				if (value != null && !value.is_project) {
+					GLib.warning("FileDropdown.project set to non-project folder: %s", value.path);
+					return;
+				}
 				this.current_project = value;
 				this.refresh();
 			}
@@ -64,18 +69,24 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Refresh the file list from the current project's all_files.
+		 * Refresh the file list from the current project's project_files.
+		 * Falls back to all_files for backward compatibility.
 		 */
 		public void refresh()
 		{
-			if (this.current_project == null) {
+			if (this.current_project == null || !this.current_project.is_project) {
 				// Clear by using empty store
 				this.set_item_store(new GLib.ListStore(typeof(Files.FileBase)));
 				return;
 			}
 			
-			// Use project's all_files directly
-			this.set_item_store(this.current_project.all_files);
+			// Use project_files.get_flat_file_list() if available, otherwise fallback to all_files
+			if (this.current_project.project_files != null) {
+				this.set_item_store(this.current_project.project_files.get_flat_file_list());
+			} else {
+				// Fallback to deprecated all_files
+				this.set_item_store(this.current_project.all_files);
+			}
 		}
 		
 		/**
