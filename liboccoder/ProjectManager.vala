@@ -173,7 +173,7 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to activate
 		 */
-		public void activate_project(OLLMcoder.Files.Project? project)
+		public async void activate_project(OLLMcoder.Files.Project? project)
 		{
 			// Deactivate previous active project
 			if (this.active_project != null && this.active_project != project) {
@@ -189,11 +189,18 @@ namespace OLLMcoder
 				project.is_active = true;
 				if (this.db != null) {
 					project.saveToDB(this.db, false);
+					
+					// Load project files from database
+					project.load_files_from_db(this.db);
 				}
+				
+				// Start async directory scan (don't await - runs in background)
+				project.scan_files.begin();
 			}
 			
 			this.active_project_changed(project);
 		}
+		
 		
 		/**
 		 * Notify that a file's state has changed (save to database).

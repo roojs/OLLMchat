@@ -140,9 +140,19 @@ namespace OLLMcoder
 		 */
 		private void on_project_selected(Files.Project? project)
 		{
-			if (project != null) {
-				this.open_project(project);
+			if (project == null) {
+				return;
 			}
+			
+			// Lock file dropdown during project change
+			this.file_dropdown.sensitive = false;
+			this.file_dropdown.add_css_class("loading");
+			this.open_project.begin(project, (obj, res) => {
+				this.open_project.end(res);
+				// Unlock file dropdown after project change completes
+				this.file_dropdown.sensitive = true;
+				this.file_dropdown.remove_css_class("loading");
+			});
 		}
 		
 		/**
@@ -150,9 +160,29 @@ namespace OLLMcoder
 		 */
 		private void on_file_selected(Files.File? file)
 		{
-			if (file != null) {
-				this.open_file(file);
+			if (file == null) {
+				// Set default placeholder when no file is selected
+				this.file_dropdown.placeholder_text = "Select file...";
+				return;
 			}
+			
+			// If file hasn't changed, no need to do anything
+			if (this.current_file != null && this.current_file.path == file.path) {
+				return;
+			}
+			
+			// Lock source view during file load
+			this.source_view.editable = false;
+			this.source_view.add_css_class("loading");
+			this.file_dropdown.placeholder_text = "Loading..";
+
+			
+			this.open_file.begin(file, (obj, res) => {
+				this.open_file.end(res);
+				// Unlock source view after file load completes
+				this.source_view.editable = true;
+				this.source_view.remove_css_class("loading");
+			});
 		}
 		
 		/**
@@ -218,11 +248,7 @@ namespace OLLMcoder
 			this.file_dropdown.selected_file = file;
 			
 			// Update placeholder text with file basename
-			if (file != null && file.path != null && file.path != "") {
-				this.file_dropdown.placeholder_text = Path.get_basename(file.path);
-			} else {
-				this.file_dropdown.placeholder_text = "Search files...";
-			}
+			this.file_dropdown.placeholder_text = Path.get_basename(file.path);
 		}
 		
 		/**
@@ -233,7 +259,8 @@ namespace OLLMcoder
 		public async void open_project(Files.Project project)
 		{
 			// Notify manager to activate project
-			this.manager.activate_project(project);
+
+			yield this.manager.activate_project(project);
 			
 			// Update file dropdown's project
 			this.file_dropdown.project = project;
@@ -242,11 +269,11 @@ namespace OLLMcoder
 			this.project_dropdown.selected_project = project;
 			
 			// Update placeholder text with project name
-			if (project != null && project.display_name != null && project.display_name != "") {
-				this.project_dropdown.placeholder_text = project.display_name;
-			} else {
-				this.project_dropdown.placeholder_text = "Search projects...";
-			}
+			this.project_dropdown.placeholder_text = project.display_name;
+			
+			// Find and trigger active file (or null if none)
+			var active_file = project.get_active_file();
+			this.on_file_selected(active_file);
 		}
 		
 		/**
