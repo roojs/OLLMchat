@@ -21,44 +21,34 @@ namespace OLLMcoder.Files
 	/**
 	 * Manages folder files with tree structure and hashmap.
 	 * 
-	 * Similar to ProjectFiles but for regular folders (not just projects).
 	 * Implements ListModel interface using Gee.ArrayList as backing store.
+	 * Provides ListStore-compatible methods that update the backing store and emit items_changed signals.
 	 */
 	public class FolderFiles : Object, GLib.ListModel
 	{
 		/**
 		 * Backing store: ArrayList containing files and folders (hierarchical, with children).
-		 * The tree structure reflects the folder hierarchy using Folder.children for parent-child relationships.
+		 * Uses path-based comparison for equality checks.
 		 */
-		private Gee.ArrayList<FileBase> items = new Gee.ArrayList<FileBase>();
-		
-		/**
-		 * Hashmap of full path (full name) => File object for all files in folder (for O(1) quick lookup by full path).
-		 */
-		public Gee.HashMap<string, File> file_map { get; private set;
-			default = new Gee.HashMap<string, File>(); }
-		
-		/**
-		 * Reference to the folder.
-		 */
-		public Folder folder { get; construct; }
-		
-		/**
-		 * Children list from the folder (delegates to folder.children).
-		 */
-		public Gee.ArrayList<FileBase> children {
-			get { return this.folder.children; }
-			set { this.folder.children = value; }
+		public Gee.ArrayList<FileBase> items { 
+			get; set; default = new Gee.ArrayList<FileBase>((a, b) => {
+				return a.path == b.path;
+			});
 		}
+		
+		
+		/**
+		 * Hashmap of [name in dir] => file object for quick lookup by basename.
+		 */
+		public Gee.HashMap<string, FileBase> child_map { get; private set;
+			default = new Gee.HashMap<string, FileBase>(); }
 		
 		/**
 		 * Constructor.
-		 * 
-		 * @param folder The folder to manage
 		 */
-		public FolderFiles(Folder folder)
+		public FolderFiles()
 		{
-			Object(folder: folder);
+			Object();
 		}
 		
 		/**
@@ -89,73 +79,129 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
-		 * Populate tree structure and hashmap from folder's children hierarchy.
+		 * Append an item to the list (ListStore-compatible).
+		 * Checks for duplicates before adding.
+		 * 
+		 * @param item The FileBase item to append
 		 */
-		public void populate_from_folder()
+		public void append(FileBase item)
 		{
-			// Clear existing
+			// Check for duplicates
+			if (this.contains(item)) {
+				return;
+			}
+			
+			var position = this.items.size;
+			this.items.add(item);
+			this.child_map.set( GLib.Path.get_basename(item.path), item);
+			// Emit items_changed signal
+			this.items_changed(position, 0, 1);
+		}
+		
+		/**
+		 * Find an item in the list and return its position.
+		 * 
+		 * @param item The FileBase item to find
+		 * @param position Output parameter for the position if found
+		 * @return true if item was found, false otherwise
+		 */
+		public bool find(FileBase item, out uint position)
+		{
+			var index = this.items.index_of(item);
+			if (index >= 0) {
+				position = (uint)index;
+				return true;
+			}
+			position = 0;
+			return false;
+		}
+	 
+		
+		/**
+		 * Insert an item at a specific position.
+		 * 
+		 * @param position The position to insert at
+		 * @param item The FileBase item to insert
+		 */
+		public void insert(uint position, FileBase item)
+		{
+			if (position > this.items.size) {
+				position = this.items.size;
+			}
+			
+			this.items.insert((int)position, item);
+			this.child_map.set(GLib.Path.get_basename(item.path), item);
+			
+			// Emit items_changed signal
+			this.items_changed(position, 0, 1);
+		}
+		
+		
+		
+		/**
+		 * Check if an item exists in the list.
+		 * 
+		 * @param item The FileBase item to check
+		 * @return true if item exists, false otherwise
+		 */
+		public bool contains(FileBase item)
+		{
+			return this.child_map.has_key(GLib.Path.get_basename(item.path));
+		}
+		
+		/**
+		 * Remove an item from the list by item reference.
+		 * 
+		 * @param item The FileBase item to remove
+		 */
+		public void remove(FileBase item)
+		{
+			var position = this.items.index_of(item);
+			if (position < 0) {
+				return; // Not found
+			}
+			
+			this.remove_at((uint)position);
+		}
+		
+		/**
+		 * Remove an item at a specific position (ListStore-compatible).
+		 * 
+		 * @param position The position of the item to remove
+		 */
+		public void remove_at(uint position)
+		{
+			if (position >= this.items.size) {
+				return; // Invalid position
+			}
+			
+			var item = this.items[(int)position];
+			this.items.remove_at((int)position);
+			
+			// Remove from child_map based on basename
+			this.child_map.unset(GLib.Path.get_basename(item.path));
+			
+			// Emit items_changed signal
+			this.items_changed(position, 1, 0);
+		}
+		
+		/**
+		 * Remove all items from the list (ListStore-compatible, alias for clear).
+		 */
+		public void remove_all()
+		{
 			var old_n_items = this.items.size;
 			this.items.clear();
-			this.file_map.clear();
-			
-			// Recursively collect all files and folders from folder's children
-			this.collect_recursive(this.folder);
-			
-			// Emit items_changed signal if items changed
-			if (old_n_items != this.items.size) {
-				this.items_changed(0, old_n_items, this.items.size);
-			}
-		}
-		
-		/**
-		 * Recursively collect files and folders from a folder and its children.
-		 * 
-		 * @param folder The folder to collect from
-		 */
-		private void collect_recursive(Folder folder)
-		{
-			// Add the folder itself
-			this.items.add(folder);
-			
-			// Add all children
-			foreach (var child in folder.children) {
-				if (child is File) {
-					this.items.add(child);
-					// Add to file_map
-					this.file_map[child.path] = (File)child;
-				} else if (child is Folder) {
-					this.collect_recursive((Folder)child);
-				}
-			}
-		}
-		
-		/**
-		 * Get a flat ListStore of all files (for dropdowns, derived from hashmap).
-		 * 
-		 * @return A flat ListStore of all files
-		 */
-		public GLib.ListStore get_flat_file_list()
-		{
-			var flat_store = new GLib.ListStore(typeof(FileBase));
-			foreach (var file in this.file_map.values) {
-				flat_store.append(file);
-			}
-			return flat_store;
-		}
-		
-		/**
-		 * Clear both tree structure and hashmap.
-		 */
-		public void clear()
-		{
-			var old_n_items = this.items.size;
-			this.items.clear();
-			this.file_map.clear();
+			this.child_map.clear();
 			
 			// Emit items_changed signal for ListModel
 			if (old_n_items > 0) {
 				this.items_changed(0, old_n_items, 0);
 			}
 		}
+		
+		
+		
+		
 	}
 }

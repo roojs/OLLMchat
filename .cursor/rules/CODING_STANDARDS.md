@@ -451,3 +451,34 @@ GLib.debug("Model '%s' not found in available_models (current: '%s', available: 
 
 The debug output will automatically show the file and line number, so you don't need to include that information in the message itself.
 
+
+## Gee.HashMap Access
+
+**IMPORTANT:** Always use `.set()` and `.get()` methods for `Gee.HashMap` operations instead of array-style accessors (`[]`). This is more explicit and consistent with the API.
+
+**Bad:**
+```vala
+var map = new Gee.HashMap<string, File>();
+map[key] = value;
+var item = map[key];
+```
+
+**Good:**
+```vala
+var map = new Gee.HashMap<string, File>();
+map.set(key, value);
+var item = map.get(key);
+```
+
+**Also Good (for checking existence):**
+```vala
+if (map.has_key(key)) {
+    var item = map.get(key);
+}
+```
+
+**Also Good (for removal):**
+```vala
+map.unset(key);
+```
+

@@ -55,124 +55,116 @@ namespace OLLMcoder.Files
 		{
 			base(parent.manager);
 			this.path = path; // Alias path
-			this.target_path = info.get_symlink_target(); // Target path for database queries
 			this.parent = parent;
 			this.parent_id = parent.id;
 			
-			// Create the target File object that this alias points to
-			var target_file_obj = GLib.File.new_for_path(this.target_path);
-			if (target_file_obj.query_exists()) {
-				try {
-					var target_info = target_file_obj.query_info(
-						GLib.FileAttribute.STANDARD_TYPE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					
-					// Create File object for the target
-					var target_file = new File(parent.manager);
-					target_file.path = this.target_path;
-					// Note: target's parent may be different, we'll resolve that later
-					
-					// Save target to database if available
-					if (parent.manager.db != null) {
-						target_file.saveToDB(parent.manager.db, null, false);
-					}
-					
-					this.points_to = target_file;
-					this.points_to_id = target_file.id;
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to create target File for alias %s: %s", path, e.message);
-				}
+			// Use realpath directly on this.path to completely resolve all symlinks in the chain
+			// PATH_MAX is typically 4096 on Linux systems
+			uint8[] resolved = new uint8[4096];
+			var resolved_ptr = Posix.realpath(path, resolved);
+			if (resolved_ptr != null) {
+				this.target_path = (string)resolved_ptr;
+			} else {
+				// realpath failed (target doesn't exist or error)
+				this.target_path = "";
+				this.points_to_id = -1;
 			}
 		}
 		
 		/**
-		 * Programming language - alias files not used in editor.
+		 * Programming language - delegates to target file for tree display.
 		 */
-		public override string? language {
-			get { return null; }
-			set { GLib.error("FileAlias.language should not be set - alias files are not used in editor"); }
+		public new string? language {
+			get { 
+				if (this.points_to is File) {
+					return ((File)this.points_to).language;
+				}
+				return "";
+			}
+			set { /* Aliases are not edited */ }
 		}
 		
 		/**
-		 * Text buffer - alias files not used in editor.
+		 * Text buffer - delegates to target file for tree display.
 		 */
-		public override GtkSource.Buffer? text_buffer {
-			get { return null; }
-			set { GLib.error("FileAlias.text_buffer should not be set - alias files are not used in editor"); }
+		public new GtkSource.Buffer? text_buffer {
+			get { 
+				if (this.points_to is File) {
+					return ((File)this.points_to).text_buffer;
+				}
+				return null;
+			}
+			set { /* Aliases are not edited */ }
+		}
+		
+		 
+		
+		/**
+		 * Last viewed - delegates to target file for tree display.
+		 */
+		public new int64 last_viewed {
+			get { 
+				if (this.points_to != null) {
+					return this.points_to.last_viewed;
+				}
+				return 0;
+			}
+			set { /* Aliases are not edited */ }
 		}
 		
 		/**
-		 * Cursor line - alias files not used in editor.
+		 * Needs approval - delegates to target file for tree display.
 		 */
-		public override int cursor_line {
-			get { return 0; }
-			set { GLib.error("FileAlias.cursor_line should not be set - alias files are not used in editor"); }
+		public new bool needs_approval {
+			get { 
+				if (this.points_to is File) {
+					return ((File)this.points_to).needs_approval;
+				}
+				return true;
+			}
+			set { /* Aliases are not edited */ }
 		}
 		
 		/**
-		 * Cursor offset - alias files not used in editor.
+		 * Is unsaved - delegates to target file for tree display.
 		 */
-		public override int cursor_offset {
-			get { return 0; }
-			set { GLib.error("FileAlias.cursor_offset should not be set - alias files are not used in editor"); }
+		public new bool is_unsaved {
+			get { 
+				if (this.points_to is File) {
+					return ((File)this.points_to).is_unsaved;
+				}
+				return false;
+			}
+			set { /* Aliases are not edited */ }
 		}
 		
 		/**
-		 * Scroll position - alias files not used in editor.
+		 * Last approved copy path - delegates to target file for tree display.
 		 */
-		public override double scroll_position {
-			get { return 0.0; }
-			set { GLib.error("FileAlias.scroll_position should not be set - alias files are not used in editor"); }
+		public new string last_approved_copy_path {
+			get { 
+				if (this.points_to is File) {
+					return ((File)this.points_to).last_approved_copy_path;
+				}
+				return "";
+			}
+			set { /* Aliases are not edited */ }
 		}
 		
 		/**
-		 * Last viewed - alias files not used in editor.
+		 * Write file contents - aliases are not edited.
 		 */
-		public override int64 last_viewed {
-			get { return 0; }
-			set { GLib.error("FileAlias.last_viewed should not be set - alias files are not used in editor"); }
-		}
-		
-		/**
-		 * Needs approval - alias files not used in editor.
-		 */
-		public override bool needs_approval {
-			get { return true; }
-			set { GLib.error("FileAlias.needs_approval should not be set - alias files are not used in editor"); }
-		}
-		
-		/**
-		 * Is unsaved - alias files not used in editor.
-		 */
-		public override bool is_unsaved {
-			get { return false; }
-			set { GLib.error("FileAlias.is_unsaved should not be set - alias files are not used in editor"); }
-		}
-		
-		/**
-		 * Last approved copy path - alias files not used in editor.
-		 */
-		public override string last_approved_copy_path {
-			get { return ""; }
-			set { GLib.error("FileAlias.last_approved_copy_path should not be set - alias files are not used in editor"); }
-		}
-		
-		/**
-		 * Write file contents - alias files not used in editor.
-		 */
-		public override void write(string contents) throws Error
+		public new void write(string contents) throws Error
 		{
-			GLib.error("FileAlias.write() should not be called - alias files are not used in editor");
+			throw new GLib.IOError.NOT_SUPPORTED("FileAlias.write() should not be called - alias files are not used in editor");
 		}
 		
 		/**
-		 * Read file contents asynchronously - alias files not used in editor.
+		 * Read file contents asynchronously - aliases are not edited.
 		 */
-		public override async string read_async() throws Error
+		public new async string read_async() throws Error
 		{
-			GLib.error("FileAlias.read_async() should not be called - alias files are not used in editor");
+			throw new GLib.IOError.NOT_SUPPORTED("FileAlias.read_async() should not be called - alias files are not used in editor");
 		}
 	}
 }

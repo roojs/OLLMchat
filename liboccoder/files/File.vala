@@ -38,9 +38,22 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
-		 * Programming language (optional, for files).
+		 * Named constructor: Create a File from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the file
 		 */
-		public string? language { get; set; default = null; }
+		public File.new_from_info(
+			Folder parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(parent.manager);
+			this.path = path;
+			this.parent = parent;
+			this.parent_id = parent.id;
+		}
 		
 		/**
 		 * Text buffer for this file (GTK-specific, nullable, created when file is first opened).
@@ -61,11 +74,6 @@ namespace OLLMcoder.Files
 		 * Last scroll position (stored in database, optional, default: 0.0).
 		 */
 		public double scroll_position { get; set; default = 0.0; }
-		
-		/**
-		 * Unix timestamp of last view (stored in database, default: 0).
-		 */
-		public int64 last_viewed { get; set; default = 0; }
 		
 		/**
 		 * Whether file is currently open in editor.
@@ -94,6 +102,7 @@ namespace OLLMcoder.Files
 		 * Whether the file has unsaved changes.
 		 */
 		public bool is_unsaved { get; set; default = false; }
+		
 		
 		/**
 		 * Filename of last approved copy (default: empty string).
@@ -147,19 +156,12 @@ namespace OLLMcoder.Files
 		 * Display name with path: basename on first line, dirname on second line in grey.
 		 * Format: {basename}\n<span grey small dirname>
 		 */
-		public string display_name_with_path {
+		public string display_with_path {
 			owned get {
-				if (this.path == "") {
-					return this.display_name;
-				}
-				var basename = GLib.Path.get_basename(this.path);
-				var dirname = GLib.Path.get_dirname(this.path);
-				if (dirname == "." || dirname == "/") {
-					return basename;
-				}
-				var escaped_dirname = GLib.Markup.escape_text(dirname);
-				return basename + "\n<span foreground=\"grey\" size=\"small\">" + 
-					escaped_dirname + "</span>";
+				return GLib.Path.get_basename(this.path) +
+					 "\n<span foreground=\"grey\" size=\"small\">" + 
+					GLib.Markup.escape_text(GLib.Path.get_dirname(this.path)) + 
+					"</span>";
 			}
 		}
 		
@@ -167,26 +169,22 @@ namespace OLLMcoder.Files
 		 * Display name with basename only: basename on first line.
 		 * Format: {basename}\n
 		 */
-		public string display_name_basename {
+		public string display_basename {
 			owned get {
-				if (this.path == "") {
-					return this.display_name;
-				}
-				var basename = GLib.Path.get_basename(this.path);
-				return "%s\n".printf(basename);
+				return GLib.Path.get_basename(this.path) + "\n";
 			}
 		}
-		
-		private string _display_text_with_indicators = "";
+		// we need the private to get around woned issues...
+		private string _display_with_indicators = "";
 		/**
 		 * Display text with status indicators (approved, unsaved).
 		 */
-		public override string display_text_with_indicators {
+		public override string display_with_indicators {
 			get {
-				this._display_text_with_indicators = 
-					this.display_name + (!this.needs_approval ? " ✓" : "") 
+				this._display_with_indicators = 
+					this.display_basename + (!this.needs_approval ? " ✓" : "") 
 					+ (this.is_unsaved ? " ●" : "");
-				return this._display_text_with_indicators; // Checkmark when approved (not needs_approval)
+				return this._display_with_indicators; // Checkmark when approved (not needs_approval)
 			}
 		}
 		

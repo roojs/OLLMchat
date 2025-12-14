@@ -32,17 +32,10 @@ namespace OLLMcoder
 		 */
 		public SQ.Database? db { get; set; default = null; }
 		
-		/**
-		 * Hashmap of path => FileBase for quick lookup.
-		 */
-		public Gee.HashMap<string, OLLMcoder.Files.FileBase> path_map { get; private set;
-			default = new Gee.HashMap<string, OLLMcoder.Files.FileBase>(); }
-		
-		/**
-		 * Hashmap of pretend path => real path (for symlinks/aliases).
-		 */
-		public Gee.HashMap<string, string> alias_map { get; private set;
-			default = new Gee.HashMap<string, string>(); }
+		public Gee.HashMap<string,Files.FileBase> file_cache {
+			get; set;
+			default = new Gee.HashMap<string,Files.FileBase>(); 
+		}
 		
 		/**
 		 * List of all projects (folders where is_project = true).
@@ -85,62 +78,6 @@ namespace OLLMcoder
 			}
 		}
 		
-		/**
-		 * Add a path to the path_map and alias_map.
-		 * 
-		 * @param path The path to add
-		 * @param file_base The FileBase object for this path
-		 */
-		public void add_path(string path, OLLMcoder.Files.FileBase file_base, bool is_symlink = false)
-		{
-			this.path_map[path] = file_base;
-			if (is_symlink) {
-				this.alias_map[path] = file_base.path;
-			}
-		}
-		
-	 
-		
-		
-		/**
-		 * Remove a path from the path_map.
-		 * 
-		 * @param path The path to remove
-		 */
-		public void remove_path(string path)
-		{
-			if (!this.path_map.has_key(path)) {
-				return;
-			}
-			this.path_map.unset(path);
-			
-			// we should probably remove both sides of alias_map 
-			if (this.alias_map.has_key(path)) {
-				this.alias_map.unset(path);
-			}
-			var ar = new Gee.ArrayList<string>();
-			foreach (var entry in this.alias_map.keys) {
-				if (this.alias_map.get(entry) == path) {
-					ar.add(entry);
-				}
-			}
-			foreach(var entry in ar) {
-				this.alias_map.unset(entry);
-			}
-		}
-		
-		
-		/**
-		 * Handle file changes (rename, move) and update all alias references.
-		 * 
-		 * @param old_path The old path
-		 * @param new_path The new path
-		 */
-		public void handle_file_renamed(string old_path, OLLMcoder.Files.FileBase new_file, bool is_symlink = false)
-		{
-			this.remove_path(old_path);
-			this.add_path(new_file.path, new_file, is_symlink);
-		}
 		
 		/**
 		 * Activate a file (deactivates previous active file).
@@ -153,7 +90,7 @@ namespace OLLMcoder
 			if (this.active_file != null && this.active_file != file) {
 				this.active_file.is_active = false;
 				if (this.db != null) {
-					this.active_file.saveToDB(this.db, false);
+					this.active_file.saveToDB(this.db, null, false);
 				}
 			}
 			
@@ -162,7 +99,7 @@ namespace OLLMcoder
 			if (file != null) {
 				file.is_active = true;
 				if (this.db != null) {
-					file.saveToDB(this.db, false);
+					file.saveToDB(this.db, null, false);
 				}
 			}
 			
@@ -181,7 +118,7 @@ namespace OLLMcoder
 			if (this.active_project != null && this.active_project != project) {
 				this.active_project.is_active = false;
 				if (this.db != null) {
-					this.active_project.saveToDB(this.db, false);
+					this.active_project.saveToDB(this.db, null, false);
 				}
 			}
 			
@@ -190,25 +127,16 @@ namespace OLLMcoder
 			if (project != null && project.is_project) {
 				project.is_active = true;
 				
-				// Initialize ProjectFiles if not already set
-				if (project.project_files == null) {
-					project.project_files = new OLLMcoder.Files.ProjectFiles(project);
-				}
-				
 				if (this.db != null) {
-					project.saveToDB(this.db, false);
+					project.saveToDB(this.db, null, false);
 					
 					// Project files loading is now handled by ProjectFiles
 					// No need to call load_files_from_db() - ProjectFiles manages its own state
 				}
 				
 				// Start async directory scan (don't await - runs in background)
-				if (project.project_files != null) {
-					project.project_files.scan_project.begin();
-				} else {
-					// Fallback to deprecated method
-					project.scan_files.begin();
-				}
+				yield project.read_dir(new DateTime.now_local().to_unix(), true);
+				
 			}
 			
 			this.active_project_changed(project);
@@ -223,7 +151,7 @@ namespace OLLMcoder
 		public void notify_file_changed(OLLMcoder.Files.File file)
 		{
 			if (this.db != null) {
-				file.saveToDB(this.db, false);
+				file.saveToDB(this.db, null, false);
 			}
 		}
 		
@@ -236,7 +164,7 @@ namespace OLLMcoder
 		public void notify_project_changed(OLLMcoder.Files.Folder project)
 		{
 			if (this.db != null) {
-				project.saveToDB(this.db, false);
+				project.saveToDB(this.db,null, false);
 			}
 		}
 		
@@ -258,22 +186,16 @@ namespace OLLMcoder
 				return;
 			}
 			
-			// Find active file - try project_files first, then fallback to all_files
-			if (project.project_files != null) {
-				file = project.project_files.file_map.values.first_match((f) => f.is_active);
-			}
-			
-			// Fallback to deprecated all_files
-			if (file == null) {
-				for (uint i = 0; i < project.all_files.get_n_items(); i++) {
-					var item = project.all_files.get_item(i);
-					var f = item as Files.File;
-					if (f != null && f.is_active) {
-						file = f;
-						break;
-					}
+			// Find active file - try project_files first
+			for (uint i = 0; i < project.project_files.get_n_items(); i++) {
+				var item = project.project_files.get_item(i);
+				var pf = item as Files.ProjectFile;
+				if (pf != null && pf.is_active) {
+					file = pf.file;
+					break;
 				}
 			}
+			
 		}
 		
 	}

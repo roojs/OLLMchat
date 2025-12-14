@@ -177,7 +177,7 @@ namespace OLLMcoder
 			this.file_dropdown.placeholder_text = "Loading..";
 
 			
-			this.open_file.begin(file, (obj, res) => {
+			this.open_file.begin(file, null, (obj, res) => {
 				this.open_file.end(res);
 				// Unlock source view after file load completes
 				this.source_view.editable = true;
@@ -272,7 +272,7 @@ namespace OLLMcoder
 			this.project_dropdown.placeholder_text = project.display_name;
 			
 			// Find and trigger active file (or null if none)
-			var active_file = project.project_files != null ? project.project_files.get_active_file() : null;
+			var active_file = project.project_files.get_active_file();
 			this.on_file_selected(active_file);
 		}
 		

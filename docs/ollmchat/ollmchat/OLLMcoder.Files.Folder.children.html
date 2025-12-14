@@ -31,23 +31,24 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Files.Folder.child_map.html">child_map</a></li>
           <li class="property">children</li>
           <li class="property"><a href="OLLMcoder.Files.Folder.last_check_time.html">last_check_time</a></li>
+          <li class="property"><a href="OLLMcoder.Files.Folder.last_viewed.html">last_viewed</a></li>
+          <li class="property"><a href="OLLMcoder.Files.Folder.project_files.html">project_files</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.html">Folder</a></li>
+          <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.new_from_info.html">Folder.new_from_info</a></li>
+          <li class="method"><a href="OLLMcoder.Files.Folder.load_files_from_db.html">load_files_from_db</a></li>
           <li class="method"><a href="OLLMcoder.Files.Folder.read_dir.html">read_dir</a></li>
-          <li class="signal"><a href="OLLMcoder.Files.Folder.child_added.html">child_added</a></li>
-          <li class="signal"><a href="OLLMcoder.Files.Folder.child_removed.html">child_removed</a></li>
         </ul>
       </div>
       <div class="site_content">
         <h1 class="main_title">children</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>&gt; <b><span class="property">children</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.FolderFiles.html" class="class">FolderFiles</a></span> <b><span class="property">children</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>List of children (files and subfolders).</p>
+          <p>List of children (files and subfolders) - used for tree view hierarchy. Implements ListModel interface with add/remove methods.</p>
         </div>
       </div>
     </div><br/>

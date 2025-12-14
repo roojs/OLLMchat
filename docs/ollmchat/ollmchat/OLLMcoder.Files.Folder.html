@@ -31,13 +31,14 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Files.Folder.child_map.html">child_map</a></li>
           <li class="property"><a href="OLLMcoder.Files.Folder.children.html">children</a></li>
           <li class="property"><a href="OLLMcoder.Files.Folder.last_check_time.html">last_check_time</a></li>
+          <li class="property"><a href="OLLMcoder.Files.Folder.last_viewed.html">last_viewed</a></li>
+          <li class="property"><a href="OLLMcoder.Files.Folder.project_files.html">project_files</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.html">Folder</a></li>
+          <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.new_from_info.html">Folder.new_from_info</a></li>
+          <li class="method"><a href="OLLMcoder.Files.Folder.load_files_from_db.html">load_files_from_db</a></li>
           <li class="method"><a href="OLLMcoder.Files.Folder.read_dir.html">read_dir</a></li>
-          <li class="signal"><a href="OLLMcoder.Files.Folder.child_added.html">child_added</a></li>
-          <li class="signal"><a href="OLLMcoder.Files.Folder.child_removed.html">child_removed</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -57,24 +58,6 @@
         <div class="description">
           <p>Represents a folder/directory in the project.</p>
           <p>Folders maintain a list of their children and a hashmap for quick lookup by filename. Emits signals when children are added/removed.</p>
-        </div>
-        <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-274')">All known sub-classes:</div>
-          <div class="content" id="box-content-274">
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="class"><a href="OLLMcoder.Files.Project.html">Project</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-              </ul>
-            </div>
-          </div>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.Files.html">OLLMcoder.Files</a>
         </div>
@@ -83,18 +66,24 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>&gt; <b><a href="OLLMcoder.Files.Folder.child_map.html" class="property">child_map</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.FolderFiles.html" class="class">FolderFiles</a></span> <b><a href="OLLMcoder.Files.Folder.children.html" class="property">children</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Hashmap of [name in dir] =&gt; file object.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>&gt; <b><a href="OLLMcoder.Files.Folder.children.html" class="property">children</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">List of children (files and subfolders).</span>
+            <div class="leaf_brief_description"><span class="brief_description">List of children (files and subfolders) - used for tree view 
+                hierarchy. Implements ListModel interface with add/remove methods.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMcoder.Files.Folder.last_check_time.html" class="property">last_check_time</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Last check time for this folder (prevents re-checking during recursive
                 scans).</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMcoder.Files.Folder.last_viewed.html" class="property">last_viewed</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Unix timestamp of last view (stored in database, default: 0, used for 
+                projects).</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.ProjectFiles.html" class="class">ProjectFiles</a></span> <b><a href="OLLMcoder.Files.Folder.project_files.html" class="property">project_files</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">ListStore of all files in project (used by dropdowns).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -103,45 +92,54 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Files.Folder.Folder.new_from_info.html" class="creation_method">Folder.new_from_info</a></b> (<span class="main_type"><span class="class">Folder</span></span> parent, <span class="main_type"><span class="class">FileInfo</span></span> info, <span class="main_basic_type"><span class="class">string</span></span> path)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Named constructor: Create a Folder from FileInfo.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.Files.Folder.load_files_from_db.html" class="method">load_files_from_db</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Load project files from database.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.Files.Folder.read_dir.html" class="method">read_dir</a></b> (<span class="main_basic_type"><span class="struct">int64</span></span> check_time, <span class="main_basic_type"><span class="struct">bool</span></span> recurse = <span class="main_literal">false</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Load children from filesystem.</span>
-            </div></li>
-        </ul>
-        <h3 class="main_title">Signals:</h3>
-        <ul class="navi_inline">
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.Files.Folder.child_added.html" class="signal">child_added</a></b> (<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span> child)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when a child is added.</span>
-            </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.Files.Folder.child_removed.html" class="signal">child_removed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span> child)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when a child is removed.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Load children from filesystem for this folder. Handles async file 
+                enumeration, symlink resolution, and updates Folder.children. Excludes .git directories and other hidden/system folders.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-275')">All known members inherited from class OLLMcoder.Files.FileBase</div>
-          <div class="content" id="box-content-275">
+          <div class="headline" onclick="toggle_box (this, 'box-content-278')">All known members inherited from class OLLMcoder.Files.FileBase</div>
+          <div class="content" id="box-content-278">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMcoder.Files.FileBase.base_type.html">base_type</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.compare.html">compare</a></li>
+                <li class="virtual_method"><a href="OLLMcoder.Files.FileBase.copy_db_fields_to.html">copy_db_fields_to</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.cursor_line.html">cursor_line</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.cursor_offset.html">cursor_offset</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.display_name.html">display_name</a></li>
-                <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.display_text_with_indicators.html">display_text_with_indicators</a>
-                </li>
+                <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.display_with_indicators.html">display_with_indicators</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.get_target_info.html">get_target_info</a></li>
                 <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.icon_name.html">icon_name</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.id.html">id</a></li>
+                <li class="static_method"><a href="OLLMcoder.Files.FileBase.initDB.html">initDB</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="static_method"><a href="OLLMcoder.Files.FileBase.initDB.html">initDB</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_active.html">is_active</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_alias.html">is_alias</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_project.html">is_project</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_unsaved.html">is_unsaved</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.language.html">language</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.last_viewed.html">last_viewed</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.manager.html">manager</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.mtime_on_disk.html">mtime_on_disk</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.needs_approval.html">needs_approval</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
               </ul>
             </div>
@@ -149,16 +147,21 @@
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent_id.html">parent_id</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.path.html">path</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.points_to.html">points_to</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.points_to_id.html">points_to_id</a></li>
                 <li class="static_method"><a href="OLLMcoder.Files.FileBase.query.html">query</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.removeFromDB.html">removeFromDB</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.saveToDB.html">saveToDB</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.scroll_position.html">scroll_position</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.target_path.html">target_path</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.tooltip.html">tooltip</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-276')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-276">
+          <div class="headline" onclick="toggle_box (this, 'box-content-279')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-279">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

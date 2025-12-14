@@ -33,18 +33,19 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMcoder.Files.File.cursor_line.html">cursor_line</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.cursor_offset.html">cursor_offset</a></li>
-          <li class="virtual_property"><a href="OLLMcoder.Files.File.display_text_with_indicators.html">display_text_with_indicators</a></li>
+          <li class="property"><a href="OLLMcoder.Files.File.display_basename.html">display_basename</a></li>
+          <li class="virtual_property"><a href="OLLMcoder.Files.File.display_with_indicators.html">display_with_indicators</a></li>
+          <li class="property"><a href="OLLMcoder.Files.File.display_with_path.html">display_with_path</a></li>
           <li class="virtual_property"><a href="OLLMcoder.Files.File.icon_name.html">icon_name</a></li>
-          <li class="property"><a href="OLLMcoder.Files.File.is_approved.html">is_approved</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.is_open.html">is_open</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.is_unsaved.html">is_unsaved</a></li>
-          <li class="property"><a href="OLLMcoder.Files.File.language.html">language</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.last_approved_copy_path.html">last_approved_copy_path</a></li>
-          <li class="property"><a href="OLLMcoder.Files.File.last_viewed.html">last_viewed</a></li>
+          <li class="property"><a href="OLLMcoder.Files.File.needs_approval.html">needs_approval</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.scroll_position.html">scroll_position</a></li>
           <li class="property"><a href="OLLMcoder.Files.File.text_buffer.html">text_buffer</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.File.File.html">File</a></li>
-          <li class="method"><a href="OLLMcoder.Files.File.read.html">read</a></li>
+          <li class="creation_method"><a href="OLLMcoder.Files.File.File.new_from_info.html">File.new_from_info</a></li>
+          <li class="method"><a href="OLLMcoder.Files.File.read_async.html">read_async</a></li>
           <li class="method"><a href="OLLMcoder.Files.File.write.html">write</a></li>
           <li class="signal"><a href="OLLMcoder.Files.File.changed.html">changed</a></li>
         </ul>
@@ -66,6 +67,24 @@
         <div class="description">
           <p>Represents a file in the project.</p>
           <p>Files can be in multiple projects (due to softlinks/symlinks). All alias references are tracked in ProjectManager's alias_map.</p>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-272')">All known sub-classes:</div>
+          <div class="content" id="box-content-272">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="class"><a href="OLLMcoder.Files.FileAlias.html">FileAlias</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+          </div>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.Files.html">OLLMcoder.Files</a>
         </div>
@@ -82,18 +101,24 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Last cursor character offset (stored in database, default: 0).</span>
             </div></li>
-          <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.display_text_with_indicators.html" class="virtual_property">display_text_with_indicators</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.display_basename.html" class="property">display_basename</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Display name with basename only: basename on first line. Format: {
+                basename}\n</span>
+            </div></li>
+          <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.display_with_indicators.html" class="virtual_property">display_with_indicators</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Display text with status indicators (approved, unsaved).</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.display_with_path.html" class="property">display_with_path</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Display name with path: basename on first line, dirname on second line
+                in grey. Format: {basename}\n&lt;span grey small dirname&gt;</span>
             </div></li>
           <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.icon_name.html" class="virtual_property">icon_name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Icon name for binding in lists. Returns icon_name if set, otherwise 
                 derives from file content type.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.File.is_approved.html" class="property">is_approved</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Whether the file has been approved.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.File.is_open.html" class="property">is_open</a></b> { <span class="main_keyword">get</span>; }
             </span>
@@ -104,17 +129,14 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether the file has unsaved changes.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMcoder.Files.File.language.html" class="property">language</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Programming language (optional, for files).</span>
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.last_approved_copy_path.html" class="property">last_approved_copy_path</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Filename of last approved copy (default: empty string).</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMcoder.Files.File.last_viewed.html" class="property">last_viewed</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.File.needs_approval.html" class="property">needs_approval</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Unix timestamp of last view (stored in database, default: 0).</span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether the file needs approval (inverted from is_approved). true = 
+                needs approval, false = approved.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMcoder.Files.File.scroll_position.html" class="property">scroll_position</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -133,12 +155,16 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Files.File.File.new_from_info.html" class="creation_method">File.new_from_info</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span> parent, <span class="main_type"><span class="class">FileInfo</span></span> info, <span class="main_basic_type"><span class="class">string</span></span> path)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Named constructor: Create a File from FileInfo.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.read.html" class="method">read</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.File.read_async.html" class="method">read_async</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Read file contents.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Read file contents asynchronously.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.Files.File.write.html" class="method">write</a></b> (<span class="main_basic_type"><span class="class">string</span></span> contents) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
@@ -154,24 +180,35 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-272')">All known members inherited from class OLLMcoder.Files.FileBase</div>
-          <div class="content" id="box-content-272">
+          <div class="headline" onclick="toggle_box (this, 'box-content-273')">All known members inherited from class OLLMcoder.Files.FileBase</div>
+          <div class="content" id="box-content-273">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMcoder.Files.FileBase.base_type.html">base_type</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.compare.html">compare</a></li>
+                <li class="virtual_method"><a href="OLLMcoder.Files.FileBase.copy_db_fields_to.html">copy_db_fields_to</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.cursor_line.html">cursor_line</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.cursor_offset.html">cursor_offset</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.display_name.html">display_name</a></li>
-                <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.display_text_with_indicators.html">display_text_with_indicators</a>
-                </li>
+                <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.display_with_indicators.html">display_with_indicators</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.get_target_info.html">get_target_info</a></li>
                 <li class="virtual_property"><a href="OLLMcoder.Files.FileBase.icon_name.html">icon_name</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.id.html">id</a></li>
+                <li class="static_method"><a href="OLLMcoder.Files.FileBase.initDB.html">initDB</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="static_method"><a href="OLLMcoder.Files.FileBase.initDB.html">initDB</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_active.html">is_active</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_alias.html">is_alias</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_project.html">is_project</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_unsaved.html">is_unsaved</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.language.html">language</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.last_viewed.html">last_viewed</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.manager.html">manager</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.mtime_on_disk.html">mtime_on_disk</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.needs_approval.html">needs_approval</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
               </ul>
             </div>
@@ -179,16 +216,21 @@
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent_id.html">parent_id</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.path.html">path</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.points_to.html">points_to</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.points_to_id.html">points_to_id</a></li>
                 <li class="static_method"><a href="OLLMcoder.Files.FileBase.query.html">query</a></li>
+                <li class="method"><a href="OLLMcoder.Files.FileBase.removeFromDB.html">removeFromDB</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.saveToDB.html">saveToDB</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.scroll_position.html">scroll_position</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.target_path.html">target_path</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.tooltip.html">tooltip</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-273')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-273">
+          <div class="headline" onclick="toggle_box (this, 'box-content-274')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-274">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
