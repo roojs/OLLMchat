@@ -42,6 +42,52 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Named constructor: Create a FolderAlias from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the alias (where the symlink exists)
+		 */
+		public FolderAlias.new_from_info(
+			Folder parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(parent.manager);
+			this.path = path; // Alias path
+			this.target_path = info.get_symlink_target(); // Target path for database queries
+			this.parent = parent;
+			this.parent_id = parent.id;
+			
+			// Create the target Folder object that this alias points to
+			var target_file_obj = GLib.File.new_for_path(this.target_path);
+			if (target_file_obj.query_exists()) {
+				try {
+					var target_info = target_file_obj.query_info(
+						GLib.FileAttribute.STANDARD_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					
+					// Create Folder object for the target
+					var target_folder = new Folder(parent.manager);
+					target_folder.path = this.target_path;
+					// Note: target's parent may be different, we'll resolve that later
+					
+					// Save target to database if available
+					if (parent.manager.db != null) {
+						target_folder.saveToDB(parent.manager.db, null, false);
+					}
+					
+					this.points_to = target_folder;
+					this.points_to_id = target_folder.id;
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to create target Folder for alias %s: %s", path, e.message);
+				}
+			}
+		}
+		
+		/**
 		 * Children - returns FolderFiles for the pointed-to folder.
 		 * Note: This shadows the base class children property to return FolderFiles instead.
 		 */

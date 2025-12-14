@@ -42,6 +42,52 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Named constructor: Create a FileAlias from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the alias (where the symlink exists)
+		 */
+		public FileAlias.new_from_info(
+			Folder parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(parent.manager);
+			this.path = path; // Alias path
+			this.target_path = info.get_symlink_target(); // Target path for database queries
+			this.parent = parent;
+			this.parent_id = parent.id;
+			
+			// Create the target File object that this alias points to
+			var target_file_obj = GLib.File.new_for_path(this.target_path);
+			if (target_file_obj.query_exists()) {
+				try {
+					var target_info = target_file_obj.query_info(
+						GLib.FileAttribute.STANDARD_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					
+					// Create File object for the target
+					var target_file = new File(parent.manager);
+					target_file.path = this.target_path;
+					// Note: target's parent may be different, we'll resolve that later
+					
+					// Save target to database if available
+					if (parent.manager.db != null) {
+						target_file.saveToDB(parent.manager.db, null, false);
+					}
+					
+					this.points_to = target_file;
+					this.points_to_id = target_file.id;
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to create target File for alias %s: %s", path, e.message);
+				}
+			}
+		}
+		
+		/**
 		 * Programming language - alias files not used in editor.
 		 */
 		public override string? language {
