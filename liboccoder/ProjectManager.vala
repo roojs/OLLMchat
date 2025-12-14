@@ -91,6 +91,7 @@ namespace OLLMcoder
 				this.active_file.is_active = false;
 				if (this.db != null) {
 					this.active_file.saveToDB(this.db, null, false);
+					this.db.is_dirty = true;
 				}
 			}
 			
@@ -100,6 +101,7 @@ namespace OLLMcoder
 				file.is_active = true;
 				if (this.db != null) {
 					file.saveToDB(this.db, null, false);
+					this.db.is_dirty = true;
 				}
 			}
 			
@@ -119,6 +121,7 @@ namespace OLLMcoder
 				this.active_project.is_active = false;
 				if (this.db != null) {
 					this.active_project.saveToDB(this.db, null, false);
+					this.db.is_dirty = true;
 				}
 			}
 			
@@ -129,6 +132,7 @@ namespace OLLMcoder
 				
 				if (this.db != null) {
 					project.saveToDB(this.db, null, false);
+					this.db.is_dirty = true;
 					
 					// Project files loading is now handled by ProjectFiles
 					// No need to call load_files_from_db() - ProjectFiles manages its own state
@@ -152,6 +156,7 @@ namespace OLLMcoder
 		{
 			if (this.db != null) {
 				file.saveToDB(this.db, null, false);
+				this.db.is_dirty = true;
 			}
 		}
 		
@@ -165,6 +170,7 @@ namespace OLLMcoder
 		{
 			if (this.db != null) {
 				project.saveToDB(this.db,null, false);
+				this.db.is_dirty = true;
 			}
 		}
 		

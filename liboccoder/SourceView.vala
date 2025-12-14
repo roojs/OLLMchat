@@ -47,6 +47,11 @@ namespace OLLMcoder
 		private Gtk.ScrolledWindow scrolled_window;
 		
 		/**
+		 * Timeout source for debouncing scroll position saves.
+		 */
+		private uint? scroll_save_timeout_id = null;
+		
+		/**
 		 * Currently active file.
 		 */
 		public Files.File? current_file { get; private set; default = null; }
@@ -99,6 +104,16 @@ namespace OLLMcoder
 			this.file_dropdown.file_selected.connect(this.on_file_selected);
 			header_bar.append(this.file_dropdown);
 			
+			// Save button next to file dropdown
+			var save_button = new Gtk.Button.from_icon_name("document-save") {
+				tooltip_text = "Save file",
+				hexpand = false
+			};
+			save_button.clicked.connect(() => {
+				this.save_file();
+			});
+			header_bar.append(save_button);
+			
 			this.append(header_bar);
 			
 			// Create ScrolledWindow for code editor
@@ -129,6 +144,25 @@ namespace OLLMcoder
 					this.current_file.is_unsaved = source_buffer.get_modified();
 				}
 			});
+			
+			// Connect to scroll events to track scroll position
+			var vadjustment = this.scrolled_window.vadjustment;
+			if (vadjustment != null) {
+				vadjustment.value_changed.connect(() => {
+					this.on_scroll_changed();
+				});
+			}
+			
+			// Add keyboard shortcut for Ctrl-S (save)
+			var controller = new Gtk.EventControllerKey();
+			controller.key_pressed.connect((keyval, keycode, state) => {
+				if ((state & Gdk.ModifierType.CONTROL_MASK) != 0 && keyval == Gdk.Key.s) {
+					this.save_file();
+					return true;
+				}
+				return false;
+			});
+			this.add_controller(controller);
 		
 			
 			// Restore session on startup (not sure if it should be done here..)
@@ -237,6 +271,7 @@ namespace OLLMcoder
 				this.navigate_to_line(line_number);
 			} else {
 				this.restore_cursor_position(file);
+				this.restore_scroll_position(file);
 			}
 			
 			// Update last_viewed timestamp
@@ -322,12 +357,18 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Save current file state (cursor position).
+		 * Save current file state (cursor position and scroll position).
 		 */
 		private void save_current_file_state()
 		{
 			if (this.current_file == null) {
 				return;
+			}
+			
+			// Cancel any pending scroll save timeout
+			if (this.scroll_save_timeout_id != null) {
+				GLib.Source.remove(this.scroll_save_timeout_id);
+				this.scroll_save_timeout_id = null;
 			}
 			
 			var buffer = this.source_view.buffer;
@@ -337,12 +378,62 @@ namespace OLLMcoder
 			this.current_file.cursor_line = cursor_iter.get_line();
 			this.current_file.cursor_offset = cursor_iter.get_line_offset();
 			
+			// Save scroll position (first visible line)
+			this.save_scroll_position();
+			
 			// Update last_viewed timestamp
 			var now = new DateTime.now_local();
 			this.current_file.last_viewed = now.to_unix();
 			
 			// Notify manager to save to database
 			this.manager.notify_file_changed(this.current_file);
+		}
+		
+		/**
+		 * Save scroll position (first visible line) to current file.
+		 */
+		private void save_scroll_position()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			// Get visible rectangle
+			Gdk.Rectangle visible_rect;
+			this.source_view.get_visible_rect(out visible_rect);
+			
+			// Get iter at top of visible area
+			Gtk.TextIter top_iter;
+			if (this.source_view.get_iter_at_location(out top_iter, visible_rect.x, visible_rect.y)) {
+				// Get line number of first visible line
+				int first_visible_line = top_iter.get_line();
+				this.current_file.scroll_position = (double)first_visible_line;
+			}
+		}
+		
+		/**
+		 * Handle scroll change event.
+		 * Rate-limited: only saves scroll position after scrolling stops (500ms delay).
+		 */
+		private void on_scroll_changed()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			// Cancel existing timeout if any
+			if (this.scroll_save_timeout_id != null) {
+				GLib.Source.remove(this.scroll_save_timeout_id);
+			}
+			
+			// Set up new timeout to save scroll position after scrolling stops
+			this.scroll_save_timeout_id = GLib.Timeout.add(500, () => {
+				// Save scroll position and update database in memory (mark as dirty)
+				this.save_scroll_position();
+				this.manager.notify_file_changed(this.current_file);
+				this.scroll_save_timeout_id = null;
+				return false; // Only run once
+			});
 		}
 		
 		/**
@@ -362,6 +453,61 @@ namespace OLLMcoder
 				if (buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
 					buffer.place_cursor(iter);
 				}
+			}
+		}
+		
+		/**
+		 * Restore scroll position from file state.
+		 */
+		private void restore_scroll_position(Files.File file)
+		{
+			if (file.scroll_position > 0.0) {
+				// Use Idle to restore scroll position after layout is complete
+				GLib.Idle.add(() => {
+					var buffer = this.source_view.buffer;
+					Gtk.TextIter iter;
+					int line_number = (int)file.scroll_position;
+					if (buffer.get_iter_at_line(out iter, line_number)) {
+						// Scroll to the first visible line
+						this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
+					}
+					return false; // Only run once
+				});
+			}
+		}
+		
+		/**
+		 * Save current file to disk.
+		 */
+		public void save_file()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			var buffer = this.source_view.buffer as GtkSource.Buffer;
+			if (buffer == null) {
+				return;
+			}
+			
+			// Get buffer content
+			Gtk.TextIter start, end;
+			buffer.get_bounds(out start, out end);
+			string contents = buffer.get_text(start, end, true);
+			
+			// Write to file
+			try {
+				this.current_file.write(contents);
+				buffer.set_modified(false);
+				this.current_file.is_unsaved = false;
+				
+				// Save state to database and force immediate save to disk
+				this.save_current_file_state();
+				if (this.manager.db != null) {
+					this.manager.db.backupDB();
+				}
+			} catch (Error e) {
+				GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
 			}
 		}
 		

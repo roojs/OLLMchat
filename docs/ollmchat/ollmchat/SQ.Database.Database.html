@@ -27,6 +27,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="SQ.Database.is_dirty.html">is_dirty</a></li>
           <li class="creation_method">Database</li>
           <li class="method"><a href="SQ.Database.backupDB.html">backupDB</a></li>
           <li class="method"><a href="SQ.Database.exec.html">exec</a></li>
@@ -38,7 +39,7 @@
         <h1 class="main_title">Database</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Database</span></b> (<span class="main_basic_type"><span class="class">string</span></span> filename)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Database</span></b> (<span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">bool</span></span> autosave = <span class="main_literal">false</span>)
         </div>
         <div class="description">
           <p>Creates a new Database instance.</p>
@@ -50,6 +51,12 @@
               <td class="main_parameter_table_name">filename</td>
               <td>
                 <p>The path to the database file for backup/restore </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">autosave</td>
+              <td>
+                <p>Whether to automatically save periodically (default: false) </p>
               </td>
             </tr>
           </table>
