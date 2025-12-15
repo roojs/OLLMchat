@@ -29,17 +29,26 @@ namespace OLLMcoder
 		private ProjectManager manager;
 		
 		/**
-		 * Currently selected project.
+		 * Currently selected project (folder with is_project = true).
 		 */
-		public Files.Project? selected_project {
-			get { return this.selection.selected_item as Files.Project; }
-			set { this.set_selected_item_internal(value); }
+		public Files.Folder? selected_project {
+			get { 
+				var item = this.selection.selected_item as Files.Folder;
+				// Ensure it's actually a project
+				return (item != null && item.is_project) ? item : null;
+			}
+			set { 
+				if (value != null && value.is_project) {
+					this.set_selected_item_internal(value);
+				}
+			}
 		}
 		
 		/**
 		 * Emitted when project selection changes.
+		 * Note: Projects are Folders with is_project = true.
 		 */
-		public signal void project_selected(Files.Project? project);
+		public signal void project_selected(Files.Folder? project);
 		
 		/**
 		 * Constructor.
@@ -58,13 +67,17 @@ namespace OLLMcoder
 		
 		/**
 		 * Refresh the project list from ProjectManager.
+		 * Only includes folders where is_project = true.
 		 */
 		public void refresh()
 		{
 			this.item_store.remove_all();
 			
 			foreach (var project in this.manager.projects) {
-				this.item_store.append(project);
+				// Only add folders that are actually projects
+				if (project.is_project) {
+					this.item_store.append(project);
+				}
 			}
 		}
 		

@@ -29,18 +29,14 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMcoder.ProjectManager.active_file.html">active_file</a></li>
           <li class="property"><a href="OLLMcoder.ProjectManager.active_project.html">active_project</a></li>
-          <li class="property"><a href="OLLMcoder.ProjectManager.alias_map.html">alias_map</a></li>
           <li class="property"><a href="OLLMcoder.ProjectManager.db.html">db</a></li>
-          <li class="property"><a href="OLLMcoder.ProjectManager.path_map.html">path_map</a></li>
+          <li class="property"><a href="OLLMcoder.ProjectManager.file_cache.html">file_cache</a></li>
           <li class="property"><a href="OLLMcoder.ProjectManager.projects.html">projects</a></li>
           <li class="creation_method"><a href="OLLMcoder.ProjectManager.ProjectManager.html">ProjectManager</a></li>
           <li class="method"><a href="OLLMcoder.ProjectManager.activate_file.html">activate_file</a></li>
           <li class="method"><a href="OLLMcoder.ProjectManager.activate_project.html">activate_project</a></li>
-          <li class="method"><a href="OLLMcoder.ProjectManager.add_path.html">add_path</a></li>
-          <li class="method"><a href="OLLMcoder.ProjectManager.handle_file_renamed.html">handle_file_renamed</a></li>
           <li class="method"><a href="OLLMcoder.ProjectManager.notify_file_changed.html">notify_file_changed</a></li>
           <li class="method"><a href="OLLMcoder.ProjectManager.notify_project_changed.html">notify_project_changed</a></li>
-          <li class="method"><a href="OLLMcoder.ProjectManager.remove_path.html">remove_path</a></li>
           <li class="method"><a href="OLLMcoder.ProjectManager.restore_session.html">restore_session</a></li>
           <li class="signal"><a href="OLLMcoder.ProjectManager.active_file_changed.html">active_file_changed</a></li>
           <li class="signal"><a href="OLLMcoder.ProjectManager.active_project_changed.html">active_project_changed</a></li>
@@ -76,26 +72,22 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Currently active file.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? <b><a href="OLLMcoder.ProjectManager.active_project.html" class="property">active_project</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.ProjectManager.active_project.html" class="property">active_project</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Currently active project.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMcoder.ProjectManager.alias_map.html" class="property">alias_map</a></b> { <span class="main_keyword">get</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Hashmap of pretend path =&gt; real path (for symlinks/aliases).</span>
+            <div class="leaf_brief_description"><span class="brief_description">Currently active project (folder with is_project = true).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span>? <b><a href="OLLMcoder.ProjectManager.db.html" class="property">db</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Database instance for persistence. Set this to enable database 
                 operations.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>&gt; <b><a href="OLLMcoder.ProjectManager.path_map.html" class="property">path_map</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>&gt; <b><a href="OLLMcoder.ProjectManager.file_cache.html" class="property">file_cache</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Hashmap of path =&gt; FileBase for quick lookup.</span>
+            <div class="leaf_brief_description">
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>&gt; <b><a href="OLLMcoder.ProjectManager.projects.html" class="property">projects</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>&gt; <b><a href="OLLMcoder.ProjectManager.projects.html" class="property">projects</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">List of all projects.</span>
+            <div class="leaf_brief_description"><span class="brief_description">List of all projects (folders where is_project = true).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -111,35 +103,24 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Activate a file (deactivates previous active file).</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.activate_project.html" class="method">activate_project</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? project)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.activate_project.html" class="method">activate_project</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? project)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Activate a project (deactivates previous active project).</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.add_path.html" class="method">add_path</a></b> (<span class="main_basic_type"><span class="class">string</span></span> path, <span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span> file_base, <span class="main_basic_type"><span class="struct">bool</span></span> is_symlink = <span class="main_literal">false</span>)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Add a path to the path_map and alias_map.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.handle_file_renamed.html" class="method">handle_file_renamed</a></b> (<span class="main_basic_type"><span class="class">string</span></span> old_path, <span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span> new_file, <span class="main_basic_type"><span class="struct">bool</span></span> is_symlink = <span class="main_literal">false</span>)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handle file changes (rename, move) and update all alias references.
-              </span>
+            <div class="leaf_brief_description"><span class="brief_description">Activate a project (deactivates previous active project). Note: 
+                Projects are Folders with is_project = true.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.notify_file_changed.html" class="method">notify_file_changed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span> file)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Notify that a file's state has changed (save to database).</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.notify_project_changed.html" class="method">notify_project_changed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span> project)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.notify_project_changed.html" class="method">notify_project_changed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span> project)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Notify that a project's state has changed (save to database).</span>
+            <div class="leaf_brief_description"><span class="brief_description">Notify that a project's state has changed (save to database). Note: 
+                Projects are Folders with is_project = true.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.remove_path.html" class="method">remove_path</a></b> (<span class="main_basic_type"><span class="class">string</span></span> path)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Remove a path from the path_map.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.restore_session.html" class="method">restore_session</a></b> (<span class="main_keyword">out</span> <span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? project, <span class="main_keyword">out</span> <span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span>? file)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.restore_session.html" class="method">restore_session</a></b> (<span class="main_keyword">out</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? project, <span class="main_keyword">out</span> <span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span>? file)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Restore session (active project and file) from in-memory data 
-                structures.</span>
+                structures. Note: Projects are Folders with is_project = true.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
@@ -148,9 +129,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Emitted when active file changes.</span>
             </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.active_project_changed.html" class="signal">active_project_changed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? project)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectManager.active_project_changed.html" class="signal">active_project_changed</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? project)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when active project changes.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when active project changes. Note: Projects are Folders with 
+                is_project = true.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

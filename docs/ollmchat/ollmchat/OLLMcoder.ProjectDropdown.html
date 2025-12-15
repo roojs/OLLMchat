@@ -62,9 +62,9 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? <b><a href="OLLMcoder.ProjectDropdown.selected_project.html" class="property">selected_project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.ProjectDropdown.selected_project.html" class="property">selected_project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Currently selected project.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Currently selected project (folder with is_project = true).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -86,14 +86,16 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectDropdown.refresh.html" class="method">refresh</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Refresh the project list from ProjectManager.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Refresh the project list from ProjectManager. Only includes folders 
+                where is_project = true.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectDropdown.project_selected.html" class="signal">project_selected</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? project)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.ProjectDropdown.project_selected.html" class="signal">project_selected</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? project)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when project selection changes.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when project selection changes. Note: Projects are Folders 
+                with is_project = true.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

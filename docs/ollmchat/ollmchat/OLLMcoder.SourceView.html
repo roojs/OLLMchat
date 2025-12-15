@@ -35,6 +35,7 @@
           <li class="method"><a href="OLLMcoder.SourceView.open_file.html">open_file</a></li>
           <li class="method"><a href="OLLMcoder.SourceView.open_project.html">open_project</a></li>
           <li class="method"><a href="OLLMcoder.SourceView.refresh_file.html">refresh_file</a></li>
+          <li class="method"><a href="OLLMcoder.SourceView.save_file.html">save_file</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -75,9 +76,9 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Currently active file.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? <b><a href="OLLMcoder.SourceView.current_project.html" class="property">current_project</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.SourceView.current_project.html" class="property">current_project</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Currently active project.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Currently active project (folder with is_project = true).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -93,17 +94,21 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Navigate to a specific line in the current file.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.open_file.html" class="method">open_file</a></b> (<span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span> file, <span class="main_basic_type"><span class="struct">int</span></span>? line_number = <span class="main_literal">null</span>)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.open_file.html" class="method">open_file</a></b> (<span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span> file, <span class="main_basic_type"><span class="struct">int</span></span>? line_number = <span class="main_literal">null</span>)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Open/switch to a file, optionally navigate to a specific line.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.open_project.html" class="method">open_project</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span> project)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.open_project.html" class="method">open_project</a></b> (<span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span> project)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Open/switch to a project.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.refresh_file.html" class="method">refresh_file</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.refresh_file.html" class="method">refresh_file</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Refresh current file from disk (if no unsaved changes).</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.save_file.html" class="method">save_file</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Save current file to disk.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

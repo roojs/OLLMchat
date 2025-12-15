@@ -265,12 +265,6 @@ namespace OLLMcoder
 				return;
 			}
 			
-			// Check if project already exists in path_map
-			if (this.manager.path_map.has_key(path)) {
-				GLib.debug("Project already exists in path_map: %s", path);
-				return;
-			}
-			
 			// Check if project already exists in projects list
 			foreach (var existing_project in this.manager.projects) {
 				if (existing_project.path == path) {
@@ -280,17 +274,17 @@ namespace OLLMcoder
 			}
 			
 			// Create new Project
-			var project = new OLLMcoder.Files.Project(this.manager);
+			var project = new OLLMcoder.Files.Folder(this.manager);
+			project.is_project = true;
 			project.path = path;
 			project.display_name = GLib.Path.get_basename(path);
 			
-			// Add to manager (verify we don't have it before adding)
+			// Add to manager
 			this.manager.projects.add(project);
-			this.manager.add_path(path, project);
 			
 			// Save to database (without syncing, we'll sync at the end)
 			if (this.manager.db != null) {
-				project.saveToDB(this.manager.db, false);
+				project.saveToDB(this.manager.db, null, false);
 			}
 		}
 		

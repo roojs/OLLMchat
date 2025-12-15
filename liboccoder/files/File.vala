@@ -36,10 +36,34 @@ namespace OLLMcoder.Files
 			base(manager);
 			this.base_type = "f";
 		}
+		
 		/**
-		 * Programming language (optional, for files).
+		 * Named constructor: Create a File from FileInfo.
+		 * 
+		 * @param parent The parent Folder (required)
+		 * @param info The FileInfo object from directory enumeration
+		 * @param path The full path to the file
 		 */
-		public string? language { get; set; default = null; }
+	public File.new_from_info(
+			OLLMcoder.ProjectManager manager,
+			Folder? parent,
+			GLib.FileInfo info,
+			string path)
+		{
+			base(manager);
+			this.base_type = "f";
+			this.path = path;
+			if (parent != null) {
+				this.parent = parent;
+				this.parent_id = parent.id;
+			}
+			
+			// Set last_modified from FileInfo
+			var mod_time = info.get_modification_date_time();
+			if (mod_time != null) {
+				this.last_modified = mod_time.to_unix();
+			}
+		}
 		
 		/**
 		 * Text buffer for this file (GTK-specific, nullable, created when file is first opened).
@@ -57,14 +81,9 @@ namespace OLLMcoder.Files
 		public int cursor_offset { get; set; default = 0; }
 		
 		/**
-		 * Last scroll position (stored in database, optional, default: 0.0).
+		 * Last scroll position (stored in database, optional, default: 0).
 		 */
-		public double scroll_position { get; set; default = 0.0; }
-		
-		/**
-		 * Unix timestamp of last view (stored in database, default: 0).
-		 */
-		public int64 last_viewed { get; set; default = 0; }
+		public int scroll_position { get; set; default = 0; }
 		
 		/**
 		 * Whether file is currently open in editor.
@@ -84,14 +103,16 @@ namespace OLLMcoder.Files
 		
 		
 		/**
-		 * Whether the file has been approved.
+		 * Whether the file needs approval (inverted from is_approved).
+		 * true = needs approval, false = approved.
 		 */
-		public bool is_approved { get; set; default = false; }
+		public bool needs_approval { get; set; default = true; }
 		
 		/**
 		 * Whether the file has unsaved changes.
 		 */
 		public bool is_unsaved { get; set; default = false; }
+		
 		
 		/**
 		 * Filename of last approved copy (default: empty string).
@@ -141,16 +162,39 @@ namespace OLLMcoder.Files
 			}
 		}
 		
-		private string _display_text_with_indicators = "";
+		/**
+		 * Display name with path: basename on first line, dirname on second line in grey.
+		 * Format: {basename}\n<span grey small dirname>
+		 */
+		public string display_with_path {
+			owned get {
+				return GLib.Path.get_basename(this.path) +
+					 "\n<span foreground=\"grey\" size=\"small\">" + 
+					GLib.Markup.escape_text(GLib.Path.get_dirname(this.path)) + 
+					"</span>";
+			}
+		}
+		
+		/**
+		 * Display name with basename only: basename on first line.
+		 * Format: {basename}\n
+		 */
+		public string display_basename {
+			owned get {
+				return GLib.Path.get_basename(this.path) + "\n";
+			}
+		}
+		// we need the private to get around woned issues...
+		private string _display_with_indicators = "";
 		/**
 		 * Display text with status indicators (approved, unsaved).
 		 */
-		public override string display_text_with_indicators {
+		public override string display_with_indicators {
 			get {
-				this._display_text_with_indicators = 
-					this.display_name + (this.is_approved ? " ✓" : "") 
+				this._display_with_indicators = 
+					this.display_basename + (!this.needs_approval ? " ✓" : "") 
 					+ (this.is_unsaved ? " ●" : "");
-				return this._display_text_with_indicators; // Checkmark for approved
+				return this._display_with_indicators; // Checkmark when approved (not needs_approval)
 			}
 		}
 		
@@ -160,16 +204,23 @@ namespace OLLMcoder.Files
 		public signal void changed();
 		
 		/**
-		 * Read file contents.
+		 * Read file contents asynchronously.
 		 * 
 		 * @return File contents as string
 		 * @throws Error if file cannot be read
 		 */
-		public string read() throws Error
+		public async string read_async() throws Error
 		{
-			string contents;
-			GLib.FileUtils.get_contents(this.path, out contents);
-			return contents;
+			var file = GLib.File.new_for_path(this.path);
+			if (!file.query_exists()) {
+				throw new GLib.FileError.NOENT("File not found: " + this.path);
+			}
+			
+			uint8[] data;
+			string etag;
+			yield file.load_contents_async(null, out data, out etag);
+			
+			return (string)data;
 		}
 		
 		/**

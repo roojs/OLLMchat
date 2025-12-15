@@ -55,7 +55,7 @@
         </div>
         <div class="description">
           <p>Searchable dropdown widget for selecting files.</p>
-          <p>Wraps Gtk.DropDown and adds search/filter functionality. Integrates with Project to populate file list from project's all_files.</p>
+          <p>Wraps Gtk.DropDown and adds search/filter functionality. Integrates with Project to populate file list from project's project_files.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.html">OLLMcoder</a>
         </div>
@@ -64,9 +64,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Project.html" class="class">Project</a></span>? <b><a href="OLLMcoder.FileDropdown.project.html" class="property">project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.FileDropdown.project.html" class="property">project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Currently selected project (used to populate file list).</span>
+            <div class="leaf_brief_description"><span class="brief_description">Currently selected project (used to populate file list). Note: 
+                Projects are Folders with is_project = true.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span>? <b><a href="OLLMcoder.FileDropdown.selected_file.html" class="property">selected_file</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -101,7 +102,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.FileDropdown.refresh.html" class="method">refresh</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Refresh the file list from the current project's all_files.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Refresh the file list from the current project's project_files.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.FileDropdown.set_item_store.html" class="virtual_method">set_item_store</a></b> (<span class="main_type"><span class="class">ListStore</span></span> store)
             </span>

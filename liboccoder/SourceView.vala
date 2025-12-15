@@ -47,14 +47,19 @@ namespace OLLMcoder
 		private Gtk.ScrolledWindow scrolled_window;
 		
 		/**
+		 * Timeout source for debouncing scroll position saves.
+		 */
+		private uint? scroll_save_timeout_id = null;
+		
+		/**
 		 * Currently active file.
 		 */
 		public Files.File? current_file { get; private set; default = null; }
 		
 		/**
-		 * Currently active project.
+		 * Currently active project (folder with is_project = true).
 		 */
-		public Files.Project? current_project {
+		public Files.Folder? current_project {
 			get { return this.manager.active_project; }
 		}
 		
@@ -99,6 +104,16 @@ namespace OLLMcoder
 			this.file_dropdown.file_selected.connect(this.on_file_selected);
 			header_bar.append(this.file_dropdown);
 			
+			// Save button next to file dropdown
+			var save_button = new Gtk.Button.from_icon_name("document-save") {
+				tooltip_text = "Save file",
+				hexpand = false
+			};
+			save_button.clicked.connect(() => {
+				this.save_file();
+			});
+			header_bar.append(save_button);
+			
 			this.append(header_bar);
 			
 			// Create ScrolledWindow for code editor
@@ -129,6 +144,25 @@ namespace OLLMcoder
 					this.current_file.is_unsaved = source_buffer.get_modified();
 				}
 			});
+			
+			// Connect to scroll events to track scroll position
+			var vadjustment = this.scrolled_window.vadjustment;
+			if (vadjustment != null) {
+				vadjustment.value_changed.connect(() => {
+					this.on_scroll_changed();
+				});
+			}
+			
+			// Add keyboard shortcut for Ctrl-S (save)
+			var controller = new Gtk.EventControllerKey();
+			controller.key_pressed.connect((keyval, keycode, state) => {
+				if ((state & Gdk.ModifierType.CONTROL_MASK) != 0 && keyval == Gdk.Key.s) {
+					this.save_file();
+					return true;
+				}
+				return false;
+			});
+			this.add_controller(controller);
 		
 			
 			// Restore session on startup (not sure if it should be done here..)
@@ -138,11 +172,21 @@ namespace OLLMcoder
 		/**
 		 * Handle project selection change.
 		 */
-		private void on_project_selected(Files.Project? project)
+		private void on_project_selected(Files.Folder? project)
 		{
-			if (project != null) {
-				this.open_project(project);
+			if (project == null) {
+				return;
 			}
+			
+			// Lock file dropdown during project change
+			this.file_dropdown.sensitive = false;
+			this.file_dropdown.add_css_class("loading");
+			this.open_project.begin(project, (obj, res) => {
+				this.open_project.end(res);
+				// Unlock file dropdown after project change completes
+				this.file_dropdown.sensitive = true;
+				this.file_dropdown.remove_css_class("loading");
+			});
 		}
 		
 		/**
@@ -150,9 +194,29 @@ namespace OLLMcoder
 		 */
 		private void on_file_selected(Files.File? file)
 		{
-			if (file != null) {
-				this.open_file(file);
+			if (file == null) {
+				// Set default placeholder when no file is selected
+				this.file_dropdown.placeholder_text = "Select file...";
+				return;
 			}
+			
+			// If file hasn't changed, no need to do anything
+			if (this.current_file != null && this.current_file.path == file.path) {
+				return;
+			}
+			
+			// Lock source view during file load
+			this.source_view.editable = false;
+			this.source_view.add_css_class("loading");
+			this.file_dropdown.placeholder_text = "Loading..";
+
+			
+			this.open_file.begin(file, null, (obj, res) => {
+				this.open_file.end(res);
+				// Unlock source view after file load completes
+				this.source_view.editable = true;
+				this.source_view.remove_css_class("loading");
+			});
 		}
 		
 		/**
@@ -161,7 +225,7 @@ namespace OLLMcoder
 		 * @param file The file to open
 		 * @param line_number Optional line number to navigate to (overrides saved position)
 		 */
-		public void open_file(Files.File file, int? line_number = null)
+		public async void open_file(Files.File file, int? line_number = null)
 		{
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
@@ -187,9 +251,9 @@ namespace OLLMcoder
 					buffer = new GtkSource.Buffer(null);
 				}
 				
-				// Load file content
+				// Load file content asynchronously
 				try {
-					buffer.text = file.read();
+					buffer.text = yield file.read_async();
 				} catch (Error e) {
 					GLib.warning("Failed to read file %s: %s", file.path, e.message);
 					buffer.text = "";
@@ -207,6 +271,7 @@ namespace OLLMcoder
 				this.navigate_to_line(line_number);
 			} else {
 				this.restore_cursor_position(file);
+				this.restore_scroll_position(file);
 			}
 			
 			// Update last_viewed timestamp
@@ -216,6 +281,9 @@ namespace OLLMcoder
 			
 			// Update dropdowns
 			this.file_dropdown.selected_file = file;
+			
+			// Update placeholder text with file basename
+			this.file_dropdown.placeholder_text = Path.get_basename(file.path);
 		}
 		
 		/**
@@ -223,16 +291,24 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-		public void open_project(Files.Project project)
+		public async void open_project(Files.Folder project)
 		{
 			// Notify manager to activate project
-			this.manager.activate_project(project);
+
+			yield this.manager.activate_project(project);
 			
 			// Update file dropdown's project
 			this.file_dropdown.project = project;
 			
 			// Update project dropdown
 			this.project_dropdown.selected_project = project;
+			
+			// Update placeholder text with project name
+			this.project_dropdown.placeholder_text = project.display_name;
+			
+			// Find and trigger active file (or null if none)
+			var active_file = project.project_files.get_active_file();
+			this.on_file_selected(active_file);
 		}
 		
 		/**
@@ -257,7 +333,7 @@ namespace OLLMcoder
 		 * FIXME: This should prompt the user about unsaved changes and handle errors
 		 * with user interaction (dialogs, notifications).
 		 */
-		public void refresh_file()
+		public async void refresh_file()
 		{
 			if (this.current_file == null) {
 				return;
@@ -273,7 +349,7 @@ namespace OLLMcoder
 			}
 			
 			try {
-				buffer.text = this.current_file.read();
+				buffer.text = yield this.current_file.read_async();
 			} catch (Error e) {
 				// FIXME: Show error dialog to user
 				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
@@ -281,12 +357,18 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Save current file state (cursor position).
+		 * Save current file state (cursor position and scroll position).
 		 */
 		private void save_current_file_state()
 		{
 			if (this.current_file == null) {
 				return;
+			}
+			
+			// Cancel any pending scroll save timeout
+			if (this.scroll_save_timeout_id != null) {
+				GLib.Source.remove(this.scroll_save_timeout_id);
+				this.scroll_save_timeout_id = null;
 			}
 			
 			var buffer = this.source_view.buffer;
@@ -296,12 +378,61 @@ namespace OLLMcoder
 			this.current_file.cursor_line = cursor_iter.get_line();
 			this.current_file.cursor_offset = cursor_iter.get_line_offset();
 			
+			// Save scroll position (first visible line)
+			this.save_scroll_position();
+			
 			// Update last_viewed timestamp
 			var now = new DateTime.now_local();
 			this.current_file.last_viewed = now.to_unix();
 			
 			// Notify manager to save to database
 			this.manager.notify_file_changed(this.current_file);
+		}
+		
+		/**
+		 * Save scroll position (first visible line) to current file.
+		 */
+		private void save_scroll_position()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			// Get visible rectangle
+			Gdk.Rectangle visible_rect;
+			this.source_view.get_visible_rect(out visible_rect);
+			
+			// Get iter at top of visible area
+			Gtk.TextIter top_iter;
+			if (this.source_view.get_iter_at_location(out top_iter, visible_rect.x, visible_rect.y)) {
+				// Get line number of first visible line
+				this.current_file.scroll_position = top_iter.get_line();
+			}
+		}
+		
+		/**
+		 * Handle scroll change event.
+		 * Rate-limited: only saves scroll position after scrolling stops (500ms delay).
+		 */
+		private void on_scroll_changed()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			// Cancel existing timeout if any
+			if (this.scroll_save_timeout_id != null) {
+				GLib.Source.remove(this.scroll_save_timeout_id);
+			}
+			
+			// Set up new timeout to save scroll position after scrolling stops
+			this.scroll_save_timeout_id = GLib.Timeout.add(500, () => {
+				// Save scroll position and update database in memory (mark as dirty)
+				this.save_scroll_position();
+				this.manager.notify_file_changed(this.current_file);
+				this.scroll_save_timeout_id = null;
+				return false; // Only run once
+			});
 		}
 		
 		/**
@@ -321,6 +452,60 @@ namespace OLLMcoder
 				if (buffer.get_iter_at_line_offset(out iter, file.cursor_line, file.cursor_offset)) {
 					buffer.place_cursor(iter);
 				}
+			}
+		}
+		
+		/**
+		 * Restore scroll position from file state.
+		 */
+		private void restore_scroll_position(Files.File file)
+		{
+			if (file.scroll_position > 0) {
+				// Use Idle to restore scroll position after layout is complete
+				GLib.Idle.add(() => {
+					var buffer = this.source_view.buffer;
+					Gtk.TextIter iter;
+					if (buffer.get_iter_at_line(out iter, file.scroll_position)) {
+						// Scroll to the first visible line
+						this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
+					}
+					return false; // Only run once
+				});
+			}
+		}
+		
+		/**
+		 * Save current file to disk.
+		 */
+		public void save_file()
+		{
+			if (this.current_file == null) {
+				return;
+			}
+			
+			var buffer = this.source_view.buffer as GtkSource.Buffer;
+			if (buffer == null) {
+				return;
+			}
+			
+			// Get buffer content
+			Gtk.TextIter start, end;
+			buffer.get_bounds(out start, out end);
+			string contents = buffer.get_text(start, end, true);
+			
+			// Write to file
+			try {
+				this.current_file.write(contents);
+				buffer.set_modified(false);
+				this.current_file.is_unsaved = false;
+				
+				// Save state to database and force immediate save to disk
+				this.save_current_file_state();
+				if (this.manager.db != null) {
+					this.manager.db.backupDB();
+				}
+			} catch (Error e) {
+				GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
 			}
 		}
 		

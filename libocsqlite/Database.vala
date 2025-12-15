@@ -46,14 +46,25 @@ namespace SQ {
 		public Gee.HashMap<string,Gee.ArrayList<Schema>> schema_cache;
 		
 		/**
+		 * Whether the database has unsaved changes (dirty flag).
+		 */
+		public bool is_dirty { get; set; default = false; }
+		
+		/**
+		 * Timeout source for periodic save checks.
+		 */
+		private uint? save_timeout_id = null;
+		
+		/**
 		 * Creates a new Database instance.
 		 * 
 		 * If the file exists and is non-empty, the database is restored from
 		 * the file into memory. Otherwise, a new in-memory database is created.
 		 * 
 		 * @param filename The path to the database file for backup/restore
+		 * @param autosave Whether to automatically save periodically (default: false)
 		 */
-		public Database(string filename)
+		public Database(string filename, bool autosave = false)
 		{
 			_filename = filename;
 			schema_cache = new Gee.HashMap<string,Gee.ArrayList<Schema>>();
@@ -68,10 +79,31 @@ namespace SQ {
 					Sqlite.Database.open(":memory:", out db);
 					var b = new Sqlite.Backup(db, "main", filedb, "main");
 					b.step(-1);
+					// Start periodic save timer if autosave is enabled
+					if (!autosave) {
+						return;
+					}
+					this.save_timeout_id = GLib.Timeout.add_seconds(60, () => {
+						if (this.is_dirty) {
+							this.backupDB();
+						}
+						return true; // Continue timer
+					});
 					return;
 				}
 			}
 			Sqlite.Database.open(":memory:", out db);
+			
+			// Start periodic save timer if autosave is enabled
+			if (!autosave) {
+				return;
+			}
+			this.save_timeout_id = GLib.Timeout.add_seconds(60, () => {
+				if (this.is_dirty) {
+					this.backupDB();
+				}
+				return true; // Continue timer
+			});
 		}
 		
 		/**
@@ -80,6 +112,8 @@ namespace SQ {
 		 * This method saves the current state of the in-memory database to
 		 * the file specified in the constructor. If the database is not open,
 		 * this method does nothing.
+		 * 
+		 * After saving, the is_dirty flag is reset to false.
 		 */
 		public void backupDB()
 		{
@@ -91,6 +125,7 @@ namespace SQ {
 			Sqlite.Database.open(_filename, out filedb);
 			var b = new Sqlite.Backup(filedb, "main", db, "main");
 			b.step(-1);
+			this.is_dirty = false;
 		}
 		 
 		/**

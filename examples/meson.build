@@ -6,6 +6,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'liboccoder',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
@@ -36,6 +37,32 @@ test_window_deps = [
 ]
 
 base_deps = [
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
+  dependency('libxml-2.0'),
+  valac.find_library('posix'),
+]
+
+# Minimal dependencies for occoder-based tests (only what liboccoder needs)
+# Note: liboccoder requires GTK4 and gtksourceview-5 even if we don't use GTK widgets directly
+occoder_test_deps = [
+  dependency('gtk4'),
+  dependency('gtksourceview-5'),
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('sqlite3'),
+  valac.find_library('posix'),
+]
+
+# Minimal dependencies for ocmarkdown tests (only what libocmarkdown needs)
+ocmarkdown_test_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
@@ -77,12 +104,17 @@ test_html_parser_to_md = executable('oc-html2md',
 )
 
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
+# Only depends on libocmarkdown (not libocmarkdowngtk) since it uses DummyRenderer
+# Use ocmarkdown_vapi_dep instead of link_with to avoid meson auto-including ocmarkdown-meson.vapi
 test_markdown_parser = executable('oc-markdown-test',
-  dependencies: test_window_deps,
+  dependencies: [ocmarkdown_test_deps, ocmarkdown_vapi_dep],
   sources: ['oc-markdown-test.vala'],
-  link_with: [ocmarkdown_base_lib, ocmarkdowngtk_lib],
   include_directories: include_directories('../libocmarkdown'),
   build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=ocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
+  ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
@@ -99,5 +131,24 @@ vmd2html = executable('oc-md2html',
   ],
   install: true,
   install_dir: get_option('bindir')
+)
+
+# Build oc-test-files executable (project file scanning test)
+# Only depends on liboccoder (which already includes libocsqlite)
+# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+test_files = executable('oc-test-files',
+  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, occoder_vapi_dep],
+  sources: ['oc-test-files.vala'],
+  include_directories: include_directories('../liboccoder'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 

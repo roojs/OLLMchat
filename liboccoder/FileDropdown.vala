@@ -22,11 +22,11 @@ namespace OLLMcoder
 	 * Searchable dropdown widget for selecting files.
 	 * 
 	 * Wraps Gtk.DropDown and adds search/filter functionality.
-	 * Integrates with Project to populate file list from project's all_files.
+	 * Integrates with Project to populate file list from project's project_files.
 	 */
 	public class FileDropdown : SearchableDropdown
 	{
-		private Files.Project? current_project;
+		private Files.Folder? current_project;
 		private Gtk.SortListModel sorted_items;
 		private Gtk.CustomFilter? wildcard_filter;
 		
@@ -34,16 +34,39 @@ namespace OLLMcoder
 		 * Currently selected file.
 		 */
 		public Files.File? selected_file {
-			get { return this.selection.selected_item as Files.File; }
-			set { 	this.set_selected_item_internal(value); }
+			get { 
+				var project_file = this.selection.selected_item as Files.ProjectFile;
+				return project_file != null ? project_file.file : null;
+			}
+			set { 
+				// Find the ProjectFile that wraps this File
+				if (value == null) {
+					this.set_selected_item_internal(null);
+					return;
+				}
+				if (this.current_project != null) {
+					for (uint i = 0; i < this.current_project.project_files.get_n_items(); i++) {
+						var pf = this.current_project.project_files.get_item(i) as Files.ProjectFile;
+						if (pf != null && pf.file == value) {
+							this.set_selected_item_internal(pf);
+							return;
+						}
+					}
+				}
+			}
 		}
 		
 		/**
 		 * Currently selected project (used to populate file list).
+		 * Note: Projects are Folders with is_project = true.
 		 */
-		public Files.Project? project {
+		public Files.Folder? project {
 			get { return this.current_project; }
 			set {
+				if (value != null && !value.is_project) {
+					GLib.warning("FileDropdown.project set to non-project folder: %s", value.path);
+					return;
+				}
 				this.current_project = value;
 				this.refresh();
 			}
@@ -64,18 +87,62 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Refresh the file list from the current project's all_files.
+		 * Refresh the file list from the current project's project_files.
 		 */
 		public void refresh()
 		{
-			if (this.current_project == null) {
+			if (this.current_project == null || !this.current_project.is_project) {
 				// Clear by using empty store
-				this.set_item_store(new GLib.ListStore(typeof(Files.FileBase)));
+				this.set_item_store(new GLib.ListStore(typeof(Files.ProjectFile)));
 				return;
 			}
 			
-			// Use project's all_files directly
-			this.set_item_store(this.current_project.all_files);
+			// Use project_files directly as the ListModel (no copying)
+			this.set_item_model(this.current_project.project_files);
+		}
+		
+		/**
+		 * Set the item model using a ListModel directly (for ProjectFiles).
+		 */
+		private void set_item_model(GLib.ListModel model)
+		{
+			// Use the model directly for filtering (no copying)
+			this.filtered_items = new Gtk.FilterListModel(
+				model, this.string_filter);
+			
+			// Create custom sorter: open files first, then sort by display_name
+			var sorter = new Gtk.CustomSorter((a, b) => {
+				var pf_a = a as Files.ProjectFile;
+				var pf_b = b as Files.ProjectFile;
+				if (pf_a == null || pf_b == null) {
+					return Gtk.Ordering.EQUAL;
+				}
+				// Sort by is_open first (open files come first)
+				if (pf_a.is_open != pf_b.is_open) {
+					return pf_a.is_open ? 
+						Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				}
+				
+				// Then sort by path
+				return pf_a.file.path < pf_b.file.path ? 
+					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+			});
+			
+			// Create sorted model
+			this.sorted_items = new Gtk.SortListModel(this.filtered_items, sorter);
+			
+			// Update selection model to use sorted model
+			this.selection = new Gtk.SingleSelection(this.sorted_items) {
+				autoselect = false,
+				can_unselect = true,
+				selected = Gtk.INVALID_LIST_POSITION
+			};
+			this.selection.notify["selected"].connect(() => {
+				this.on_selection_changed();
+			});
+			
+			// Update list view with new selection model
+			this.list.model = this.selection;
 		}
 		
 		/**
@@ -171,25 +238,28 @@ namespace OLLMcoder
 					return;
 				}
 				
-				var item_obj = list_item.item as Files.FileBase;
-				var file = item_obj as Files.File;
+				var project_file = list_item.item as Files.ProjectFile;
+				if (project_file == null) {
+					return;
+				}
+				
 				var file_icon = list_item.get_data<Gtk.Image>("file_icon");
 				var open_icon = list_item.get_data<Gtk.Image>("open_icon");
 				var label = list_item.get_data<Gtk.Label>("label");
 				
 				// Bind properties
-				if (item_obj != null && label != null) {
-					item_obj.bind_property("display_text_with_indicators", 
+				if (label != null) {
+					project_file.bind_property("display_with_indicators", 
 						label, "label", BindingFlags.SYNC_CREATE);
 				}
 				
-				if (item_obj != null && file_icon != null) {
-					item_obj.bind_property("icon_name", 
+				if (file_icon != null) {
+					project_file.bind_property("icon_name", 
 						file_icon, "icon-name", BindingFlags.SYNC_CREATE);
 				}
 				
-				if (file != null && open_icon != null) {
-					file.bind_property("is_open", 
+				if (open_icon != null) {
+					project_file.bind_property("is_open", 
 						open_icon, "visible", BindingFlags.SYNC_CREATE);
 				}
 			});
@@ -213,11 +283,11 @@ namespace OLLMcoder
 				// Use wildcard filter
 				if (this.wildcard_filter == null) {
 					this.wildcard_filter = new Gtk.CustomFilter((item) => {
-						var file = item as Files.File;
-						if (file == null) {
-							return false; // Only filter Files, not Projects
+						var project_file = item as Files.ProjectFile;
+						if (project_file == null) {
+							return false;
 						}
-						return this.match_wildcard(file.display_name, search_text);
+						return this.match_wildcard(project_file.display_name, search_text);
 					});
 					
 					// Combine string filter and wildcard filter
@@ -227,11 +297,11 @@ namespace OLLMcoder
 				// Update wildcard filter search text
 				// Note: CustomFilter doesn't have a way to update, so we need to recreate
 				this.wildcard_filter = new Gtk.CustomFilter((item) => {
-					var file = item as Files.File;
-					if (file == null) {
+					var project_file = item as Files.ProjectFile;
+					if (project_file == null) {
 						return false;
 					}
-					return this.match_wildcard(file.display_name, search_text);
+					return this.match_wildcard(project_file.display_name, search_text);
 				});
 				
 				// Replace filtered_items with wildcard filter
