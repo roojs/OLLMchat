@@ -169,9 +169,9 @@ namespace OLLMcoder.Files
 		public int cursor_offset { get; set; default = 0; }
 		
 		/**
-		 * Last scroll position (stored in database, optional, default: 0.0).
+		 * Last scroll position (stored in database, optional, default: 0).
 		 */
-		public double scroll_position { get; set; default = 0.0; }
+		public int scroll_position { get; set; default = 0; }
 		
 		/**
 		 * Filename of last approved copy (default: empty string).
@@ -215,7 +215,7 @@ namespace OLLMcoder.Files
 				"is_active INTEGER NOT NULL DEFAULT 0, " +
 				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
 				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
-				"scroll_position REAL NOT NULL DEFAULT 0.0, " +
+				"scroll_position INTEGER NOT NULL DEFAULT 0, " +
 				"last_viewed INT64 NOT NULL DEFAULT 0, " +
 				"points_to_id INT64 NOT NULL DEFAULT 0, " +
 				"target_path TEXT NOT NULL DEFAULT '', " +

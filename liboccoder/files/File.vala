@@ -71,9 +71,9 @@ namespace OLLMcoder.Files
 		public int cursor_offset { get; set; default = 0; }
 		
 		/**
-		 * Last scroll position (stored in database, optional, default: 0.0).
+		 * Last scroll position (stored in database, optional, default: 0).
 		 */
-		public double scroll_position { get; set; default = 0.0; }
+		public int scroll_position { get; set; default = 0; }
 		
 		/**
 		 * Whether file is currently open in editor.

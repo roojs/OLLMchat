@@ -218,22 +218,24 @@ namespace SQ {
 				if (s.name == "id" ){
 					continue;
 				}
+				// Convert column name to property name (underscores to hyphens for GObject)
+				var prop_name = s.name.replace("_", "-");
 				Type value_type;
-				if (!this.has_property(s.name, out value_type)) {
+				if (!this.has_property(prop_name, out value_type)) {
 					continue;
 				}
 				switch(s.ctype) {
 					case "INTEGER":
 					case "INT2":
 
-						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, s.name, value_type));
+						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "INT64":
 						// might be better to have getInt64
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ s.name), (int64) this.getInt(newer, s.name, value_type));
+						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ s.name), (int64) this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "TEXT":
-						stmt.bind_text (stmt.bind_parameter_index ("$"+ s.name), this.getText(newer, s.name, value_type));
+						stmt.bind_text (stmt.bind_parameter_index ("$"+ s.name), this.getText(newer, prop_name, value_type));
 						break;
 					default:
 					    GLib.error("Column %s : %s has Unhandled SQlite type : %s", 
@@ -282,13 +284,14 @@ namespace SQ {
 				if (s.name == "id" ){
 					continue;
 				}
-			
+				// Convert column name to property name (underscores to hyphens for GObject)
+				var prop_name = s.name.replace("_", "-");
 				Type value_type;
-				if (!this.has_property(s.name, out value_type)) {
+				if (!this.has_property(prop_name, out value_type)) {
 					continue;
 				}
 				
-				if (old ==null || !this.compareProperty(old, newer, s.name, value_type)) {
+				if (old ==null || !this.compareProperty(old, newer, prop_name, value_type)) {
 					setter += (s.name +  " = $" + s.name);
 					types.set(s.name,s.ctype);
 				}
@@ -331,9 +334,10 @@ namespace SQ {
 				if (s.name == "id" ){
 					continue;
 				}
-			
+				// Convert column name to property name (underscores to hyphens for GObject)
+				var prop_name = s.name.replace("_", "-");
 				Type value_type;
-				if (!this.has_property(s.name, out value_type)) {
+				if (!this.has_property(prop_name, out value_type)) {
 					continue;
 				}
 				
@@ -375,21 +379,23 @@ namespace SQ {
 			}
 			
 			foreach(var n in types.keys) {
+				// Convert column name to property name (underscores to hyphens for GObject)
+				var prop_name = n.replace("_", "-");
 				Type value_type;
-				if (!this.has_property(n, out value_type)) {
+				if (!this.has_property(prop_name, out value_type)) {
 					continue;
 				}
 				switch(types.get(n)) {
 					case "INTEGER":
 					case "INT2":
-						stmt.bind_int (stmt.bind_parameter_index ("$"+ n), this.getInt(newer, n, value_type));
+						stmt.bind_int (stmt.bind_parameter_index ("$"+ n), this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "INT64":
-						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ n), (int64) this.getInt(newer, n, value_type));
+						stmt.bind_int64 (stmt.bind_parameter_index ("$"+ n), (int64) this.getInt(newer, prop_name, value_type));
 						break;
 					
 					case "TEXT":
-						stmt.bind_text (stmt.bind_parameter_index ("$"+ n), this.getText(newer, n, value_type));
+						stmt.bind_text (stmt.bind_parameter_index ("$"+ n), this.getText(newer, prop_name, value_type));
 						break;
 					default:
 					    GLib.error("Unhandled SQlite type : %s", types.get(n));
@@ -781,8 +787,8 @@ namespace SQ {
 		 */
 		void setObjectProperty(Sqlite.Statement stmt, T in_row, int pos, string col_name, int stype) 
 		{
-			// Map column name to property name (e.g., "type" -> "ctype")
-			var prop = col_name == "type" ? "ctype" : col_name;
+			// Map column name to property name (e.g., "type" -> "ctype", "base_type" -> "base-type")
+			var prop = col_name == "type" ? "ctype" : col_name.replace("_", "-");
 			
 			// Check if property exists and is writable
 			Type gtype;

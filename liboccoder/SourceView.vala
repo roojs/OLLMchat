@@ -406,8 +406,7 @@ namespace OLLMcoder
 			Gtk.TextIter top_iter;
 			if (this.source_view.get_iter_at_location(out top_iter, visible_rect.x, visible_rect.y)) {
 				// Get line number of first visible line
-				int first_visible_line = top_iter.get_line();
-				this.current_file.scroll_position = (double)first_visible_line;
+				this.current_file.scroll_position = top_iter.get_line();
 			}
 		}
 		
@@ -461,13 +460,12 @@ namespace OLLMcoder
 		 */
 		private void restore_scroll_position(Files.File file)
 		{
-			if (file.scroll_position > 0.0) {
+			if (file.scroll_position > 0) {
 				// Use Idle to restore scroll position after layout is complete
 				GLib.Idle.add(() => {
 					var buffer = this.source_view.buffer;
 					Gtk.TextIter iter;
-					int line_number = (int)file.scroll_position;
-					if (buffer.get_iter_at_line(out iter, line_number)) {
+					if (buffer.get_iter_at_line(out iter, file.scroll_position)) {
 						// Scroll to the first visible line
 						this.source_view.scroll_to_iter(iter, 0.0, false, 0.0, 0.0);
 					}
