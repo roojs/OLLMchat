@@ -236,11 +236,15 @@ namespace OLLMcoder.Files
 		 * Create a query object for filebase table with typemap configured.
 		 * 
 		 * @param db The database instance
+		 * @param manager The ProjectManager instance (required for constructing objects)
 		 * @return A configured Query object ready to use
 		 */
-		public static SQ.Query<FileBase> query(SQ.Database db)
+		public static SQ.Query<FileBase> query(SQ.Database db, OLLMcoder.ProjectManager manager)
 		{
-			var query = new SQ.Query<FileBase>(db, "filebase");
+			// Set up property_names and property_values to pass manager to constructors
+			var property_names = new string[] { "manager" };
+			var property_values = new Value[] { manager };
+			var query = new SQ.Query<FileBase>.with_properties(db, "filebase", property_names, property_values);
 			query.typemap = new Gee.HashMap<string, Type>();
 			// Note: Projects are now folders with is_project = true, no separate "p" type
 			query.typemap["f"] = typeof(File);

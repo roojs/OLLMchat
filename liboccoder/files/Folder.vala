@@ -362,7 +362,7 @@ namespace OLLMcoder.Files
 			}
 			
 			// Load files matching the path conditions
-			var query = FileBase.query(this.manager.db);
+			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
 			query.selectQuery("SELECT * FROM filebase WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
