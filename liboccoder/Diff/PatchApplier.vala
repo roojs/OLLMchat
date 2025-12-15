@@ -62,7 +62,7 @@ namespace OLLMcoder.Diff
 			}
 			
 			// Split text into lines
-			string[] lines = text.split("\n");
+			var lines = text.split("\n");
 			
 			// Apply patches in reverse order to maintain line numbers
 			// (applying from end to start prevents line number shifts)

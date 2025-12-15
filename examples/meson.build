@@ -152,3 +152,22 @@ test_files = executable('oc-test-files',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-diff executable (unified diff output)
+# Only depends on liboccoder (which already includes libocsqlite)
+# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+oc_diff = executable('oc-diff',
+  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, occoder_vapi_dep],
+  sources: ['oc-diff.vala'],
+  include_directories: include_directories('../liboccoder'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+  ],
+  install: true,
+  install_dir: get_option('bindir')
+)
+

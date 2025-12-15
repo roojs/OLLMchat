@@ -1,0 +1,51 @@
+Line 1: Original content starts here
+Line 2: This line has been modified successfully
+Line 3: This line stays unchanged
+Line 5: Another unchanged line
+Line 6: Replacement content for multiple lines
+Line 7: New replacement line two
+Line 8: New replacement line three
+Line 11: Unchanged content continues
+Line 12: Single character change test - fixed
+Line 13: This line had a typo that has been fixed
+Line 14: More unchanged content
+Line 15: Another line that stays the same
+Line 16: Line with numbers 67890
+Line 17: Line with special characters &*()_
+Line 18: Empty line test above
+Line 19: Empty line test below
+Line 20: Regular content line
+Line 21: This section has new additions
+Line 22: Content before insertion point
+Line 22a: Newly inserted line one
+Line 22b: Newly inserted line two
+Line 22c: Newly inserted line three
+Line 23: Content after insertion point
+Line 24: More regular content
+Line 25: Another regular line
+Line 26: Line with tabs	test	here
+Line 27: Line with multiple spaces    here
+Line 28: Line with unicode: café résumé
+Line 29: Another unicode test: 你好世界
+Line 30: Regular ASCII line
+Line 31: This line has been completely replaced with new content
+Line 32: Unchanged line in middle section
+Line 33: Another unchanged line
+Line 34: Line that has been modified slightly
+Line 35: Content that stays the same
+Line 36: More content to test with
+Line 37: Another test line
+Line 38: Regular content continues
+Line 39: Line with date: 2024-12-31
+Line 40: Line with time: 23:59:59
+Line 41: Mixed content line
+Line 42: Another mixed content
+Line 43: Test line number forty-three
+Line 44: More test content
+Line 45: Regular line content
+Line 46: Another regular line
+Line 47: Content line forty-seven
+Line 48: Test data continues
+Line 49: More test data
+Line 50: Final line of test file four
+

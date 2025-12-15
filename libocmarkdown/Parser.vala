@@ -16,6 +16,32 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/*
+ * STRING HANDLING IN VALA - IMPORTANT NOTES:
+ *
+ * Vala strings are UTF-8 encoded, which requires careful handling:
+ *   - .length returns BYTE count (not character count)
+ *   - substring(offset, len): offset is BYTE offset, len is BYTE length (both in bytes)
+ *     See: https://valadoc.org/glib-2.0/string.substring.html
+ *   - char_count() returns the number of characters (not bytes)
+ *   - index_of_nth_char(n) converts character position to byte offset
+ *   - get_char(byte_offset) gets a character at a byte offset
+ *
+ * KEY POINT: substring() uses byte offsets, not character positions.
+ * This is why we must convert character counts to byte offsets.
+ *
+ * NAMING CONVENTIONS IN THIS FILE:
+ *   - Variables ending in _byte_offset or _byte: byte offsets (for use with substring())
+ *   - Variables ending in _char_pos or _char_count: character positions/counts
+ *   - Variables ending in _length: usually character counts
+ *   - Always convert character counts to byte offsets before using substring()
+ *
+ * EXAMPLE CONVERSION:
+ *   int char_count = text.char_count();  // Get CHARACTER count
+ *   int byte_offset = text.index_of_nth_char(char_count);  // Convert to BYTE offset
+ *   string result = text.substring(byte_offset);  // substring() requires BYTE offset
+ */
+
 namespace Markdown
 {
 	

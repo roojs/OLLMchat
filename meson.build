@@ -52,7 +52,8 @@ executables_info = [
   ['ollmchat.bin', 'ollmchat/ollmchat'],  # Wrapper for testing ollama chat with latest code
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-html2md', 'examples/oc-html2md'],
-  ['oc-md2html', 'examples/oc-md2html']
+  ['oc-md2html', 'examples/oc-md2html'],
+  ['oc-diff', 'examples/oc-diff']
 ]
 
 # Library paths for LD_LIBRARY_PATH
