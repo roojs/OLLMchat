@@ -258,12 +258,12 @@ namespace OLLMcoder.Files
 			scanned_folders.add((int)folder.id);
 			
 			// Loop through children of this folder
-			stderr.printf("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u\n", folder.path, symlink_path, folder.children.items.size);
+			// GLib.debug("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u", folder.path, symlink_path, folder.children.items.size);
 			foreach (var child in folder.children.items) {
-				stderr.printf("DEBUG update_from_recursive: child.path=%s, child type=%s\n", child.path, child.get_type().name());
+				// GLib.debug("DEBUG update_from_recursive: child.path=%s, child type=%s", child.path, child.get_type().name());
 				// Handle File objects - add real files to project_files
 				if (child is File && !(child is FileAlias)) {
-					stderr.printf("DEBUG update_from_recursive: child is File (not FileAlias)\n");
+					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
 					this.add_file_if_new(
 						(File)child,
 						project_folder,
@@ -274,7 +274,7 @@ namespace OLLMcoder.Files
 				
 				// Handle FileAlias - follow to the real file
 				if (child is FileAlias) {
-					stderr.printf("DEBUG update_from_recursive: child is FileAlias\n");
+					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
 					this.handle_file_alias(
 						(FileAlias)child,
 						project_folder,
@@ -313,31 +313,35 @@ namespace OLLMcoder.Files
 			Gee.HashSet<string> found_files,
 			string symlink_path = "")
 		{
-			stderr.printf("DEBUG add_file_if_new: file.path=%s, symlink_path='%s'\n", file.path, symlink_path);
+			// GLib.debug("DEBUG add_file_if_new: file.path=%s, symlink_path='%s'", file.path, symlink_path);
 			found_files.add(file.path);
 			
 			// Check if this file is already in project_files
-			if (!this.child_map.has_key(file.path)) {
-				stderr.printf("DEBUG add_file_if_new: file not in child_map, adding\n");
-				// Calculate relpath using same simple rules as handle_file_alias
-				string relpath = file.path.substring(project_folder.path.length);
-				if (symlink_path != "") {
-					// Already in a symlink chain - use symlink_path + basename of file
-					relpath = symlink_path + "/" + GLib.Path.get_basename(file.path);
+			if (this.child_map.has_key(file.path)) {
+				var existing = this.child_map.get(file.path);
+				if (existing.file.id == file.id) {
+					// Same file, no update needed
+					return;
 				}
-				stderr.printf("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'\n", relpath, symlink_path == "" ? "" : relpath);
-				
-				// Create ProjectFile wrapper and add it
-				this.append(new ProjectFile(
-					project_folder.manager,
-					file,
-					project_folder,
-					"",
-					symlink_path == "" ? "" :relpath));
-				stderr.printf("DEBUG add_file_if_new: ProjectFile created and appended\n");
-			} else {
-				stderr.printf("DEBUG add_file_if_new: file already in child_map, skipping\n");
+				// Different file with same path - remove the old one
+				this.remove(existing);
 			}
+			
+			// Calculate relpath using same simple rules as handle_file_alias
+			var relpath =
+			// GLib.debug("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'", relpath, symlink_path == "" ? "" : relpath);
+			
+			// Create ProjectFile wrapper and add it
+			this.append(new ProjectFile(
+				project_folder.manager,
+				file,
+				project_folder,
+				"",
+				symlink_path == "" ? "" : 
+					(symlink_path + "/" + GLib.Path.get_basename(file.path))
+					
+			));
+			// GLib.debug("DEBUG add_file_if_new: ProjectFile created and appended");
 		}
 		
 		/**
@@ -356,16 +360,16 @@ namespace OLLMcoder.Files
 			Gee.HashSet<string> found_files,
 			string parent_symlink_path = "")
 		{
-			stderr.printf("DEBUG handle_file_alias: alias.path=%s, parent_symlink_path='%s'\n", alias.path, parent_symlink_path);
+			// GLib.debug("DEBUG handle_file_alias: alias.path=%s, parent_symlink_path='%s'", alias.path, parent_symlink_path);
 			
 			// Follow the alias to get the real file
 			if (alias.points_to == null) {
-				stderr.printf("DEBUG handle_file_alias: alias.points_to is null, returning\n");
+				// GLib.debug("DEBUG handle_file_alias: alias.points_to is null, returning");
 				return;
 			}
 			
 			var target = alias.points_to;
-			stderr.printf("DEBUG handle_file_alias: target.path=%s, target type=%s\n", target.path, target.get_type().name());
+			// GLib.debug("DEBUG handle_file_alias: target.path=%s, target type=%s", target.path, target.get_type().name());
 			
 			// Build the accumulated symlink path using simple rules
 			string new_symlink_path = alias.path.substring(project_folder.path.length);
@@ -373,11 +377,11 @@ namespace OLLMcoder.Files
 				// Already in a symlink chain - append basename of this symlink
 				new_symlink_path = parent_symlink_path + "/" + GLib.Path.get_basename(alias.path);
 			}
-			stderr.printf("DEBUG handle_file_alias: new_symlink_path='%s'\n", new_symlink_path);
+			// GLib.debug("DEBUG handle_file_alias: new_symlink_path='%s'", new_symlink_path);
 			
 			// If target is a File, add it with the accumulated symlink path
 			if (target is File && !(target is FileAlias)) {
-				stderr.printf("DEBUG handle_file_alias: target is File, calling add_file_if_new\n");
+				// GLib.debug("DEBUG handle_file_alias: target is File, calling add_file_if_new");
 				this.add_file_if_new(
 					(File)target,
 					project_folder,
@@ -388,7 +392,7 @@ namespace OLLMcoder.Files
 			
 			// If target is a Folder, recursively process it, passing the accumulated symlink path
 			if (target is Folder) {
-				stderr.printf("DEBUG handle_file_alias: target is Folder, calling update_from_recursive\n");
+				// GLib.debug("DEBUG handle_file_alias: target is Folder, calling update_from_recursive");
 				this.update_from_recursive(
 					(Folder)target,
 					project_folder,
@@ -396,7 +400,7 @@ namespace OLLMcoder.Files
 					found_files,
 					new_symlink_path);
 			} else {
-				stderr.printf("DEBUG handle_file_alias: target is neither File nor Folder, type=%s\n", target.get_type().name());
+				// GLib.debug("DEBUG handle_file_alias: target is neither File nor Folder, type=%s", target.get_type().name());
 			}
 		}
 		
