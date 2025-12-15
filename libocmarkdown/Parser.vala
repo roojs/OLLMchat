@@ -1188,7 +1188,9 @@ namespace Markdown
 		/**
 		 * Handles block start/end by calling the appropriate renderer method.
 		 * 
-		 * @param is_start True to start the block, false to end it
+		 * @param is_start True to start the block, false to e
+
+* ParserStartList (and continue) - for lines nd it
 		 * @param block_type The block type
 		 * @param lang Language for fenced code blocks (only used when is_start is true)
 		 */

@@ -44,15 +44,25 @@ namespace OLLMcoder.Files
 		 * @param info The FileInfo object from directory enumeration
 		 * @param path The full path to the file
 		 */
-		public File.new_from_info(
-			Folder parent,
+	public File.new_from_info(
+			OLLMcoder.ProjectManager manager,
+			Folder? parent,
 			GLib.FileInfo info,
 			string path)
 		{
-			base(parent.manager);
+			base(manager);
+			this.base_type = "f";
 			this.path = path;
-			this.parent = parent;
-			this.parent_id = parent.id;
+			if (parent != null) {
+				this.parent = parent;
+				this.parent_id = parent.id;
+			}
+			
+			// Set last_modified from FileInfo
+			var mod_time = info.get_modification_date_time();
+			if (mod_time != null) {
+				this.last_modified = mod_time.to_unix();
+			}
 		}
 		
 		/**

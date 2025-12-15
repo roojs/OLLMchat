@@ -200,6 +200,11 @@ namespace OLLMcoder.Files
 		public int64 last_viewed { get; set; default = 0; }
 		
 		/**
+		 * Unix timestamp of last modification (stored in database, default: 0).
+		 */
+		public int64 last_modified { get; set; default = 0; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void initDB(SQ.Database db)
@@ -217,6 +222,7 @@ namespace OLLMcoder.Files
 				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
 				"scroll_position INTEGER NOT NULL DEFAULT 0, " +
 				"last_viewed INT64 NOT NULL DEFAULT 0, " +
+				"last_modified INT64 NOT NULL DEFAULT 0, " +
 				"points_to_id INT64 NOT NULL DEFAULT 0, " +
 				"target_path TEXT NOT NULL DEFAULT '', " +
 				"is_project INTEGER NOT NULL DEFAULT 0" +
@@ -283,6 +289,7 @@ namespace OLLMcoder.Files
 			target.id = this.id;
 			target.is_active = this.is_active;
 			target.last_viewed = this.last_viewed;
+			target.last_modified = this.last_modified;
 			
 			// Copy all database fields (now all in FileBase)
 			target.language = this.language;

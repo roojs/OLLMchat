@@ -69,19 +69,28 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Relative path from project root when file is accessed through a symlink.
+		 * If empty (default), the file is not inside a symlink and display_relpath
+		 * will calculate the path normally.
+		 */
+		public string relpath { get; set; default = ""; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance (required)
 		 * @param file The File object to wrap
 		 * @param project The project folder this file belongs to
 		 * @param path Optional path (defaults to "" which will use file.path)
+		 * @param relpath Optional relative path when file is accessed through a symlink (defaults to "")
 		 */
-		public ProjectFile(OLLMcoder.ProjectManager manager, File file, Folder project, string path = "")
+		public ProjectFile(OLLMcoder.ProjectManager manager, File file, Folder project, string path = "", string relpath = "")
 		{
 			base(manager);
 			this.file = file;
 			this.project= project;
 			this.base_type = "pf";
+			this.relpath = relpath;
 			if (path == "") {
 				this.path = file.path;
 			} else {
@@ -101,6 +110,22 @@ namespace OLLMcoder.Files
 					"\n<span foreground=\"grey\" size=\"small\">" +
 					GLib.Markup.escape_text(this.path.substring(this.project.path.length)) +
 					"</span>";
+			}
+		}
+		
+		/**
+		 * Display relative path from project root.
+		 * If relpath is set (file accessed through symlink), use that.
+		 * Otherwise, calculate from this.path by removing project path prefix.
+		 */
+		public string display_relpath {
+			owned get {
+				if (this.relpath != "") {
+					return this.relpath;
+				}
+				// Calculate relative path by removing project path prefix
+				return this.path.substring(this.project.path.length);
+				
 			}
 		}
 		

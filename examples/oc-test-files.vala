@@ -19,37 +19,33 @@
 namespace OLLMchat
 {
 	/**
-	 * Recursively output all files and folders in the format: %y %Ts %p\n
-	 * where %y = file type (f for file, d for directory, l for symlink)
+	 * Output project files in the format: %y %Ts %p\n
+	 * where %y = file type (f for file)
 	 *       %Ts = modification time in seconds since epoch
-	 *       %p = full pathname
+	 *       %p = pathname from ProjectFile
+	 * 
+	 * @param project The project folder containing project_files
 	 */
-	void output_file_tree(OLLMcoder.Files.FileBase item)
+	void output_project_files(OLLMcoder.Files.Folder project)
 	{
-		// Output in format: %y %Ts %p\n
-		// Handle symlinks (FileAlias with base_type "fa") - output "l" to match find
-		// Note: For symlinks, we output the symlink's path (item.path), not the target path
-		// Symlinks are stored and output as separate entries with type "l"
-		stdout.printf(
-			"%s %lld %s\n",
-			item.base_type == "fa" ? "l" : item.base_type,
-			item.mtime_on_disk(),
-			item.path
-		);
-		
-		// If this is a folder, recursively process children
-		if (item is OLLMcoder.Files.Folder) {
-			var folder = (OLLMcoder.Files.Folder)item;
-			foreach (var child in folder.children.items) {
-				output_file_tree(child);
+		// Iterate through all ProjectFile objects in project_files
+		for (uint i = 0; i < project.project_files.get_n_items(); i++) {
+			var project_file = project.project_files.get_item(i) as OLLMcoder.Files.ProjectFile;
+			if (project_file == null) {
+				continue;
 			}
-		}
-		// If this is a symlink that points to a folder, also iterate the target folder's children
-		if (item is OLLMcoder.Files.FileAlias && item.points_to is OLLMcoder.Files.Folder) {
-			var folder = (OLLMcoder.Files.Folder)item.points_to;
-			foreach (var child in folder.children.items) {
-				output_file_tree(child);
-			}
+			
+			// Get the wrapped File object
+			var file = project_file.file;
+			
+			// Output in format: %y %Ts %p\n
+			// ProjectFile only contains files (type "f")
+			// Use display_relpath which handles symlink paths correctly
+			stdout.printf(
+				"f %lld %s\n",
+				file.mtime_on_disk(),
+				project_file.display_relpath
+			);
 		}
 	}
 
@@ -93,9 +89,9 @@ namespace OLLMchat
 		// Ensure database is synced
 		db.backupDB();
 		
-		// Output results in the same format as: find . -printf "%y %Ts %p\n"
-		// Start with the project root itself
-		output_file_tree(project);
+		// Output project_files in the same format as: find . -printf "%y %Ts %p\n"
+		// This tests what project_files contains (only files, not folders or symlinks)
+		output_project_files(project);
 	}
 
 	int main(string[] args)

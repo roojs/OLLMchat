@@ -45,14 +45,24 @@ namespace OLLMcoder.Files
 		 * @param path The full path to the folder
 		 */
 		public Folder.new_from_info(
-			Folder parent,
+			OLLMcoder.ProjectManager manager,
+			Folder? parent,
 			GLib.FileInfo info,
 			string path)
 		{
-			base(parent.manager);
+			base(manager);
+			this.base_type = "d";
 			this.path = path;
-			this.parent = parent;
-			this.parent_id = parent.id;
+			if (parent != null) {
+				this.parent = parent;
+				this.parent_id = parent.id;
+			}
+			
+			// Set last_modified from FileInfo
+			var mod_time = info.get_modification_date_time();
+			if (mod_time != null) {
+				this.last_modified = mod_time.to_unix();
+			}
 		}
 		
 		
@@ -181,11 +191,13 @@ namespace OLLMcoder.Files
 				}
 				
 				if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-					new_items.add(new Folder.new_from_info(this, info, cpath));
+					new_items.add(new Folder.new_from_info(
+						this.manager, this, info, cpath));
 					continue;
 				}
 				
-				new_items.add(new File.new_from_info(this, info, cpath));
+				new_items.add(new File.new_from_info(
+					this.manager, this, info, cpath));
 			}
 			
 			yield enumerator.close_async(GLib.Priority.DEFAULT, null);
@@ -208,7 +220,8 @@ namespace OLLMcoder.Files
 			
 			// we do not need to deal with DB/cache as 
 			// we have created the origial data from there.
-			if (new_item is FileAlias && new_item.points_to_id > -1 && new_item.points_to != null) {
+			if (new_item is FileAlias && new_item.points_to_id > -1 
+				&& new_item.points_to != null) {
 				
 				if (old_item != null && old_item.target_path == new_item.target_path) {
 					new_item.points_to = old_item.points_to;
@@ -221,11 +234,17 @@ namespace OLLMcoder.Files
 				} else {
 					// it really does not exist.
 					new_item.points_to.saveToDB(this.manager.db, null,false);
+					new_item.points_to_id = new_item.points_to.id;
 					if (new_item.points_to is Folder) { 
 						((Folder)new_item.points_to).load_files_from_db();
 					}
 				}
 			}
+				// TODO: Resolve points_to_id for FileAlias objects
+			// When a FileAlias has target_path set but points_to_id is 0, query the database
+			// to find the target FileBase by target_path and set points_to_id and points_to.
+			// Check: old_item, file_cache, then database query by target_path.
+
 
 
 			// New item - append and insert into DB
@@ -233,12 +252,10 @@ namespace OLLMcoder.Files
 				this.children.append(new_item);
 				this.children.child_map.set(name, new_item);
 
+				// TODO: If our item is a FileAlias, resolve points_to_id before saving
+				// Query database for target by target_path and set points_to_id and points_to
+
 				new_item.saveToDB(this.manager.db, null, false);
-				// if our item is an Alias
-				// we need to make sure th
-
-
-
 				return;
 			}
 			
@@ -347,7 +364,7 @@ namespace OLLMcoder.Files
 			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db);
 			var new_files = new Gee.ArrayList<FileBase>();
-			query.selectQuery("WHERE (" + 
+			query.selectQuery("SELECT * FROM filebase WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
 				string.joinv(", ", seen_ids) + ")", new_files);
 			

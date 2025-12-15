@@ -227,7 +227,6 @@ namespace SQ {
 				switch(s.ctype) {
 					case "INTEGER":
 					case "INT2":
-
 						stmt.bind_int (stmt.bind_parameter_index ("$"+ s.name), this.getInt(newer, prop_name, value_type));
 					 	break;
 					case "INT64":

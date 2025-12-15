@@ -32,6 +32,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.display_basename.html">display_basename</a></li>
+          <li class="property"><a href="OLLMcoder.Files.ProjectFile.display_relpath.html">display_relpath</a></li>
           <li class="virtual_property"><a href="OLLMcoder.Files.ProjectFile.display_with_indicators.html">display_with_indicators</a></li>
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.display_with_path.html">display_with_path</a></li>
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.file.html">file</a></li>
@@ -40,6 +41,7 @@
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.is_unsaved.html">is_unsaved</a></li>
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.needs_approval.html">needs_approval</a></li>
           <li class="property"><a href="OLLMcoder.Files.ProjectFile.project.html">project</a></li>
+          <li class="property"><a href="OLLMcoder.Files.ProjectFile.relpath.html">relpath</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.ProjectFile.ProjectFile.html">ProjectFile</a></li>
         </ul>
       </div>
@@ -75,6 +77,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Display name with basename only - overridden for ProjectFile.</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.ProjectFile.display_relpath.html" class="property">display_relpath</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Display relative path from project root. If relpath is set (file 
+                accessed through symlink), use that. Otherwise, calculate from this.path by removing project path prefix.</span>
+            </div></li>
           <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.ProjectFile.display_with_indicators.html" class="virtual_property">display_with_indicators</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Display text with status indicators - overridden for ProjectFile.
@@ -108,10 +115,15 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">The project folder this file belongs to.</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.ProjectFile.relpath.html" class="property">relpath</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Relative path from project root when file is accessed through a 
+                symlink. If empty (default), the file is not inside a symlink and display_relpath will calculate the path normally.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Files.ProjectFile.ProjectFile.html" class="creation_method">ProjectFile</a></b> (<span class="main_type"><a href="OLLMcoder.ProjectManager.html" class="class">ProjectManager</a></span> manager, <span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span> file, <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span> project, <span class="main_basic_type"><span class="class">string</span></span> path = <span class="main_literal">""</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Files.ProjectFile.ProjectFile.html" class="creation_method">ProjectFile</a></b> (<span class="main_type"><a href="OLLMcoder.ProjectManager.html" class="class">ProjectManager</a></span> manager, <span class="main_type"><a href="OLLMcoder.Files.File.html" class="class">File</a></span> file, <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span> project, <span class="main_basic_type"><span class="class">string</span></span> path = <span class="main_literal">""</span>, <span class="main_basic_type"><span class="class">string</span></span> relpath = <span class="main_literal">""</span>)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
@@ -143,15 +155,16 @@
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_unsaved.html">is_unsaved</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.language.html">language</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.last_modified.html">last_modified</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.last_viewed.html">last_viewed</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.manager.html">manager</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.mtime_on_disk.html">mtime_on_disk</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.needs_approval.html">needs_approval</a></li>
-                <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent_id.html">parent_id</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.path.html">path</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.points_to.html">points_to</a></li>

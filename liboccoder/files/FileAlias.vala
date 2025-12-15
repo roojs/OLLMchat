@@ -54,20 +54,35 @@ namespace OLLMcoder.Files
 			string path)
 		{
 			base(parent.manager);
+			this.base_type = "fa";
 			this.path = path; // Alias path
 			this.parent = parent;
 			this.parent_id = parent.id;
 			
 			// Use realpath directly on this.path to completely resolve all symlinks in the chain
 			// PATH_MAX is typically 4096 on Linux systems
-			uint8[] resolved = new uint8[4096];
-			var resolved_ptr = Posix.realpath(path, resolved);
-			if (resolved_ptr != null) {
-				this.target_path = (string)resolved_ptr;
-			} else {
-				// realpath failed (target doesn't exist or error)
+			var resolved_ptr = Posix.realpath(path);
+			if (resolved_ptr == null) {
 				this.target_path = "";
 				this.points_to_id = -1;
+				return;
+			}
+			
+			this.target_path = resolved_ptr;
+			
+			var target_info = this.get_target_info(resolved_ptr);
+			if (target_info == null) {
+				this.points_to_id = -1;
+				this.target_path = "";
+				return;
+			}
+			
+			if (target_info.get_file_type() == GLib.FileType.DIRECTORY) {
+				this.points_to = new Folder.new_from_info(
+					parent.manager, null, target_info, resolved_ptr);
+			} else {
+				this.points_to = new File.new_from_info(
+					parent.manager, null, target_info, resolved_ptr);
 			}
 		}
 		

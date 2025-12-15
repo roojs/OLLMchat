@@ -218,7 +218,8 @@ namespace OLLMcoder.Files
 				folder,
 				folder,
 				scanned_folders,
-				found_files);
+				found_files,
+				""); // Not inside a symlink at the root
 			
 			// Remove files that are no longer in the project
 			var to_remove = new Gee.ArrayList<ProjectFile>();
@@ -239,12 +240,14 @@ namespace OLLMcoder.Files
 		 * @param project_folder The root project folder (for creating ProjectFile objects)
 		 * @param scanned_folders Set of folder IDs that have already been scanned
 		 * @param found_files Set of file paths found during this scan
+		 * @param symlink_path The accumulated relative path through symlinks (empty string if not in a symlink)
 		 */
 		private void update_from_recursive(
 			Folder folder,
 			Folder project_folder,
 			Gee.HashSet<int> scanned_folders,
-			Gee.HashSet<string> found_files)
+			Gee.HashSet<string> found_files,
+			string symlink_path = "")
 		{
 			// Prevent recursing the same folder more than once
 			if (scanned_folders.contains((int)folder.id)) {
@@ -255,33 +258,43 @@ namespace OLLMcoder.Files
 			scanned_folders.add((int)folder.id);
 			
 			// Loop through children of this folder
+			stderr.printf("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u\n", folder.path, symlink_path, folder.children.items.size);
 			foreach (var child in folder.children.items) {
+				stderr.printf("DEBUG update_from_recursive: child.path=%s, child type=%s\n", child.path, child.get_type().name());
 				// Handle File objects - add real files to project_files
 				if (child is File && !(child is FileAlias)) {
+					stderr.printf("DEBUG update_from_recursive: child is File (not FileAlias)\n");
 					this.add_file_if_new(
 						(File)child,
 						project_folder,
-						found_files);
+						found_files,
+						symlink_path);
 					continue;
 				}
 				
 				// Handle FileAlias - follow to the real file
 				if (child is FileAlias) {
+					stderr.printf("DEBUG update_from_recursive: child is FileAlias\n");
 					this.handle_file_alias(
 						(FileAlias)child,
 						project_folder,
 						scanned_folders,
-						found_files);
+						found_files,
+						symlink_path);
 					continue;
 				}
 				
 				// Handle Folder objects - recursively process them
 				if (child is Folder) {
+					// If we're inside a symlink, append the folder name to symlink_path
 					this.update_from_recursive(
 						(Folder)child,
 						project_folder,
 						scanned_folders,
-						found_files);
+						found_files,
+						(symlink_path != "") ? 
+							(symlink_path + "/" + GLib.Path.get_basename(child.path)) :
+							 symlink_path);
 				}
 			}
 		}
@@ -292,21 +305,38 @@ namespace OLLMcoder.Files
 		 * @param file The file to add
 		 * @param project_folder The root project folder
 		 * @param found_files Set of file paths found during this scan
+		 * @param symlink_path The accumulated relative path through symlinks (empty string if not in a symlink)
 		 */
 		private void add_file_if_new(
 			File file,
 			Folder project_folder,
-			Gee.HashSet<string> found_files)
+			Gee.HashSet<string> found_files,
+			string symlink_path = "")
 		{
+			stderr.printf("DEBUG add_file_if_new: file.path=%s, symlink_path='%s'\n", file.path, symlink_path);
 			found_files.add(file.path);
 			
 			// Check if this file is already in project_files
 			if (!this.child_map.has_key(file.path)) {
+				stderr.printf("DEBUG add_file_if_new: file not in child_map, adding\n");
+				// Calculate relpath using same simple rules as handle_file_alias
+				string relpath = file.path.substring(project_folder.path.length);
+				if (symlink_path != "") {
+					// Already in a symlink chain - use symlink_path + basename of file
+					relpath = symlink_path + "/" + GLib.Path.get_basename(file.path);
+				}
+				stderr.printf("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'\n", relpath, symlink_path == "" ? "" : relpath);
+				
 				// Create ProjectFile wrapper and add it
 				this.append(new ProjectFile(
 					project_folder.manager,
 					file,
-					project_folder));
+					project_folder,
+					"",
+					symlink_path == "" ? "" :relpath));
+				stderr.printf("DEBUG add_file_if_new: ProjectFile created and appended\n");
+			} else {
+				stderr.printf("DEBUG add_file_if_new: file already in child_map, skipping\n");
 			}
 		}
 		
@@ -317,49 +347,71 @@ namespace OLLMcoder.Files
 		 * @param project_folder The root project folder
 		 * @param scanned_folders Set of folder IDs that have already been scanned
 		 * @param found_files Set of file paths found during this scan
+		 * @param parent_symlink_path The accumulated relative path through parent symlinks (empty string if none)
 		 */
 		private void handle_file_alias(
 			FileAlias alias,
 			Folder project_folder,
 			Gee.HashSet<int> scanned_folders,
-			Gee.HashSet<string> found_files)
+			Gee.HashSet<string> found_files,
+			string parent_symlink_path = "")
 		{
+			stderr.printf("DEBUG handle_file_alias: alias.path=%s, parent_symlink_path='%s'\n", alias.path, parent_symlink_path);
+			
 			// Follow the alias to get the real file
 			if (alias.points_to == null) {
+				stderr.printf("DEBUG handle_file_alias: alias.points_to is null, returning\n");
 				return;
 			}
 			
 			var target = alias.points_to;
+			stderr.printf("DEBUG handle_file_alias: target.path=%s, target type=%s\n", target.path, target.get_type().name());
 			
-			// If target is a File, add it
+			// Build the accumulated symlink path using simple rules
+			string new_symlink_path = alias.path.substring(project_folder.path.length);
+			if (parent_symlink_path != "") {
+				// Already in a symlink chain - append basename of this symlink
+				new_symlink_path = parent_symlink_path + "/" + GLib.Path.get_basename(alias.path);
+			}
+			stderr.printf("DEBUG handle_file_alias: new_symlink_path='%s'\n", new_symlink_path);
+			
+			// If target is a File, add it with the accumulated symlink path
 			if (target is File && !(target is FileAlias)) {
+				stderr.printf("DEBUG handle_file_alias: target is File, calling add_file_if_new\n");
 				this.add_file_if_new(
 					(File)target,
 					project_folder,
-					found_files);
+					found_files,
+					new_symlink_path);
 				return;
 			}
 			
-			// If target is a Folder, recursively process it
+			// If target is a Folder, recursively process it, passing the accumulated symlink path
 			if (target is Folder) {
+				stderr.printf("DEBUG handle_file_alias: target is Folder, calling update_from_recursive\n");
 				this.update_from_recursive(
 					(Folder)target,
 					project_folder,
 					scanned_folders,
-					found_files);
+					found_files,
+					new_symlink_path);
+			} else {
+				stderr.printf("DEBUG handle_file_alias: target is neither File nor Folder, type=%s\n", target.get_type().name());
 			}
 		}
 		
 		/**
 		 * Get the active file from the project files list.
-		 * 
+		 * FIXME -  how do we determin active files for a project
+		 * since a file could be active in another project
+		 *
 		 * @return The active File, or null if no file is active
 		 */
 		public File? get_active_file()
 		{
 			for (uint i = 0; i < this.get_n_items(); i++) {
 				var item = this.get_item(i) as ProjectFile;
-				if (item != null && item.is_active) {
+				if (item != null && item.file.is_active) {
 					return item.file;
 				}
 			}
