@@ -28,6 +28,9 @@ occoder_src = files([
   'ProjectDropdown.vala',
   'FileDropdown.vala',
   'SourceView.vala',
+  'Diff/Patch.vala',
+  'Diff/PatchCreator.vala',
+  'Diff/PatchApplier.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
