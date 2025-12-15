@@ -328,7 +328,6 @@ namespace OLLMcoder.Files
 			}
 			
 			// Calculate relpath using same simple rules as handle_file_alias
-			var relpath =
 			// GLib.debug("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'", relpath, symlink_path == "" ? "" : relpath);
 			
 			// Create ProjectFile wrapper and add it
@@ -337,9 +336,9 @@ namespace OLLMcoder.Files
 				file,
 				project_folder,
 				"",
-				symlink_path == "" ? "" : 
+				symlink_path == "" ? symlink_path : 
 					(symlink_path + "/" + GLib.Path.get_basename(file.path))
-					
+
 			));
 			// GLib.debug("DEBUG add_file_if_new: ProjectFile created and appended");
 		}
