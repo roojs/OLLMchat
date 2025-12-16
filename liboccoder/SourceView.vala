@@ -35,7 +35,7 @@ namespace OLLMcoder
 	 * - Buffer modification conflicts
 	 * - Session restoration failures
 	 * 
-	 * Operations like refresh_file(), restore_session(), and file loading should
+	 * Operations like refresh_file(), restore_active_state(), and file loading should
 	 * provide user feedback and allow recovery/retry options.
 	 */
 	public class SourceView : Gtk.Box
@@ -203,8 +203,38 @@ namespace OLLMcoder
 			this.add_controller(controller);
 		
 			
-			// Restore session on startup (not sure if it should be done here..)
-			//this.restore_session();
+			// Editor state restoration should be called from view switching code
+			// after projects are loaded from database
+		}
+		
+		/**
+		 * Apply manager state to UI.
+		 * 
+		 * Reads active project and file from manager properties and applies them to the UI.
+		 * This method should only restore UI state - all data loading happens before calling this.
+		 * 
+		 * Uses manager.active_project and manager.active_file properties.
+		 */
+		public async void apply_manager_state()
+		{
+			// Only apply UI state from manager properties - all data is already loaded
+			// Use manager's active_project and active_file properties
+			
+			if (this.manager.active_project != null) {
+				// Activate project (already loaded in memory)
+				yield this.manager.activate_project(this.manager.active_project);
+				
+				// Update file dropdown's project
+				this.file_dropdown.project = this.manager.active_project;
+				
+				// Update project dropdown
+				this.project_dropdown.selected_project = this.manager.active_project;
+			}
+			
+			if (this.manager.active_file != null) {
+				// Open file (will restore cursor/scroll position from file.cursor_line, etc.)
+				yield this.open_file(this.manager.active_file);
+			}
 		}
 		
 		/**

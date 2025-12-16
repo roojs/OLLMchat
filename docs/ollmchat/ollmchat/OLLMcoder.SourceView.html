@@ -31,6 +31,7 @@
           <li class="property"><a href="OLLMcoder.SourceView.current_file.html">current_file</a></li>
           <li class="property"><a href="OLLMcoder.SourceView.current_project.html">current_project</a></li>
           <li class="creation_method"><a href="OLLMcoder.SourceView.SourceView.html">SourceView</a></li>
+          <li class="method"><a href="OLLMcoder.SourceView.apply_manager_state.html">apply_manager_state</a></li>
           <li class="method"><a href="OLLMcoder.SourceView.navigate_to_line.html">navigate_to_line</a></li>
           <li class="method"><a href="OLLMcoder.SourceView.open_file.html">open_file</a></li>
           <li class="method"><a href="OLLMcoder.SourceView.open_project.html">open_project</a></li>
@@ -59,7 +60,8 @@
             (file reading, database operations, etc.) silently fail or only log warnings. We need proper error handling with user interaction 
             (dialogs, notifications) for: - File read/write failures - Database operation failures - File system errors - Buffer modification 
             conflicts - Session restoration failures</p>
-          <p>Operations like refresh_file(), restore_session(), and file loading should provide user feedback and allow recovery/retry options.</p>
+          <p>Operations like refresh_file(), restore_active_state(), and file loading should provide user feedback and allow recovery/retry options.
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.html">OLLMcoder</a>
         </div>
@@ -90,6 +92,10 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.apply_manager_state.html" class="method">apply_manager_state</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Apply manager state to UI.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SourceView.navigate_to_line.html" class="method">navigate_to_line</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> line_number)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Navigate to a specific line in the current file.</span>
