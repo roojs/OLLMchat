@@ -47,10 +47,23 @@ namespace OLLMcoder
 		private Gtk.ScrolledWindow scrolled_window;
 		
 		/**
-		 * Timeout source for debouncing scroll position saves.
-		 */
+		* Timeout source for debouncing scroll position saves.
+		*/
 		private uint? scroll_save_timeout_id = null;
 		
+		/**
+		* Search-related components.
+		*/
+		private Gtk.SearchEntry search_entry;
+		private Gtk.Label search_results_label;
+		private Gtk.Button search_next_button;
+		private Gtk.Button search_back_button;
+		private GtkSource.SearchContext? search_context = null;
+		private int last_search_end = 0;
+		private Gtk.CheckButton case_sensitive_checkbox;
+		private Gtk.CheckButton regex_checkbox;
+		private Gtk.CheckButton multiline_checkbox;
+			
 		/**
 		 * Currently active file.
 		 */
@@ -137,6 +150,9 @@ namespace OLLMcoder
 			this.scrolled_window.set_child(this.source_view);
 			this.append(this.scrolled_window);
 			
+			// Create search footer bar
+			this.create_search_bar();
+			
 			// Connect to buffer modified signal
 			var source_buffer = this.source_view.buffer as GtkSource.Buffer;
 			source_buffer.notify["modified"].connect(() => {
@@ -153,13 +169,35 @@ namespace OLLMcoder
 				});
 			}
 			
-			// Add keyboard shortcut for Ctrl-S (save)
+			// Add keyboard shortcuts
 			var controller = new Gtk.EventControllerKey();
 			controller.key_pressed.connect((keyval, keycode, state) => {
-				if ((state & Gdk.ModifierType.CONTROL_MASK) != 0 && keyval == Gdk.Key.s) {
+				var ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
+				var shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+				
+				if (ctrl && keyval == Gdk.Key.s) {
 					this.save_file();
 					return true;
 				}
+				
+				if (ctrl && keyval == Gdk.Key.f) {
+					// Focus search entry
+					this.search_entry.grab_focus();
+					this.search_entry.select_region(0, -1);
+					return true;
+				}
+				
+				if (ctrl && keyval == Gdk.Key.g) {
+					if (shift) {
+						// Ctrl+Shift+G: backward search
+						this.backward_search(true);
+					} else {
+						// Ctrl+G: forward search
+						this.forward_search(true);
+					}
+					return true;
+				}
+				
 				return false;
 			});
 			this.add_controller(controller);
@@ -265,6 +303,14 @@ namespace OLLMcoder
 			// Switch view to file's buffer
 			this.source_view.set_buffer(file.text_buffer);
 			this.current_file = file;
+			
+			// Reset search context when switching files
+			this.search_context = null;
+			this.last_search_end = 0;
+			if (this.search_entry != null) {
+				this.search_entry.text = "";
+			}
+			this.update_search_results();
 			
 			// Restore or set cursor position
 			if (line_number != null) {
@@ -472,6 +518,256 @@ namespace OLLMcoder
 					return false; // Only run once
 				});
 			}
+		}
+		
+		/**
+		 * Create search footer bar with search entry, results label, and navigation buttons.
+		 */
+		private void create_search_bar()
+		{
+			var search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+				margin_start = 5,
+				margin_end = 5,
+				margin_top = 5,
+				margin_bottom = 5,
+				vexpand = false
+			};
+			
+			// Search entry
+			this.search_entry = new Gtk.SearchEntry() {
+				hexpand = true,
+				placeholder_text = "Search...",
+				search_delay = 300
+			};
+			this.search_entry.search_changed.connect(() => {
+				this.perform_search(this.search_entry.text);
+			});
+			
+			// Handle Enter key in search entry
+			var search_entry_controller = new Gtk.EventControllerKey();
+			search_entry_controller.key_pressed.connect((keyval, keycode, state) => {
+				if (keyval == Gdk.Key.Return && this.search_entry.text.length > 0) {
+					this.forward_search(true);
+					return true;
+				}
+				if (keyval == Gdk.Key.g && (state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+					this.forward_search(true);
+					return true;
+				}
+				return false;
+			});
+			this.search_entry.add_controller(search_entry_controller);
+			
+			// Results label
+			this.search_results_label = new Gtk.Label("No Results") {
+				margin_start = 4,
+				margin_end = 4
+			};
+			
+			// Next button
+			this.search_next_button = new Gtk.Button.from_icon_name("go-down") {
+				tooltip_text = "Next match",
+				sensitive = false
+			};
+			this.search_next_button.clicked.connect(() => {
+				this.forward_search(true);
+			});
+			
+			// Back button
+			this.search_back_button = new Gtk.Button.from_icon_name("go-up") {
+				tooltip_text = "Previous match",
+				sensitive = false
+			};
+			this.search_back_button.clicked.connect(() => {
+				this.backward_search(true);
+			});
+			
+			// Settings menu button
+			var settings_menu_button = new Gtk.MenuButton() {
+				icon_name = "emblem-system",
+				tooltip_text = "Search settings",
+				always_show_arrow = true
+			};
+			
+			// Create settings popover
+			var settings_popover = new Gtk.Popover();
+			var settings_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
+				margin_start = 10,
+				margin_end = 10,
+				margin_top = 10,
+				margin_bottom = 10
+			};
+			
+			this.case_sensitive_checkbox = new Gtk.CheckButton.with_label("Case Sensitive");
+			this.case_sensitive_checkbox.toggled.connect(() => {
+				this.update_search_settings();
+			});
+			
+			this.regex_checkbox = new Gtk.CheckButton.with_label("Regex");
+			this.regex_checkbox.toggled.connect(() => {
+				this.update_search_settings();
+			});
+			
+			this.multiline_checkbox = new Gtk.CheckButton.with_label("Multi-line (add \\n)");
+			this.multiline_checkbox.toggled.connect(() => {
+				this.update_search_settings();
+			});
+			
+			settings_box.append(this.case_sensitive_checkbox);
+			settings_box.append(this.regex_checkbox);
+			settings_box.append(this.multiline_checkbox);
+			settings_popover.set_child(settings_box);
+			settings_menu_button.popover = settings_popover;
+			
+			// Add all widgets to search bar
+			search_bar.append(this.search_entry);
+			search_bar.append(this.search_results_label);
+			search_bar.append(this.search_next_button);
+			search_bar.append(this.search_back_button);
+			search_bar.append(settings_menu_button);
+			
+			this.append(search_bar);
+		}
+		
+		/**
+		 * Perform search with given text.
+		 */
+		private void perform_search(string search_text)
+		{
+			if (this.current_buffer == null) {
+				this.search_context = null;
+				this.update_search_results();
+				return;
+			}
+			
+			// Create search settings
+			var search_settings = new GtkSource.SearchSettings();
+			search_settings.case_sensitive = this.case_sensitive_checkbox.active;
+			search_settings.regex_enabled = this.regex_checkbox.active;
+			search_settings.wrap_around = false;
+			
+			// Create search context
+			this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
+			this.search_context.set_highlight(true);
+			
+			// Process multiline option
+			var txt = search_text;
+			if (this.multiline_checkbox.active) {
+				txt = search_text.replace("\\n", "\n");
+			}
+			
+			search_settings.set_search_text(txt);
+			
+			// Reset search position
+			this.last_search_end = 0;
+			
+			// Update results display
+			this.update_search_results();
+		}
+		
+		/**
+		 * Update search settings for current search context.
+		 */
+		private void update_search_settings()
+		{
+			if (this.search_context == null) {
+				return;
+			}
+			
+			// Re-perform search with new settings
+			this.perform_search(this.search_entry.text);
+		}
+		
+		/**
+		 * Update search results label and button states.
+		 */
+		private void update_search_results()
+		{
+			if (this.search_context == null) {
+				this.search_results_label.label = "No Results";
+				this.search_next_button.sensitive = false;
+				this.search_back_button.sensitive = false;
+				return;
+			}
+			
+			var count = this.search_context.get_occurrences_count();
+			if (count < 0) {
+				this.search_results_label.label = "??? Matches";
+				this.search_next_button.sensitive = false;
+				this.search_back_button.sensitive = false;
+				return;
+			}
+			
+			if (count > 0) {
+				this.search_results_label.label = "%d Matches".printf(count);
+				this.search_next_button.sensitive = true;
+				this.search_back_button.sensitive = true;
+			} else {
+				this.search_results_label.label = "No Matches";
+				this.search_next_button.sensitive = false;
+				this.search_back_button.sensitive = false;
+			}
+		}
+		
+		/**
+		 * Perform forward search (find next match).
+		 */
+		private void forward_search(bool change_focus)
+		{
+			if (this.current_buffer == null) {
+				return;
+			}
+			
+			Gtk.TextIter beg, st, en;
+			bool has_wrapped_around;
+			this.current_buffer.get_iter_at_offset(out beg, this.last_search_end);
+			
+			if (!this.search_context.forward(beg, out st, out en, out has_wrapped_around)) {
+				// No match found, reset to start
+				this.last_search_end = 0;
+				return;
+			}
+			
+			if (has_wrapped_around) {
+				// Don't wrap around, just stop
+				return;
+			}
+			
+			this.last_search_end = en.get_offset();
+			if (change_focus) {
+				this.source_view.grab_focus();
+			}
+			this.current_buffer.place_cursor(st);
+			this.source_view.scroll_to_iter(st, 0.1, true, 0.0, 0.5);
+		}
+		
+		/**
+		 * Perform backward search (find previous match).
+		 */
+		private void backward_search(bool change_focus)
+		{
+			if (this.current_buffer == null) {
+				return;
+			}
+			
+			Gtk.TextIter beg, st, en;
+			bool has_wrapped_around;
+			this.current_buffer.get_iter_at_offset(out beg, this.last_search_end - 1);
+			
+			if (!this.search_context.backward(beg, out st, out en, out has_wrapped_around)) {
+				// No match found, reset to end
+				Gtk.TextIter end_iter;
+				this.current_buffer.get_end_iter(out end_iter);
+				this.last_search_end = end_iter.get_offset();
+				return;
+			}
+			
+			this.last_search_end = en.get_offset();
+			if (change_focus) {
+				this.source_view.grab_focus();
+			}
+			this.current_buffer.place_cursor(st);
+			this.source_view.scroll_to_iter(st, 0.1, true, 0.0, 0.5);
 		}
 		
 		/**
