@@ -31,8 +31,6 @@ ollmchatgtk_src = files([
   'ChatPermission.vala',
   'HistoryBrowser.vala',
   'Message.vala',
-  'Prompt/OpenFile.vala',
-  'Prompt/CodeAssistantProvider.vala',
 ]) + ollmchat_tools_gtk_src
 
 # Build rpath for libraries to find each other in build directory

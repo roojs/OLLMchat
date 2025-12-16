@@ -15,14 +15,14 @@ occoder_deps = [
 ]
 
 occoder_src = files([
-  'files/FileBase.vala',
-  'files/File.vala',
-  'files/FileAlias.vala',
-  'files/Folder.vala',
-  'files/FolderFiles.vala',
-  'files/ProjectFile.vala',
-  'files/ProjectFiles.vala',
-  'files/ProjectList.vala',
+  'Files/FileBase.vala',
+  'Files/File.vala',
+  'Files/FileAlias.vala',
+  'Files/Folder.vala',
+  'Files/FolderFiles.vala',
+  'Files/ProjectFile.vala',
+  'Files/ProjectFiles.vala',
+  'Files/ProjectList.vala',
   'ProjectManager.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',
@@ -32,6 +32,7 @@ occoder_src = files([
   'Diff/Patch.vala',
   'Diff/PatchApplier.vala',
   'Diff/Differ.vala',
+  'Prompt/CodeAssistantProvider.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
