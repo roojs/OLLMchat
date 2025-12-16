@@ -31,18 +31,22 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Diff.Patch.new_lines.html">new_lines</a></li>
-          <li class="property"><a href="OLLMcoder.Diff.Patch.old_lines.html">old_lines</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.new_line_end.html">new_line_end</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.new_line_start.html">new_line_start</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.old_line_end.html">old_line_end</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.old_line_start.html">old_line_start</a></li>
           <li class="property"><a href="OLLMcoder.Diff.Patch.operation.html">operation</a></li>
-          <li class="property"><a href="OLLMcoder.Diff.Patch.start_line.html">start_line</a></li>
           <li class="creation_method">Patch</li>
+          <li class="method"><a href="OLLMcoder.Diff.Patch.context.html">context</a></li>
+          <li class="method"><a href="OLLMcoder.Diff.Patch.new_lines.html">new_lines</a></li>
+          <li class="method"><a href="OLLMcoder.Diff.Patch.old_lines.html">old_lines</a></li>
         </ul>
       </div>
       <div class="site_content">
         <h1 class="main_title">Patch</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Patch</span></b> (<span class="main_type"><a href="OLLMcoder.Diff.PatchOperation.html" class="enum">PatchOperation</a></span> op, <span class="main_basic_type"><span class="struct">int</span></span> start_line, <span class="main_basic_type"><span class="class">string</span></span>[] old_lines, <span class="main_basic_type"><span class="class">string</span></span>[] new_lines)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Patch</span></b> (<span class="main_type"><a href="OLLMcoder.Diff.PatchOperation.html" class="enum">PatchOperation</a></span> op, <span class="main_basic_type"><span class="struct">int</span></span> old_line_start, <span class="main_basic_type"><span class="struct">int</span></span> old_line_end, <span class="main_basic_type"><span class="struct">int</span></span> new_line_start, <span class="main_basic_type"><span class="struct">int</span></span> new_line_end, <span class="main_basic_type"><span class="class">string</span></span>[] all_old_lines, <span class="main_basic_type"><span class="class">string</span></span>[] all_new_lines)
         </div>
         <div class="description">
           <p>Constructor.</p>
@@ -55,21 +59,39 @@
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">start_line</td>
+              <td class="main_parameter_table_name">old_line_start</td>
               <td>
-                <p>Starting line number (1-based) </p>
+                <p>Starting line number for old lines (1-based, inclusive) </p>
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">old_lines</td>
+              <td class="main_parameter_table_name">old_line_end</td>
               <td>
-                <p>Lines to remove </p>
+                <p>Ending line number for old lines (1-based, inclusive) </p>
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">new_lines</td>
+              <td class="main_parameter_table_name">new_line_start</td>
               <td>
-                <p>Lines to add </p>
+                <p>Starting line number for new lines (1-based, inclusive) </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">new_line_end</td>
+              <td>
+                <p>Ending line number for new lines (1-based, inclusive) </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">all_old_lines</td>
+              <td>
+                <p>Reference to all old lines array </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">all_new_lines</td>
+              <td>
+                <p>Reference to all new lines array </p>
               </td>
             </tr>
           </table>

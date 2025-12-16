@@ -31,21 +31,33 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Diff.Patch.new_lines.html">new_lines</a></li>
-          <li class="property">old_lines</li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.new_line_end.html">new_line_end</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.new_line_start.html">new_line_start</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.old_line_end.html">old_line_end</a></li>
+          <li class="property"><a href="OLLMcoder.Diff.Patch.old_line_start.html">old_line_start</a></li>
           <li class="property"><a href="OLLMcoder.Diff.Patch.operation.html">operation</a></li>
-          <li class="property"><a href="OLLMcoder.Diff.Patch.start_line.html">start_line</a></li>
           <li class="creation_method"><a href="OLLMcoder.Diff.Patch.Patch.html">Patch</a></li>
+          <li class="method"><a href="OLLMcoder.Diff.Patch.context.html">context</a></li>
+          <li class="method"><a href="OLLMcoder.Diff.Patch.new_lines.html">new_lines</a></li>
+          <li class="method">old_lines</li>
         </ul>
       </div>
       <div class="site_content">
         <h1 class="main_title">old_lines</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>[] <b><span class="property">old_lines</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>[] <b><span class="method">old_lines</span></b> ()
         </div>
         <div class="description">
-          <p>Lines to remove (empty array for ADD operations).</p>
+          <p>Get lines to remove (computed from range).</p>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>Array of lines to remove </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

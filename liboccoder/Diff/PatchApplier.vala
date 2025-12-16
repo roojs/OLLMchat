@@ -69,9 +69,9 @@ namespace OLLMcoder.Diff
 			var sorted_patches = new Gee.ArrayList<Patch>();
 			sorted_patches.add_all(patches);
 			sorted_patches.sort((a, b) => {
-				// Sort by start_line descending
-				if (a.start_line > b.start_line) return -1;
-				if (a.start_line < b.start_line) return 1;
+				// Sort by old_line_start descending
+				if (a.old_line_start > b.old_line_start) return -1;
+				if (a.old_line_start < b.old_line_start) return 1;
 				return 0;
 			});
 			
@@ -87,38 +87,39 @@ namespace OLLMcoder.Diff
 		private void apply_patch(Patch patch, ref string[] lines) throws Error
 		{
 			// Convert 1-based line number to 0-based index
-			int line_index = int.max(0, patch.start_line - 1);
+			int line_index = int.max(0, patch.old_line_start - 1);
+			var old_count = patch.old_line_end - patch.old_line_start + 1;
 			
 			switch (patch.operation) {
 				case PatchOperation.ADD:
-					// Insert new_lines at start_line
-					this.insert_lines(ref lines, int.min(line_index, lines.length), patch.new_lines);
+					// Insert new_lines at old_line_start
+					this.insert_lines(ref lines, int.min(line_index, lines.length), patch.new_lines());
 					break;
 					
 				case PatchOperation.REMOVE:
-					// Remove old_lines starting at start_line
+					// Remove old_lines starting at old_line_start
 					if (line_index >= lines.length) {
 						throw new Error.literal(
 							0,
 							0,
-							"Patch REMOVE: start_line " + patch.start_line.to_string() + " is beyond text length"
+							"Patch REMOVE: old_line_start " + patch.old_line_start.to_string() + " is beyond text length"
 						);
 					}
 					// Try to find matching lines for fuzzy matching
-					this.remove_lines(ref lines, this.find_match(lines, patch.old_lines, line_index), patch.old_lines.length);
+					this.remove_lines(ref lines, this.find_match(lines, patch.old_lines(), line_index), old_count);
 					break;
 					
 				case PatchOperation.REPLACE:
-					// Remove old_lines and insert new_lines at start_line
+					// Remove old_lines and insert new_lines at old_line_start
 					if (line_index >= lines.length) {
 						// If beyond end, just add
-						this.insert_lines(ref lines, lines.length, patch.new_lines);
+						this.insert_lines(ref lines, lines.length, patch.new_lines());
 						break;
 					}
 					// Try to find matching lines for fuzzy matching
-					int actual_start = this.find_match(lines, patch.old_lines, line_index);
-					this.remove_lines(ref lines, actual_start, patch.old_lines.length);
-					this.insert_lines(ref lines, actual_start, patch.new_lines);
+					int actual_start = this.find_match(lines, patch.old_lines(), line_index);
+					this.remove_lines(ref lines, actual_start, old_count);
+					this.insert_lines(ref lines, actual_start, patch.new_lines());
 					break;
 			}
 		}

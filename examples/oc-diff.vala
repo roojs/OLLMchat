@@ -47,55 +47,103 @@ namespace OLLMchat
 		}
 		
 		// Create patches
-		var creator = new OLLMcoder.Diff.PatchCreator();
-		var patches = creator.create_patches(file1_contents, file2_contents);
+		var differ = new OLLMcoder.Diff.Differ(file1_contents, file2_contents);
+		var patches = differ.diff();
 		
 		// Output unified diff format
 		stdout.printf("--- %s\n", file1_path);
 		stdout.printf("+++ %s\n", file2_path);
 		
-		foreach (var patch in patches) {
-			int old_count = patch.old_lines.length;
-			int new_count = patch.new_lines.length;
+		if (patches.size == 0) {
+			return 0;
+		}
+		
+		// Merge adjacent patches into hunks (within context distance)
+		var context_lines = 3;
+		var i = 0;
+		while (i < patches.size) {
+			// Start of a new hunk
+			var hunk_start_patch = patches.get(i);
+			var hunk_end_patch = hunk_start_patch;
+			var hunk_patches = new Gee.ArrayList<OLLMcoder.Diff.Patch>();
+			hunk_patches.add(hunk_start_patch);
 			
-			// Calculate line numbers for unified diff
-			int start_old = patch.start_line;
-			int start_new = patch.start_line;
+			// Find all patches that should be in this hunk
+			var last_old_end = hunk_start_patch.old_line_end;
+			i++;
 			
-			switch (patch.operation) {
-				case OLLMcoder.Diff.PatchOperation.ADD:
-					// Adding lines: old file unchanged, new file adds lines
-					old_count = 0;
+			while (i < patches.size) {
+				var next_patch = patches.get(i);
+				// If next patch is within 2*context_lines of the last patch, merge it
+				var gap = next_patch.old_line_start - last_old_end - 1;
+				if (gap <= 2 * context_lines) {
+					hunk_patches.add(next_patch);
+					last_old_end = next_patch.old_line_end;
+					hunk_end_patch = next_patch;
+					i++;
+				} else {
 					break;
-				case OLLMcoder.Diff.PatchOperation.REMOVE:
-					// Removing lines: old file removes lines, new file unchanged
-					new_count = 0;
-					break;
-				case OLLMcoder.Diff.PatchOperation.REPLACE:
-					// Replacing lines: both files change
-					break;
+				}
 			}
+			
+			// Calculate hunk boundaries
+			var hunk_old_start = hunk_start_patch.old_line_start;
+			var hunk_old_end = hunk_end_patch.old_line_end;
+			var hunk_new_start = hunk_start_patch.new_line_start;
+			var hunk_new_end = hunk_end_patch.new_line_end;
+			
+			// Get context before first patch
+			var context_before = hunk_start_patch.context(-context_lines);
+			var context_before_count = context_before.length;
+			
+			// Get context after last patch
+			var context_after = hunk_end_patch.context(context_lines);
+			var context_after_count = context_after.length;
+			
+			// Calculate hunk header
+			var hunk_start_line = int.max(1, hunk_old_start - context_before_count);
+			var hunk_old_count = context_before_count + (hunk_old_end - hunk_old_start + 1) + context_after_count;
+			var hunk_new_count = context_before_count + (hunk_new_end - hunk_new_start + 1) + context_after_count;
 			
 			// Output hunk header
-			if (old_count == 0) {
-				// Special case: no old lines (pure addition)
-				stdout.printf("@@ -%d,0 +%d,%d @@\n", start_old, start_new, new_count);
-			} else if (new_count == 0) {
-				// Special case: no new lines (pure removal)
-				stdout.printf("@@ -%d,%d +%d,0 @@\n", start_old, old_count, start_new);
-			} else {
-				// Normal case: both old and new lines
-				stdout.printf("@@ -%d,%d +%d,%d @@\n", start_old, old_count, start_new, new_count);
+			stdout.printf("@@ -%d,%d +%d,%d @@\n", hunk_start_line, hunk_old_count, hunk_start_line, hunk_new_count);
+			
+			// Output context before
+			foreach (var line in context_before) {
+				stdout.printf(" %s\n", line);
 			}
 			
-			// Output old lines (with - prefix)
-			foreach (var line in patch.old_lines) {
-				stdout.printf("-%s\n", line);
+			// Output patches in order, with context between them
+			var current_line = hunk_old_start;
+			foreach (var patch in hunk_patches) {
+				// Output unchanged lines between patches
+				if (patch.old_line_start > current_line) {
+					// Get the gap lines using context from the patch
+					var gap_size = patch.old_line_start - current_line;
+					var gap_context = patch.context(-gap_size);
+					foreach (var line in gap_context) {
+						stdout.printf(" %s\n", line);
+					}
+				}
+				
+				// Output old lines (deletions) - these come from lines1
+				var old_lines_array = patch.old_lines();
+				foreach (var line in old_lines_array) {
+					stdout.printf("-%s\n", line);
+				}
+				
+				// Output new lines (additions) - these come from lines2
+				var new_lines_array = patch.new_lines();
+				foreach (var line in new_lines_array) {
+					stdout.printf("+%s\n", line);
+				}
+				
+				current_line = patch.old_line_end + 1;
 			}
 			
-			// Output new lines (with + prefix)
-			foreach (var line in patch.new_lines) {
-				stdout.printf("+%s\n", line);
+			// Output context after
+			foreach (var line in context_after) {
+				stdout.printf(" %s\n", line);
 			}
 		}
 		
