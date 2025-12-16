@@ -40,8 +40,8 @@ namespace OLLMcoder
 		/**
 		 * List of all projects (folders where is_project = true).
 		 */
-		public Gee.ArrayList<OLLMcoder.Files.Folder> projects { get; private set;
-			default = new Gee.ArrayList<OLLMcoder.Files.Folder>(); }
+		public OLLMcoder.Files.ProjectList projects { get; private set;
+			default = new OLLMcoder.Files.ProjectList(); }
 		
 		/**
 		 * Currently active project (folder with is_project = true).
@@ -175,33 +175,51 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Restore session (active project and file) from in-memory data structures.
-		 * Note: Projects are Folders with is_project = true.
+		 * Load projects from database.
 		 * 
-		 * @return Tuple of (active_project, active_file) or (null, null) if none found
+		 * Queries database for all folders where is_project = 1 and loads them
+		 * into the manager.projects list.
 		 */
-		public void restore_session(out OLLMcoder.Files.Folder? project, out OLLMcoder.Files.File? file)
+		public void load_projects_from_db()
 		{
-			project = null;
-			file = null;
+			if (this.db == null) {
+				return;
+			}
 			
-			// Find active project in memory (folders where is_project = true)
-			project = this.projects.first_match((p) => p.is_active && p.is_project);
+			// Query database for projects
+			var query = OLLMcoder.Files.FileBase.query(this.db, this);
+			var projects_list = new Gee.ArrayList<OLLMcoder.Files.Folder>();
+			query.select("WHERE is_project = 1", projects_list);
 			
+			// Add to manager.projects list (ProjectList handles deduplication)
+			foreach (var project in projects_list) {
+				this.projects.append(project);
+			}
+		}
+		
+		/**
+		 * Restore active project and file from in-memory data structures.
+		 * Note: Projects are Folders with is_project = true.
+		 * This will set this.active_project and this.active_file, deactivate previous items,
+		 * update the database, and emit signals.
+		 */
+		public async void restore_active_state()
+		{
+			// Find active project using ProjectList internal method
+			var project = this.projects.get_active_project();
 			if (project == null) {
 				return;
 			}
 			
-			// Find active file - try project_files first
-			for (uint i = 0; i < project.project_files.get_n_items(); i++) {
-				var item = project.project_files.get_item(i);
-				var pf = item as Files.ProjectFile;
-				if (pf != null && pf.is_active) {
-					file = pf.file;
-					break;
-				}
-			}
+			// This will set this.active_project, deactivate previous, update DB, emit signal
+			yield this.activate_project(project);
 			
+			// Find active file using ProjectFiles internal method
+			var file = project.project_files.get_active_file();
+			if (file != null) {
+				// This will set this.active_file, deactivate previous, update DB, emit signal
+				this.activate_file(file);
+			}
 		}
 		
 	}

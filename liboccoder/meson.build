@@ -22,6 +22,7 @@ occoder_src = files([
   'files/FolderFiles.vala',
   'files/ProjectFile.vala',
   'files/ProjectFiles.vala',
+  'files/ProjectList.vala',
   'ProjectManager.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',

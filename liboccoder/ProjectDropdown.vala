@@ -61,24 +61,65 @@ namespace OLLMcoder
 			this.manager = manager;
 			this.placeholder_text = "Search projects...";
 			
-			// Populate projects from manager
-			this.refresh();
+			// Use ProjectList directly as the ListModel (no copying)
+			this.set_item_model(this.manager.projects);
+		}
+		
+		/**
+		 * Set the item model using a ListModel directly (for ProjectList).
+		 */
+		private void set_item_model(GLib.ListModel model)
+		{
+			// Update string filter to work with Folder type
+			this.string_filter = new Gtk.StringFilter(
+				new Gtk.PropertyExpression(typeof(Files.Folder), 
+				null, this.get_filter_property())
+			) {
+				match_mode = Gtk.StringFilterMatchMode.SUBSTRING,
+				ignore_case = true
+			};
+			
+			// Use the model directly for filtering (no copying)
+			// ProjectList only contains projects, so no need for additional filtering
+			this.filtered_items = new Gtk.FilterListModel(
+				model, this.string_filter);
+			
+			// Create custom sorter: sort by display_name
+			var sorter = new Gtk.CustomSorter((a, b) => {
+				var folder_a = a as Files.Folder;
+				var folder_b = b as Files.Folder;
+				if (folder_a == null || folder_b == null) {
+					return Gtk.Ordering.EQUAL;
+				}
+				return folder_a.display_name < folder_b.display_name ? 
+					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+			});
+			
+			// Create sorted model
+			var sorted_items = new Gtk.SortListModel(this.filtered_items, sorter);
+			
+			// Update selection model to use sorted model
+			this.selection = new Gtk.SingleSelection(sorted_items) {
+				autoselect = false,
+				can_unselect = true,
+				selected = Gtk.INVALID_LIST_POSITION
+			};
+			this.selection.notify["selected"].connect(() => {
+				this.on_selection_changed();
+			});
+			
+			// Update list view with new selection model
+			this.list.model = this.selection;
 		}
 		
 		/**
 		 * Refresh the project list from ProjectManager.
-		 * Only includes folders where is_project = true.
+		 * No-op since we use ProjectList directly - it updates automatically.
 		 */
 		public void refresh()
 		{
-			this.item_store.remove_all();
-			
-			foreach (var project in this.manager.projects) {
-				// Only add folders that are actually projects
-				if (project.is_project) {
-					this.item_store.append(project);
-				}
-			}
+			// ProjectList is used directly, so no refresh needed
+			// The ListModel will automatically notify when items change
 		}
 		
 		protected override string get_filter_property()

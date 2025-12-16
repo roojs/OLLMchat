@@ -18,6 +18,8 @@ var message = "Error: Tool '" + tool_name + "' not found";
 
 **IMPORTANT:** Avoid single-use temporary variables. If a variable is only used once, inline it directly.
 
+**IMPORTANT:** Avoid temporary variables that are just pointers to object properties. Access the property directly instead.
+
 **Bad:**
 ```vala
 var width = this.scrolled_window.get_width();
@@ -28,12 +30,45 @@ var margin = this.text_view.margin_start;
 this.calculate(margin);
 ```
 
+**Also Bad (pointer to property):**
+```vala
+private void perform_search(string search_text)
+{
+    var buffer = this.current_buffer;
+    if (buffer == null) {
+        this.search_context = null;
+        this.update_search_results();
+        return;
+    }
+    
+    var search_settings = new GtkSource.SearchSettings();
+    search_settings.case_sensitive = this.case_sensitive_checkbox.active;
+    this.search_context = new GtkSource.SearchContext(buffer, search_settings);
+}
+```
+
 **Good:**
 ```vala
 if (this.scrolled_window.get_width() <= 1) {
     return;
 }
 this.calculate(this.text_view.margin_start);
+```
+
+**Also Good (access property directly):**
+```vala
+private void perform_search(string search_text)
+{
+    if (this.current_buffer == null) {
+        this.search_context = null;
+        this.update_search_results();
+        return;
+    }
+    
+    var search_settings = new GtkSource.SearchSettings();
+    search_settings.case_sensitive = this.case_sensitive_checkbox.active;
+    this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
+}
 ```
 
 ## Brace Placement

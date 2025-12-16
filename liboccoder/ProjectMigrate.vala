@@ -266,11 +266,9 @@ namespace OLLMcoder
 			}
 			
 			// Check if project already exists in projects list
-			foreach (var existing_project in this.manager.projects) {
-				if (existing_project.path == path) {
-					GLib.debug("Project already exists in projects list: %s", path);
-					return;
-				}
+			if (this.manager.projects.contains_path(path)) {
+				GLib.debug("Project already exists in projects list: %s", path);
+				return;
 			}
 			
 			// Create new Project
@@ -280,7 +278,7 @@ namespace OLLMcoder
 			project.display_name = GLib.Path.get_basename(path);
 			
 			// Add to manager
-			this.manager.projects.add(project);
+			this.manager.projects.append(project);
 			
 			// Save to database (without syncing, we'll sync at the end)
 			if (this.manager.db != null) {
