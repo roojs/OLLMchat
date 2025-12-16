@@ -44,7 +44,7 @@ namespace OLLMcoder.Files
 		 * @param info The FileInfo object from directory enumeration
 		 * @param path The full path to the file
 		 */
-	public File.new_from_info(
+		public File.new_from_info(
 			OLLMcoder.ProjectManager manager,
 			Folder? parent,
 			GLib.FileInfo info,
@@ -242,6 +242,14 @@ namespace OLLMcoder.Files
 			data_stream.put_string(contents, null);
 			data_stream.close(null);
 			
+			// Update last_modified from filesystem after writing
+			this.last_modified = this.mtime_on_disk();
+			
+			// Save to database with sync to disk
+			if (this.manager.db != null) {
+				this.saveToDB(this.manager.db, null, true);
+			}
+			
 			this.changed();
 		}
 		
@@ -290,27 +298,8 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
-		 * Gets the file modification time from the filesystem.
-		 * 
-		 * @return File modification time, or 0 if not available
-		 */
-		public time_t get_mtime()
-		{
-			var file = GLib.File.new_for_path(this.path);
-			if (!file.query_exists()) {
-				return 0;
-			}
-			
-			try {
-				var info = file.query_info("time::modified", FileQueryInfoFlags.NONE, null);
-				return info.get_modification_time().tv_sec;
-			} catch (GLib.Error e) {
-				return 0;
-			}
-		}
-		
-		/**
 		 * Gets the currently selected text (only valid for active file).
+		 * Updates cursor position and saves to database.
 		 * 
 		 * @return Selected text, or empty string if nothing is selected
 		 */
@@ -318,6 +307,18 @@ namespace OLLMcoder.Files
 		{
 			if (this.text_buffer == null) {
 				return "";
+			}
+			
+			// Update cursor position from buffer
+			Gtk.TextIter cursor;
+			this.text_buffer.get_iter_at_mark(out cursor, this.text_buffer.get_insert());
+			this.cursor_line = cursor.get_line();
+			this.cursor_offset = cursor.get_line_offset();
+			
+			// Save to database
+			if (this.manager.db != null) {
+				this.saveToDB(this.manager.db, null, false);
+				this.manager.db.is_dirty = true;
 			}
 			
 			Gtk.TextIter start, end;
@@ -355,6 +356,7 @@ namespace OLLMcoder.Files
 		
 		/**
 		 * Gets the current cursor position (line number).
+		 * Updates cursor_line and cursor_offset properties and saves to database.
 		 * 
 		 * @return Line number (0-based), or -1 if not available
 		 */
@@ -366,7 +368,16 @@ namespace OLLMcoder.Files
 			
 			Gtk.TextIter cursor;
 			this.text_buffer.get_iter_at_mark(out cursor, this.text_buffer.get_insert());
-			return cursor.get_line();
+			this.cursor_line = cursor.get_line();
+			this.cursor_offset = cursor.get_line_offset();
+			
+			// Save to database
+			if (this.manager.db != null) {
+				this.saveToDB(this.manager.db, null, false);
+				this.manager.db.is_dirty = true;
+			}
+			
+			return this.cursor_line;
 		}
 	}
 }

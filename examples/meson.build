@@ -75,7 +75,7 @@ ocmarkdown_test_deps = [
 
 # Build test-ollama executable (command-line test)
 test_ollama = executable('oc-test-cli',
-  dependencies: [test_ollama_deps, ocsqlite_vapi_dep],
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
   sources: ['oc-test-cli.vala'],
   link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
   include_directories: include_directories('../libollmchat'),
@@ -83,7 +83,9 @@ test_ollama = executable('oc-test-cli',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+    '--pkg=ocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -137,15 +139,17 @@ vmd2html = executable('oc-md2html',
 # Only depends on liboccoder (which already includes libocsqlite)
 # Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
 test_files = executable('oc-test-files',
-  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, occoder_vapi_dep],
+  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
   sources: ['oc-test-files.vala'],
   include_directories: include_directories('../liboccoder'),
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=ocagent',
     '--pkg=occoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
   ],
   install: true,
@@ -156,15 +160,17 @@ test_files = executable('oc-test-files',
 # Only depends on liboccoder (which already includes libocsqlite)
 # Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
 oc_diff = executable('oc-diff',
-  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, occoder_vapi_dep],
+  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
   sources: ['oc-diff.vala'],
   include_directories: include_directories('../liboccoder'),
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=ocagent',
     '--pkg=occoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
   ],
   install: true,

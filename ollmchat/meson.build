@@ -28,7 +28,7 @@ ollmchat_deps = [
 # Build ollmchat executable (primary application)
 # Include resources directly in the executable to ensure they're registered
 ollmchat = executable('ollmchat',
-  dependencies: [ollmchat_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep],
+  dependencies: [ollmchat_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
   sources: [
     'Application.vala',
     'Window.vala',
@@ -50,9 +50,13 @@ ollmchat = executable('ollmchat',
     '--pkg=ocmarkdowngtk',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=ocagent',
+    '--pkg=occoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
   ],
   install: true,
   install_dir: get_option('bindir')

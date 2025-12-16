@@ -62,13 +62,8 @@ ollmchat_ollama_src = files([
   'Response/Generate.vala',
 ])
 
-# Source files for prompt system
+# Source files for prompt system (moved to libocagent and liboccoder)
 ollmchat_prompt_src = files([
-  'Prompt/BaseAgent.vala',
-  'Prompt/AgentInterface.vala',
-  'Prompt/CodeAssistantDummy.vala',
-  'Prompt/CodeAssistant.vala',
-  'Prompt/JustAsk.vala',
 ])
 
 # Source files for Tools namespace (base, no GTK)
@@ -92,14 +87,14 @@ lib_build_rpath = ':'.join([
 ])
 
 ollmchat_base_lib = library('ollmchat',
-  dependencies: [ollmchat_deps, ocsqlite_vapi_dep],
+  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
   sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocagent', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocagent'],
   install: true
 )
 
@@ -111,13 +106,22 @@ ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMchat',
   symbol_prefix: 'ollmchat',
-  link_with: [ocsqlite_base_lib],
+  link_with: [ocsqlite_base_lib, ocagent_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ocsqlite',
+    '--extra-library=ocagent',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0], ocagent_gir[0]],
   install: true,
   fatal_warnings: false
+)
+
+# Create dependency for other libraries to use
+# Note: We need to manually create the VAPI dependency similar to ocsqlite
+# For now, we'll use link_args to ensure the library is linked
+ollmchat_vapi_dep = declare_dependency(
+  link_args: ['-L' + meson.current_build_dir(), '-lollmchat'],
+  dependencies: [ocsqlite_vapi_dep]
 )

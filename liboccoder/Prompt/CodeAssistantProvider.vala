@@ -19,13 +19,13 @@
 namespace OLLMcoder.Prompt
 {
 	/**
-	 * Real implementation of AgentInterface for CodeAssistant.
+	 * Provides context data for CodeAssistant prompts.
 	 * 
 	 * Provides information about open files, active file, cursor positions,
 	 * and file contents from the ProjectManager. This class does not manage
 	 * files itself - it queries information from the manager.
 	 */
-	public class CodeAssistantProvider : Object, OLLMchat.Prompt.AgentInterface
+	public class CodeAssistantProvider : Object
 	{
 		/**
 		 * ProjectManager instance for querying file information.
@@ -64,11 +64,14 @@ namespace OLLMcoder.Prompt
 		public Gee.ArrayList<string> get_open_files()
 		{
 			var result = new Gee.ArrayList<string>();
-			if (this.manager.active_project != null) {
-				var files = this.manager.active_project.project_files.get_recent_list(1);
-				foreach (var file in files) {
-					result.add(file.path);
-				}
+			if (this.manager.active_project == null) {
+				return result;
+			}
+			var files = this.manager.active_project.project_files.get_recent_list(1);
+			// Limit to 15 most recent
+			var limited_files = files.size > 15 ? files.slice(0, 15) : files;
+			foreach (var file in limited_files) {
+				result.add(file.path);
 			}
 			return result;
 		}
@@ -151,4 +154,3 @@ namespace OLLMcoder.Prompt
 		}
 	}
 }
-
