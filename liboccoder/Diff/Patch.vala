@@ -171,11 +171,11 @@ namespace OLLMcoder.Diff
 			string[] all_new_lines)
 		{
 			Object(
-				operation: op, 
-				old_line_start: old_line_start,
-				old_line_end: old_line_end,
-				new_line_start: new_line_start,
-				 new_line_end: new_line_end
+				operation: 			op, 
+				old_line_start: 	old_line_start,
+				old_line_end: 		old_line_end,
+				new_line_start: 	new_line_start,
+				new_line_end: 		new_line_end
 			);
 			this.all_old_lines = all_old_lines;
 			this.all_new_lines = all_new_lines;
