@@ -325,7 +325,7 @@ namespace OLLMchatGtk
 		public void setup_agent_dropdown()
 		{
 			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Prompt.BaseAgent));
+			var agent_store = new GLib.ListStore(typeof(OLLMagent.BaseAgent));
 			
 			// Add all registered agents to the store and set selection during load
 			uint selected_index = 0;
@@ -359,7 +359,7 @@ namespace OLLMchatGtk
 					return;
 				}
 				
-				var agent = list_item.item as OLLMchat.Prompt.BaseAgent;
+				var agent = list_item.item as OLLMagent.BaseAgent;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
 				if (label != null && agent != null) {
@@ -379,7 +379,7 @@ namespace OLLMchatGtk
 					return;
 				}
 				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
+				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMagent.BaseAgent;
 				  
 				this.manager.session.agent_name = agent.name;
 				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
@@ -396,7 +396,7 @@ namespace OLLMchatGtk
 				
  				for (uint j = 0; j < store.get_n_items(); j++) {
 					
-					if (((OLLMchat.Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
+					if (((OLLMagent.BaseAgent)store.get_item(j)).name != session.agent_name) {
 						continue;
 					}
 					this.agent_dropdown.selected = j;

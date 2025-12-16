@@ -110,7 +110,7 @@ The project is organized into component directories, each with its own `meson.bu
 
 **Code Editor Library (`liboccoder.so`):**
 - `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
-  - `files/` - File, folder, and project classes (namespace: `OLLMcoder.Files`)
+  - `Files/` - File, folder, and project classes (namespace: `OLLMcoder.Files`)
   - `ProjectManager.vala` - Project and file management
   - `SourceView.vala` - Code editor component with syntax highlighting
   - `SearchableDropdown.vala`, `ProjectDropdown.vala`, `FileDropdown.vala` - Dropdown widgets

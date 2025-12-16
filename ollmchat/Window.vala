@@ -176,7 +176,7 @@ namespace OLLMchat
 			var client = new OLLMchat.Client(config) {
 				stream = true,
 				keep_alive = "5m",
-				prompt_assistant = new OLLMchat.Prompt.JustAsk()  // Default to Just Ask
+				prompt_assistant = new OLLMagent.JustAsk()  // Default to Just Ask
 			};
 			
 			// Test connection
@@ -210,9 +210,7 @@ namespace OLLMchat
 			this.history_manager = new OLLMchat.History.Manager(client, data_dir);
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMchat.Prompt.CodeAssistant(
-				new OLLMchat.Prompt.CodeAssistantDummy()
-			) {
+			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(null) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
 			};
 			this.history_manager.agents.set(code_assistant.name, code_assistant);

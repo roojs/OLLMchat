@@ -39,8 +39,8 @@ namespace OLLMchat.History
 		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
 		public SessionBase session { get; internal set; }
-		public Gee.HashMap<string, Prompt.BaseAgent> agents { 
-			get; private set; default = new Gee.HashMap<string, Prompt.BaseAgent>(); 
+		public Gee.HashMap<string, OLLMagent.BaseAgent> agents { 
+			get; private set; default = new Gee.HashMap<string, OLLMagent.BaseAgent>(); 
 		}
 		
 		// Signal emitted when a new session is added (for UI updates)
@@ -108,7 +108,7 @@ namespace OLLMchat.History
 			this.title_generator = new TitleGenerator(this.base_client.config);
 			
 			// Register JustAsk agent (always available as default)
-			this.agents.set("just-ask", new Prompt.JustAsk());
+			this.agents.set("just-ask", new OLLMagent.JustAsk());
 		}
 		
 		/**

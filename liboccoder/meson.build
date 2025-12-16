@@ -15,14 +15,14 @@ occoder_deps = [
 ]
 
 occoder_src = files([
-  'files/FileBase.vala',
-  'files/File.vala',
-  'files/FileAlias.vala',
-  'files/Folder.vala',
-  'files/FolderFiles.vala',
-  'files/ProjectFile.vala',
-  'files/ProjectFiles.vala',
-  'files/ProjectList.vala',
+  'Files/FileBase.vala',
+  'Files/File.vala',
+  'Files/FileAlias.vala',
+  'Files/Folder.vala',
+  'Files/FolderFiles.vala',
+  'Files/ProjectFile.vala',
+  'Files/ProjectFiles.vala',
+  'Files/ProjectList.vala',
   'ProjectManager.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',
@@ -32,6 +32,8 @@ occoder_src = files([
   'Diff/Patch.vala',
   'Diff/PatchApplier.vala',
   'Diff/Differ.vala',
+  'Prompt/CodeAssistant.vala',
+  'Prompt/CodeAssistantProvider.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -40,12 +42,11 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
-  meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
 
 occoder_base_lib = library('occoder',
-  dependencies: [occoder_deps, ocsqlite_vapi_dep],
+  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
   sources: occoder_src,
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
@@ -56,7 +57,9 @@ occoder_base_lib = library('occoder',
     '--pkg=json-glib-1.0',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
+    '--pkg=ocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
   ],
   install: true
 )
@@ -73,9 +76,11 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'ocsqlite',
+    '--pkg', 'ocagent',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
@@ -100,13 +105,14 @@ occoder_gir = gnome.generate_gir(occoder_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMcoder',
   symbol_prefix: 'ollmcoder',
-  link_with: [ocsqlite_base_lib],
+  link_with: [ocsqlite_base_lib, ocagent_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ocsqlite',
+    '--extra-library=ocagent',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0], ocagent_gir[0]],
   install: true,
   fatal_warnings: false
 )

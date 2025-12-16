@@ -350,9 +350,10 @@ namespace OLLMcoder
 				this.restore_scroll_position(file);
 			}
 			
-			// Update last_viewed timestamp
+			// Update last_viewed and last_modified timestamps
 			var now = new DateTime.now_local();
 			file.last_viewed = now.to_unix();
+			file.last_modified = file.mtime_on_disk();
 			this.manager.notify_file_changed(file);
 			
 			// Update dropdowns

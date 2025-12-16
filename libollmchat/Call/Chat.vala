@@ -185,7 +185,11 @@ namespace OLLMchat.Call
 			this.client.message_created(user_sent_msg, this);
 			
 			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
-			this.client.prompt_assistant.fill(this, new_text);
+			string system_content;
+			string chat_content;
+			this.client.prompt_assistant.fill(new_text, out system_content, out chat_content);
+			this.system_content = system_content;
+			this.chat_content = chat_content;
 			
 			// If system_content is set, create system Message and emit message_created
 			if (this.system_content != "") {
