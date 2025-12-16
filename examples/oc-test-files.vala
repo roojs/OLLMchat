@@ -81,7 +81,7 @@ namespace OLLMchat
 		
 		// Save project to database
 		project.saveToDB(db, null, false);
-		manager.projects.add(project);
+		manager.projects.append(project);
 		
 		// Scan the directory recursively
 		yield project.read_dir(new DateTime.now_local().to_unix(), true);
