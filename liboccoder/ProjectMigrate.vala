@@ -60,59 +60,109 @@ namespace OLLMcoder
 				GLib.Environment.get_home_dir(), ".config", "Cursor", "User", "globalStorage", "state.vscdb"
 			);
 			
+			GLib.debug("=== Starting Cursor Migration ===");
+			GLib.debug("Checking Cursor database at: %s", cursor_db_path);
+			
 			if (!GLib.File.new_for_path(cursor_db_path).query_exists()) {
 				GLib.debug("Cursor database not found at %s", cursor_db_path);
 				return;
 			}
 			
+			GLib.debug("✓ Cursor database file exists");
+			
 			try {
+				// Open Cursor database
+				GLib.debug("Opening Cursor database...");
+				var cursor_db = new SQ.Database(cursor_db_path);
+				GLib.debug("✓ Database opened successfully");
+				
 				// Use SQ.Query to read from ItemTable
+				GLib.debug("Running SQL query on ItemTable...");
+				GLib.debug("SQL: SELECT * FROM ItemTable WHERE key = 'history.recentlyOpenedPathsList'");
+				
 				var results = new Gee.ArrayList<ItemTable>();
-				new SQ.Query<ItemTable>(new SQ.Database(cursor_db_path), "ItemTable")
+				new SQ.Query<ItemTable>(cursor_db, "ItemTable")
 					.select("WHERE key = 'history.recentlyOpenedPathsList'", results);
+				
+				GLib.debug("✓ Query executed");
+				GLib.debug("Results found: %u", results.size);
 				
 				if (results.size == 0) {
 					GLib.debug("No recently opened paths found in Cursor database");
 					return;
 				}
 				
+				// Show the raw data
+				GLib.debug("=== Raw Data Retrieved ===");
+				for (uint i = 0; i < results.size; i++) {
+					var item = results[i];
+					GLib.debug("Item %u: key=%s, value length=%zu bytes", i + 1, item.key, item.value.length);
+					if (item.value.length < 500) {
+						GLib.debug("  value: %s", item.value);
+					} else {
+						GLib.debug("  value (first 500 chars): %s...", item.value.substring(0, 500));
+					}
+				}
+				
 				// Extract JSON from the value field
+				GLib.debug("=== Parsing JSON ===");
 				var parser = new Json.Parser();
 				parser.load_from_data(results[0].value, -1);
 				var root = parser.get_root();
+				GLib.debug("✓ JSON parsed successfully");
+				GLib.debug("Root node type: %s", root.get_node_type().to_string());
 				
 				if (root.get_node_type() != Json.NodeType.ARRAY) {
+					GLib.debug("ERROR: Root is not an array, got: %s", root.get_node_type().to_string());
 					return;
 				}
 				
 				var array = root.get_array();
+				GLib.debug("Array length: %u", array.get_length());
+				
+				// Process each element
+				GLib.debug("=== Processing Paths ===");
+				uint paths_found = 0;
 				
 				for (uint i = 0; i < array.get_length(); i++) {
 					var element = array.get_element(i);
+					GLib.debug("Element %u: type=%s", i + 1, element.get_node_type().to_string());
 					
 					if (element.get_node_type() == Json.NodeType.VALUE) {
-						this.create_project_from_path(element.get_string());
+						var path = element.get_string();
+						GLib.debug("  Path (direct value): %s", path);
+						this.create_project_from_path(path);
+						paths_found++;
 						continue;
 					}
 					
 					if (element.get_node_type() != Json.NodeType.OBJECT) {
+						GLib.debug("  Skipping (not object or value)");
 						continue;
 					}
 					
 					var obj = element.get_object();
 					if (!obj.has_member("folder")) {
+						GLib.debug("  Skipping (no 'folder' member)");
 						continue;
 					}
 					
 					var folder_node = obj.get_member("folder");
 					if (folder_node.get_node_type() != Json.NodeType.VALUE) {
+						GLib.debug("  Skipping (folder is not a value)");
 						continue;
 					}
 					
-					this.create_project_from_path(folder_node.get_string());
+					var path = folder_node.get_string();
+					GLib.debug("  Path (from folder): %s", path);
+					this.create_project_from_path(path);
+					paths_found++;
 				}
+				
+				GLib.debug("Total paths processed: %u", paths_found);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to migrate from Cursor: %s", e.message);
+				GLib.debug("Error type: %s", e.get_type().name());
 			}
 		}
 		
