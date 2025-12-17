@@ -293,7 +293,10 @@ namespace OLLMcoder
 		 */
 		private void create_project_from_path(string folder_path)
 		{
+			GLib.debug("create_project_from_path: %s", folder_path);
+			
 			if (folder_path == null || folder_path == "") {
+				GLib.debug("  Skipping (empty path)");
 				return;
 			}
 			
@@ -301,31 +304,36 @@ namespace OLLMcoder
 			string path = GLib.Path.is_absolute(folder_path) 
 				? folder_path 
 				: GLib.Path.build_filename(GLib.Environment.get_current_dir(), folder_path);
+			GLib.debug("  Resolved path: %s", path);
 			
 			// Normalize the path (remove redundant components)
 			try {
 				path = GLib.File.new_for_path(path).get_path();
+				GLib.debug("  Normalized path: %s", path);
 			} catch (GLib.Error e) {
-				GLib.debug("Failed to normalize path %s: %s", path, e.message);
+				GLib.debug("  Warning: Failed to normalize path: %s", e.message);
 			}
 			
 			// Check if path exists and is a directory (IS_DIR implies EXISTS)
 			if (!GLib.FileUtils.test(path, GLib.FileTest.IS_DIR)) {
-				GLib.debug("Path does not exist or is not a directory: %s", path);
+				GLib.debug("  Skipping (does not exist or is not a directory)");
 				return;
 			}
+			GLib.debug("  ✓ Path exists and is a directory");
 			
 			// Check if project already exists in projects list
 			if (this.manager.projects.contains_path(path)) {
-				GLib.debug("Project already exists in projects list: %s", path);
+				GLib.debug("  Skipping (project already exists)");
 				return;
 			}
 			
 			// Create new Project
+			GLib.debug("  Creating project...");
 			var project = new OLLMcoder.Files.Folder(this.manager);
 			project.is_project = true;
 			project.path = path;
 			project.display_name = GLib.Path.get_basename(path);
+			GLib.debug("  ✓ Project created: %s (%s)", project.display_name, project.path);
 			
 			// Add to manager
 			this.manager.projects.append(project);
@@ -333,6 +341,7 @@ namespace OLLMcoder
 			// Save to database (without syncing, we'll sync at the end)
 			if (this.manager.db != null) {
 				project.saveToDB(this.manager.db, null, false);
+				GLib.debug("  ✓ Project saved to database");
 			}
 		}
 		
