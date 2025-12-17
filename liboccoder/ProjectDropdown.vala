@@ -30,17 +30,12 @@ namespace OLLMcoder
 		
 		/**
 		 * Currently selected project (folder with is_project = true).
+		 * This is set when the popup closes and user has made a selection.
 		 */
+		private Files.Folder? _selected_project = null;
 		public Files.Folder? selected_project {
 			get { 
-				var item = this.selection.selected_item as Files.Folder;
-				// Ensure it's actually a project
-				return (item != null && item.is_project) ? item : null;
-			}
-			set { 
-				if (value != null && value.is_project) {
-					this.set_selected_item_internal(value);
-				}
+				return this._selected_project;
 			}
 		}
 		
@@ -59,10 +54,16 @@ namespace OLLMcoder
 		{
 			base();
 			this.manager = manager;
-			this.placeholder_text = "Search projects...";
+			this.placeholder_text = "Select project";
+			
+			// Debug: Log project list state
+			GLib.debug("ProjectDropdown: manager.projects.get_n_items() = %u", this.manager.projects.get_n_items());
 			
 			// Use ProjectList directly as the ListModel (no copying)
 			this.set_item_model(this.manager.projects);
+			
+			// Debug: Log after setting model
+			GLib.debug("ProjectDropdown: After set_item_model, filtered_items.get_n_items() = %u", this.filtered_items.get_n_items());
 		}
 		
 		/**
@@ -70,6 +71,10 @@ namespace OLLMcoder
 		 */
 		private void set_item_model(GLib.ListModel model)
 		{
+			// Debug: Log model state
+			GLib.debug("ProjectDropdown.set_item_model: model.get_n_items() = %u, model type = %s", 
+				model.get_n_items(), model.get_type().name());
+			
 			// Update string filter to work with Folder type
 			this.string_filter = new Gtk.StringFilter(
 				new Gtk.PropertyExpression(typeof(Files.Folder), 
@@ -84,14 +89,19 @@ namespace OLLMcoder
 			this.filtered_items = new Gtk.FilterListModel(
 				model, this.string_filter);
 			
-			// Create custom sorter: sort by display_name
+			// Debug: Log filtered items
+			GLib.debug("ProjectDropdown.set_item_model: filtered_items.get_n_items() = %u", 
+				this.filtered_items.get_n_items());
+			
+			// Create custom sorter: sort by path_basename (derived from path)
 			var sorter = new Gtk.CustomSorter((a, b) => {
 				var folder_a = a as Files.Folder;
 				var folder_b = b as Files.Folder;
-				if (folder_a == null || folder_b == null) {
+				if (folder_a == null || folder_b == null || 
+					folder_a.path_basename.down() == folder_b.path_basename.down()) {
 					return Gtk.Ordering.EQUAL;
 				}
-				return folder_a.display_name < folder_b.display_name ? 
+				return folder_a.path_basename.down() < folder_b.path_basename.down() ? 
 					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 			});
 			
@@ -104,12 +114,17 @@ namespace OLLMcoder
 				can_unselect = true,
 				selected = Gtk.INVALID_LIST_POSITION
 			};
-			this.selection.notify["selected"].connect(() => {
-				this.on_selection_changed();
-			});
+			// Disabled: Don't monitor selection changes - only trigger actions when popup closes
+			// this.selection.notify["selected"].connect(() => {
+			// 	this.on_selection_changed();
+			// });
 			
 			// Update list view with new selection model
 			this.list.model = this.selection;
+			
+			// Debug: Log final state
+			GLib.debug("ProjectDropdown.set_item_model: sorted_items.get_n_items() = %u, selection.model.get_n_items() = %u", 
+				sorted_items.get_n_items(), this.selection.model.get_n_items());
 		}
 		
 		/**
@@ -124,15 +139,47 @@ namespace OLLMcoder
 		
 		protected override string get_filter_property()
 		{
-			return "display_name";
+			return "path_basename";
+		}
+		
+		protected override string get_label_property()
+		{
+			// For projects: use path_basename (derived from path)
+			return "path_basename";
+		}
+		
+		protected override string get_tooltip_property()
+		{
+			// For projects: use path (full path)
+			return "path";
 		}
 		
 		protected override void on_selection_changed()
 		{
-			this.project_selected(this.selected_project);
-			if (this.selected_project != null) {
-				this.entry.text = this.selected_project.display_name;
-				this.set_popup_visible(false);
+			// Get the selected item from the selection model
+			var item = this.selection.selected_item as Files.Folder;
+			// Ensure it's actually a project
+			var project = (item != null && item.is_project) ? item : null;
+			
+			// Update the stored selected project
+			this._selected_project = project;
+			
+			GLib.debug("ProjectDropdown.on_selection_changed: selected_project=%s", 
+				this._selected_project != null ? this._selected_project.path : "null");
+			
+			// Emit signal with the selected project
+			this.project_selected(this._selected_project);
+			
+			if (this._selected_project != null) {
+				// Clear entry text so placeholder shows (like the example's accept_current_selection)
+				this.entry.text = "";
+				// Set placeholder to show selected project (doesn't trigger filter)
+				this.placeholder_text = this._selected_project.path_basename;
+			} else {
+				// Clear entry text
+				this.entry.text = "";
+				// Reset placeholder
+				this.placeholder_text = "Select project";
 			}
 		}
 	}

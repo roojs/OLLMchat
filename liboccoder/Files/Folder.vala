@@ -101,8 +101,13 @@ namespace OLLMcoder.Files
 		 */
 		public async void read_dir(int64 check_time, bool recurse = false) throws Error
 		{
+			GLib.debug("Folder.read_dir: Starting scan for path='%s', is_project=%s, check_time=%lld, recurse=%s, last_check_time=%lld", 
+				this.path, this.is_project.to_string(), check_time, recurse.to_string(), this.last_check_time);
+			
 			// If this folder was already checked in this scan, skip it
 			if (this.last_check_time == check_time) {
+				GLib.debug("Folder.read_dir: Already checked in this scan (check_time=%lld), skipping path='%s'", 
+					check_time, this.path);
 				return;
 			}
 			
@@ -129,11 +134,17 @@ namespace OLLMcoder.Files
 			
 			// If recurse is true, recursively read all subdirectories
 			if (recurse) {
+				GLib.debug("Folder.read_dir: Recursing into %u children for path='%s'", 
+					this.children.items.size, this.path);
 				foreach (var child in this.children.items) {
 					if (child is Folder) {
+						GLib.debug("Folder.read_dir: Recursing into child folder path='%s' (parent='%s')", 
+							child.path, this.path);
 						yield ((Folder)child).read_dir(check_time, true);
 					}
 					if (child is FileAlias && child.points_to is Folder) {
+						GLib.debug("Folder.read_dir: Recursing into FileAlias target folder path='%s' (alias='%s')", 
+							child.points_to.path, child.path);
 						yield ((Folder)child.points_to).read_dir(check_time, true);
 					}
 				}

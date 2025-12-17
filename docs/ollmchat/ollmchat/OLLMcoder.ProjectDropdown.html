@@ -30,6 +30,8 @@
           <li class="property"><a href="OLLMcoder.ProjectDropdown.selected_project.html">selected_project</a></li>
           <li class="creation_method"><a href="OLLMcoder.ProjectDropdown.ProjectDropdown.html">ProjectDropdown</a></li>
           <li class="virtual_method"><a href="OLLMcoder.ProjectDropdown.get_filter_property.html">get_filter_property</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.ProjectDropdown.get_label_property.html">get_label_property</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.ProjectDropdown.get_tooltip_property.html">get_tooltip_property</a></li>
           <li class="virtual_method"><a href="OLLMcoder.ProjectDropdown.on_selection_changed.html">on_selection_changed</a></li>
           <li class="method"><a href="OLLMcoder.ProjectDropdown.refresh.html">refresh</a></li>
           <li class="signal"><a href="OLLMcoder.ProjectDropdown.project_selected.html">project_selected</a></li>
@@ -62,9 +64,9 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.ProjectDropdown.selected_project.html" class="property">selected_project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMcoder.Files.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMcoder.ProjectDropdown.selected_project.html" class="property">selected_project</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Currently selected project (folder with is_project = true).</span>
+            <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -77,6 +79,14 @@
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.ProjectDropdown.get_filter_property.html" class="virtual_method">get_filter_property</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.ProjectDropdown.get_label_property.html" class="virtual_method">get_label_property</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.ProjectDropdown.get_tooltip_property.html" class="virtual_method">get_tooltip_property</a></b> ()
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -112,22 +122,26 @@
                 <li class="field"><a href="OLLMcoder.SearchableDropdown.filtered_items.html">filtered_items</a></li>
                 <li class="method"><a href="OLLMcoder.SearchableDropdown.find_in_list.html">find_in_list</a></li>
                 <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_filter_property.html">get_filter_property</a></li>
-                <li class="field"><a href="OLLMcoder.SearchableDropdown.item_store.html">item_store</a></li>
+                <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_label_property.html">get_label_property</a></li>
+                <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_tooltip_property.html">get_tooltip_property</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.grab_focus.html">grab_focus</a></li>
+                <li class="field"><a href="OLLMcoder.SearchableDropdown.item_store.html">item_store</a></li>
                 <li class="field"><a href="OLLMcoder.SearchableDropdown.list.html">list</a></li>
                 <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.measure.html">measure</a></li>
                 <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.on_entry_changed.html">on_entry_changed</a></li>
+                <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.on_key_pressed.html">on_key_pressed</a></li>
                 <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.on_selection_changed.html">on_selection_changed</a></li>
                 <li class="property"><a href="OLLMcoder.SearchableDropdown.placeholder_text.html">placeholder_text</a></li>
                 <li class="field"><a href="OLLMcoder.SearchableDropdown.popup.html">popup</a></li>
-                <li class="field"><a href="OLLMcoder.SearchableDropdown.selection.html">selection</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="field"><a href="OLLMcoder.SearchableDropdown.selection.html">selection</a></li>
                 <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.set_item_store.html">set_item_store</a></li>
                 <li class="method"><a href="OLLMcoder.SearchableDropdown.set_popup_visible.html">set_popup_visible</a></li>
                 <li class="method"><a href="OLLMcoder.SearchableDropdown.set_selected_item_internal.html">set_selected_item_internal</a></li>

@@ -27,6 +27,18 @@ namespace OLLMcoder.Files
 	 */
 	public class FileAlias : File
 	{
+		// Static field for home directory (initialized once)
+		private static string home_dir = "/dev/null"; // no access if we cant get home dir.
+		
+		// Static constructor to initialize home directory
+		static construct
+		{
+			home_dir = GLib.Environment.get_home_dir();
+			if (home_dir == null || home_dir == "") {
+				GLib.warning("FileAlias: Cannot determine home directory, aliases will be restricted");
+			}
+		}
+		
 		/**
 		 * Constructor.
 		 * 
@@ -63,7 +75,16 @@ namespace OLLMcoder.Files
 			// PATH_MAX is typically 4096 on Linux systems
 			var resolved_ptr = Posix.realpath(path);
 			if (resolved_ptr == null) {
-				this.target_path = "";
+				this.points_to_id = -1;
+				return;
+			}
+			
+			// Restrict aliases to user's home directory
+			 
+			// Check if resolved path is within home directory
+			if (!resolved_ptr.has_prefix(home_dir)) {
+				GLib.warning("FileAlias.new_from_info: Alias target '%s' is outside home directory '%s', rejecting", 
+					(string)resolved_ptr, home_dir);
 				this.points_to_id = -1;
 				return;
 			}

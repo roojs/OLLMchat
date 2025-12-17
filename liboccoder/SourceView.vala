@@ -43,6 +43,7 @@ namespace OLLMcoder
 		public ProjectManager manager { get; private set; }
 		private ProjectDropdown project_dropdown;
 		private FileDropdown file_dropdown;
+		private Gtk.Button save_button;
 		private GtkSource.View source_view;
 		private Gtk.ScrolledWindow scrolled_window;
 		
@@ -54,6 +55,7 @@ namespace OLLMcoder
 		/**
 		* Search-related components.
 		*/
+		private Gtk.Box search_bar;
 		private Gtk.SearchEntry search_entry;
 		private Gtk.Label search_results_label;
 		private Gtk.Button search_next_button;
@@ -94,11 +96,11 @@ namespace OLLMcoder
 			this.manager = manager;
 			
 			// Create header bar with dropdowns
-			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10) {
+			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				margin_start = 5,
 				margin_end = 5,
-				margin_top = 5,
-				margin_bottom = 5
+				margin_top = 0,
+				margin_bottom = 0
 			};
 			
 			// Project dropdown (left-aligned)
@@ -106,26 +108,29 @@ namespace OLLMcoder
 			this.project_dropdown.project_selected.connect(this.on_project_selected);
 			header_bar.append(this.project_dropdown);
 			
-			// Spacer to push file dropdown to the right
+			// File dropdown (next to project)
+			this.file_dropdown = new FileDropdown();
+			this.file_dropdown.file_selected.connect(this.on_file_selected);
+			// Hide file dropdown initially (no project selected)
+			this.file_dropdown.visible = false;
+			header_bar.append(this.file_dropdown);
+			
+			// Spacer to push save button to the right
 			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				hexpand = true
 			};
 			header_bar.append(spacer);
 			
-			// File dropdown (right-aligned)
-			this.file_dropdown = new FileDropdown();
-			this.file_dropdown.file_selected.connect(this.on_file_selected);
-			header_bar.append(this.file_dropdown);
-			
-			// Save button next to file dropdown
-			var save_button = new Gtk.Button.from_icon_name("document-save") {
+			// Save button (right-aligned)
+			this.save_button = new Gtk.Button.from_icon_name("media-floppy") {
 				tooltip_text = "Save file",
-				hexpand = false
+				hexpand = false,
+				sensitive = false  // Disabled until file is open
 			};
-			save_button.clicked.connect(() => {
+			this.save_button.clicked.connect(() => {
 				this.save_file();
 			});
-			header_bar.append(save_button);
+			header_bar.append(this.save_button);
 			
 			this.append(header_bar);
 			
@@ -146,11 +151,15 @@ namespace OLLMcoder
 				hexpand = true,
 				vexpand = true
 			};
+			// Add CSS class for monospace font styling
+			this.source_view.add_css_class("source-view");
 			
 			this.scrolled_window.set_child(this.source_view);
+			// Hide sourceview initially until a file is opened
+			this.scrolled_window.visible = false;
 			this.append(this.scrolled_window);
 			
-			// Create search footer bar
+			// Create search footer bar (will be hidden initially)
 			this.create_search_bar();
 			
 			// Connect to buffer modified signal
@@ -217,18 +226,21 @@ namespace OLLMcoder
 		 */
 		public async void apply_manager_state()
 		{
+			GLib.debug("SourceView.apply_manager_state: Starting");
 			// Only apply UI state from manager properties - all data is already loaded
 			// Use manager's active_project and active_file properties
 			
 			if (this.manager.active_project != null) {
+				GLib.debug("SourceView.apply_manager_state: Manager has active_project '%s', calling activate_project()", 
+					this.manager.active_project.path);
 				// Activate project (already loaded in memory)
 				yield this.manager.activate_project(this.manager.active_project);
 				
 				// Update file dropdown's project
 				this.file_dropdown.project = this.manager.active_project;
 				
-				// Update project dropdown
-				this.project_dropdown.selected_project = this.manager.active_project;
+				// Disabled: Don't set project dropdown selection programmatically
+				// this.project_dropdown.selected_project = this.manager.active_project;
 			}
 			
 			if (this.manager.active_file != null) {
@@ -242,18 +254,33 @@ namespace OLLMcoder
 		 */
 		private void on_project_selected(Files.Folder? project)
 		{
+			GLib.debug("SourceView.on_project_selected: Called with project=%s", 
+				project != null ? project.path : "null");
 			if (project == null) {
+				// Hide file dropdown when no project is selected
+				this.file_dropdown.visible = false;
 				return;
 			}
+			
+			// Show file dropdown when project is selected
+			this.file_dropdown.visible = true;
 			
 			// Lock file dropdown during project change
 			this.file_dropdown.sensitive = false;
 			this.file_dropdown.add_css_class("loading");
+			GLib.debug("SourceView.on_project_selected: Calling open_project() for '%s'", project.path);
 			this.open_project.begin(project, (obj, res) => {
 				this.open_project.end(res);
 				// Unlock file dropdown after project change completes
 				this.file_dropdown.sensitive = true;
 				this.file_dropdown.remove_css_class("loading");
+				// Switch focus to file dropdown entry after project is opened
+				GLib.Idle.add(() => {
+					// Access the entry through a method or make it accessible
+					// For now, just grab focus on the file dropdown widget
+					this.file_dropdown.grab_focus();
+					return false;
+				});
 			});
 		}
 		
@@ -265,6 +292,10 @@ namespace OLLMcoder
 			if (file == null) {
 				// Set default placeholder when no file is selected
 				this.file_dropdown.placeholder_text = "Select file...";
+				// Hide sourceview, search bar and disable save button when no file
+				this.scrolled_window.visible = false;
+				this.search_bar.visible = false;
+				this.save_button.sensitive = false;
 				return;
 			}
 			
@@ -305,6 +336,22 @@ namespace OLLMcoder
 			
 			// Check if file has existing buffer
 			if (file.text_buffer == null) {
+				// Detect language if not already set
+				if (file.language == null || file.language == "") {
+					// Try to detect language from filename
+					var lang_manager = GtkSource.LanguageManager.get_default();
+					var detected_lang = lang_manager.guess_language(file.path, null);
+					if (detected_lang != null) {
+						file.language = detected_lang.get_id();
+						GLib.debug("SourceView.open_file: Detected language '%s' for file '%s'", 
+							file.language, file.path);
+						// Save detected language to database
+						if (this.manager.db != null) {
+							file.saveToDB(this.manager.db, null, false);
+						}
+					}
+				}
+				
 				// Create new buffer using file's language property
 				GtkSource.Buffer buffer;
 				if (file.language != null && file.language != "") {
@@ -312,10 +359,16 @@ namespace OLLMcoder
 					var language = lang_manager.get_language(file.language);
 					if (language != null) {
 						buffer = new GtkSource.Buffer.with_language(language);
+						GLib.debug("SourceView.open_file: Created buffer with language '%s' for file '%s'", 
+							file.language, file.path);
 					} else {
+						GLib.debug("SourceView.open_file: Language '%s' not found in LanguageManager for file '%s'", 
+							file.language, file.path);
 						buffer = new GtkSource.Buffer(null);
 					}
 				} else {
+					GLib.debug("SourceView.open_file: No language set for file '%s', creating buffer without language", 
+						file.path);
 					buffer = new GtkSource.Buffer(null);
 				}
 				
@@ -333,6 +386,13 @@ namespace OLLMcoder
 			// Switch view to file's buffer
 			this.source_view.set_buffer(file.text_buffer);
 			this.current_file = file;
+			
+			// Show sourceview and search bar when file is opened
+			this.scrolled_window.visible = true;
+			this.search_bar.visible = true;
+			
+			// Enable save button when file is open
+			this.save_button.sensitive = true;
 			
 			// Reset search context when switching files
 			this.search_context = null;
@@ -356,10 +416,8 @@ namespace OLLMcoder
 			file.last_modified = file.mtime_on_disk();
 			this.manager.notify_file_changed(file);
 			
-			// Update dropdowns
-			this.file_dropdown.selected_file = file;
-			
 			// Update placeholder text with file basename
+			// Note: selected_file is now read-only and set when dialog closes
 			this.file_dropdown.placeholder_text = Path.get_basename(file.path);
 		}
 		
@@ -370,15 +428,25 @@ namespace OLLMcoder
 		 */
 		public async void open_project(Files.Folder project)
 		{
-			// Notify manager to activate project
+			GLib.debug("SourceView.open_project: Called with project='%s', manager.active_project=%s", 
+				project.path,
+				this.manager.active_project != null ? this.manager.active_project.path : "null");
+			// Check if this project is already the active project to avoid unnecessary work
+			if (this.manager.active_project != null &&
+			    this.manager.active_project.path == project.path) {
+				GLib.debug("SourceView.open_project: Project '%s' is already active, skipping", project.path);
+				return;
+			}
 
+			GLib.debug("SourceView.open_project: Calling manager.activate_project() for '%s'", project.path);
+			// Notify manager to activate project (this triggers directory scan)
 			yield this.manager.activate_project(project);
 			
 			// Update file dropdown's project
 			this.file_dropdown.project = project;
 			
-			// Update project dropdown
-			this.project_dropdown.selected_project = project;
+			// Disabled: Don't set project dropdown selection programmatically
+			// this.project_dropdown.selected_project = project;
 			
 			// Update placeholder text with project name
 			this.project_dropdown.placeholder_text = project.display_name;
@@ -556,7 +624,7 @@ namespace OLLMcoder
 		 */
 		private void create_search_bar()
 		{
-			var search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
+			this.search_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
 				margin_start = 5,
 				margin_end = 5,
 				margin_top = 5,
@@ -651,13 +719,15 @@ namespace OLLMcoder
 			settings_menu_button.popover = settings_popover;
 			
 			// Add all widgets to search bar
-			search_bar.append(this.search_entry);
-			search_bar.append(this.search_results_label);
-			search_bar.append(this.search_next_button);
-			search_bar.append(this.search_back_button);
-			search_bar.append(settings_menu_button);
+			this.search_bar.append(this.search_entry);
+			this.search_bar.append(this.search_results_label);
+			this.search_bar.append(this.search_next_button);
+			this.search_bar.append(this.search_back_button);
+			this.search_bar.append(settings_menu_button);
 			
-			this.append(search_bar);
+			// Hide search bar initially (same as sourceview)
+			this.search_bar.visible = false;
+			this.append(this.search_bar);
 		}
 		
 		/**

@@ -133,6 +133,11 @@ namespace OLLMcoder.Prompt
 		 */
 		private string generate_context_section()
 		{
+			// Try to initialize provider if widget exists but provider is null
+			if (this.provider == null && this.widget != null && this.widget.manager != null) {
+				this.provider = new CodeAssistantProvider(this.widget.manager);
+			}
+			
 			if (this.provider == null) {
 				return "";
 			}
@@ -198,6 +203,10 @@ namespace OLLMcoder.Prompt
 		{
 			// Return cached widget if already created
 			if (this.widget != null) {
+				// Ensure provider is set even if widget was cached
+				if (this.provider == null && this.widget.manager != null) {
+					this.provider = new CodeAssistantProvider(this.widget.manager);
+				}
 				return this.widget as Object;
 			}
 			
@@ -225,6 +234,11 @@ namespace OLLMcoder.Prompt
 			
 			// Initialize widget (load projects, restore state, apply UI state)
 			yield this.initialize_widget();
+			
+			// Create provider from widget's manager so context can be included in prompts
+			if (this.provider == null && this.widget.manager != null) {
+				this.provider = new CodeAssistantProvider(this.widget.manager);
+			}
 			
 			// Return widget (cast as Object)
 			return this.widget as Object;
