@@ -237,7 +237,7 @@ namespace OLLMcoder.Prompt
 		 */
 		private async void initialize_widget()
 		{
-		 
+			// FIXME = intialize first.. and shwo...
 			try {
 				// Load projects from database
 				this.widget.manager.load_projects_from_db();

@@ -121,7 +121,7 @@ namespace OLLMcoder.Files
 			
 			var new_items = yield this.read_dir_scan();
 			foreach (var new_item in new_items) {
-				this.read_dir_update(new_item, old_child_map);
+				yield this.read_dir_update(new_item, old_child_map);
 			}
 			this.read_dir_remove(new_items, old_children);
 			
@@ -216,7 +216,7 @@ namespace OLLMcoder.Files
 						GLib.FileAttribute.STANDARD_NAME + "," + 
 							GLib.FileAttribute.STANDARD_TYPE + "," +
 							GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-							GLib.FileAttribute.STANDARD_SYMLINK_TARGET;,
+							GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
 						GLib.FileQueryInfoFlags.NONE,
 						null
 					);
@@ -276,7 +276,7 @@ namespace OLLMcoder.Files
 		 * @param new_item The newly scanned FileBase object
 		 * @param old_child_map Map of old children by name
 		 */
-		private void read_dir_update(
+		private async void read_dir_update(
 			FileBase new_item,
 			Gee.HashMap<string, FileBase> old_child_map)
 		{
@@ -301,7 +301,7 @@ namespace OLLMcoder.Files
 					new_item.points_to.saveToDB(this.manager.db, null,false);
 					new_item.points_to_id = new_item.points_to.id;
 					if (new_item.points_to is Folder) { 
-						((Folder)new_item.points_to).load_files_from_db();
+						yield ((Folder)new_item.points_to).load_files_from_db();
 					}
 				}
 			}
@@ -380,7 +380,7 @@ namespace OLLMcoder.Files
 		* b) Recursively load any aliased data until no more data is available
 		* c) Build the tree structure by adding children to parents based on parent_id
 		*/
-		public void load_files_from_db()
+		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
 				return;
@@ -393,7 +393,7 @@ namespace OLLMcoder.Files
 			string[] paths = { this.path };
 			string[] seen_ids = { this.id.to_string() };
 			while (paths.length > 0) {
-				paths = this.load_children(id_map, paths, ref seen_ids);
+				paths = yield this.load_children(id_map, paths, ref seen_ids);
 			}
 			
 			// Step c: Build the tree structure
@@ -410,7 +410,7 @@ namespace OLLMcoder.Files
 		 * @param seen_ids Array of IDs we've already loaded (modified inline)
 		 * @return Array of next paths to search, or empty array if done
 		 */
-		private string[] load_children(
+		private async string[] load_children(
 			Gee.HashMap<int, FileBase> id_map,
 			string[] paths,
 			ref string[] seen_ids)
@@ -429,7 +429,7 @@ namespace OLLMcoder.Files
 			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
-			query.selectQuery("SELECT * FROM filebase WHERE (" + 
+			yield query.select_async("WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
 				string.joinv(", ", seen_ids) + ")", new_files);
 			
