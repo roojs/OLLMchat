@@ -430,10 +430,9 @@ namespace OLLMcoder.Files
 			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
-			var seen_ids_array = seen_ids.to_array();
 			yield query.select_async("WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids_array) + ")", new_files);
+				string.joinv(", ", seen_ids.to_array()) + ")", new_files);
 				
 			// If no new files found, we're done
 			if (new_files.size == 0) {
