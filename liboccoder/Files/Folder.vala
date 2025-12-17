@@ -141,7 +141,7 @@ namespace OLLMcoder.Files
 					folders_to_process.add((Folder)child.points_to);
 				}
 			}
-			
+			// call it anyway and we will sync on idle..
 			// Start processing folders in idle callback
 			Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
