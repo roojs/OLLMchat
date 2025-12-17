@@ -154,11 +154,6 @@ namespace OLLMcoder.Files
 		 * This method executes directory scanning in a background thread to avoid
 		 * blocking the main thread during file system operations.
 		 * 
-		 * **IMPORTANT**: You MUST always use `yield` when calling this method. The
-		 * result list is being populated in a background thread and is NOT
-		 * thread-safe to access while the scan is running. Only access the result
-		 * list after `yield` returns (i.e., after the async method completes).
-		 * 
 		 * @return List of newly created FileBase objects
 		 * @throws Error if directory does not exist or thread creation fails
 		 */
