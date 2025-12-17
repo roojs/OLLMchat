@@ -138,10 +138,21 @@ namespace OLLMcoder.Prompt
 		 */
 		private string generate_context_section()
 		{
+			GLib.debug("CodeAssistant.generate_context_section: Starting context generation");
+			GLib.debug("CodeAssistant.generate_context_section: widget=%s, provider=%s, db=%s, cached_manager=%s",
+				this.widget != null ? "exists" : "null",
+				this.provider != null ? "exists" : "null",
+				this.db != null ? "exists" : "null",
+				this.cached_manager != null ? "exists" : "null");
+			
 			// Try to initialize provider if widget exists but provider is null
 			if (this.provider == null && this.widget != null && this.widget.manager != null) {
+				GLib.debug("CodeAssistant.generate_context_section: Creating provider from widget.manager");
 				this.provider = new CodeAssistantProvider(this.widget.manager);
 				this.cached_manager = this.widget.manager; // Cache the manager reference
+				GLib.debug("CodeAssistant.generate_context_section: Provider created from widget, active_project=%s, active_file=%s",
+					this.widget.manager.active_project != null ? this.widget.manager.active_project.path : "null",
+					this.widget.manager.active_file != null ? this.widget.manager.active_file.path : "null");
 			}
 			
 			// If provider is still null, try to create it from cached manager or create a new ProjectManager
@@ -150,60 +161,89 @@ namespace OLLMcoder.Prompt
 				
 				// Use cached manager if available
 				if (this.cached_manager != null) {
+					GLib.debug("CodeAssistant.generate_context_section: Using cached_manager");
 					manager = this.cached_manager;
 				} else if (this.widget != null && this.widget.manager != null) {
+					GLib.debug("CodeAssistant.generate_context_section: Using widget.manager");
 					// Use widget's manager if widget exists
 					manager = this.widget.manager;
 					this.cached_manager = manager;
 				} else {
+					GLib.debug("CodeAssistant.generate_context_section: Creating new ProjectManager from db");
 					// Create a new ProjectManager from db (lazy initialization)
 					manager = new OLLMcoder.ProjectManager(this.db);
 					this.cached_manager = manager;
 					// Load projects from database
 					manager.load_projects_from_db();
-					// Restore active state (async, but we'll do it synchronously for now)
-					// Note: This might not have all state, but it's better than nothing
+					GLib.debug("CodeAssistant.generate_context_section: Loaded %u projects from db", manager.projects.get_n_items());
+					// Try to restore active state synchronously (best effort)
+					// Note: restore_active_state is async, but we'll try to get what we can
+					// The active project/file should be loaded from DB with is_active flags
 				}
 				
 				if (manager != null) {
 					this.provider = new CodeAssistantProvider(manager);
+					GLib.debug("CodeAssistant.generate_context_section: Provider created, active_project=%s, active_file=%s",
+						manager.active_project != null ? manager.active_project.path : "null",
+						manager.active_file != null ? manager.active_file.path : "null");
 				}
 			}
 			
 			if (this.provider == null) {
+				GLib.debug("CodeAssistant.generate_context_section: provider is null, returning empty context");
 				return "";
 			}
+			
+			var workspace_path = this.provider.get_workspace_path();
+			var cursor_pos = this.provider.get_current_cursor_position();
+			GLib.debug("CodeAssistant.generate_context_section: provider exists, workspace_path='%s', cursor_pos='%s'",
+				workspace_path, cursor_pos);
 			
 			var result = "<additional_data>\n" +
 				"Below are some helpful pieces of information about the current state:\n\n";
 			
 			// Current file (from provider)
 			var open_files = this.provider.get_open_files();
+			GLib.debug("CodeAssistant.generate_context_section: get_open_files() returned %d files", open_files.size);
 			if (open_files.size > 0) {
+				foreach (var file_path in open_files) {
+					GLib.debug("CodeAssistant.generate_context_section: Open file: %s", file_path);
+				}
+				
 				var current_file = open_files[0];
-				var cursor_pos = this.provider.get_current_cursor_position();
+				var cursor_pos_str = this.provider.get_current_cursor_position();
+				
+				GLib.debug("CodeAssistant.generate_context_section: Current file: %s, cursor_pos: %s", current_file, cursor_pos_str);
 				
 				result += "<current_file>\n" +
 					"Path: " + current_file + "\n";
-				if (cursor_pos != "") {
-					result += "Line: " + cursor_pos + "\n";
+				if (cursor_pos_str != "") {
+					result += "Line: " + cursor_pos_str + "\n";
 				}
-				var line_content = this.provider.get_current_line_content(cursor_pos);
+				var line_content = this.provider.get_current_line_content(cursor_pos_str);
+				GLib.debug("CodeAssistant.generate_context_section: Line content length: %zu", line_content.length);
 				if (line_content != "") {
 					result += "Line Content: `" + line_content + "`\n";
 				}
 				result += "</current_file>\n\n";
+			} else {
+				GLib.debug("CodeAssistant.generate_context_section: No open files found");
 			}
 			
 			// Attached files (all open files with their contents)
 			if (open_files.size > 0) {
 				result += "<attached_files>\n";
 				foreach (var file in open_files) {
+					GLib.debug("CodeAssistant.generate_context_section: Getting contents for file: %s", file);
 					var contents = this.provider.get_file_contents(file);
+					GLib.debug("CodeAssistant.generate_context_section: File contents length: %zu", contents.length);
 					if (contents != "") {
-						result += "<file_contents path=\"" + file + "\" lines=\"1-" + contents.split("\n").length.to_string() + "\">\n" +
+						var line_count = contents.split("\n").length;
+						result += "<file_contents path=\"" + file + "\" lines=\"1-" + line_count.to_string() + "\">\n" +
 							contents +
 							"\n</file_contents>\n";
+					} else {
+						GLib.debug("CodeAssistant.generate_context_section: File contents is empty for: %s", file);
 					}
 				}
 				result += "</attached_files>\n\n";
@@ -211,6 +251,7 @@ namespace OLLMcoder.Prompt
 			
 			// Manually added selection (selected code)
 			var selection = this.provider.get_selected_code();
+			GLib.debug("CodeAssistant.generate_context_section: Selection length: %zu", selection.length);
 			if (selection != "") {
 				result += "<manually_added_selection>\n" +
 					selection +
@@ -218,6 +259,13 @@ namespace OLLMcoder.Prompt
 			}
 			
 			result += "</additional_data>";
+			
+			GLib.debug("CodeAssistant.generate_context_section: Context section length: %zu", result.length);
+			if (result.length < 200) {
+				GLib.debug("CodeAssistant.generate_context_section: Context preview: %s", result);
+			} else {
+				GLib.debug("CodeAssistant.generate_context_section: Context preview (first 200 chars): %s", result.substring(0, 200));
+			}
 			
 			return result;
 		}
