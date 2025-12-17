@@ -142,15 +142,6 @@ namespace OLLMcoder.Files
 				}
 			}
 			
-			// If no folders to process, do backup and update_from immediately
-			if (folders_to_process.size == 0) {
-				this.manager.db.backupDB();
-				if (this.is_project) {
-					this.project_files.update_from(this);
-				}
-				return;
-			}
-			
 			// Start processing folders in idle callback
 			Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
