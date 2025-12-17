@@ -170,10 +170,6 @@ namespace OLLMcoder.Files
 			}
 			
 			// Prepare attributes string on main thread (fast operation)
-			var attributes = GLib.FileAttribute.STANDARD_NAME + "," + 
-				GLib.FileAttribute.STANDARD_TYPE + "," +
-				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-				GLib.FileAttribute.STANDARD_SYMLINK_TARGET;
 			
 			var new_items = new Gee.ArrayList<FileBase>();
 			SourceFunc callback = read_dir_scan.callback;
@@ -184,7 +180,10 @@ namespace OLLMcoder.Files
 				try {
 					// Execute directory enumeration in background thread (slow operation)
 					var enumerator = dir.enumerate_children(
-						attributes,
+						GLib.FileAttribute.STANDARD_NAME + "," + 
+							GLib.FileAttribute.STANDARD_TYPE + "," +
+							GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
+							GLib.FileAttribute.STANDARD_SYMLINK_TARGET;,
 						GLib.FileQueryInfoFlags.NONE,
 						null
 					);
