@@ -42,6 +42,7 @@
           <li class="method"><a href="SQ.Query.selectExecuteInto.html">selectExecuteInto</a></li>
           <li class="method"><a href="SQ.Query.selectPrepare.html">selectPrepare</a></li>
           <li class="method"><a href="SQ.Query.selectQuery.html">selectQuery</a></li>
+          <li class="method"><a href="SQ.Query.select_async.html">select_async</a></li>
           <li class="method"><a href="SQ.Query.updateById.html">updateById</a></li>
           <li class="method"><a href="SQ.Query.updateOld.html">updateOld</a></li>
           <li class="field"><a href="SQ.Query.typekey.html">typekey</a></li>
@@ -155,6 +156,11 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="SQ.Query.selectQuery.html" class="method">selectQuery</a></b> (<span class="main_basic_type"><span class="class">string</span></span> q, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><span>T</span></span>&gt; ret)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Executes a raw SQL SELECT query and populates a result list.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="SQ.Query.select_async.html" class="method">select_async</a></b> (<span class="main_basic_type"><span class="class">string</span></span> where, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><span>T</span></span>&gt; ret) <span class="main_keyword">throws</span> <span class="main_type"><span class="errordomain">ThreadError</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Selects objects from the table matching a WHERE clause asynchronously.
+              </span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="SQ.Query.updateById.html" class="method">updateById</a></b> (<span class="main_type"><span>T</span></span> newer)
             </span>

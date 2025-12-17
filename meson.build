@@ -54,7 +54,8 @@ executables_info = [
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html'],
-  ['oc-diff', 'examples/oc-diff']
+  ['oc-diff', 'examples/oc-diff'],
+  ['oc-migrate-editors', 'examples/oc-migrate-editors']
 ]
 
 # Library paths for LD_LIBRARY_PATH

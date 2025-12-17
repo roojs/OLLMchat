@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>SQ.Query.Query.with_properties &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>SQ.Query.select_async &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">SQ.Query.Query.with_properties &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">SQ.Query.select_async &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -28,7 +28,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="SQ.Query.Query.html">Query</a></li>
-          <li class="creation_method">Query.with_properties</li>
+          <li class="creation_method"><a href="SQ.Query.Query.with_properties.html">Query.with_properties</a></li>
           <li class="method"><a href="SQ.Query.compareProperty.html">compareProperty</a></li>
           <li class="method"><a href="SQ.Query.deleteId.html">deleteId</a></li>
           <li class="method"><a href="SQ.Query.fetchAllInt64.html">fetchAllInt64</a></li>
@@ -42,7 +42,7 @@
           <li class="method"><a href="SQ.Query.selectExecuteInto.html">selectExecuteInto</a></li>
           <li class="method"><a href="SQ.Query.selectPrepare.html">selectPrepare</a></li>
           <li class="method"><a href="SQ.Query.selectQuery.html">selectQuery</a></li>
-          <li class="method"><a href="SQ.Query.select_async.html">select_async</a></li>
+          <li class="method">select_async</li>
           <li class="method"><a href="SQ.Query.updateById.html">updateById</a></li>
           <li class="method"><a href="SQ.Query.updateOld.html">updateOld</a></li>
           <li class="field"><a href="SQ.Query.typekey.html">typekey</a></li>
@@ -50,38 +50,38 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">Query.with_properties</h1>
+        <h1 class="main_title">select_async</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Query.with_properties</span></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> db, <span class="main_basic_type"><span class="class">string</span></span> table, <span class="main_basic_type"><span class="class">string</span></span>[] names, <span class="main_type"><span class="struct">Value</span></span>[] values)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">select_async</span></b> (<span class="main_basic_type"><span class="class">string</span></span> where, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><span>T</span></span>&gt; ret) <span class="main_keyword">throws</span> <span class="main_type"><span class="errordomain">ThreadError</span></span>
         </div>
         <div class="description">
-          <p>Creates a new Query instance with property initialization.</p>
-          <p>Properties specified here will be set on objects when they are constructed from database rows using Object.new_with_properties.</p>
+          <p>Selects objects from the table matching a WHERE clause asynchronously.</p>
+          <p>This method executes a SELECT query in a background thread and populates the result list with instantiated objects of type T.</p>
+          <p>**IMPORTANT**: You MUST always use `yield` when calling this method. The result list (`ret`) is being populated in a background thread 
+            and is NOT thread-safe to access while the query is running. Only access the result list after `yield` returns (i.e., after the async 
+            method completes).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">db</td>
+              <td class="main_parameter_table_name">where</td>
               <td>
-                <p>The database instance to use </p>
+                <p>The WHERE clause (e.g., "WHERE id = 5" or "WHERE name = 'test'") </p>
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">table</td>
+              <td class="main_parameter_table_name">ret</td>
               <td>
-                <p>The name of the table to query </p>
+                <p>The list to populate with results (DO NOT access until after yield completes) </p>
               </td>
             </tr>
+          </table>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">names</td>
+              <td class="main_parameter_table_name">ThreadError</td>
               <td>
-                <p>Array of property names to set on constructed objects </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">values</td>
-              <td>
-                <p>Array of property values (must match names array length) </p>
+                <p>if thread creation fails </p>
               </td>
             </tr>
           </table>
