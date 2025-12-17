@@ -43,6 +43,11 @@ namespace OLLMcoder.Prompt
 		private OLLMcoder.SourceView? widget = null;
 		
 		/**
+		 * Cached ProjectManager instance (created on demand if widget doesn't exist).
+		 */
+		private OLLMcoder.ProjectManager? cached_manager = null;
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param provider The provider for context data. If null, no context will be provided.
