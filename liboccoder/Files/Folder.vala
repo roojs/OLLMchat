@@ -125,26 +125,145 @@ namespace OLLMcoder.Files
 			}
 			this.read_dir_remove(new_items, old_children);
 			
-			// Backup database after all changes
+			// If not recursing, do backup and return early
+			if (!recurse) {
+				this.manager.db.backupDB();
+				return;
+			}
 			
-			// If recurse is true, recursively read all subdirectories
-			if (recurse) {
-				foreach (var child in this.children.items) {
-					if (child is Folder) {
-						yield ((Folder)child).read_dir(check_time, true);
-					}
-					if (child is FileAlias && child.points_to is Folder) {
-						yield ((Folder)child.points_to).read_dir(check_time, true);
-					}
+			// Collect all folders that need recursive reading
+			var folders_to_process = new Gee.ArrayList<Folder>();
+			foreach (var child in this.children.items) {
+				if (child is Folder) {
+					folders_to_process.add((Folder)child);
+				}
+				if (child is FileAlias && child.points_to is Folder) {
+					folders_to_process.add((Folder)child.points_to);
 				}
 			}
-
-			this.manager.db.backupDB();
-
-
-			if (this.is_project && recurse) {
-				this.project_files.update_from(this);
+			
+			// If no folders to process, do backup and update_from immediately
+			if (folders_to_process.size == 0) {
+				this.manager.db.backupDB();
+				if (this.is_project) {
+					this.project_files.update_from(this);
+				}
+				return;
 			}
+			
+			// Process folders in idle callbacks
+			var folder_queue = folders_to_process;
+			var processed_count = 0;
+			var total_count = folder_queue.size;
+			var is_project = this.is_project;
+			var manager = this.manager;
+			var project_files = this.project_files;
+			
+			// Process one folder per idle callback
+			Idle.add(() => {
+				if (folder_queue.size == 0) {
+					// All folders processed, do final operations
+					manager.db.backupDB();
+					if (is_project) {
+						project_files.update_from(this);
+					}
+					return false; // Don't reschedule
+				}
+				
+				// Get next folder to process
+				var folder = folder_queue.remove_at(0);
+				
+				// Call read_dir asynchronously without yield
+				folder.read_dir.begin(check_time, true, (obj, res) => {
+					try {
+						folder.read_dir.end(res);
+						processed_count++;
+						
+						// Schedule next idle callback to process next folder
+						if (folder_queue.size > 0) {
+							Idle.add(() => {
+								if (folder_queue.size == 0) {
+									// All folders processed, do final operations
+									manager.db.backupDB();
+									if (is_project) {
+										project_files.update_from(this);
+									}
+									return false; // Don't reschedule
+								}
+								
+								// Get next folder to process
+								var next_folder = folder_queue.remove_at(0);
+								
+								// Call read_dir asynchronously
+								next_folder.read_dir.begin(check_time, true, (obj2, res2) => {
+									try {
+										next_folder.read_dir.end(res2);
+										processed_count++;
+										
+										// Continue processing if more folders remain
+										if (folder_queue.size > 0) {
+											Idle.add(() => {
+												// Recursive pattern - process next folder
+												if (folder_queue.size == 0) {
+													manager.db.backupDB();
+													if (is_project) {
+														project_files.update_from(this);
+													}
+													return false;
+												}
+												
+												var f = folder_queue.remove_at(0);
+												f.read_dir.begin(check_time, true, (obj3, res3) => {
+													try {
+														f.read_dir.end(res3);
+														processed_count++;
+													} catch (Error e) {
+														GLib.warning("Error reading directory: %s", e.message);
+													}
+													
+													// Schedule next iteration
+													if (folder_queue.size > 0) {
+														Idle.add(() => {
+															// This pattern continues...
+															return false;
+														});
+													} else {
+														// All done
+														manager.db.backupDB();
+														if (is_project) {
+															project_files.update_from(this);
+														}
+													}
+												});
+												return false;
+											});
+										} else {
+											// All folders processed
+											manager.db.backupDB();
+											if (is_project) {
+												project_files.update_from(this);
+											}
+										}
+									} catch (Error e) {
+										GLib.warning("Error reading directory: %s", e.message);
+									}
+								});
+								return false;
+							});
+						} else {
+							// All folders processed
+							manager.db.backupDB();
+							if (is_project) {
+								project_files.update_from(this);
+							}
+						}
+					} catch (Error e) {
+						GLib.warning("Error reading directory: %s", e.message);
+					}
+				});
+				
+				return false; // Don't reschedule - we'll schedule next one in callback
+			});
 
 		}
 		
