@@ -119,11 +119,11 @@ namespace OLLMcoder.Files
 				old_child_map.set(entry.key, entry.value);
 			}
 			
-			var new_items = yield read_dir_scan();
+			var new_items = yield this.read_dir_scan();
 			foreach (var new_item in new_items) {
-				read_dir_update(new_item, old_child_map);
+				this.read_dir_update(new_item, old_child_map);
 			}
-			read_dir_remove(new_items, old_children);
+			this.read_dir_remove(new_items, old_children);
 			
 			// Backup database after all changes
 			
