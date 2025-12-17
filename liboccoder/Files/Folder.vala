@@ -151,8 +151,16 @@ namespace OLLMcoder.Files
 		/**
 		 * Scan directory and create FileBase objects for all items found.
 		 * 
+		 * This method executes directory scanning in a background thread to avoid
+		 * blocking the main thread during file system operations.
+		 * 
+		 * **IMPORTANT**: You MUST always use `yield` when calling this method. The
+		 * result list is being populated in a background thread and is NOT
+		 * thread-safe to access while the scan is running. Only access the result
+		 * list after `yield` returns (i.e., after the async method completes).
+		 * 
 		 * @return List of newly created FileBase objects
-		 * @throws Error if directory does not exist
+		 * @throws Error if directory does not exist or thread creation fails
 		 */
 		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error
 		{
@@ -161,46 +169,71 @@ namespace OLLMcoder.Files
 				throw new GLib.IOError.NOT_FOUND("Directory does not exist: " + this.path);
 			}
 			
-			var enumerator = yield dir.enumerate_children_async(
-				GLib.FileAttribute.STANDARD_NAME + "," + 
+			// Prepare attributes string on main thread (fast operation)
+			var attributes = GLib.FileAttribute.STANDARD_NAME + "," + 
 				GLib.FileAttribute.STANDARD_TYPE + "," +
 				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-				GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
-				GLib.FileQueryInfoFlags.NONE,
-				GLib.Priority.DEFAULT,
-				null
-			);
+				GLib.FileAttribute.STANDARD_SYMLINK_TARGET;
 			
-			var info_list = yield enumerator.next_files_async(100, GLib.Priority.DEFAULT, null);
-			
-			// First pass: Create all new items
 			var new_items = new Gee.ArrayList<FileBase>();
-			foreach (var info in info_list) {
-				var name = info.get_name();
-				
-				// Skip .git directories and other hidden/system folders
-				if (name == ".git") {
-					continue;
-				}
-				
-				var cpath = GLib.Path.build_filename(this.path, name);
-				
-				if (info.get_is_symlink()) {
-					new_items.add(new FileAlias.new_from_info(this, info, cpath));
-					continue;
-				}
-				
-				if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-					new_items.add(new Folder.new_from_info(
-						this.manager, this, info, cpath));
-					continue;
-				}
-				
-				new_items.add(new File.new_from_info(
-					this.manager, this, info, cpath));
-			}
+			SourceFunc callback = read_dir_scan.callback;
+			Error? thread_error = null;
 			
-			yield enumerator.close_async(GLib.Priority.DEFAULT, null);
+			// Hold reference to closure to keep it from being freed whilst thread is active
+			ThreadFunc<bool> run = () => {
+				try {
+					// Execute directory enumeration in background thread (slow operation)
+					var enumerator = dir.enumerate_children(
+						attributes,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					
+					GLib.FileInfo? info;
+					while ((info = enumerator.next_file(null)) != null) {
+						var name = info.get_name();
+						
+						// Skip .git directories and other hidden/system folders
+						if (name == ".git") {
+							continue;
+						}
+						
+						var cpath = GLib.Path.build_filename(this.path, name);
+						
+						if (info.get_is_symlink()) {
+							new_items.add(new FileAlias.new_from_info(this, info, cpath));
+							continue;
+						}
+						
+						if (info.get_file_type() == GLib.FileType.DIRECTORY) {
+							new_items.add(new Folder.new_from_info(
+								this.manager, this, info, cpath));
+							continue;
+						}
+						
+						new_items.add(new File.new_from_info(
+							this.manager, this, info, cpath));
+					}
+					
+					enumerator.close(null);
+				} catch (Error e) {
+					thread_error = e;
+				}
+				
+				// Schedule callback on main thread
+				Idle.add((owned) callback);
+				return true;
+			};
+			
+			new Thread<bool>("read-dir-scan", run);
+			
+			// Wait for background thread to schedule our callback
+			yield;
+			
+			// Re-throw any error that occurred in the thread
+			if (thread_error != null) {
+				throw thread_error;
+			}
 			
 			return new_items;
 		}
