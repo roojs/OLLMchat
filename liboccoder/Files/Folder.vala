@@ -156,14 +156,15 @@ namespace OLLMcoder.Files
 			var is_project = this.is_project;
 			var manager = this.manager;
 			var project_files = this.project_files;
+			var self = this;
 			
-			// Helper function to process one folder from the queue
-			bool process_next_folder() {
+			// Helper delegate to process one folder from the queue
+			SourceFunc process_next_folder = () => {
 				if (folder_queue.size == 0) {
 					// All folders processed, do final operations
 					manager.db.backupDB();
 					if (is_project) {
-						project_files.update_from(this);
+						project_files.update_from(self);
 					}
 					return false; // Don't reschedule
 				}
@@ -184,7 +185,7 @@ namespace OLLMcoder.Files
 				});
 				
 				return false; // Don't reschedule - we'll schedule next one in callback
-			}
+			};
 			
 			// Start processing the queue
 			Idle.add(process_next_folder);
