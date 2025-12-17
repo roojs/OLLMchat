@@ -162,7 +162,7 @@ namespace OLLMcoder.Files
 		 * @return List of newly created FileBase objects
 		 * @throws Error if directory does not exist or thread creation fails
 		 */
-		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error
+		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error, ThreadError
 		{
 			var dir = GLib.File.new_for_path(this.path);
 			if (!dir.query_exists()) {
