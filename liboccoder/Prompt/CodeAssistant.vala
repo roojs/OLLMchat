@@ -141,6 +141,33 @@ namespace OLLMcoder.Prompt
 			// Try to initialize provider if widget exists but provider is null
 			if (this.provider == null && this.widget != null && this.widget.manager != null) {
 				this.provider = new CodeAssistantProvider(this.widget.manager);
+				this.cached_manager = this.widget.manager; // Cache the manager reference
+			}
+			
+			// If provider is still null, try to create it from cached manager or create a new ProjectManager
+			if (this.provider == null && this.db != null) {
+				OLLMcoder.ProjectManager? manager = null;
+				
+				// Use cached manager if available
+				if (this.cached_manager != null) {
+					manager = this.cached_manager;
+				} else if (this.widget != null && this.widget.manager != null) {
+					// Use widget's manager if widget exists
+					manager = this.widget.manager;
+					this.cached_manager = manager;
+				} else {
+					// Create a new ProjectManager from db (lazy initialization)
+					manager = new OLLMcoder.ProjectManager(this.db);
+					this.cached_manager = manager;
+					// Load projects from database
+					manager.load_projects_from_db();
+					// Restore active state (async, but we'll do it synchronously for now)
+					// Note: This might not have all state, but it's better than nothing
+				}
+				
+				if (manager != null) {
+					this.provider = new CodeAssistantProvider(manager);
+				}
 			}
 			
 			if (this.provider == null) {
@@ -211,6 +238,7 @@ namespace OLLMcoder.Prompt
 				// Ensure provider is set even if widget was cached
 				if (this.provider == null && this.widget.manager != null) {
 					this.provider = new CodeAssistantProvider(this.widget.manager);
+					this.cached_manager = this.widget.manager; // Update cached reference
 				}
 				return this.widget as Object;
 			}
@@ -237,12 +265,16 @@ namespace OLLMcoder.Prompt
 			// Create SourceView with ProjectManager
 			this.widget = new OLLMcoder.SourceView(project_manager);
 			
+			// Cache the manager reference
+			this.cached_manager = project_manager;
+			
 			// Initialize widget (load projects, restore state, apply UI state)
 			yield this.initialize_widget();
 			
 			// Create provider from widget's manager so context can be included in prompts
 			if (this.provider == null && this.widget.manager != null) {
 				this.provider = new CodeAssistantProvider(this.widget.manager);
+				this.cached_manager = this.widget.manager; // Update cached reference
 			}
 			
 			// Return widget (cast as Object)
