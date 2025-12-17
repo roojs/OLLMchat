@@ -442,10 +442,10 @@ namespace OLLMcoder.Files
 			
 		// Build id map and seen_ids (first pass)
 		
-		foreach (var file_base in new_files) {
-			id_map.set((int)file_base.id, file_base);
-			seen_ids.add(file_base.id.to_string());
-		}
+			foreach (var file_base in new_files) {
+				id_map.set((int)file_base.id, file_base);
+				seen_ids.add(file_base.id.to_string());
+			}
 			string[] next_paths = {};
 			
 			// Second pass: fill in parent references and set aliased files
