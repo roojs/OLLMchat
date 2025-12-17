@@ -1,0 +1,31 @@
+/* Pulldown/SearchableDropdown styling */
+
+/* Entry with suggestion dropdown */
+entry.suggestion {
+  /* Entry styling - ensure arrow space on right */
+  padding-right: 24px;
+}
+
+/* Popover styling - note: popover is sibling of entry, not child */
+popover.menu {
+  margin-top: 6px;
+  padding: 0;
+}
+
+popover.menu > scrolledwindow {
+  padding: 0;
+}
+
+popover.menu listview {
+  margin: 8px 0;
+}
+
+popover.menu listview > row {
+  padding: 8px;
+}
+
+popover.menu listview > row:selected {
+  outline-color: rgba(1,1,1,0.2);
+  color: @theme_text_color;
+  background-color: shade(#f6f5f4, 0.97);
+}
