@@ -151,40 +151,11 @@ namespace OLLMcoder.Files
 				return;
 			}
 			
-			// Process folders in idle callbacks using a recursive helper
-			var self = this;
-			
-			// Helper delegate to process one folder from the queue
-			SourceFunc process_next_folder = () => {
-				if (folders_to_process.size == 0) {
-					// All folders processed, do final operations
-					self.manager.db.backupDB();
-					if (self.is_project) {
-						self.project_files.update_from(self);
-					}
-					return false; // Don't reschedule
-				}
-				
-				// Get next folder to process
-				var folder = folders_to_process.remove_at(0);
-				
-				// Call read_dir asynchronously without yield
-				folder.read_dir.begin(check_time, true, (obj, res) => {
-					try {
-						folder.read_dir.end(res);
-					} catch (Error e) {
-						GLib.warning("Error reading directory: %s", e.message);
-					}
-					
-					// Schedule next folder processing in idle callback
-					Idle.add(process_next_folder);
-				});
-				
-				return false; // Don't reschedule - we'll schedule next one in callback
-			};
-			
-			// Start processing the queue
-			Idle.add(process_next_folder);
+			// Start processing folders in idle callback
+			Idle.add(() => {
+				this.process_folders(folders_to_process, check_time);
+				return false;
+			});
 
 		}
 		
