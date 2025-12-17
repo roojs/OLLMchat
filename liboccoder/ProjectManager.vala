@@ -127,7 +127,7 @@ namespace OLLMcoder
 			}
 			
 			// Reset is_active for ALL other projects (ensure only one project is active)
-			foreach (var other_project in this.projects.items) {
+			foreach (var other_project in this.projects.project_map.values) {
 				if (other_project != project && other_project.is_project && other_project.is_active) {
 					GLib.debug("ProjectManager.activate_project: Deactivating project '%s'", other_project.path);
 					other_project.is_active = false;
@@ -253,7 +253,7 @@ namespace OLLMcoder
 				GLib.debug("ProjectManager.restore_active_state: No active project found, resetting all projects");
 				// Reset is_active for all projects if no active project found
 				// (in case multiple projects were marked active in database)
-				foreach (var other_project in this.projects.items) {
+				foreach (var other_project in this.projects.project_map.values) {
 					if (other_project.is_project && other_project.is_active) {
 						GLib.debug("ProjectManager.restore_active_state: Resetting is_active for project '%s'", other_project.path);
 						other_project.is_active = false;
