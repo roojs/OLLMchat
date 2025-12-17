@@ -61,6 +61,19 @@ namespace OLLMagent
 		public signal string get_workspace_path();
 		
 		/**
+		 * Gets the UI widget for this agent, if any.
+		 * 
+		 * Agents with UI should override this method to return their widget.
+		 * Default implementation returns null (agents without UI).
+		 * 
+		 * @return The UI widget cast as Object, or null if agent has no UI
+		 */
+		public virtual async Object? get_widget()
+		{
+			return null;
+		}
+		
+		/**
 		 * Gets OS version directly (implemented here, not a signal).
 		 */
 		protected string get_os_version()

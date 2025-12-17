@@ -34,6 +34,12 @@ namespace OLLMchat
 		private int source_view_min_width = 400;
 		
 		/**
+		 * Intended visibility state for the right pane.
+		 * Use schedule_pane_update() to apply changes.
+		 */
+		public bool intended_pane_visible { get; set; default = false; }
+		
+		/**
 		 * Creates a new WindowPane instance.
 		 * 
 		 * @since 1.0
@@ -172,6 +178,51 @@ namespace OLLMchat
 		public void set_source_view_min_width(int width)
 		{
 			this.source_view_min_width = width;
+		}
+		
+		/**
+		 * Schedules a visibility update using Idle.add().
+		 * 
+		 * Applies the current intended_pane_visible state.
+		 */
+		public void schedule_pane_update()
+		{
+			GLib.Idle.add(() => {
+				// Apply intended state
+				if (this.intended_pane_visible) {
+					this.show_right_pane();
+				} else {
+					this.hide_right_pane();
+				}
+				return false;  // Remove from idle queue (one-time callback)
+			});
+		}
+		
+		/**
+		 * Adds or shows an agent widget in the tab view.
+		 * 
+		 * If the widget already exists in tab_view (by name), it's shown.
+		 * Otherwise, the widget is added to tab_view (only if not already parented).
+		 * The widget is made visible and set as the visible child.
+		 * 
+		 * @param widget The widget to add or show
+		 * @param widget_id The ID/name for the widget in the ViewStack
+		 * @return The widget that should be shown (may be the existing one)
+		 */
+		public Gtk.Widget add_or_show_agent_widget(Gtk.Widget widget, string widget_id)
+		{
+			// Check if widget already exists in tab_view (by name)
+			var existing_widget = this.tab_view.get_child_by_name(widget_id);
+
+			if ( this.tab_view.get_child_by_name(widget_id) == null) {
+				this.tab_view.add_named(widget, widget_id);
+			} 
+			// if ti exists it will be the same object - no need to check..
+			// Show widget and set as visible child
+			widget.visible = true;
+			this.tab_view.set_visible_child_name(widget.name);
+			
+			return widget;
 		}
 	}
 }

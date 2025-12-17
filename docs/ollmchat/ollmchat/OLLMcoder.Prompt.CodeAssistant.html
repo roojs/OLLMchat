@@ -31,10 +31,12 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMcoder.Prompt.CodeAssistant.db.html">db</a></li>
           <li class="creation_method"><a href="OLLMcoder.Prompt.CodeAssistant.CodeAssistant.html">CodeAssistant</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_system_prompt.html">generate_system_prompt</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_info_section.html">generate_user_info_section</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_prompt.html">generate_user_prompt</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.get_widget.html">get_widget</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -62,6 +64,14 @@
         <div class="package_note"><b>Package:</b> <a href="index.htm">ollmchat</a>
         </div>
         <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Properties:</h3>
+        <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span>? <b><a href="OLLMcoder.Prompt.CodeAssistant.db.html" class="property">db</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Database instance for ProjectManager (optional). Set this to enable 
+                project/file persistence.</span>
+            </div></li>
+        </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
           <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Prompt.CodeAssistant.CodeAssistant.html" class="creation_method">CodeAssistant</a></b> (<span class="main_type"><a href="OLLMcoder.Prompt.CodeAssistantProvider.html" class="class">CodeAssistantProvider</a></span>? provider = <span class="main_literal">null</span>)
@@ -84,6 +94,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Generates the user prompt with additional context data.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_type"><span class="class">Object</span></span>? <b><a href="OLLMcoder.Prompt.CodeAssistant.get_widget.html" class="virtual_method">get_widget</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the UI widget for this agent.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
@@ -100,6 +114,7 @@
             <div class="column">
               <ul class="navi_inline">
                 <li class="method"><a href="OLLMagent.BaseAgent.get_os_version.html">get_os_version</a></li>
+                <li class="virtual_method"><a href="OLLMagent.BaseAgent.get_widget.html">get_widget</a></li>
                 <li class="signal"><a href="OLLMagent.BaseAgent.get_workspace_path.html">get_workspace_path</a></li>
                 <li class="method"><a href="OLLMagent.BaseAgent.load_section.html">load_section</a></li>
               </ul>

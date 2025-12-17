@@ -384,6 +384,9 @@ namespace OLLMchatGtk
 				this.manager.session.agent_name = agent.name;
 				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
 				this.manager.session.client.prompt_assistant = agent;
+				
+				// Emit agent_activated signal for UI updates (Window listens to this)
+				this.manager.agent_activated(agent);
 			});
 			
 			// Connect to session_activated signal to update when session changes

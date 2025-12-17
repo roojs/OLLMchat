@@ -40,7 +40,7 @@ namespace OLLMcoder
 	 */
 	public class SourceView : Gtk.Box
 	{
-		private ProjectManager manager;
+		public ProjectManager manager { get; private set; }
 		private ProjectDropdown project_dropdown;
 		private FileDropdown file_dropdown;
 		private GtkSource.View source_view;

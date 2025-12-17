@@ -32,6 +32,17 @@ namespace OLLMcoder.Prompt
 		private CodeAssistantProvider? provider;
 		
 		/**
+		 * Database instance for ProjectManager (optional).
+		 * Set this to enable project/file persistence.
+		 */
+		public SQ.Database? db { get; set; default = null; }
+		
+		/**
+		 * Cached widget instance (lazy initialization).
+		 */
+		private OLLMcoder.SourceView? widget = null;
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param provider The provider for context data. If null, no context will be provided.
@@ -172,6 +183,73 @@ namespace OLLMcoder.Prompt
 			result += "</additional_data>";
 			
 			return result;
+		}
+		
+		/**
+		 * Gets the UI widget for this agent.
+		 * 
+		 * Creates and returns a SourceView with ProjectManager on first call,
+		 * waits for initialization to complete before returning.
+		 * Reuses the same instance on subsequent calls (lazy initialization).
+		 * 
+		 * @return The SourceView widget cast as Object, or null if database is not available
+		 */
+		public override async Object? get_widget()
+		{
+			// Return cached widget if already created
+			if (this.widget != null) {
+				return this.widget as Object;
+			}
+			
+			// Database is required for ProjectManager
+			if (this.db == null) {
+				return null;
+			}
+			
+			// Run migration if database file doesn't exist
+			var db_file = GLib.File.new_for_path(this.db.filename);
+			if (!db_file.query_exists()) {
+				// Database file doesn't exist - run migration
+				var project_manager = new OLLMcoder.ProjectManager(this.db);
+				var migrator = new OLLMcoder.ProjectMigrate(project_manager);
+				migrator.migrate_all();
+				// Save migrated data to database file
+				this.db.backupDB();
+			}
+			
+			// Create ProjectManager with database
+			var project_manager = new OLLMcoder.ProjectManager(this.db);
+			
+			// Create SourceView with ProjectManager
+			this.widget = new OLLMcoder.SourceView(project_manager);
+			
+			// Initialize widget (load projects, restore state, apply UI state)
+			yield this.initialize_widget();
+			
+			// Return widget (cast as Object)
+			return this.widget as Object;
+		}
+		
+		/**
+		 * Initializes the widget asynchronously.
+		 * 
+		 * Loads projects from database, restores active state, and applies UI state.
+		 */
+		private async void initialize_widget()
+		{
+		 
+			try {
+				// Load projects from database
+				this.widget.manager.load_projects_from_db();
+				
+				// Restore active state (sets manager.active_project and manager.active_file)
+				yield this.widget.manager.restore_active_state();
+				
+				// Apply UI state (opens project/file in editor)
+				yield this.widget.apply_manager_state();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to initialize CodeAssistant widget: %s", e.message);
+			}
 		}
 	}
 }

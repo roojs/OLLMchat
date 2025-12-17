@@ -33,6 +33,8 @@ namespace OLLMchat
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private Gtk.Button new_chat_button;
 		private Gtk.Application app;
+		private WindowPane? window_pane = null;
+		private Gtk.Widget? current_agent_widget = null;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -212,6 +214,7 @@ namespace OLLMchat
 			// Register CodeAssistant agent
 			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(null) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
+				db =  new SQ.Database(Path.build_filename(data_dir, "files.sqlite"))  // Set separate database for ProjectManager
 			};
 			this.history_manager.agents.set(code_assistant.name, code_assistant);
 			
@@ -250,8 +253,91 @@ namespace OLLMchat
 				stderr.printf("Error: %s\n", error);
 			});
 
-			// Set chat widget as main content
-			this.split_view.content = this.chat_widget;
+			// Create WindowPane to manage chat widget and agent widgets
+			this.window_pane = new WindowPane();
+			
+			// Set chat widget as start child (left pane)
+			this.window_pane.paned.set_start_child(this.chat_widget);
+			this.window_pane.paned.set_resize_start_child(true);
+			
+			// Connect to agent_activated signal to manage agent widgets
+			this.history_manager.agent_activated.connect(this.on_agent_activated);
+			
+			// Set WindowPane as main content
+			this.split_view.content = this.window_pane;
+		}
+		
+		/**
+		 * Handles agent activation signal.
+		 * 
+		 * Manages agent widgets in WindowPane.tab_view:
+		 * - Hides previous agent's widget (if any)
+		 * - Gets widget from agent via async get_widget()
+		 * - Adds widget to tab_view if not already present
+		 * - Shows widget and updates WindowPane visibility
+		 */
+		private void on_agent_activated(OLLMagent.BaseAgent agent)
+		{
+			if (this.window_pane == null) {
+				return;
+			}
+			
+			// Hide previous agent's widget (if any)
+			if (this.current_agent_widget != null) {
+				this.current_agent_widget.visible = false;
+				this.current_agent_widget = null;
+			}
+			
+			// Get widget from agent asynchronously
+			agent.get_widget.begin((obj, res) => {
+				var widget_obj = agent.get_widget.end(res);
+				this.handle_agent_widget(agent, widget_obj);
+			});
+		}
+		
+		/**
+		 * Handles the agent widget after it's been retrieved.
+		 * 
+		 * @param agent The agent that provided the widget
+		 * @param widget_obj The widget object (may be null)
+		 */
+		private void handle_agent_widget(OLLMagent.BaseAgent agent, Object? widget_obj)
+		{
+			if (this.window_pane == null) {
+				return;
+			}
+			
+			if (widget_obj == null) {
+				// Agent has no UI - hide pane
+				this.window_pane.intended_pane_visible = false;
+				this.window_pane.schedule_pane_update();
+				return;
+			}
+			
+			// Cast to Gtk.Widget
+			var widget = widget_obj as Gtk.Widget;
+			if (widget == null) {
+				GLib.warning("Agent %s returned non-widget object from get_widget()", agent.name);
+				this.window_pane.intended_pane_visible = false;
+				this.window_pane.schedule_pane_update();
+				return;
+			}
+			
+			// Widget ID management
+			var widget_id = agent.name + "-widget";
+			
+			// Set widget name if not already set (before calling WindowPane method)
+			if (widget.name == null || widget.name == "") {
+				widget.name = widget_id;
+			}
+			
+			// Add or show widget in WindowPane (handles showing and setting visible child)
+			widget = this.window_pane.add_or_show_agent_widget(widget, widget_id);
+			this.current_agent_widget = widget;
+			
+			// Set intended state and schedule update
+			this.window_pane.intended_pane_visible = true;
+			this.window_pane.schedule_pane_update();
 		}
 		
 	}

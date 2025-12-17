@@ -38,7 +38,7 @@ namespace SQ {
 		/**
 		 * The filename used for backup and restore operations.
 		 */
-		private string _filename;
+		public string filename { get; private set; }
 		
 		/**
 		 * Cache of table schemas to avoid repeated PRAGMA queries.
@@ -66,38 +66,56 @@ namespace SQ {
 		 */
 		public Database(string filename, bool autosave = false)
 		{
-			_filename = filename;
+			this.filename = filename;
 			schema_cache = new Gee.HashMap<string,Gee.ArrayList<Schema>>();
 			Sqlite.config(Sqlite.Config.SERIALIZED);
-			var exists = GLib.FileUtils.test(filename, GLib.FileTest.EXISTS);
-			if (exists) {
-				Posix.Stat buf;
-				Posix.stat(filename, out buf);
-				if (buf.st_size > 0) {
-					Sqlite.Database filedb;
-					Sqlite.Database.open(filename, out filedb);
-					Sqlite.Database.open(":memory:", out db);
-					var b = new Sqlite.Backup(db, "main", filedb, "main");
-					b.step(-1);
-					// Start periodic save timer if autosave is enabled
-					if (!autosave) {
-						return;
-					}
-					this.save_timeout_id = GLib.Timeout.add_seconds(60, () => {
-						if (this.is_dirty) {
-							this.backupDB();
-						}
-						return true; // Continue timer
-					});
-					return;
-				}
-			}
-			Sqlite.Database.open(":memory:", out db);
 			
-			// Start periodic save timer if autosave is enabled
+			if (!this.load_from_file()) {
+				// Database loaded from file
+				Sqlite.Database.open(":memory:", out db);
+			}
+			
+			this.setup_autosave(autosave);
+		}
+		
+		/**
+		 * Loads database from file into memory if file exists and is non-empty.
+		 * 
+		 * @return true if database was loaded from file, false otherwise
+		 */
+		private bool load_from_file()
+		{
+			var exists = GLib.FileUtils.test(this.filename, GLib.FileTest.EXISTS);
+			if (!exists) {
+				return false;
+			}
+			
+			Posix.Stat buf;
+			Posix.stat(this.filename, out buf);
+			if (buf.st_size == 0) {
+				return false;
+			}
+			
+			Sqlite.Database filedb;
+			Sqlite.Database.open(this.filename, out filedb);
+			Sqlite.Database.open(":memory:", out db);
+			var b = new Sqlite.Backup(db, "main", filedb, "main");
+			b.step(-1);
+			
+			return true;
+		}
+		
+		/**
+		 * Sets up periodic autosave timer if enabled.
+		 * 
+		 * @param autosave Whether to enable autosave
+		 */
+		private void setup_autosave(bool autosave)
+		{
 			if (!autosave) {
 				return;
 			}
+			
 			this.save_timeout_id = GLib.Timeout.add_seconds(60, () => {
 				if (this.is_dirty) {
 					this.backupDB();
@@ -122,7 +140,7 @@ namespace SQ {
 				return;
 			}
 			Sqlite.Database filedb;
-			Sqlite.Database.open(_filename, out filedb);
+			Sqlite.Database.open(this.filename, out filedb);
 			var b = new Sqlite.Backup(filedb, "main", db, "main");
 			b.step(-1);
 			this.is_dirty = false;

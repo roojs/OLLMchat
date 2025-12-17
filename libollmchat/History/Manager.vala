@@ -57,6 +57,9 @@ namespace OLLMchat.History
 		// Signal emitted when a session is activated
 		public signal void session_activated(SessionBase session);
 		
+		// Signal emitted when an agent is activated (for UI updates)
+		public signal void agent_activated(OLLMagent.BaseAgent agent);
+		
 		// Signals that relay client signals to UI (from active session)
 		public signal void chat_send(Call.Chat chat);
 		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
