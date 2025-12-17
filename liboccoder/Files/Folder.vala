@@ -389,12 +389,13 @@ namespace OLLMcoder.Files
 			// Step a: Create id => FileBase map
 			var id_map = new Gee.HashMap<int, FileBase>();
 			
-			// Step b: Load children starting from project path using while loop
-			string[] paths = { this.path };
-			string[] seen_ids = { this.id.to_string() };
-			while (paths.length > 0) {
-				paths = yield this.load_children(id_map, paths, ref seen_ids);
-			}
+		// Step b: Load children starting from project path using while loop
+		string[] paths = { this.path };
+		var seen_ids = new Gee.ArrayList<string>();
+		seen_ids.add(this.id.to_string());
+		while (paths.length > 0) {
+			paths = yield this.load_children(id_map, paths, seen_ids);
+		}
 			
 			// Step c: Build the tree structure
 			foreach (var file_base in id_map.values) {
@@ -402,18 +403,18 @@ namespace OLLMcoder.Files
 			}
 		}
 		
-		/**
-		 * Load children using path-based queries, following symlinks via target_path.
-		 * 
-		 * @param id_map The id => FileBase map to update
-		 * @param paths Array of paths to search under
-		 * @param seen_ids Array of IDs we've already loaded (modified inline)
-		 * @return Array of next paths to search, or empty array if done
-		 */
-		private async string[] load_children(
-			Gee.HashMap<int, FileBase> id_map,
-			string[] paths,
-			ref string[] seen_ids)
+	/**
+	 * Load children using path-based queries, following symlinks via target_path.
+	 * 
+	 * @param id_map The id => FileBase map to update
+	 * @param paths Array of paths to search under
+	 * @param seen_ids ArrayList of IDs we've already loaded (modified inline)
+	 * @return Array of next paths to search, or empty array if done
+	 */
+	private async string[] load_children(
+		Gee.HashMap<int, FileBase> id_map,
+		string[] paths,
+		Gee.ArrayList<string> seen_ids)
 		{
 			// Build path conditions using instr() to check if path column starts with path + "/"
 			// or if path exactly matches (for files that are the path itself)
@@ -426,29 +427,25 @@ namespace OLLMcoder.Files
 					escaped_path + "')";
 			}
 			
-			// Load files matching the path conditions
-			var query = FileBase.query(this.manager.db, this.manager);
-			var new_files = new Gee.ArrayList<FileBase>();
-			yield query.select_async("WHERE (" + 
-				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids) + ")", new_files);
+		// Load files matching the path conditions
+		var query = FileBase.query(this.manager.db, this.manager);
+		var new_files = new Gee.ArrayList<FileBase>();
+		var seen_ids_array = seen_ids.to_array();
+		yield query.select_async("WHERE (" + 
+			string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
+			string.joinv(", ", seen_ids_array) + ")", new_files);
 			
 			// If no new files found, we're done
 			if (new_files.size == 0) {
 				return {};
 			}
 			
-			// Build id map and seen_ids (first pass)
-			
-			foreach (var file_base in new_files) {
-				id_map.set((int)file_base.id, file_base);
-				var new_seen_ids = new string[seen_ids.length + 1];
-				for (int i = 0; i < seen_ids.length; i++) {
-					new_seen_ids[i] = seen_ids[i];
-				}
-				new_seen_ids[seen_ids.length] = file_base.id.to_string();
-				seen_ids = new_seen_ids;
-			}
+		// Build id map and seen_ids (first pass)
+		
+		foreach (var file_base in new_files) {
+			id_map.set((int)file_base.id, file_base);
+			seen_ids.add(file_base.id.to_string());
+		}
 			string[] next_paths = {};
 			
 			// Second pass: fill in parent references and set aliased files
