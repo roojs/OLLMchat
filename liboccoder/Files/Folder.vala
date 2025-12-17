@@ -153,18 +153,15 @@ namespace OLLMcoder.Files
 			
 			// Process folders in idle callbacks using a recursive helper
 			var folder_queue = folders_to_process;
-			var is_project = this.is_project;
-			var manager = this.manager;
-			var project_files = this.project_files;
 			var self = this;
 			
 			// Helper delegate to process one folder from the queue
 			SourceFunc process_next_folder = () => {
 				if (folder_queue.size == 0) {
 					// All folders processed, do final operations
-					manager.db.backupDB();
-					if (is_project) {
-						project_files.update_from(self);
+					self.manager.db.backupDB();
+					if (self.is_project) {
+						self.project_files.update_from(self);
 					}
 					return false; // Don't reschedule
 				}
