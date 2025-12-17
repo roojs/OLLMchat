@@ -548,6 +548,47 @@ namespace SQ {
 		}
 		
 		/**
+		 * Selects objects from the table matching a WHERE clause asynchronously.
+		 * 
+		 * This method executes a SELECT query in a background thread and populates
+		 * the result list with instantiated objects of type T.
+		 * 
+		 * **IMPORTANT**: You MUST always use `yield` when calling this method. The
+		 * result list (`ret`) is being populated in a background thread and is NOT
+		 * thread-safe to access while the query is running. Only access the result
+		 * list after `yield` returns (i.e., after the async method completes).
+		 * 
+		 * @param where The WHERE clause (e.g., "WHERE id = 5" or "WHERE name = 'test'")
+		 * @param ret The list to populate with results (DO NOT access until after yield completes)
+		 * @throws ThreadError if thread creation fails
+		 */
+		public async void select_async(string where, Gee.ArrayList<T> ret) throws ThreadError
+		{
+			assert(this.table != "");
+			
+			// Build query string on main thread (fast operation, safe cache access)
+			var keys = this.getColsExcept(null);
+			var q = "SELECT " + string.joinv(",", keys) + " FROM " + this.table + " " + where;
+			
+			SourceFunc callback = select_async.callback;
+			
+			// Hold reference to closure to keep it from being freed whilst thread is active
+			ThreadFunc<bool> run = () => {
+				// Execute query in background thread (slow operation)
+				this.selectQuery(q, ret);
+				
+				// Schedule callback on main thread
+				Idle.add((owned) callback);
+				return true;
+			};
+			
+			new Thread<bool>("select-query", run);
+			
+			// Wait for background thread to schedule our callback
+			yield;
+		}
+		
+		/**
 		 * Prepares a SQL SELECT statement for execution.
 		 * 
 		 * This method prepares a SQL query string and returns a prepared statement
