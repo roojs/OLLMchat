@@ -94,9 +94,9 @@ namespace OLLMcoder
 				
 				// Show the raw data
 				GLib.debug("=== Raw Data Retrieved ===");
-				for (uint i = 0; i < results.size; i++) {
+				for (int i = 0; i < (int)results.size; i++) {
 					var item = results[i];
-					GLib.debug("Item %u: key=%s, value length=%zu bytes", (int)(i + 1), item.key, item.value.length);
+					GLib.debug("Item %d: key=%s, value length=%zu bytes", i + 1, item.key, item.value.length);
 					if (item.value.length < 500) {
 						GLib.debug("  value: %s", item.value);
 					} else {
@@ -112,12 +112,37 @@ namespace OLLMcoder
 				GLib.debug("✓ JSON parsed successfully");
 				GLib.debug("Root node type: %s", root.get_node_type().to_string());
 				
-				if (root.get_node_type() != Json.NodeType.ARRAY) {
-					GLib.debug("ERROR: Root is not an array, got: %s", root.get_node_type().to_string());
+				Json.Array? array = null;
+				
+				// Handle both formats: direct array or object with "entries" key
+				if (root.get_node_type() == Json.NodeType.ARRAY) {
+					array = root.get_array();
+					GLib.debug("Root is a direct array");
+				} else if (root.get_node_type() == Json.NodeType.OBJECT) {
+					var root_obj = root.get_object();
+					if (root_obj.has_member("entries")) {
+						var entries_node = root_obj.get_member("entries");
+						if (entries_node.get_node_type() == Json.NodeType.ARRAY) {
+							array = entries_node.get_array();
+							GLib.debug("Found 'entries' array in root object");
+						} else {
+							GLib.debug("ERROR: 'entries' member is not an array, got: %s", entries_node.get_node_type().to_string());
+							return;
+						}
+					} else {
+						GLib.debug("ERROR: Root is an object but has no 'entries' member");
+						return;
+					}
+				} else {
+					GLib.debug("ERROR: Root is not an array or object, got: %s", root.get_node_type().to_string());
 					return;
 				}
 				
-				var array = root.get_array();
+				if (array == null) {
+					GLib.debug("ERROR: Failed to extract array from JSON");
+					return;
+				}
+				
 				GLib.debug("Array length: %u", array.get_length());
 				
 				// Process each element
@@ -142,19 +167,35 @@ namespace OLLMcoder
 					}
 					
 					var obj = element.get_object();
-					if (!obj.has_member("folder")) {
-						GLib.debug("  Skipping (no 'folder' member)");
+					string? path = null;
+					
+					// Check for "folderUri" (Cursor format) first, then "folder" (VS Code format)
+					if (obj.has_member("folderUri")) {
+						var folder_uri_node = obj.get_member("folderUri");
+						if (folder_uri_node.get_node_type() == Json.NodeType.VALUE) {
+							var folder_uri = folder_uri_node.get_string();
+							// Convert file:// URI to path
+							if (folder_uri.has_prefix("file://")) {
+								path = folder_uri.substring(7); // Remove "file://" prefix
+								GLib.debug("  Path (from folderUri): %s", path);
+							} else {
+								path = folder_uri;
+								GLib.debug("  Path (from folderUri, no file:// prefix): %s", path);
+							}
+						}
+					} else if (obj.has_member("folder")) {
+						var folder_node = obj.get_member("folder");
+						if (folder_node.get_node_type() == Json.NodeType.VALUE) {
+							path = folder_node.get_string();
+							GLib.debug("  Path (from folder): %s", path);
+						}
+					}
+					
+					if (path == null) {
+						GLib.debug("  Skipping (no 'folderUri' or 'folder' member)");
 						continue;
 					}
 					
-					var folder_node = obj.get_member("folder");
-					if (folder_node.get_node_type() != Json.NodeType.VALUE) {
-						GLib.debug("  Skipping (folder is not a value)");
-						continue;
-					}
-					
-					var path = folder_node.get_string();
-					GLib.debug("  Path (from folder): %s", path);
 					this.create_project_from_path(path);
 					paths_found++;
 				}
