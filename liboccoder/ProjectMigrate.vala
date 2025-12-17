@@ -96,7 +96,7 @@ namespace OLLMcoder
 				GLib.debug("=== Raw Data Retrieved ===");
 				for (uint i = 0; i < results.size; i++) {
 					var item = results[i];
-					GLib.debug("Item %u: key=%s, value length=%zu bytes", i + 1, item.key, item.value.length);
+					GLib.debug("Item %u: key=%s, value length=%zu bytes", (int)(i + 1), item.key, item.value.length);
 					if (item.value.length < 500) {
 						GLib.debug("  value: %s", item.value);
 					} else {
@@ -162,7 +162,7 @@ namespace OLLMcoder
 				GLib.debug("Total paths processed: %u", paths_found);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to migrate from Cursor: %s", e.message);
-				GLib.debug("Error type: %s", e.get_type().name());
+				GLib.debug("Error code: %d", e.code);
 			}
 		}
 		
