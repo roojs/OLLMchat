@@ -95,10 +95,23 @@ namespace OLLMcoder.Prompt
 		 */
 		protected override string generate_user_prompt(string user_query) throws Error
 		{
-			return this.generate_context_section() + "\n\n" +
+			GLib.debug("CodeAssistant.generate_user_prompt: Starting, user_query length: %zu", user_query.length);
+			var context = this.generate_context_section();
+			GLib.debug("CodeAssistant.generate_user_prompt: Context section length: %zu", context.length);
+			
+			var result = context + "\n\n" +
 				"<user_query>\n" +
 				user_query +
 				"\n</user_query>";
+			
+			GLib.debug("CodeAssistant.generate_user_prompt: Final prompt length: %zu", result.length);
+			if (result.length < 500) {
+				GLib.debug("CodeAssistant.generate_user_prompt: Final prompt preview: %s", result);
+			} else {
+				GLib.debug("CodeAssistant.generate_user_prompt: Final prompt preview (first 500 chars): %s", result.substring(0, 500));
+			}
+			
+			return result;
 		}
 		
 		/**
