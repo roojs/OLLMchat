@@ -160,6 +160,42 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Process one folder from the queue and schedule the next one.
+		 * 
+		 * @param folders_to_process Queue of folders to process recursively
+		 * @param check_time Timestamp for this check operation
+		 */
+		private void process_folders(Gee.ArrayList<Folder> folders_to_process, int64 check_time)
+		{
+			if (folders_to_process.size == 0) {
+				// All folders processed, do final operations
+				this.manager.db.backupDB();
+				if (this.is_project) {
+					this.project_files.update_from(this);
+				}
+				return;
+			}
+			
+			// Get next folder to process
+			var folder = folders_to_process.remove_at(0);
+			
+			// Call read_dir asynchronously without yield
+			folder.read_dir.begin(check_time, true, (obj, res) => {
+				try {
+					folder.read_dir.end(res);
+				} catch (Error e) {
+					GLib.warning("Error reading directory: %s", e.message);
+				}
+				
+				// Schedule next folder processing in idle callback
+				Idle.add(() => {
+					this.process_folders(folders_to_process, check_time);
+					return false;
+				});
+			});
+		}
+		
+		/**
 		 * Scan directory and create FileBase objects for all items found.
 		 * 
 		 * This method executes directory scanning in a background thread to avoid
