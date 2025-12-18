@@ -96,18 +96,6 @@ namespace OLLMcoder.Files
 		public Ggit.Repository? repo { get; set; default = null; }
 		
 		/**
-		 * Check if folder contains a .generated file.
-		 * If found, the folder and all its children should be ignored.
-		 * 
-		 * @return true if .generated file exists in this folder
-		 */
-		private bool check_generated_file()
-		{
-			var generated_file = GLib.File.new_for_path(GLib.Path.build_filename(this.path, ".generated"));
-			return generated_file.query_exists();
-		}
-		
-		/**
 		 * Check if a path is ignored by git.
 		 * 
 		 * @param path The full path to check
@@ -228,11 +216,11 @@ namespace OLLMcoder.Files
 			this.last_check_time = check_time;
 			
 			// Check if folder contains .generated file - if so, ignore this folder and all children
-			if (this.check_generated_file()) {
+			var generated_path = GLib.Path.build_filename(this.path, ".generated");
+			if (GLib.FileUtils.test(generated_path, GLib.FileTest.EXISTS)) {
 				this.is_ignored = true;
 				// Don't need to discover repository or scan children if folder is ignored
-				return;
-			}
+ 			}
 			
 			// Discover repository for this folder
 			this.discover_repository();
@@ -364,12 +352,7 @@ namespace OLLMcoder.Files
 						var cpath = GLib.Path.build_filename(this.path, name);
 						
 						// Check if this file/folder is ignored
-						// If parent folder is ignored (e.g., due to .generated), all children are ignored
-						var child_ignored = this.is_ignored;
-						if (!child_ignored) {
-							child_ignored = this.check_path_ignored(cpath);
-						}
-						
+ 						
 						if (info.get_is_symlink()) {
 							new_items.add(new FileAlias.new_from_info(this, info, cpath) {
 								is_ignored = this.check_path_ignored(cpath)
@@ -378,8 +361,7 @@ namespace OLLMcoder.Files
 						}
 						
 						if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-							new_items.add(new Folder.new_from_info(
-								this.manager, this, info, cpath) {
+							new_items.add(new Folder.new_from_info( this.manager, this, info, cpath) {
 								is_ignored = this.check_path_ignored(cpath),
 								repo = this.repo,
 								is_repo = this.is_repo
@@ -387,8 +369,7 @@ namespace OLLMcoder.Files
 							continue;
 						}
 						
-						new_items.add(new File.new_from_info(
-							this.manager, this, info, cpath) {
+						new_items.add(new File.new_from_info( this.manager, this, info, cpath) {
 							is_ignored = this.check_path_ignored(cpath)
 						});
 					}
