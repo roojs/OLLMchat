@@ -126,11 +126,11 @@ namespace OLLMcoder
 			this.entry.add_controller(focus_controller);
 			
 			// Create item store
-			this.item_store = new GLib.ListStore(typeof(Files.FileBase));
+			this.item_store = new GLib.ListStore(typeof(OLLMfiles.FileBase));
 			
 			// Create string filter for search
 			this.string_filter = new Gtk.StringFilter(
-				new Gtk.PropertyExpression(typeof(Files.FileBase), 
+				new Gtk.PropertyExpression(typeof(OLLMfiles.FileBase), 
 				null, this.get_filter_property())
 			) {
 				match_mode = Gtk.StringFilterMatchMode.SUBSTRING,
@@ -539,11 +539,11 @@ namespace OLLMcoder
 		 * @param filebase The FileBase to find
 		 * @return Position if found, -1 otherwise
 		 */
-		protected int find_in_list(GLib.ListModel list,  Files.FileBase filebase)
+		protected int find_in_list(GLib.ListModel list,  OLLMfiles.FileBase filebase)
 		{
 			var n_items = list.get_n_items();
 			for (uint i = 0; i < n_items; i++) {
-				var item = list.get_item(i) as Files.FileBase;
+				var item = list.get_item(i) as OLLMfiles.FileBase;
 				if (item != null && item.path == filebase.path) {
 					return (int)i;
 				}
@@ -556,7 +556,7 @@ namespace OLLMcoder
 		 * DISABLED: This method is disabled to prevent programmatic selection changes
 		 * that trigger cascading activations. Selection should only be changed by user interaction.
 		 */
-		protected bool set_selected_item_internal(Files.FileBase? value)
+		protected bool set_selected_item_internal(OLLMfiles.FileBase? value)
 		{
 			// Disabled: Don't set selection programmatically
 			// if (value == null) {

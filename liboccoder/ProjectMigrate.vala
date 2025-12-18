@@ -36,14 +36,14 @@ namespace OLLMcoder
 	 */
 	public class ProjectMigrate : Object
 	{
-		private OLLMcoder.ProjectManager manager;
+		private OLLMfiles.ProjectManager manager;
 		
 		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance to import data into
 		 */
-		public ProjectMigrate(OLLMcoder.ProjectManager manager)
+		public ProjectMigrate(OLLMfiles.ProjectManager manager)
 		{
 			this.manager = manager;
 		}
@@ -370,7 +370,7 @@ namespace OLLMcoder
 			
 			// Create new Project
 			GLib.debug("  Creating project...");
-			var project = new OLLMcoder.Files.Folder(this.manager);
+			var project = new OLLMfiles.Folder(this.manager);
 			project.is_project = true;
 			project.path = path;
 			project.display_name = GLib.Path.get_basename(path);

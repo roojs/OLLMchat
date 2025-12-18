@@ -43,6 +43,13 @@ namespace OLLMchat.Call
 			set { } // Fake setter for serialization
 		}
 		
+		/**
+		 * JSON schema object for structured outputs.
+		 * When set, this will be serialized as the "format" field instead of the string format property.
+		 * Used for Ollama's structured output feature.
+		 */
+		public Json.Object? format_obj { get; set; default = null; }
+		
 		public Call.Options options { 
 			get { return this.client.options; }
 			set { } // Fake setter for serialization
@@ -123,6 +130,19 @@ namespace OLLMchat.Call
 						tools_array.add_element(tool_node);
 					}
 					return tools_node;
+				
+				case "format":
+					// If format_obj is set, serialize it instead of the string format
+					if (this.format_obj != null) {
+						var format_node = new Json.Node(Json.NodeType.OBJECT);
+						format_node.init_object(this.format_obj);
+						return format_node;
+					}
+					// Otherwise, serialize the string format if it's set
+					if (this.format == null || this.format == "") {
+						return null;
+					}
+					return default_serialize_property(property_name, value, pspec);
 				
 				case "options":
 					// Only serialize options if they have valid values

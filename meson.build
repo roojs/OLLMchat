@@ -1,9 +1,10 @@
-project('ollmchat', 'vala', 'c',
+project('ollmchat', 'vala', 'c', 'cpp',
   version: '1.0.0',
   license: 'LGPL',
   default_options: [
     'default_library=shared',
     'c_std=gnu11',
+    'cpp_std=c++11',
     'prefix=/usr'
   ]
 )
@@ -23,8 +24,10 @@ subdir('libocsqlite')      # No dependencies
 subdir('libocmarkdown')    # No dependencies
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocagent')       # No dependencies
-subdir('liboccoder')       # Depends on libocsqlite, libocagent
+subdir('libocfiles')       # Depends on libocsqlite
+subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles
 subdir('libollmchat')      # Depends on libocsqlite, libocagent
+subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
@@ -55,7 +58,8 @@ executables_info = [
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],
-  ['oc-migrate-editors', 'examples/oc-migrate-editors']
+  ['oc-migrate-editors', 'examples/oc-migrate-editors'],
+  ['oc-vector-index', 'examples/oc-vector-index']
 ]
 
 # Library paths for LD_LIBRARY_PATH
@@ -63,10 +67,12 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libocsqlite',
   meson.current_build_dir() / 'libocmarkdown',
   meson.current_build_dir() / 'libocmarkdowngtk',
+  meson.current_build_dir() / 'libocfiles',
   meson.current_build_dir() / 'liboccoder',
   meson.current_build_dir() / 'libollmchat',
   meson.current_build_dir() / 'libocagent',
-  meson.current_build_dir() / 'libollmchatgtk'
+  meson.current_build_dir() / 'libollmchatgtk',
+  meson.current_build_dir() / 'libocvector'
 ])
 
 # Create wrapper scripts in top-level build directory

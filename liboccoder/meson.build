@@ -1,4 +1,4 @@
-# Build occoder library (liboccoder.so) - depends on libocsqlite
+# Build occoder library (liboccoder.so) - depends on libocsqlite, libocfiles
 
 # Dependencies for occoder library
 valac = meson.get_compiler('vala')
@@ -16,15 +16,8 @@ occoder_deps = [
 ]
 
 occoder_src = files([
-  'Files/FileBase.vala',
-  'Files/File.vala',
-  'Files/FileAlias.vala',
-  'Files/Folder.vala',
-  'Files/FolderFiles.vala',
-  'Files/ProjectFile.vala',
-  'Files/ProjectFiles.vala',
-  'Files/ProjectList.vala',
-  'ProjectManager.vala',
+  'Files/BufferProvider.vala',
+  'Files/GitProvider.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
@@ -41,13 +34,14 @@ occoder_src = files([
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
   meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchatgtk'
 ])
 
 occoder_base_lib = library('occoder',
-  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
+  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
   sources: occoder_src,
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
@@ -60,8 +54,10 @@ occoder_base_lib = library('occoder',
     '--pkg=gtksourceview-5',
     '--pkg=libgit2-glib-1.0',
     '--pkg=ocagent',
+    '--pkg=ocfiles',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
   ],
@@ -78,6 +74,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--target-glib=auto',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir(),
     '--vapidir', meson.current_source_dir() / '../vapi',
@@ -86,6 +83,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'ocsqlite',
+    '--pkg', 'ocfiles',
     '--pkg', 'ocagent',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
@@ -100,7 +98,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [occoder_base_lib],  # Ensure library is built first (so header exists)
+  depends: [occoder_base_lib, ocfiles_vapi],  # Ensure library and ocfiles VAPI are built first
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
@@ -112,14 +110,15 @@ occoder_gir = gnome.generate_gir(occoder_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMcoder',
   symbol_prefix: 'ollmcoder',
-  link_with: [ocsqlite_base_lib, ocagent_base_lib],
+  link_with: [ocsqlite_base_lib, ocfiles_base_lib, ocagent_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ocsqlite',
+    '--extra-library=ocfiles',
     '--extra-library=ocagent',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0], ocagent_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', ocsqlite_gir[0], ocfiles_gir[0], ocagent_gir[0]],
   install: true,
   fatal_warnings: false
 )
@@ -129,5 +128,5 @@ occoder_gir = gnome.generate_gir(occoder_base_lib,
 occoder_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-loccoder'],
   sources: [occoder_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ocsqlite_vapi_dep]
+  dependencies: [ocsqlite_vapi_dep, ocfiles_vapi_dep]
 )

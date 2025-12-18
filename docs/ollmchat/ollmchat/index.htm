@@ -35,6 +35,7 @@
           <li class="namespace"><a href="OLLMcoder.Diff.html">OLLMcoder.Diff</a></li>
           <li class="namespace"><a href="OLLMcoder.Files.html">OLLMcoder.Files</a></li>
           <li class="namespace"><a href="OLLMcoder.Prompt.html">OLLMcoder.Prompt</a></li>
+          <li class="namespace"><a href="OLLMfiles.html">OLLMfiles</a></li>
           <li class="namespace"><a href="SQ.html">SQ</a></li>
         </ul>
       </div>
@@ -301,8 +302,6 @@
                 selecting files.</span></li>
             <li class="class"><a href="OLLMcoder.ProjectDropdown.html">ProjectDropdown</a> - <span class="brief_description">Searchable dropdown 
                 widget for selecting projects.</span></li>
-            <li class="class"><a href="OLLMcoder.ProjectManager.html">ProjectManager</a> - <span class="brief_description">Manages projects, files, 
-                and folders.</span></li>
             <li class="class"><a href="OLLMcoder.ProjectMigrate.html">ProjectMigrate</a> - <span class="brief_description">Migrates project data from 
                 existing sources (Cursor, roobuilder, VS Code).</span></li>
             <li class="abstract_class"><a href="OLLMcoder.SearchableDropdown.html">SearchableDropdown</a> - <span class="brief_description">Base class
@@ -328,22 +327,10 @@
           <li class="namespace"><a href="OLLMcoder.Files.html">Files</a></li>
           <h3 class="main_title">Classes:</h3>
           <ul class="navi_inline">
-            <li class="class"><a href="OLLMcoder.Files.File.html">File</a> - <span class="brief_description">Represents a file in the project.</span>
-            </li>
-            <li class="class"><a href="OLLMcoder.Files.FileAlias.html">FileAlias</a> - <span class="brief_description">Wrapper class for File objects 
-                that are aliases/symlinks.</span></li>
-            <li class="abstract_class"><a href="OLLMcoder.Files.FileBase.html">FileBase</a> - <span class="brief_description">Base class for File and 
-                Folder objects.</span></li>
-            <li class="class"><a href="OLLMcoder.Files.Folder.html">Folder</a> - <span class="brief_description">Represents a folder/directory in the 
-                project.</span></li>
-            <li class="class"><a href="OLLMcoder.Files.FolderFiles.html">FolderFiles</a> - <span class="brief_description">Manages folder files with 
-                tree structure and hashmap.</span></li>
-            <li class="class"><a href="OLLMcoder.Files.ProjectFile.html">ProjectFile</a> - <span class="brief_description">Wrapper around a File 
-                object for use in project file lists.</span></li>
-            <li class="class"><a href="OLLMcoder.Files.ProjectFiles.html">ProjectFiles</a> - <span class="brief_description">Manages project files 
-                with tree structure and hashmap.</span></li>
-            <li class="class"><a href="OLLMcoder.Files.ProjectList.html">ProjectList</a> - <span class="brief_description">Manages project list with 
-                deduplication.</span></li>
+            <li class="class"><a href="OLLMcoder.Files.BufferProvider.html">BufferProvider</a> - <span class="brief_description">GTK implementation of
+                buffer provider for File operations.</span></li>
+            <li class="class"><a href="OLLMcoder.Files.GitProvider.html">GitProvider</a> - <span class="brief_description">Git implementation of git 
+                provider for Folder and ProjectManager operations.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMcoder.Prompt.html">Prompt</a></li>
           <h3 class="main_title">Classes:</h3>
@@ -352,6 +339,31 @@
                 generator.</span></li>
             <li class="class"><a href="OLLMcoder.Prompt.CodeAssistantProvider.html">CodeAssistantProvider</a> - <span class="brief_description">
                 Provides context data for CodeAssistant prompts.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMfiles.html">OLLMfiles</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMfiles.BufferProviderBase.html">BufferProviderBase</a> - <span class="brief_description">Base class for 
+                buffer operations with default no-op implementations.</span></li>
+            <li class="class"><a href="OLLMfiles.File.html">File</a> - <span class="brief_description">Represents a file in the project.</span></li>
+            <li class="class"><a href="OLLMfiles.FileAlias.html">FileAlias</a> - <span class="brief_description">Wrapper class for File objects that 
+                are aliases/symlinks.</span></li>
+            <li class="abstract_class"><a href="OLLMfiles.FileBase.html">FileBase</a> - <span class="brief_description">Base class for File and Folder
+                objects.</span></li>
+            <li class="class"><a href="OLLMfiles.Folder.html">Folder</a> - <span class="brief_description">Represents a folder/directory in the 
+                project.</span></li>
+            <li class="class"><a href="OLLMfiles.FolderFiles.html">FolderFiles</a> - <span class="brief_description">Manages folder files with tree 
+                structure and hashmap.</span></li>
+            <li class="class"><a href="OLLMfiles.GitProviderBase.html">GitProviderBase</a> - <span class="brief_description">Base class for git 
+                operations with default no-op implementations.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectFile.html">ProjectFile</a> - <span class="brief_description">Wrapper around a File object for 
+                use in project file lists.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectFiles.html">ProjectFiles</a> - <span class="brief_description">Manages project files with tree
+                structure and hashmap.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectList.html">ProjectList</a> - <span class="brief_description">Manages project list with 
+                deduplication.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectManager.html">ProjectManager</a> - <span class="brief_description">Manages projects, files, 
+                and folders.</span></li>
           </ul>
           <li class="namespace"><a href="SQ.html">SQ</a> - <span class="brief_description">Simple SQL builder for GObject values.</span></li>
           <h3 class="main_title">Classes:</h3>

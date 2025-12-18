@@ -26,26 +26,26 @@ namespace OLLMcoder
 	 */
 	public class ProjectDropdown : SearchableDropdown
 	{
-		private ProjectManager manager;
+		private OLLMfiles.ProjectManager manager;
 		
 		/**
 		 * Currently selected project (folder with is_project = true).
 		 * This is set when the popup closes and user has made a selection.
 		 */
-		public Files.Folder? selected_project { get; private set; }
+		public OLLMfiles.Folder? selected_project { get; private set; }
 		
 		/**
 		 * Emitted when project selection changes.
 		 * Note: Projects are Folders with is_project = true.
 		 */
-		public signal void project_selected(Files.Folder? project);
+		public signal void project_selected(OLLMfiles.Folder? project);
 		
 		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance (required)
 		 */
-		public ProjectDropdown(ProjectManager manager)
+		public ProjectDropdown(OLLMfiles.ProjectManager manager)
 		{
 			base();
 			this.manager = manager;
@@ -72,7 +72,7 @@ namespace OLLMcoder
 			
 			// Update string filter to work with Folder type
 			this.string_filter = new Gtk.StringFilter(
-				new Gtk.PropertyExpression(typeof(Files.Folder), 
+				new Gtk.PropertyExpression(typeof(OLLMfiles.Folder), 
 				null, this.get_filter_property())
 			) {
 				match_mode = Gtk.StringFilterMatchMode.SUBSTRING,
@@ -90,8 +90,8 @@ namespace OLLMcoder
 			
 			// Create custom sorter: sort by path_basename (derived from path)
 			var sorter = new Gtk.CustomSorter((a, b) => {
-				var folder_a = a as Files.Folder;
-				var folder_b = b as Files.Folder;
+				var folder_a = a as OLLMfiles.Folder;
+				var folder_b = b as OLLMfiles.Folder;
 				if (folder_a == null || folder_b == null || 
 					folder_a.path_basename.down() == folder_b.path_basename.down()) {
 					return Gtk.Ordering.EQUAL;
@@ -152,7 +152,7 @@ namespace OLLMcoder
 		protected override void on_selected()
 		{
 			// Get the selected item from the selection model
-			var project = this.selection.selected_item as Files.Folder;
+			var project = this.selection.selected_item as OLLMfiles.Folder;
 			// Ensure it's actually a project
 			
 			// If no valid project selected, something went wrong - don't change anything

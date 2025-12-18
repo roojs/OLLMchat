@@ -30,7 +30,7 @@ namespace OLLMchat
 	 * @param folder The folder to output recursively
 	 * @param base_path Base path for relative path calculation
 	 */
-	void output_folder_recursive(OLLMcoder.Files.Folder folder, string base_path)
+	void output_folder_recursive(OLLMfiles.Folder folder, string base_path)
 	{
 		// Output this folder
 		string relpath = folder.path;
@@ -54,7 +54,7 @@ namespace OLLMchat
 		
 		// Output all children
 		for (uint i = 0; i < folder.children.get_n_items(); i++) {
-			var child = folder.children.get_item(i) as OLLMcoder.Files.FileBase;
+			var child = folder.children.get_item(i) as OLLMfiles.FileBase;
 			if (child == null) {
 				continue;
 			}
@@ -67,11 +67,11 @@ namespace OLLMchat
 				}
 			}
 			
-			if (child is OLLMcoder.Files.Folder) {
-				var child_folder = child as OLLMcoder.Files.Folder;
+			if (child is OLLMfiles.Folder) {
+				var child_folder = child as OLLMfiles.Folder;
 				output_folder_recursive(child_folder, base_path);
-			} else if (child is OLLMcoder.Files.File) {
-				var child_file = child as OLLMcoder.Files.File;
+			} else if (child is OLLMfiles.File) {
+				var child_file = child as OLLMfiles.File;
 				stdout.printf(
 					"f  %s   --- %lld  %s\n",
 					child_relpath,
@@ -95,7 +95,7 @@ namespace OLLMchat
 	 * 
 	 * @param project The project folder containing project_files
 	 */
-	void output_project_files(OLLMcoder.Files.Folder project)
+	void output_project_files(OLLMfiles.Folder project)
 	{
 		// Output all files and folders recursively
 		output_folder_recursive(project, project.path);
@@ -125,16 +125,19 @@ namespace OLLMchat
 		var db = new SQ.Database(db_path, false);
 		
 		// Create ProjectManager with the database
-		var manager = new OLLMcoder.ProjectManager(db);
+		var manager = new OLLMfiles.ProjectManager(db);
+		// Set providers
+		manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
+		manager.git_provider = new OLLMcoder.Files.GitProvider();
 		
 		// Create a Folder with is_project = true for the current directory
-		var project = new OLLMcoder.Files.Folder(manager);
+		var project = new OLLMfiles.Folder(manager);
 		project.path = cwd;
 		project.is_project = true;
 		project.display_name = GLib.Path.get_basename(cwd);
 		
 		// Disable background recursion for testing - ensures all scans complete before returning
-		OLLMcoder.Files.Folder.background_recurse = false;
+		OLLMfiles.Folder.background_recurse = false;
 		
 		// Save project to database
 		project.saveToDB(db, null, false);

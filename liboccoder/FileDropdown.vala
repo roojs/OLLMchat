@@ -26,7 +26,7 @@ namespace OLLMcoder
 	 */
 	public class FileDropdown : SearchableDropdown
 	{
-		private Files.Folder? current_project;
+		private OLLMfiles.Folder? current_project;
 		private Gtk.SortListModel sorted_items;
 		private Gtk.CustomFilter? wildcard_filter;
 		
@@ -34,8 +34,8 @@ namespace OLLMcoder
 		 * Currently selected file.
 		 * This is set when the popup closes and user has made a selection.
 		 */
-		private Files.File? _selected_file = null;
-		public Files.File? selected_file {
+		private OLLMfiles.File? _selected_file = null;
+		public OLLMfiles.File? selected_file {
 			get { 
 				return this._selected_file;
 			}
@@ -45,7 +45,7 @@ namespace OLLMcoder
 		 * Currently selected project (used to populate file list).
 		 * Note: Projects are Folders with is_project = true.
 		 */
-		public Files.Folder? project {
+		public OLLMfiles.Folder? project {
 			get { return this.current_project; }
 			set {
 				if (value != null && !value.is_project) {
@@ -60,7 +60,7 @@ namespace OLLMcoder
 		/**
 		 * Emitted when file selection changes.
 		 */
-		public signal void file_selected(Files.File? file);
+		public signal void file_selected(OLLMfiles.File? file);
 		
 		/**
 		 * Constructor.
@@ -78,7 +78,7 @@ namespace OLLMcoder
 		{
 			if (this.current_project == null || !this.current_project.is_project) {
 				// Clear by using empty store
-				this.set_item_store(new GLib.ListStore(typeof(Files.ProjectFile)));
+				this.set_item_store(new GLib.ListStore(typeof(OLLMfiles.ProjectFile)));
 				return;
 			}
 			
@@ -97,8 +97,8 @@ namespace OLLMcoder
 			
 			// Create custom sorter: open files first, then sort by display_name
 			var sorter = new Gtk.CustomSorter((a, b) => {
-				var pf_a = a as Files.ProjectFile;
-				var pf_b = b as Files.ProjectFile;
+				var pf_a = a as OLLMfiles.ProjectFile;
+				var pf_b = b as OLLMfiles.ProjectFile;
 				if (pf_a == null || pf_b == null) {
 					return Gtk.Ordering.EQUAL;
 				}
@@ -141,13 +141,13 @@ namespace OLLMcoder
 			// Create custom sorter: open files first, then sort by display_name
 			var sorter = new Gtk.CustomSorter((a, b) => {
 				// Sort by is_open first (open files come first)
-				if (((Files.File)a).is_open != ((Files.File)b).is_open) {
-					return ((Files.File)a).is_open ? 
+				if (((OLLMfiles.File)a).is_open != ((OLLMfiles.File)b).is_open) {
+					return ((OLLMfiles.File)a).is_open ? 
 						Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 				}
 				
 				// Then sort by path
-				return ((Files.File)a).path < ((Files.File)b).path ? 
+				return ((OLLMfiles.File)a).path < ((OLLMfiles.File)b).path ? 
 					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 			});
 			
@@ -237,7 +237,7 @@ namespace OLLMcoder
 					return;
 				}
 				
-				var project_file = list_item.item as Files.ProjectFile;
+				var project_file = list_item.item as OLLMfiles.ProjectFile;
 				if (project_file == null) {
 					return;
 				}
@@ -282,7 +282,7 @@ namespace OLLMcoder
 				// Use wildcard filter
 				if (this.wildcard_filter == null) {
 					this.wildcard_filter = new Gtk.CustomFilter((item) => {
-						var project_file = item as Files.ProjectFile;
+						var project_file = item as OLLMfiles.ProjectFile;
 						if (project_file == null) {
 							return false;
 						}
@@ -296,7 +296,7 @@ namespace OLLMcoder
 				// Update wildcard filter search text
 				// Note: CustomFilter doesn't have a way to update, so we need to recreate
 				this.wildcard_filter = new Gtk.CustomFilter((item) => {
-					var project_file = item as Files.ProjectFile;
+					var project_file = item as OLLMfiles.ProjectFile;
 					if (project_file == null) {
 						return false;
 					}
@@ -361,7 +361,7 @@ namespace OLLMcoder
 		protected override void on_selected()
 		{
 			// Get the selected item from the selection model
-			var project_file = this.selection.selected_item as Files.ProjectFile;
+			var project_file = this.selection.selected_item as OLLMfiles.ProjectFile;
 			var file = project_file != null ? project_file.file : null;
 			
 			// Update the stored selected file

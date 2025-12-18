@@ -8,7 +8,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'liboccoder',
   meson.current_build_dir() / '..' / 'libollmchat',
-  meson.current_build_dir() / '..' / 'libollmchatgtk'
+  meson.current_build_dir() / '..' / 'libollmchatgtk',
+  meson.current_build_dir() / '..' / 'libocvector'
 ])
 
 # Dependencies for test executables
@@ -200,5 +201,35 @@ oc_migrate_editors = executable('oc-migrate-editors',
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
+# Build oc-vector-index executable (FAISS test tool)
+oc_vector_index = executable('oc-vector-index',
+  dependencies: [test_ollama_deps, ocvector_vapi_dep],
+  link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
+  sources: ['oc-vector-index.vala'],
+  include_directories: [
+    include_directories('../libocvector'),
+    include_directories('../libollmchat'),
+    include_directories('../libocagent'),
+    include_directories('../libocsqlite')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--pkg=fiass',
+    '--pkg=ocagent',
+    '--pkg=ollmchat',
+    '--pkg=ocvector',  # Find VAPI via vapidir (ocvector.vapi copy)
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector'
+  ],
+  install: true,
+  install_dir: get_option('bindir')
 )
 
