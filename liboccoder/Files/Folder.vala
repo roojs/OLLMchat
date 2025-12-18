@@ -136,23 +136,7 @@ namespace OLLMcoder.Files
 				return;
 			}
 			
-<<<<<<< HEAD
-			// If recurse is true, recursively read all subdirectories
-			if (recurse) {
-				GLib.debug("Folder.read_dir: Recursing into %u children for path='%s'", 
-					this.children.items.size, this.path);
-				foreach (var child in this.children.items) {
-					if (child is Folder) {
-						GLib.debug("Folder.read_dir: Recursing into child folder path='%s' (parent='%s')", 
-							child.path, this.path);
-						yield ((Folder)child).read_dir(check_time, true);
-					}
-					if (child is FileAlias && child.points_to is Folder) {
-						GLib.debug("Folder.read_dir: Recursing into FileAlias target folder path='%s' (alias='%s')", 
-							child.points_to.path, child.path);
-						yield ((Folder)child.points_to).read_dir(check_time, true);
-					}
-=======
+
 			// Collect all folders that need recursive reading
 			var folders_to_process = new Gee.ArrayList<Folder>();
 			foreach (var child in this.children.items) {
@@ -161,7 +145,7 @@ namespace OLLMcoder.Files
 				}
 				if (child is FileAlias && child.points_to is Folder) {
 					folders_to_process.add((Folder)child.points_to);
->>>>>>> main
+
 				}
 			}
 			// call it anyway and we will sync on idle..
