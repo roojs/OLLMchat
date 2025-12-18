@@ -78,6 +78,10 @@ namespace OLLMchat.History
 			new_client.options = this.client.options.clone();
 			new_client.timeout = this.client.timeout;
 			
+			// IMPORTANT: Copy prompt_assistant from EmptySession's client
+			// new_client() sets it to "just-ask" by default, but we want to preserve the agent from EmptySession
+			new_client.prompt_assistant = this.client.prompt_assistant;
+			
 			// Copy available_models
 			foreach (var entry in this.client.available_models.entries) {
 				new_client.available_models.set(entry.key, entry.value);
