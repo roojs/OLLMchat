@@ -1,8 +1,22 @@
-# Build ocvector library (libocvector.so) - depends on libocsqlite, libollmchat
+# Build ocvector library (libocvector.so) - depends on libocsqlite, libocagent, libollmchat
 # Provides semantic codebase search using vector embeddings and FAISS
 
 # Dependencies for ocvector library
 valac = meson.get_compiler('vala')
+cc = meson.get_compiler('c')
+
+# Find FAISS library (static library, C++ based)
+faiss_lib = cc.find_library('faiss', dirs: ['/usr/lib/x86_64-linux-gnu'], required: true)
+cpp = meson.get_compiler('cpp')
+cpp_std_lib = cpp.find_library('stdc++', required: true)
+# FAISS uses OpenMP for parallelization
+omp_dep = dependency('openmp', required: true)
+# FAISS uses BLAS for matrix operations
+blas_dep = dependency('blas', required: true)
+
+# Our minimal C wrapper for FAISS C++ API
+faiss_wrapper_src = files('faiss_c_wrapper.cpp')
+
 ocvector_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
@@ -12,6 +26,9 @@ ocvector_deps = [
   dependency('libsoup-3.0'),
   dependency('sqlite3'),
   valac.find_library('posix'),
+  faiss_lib,
+  cpp_std_lib
+  # Note: OpenMP and BLAS added via link_args to avoid Vala package issues
 ]
 
 # Source files for OLLMvector namespace
@@ -48,19 +65,28 @@ lib_build_rpath = ':'.join([
 
 # Build the library
 ocvector_base_lib = library('ocvector',
-  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep],
-  sources: ocvector_src,
+  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep],
+  sources: ocvector_src + faiss_wrapper_src,
+  link_with: [],  # Explicitly separate C/C++ deps from Vala deps
+  link_args: ['-lblas', '-llapack', '-lgomp'],  # Add BLAS, LAPACK, and OpenMP directly to linker
   vala_header: 'ocvector.h',
   vala_vapi: 'ocvector-meson.vapi',  # Use different name so our custom_target can use 'ocvector.vapi'
   build_rpath: lib_build_rpath,
+  include_directories: [
+    include_directories('..' / 'libollmchat'),
+    include_directories('..' / 'libocagent'),
+    include_directories('..' / 'libocsqlite'),
+  ],
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
     '--pkg=fiass',  # FAISS via vapi
+    '--pkg=ocagent',
     '--pkg=ollmchat',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   ],
   install: true
@@ -102,13 +128,20 @@ ocvector_base_lib = library('ocvector',
 #   install_dir: get_option('datadir') / 'vala' / 'vapi'
 # )
 
+# Create a symlink from ocvector.vapi to ocvector-meson.vapi so Vala can find it
+ocvector_vapi_symlink = custom_target('ocvector-vapi-symlink',
+  output: 'ocvector.vapi',
+  command: ['ln', '-sf', 'ocvector-meson.vapi', '@OUTPUT@'],
+  build_by_default: true,
+  install: false
+)
+
 # Create a dependency that includes the VAPI file to ensure build order
-# This will be enabled once we have source files and VAPI generation
-# ocvector_vapi_dep = declare_dependency(
-#   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
-#   sources: [ocvector_vapi[0]],
-#   dependencies: [dependency('sqlite3')]
-# )
+ocvector_vapi_dep = declare_dependency(
+  link_args: ['-L' + meson.current_build_dir(), '-locvector'],
+  sources: [ocvector_vapi_symlink],
+  dependencies: [ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep]
+)
 
 # GObject Introspection for ocvector library
 # This will be enabled once we have source files

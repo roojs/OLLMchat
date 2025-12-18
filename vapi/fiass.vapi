@@ -1,45 +1,50 @@
-[CCode (cprefix = "faiss_", cheader_filename = "faiss/c_api/IndexFlat_c.h,faiss/c_api/Index_c.h,faiss/c_api/AuxIndexStructures_c.h")]
+[CCode (cheader_filename = "faiss/c_api/IndexFlat_c.h,faiss/c_api/Index_c.h,faiss/c_api/index_io_c.h")]
 namespace Faiss {
-    [CCode (cname = "FaissIndex")]
+    [CCode (cname = "FaissIndex", has_type_id = false, free_function = "faiss_Index_free")]
+    [Compact]
     [SimpleType]
-    struct Index : void* {}
+    public class Index {
+        // Method to explicitly free the index (useful when free_function isn't available)
+        [CCode (cname = "faiss_Index_free")]
+        public void free();
+    }
     
-    [CCode (cname = "FaissIndexFlat")]
+    [CCode (cname = "FaissIndexFlat", has_type_id = false)]
+    [Compact]
     [SimpleType]
-    struct IndexFlat : void* {}
+    public class IndexFlat : Index {}
     
-    [CCode (cname = "FaissIndexFlatIP")]
+    [CCode (cname = "FaissIndexFlatIP", has_type_id = false)]
+    [Compact]
     [SimpleType]
-    struct IndexFlatIP : void* {}
+    public class IndexFlatIP : Index {}
     
-    [CCode (cname = "FaissIndexIDMap")]
+    [CCode (cname = "FaissIndexIDMap", has_type_id = false)]
+    [Compact]
     [SimpleType]
-    struct IndexIDMap : void* {}
+    public class IndexIDMap : Index {}
     
-    [CCode (cname = "faiss_IndexFlatIP_new")]
-    int index_flat_ip_new(out IndexFlatIP index, uint64 d);
-    
-    [CCode (cname = "faiss_Index_free")]
-    void index_free(Index index);
+    [CCode (cname = "faiss_IndexFlatIP_new_with")]
+    int index_flat_ip_new(out IndexFlatIP index, int64 d);
     
     [CCode (cname = "faiss_Index_add")]
-    int index_add(Index index, long n, [CCode (array_length = false)] float* x);
+    int index_add(Index index, int64 n, [CCode (array_length = false)] float* x);
     
     [CCode (cname = "faiss_Index_add_with_ids")]
-    int index_add_with_ids(Index index, long n, [CCode (array_length = false)] float* x, [CCode (array_length = false)] long* xids);
+    int index_add_with_ids(Index index, int64 n, [CCode (array_length = false)] float* x, [CCode (array_length = false)] int64* xids);
     
     [CCode (cname = "faiss_Index_search")]
-    int index_search(Index index, long n, [CCode (array_length = false)] float* x, long k, [CCode (array_length = false)] float* distances, [CCode (array_length = false)] long* labels);
+    int index_search(Index index, int64 n, [CCode (array_length = false)] float* x, int64 k, [CCode (array_length = false)] float* distances, [CCode (array_length = false)] int64* labels);
     
     [CCode (cname = "faiss_Index_d")]
-    uint64 index_d(Index index);
+    int index_d(Index index);
     
     [CCode (cname = "faiss_Index_ntotal")]
-    uint64 index_ntotal(Index index);
+    int64 index_ntotal(Index index);
     
-    [CCode (cname = "faiss_Index_write")]
-    int index_write(Index index, string fname);
+    [CCode (cname = "faiss_write_index_fname")]
+    int write_index_fname(Index index, string fname);
     
-    [CCode (cname = "faiss_Index_read")]
-    int index_read(Index index, string fname);
+    [CCode (cname = "faiss_read_index_fname")]
+    int read_index_fname(string fname, int io_flags, out Index index);
 }

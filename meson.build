@@ -1,9 +1,10 @@
-project('ollmchat', 'vala', 'c',
+project('ollmchat', 'vala', 'c', 'cpp',
   version: '1.0.0',
   license: 'LGPL',
   default_options: [
     'default_library=shared',
     'c_std=gnu11',
+    'cpp_std=c++11',
     'prefix=/usr'
   ]
 )

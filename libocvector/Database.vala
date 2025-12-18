@@ -1,42 +1,35 @@
 namespace OLLMvector
 {
+	public struct SearchResultWithDocument
+	{
+		public SearchResult search_result;
+		public string document_text;
+	}
+	
 	public class Database : Object
 	{
+			
 		private Index? index = null;
-		private OLLMchat.OLLMchat.Client ollama;
-		private Gee.ArrayList<string> documents;
-		private uint64 embedding_dimension;
+		private OLLMchat.Client ollama;
+		// TODO: needs to store metadata mapping: vector_id -> (file_path, start_line, end_line, element_type, element_name)
+		// Code snippets will be read from filesystem when needed, not stored here
+		private uint64 embedding_dimension = 768; // Default for nomic-embed-text
 		
-		public Database(OLLMchat.OLLMchat.Client ollama)
+		public Database(OLLMchat.Client ollama)
 		{
 			this.ollama = ollama;
-			if (this.ollama.model == "") {
-				throw new Error.FAILED("Ollama client model is not set");
+			if (this.ollama.config.model == "") {
+				throw new GLib.IOError.FAILED("Ollama client model is not set");
 			}
-			this.documents = new Gee.ArrayList<string>();
-			this.embedding_dimension = 768; // Default for nomic-embed-text
 		}
 		
-		private void initialize_from_embedding(Gee.ArrayList<double?> embedding) throws Error
+		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws Error
 		{
-			if (this.index != null) {
-				return; // Already initialized
-			}
-			
-			// Get the dimension from the embedding vector's length
-			// embedding_dimension is the size of each embedding vector (e.g., 768 for nomic-embed-text)
-			// FAISS requires this dimension upfront because all vectors must have the same dimension
-			this.embedding_dimension = (uint64)embedding.size;
-			this.index = new Index(this.embedding_dimension);
-		}
-		
-		private float[] convert_embedding_to_float_array(Gee.ArrayList<double?> embedding) throws Error
-		{
-			var float_array = new float[embedding.size];
-			for (int i = 0; i < embedding.size; i++) {
-				var val = embedding[i];
+			var float_array = new float[embed.size];
+			for (int i = 0; i < embed.size; i++) {
+				var val = embed[i];
 				if (val == null) {
-					throw new Error.FAILED("Null value in embedding vector");
+					throw new GLib.IOError.FAILED("Null value in embed vector");
 				}
 				float_array[i] = (float)val;
 			}
@@ -45,23 +38,41 @@ namespace OLLMvector
 
 		public async void add_documents(string[] texts) throws Error
 		{
-			float[][] embeddings = new float[texts.length][];
-			
-			for (int i = 0; i < texts.length; i++) {
-				var response = yield this.ollama.embed(texts[i]);
-				if (response == null || response.embeddings.size == 0) {
-					throw new Error.FAILED("Failed to get embedding for document " + i.to_string());
-				}
-				
-				// Initialize index from first embedding if not already initialized
-				this.initialize_from_embedding(response.embeddings[0]);
-				
-				// Extract the first embedding vector and convert to float[]
-				embeddings[i] = this.convert_embedding_to_float_array(response.embeddings[0]);
-				this.documents.add(texts[i]);
+			// Init index from first embed to get dimension
+			if (texts.length == 0) {
+				return;
 			}
 			
-			this.index.add_vectors(embeddings);
+			var first_response = yield this.ollama.embed(texts[0]);
+			if (first_response == null || first_response.embeddings.size == 0) {
+				throw new GLib.IOError.FAILED("Failed to get embed for first document");
+			}
+			
+			// Init index from first embed to get dimension
+			if (this.index == null) {
+				this.embedding_dimension = (uint64)first_response.embeddings[0].size;
+				this.index = new Index(this.embedding_dimension);
+			}
+			
+			// Build FloatArray with known width (all vectors have fixed width)
+			var vector_batch = FloatArray(this.embedding_dimension);
+			
+			// Add first vector
+			vector_batch.add(this.embed_to_floats(first_response.embeddings[0]));
+			// TODO: store metadata (file_path, line_range, element_info) for vector_id = 0
+			
+			// Add remaining vectors
+			for (int i = 1; i < texts.length; i++) {
+				var response = yield this.ollama.embed(texts[i]);
+				if (response == null || response.embeddings.size == 0) {
+					throw new GLib.IOError.FAILED("Failed to get embed for document " + i.to_string());
+				}
+				
+				vector_batch.add(this.embed_to_floats(response.embeddings[0]));
+				// TODO: store metadata (file_path, line_range, element_info) for vector_id = i
+			}
+			
+			this.index.add_vectors(vector_batch);
 			print("Added " + texts.length.to_string() + " documents to vector database\n");
 		}
 		
@@ -69,25 +80,29 @@ namespace OLLMvector
 		{
 			var response = yield this.ollama.embed(query);
 			if (response == null || response.embeddings.size == 0) {
-				throw new Error.FAILED("Failed to get query embedding");
+				throw new GLib.IOError.FAILED("Failed to get query embed");
 			}
 			
-			// Initialize index from query embedding if not already initialized
+			// Init index from query embed if not already initialized
 			// (This can happen if search is called before add_documents)
-			this.initialize_from_embedding(response.embeddings[0]);
+			if (this.index == null) {
+				this.embedding_dimension = (uint64)response.embeddings[0].size;
+				this.index = new Index(this.embedding_dimension);
+			}
 			
-			// Extract the first embedding vector and convert to float[]
-			var query_embedding = this.convert_embedding_to_float_array(response.embeddings[0]);
-			var results = this.index.search(query_embedding, k);
+			// Extract the first embed vector and convert to float[]
+			var query_embed = this.embed_to_floats(response.embeddings[0]);
+			var results = this.index.search(query_embed, k);
 			var enhanced_results = new SearchResultWithDocument[results.length];
 			
 			for (int i = 0; i < results.length; i++) {
 				var result = results[i];
-				string document_text = ((int)result.document_id < this.documents.size) ? this.documents[(int)result.document_id] : "Unknown document";
+				// TODO: lookup metadata from vector_id (result.document_id) to get file_path, line_range, element_info
+				// TODO: read code snippet from file_path using line_range when needed
 				
 				enhanced_results[i] = SearchResultWithDocument() {
 					search_result = result,
-					document_text = document_text
+					document_text = "" // TODO: will be populated from file_path + line_range lookup
 				};
 			}
 			
@@ -96,17 +111,13 @@ namespace OLLMvector
 		
 		public void save_index(string filename) throws Error
 		{
-			if (this.index != null) {
-				this.index.save_to_file(filename);
-				
-				// Save documents
-				var file = GLib.File.new_for_path(filename + ".documents");
-				var dos = new GLib.DataOutputStream(file.create(GLib.FileCreateFlags.REPLACE));
-				
-				foreach (var doc in this.documents) {
-					dos.put_string(doc + "\n");
-				}
+			if (this.index == null) {
+				return;
 			}
+			
+			this.index.save_to_file(filename);
+			
+			// TODO: save metadata mapping (vector_id -> file_path, line_range, element_info) to database
 		}
 		
 		public void load_index(string filename) throws Error
@@ -115,34 +126,15 @@ namespace OLLMvector
 				this.index = new Index(this.embedding_dimension);
 			}
 			
-			if (this.index != null) {
-				this.index.load_from_file(filename);
-				
-				// Load documents
-				var documents_file = filename + ".documents";
-				var file = GLib.File.new_for_path(documents_file);
-				if (file.query_exists()) {
-					this.documents.clear();
-					string content;
-					try {
-						GLib.FileUtils.get_contents(documents_file, out content);
-						var lines = content.split("\n");
-						foreach (var line in lines) {
-							if (line != "") {
-								this.documents.add(line);
-							}
-						}
-					} catch (GLib.FileError e) {
-						// If file read fails, documents list remains empty
-					}
-				}
+			if (this.index == null) {
+				return;
 			}
+			
+			this.index.load_from_file(filename);
+			
+			// TODO: load metadata mapping (vector_id -> file_path, line_range, element_info) from database
 		}
 	}
 
-	public struct SearchResultWithDocument
-	{
-		public SearchResult search_result;
-		public string document_text;
-	}
+	
 }
