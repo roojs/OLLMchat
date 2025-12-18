@@ -211,7 +211,7 @@ namespace OLLMcoder
 		 * Queries database for all folders where is_project = 1 and loads them
 		 * into the manager.projects list.
 		 */
-		public void load_projects_from_db()
+		public async void load_projects_from_db()
 		{
 			if (this.db == null) {
 				GLib.debug("ProjectManager.load_projects_from_db: db is null, skipping");
@@ -221,7 +221,7 @@ namespace OLLMcoder
 			// Query database for projects
 			var query = OLLMcoder.Files.FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<OLLMcoder.Files.Folder>();
-			query.select("WHERE is_project = 1", projects_list);
+			yield query.select_async("WHERE is_project = 1", projects_list);
 			
 			GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
 			

@@ -177,3 +177,24 @@ oc_diff = executable('oc-diff',
   install_dir: get_option('bindir')
 )
 
+# Build oc-migrate-editors executable (project migration test)
+# Only depends on liboccoder (which already includes libocsqlite)
+# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+oc_migrate_editors = executable('oc-migrate-editors',
+  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
+  sources: ['oc-migrate-editors.vala'],
+  include_directories: include_directories('../liboccoder'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ocagent',
+    '--pkg=occoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+

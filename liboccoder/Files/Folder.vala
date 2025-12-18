@@ -124,14 +124,19 @@ namespace OLLMcoder.Files
 				old_child_map.set(entry.key, entry.value);
 			}
 			
-			var new_items = yield read_dir_scan();
+			var new_items = yield this.read_dir_scan();
 			foreach (var new_item in new_items) {
-				read_dir_update(new_item, old_child_map);
+				yield this.read_dir_update(new_item, old_child_map);
 			}
-			read_dir_remove(new_items, old_children);
+			this.read_dir_remove(new_items, old_children);
 			
-			// Backup database after all changes
+			// If not recursing, do backup and return early
+			if (!recurse) {
+				this.manager.db.backupDB();
+				return;
+			}
 			
+<<<<<<< HEAD
 			// If recurse is true, recursively read all subdirectories
 			if (recurse) {
 				GLib.debug("Folder.read_dir: Recursing into %u children for path='%s'", 
@@ -147,71 +152,143 @@ namespace OLLMcoder.Files
 							child.points_to.path, child.path);
 						yield ((Folder)child.points_to).read_dir(check_time, true);
 					}
+=======
+			// Collect all folders that need recursive reading
+			var folders_to_process = new Gee.ArrayList<Folder>();
+			foreach (var child in this.children.items) {
+				if (child is Folder) {
+					folders_to_process.add((Folder)child);
+				}
+				if (child is FileAlias && child.points_to is Folder) {
+					folders_to_process.add((Folder)child.points_to);
+>>>>>>> main
 				}
 			}
+			// call it anyway and we will sync on idle..
+			// Start processing folders in idle callback
+			Idle.add(() => {
+				this.process_folders(folders_to_process, check_time);
+				return false;
+			});
 
-			this.manager.db.backupDB();
-
-
-			if (this.is_project && recurse) {
-				this.project_files.update_from(this);
+		}
+		
+		/**
+		 * Process one folder from the queue and schedule the next one.
+		 * 
+		 * @param folders_to_process Queue of folders to process recursively
+		 * @param check_time Timestamp for this check operation
+		 */
+		private void process_folders(Gee.ArrayList<Folder> folders_to_process, int64 check_time)
+		{
+			if (folders_to_process.size == 0) {
+				// All folders processed, do final operations
+				this.manager.db.backupDB();
+				if (this.is_project) {
+					this.project_files.update_from(this);
+				}
+				return;
 			}
-
+			
+			// Get next folder to process
+			var folder = folders_to_process.remove_at(0);
+			
+			// Call read_dir asynchronously without yield
+			folder.read_dir.begin(check_time, true, (obj, res) => {
+				try {
+					folder.read_dir.end(res);
+				} catch (Error e) {
+					GLib.warning("Error reading directory: %s", e.message);
+				}
+				
+				// Schedule next folder processing in idle callback
+				Idle.add(() => {
+					this.process_folders(folders_to_process, check_time);
+					return false;
+				});
+			});
 		}
 		
 		/**
 		 * Scan directory and create FileBase objects for all items found.
 		 * 
+		 * This method executes directory scanning in a background thread to avoid
+		 * blocking the main thread during file system operations.
+		 * 
 		 * @return List of newly created FileBase objects
-		 * @throws Error if directory does not exist
+		 * @throws Error if directory does not exist or thread creation fails
 		 */
-		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error
+		private async Gee.ArrayList<FileBase> read_dir_scan() throws Error, ThreadError
 		{
 			var dir = GLib.File.new_for_path(this.path);
 			if (!dir.query_exists()) {
 				throw new GLib.IOError.NOT_FOUND("Directory does not exist: " + this.path);
 			}
 			
-			var enumerator = yield dir.enumerate_children_async(
-				GLib.FileAttribute.STANDARD_NAME + "," + 
-				GLib.FileAttribute.STANDARD_TYPE + "," +
-				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-				GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
-				GLib.FileQueryInfoFlags.NONE,
-				GLib.Priority.DEFAULT,
-				null
-			);
+			// Prepare attributes string on main thread (fast operation)
 			
-			var info_list = yield enumerator.next_files_async(100, GLib.Priority.DEFAULT, null);
-			
-			// First pass: Create all new items
 			var new_items = new Gee.ArrayList<FileBase>();
-			foreach (var info in info_list) {
-				var name = info.get_name();
-				
-				// Skip .git directories and other hidden/system folders
-				if (name == ".git") {
-					continue;
-				}
-				
-				var cpath = GLib.Path.build_filename(this.path, name);
-				
-				if (info.get_is_symlink()) {
-					new_items.add(new FileAlias.new_from_info(this, info, cpath));
-					continue;
-				}
-				
-				if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-					new_items.add(new Folder.new_from_info(
-						this.manager, this, info, cpath));
-					continue;
-				}
-				
-				new_items.add(new File.new_from_info(
-					this.manager, this, info, cpath));
-			}
+			SourceFunc callback = read_dir_scan.callback;
+			Error? thread_error = null;
 			
-			yield enumerator.close_async(GLib.Priority.DEFAULT, null);
+			// Hold reference to closure to keep it from being freed whilst thread is active
+			ThreadFunc<bool> run = () => {
+				try {
+					// Execute directory enumeration in background thread (slow operation)
+					var enumerator = dir.enumerate_children(
+						GLib.FileAttribute.STANDARD_NAME + "," + 
+							GLib.FileAttribute.STANDARD_TYPE + "," +
+							GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
+							GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					
+					GLib.FileInfo? info;
+					while ((info = enumerator.next_file(null)) != null) {
+						var name = info.get_name();
+						
+						// Skip .git directories and other hidden/system folders
+						if (name == ".git") {
+							continue;
+						}
+						
+						var cpath = GLib.Path.build_filename(this.path, name);
+						
+						if (info.get_is_symlink()) {
+							new_items.add(new FileAlias.new_from_info(this, info, cpath));
+							continue;
+						}
+						
+						if (info.get_file_type() == GLib.FileType.DIRECTORY) {
+							new_items.add(new Folder.new_from_info(
+								this.manager, this, info, cpath));
+							continue;
+						}
+						
+						new_items.add(new File.new_from_info(
+							this.manager, this, info, cpath));
+					}
+					
+					enumerator.close(null);
+				} catch (Error e) {
+					thread_error = e;
+				}
+				
+				// Schedule callback on main thread
+				Idle.add((owned) callback);
+				return true;
+			};
+			
+			new Thread<bool>("read-dir-scan", run);
+			
+			// Wait for background thread to schedule our callback
+			yield;
+			
+			// Re-throw any error that occurred in the thread
+			if (thread_error != null) {
+				throw thread_error;
+			}
 			
 			return new_items;
 		}
@@ -222,7 +299,7 @@ namespace OLLMcoder.Files
 		 * @param new_item The newly scanned FileBase object
 		 * @param old_child_map Map of old children by name
 		 */
-		private void read_dir_update(
+		private async void read_dir_update(
 			FileBase new_item,
 			Gee.HashMap<string, FileBase> old_child_map)
 		{
@@ -247,7 +324,7 @@ namespace OLLMcoder.Files
 					new_item.points_to.saveToDB(this.manager.db, null,false);
 					new_item.points_to_id = new_item.points_to.id;
 					if (new_item.points_to is Folder) { 
-						((Folder)new_item.points_to).load_files_from_db();
+						yield ((Folder)new_item.points_to).load_files_from_db();
 					}
 				}
 			}
@@ -326,7 +403,7 @@ namespace OLLMcoder.Files
 		* b) Recursively load any aliased data until no more data is available
 		* c) Build the tree structure by adding children to parents based on parent_id
 		*/
-		public void load_files_from_db()
+		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
 				return;
@@ -335,12 +412,13 @@ namespace OLLMcoder.Files
 			// Step a: Create id => FileBase map
 			var id_map = new Gee.HashMap<int, FileBase>();
 			
-			// Step b: Load children starting from project path using while loop
-			string[] paths = { this.path };
-			string[] seen_ids = { this.id.to_string() };
-			while (paths.length > 0) {
-				paths = this.load_children(id_map, paths, ref seen_ids);
-			}
+		// Step b: Load children starting from project path using while loop
+		string[] paths = { this.path };
+		var seen_ids = new Gee.ArrayList<string>();
+		seen_ids.add(this.id.to_string());
+		while (paths.length > 0) {
+			paths = yield this.load_children(id_map, paths, seen_ids);
+		}
 			
 			// Step c: Build the tree structure
 			foreach (var file_base in id_map.values) {
@@ -348,18 +426,18 @@ namespace OLLMcoder.Files
 			}
 		}
 		
-		/**
-		 * Load children using path-based queries, following symlinks via target_path.
-		 * 
-		 * @param id_map The id => FileBase map to update
-		 * @param paths Array of paths to search under
-		 * @param seen_ids Array of IDs we've already loaded (modified inline)
-		 * @return Array of next paths to search, or empty array if done
-		 */
-		private string[] load_children(
-			Gee.HashMap<int, FileBase> id_map,
-			string[] paths,
-			ref string[] seen_ids)
+	/**
+	 * Load children using path-based queries, following symlinks via target_path.
+	 * 
+	 * @param id_map The id => FileBase map to update
+	 * @param paths Array of paths to search under
+	 * @param seen_ids ArrayList of IDs we've already loaded (modified inline)
+	 * @return Array of next paths to search, or empty array if done
+	 */
+	private async string[] load_children(
+		Gee.HashMap<int, FileBase> id_map,
+		string[] paths,
+		Gee.ArrayList<string> seen_ids)
 		{
 			// Build path conditions using instr() to check if path column starts with path + "/"
 			// or if path exactly matches (for files that are the path itself)
@@ -375,25 +453,20 @@ namespace OLLMcoder.Files
 			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
-			query.selectQuery("SELECT * FROM filebase WHERE (" + 
+			yield query.select_async("WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids) + ")", new_files);
-			
+				string.joinv(", ", seen_ids.to_array()) + ")", new_files);
+				
 			// If no new files found, we're done
 			if (new_files.size == 0) {
 				return {};
 			}
 			
-			// Build id map and seen_ids (first pass)
-			
+		// Build id map and seen_ids (first pass)
+		
 			foreach (var file_base in new_files) {
 				id_map.set((int)file_base.id, file_base);
-				var new_seen_ids = new string[seen_ids.length + 1];
-				for (int i = 0; i < seen_ids.length; i++) {
-					new_seen_ids[i] = seen_ids[i];
-				}
-				new_seen_ids[seen_ids.length] = file_base.id.to_string();
-				seen_ids = new_seen_ids;
+				seen_ids.add(file_base.id.to_string());
 			}
 			string[] next_paths = {};
 			
