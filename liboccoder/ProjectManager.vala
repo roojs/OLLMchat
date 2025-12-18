@@ -154,23 +154,23 @@ namespace OLLMcoder
 			// Activate new project
 			this.active_project = project;
 			if (project != null && project.is_project) {
-				GLib.debug("ProjectManager.activate_project: Activating project '%s', starting directory scan", project.path);
-				project.is_active = true;
+ 				project.is_active = true;
 				
 				if (this.db != null) {
 					project.saveToDB(this.db, null, false);
 					this.db.is_dirty = true;
 					
-					// Project files loading is now handled by ProjectFiles
-					// No need to call load_files_from_db() - ProjectFiles manages its own state
+					// Load project file tree from DB if not already loaded (for fast initial display)
+					if (project.children.items.size == 0) {
+						yield project.load_files_from_db();
+						project.project_files.update_from(project);
+						
+					}
 				}
 				
 				// Start async directory scan (don't await - runs in background)
-				var check_time = new DateTime.now_local().to_unix();
-				GLib.debug("ProjectManager.activate_project: Calling read_dir() for project '%s' with check_time=%lld, recurse=true", 
-					project.path, check_time);
-				yield project.read_dir(check_time, true);
-				GLib.debug("ProjectManager.activate_project: read_dir() completed for project '%s'", project.path);
+ 			 
+				yield project.read_dir( new DateTime.now_local().to_unix() , true);
 				
 			}
 			

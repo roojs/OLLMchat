@@ -78,9 +78,9 @@ namespace OLLMcoder
 		protected abstract string get_filter_property();
 		
 		/**
-		 * Handle selection changes in dropdown.
+		 * Handle when an item is selected in dropdown (via click or Enter key).
 		 */
-		protected abstract void on_selection_changed();
+		protected abstract void on_selected();
 		
 		/**
 		 * Get the property name to bind for label text (e.g., "path_basename", "display_name").
@@ -116,12 +116,11 @@ namespace OLLMcoder
 			});
 			this.entry.add_controller(key_controller);
 			
-			// Handle focus loss - close popup when entry loses focus
+			// Handle focus loss - close popup when entry loses focus (but don't trigger selection)
 			var focus_controller = new Gtk.EventControllerFocus();
 			focus_controller.leave.connect(() => {
 				if (this.popup.visible) {
 					this.set_popup_visible(false);
-					this.on_selection_changed();
 				}
 			});
 			this.entry.add_controller(focus_controller);
@@ -149,10 +148,10 @@ namespace OLLMcoder
 				selected = Gtk.INVALID_LIST_POSITION
 			};
 			// Monitor selection changes to update entry text (but don't trigger actions)
-			// Actions are only triggered when popup closes (via activate signal or focus loss)
+			// Actions are only triggered when popup closes (via activate signal or Enter key)
 			this.selection.notify["selected"].connect(() => {
 				// Update entry text to show selected item (like the example's accept_current_selection)
-				// But don't call on_selection_changed() - that's only called when popup closes
+				// But don't call on_selected() - that's only called when popup closes via user action
 			});
 			
 			// Create factory for list items
@@ -188,7 +187,7 @@ namespace OLLMcoder
 			// Connect to activate signal - this is called when user clicks an item
 			this.list.activate.connect((position) => {
 				this.set_popup_visible(false);
-				this.on_selection_changed();
+				this.on_selected();
 			});
 			
 			
@@ -457,7 +456,7 @@ namespace OLLMcoder
 			if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter || keyval == Gdk.Key.ISO_Enter) {
 				if (this.popup.visible) {
 					this.set_popup_visible(false);
-					this.on_selection_changed();
+					this.on_selected();
 					return true; // Consume the event
 				}
 				return false; // Let default behavior handle it

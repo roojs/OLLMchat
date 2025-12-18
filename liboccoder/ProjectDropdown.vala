@@ -32,12 +32,7 @@ namespace OLLMcoder
 		 * Currently selected project (folder with is_project = true).
 		 * This is set when the popup closes and user has made a selection.
 		 */
-		private Files.Folder? _selected_project = null;
-		public Files.Folder? selected_project {
-			get { 
-				return this._selected_project;
-			}
-		}
+		public Files.Folder? selected_project { get; private set; }
 		
 		/**
 		 * Emitted when project selection changes.
@@ -154,33 +149,30 @@ namespace OLLMcoder
 			return "path";
 		}
 		
-		protected override void on_selection_changed()
+		protected override void on_selected()
 		{
 			// Get the selected item from the selection model
-			var item = this.selection.selected_item as Files.Folder;
+			var project = this.selection.selected_item as Files.Folder;
 			// Ensure it's actually a project
-			var project = (item != null && item.is_project) ? item : null;
+			
+			// If no valid project selected, something went wrong - don't change anything
+			if (project == null || !project.is_project) {
+				GLib.warning("ProjectDropdown.on_selected: No valid project selected");
+				return;
+			}
 			
 			// Update the stored selected project
-			this._selected_project = project;
+			this.selected_project = project;
 			
-			GLib.debug("ProjectDropdown.on_selection_changed: selected_project=%s", 
-				this._selected_project != null ? this._selected_project.path : "null");
+			//GLib.debug("ProjectDropdown.on_selected: selected_project=%s", project.path);
 			
 			// Emit signal with the selected project
-			this.project_selected(this._selected_project);
+			this.project_selected(this.selected_project);
 			
-			if (this._selected_project != null) {
-				// Clear entry text so placeholder shows (like the example's accept_current_selection)
-				this.entry.text = "";
-				// Set placeholder to show selected project (doesn't trigger filter)
-				this.placeholder_text = this._selected_project.path_basename;
-			} else {
-				// Clear entry text
-				this.entry.text = "";
-				// Reset placeholder
-				this.placeholder_text = "Select project";
-			}
+			// Clear entry text so placeholder shows
+			this.entry.text = "";
+			// Set placeholder to show selected project
+			this.placeholder_text = this.selected_project.path_basename;
 		}
 	}
 }

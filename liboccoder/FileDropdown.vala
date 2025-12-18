@@ -358,7 +358,7 @@ namespace OLLMcoder
 			}
 		}
 		
-		protected override void on_selection_changed()
+		protected override void on_selected()
 		{
 			// Get the selected item from the selection model
 			var project_file = this.selection.selected_item as Files.ProjectFile;

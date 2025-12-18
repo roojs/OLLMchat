@@ -226,21 +226,18 @@ namespace OLLMcoder
 		 */
 		public async void apply_manager_state()
 		{
-			GLib.debug("SourceView.apply_manager_state: Starting");
 			// Only apply UI state from manager properties - all data is already loaded
 			// Use manager's active_project and active_file properties
 			
 			if (this.manager.active_project != null) {
-				GLib.debug("SourceView.apply_manager_state: Manager has active_project '%s', calling activate_project()", 
-					this.manager.active_project.path);
 				// Activate project (already loaded in memory)
 				yield this.manager.activate_project(this.manager.active_project);
 				
 				// Update file dropdown's project
 				this.file_dropdown.project = this.manager.active_project;
 				
-				// Disabled: Don't set project dropdown selection programmatically
-				// this.project_dropdown.selected_project = this.manager.active_project;
+				// Update project dropdown (use path_basename to match on_selected behavior)
+				this.project_dropdown.placeholder_text = this.manager.active_project.path_basename;
 			}
 			
 			if (this.manager.active_file != null) {
@@ -254,8 +251,6 @@ namespace OLLMcoder
 		 */
 		private void on_project_selected(Files.Folder? project)
 		{
-			GLib.debug("SourceView.on_project_selected: Called with project=%s", 
-				project != null ? project.path : "null");
 			if (project == null) {
 				// Hide file dropdown when no project is selected
 				this.file_dropdown.visible = false;
@@ -268,7 +263,6 @@ namespace OLLMcoder
 			// Lock file dropdown during project change
 			this.file_dropdown.sensitive = false;
 			this.file_dropdown.add_css_class("loading");
-			GLib.debug("SourceView.on_project_selected: Calling open_project() for '%s'", project.path);
 			this.open_project.begin(project, (obj, res) => {
 				this.open_project.end(res);
 				// Unlock file dropdown after project change completes
@@ -336,7 +330,8 @@ namespace OLLMcoder
 			
 			// Check if file has existing buffer
 			if (file.text_buffer == null) {
-				// Detect language if not already set
+				/*  
+				// I dont think this is needed it was probalby broken before we sorted out language detetcion
 				if (file.language == null || file.language == "") {
 					// Try to detect language from filename
 					var lang_manager = GtkSource.LanguageManager.get_default();
@@ -351,7 +346,7 @@ namespace OLLMcoder
 						}
 					}
 				}
-				
+				*/
 				// Create new buffer using file's language property
 				GtkSource.Buffer buffer;
 				if (file.language != null && file.language != "") {
@@ -359,16 +354,10 @@ namespace OLLMcoder
 					var language = lang_manager.get_language(file.language);
 					if (language != null) {
 						buffer = new GtkSource.Buffer.with_language(language);
-						GLib.debug("SourceView.open_file: Created buffer with language '%s' for file '%s'", 
-							file.language, file.path);
 					} else {
-						GLib.debug("SourceView.open_file: Language '%s' not found in LanguageManager for file '%s'", 
-							file.language, file.path);
 						buffer = new GtkSource.Buffer(null);
 					}
 				} else {
-					GLib.debug("SourceView.open_file: No language set for file '%s', creating buffer without language", 
-						file.path);
 					buffer = new GtkSource.Buffer(null);
 				}
 				
@@ -428,17 +417,12 @@ namespace OLLMcoder
 		 */
 		public async void open_project(Files.Folder project)
 		{
-			GLib.debug("SourceView.open_project: Called with project='%s', manager.active_project=%s", 
-				project.path,
-				this.manager.active_project != null ? this.manager.active_project.path : "null");
 			// Check if this project is already the active project to avoid unnecessary work
 			if (this.manager.active_project != null &&
 			    this.manager.active_project.path == project.path) {
-				GLib.debug("SourceView.open_project: Project '%s' is already active, skipping", project.path);
 				return;
 			}
-
-			GLib.debug("SourceView.open_project: Calling manager.activate_project() for '%s'", project.path);
+			
 			// Notify manager to activate project (this triggers directory scan)
 			yield this.manager.activate_project(project);
 			
@@ -448,8 +432,8 @@ namespace OLLMcoder
 			// Disabled: Don't set project dropdown selection programmatically
 			// this.project_dropdown.selected_project = project;
 			
-			// Update placeholder text with project name
-			this.project_dropdown.placeholder_text = project.display_name;
+			// Update placeholder text with project name (use path_basename to match on_selected)
+			this.project_dropdown.placeholder_text = project.path_basename;
 			
 			// Find and trigger active file (or null if none)
 			var active_file = project.project_files.get_active_file();
