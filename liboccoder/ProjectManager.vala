@@ -26,6 +26,12 @@ namespace OLLMcoder
 	 */
 	public class ProjectManager : Object
 	{
+		// Static constructor to initialize libgit2 when class is first loaded
+		static construct
+		{
+			Ggit.init();
+		}
+		
 		/**
 		 * Database instance for persistence.
 		 * Set this to enable database operations.

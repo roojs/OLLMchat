@@ -27,6 +27,12 @@ namespace OLLMcoder.Files
 	public class Folder : FileBase
 	{
 		/**
+		 * Whether to use background (idle callback) processing for recursive folder scanning.
+		 * Default: true (use background processing for better UI responsiveness)
+		 */
+		public static bool background_recurse { get; set; default = true; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance (required)
@@ -95,6 +101,8 @@ namespace OLLMcoder.Files
 		 */
 		public Ggit.Repository? repo { get; set; default = null; }
 		
+		 
+		
 		/**
 		 * Check if a path is ignored by git.
 		 * 
@@ -147,6 +155,9 @@ namespace OLLMcoder.Files
 		{
 			// If already ignored, no need to discover repository
 			if (this.is_ignored) {
+				// Reset repo status when ignored (we don't care about repo status for ignored folders)
+				this.is_repo = -1;
+				this.repo = null;
 				return;
 			}
 			
@@ -219,6 +230,9 @@ namespace OLLMcoder.Files
 			var generated_path = GLib.Path.build_filename(this.path, ".generated");
 			if (GLib.FileUtils.test(generated_path, GLib.FileTest.EXISTS)) {
 				this.is_ignored = true;
+				// Reset repo status when ignored (we don't care about repo status for ignored folders)
+				this.is_repo = -1;
+				this.repo = null;
 				// Don't need to discover repository or scan children if folder is ignored
  			}
 			
@@ -256,11 +270,22 @@ namespace OLLMcoder.Files
 				}
 				if (child is FileAlias && child.points_to is Folder) {
 					folders_to_process.add((Folder)child.points_to);
-
 				}
 			}
-			// call it anyway and we will sync on idle..
-			// Start processing folders in idle callback
+
+			if (!background_recurse) {
+				// Process folders synchronously using yield
+				foreach (var folder in folders_to_process) {
+					yield folder.read_dir(check_time, true);
+				}
+				// All folders processed
+				this.manager.db.backupDB();
+				if (this.is_project) {
+					this.project_files.update_from(this);
+				}
+				return;
+			} 
+				// Start processing folders in idle callback (non-blocking)
 			Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
 				return false;
@@ -296,7 +321,11 @@ namespace OLLMcoder.Files
 					GLib.warning("Error reading directory: %s", e.message);
 				}
 				
-				// Schedule next folder processing in idle callback
+				if (!background_recurse) {
+					this.process_folders(folders_to_process, check_time);
+					return;
+				} 
+					// Start processing folders in idle callback (non-blocking)
 				Idle.add(() => {
 					this.process_folders(folders_to_process, check_time);
 					return false;
@@ -305,9 +334,68 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Enumerate directory contents and create FileBase objects for all items found.
+		 * 
+		 * @param dir The GLib.File object for the directory to enumerate
+		 * @param new_items List to populate with newly created FileBase objects
+		 * @throws Error if directory enumeration fails
+		 */
+		private void enumerate_directory_contents(GLib.File dir, Gee.ArrayList<FileBase> new_items) throws Error
+		{
+			// Execute directory enumeration
+			var enumerator = dir.enumerate_children(
+				GLib.FileAttribute.STANDARD_NAME + "," + 
+					GLib.FileAttribute.STANDARD_TYPE + "," +
+					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
+					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+				GLib.FileQueryInfoFlags.NONE,
+				null
+			);
+			
+			GLib.FileInfo? info;
+			while ((info = enumerator.next_file(null)) != null) {
+				var name = info.get_name();
+				
+				// Skip .git directories and other hidden/system folders
+				if (name == ".git") {
+					continue;
+				}
+				
+				var cpath = GLib.Path.build_filename(this.path, name);
+				
+				// Check if this file/folder is ignored
+				
+				if (info.get_is_symlink()) {
+					new_items.add(new FileAlias.new_from_info(this, info, cpath) {
+						is_ignored = this.check_path_ignored(cpath)
+					});
+					continue;
+				}
+				
+				if (info.get_file_type() == GLib.FileType.DIRECTORY) {
+					var is_ignored_flag = this.check_path_ignored(cpath);
+					new_items.add(new Folder.new_from_info( this.manager, this, info, cpath) {
+						is_ignored = is_ignored_flag,
+						repo = is_ignored_flag ? null : this.repo,
+						is_repo = is_ignored_flag ? -1 : this.is_repo
+					});
+					continue;
+				}
+				
+				new_items.add(new File.new_from_info( this.manager, this, info, cpath) {
+					is_ignored = this.check_path_ignored(cpath)
+				});
+			}
+			
+			enumerator.close(null);
+		}
+		
+		/**
 		 * Scan directory and create FileBase objects for all items found.
 		 * 
-		 * This method executes directory scanning in a background thread to avoid
+		 * When background_recurse is false, this executes synchronously on the main thread.
+		 * When background_recurse is true, this executes in a background thread to avoid
 		 * blocking the main thread during file system operations.
 		 * 
 		 * @return List of newly created FileBase objects
@@ -320,61 +408,22 @@ namespace OLLMcoder.Files
 				throw new GLib.IOError.NOT_FOUND("Directory does not exist: " + this.path);
 			}
 			
-			// Prepare attributes string on main thread (fast operation)
-			 
 			var new_items = new Gee.ArrayList<FileBase>();
+			
+			// If background_recurse is false, execute synchronously
+			if (!background_recurse) {
+				this.enumerate_directory_contents(dir, new_items);
+				return new_items;
+			}
+			
+			// Otherwise, execute in background thread
 			SourceFunc callback = read_dir_scan.callback;
 			Error? thread_error = null;
 			
 			// Hold reference to closure to keep it from being freed whilst thread is active
 			ThreadFunc<bool> run = () => {
 				try {
-					// Execute directory enumeration in background thread (slow operation)
-					var enumerator = dir.enumerate_children(
-						GLib.FileAttribute.STANDARD_NAME + "," + 
-							GLib.FileAttribute.STANDARD_TYPE + "," +
-							GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-							GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
-							GLib.FileAttribute.STANDARD_CONTENT_TYPE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					
-					GLib.FileInfo? info;
-					while ((info = enumerator.next_file(null)) != null) {
-						var name = info.get_name();
-						
-						// Skip .git directories and other hidden/system folders
-						if (name == ".git") {
-							continue;
-						}
-						
-						var cpath = GLib.Path.build_filename(this.path, name);
-						
-						// Check if this file/folder is ignored
- 						
-						if (info.get_is_symlink()) {
-							new_items.add(new FileAlias.new_from_info(this, info, cpath) {
-								is_ignored = this.check_path_ignored(cpath)
-							});
-							continue;
-						}
-						
-						if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-							new_items.add(new Folder.new_from_info( this.manager, this, info, cpath) {
-								is_ignored = this.check_path_ignored(cpath),
-								repo = this.repo,
-								is_repo = this.is_repo
-							});
-							continue;
-						}
-						
-						new_items.add(new File.new_from_info( this.manager, this, info, cpath) {
-							is_ignored = this.check_path_ignored(cpath)
-						});
-					}
-					
-					enumerator.close(null);
+					this.enumerate_directory_contents(dir, new_items);
 				} catch (Error e) {
 					thread_error = e;
 				}
