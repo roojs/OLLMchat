@@ -1,4 +1,4 @@
-# Build ocvector library (libocvector.so) - depends on libocsqlite, libocagent, libollmchat
+# Build ocvector library (libocvector.so) - depends on libocsqlite, libocagent, libollmchat, libocfiles
 # Provides semantic codebase search using vector embeddings and FAISS
 
 # Dependencies for ocvector library
@@ -38,10 +38,8 @@ ocvector_src = files([
   'Index.vala',      # FAISS integration
   'Database.vala',  # Vector database with embeddings
   
-  # Files/ directory (copied from liboccoder, namespace: OLLMvector.Files)
-  # 'Files/FileBase.vala',
-  # 'Files/File.vala',
-  # 'Files/Folder.vala',
+  # Files/ directory removed - now using libocfiles instead
+  # No need to copy Files classes - use OLLMfiles namespace from libocfiles
   
   # Indexing/ directory
   # 'Indexing/Analysis.vala',
@@ -60,12 +58,13 @@ ocvector_src = files([
 lib_build_rpath = ':'.join([
   meson.current_build_dir(),
   meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libollmchat',
 ])
 
 # Build the library
 ocvector_base_lib = library('ocvector',
-  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep],
+  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep],
   sources: ocvector_src + faiss_wrapper_src,
   link_with: [],  # Explicitly separate C/C++ deps from Vala deps
   link_args: ['-lblas', '-llapack', '-lgomp'],  # Add BLAS, LAPACK, and OpenMP directly to linker
@@ -76,6 +75,7 @@ ocvector_base_lib = library('ocvector',
     include_directories('..' / 'libollmchat'),
     include_directories('..' / 'libocagent'),
     include_directories('..' / 'libocsqlite'),
+    include_directories('..' / 'libocfiles'),
   ],
   vala_args: [
     '--pkg=sqlite3',
@@ -83,9 +83,11 @@ ocvector_base_lib = library('ocvector',
     '--pkg=libsoup-3.0',
     '--pkg=fiass',  # FAISS via vapi
     '--pkg=ocagent',
+    '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
   ],
@@ -133,7 +135,7 @@ ocvector_base_lib = library('ocvector',
 ocvector_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
   sources: [],  # Don't include VAPI in sources - Vala will find it via --pkg=ocvector
-  dependencies: [ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep]
+  dependencies: [ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep]
 )
 
 # GObject Introspection for ocvector library

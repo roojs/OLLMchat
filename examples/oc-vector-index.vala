@@ -52,25 +52,19 @@ async void run_test(string[] args) throws Error
 
 	// Load config
 	var config_path = Path.build_filename(
-		GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
+		GLib.Environment.get_home_dir(), ".config", "ollmchat", "embed.json"
 	);
 	
 	OLLMchat.Config config;
-	if (GLib.FileUtils.test(config_path, GLib.FileTest.EXISTS)) {
-		var parser = new Json.Parser();
-		parser.load_from_file(config_path);
-		var obj = parser.get_root().get_object();
-		config = new OLLMchat.Config() {
-			url = obj.get_string_member("url"),
-			model = obj.get_string_member("model"),
-			api_key = obj.get_string_member("api_key")
-		};
-	} else {
-		config = new OLLMchat.Config() {
-			url = "http://localhost:11434/api",
-			model = "nomic-embed-text"
-		};
-	}
+	var parser = new Json.Parser();
+	parser.load_from_file(config_path);
+	var obj = parser.get_root().get_object();
+	config = new OLLMchat.Config() {
+		url = obj.get_string_member("url"),
+		model = obj.get_string_member("model"),
+		api_key = obj.get_string_member("api_key")
+	};
+
 
 	var client = new OLLMchat.Client(config);
 	stdout.printf("Created OLLMchat client (model: %s)\n", config.model);

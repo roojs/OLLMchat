@@ -30,14 +30,14 @@ namespace OLLMcoder.Prompt
 		/**
 		 * ProjectManager instance for querying file information.
 		 */
-		private OLLMcoder.ProjectManager manager;
+		private OLLMfiles.ProjectManager manager;
 		
 		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance (required)
 		 */
-		public CodeAssistantProvider(OLLMcoder.ProjectManager manager)
+		public CodeAssistantProvider(OLLMfiles.ProjectManager manager)
 		{
 			this.manager = manager;
 		}
@@ -172,12 +172,12 @@ namespace OLLMcoder.Prompt
 				return "";
 			}
 			
-			if (!(file_base is OLLMcoder.Files.File)) {
+			if (!(file_base is OLLMfiles.File)) {
 				GLib.debug("CodeAssistantProvider.get_file_contents: File in cache is not a File type: %s", file_base.get_type().name());
 				return "";
 			}
 			
-			var found_file = file_base as OLLMcoder.Files.File;
+			var found_file = file_base as OLLMfiles.File;
 			GLib.debug("CodeAssistantProvider.get_file_contents: File found, is_active=%s, path=%s",
 				found_file.is_active.to_string(), found_file.path);
 			

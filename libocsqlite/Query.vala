@@ -185,10 +185,7 @@ namespace SQ {
 		 	assert(this.table != "");
 			assert (typeof(T).is_object());
 			var schema = new Schema(this.db);
-			var sc = schema.load(this.table);
-			
-			var ocl = (GLib.ObjectClass) typeof(T).class_ref ();
-			
+			var sc = schema.load(this.table);			
 			
 			string[] keys = {};
 			string[] values = {};
@@ -274,9 +271,7 @@ namespace SQ {
 			assert(this.table != "");
 			var schema = new Schema(this.db);
 			var sc = schema.load(this.table);
-			
-			var ocl = (GLib.ObjectClass) typeof(T).class_ref ();
-			   
+						   
 			string[] setter = {};
 			var types = new Gee.HashMap<string,string> ();
 			foreach(var s in sc) {
@@ -324,9 +319,7 @@ namespace SQ {
 			assert(this.table != "");
 			var schema = new Schema(this.db);
 			var sc = schema.load(this.table);
-			
-			var ocl = (GLib.ObjectClass) typeof(T).class_ref ();
-			   
+						   
 			string[] setter = {};
 			var types = new Gee.HashMap<string,string> ();
 			foreach(var s in sc) {
@@ -368,7 +361,6 @@ namespace SQ {
 		void updateImp(T newer, Gee.HashMap<string,string> types, string[] setter, int id)
 		{
 	
-			var ocl = (GLib.ObjectClass) typeof(T).class_ref ();
 			Sqlite.Statement stmt;
 			var q = "UPDATE " + this.table + " SET  " + string.joinv(",", setter) +
 				" WHERE id = " + id.to_string();
@@ -762,7 +754,6 @@ namespace SQ {
 			assert (typeof(T).is_object());
  
 			int cols = stmt.column_count ();
-			var ocl = (GLib.ObjectClass) typeof(T).class_ref ();
 			for (int i = 0; i < cols; i++) {
 				var col_name = stmt.column_name (i);
 				if (col_name == null) {

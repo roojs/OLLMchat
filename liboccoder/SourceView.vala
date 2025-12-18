@@ -40,7 +40,7 @@ namespace OLLMcoder
 	 */
 	public class SourceView : Gtk.Box
 	{
-		public ProjectManager manager { get; private set; }
+		public OLLMfiles.ProjectManager manager { get; private set; }
 		private ProjectDropdown project_dropdown;
 		private FileDropdown file_dropdown;
 		private Gtk.Button save_button;
@@ -69,12 +69,12 @@ namespace OLLMcoder
 		/**
 		 * Currently active file.
 		 */
-		public Files.File? current_file { get; private set; default = null; }
+		public OLLMfiles.File? current_file { get; private set; default = null; }
 		
 		/**
 		 * Currently active project (folder with is_project = true).
 		 */
-		public Files.Folder? current_project {
+		public OLLMfiles.Folder? current_project {
 			get { return this.manager.active_project; }
 		}
 		
@@ -90,10 +90,14 @@ namespace OLLMcoder
 		 * 
 		 * @param manager The ProjectManager instance (required)
 		 */
-		public SourceView(ProjectManager manager)
+		public SourceView(OLLMfiles.ProjectManager manager)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
 			this.manager = manager;
+			
+			// Set providers on ProjectManager
+			this.manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
+			this.manager.git_provider = new OLLMcoder.Files.GitProvider();
 			
 			// Create header bar with dropdowns
 			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
@@ -249,7 +253,7 @@ namespace OLLMcoder
 		/**
 		 * Handle project selection change.
 		 */
-		private void on_project_selected(Files.Folder? project)
+		private void on_project_selected(OLLMfiles.Folder? project)
 		{
 			if (project == null) {
 				// Hide file dropdown when no project is selected
@@ -281,7 +285,7 @@ namespace OLLMcoder
 		/**
 		 * Handle file selection change.
 		 */
-		private void on_file_selected(Files.File? file)
+		private void on_file_selected(OLLMfiles.File? file)
 		{
 			if (file == null) {
 				// Set default placeholder when no file is selected
@@ -318,7 +322,7 @@ namespace OLLMcoder
 		 * @param file The file to open
 		 * @param line_number Optional line number to navigate to (overrides saved position)
 		 */
-		public async void open_file(Files.File file, int? line_number = null)
+		public async void open_file(OLLMfiles.File file, int? line_number = null)
 		{
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
@@ -328,52 +332,33 @@ namespace OLLMcoder
 			// Notify manager to activate file
 			this.manager.activate_file(file);
 			
-			// Check if file has existing buffer
-			if (file.text_buffer == null) {
-				/*  
-				// I dont think this is needed it was probalby broken before we sorted out language detetcion
-				if (file.language == null || file.language == "") {
-					// Try to detect language from filename
-					var lang_manager = GtkSource.LanguageManager.get_default();
-					var detected_lang = lang_manager.guess_language(file.path, null);
-					if (detected_lang != null) {
-						file.language = detected_lang.get_id();
-						GLib.debug("SourceView.open_file: Detected language '%s' for file '%s'", 
-							file.language, file.path);
-						// Save detected language to database
-						if (this.manager.db != null) {
-							file.saveToDB(this.manager.db, null, false);
-						}
+			// Check if file has existing buffer (via provider)
+			if (!this.manager.buffer_provider.has_buffer(file)) {
+				// Create buffer using provider (handles language)
+				this.manager.buffer_provider.create_buffer(file);
+				
+				// Get the newly created buffer
+				var buffer = file.get_data<GtkSource.Buffer>("buffer");
+				if (buffer != null) {
+					// Load file content asynchronously
+					try {
+						buffer.text = yield file.read_async();
+					} catch (Error e) {
+						GLib.warning("Failed to read file %s: %s", file.path, e.message);
+						buffer.text = "";
 					}
 				}
-				*/
-				// Create new buffer using file's language property
-				GtkSource.Buffer buffer;
-				if (file.language != null && file.language != "") {
-					var lang_manager = GtkSource.LanguageManager.get_default();
-					var language = lang_manager.get_language(file.language);
-					if (language != null) {
-						buffer = new GtkSource.Buffer.with_language(language);
-					} else {
-						buffer = new GtkSource.Buffer(null);
-					}
-				} else {
-					buffer = new GtkSource.Buffer(null);
-				}
-				
-				// Load file content asynchronously
-				try {
-					buffer.text = yield file.read_async();
-				} catch (Error e) {
-					GLib.warning("Failed to read file %s: %s", file.path, e.message);
-					buffer.text = "";
-				}
-				
-				file.text_buffer = buffer;
+			}
+			
+			// Get buffer from file (via provider's set_data)
+			var buffer = file.get_data<GtkSource.Buffer>("buffer");
+			if (buffer == null) {
+				GLib.warning("SourceView.open_file: Failed to get buffer for file %s", file.path);
+				return;
 			}
 			
 			// Switch view to file's buffer
-			this.source_view.set_buffer(file.text_buffer);
+			this.source_view.set_buffer(buffer);
 			this.current_file = file;
 			
 			// Show sourceview and search bar when file is opened
@@ -415,7 +400,7 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-		public async void open_project(Files.Folder project)
+		public async void open_project(OLLMfiles.Folder project)
 		{
 			// Check if this project is already the active project to avoid unnecessary work
 			if (this.manager.active_project != null &&
@@ -567,7 +552,7 @@ namespace OLLMcoder
 		/**
 		 * Restore cursor position from file state and scroll it into view.
 		 */
-		private void restore_cursor_position(Files.File file)
+		private void restore_cursor_position(OLLMfiles.File file)
 		{
 			var buffer = this.source_view.buffer;
 			
@@ -587,7 +572,7 @@ namespace OLLMcoder
 		/**
 		 * Restore scroll position from file state.
 		 */
-		private void restore_scroll_position(Files.File file)
+		private void restore_scroll_position(OLLMfiles.File file)
 		{
 			if (file.scroll_position > 0) {
 				// Use Idle to restore scroll position after layout is complete

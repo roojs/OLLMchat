@@ -1,3 +1,6 @@
+
+
+
 /*
  * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
  *
@@ -39,7 +42,10 @@ namespace OLLMchat
 		GLib.debug("Created database: %s", db_path);
 		
 		// Create ProjectManager with the database
-		var manager = new OLLMcoder.ProjectManager(db);
+		var manager = new OLLMfiles.ProjectManager(db);
+		// Set providers
+		manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
+		manager.git_provider = new OLLMcoder.Files.GitProvider();
 		GLib.debug("Created ProjectManager");
 		
 		// Create ProjectMigrate instance
@@ -53,7 +59,7 @@ namespace OLLMchat
 		GLib.debug("=== Migration Summary ===");
 		GLib.debug("Total projects in manager: %u", manager.projects.get_n_items());
 		for (uint i = 0; i < manager.projects.get_n_items(); i++) {
-			var project = manager.projects.get_item(i) as OLLMcoder.Files.Folder;
+			var project = manager.projects.get_item(i) as OLLMfiles.Folder;
 			if (project != null) {
 				stdout.printf("Project %u: %s (%s)\n", i + 1, project.display_name, project.path);
 			}
