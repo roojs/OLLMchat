@@ -17,8 +17,9 @@ ocvector_deps = [
 # Source files for OLLMvector namespace
 # Note: Files will be added as they are created in subsequent phases
 ocvector_src = files([
-  # Core components (to be migrated from VectorSearch/)
-  'Index.vala',  # FAISS namespace - placeholder for Phase 1
+  # Core components (migrated from VectorSearch/)
+  'Index.vala',      # FAISS integration
+  'Database.vala',  # Vector database with embeddings
   
   # Files/ directory (copied from liboccoder, namespace: OLLMvector.Files)
   # 'Files/FileBase.vala',
@@ -36,8 +37,6 @@ ocvector_src = files([
   
   # Tool/ directory
   # 'Tool/CodebaseSearchTool.vala',
-  
-  # 'Database.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
