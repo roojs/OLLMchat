@@ -11,6 +11,7 @@ occoder_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('sqlite3'),
+  dependency('libgit2-glib-1.0'),
   valac.find_library('posix'),
 ]
 
@@ -57,9 +58,12 @@ occoder_base_lib = library('occoder',
     '--pkg=json-glib-1.0',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
+    '--pkg=libgit2-glib-1.0',
     '--pkg=ocagent',
+    # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
   ],
   install: true
 )
@@ -72,11 +76,13 @@ occoder_vapi = custom_target('occoder-vapi',
     valac_exe,
     '-C', '--debug',
     '--target-glib=auto',
-    '--vapidir', meson.current_source_dir() / '../vapi',
-    '--vapidir', meson.current_source_dir() / '../../vapi',
-    '--vapidir', meson.current_build_dir(),
+    # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir(),
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_source_dir() / '../../vapi',
+    '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'ocsqlite',
@@ -88,6 +94,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'gee-0.8',
     '--pkg', 'gtk4',
     '--pkg', 'gtksourceview-5',
+    '--pkg', 'libgit2-glib-1.0',
     '--library', 'occoder',
     '--header', meson.current_build_dir() / 'occoder.h',  # Use header from library
     '--vapi', '@OUTPUT@',

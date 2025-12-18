@@ -12,6 +12,7 @@
   </gresource>
   <gresource prefix="/ollmchat">
     <file>style.css</file>
+    <file>pulldown.css</file>
   </gresource>
 </gresources>
 

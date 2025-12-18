@@ -32,27 +32,12 @@ namespace OLLMcoder
 		
 		/**
 		 * Currently selected file.
+		 * This is set when the popup closes and user has made a selection.
 		 */
+		private Files.File? _selected_file = null;
 		public Files.File? selected_file {
 			get { 
-				var project_file = this.selection.selected_item as Files.ProjectFile;
-				return project_file != null ? project_file.file : null;
-			}
-			set { 
-				// Find the ProjectFile that wraps this File
-				if (value == null) {
-					this.set_selected_item_internal(null);
-					return;
-				}
-				if (this.current_project != null) {
-					for (uint i = 0; i < this.current_project.project_files.get_n_items(); i++) {
-						var pf = this.current_project.project_files.get_item(i) as Files.ProjectFile;
-						if (pf != null && pf.file == value) {
-							this.set_selected_item_internal(pf);
-							return;
-						}
-					}
-				}
+				return this._selected_file;
 			}
 		}
 		
@@ -137,9 +122,10 @@ namespace OLLMcoder
 				can_unselect = true,
 				selected = Gtk.INVALID_LIST_POSITION
 			};
-			this.selection.notify["selected"].connect(() => {
-				this.on_selection_changed();
-			});
+			// Disabled: Don't monitor selection changes - only trigger actions when popup closes
+			// this.selection.notify["selected"].connect(() => {
+			// 	this.on_selection_changed();
+			// });
 			
 			// Update list view with new selection model
 			this.list.model = this.selection;
@@ -174,9 +160,10 @@ namespace OLLMcoder
 				can_unselect = true,
 				selected = Gtk.INVALID_LIST_POSITION
 			};
-			this.selection.notify["selected"].connect(() => {
-				this.on_selection_changed();
-			});
+			// Disabled: Don't monitor selection changes - only trigger actions when popup closes
+			// this.selection.notify["selected"].connect(() => {
+			// 	this.on_selection_changed();
+			// });
 			
 			// Update list view with new selection model
 			this.list.model = this.selection;
@@ -185,6 +172,18 @@ namespace OLLMcoder
 		protected override string get_filter_property()
 		{
 			return "display_name";
+		}
+		
+		protected override string get_label_property()
+		{
+			// FileDropdown uses display_with_indicators (includes status indicators like ✓)
+			return "display_with_indicators";
+		}
+		
+		protected override string get_tooltip_property()
+		{
+			// Not used since we override create_factory, but required by abstract method
+			return "path";
 		}
 		
 		/**
@@ -321,10 +320,8 @@ namespace OLLMcoder
 				this.selection.model = this.sorted_items;
 			}
 			
-			// Show popover if there are matches
-			if (this.filtered_items.get_n_items() > 0) {
-				this.set_popup_visible(true);
-			}
+			// Don't automatically show popover - only update filter
+			// Popup should only be shown when explicitly requested (e.g., clicking arrow)
 		}
 		
 		/**
@@ -361,12 +358,28 @@ namespace OLLMcoder
 			}
 		}
 		
-		protected override void on_selection_changed()
+		protected override void on_selected()
 		{
-			this.file_selected(this.selected_file);
-			if (this.selected_file != null) {
-				this.entry.text = this.selected_file.display_name;
-				this.set_popup_visible(false);
+			// Get the selected item from the selection model
+			var project_file = this.selection.selected_item as Files.ProjectFile;
+			var file = project_file != null ? project_file.file : null;
+			
+			// Update the stored selected file
+			this._selected_file = file;
+			
+			// Emit signal with the selected file
+			this.file_selected(this._selected_file);
+			
+			if (this._selected_file != null) {
+				// Clear entry text so placeholder shows (like the example's accept_current_selection)
+				this.entry.text = "";
+				// Set placeholder to show selected file (doesn't trigger filter)
+				this.placeholder_text = this._selected_file.display_name;
+			} else {
+				// Clear entry text
+				this.entry.text = "";
+				// Reset placeholder
+				this.placeholder_text = "Search files...";
 			}
 		}
 	}

@@ -26,6 +26,12 @@ namespace OLLMcoder
 	 */
 	public class ProjectManager : Object
 	{
+		// Static constructor to initialize libgit2 when class is first loaded
+		static construct
+		{
+			Ggit.init();
+		}
+		
 		/**
 		 * Database instance for persistence.
 		 * Set this to enable database operations.
@@ -116,30 +122,61 @@ namespace OLLMcoder
 		 */
 		public async void activate_project(OLLMcoder.Files.Folder? project)
 		{
-			// Deactivate previous active project
+			GLib.debug("ProjectManager.activate_project: Called with project=%s (path=%s)", 
+				project != null ? project.get_type().name() : "null",
+				project != null ? project.path : "null");
+			
+			// Skip if this project is already active (avoid redundant scans)
+			if (this.active_project == project && project != null && project.is_active) {
+				GLib.debug("ProjectManager.activate_project: Project '%s' is already active, skipping scan", project.path);
+				return;
+			}
+			
+			// Reset is_active for ALL other projects (ensure only one project is active)
+			foreach (var other_project in this.projects.project_map.values) {
+				if (other_project != project && other_project.is_project && other_project.is_active) {
+					GLib.debug("ProjectManager.activate_project: Deactivating project '%s'", other_project.path);
+					other_project.is_active = false;
+					if (this.db != null) {
+						other_project.saveToDB(this.db, null, false);
+						this.db.is_dirty = true;
+					}
+				}
+			}
+			
+			// Deactivate previous active project (if different from the one being activated)
 			if (this.active_project != null && this.active_project != project) {
-				this.active_project.is_active = false;
-				if (this.db != null) {
-					this.active_project.saveToDB(this.db, null, false);
-					this.db.is_dirty = true;
+				GLib.debug("ProjectManager.activate_project: Deactivating previous active_project '%s'", this.active_project.path);
+				// Note: is_active may already be false from the loop above, but ensure it's saved
+				if (this.active_project.is_active) {
+					this.active_project.is_active = false;
+					if (this.db != null) {
+						this.active_project.saveToDB(this.db, null, false);
+						this.db.is_dirty = true;
+					}
 				}
 			}
 			
 			// Activate new project
 			this.active_project = project;
 			if (project != null && project.is_project) {
-				project.is_active = true;
+ 				project.is_active = true;
 				
 				if (this.db != null) {
 					project.saveToDB(this.db, null, false);
 					this.db.is_dirty = true;
 					
-					// Project files loading is now handled by ProjectFiles
-					// No need to call load_files_from_db() - ProjectFiles manages its own state
+					// Load project file tree from DB if not already loaded (for fast initial display)
+					if (project.children.items.size == 0) {
+						yield project.load_files_from_db();
+						project.project_files.update_from(project);
+						
+					}
 				}
 				
 				// Start async directory scan (don't await - runs in background)
-				yield project.read_dir(new DateTime.now_local().to_unix(), true);
+ 			 
+				yield project.read_dir( new DateTime.now_local().to_unix() , true);
 				
 			}
 			
@@ -183,6 +220,7 @@ namespace OLLMcoder
 		public async void load_projects_from_db()
 		{
 			if (this.db == null) {
+				GLib.debug("ProjectManager.load_projects_from_db: db is null, skipping");
 				return;
 			}
 			
@@ -191,10 +229,19 @@ namespace OLLMcoder
 			var projects_list = new Gee.ArrayList<OLLMcoder.Files.Folder>();
 			yield query.select_async("WHERE is_project = 1", projects_list);
 			
+			GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
+			
 			// Add to manager.projects list (ProjectList handles deduplication)
 			foreach (var project in projects_list) {
+				// Projects use property binding: path_basename for label, path for tooltip
+				// No need to manually set display_name or tooltip - they're bound directly
+				GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
+					project.path, project.path_basename);
 				this.projects.append(project);
 			}
+			
+			GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
+				this.projects.get_n_items());
 		}
 		
 		/**
@@ -205,14 +252,30 @@ namespace OLLMcoder
 		 */
 		public async void restore_active_state()
 		{
+			GLib.debug("ProjectManager.restore_active_state: Starting");
 			// Find active project using ProjectList internal method
 			var project = this.projects.get_active_project();
 			if (project == null) {
+				GLib.debug("ProjectManager.restore_active_state: No active project found, resetting all projects");
+				// Reset is_active for all projects if no active project found
+				// (in case multiple projects were marked active in database)
+				foreach (var other_project in this.projects.project_map.values) {
+					if (other_project.is_project && other_project.is_active) {
+						GLib.debug("ProjectManager.restore_active_state: Resetting is_active for project '%s'", other_project.path);
+						other_project.is_active = false;
+						if (this.db != null) {
+							other_project.saveToDB(this.db, null, false);
+							this.db.is_dirty = true;
+						}
+					}
+				}
 				return;
 			}
 			
-			// This will set this.active_project, deactivate previous, update DB, emit signal
+			GLib.debug("ProjectManager.restore_active_state: Found active project '%s', calling activate_project()", project.path);
+			// This will set this.active_project, deactivate all other projects, update DB, emit signal
 			yield this.activate_project(project);
+			GLib.debug("ProjectManager.restore_active_state: Completed");
 			
 			// Find active file using ProjectFiles internal method
 			var file = project.project_files.get_active_file();

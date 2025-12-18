@@ -43,6 +43,11 @@ namespace OLLMcoder.Prompt
 		private OLLMcoder.SourceView? widget = null;
 		
 		/**
+		 * Cached ProjectManager instance (created on demand if widget doesn't exist).
+		 */
+		private OLLMcoder.ProjectManager? cached_manager = null;
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param provider The provider for context data. If null, no context will be provided.
@@ -63,20 +68,20 @@ namespace OLLMcoder.Prompt
 		{
 			return this.generate_introduction() + "\n\n" +
 				"<communication>\n" +
-				this.load_section("communication") +
+					this.load_section("communication") +
 				"\n</communication>\n\n" +
-				this.load_section("tool_calling") + "\n\n" +
+					this.load_section("tool_calling") + "\n\n" +
 				"<search_and_reading>\n" +
-				this.load_section("search_and_reading") +
+					this.load_section("search_and_reading") +
 				"\n</search_and_reading>\n\n" +
 				"<making_code_changes>\n" +
-				this.load_section("making_code_changes") +
+					this.load_section("making_code_changes") +
 				"\n</making_code_changes>\n\n" +
-				this.load_section("debugging") + "\n\n" +
-				this.load_section("calling_external_apis") + "\n\n" +
-				this.generate_user_info_section() + "\n\n" +
-				this.load_section("citation_format");
-		}
+					this.load_section("debugging") + "\n\n" +
+					this.load_section("calling_external_apis") + "\n\n" +
+					this.generate_user_info_section() + "\n\n" +
+					this.load_section("citation_format");
+			}
 		
 		/**
 		 * Generates the user prompt with additional context data.
@@ -133,6 +138,39 @@ namespace OLLMcoder.Prompt
 		 */
 		private string generate_context_section()
 		{
+			// Try to initialize provider if widget exists but provider is null
+			if (this.provider == null && this.widget != null && this.widget.manager != null) {
+				this.provider = new CodeAssistantProvider(this.widget.manager);
+				this.cached_manager = this.widget.manager; // Cache the manager reference
+			}
+			
+			// If provider is still null, try to create it from cached manager or create a new ProjectManager
+			if (this.provider == null && this.db != null) {
+				OLLMcoder.ProjectManager? manager = null;
+				
+				// Use cached manager if available
+				if (this.cached_manager != null) {
+					manager = this.cached_manager;
+				} else if (this.widget != null && this.widget.manager != null) {
+					// Use widget's manager if widget exists
+					manager = this.widget.manager;
+					this.cached_manager = manager;
+				} else {
+					// Create a new ProjectManager from db (lazy initialization)
+					manager = new OLLMcoder.ProjectManager(this.db);
+					this.cached_manager = manager;
+					// Load projects from database
+					manager.load_projects_from_db();
+					// Try to restore active state synchronously (best effort)
+					// Note: restore_active_state is async, but we'll try to get what we can
+					// The active project/file should be loaded from DB with is_active flags
+				}
+				
+				if (manager != null) {
+					this.provider = new CodeAssistantProvider(manager);
+				}
+			}
+			
 			if (this.provider == null) {
 				return "";
 			}
@@ -144,14 +182,14 @@ namespace OLLMcoder.Prompt
 			var open_files = this.provider.get_open_files();
 			if (open_files.size > 0) {
 				var current_file = open_files[0];
-				var cursor_pos = this.provider.get_current_cursor_position();
+				var cursor_pos_str = this.provider.get_current_cursor_position();
 				
 				result += "<current_file>\n" +
 					"Path: " + current_file + "\n";
-				if (cursor_pos != "") {
-					result += "Line: " + cursor_pos + "\n";
+				if (cursor_pos_str != "") {
+					result += "Line: " + cursor_pos_str + "\n";
 				}
-				var line_content = this.provider.get_current_line_content(cursor_pos);
+				var line_content = this.provider.get_current_line_content(cursor_pos_str);
 				if (line_content != "") {
 					result += "Line Content: `" + line_content + "`\n";
 				}
@@ -164,7 +202,8 @@ namespace OLLMcoder.Prompt
 				foreach (var file in open_files) {
 					var contents = this.provider.get_file_contents(file);
 					if (contents != "") {
-						result += "<file_contents path=\"" + file + "\" lines=\"1-" + contents.split("\n").length.to_string() + "\">\n" +
+						var line_count = contents.split("\n").length;
+						result += "<file_contents path=\"" + file + "\" lines=\"1-" + line_count.to_string() + "\">\n" +
 							contents +
 							"\n</file_contents>\n";
 					}
@@ -198,6 +237,11 @@ namespace OLLMcoder.Prompt
 		{
 			// Return cached widget if already created
 			if (this.widget != null) {
+				// Ensure provider is set even if widget was cached
+				if (this.provider == null && this.widget.manager != null) {
+					this.provider = new CodeAssistantProvider(this.widget.manager);
+					this.cached_manager = this.widget.manager; // Update cached reference
+				}
 				return this.widget as Object;
 			}
 			
@@ -223,8 +267,17 @@ namespace OLLMcoder.Prompt
 			// Create SourceView with ProjectManager
 			this.widget = new OLLMcoder.SourceView(project_manager);
 			
+			// Cache the manager reference
+			this.cached_manager = project_manager;
+			
 			// Initialize widget (load projects, restore state, apply UI state)
 			yield this.initialize_widget();
+			
+			// Create provider from widget's manager so context can be included in prompts
+			if (this.provider == null && this.widget.manager != null) {
+				this.provider = new CodeAssistantProvider(this.widget.manager);
+				this.cached_manager = this.widget.manager; // Update cached reference
+			}
 			
 			// Return widget (cast as Object)
 			return this.widget as Object;
