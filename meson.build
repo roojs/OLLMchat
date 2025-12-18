@@ -25,6 +25,7 @@ subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocagent')       # No dependencies
 subdir('liboccoder')       # Depends on libocsqlite, libocagent
 subdir('libollmchat')      # Depends on libocsqlite, libocagent
+subdir('libocvector')      # Depends on libocsqlite, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
