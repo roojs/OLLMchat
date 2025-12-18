@@ -35,6 +35,7 @@
           <li class="property"><a href="OLLMcoder.Files.Folder.last_check_time.html">last_check_time</a></li>
           <li class="property"><a href="OLLMcoder.Files.Folder.last_viewed.html">last_viewed</a></li>
           <li class="property"><a href="OLLMcoder.Files.Folder.project_files.html">project_files</a></li>
+          <li class="property"><a href="OLLMcoder.Files.Folder.repo.html">repo</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.html">Folder</a></li>
           <li class="creation_method"><a href="OLLMcoder.Files.Folder.Folder.new_from_info.html">Folder.new_from_info</a></li>
           <li class="method"><a href="OLLMcoder.Files.Folder.load_files_from_db.html">load_files_from_db</a></li>
@@ -85,6 +86,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">ListStore of all files in project (used by dropdowns).</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Repository</span></span>? <b><a href="OLLMcoder.Files.Folder.repo.html" class="property">repo</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Git repository reference for this folder (nullable). Set when folder 
+                is discovered to be within a git repository.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -127,12 +133,15 @@
                 <li class="property"><a href="OLLMcoder.Files.FileBase.id.html">id</a></li>
                 <li class="static_method"><a href="OLLMcoder.Files.FileBase.initDB.html">initDB</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_active.html">is_active</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_alias.html">is_alias</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMcoder.Files.FileBase.is_alias.html">is_alias</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_ignored.html">is_ignored</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_project.html">is_project</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_repo.html">is_repo</a></li>
+                <li class="property"><a href="OLLMcoder.Files.FileBase.is_text.html">is_text</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.is_unsaved.html">is_unsaved</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.language.html">language</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
@@ -141,11 +150,11 @@
                 <li class="property"><a href="OLLMcoder.Files.FileBase.manager.html">manager</a></li>
                 <li class="method"><a href="OLLMcoder.Files.FileBase.mtime_on_disk.html">mtime_on_disk</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.needs_approval.html">needs_approval</a></li>
-                <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.parent_id.html">parent_id</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.path.html">path</a></li>
                 <li class="property"><a href="OLLMcoder.Files.FileBase.path_basename.html">path_basename</a></li>

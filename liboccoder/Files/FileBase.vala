@@ -212,6 +212,22 @@ namespace OLLMcoder.Files
 		public int64 last_modified { get; set; default = 0; }
 		
 		/**
+		 * Whether this file is ignored by git (stored in database, default: false).
+		 */
+		public bool is_ignored { get; set; default = false; }
+		
+		/**
+		 * Whether this file is a text file (stored in database, default: false).
+		 */
+		public bool is_text { get; set; default = false; }
+		
+		/**
+		 * Whether this folder is a git repository (stored in database, default: -1).
+		 * -1 = not checked, 0 = checked and not a repo, 1 = it is a repo.
+		 */
+		public int is_repo { get; set; default = -1; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void initDB(SQ.Database db)
@@ -232,7 +248,10 @@ namespace OLLMcoder.Files
 				"last_modified INT64 NOT NULL DEFAULT 0, " +
 				"points_to_id INT64 NOT NULL DEFAULT 0, " +
 				"target_path TEXT NOT NULL DEFAULT '', " +
-				"is_project INTEGER NOT NULL DEFAULT 0" +
+				"is_project INTEGER NOT NULL DEFAULT 0, " +
+				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
+				"is_text INTEGER NOT NULL DEFAULT 0, " +
+				"is_repo INTEGER NOT NULL DEFAULT -1" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -309,6 +328,9 @@ namespace OLLMcoder.Files
 			target.cursor_offset = this.cursor_offset;
 			target.scroll_position = this.scroll_position;
 			target.is_project = this.is_project;
+			target.is_ignored = this.is_ignored;
+			target.is_text = this.is_text;
+			target.is_repo = this.is_repo;
 		}
 		
 		// Static counter for tracking saveToDB calls

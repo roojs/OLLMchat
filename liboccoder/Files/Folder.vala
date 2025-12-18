@@ -89,6 +89,119 @@ namespace OLLMcoder.Files
 		 */
 		public int64 last_check_time { get; set; default = 0; }
 		
+		/**
+		 * Git repository reference for this folder (nullable).
+		 * Set when folder is discovered to be within a git repository.
+		 */
+		public Ggit.Repository? repo { get; set; default = null; }
+		
+		/**
+		 * Check if folder contains a .generated file.
+		 * If found, the folder and all its children should be ignored.
+		 * 
+		 * @return true if .generated file exists in this folder
+		 */
+		private bool check_generated_file()
+		{
+			var generated_file = GLib.File.new_for_path(GLib.Path.build_filename(this.path, ".generated"));
+			return generated_file.query_exists();
+		}
+		
+		/**
+		 * Check if a path is ignored by git.
+		 * 
+		 * @param path The full path to check
+		 * @return true if the path is ignored, false otherwise
+		 */
+		private bool check_path_ignored(string path)
+		{
+			// If parent is already ignored, child is also ignored
+			if (this.is_ignored) {
+				return true;
+			}
+			
+			// If no repository, not ignored
+			if (this.repo == null) {
+				return false;
+			}
+			
+			try {
+				var workdir = this.repo.get_workdir();
+				if (workdir == null) {
+					return false;
+				}
+				
+				var workdir_path = workdir.get_path();
+				if (workdir_path == null || !path.has_prefix(workdir_path)) {
+					return false;
+				}
+				
+				// Get relative path from repository workdir
+				var relative_path = path.substring(workdir_path.length);
+				// Remove leading slash if present
+				if (relative_path.has_prefix("/")) {
+					relative_path = relative_path.substring(1);
+				}
+				
+				// Check if path is ignored
+				return this.repo.path_is_ignored(relative_path);
+			} catch (GLib.Error e) {
+				GLib.debug("Failed to check if path is ignored for %s: %s", path, e.message);
+				return false;
+			}
+		}
+		
+		/**
+		 * Discover and open git repository for this folder.
+		 * Checks if folder is a git repository and opens it if found.
+		 */
+		private void discover_repository()
+		{
+			// If already ignored, no need to discover repository
+			if (this.is_ignored) {
+				return;
+			}
+			
+			switch (this.is_repo) {
+				case 0:
+					// Already checked and not a repo
+					this.repo = null;
+					return;
+				
+				case 1:
+					// Already checked and is a repo
+					if (this.repo != null) {
+						// Check if .git directory still exists
+						var git_dir = GLib.File.new_for_path(GLib.Path.build_filename(this.path, ".git"));
+						if (git_dir.query_exists()) {
+							// .git exists, we're all good
+							return;
+						}
+					}
+					// repo is null or .git doesn't exist, fall through to rediscover
+					break;
+				
+				default: // -1 (not checked)
+					break;
+			}
+			
+			// Try to discover repository from this folder (for case 1 when repo is null/.git missing, or default -1)
+			try {
+				var repo_file = Ggit.Repository.discover(GLib.File.new_for_path(this.path));
+				if (repo_file != null) {
+					this.repo = Ggit.Repository.open(repo_file);
+					this.is_repo = 1;
+					return;
+				}
+			} catch (GLib.Error e) {
+				GLib.debug("Failed to discover repository for %s: %s", this.path, e.message);
+			}
+			
+			// No repository found
+			this.is_repo = 0;
+			this.repo = null;
+		}
+		
 		
 		/**
 		 * Load children from filesystem for this folder.
@@ -113,6 +226,16 @@ namespace OLLMcoder.Files
 			
 			// Mark this folder as checked
 			this.last_check_time = check_time;
+			
+			// Check if folder contains .generated file - if so, ignore this folder and all children
+			if (this.check_generated_file()) {
+				this.is_ignored = true;
+				// Don't need to discover repository or scan children if folder is ignored
+				return;
+			}
+			
+			// Discover repository for this folder
+			this.discover_repository();
 			
 			// Keep a copy of old children to detect removals
 			var old_children = new Gee.ArrayList<FileBase>();
@@ -210,7 +333,7 @@ namespace OLLMcoder.Files
 			}
 			
 			// Prepare attributes string on main thread (fast operation)
-			
+			 
 			var new_items = new Gee.ArrayList<FileBase>();
 			SourceFunc callback = read_dir_scan.callback;
 			Error? thread_error = null;
@@ -223,7 +346,8 @@ namespace OLLMcoder.Files
 						GLib.FileAttribute.STANDARD_NAME + "," + 
 							GLib.FileAttribute.STANDARD_TYPE + "," +
 							GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-							GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
+							GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+							GLib.FileAttribute.STANDARD_CONTENT_TYPE,
 						GLib.FileQueryInfoFlags.NONE,
 						null
 					);
@@ -239,19 +363,34 @@ namespace OLLMcoder.Files
 						
 						var cpath = GLib.Path.build_filename(this.path, name);
 						
+						// Check if this file/folder is ignored
+						// If parent folder is ignored (e.g., due to .generated), all children are ignored
+						var child_ignored = this.is_ignored;
+						if (!child_ignored) {
+							child_ignored = this.check_path_ignored(cpath);
+						}
+						
 						if (info.get_is_symlink()) {
-							new_items.add(new FileAlias.new_from_info(this, info, cpath));
+							new_items.add(new FileAlias.new_from_info(this, info, cpath) {
+								is_ignored = this.check_path_ignored(cpath)
+							});
 							continue;
 						}
 						
 						if (info.get_file_type() == GLib.FileType.DIRECTORY) {
 							new_items.add(new Folder.new_from_info(
-								this.manager, this, info, cpath));
+								this.manager, this, info, cpath) {
+								is_ignored = this.check_path_ignored(cpath),
+								repo = this.repo,
+								is_repo = this.is_repo
+							});
 							continue;
 						}
 						
 						new_items.add(new File.new_from_info(
-							this.manager, this, info, cpath));
+							this.manager, this, info, cpath) {
+							is_ignored = this.check_path_ignored(cpath)
+						});
 					}
 					
 					enumerator.close(null);

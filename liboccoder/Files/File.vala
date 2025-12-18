@@ -64,6 +64,10 @@ namespace OLLMcoder.Files
 				this.last_modified = mod_time.to_unix();
 			}
 			
+			// Detect and set is_text from content type
+			var  content_type = info.get_content_type();
+ 			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
+			
 			// Detect language from filename if not already set
 			if (this.language == null || this.language == "") {
 				this.detect_language();
