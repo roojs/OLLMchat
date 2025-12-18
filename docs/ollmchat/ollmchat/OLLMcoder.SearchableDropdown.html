@@ -34,9 +34,13 @@
           <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.dispose.html">dispose</a></li>
           <li class="method"><a href="OLLMcoder.SearchableDropdown.find_in_list.html">find_in_list</a></li>
           <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_filter_property.html">get_filter_property</a></li>
+          <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_label_property.html">get_label_property</a></li>
+          <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.get_tooltip_property.html">get_tooltip_property</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.grab_focus.html">grab_focus</a></li>
           <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.measure.html">measure</a></li>
           <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.on_entry_changed.html">on_entry_changed</a></li>
-          <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.on_selection_changed.html">on_selection_changed</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.on_key_pressed.html">on_key_pressed</a></li>
+          <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.on_selected.html">on_selected</a></li>
           <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.set_item_store.html">set_item_store</a></li>
           <li class="method"><a href="OLLMcoder.SearchableDropdown.set_popup_visible.html">set_popup_visible</a></li>
           <li class="method"><a href="OLLMcoder.SearchableDropdown.set_selected_item_internal.html">set_selected_item_internal</a></li>
@@ -132,17 +136,39 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Get the property name to filter on (e.g., "display_name").</span>
             </div></li>
+          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.SearchableDropdown.get_label_property.html" class="abstract_method">get_label_property</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the property name to bind for label text (e.g., "path_basename", 
+                "display_name").</span>
+            </div></li>
+          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.SearchableDropdown.get_tooltip_property.html" class="abstract_method">get_tooltip_property</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the property name to bind for tooltip text (e.g., "path", 
+                "tooltip").</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.SearchableDropdown.grab_focus.html" class="virtual_method">grab_focus</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.measure.html" class="virtual_method">measure</a></b> (<span class="main_type"><span class="enum">Orientation</span></span> orientation, <span class="main_basic_type"><span class="struct">int</span></span> for_size, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> minimum, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> natural, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> minimum_baseline, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> natural_baseline)
             </span>
             <div class="leaf_brief_description">
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.on_entry_changed.html" class="virtual_method">on_entry_changed</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handle entry text changes.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Handle entry text changes. Only updates the filter when search text 
+                actually changes. Popup should only be shown when explicitly requested (e.g., clicking arrow). However, if text becomes empty and 
+                popup is visible, hide it.</span>
             </div></li>
-          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.on_selection_changed.html" class="abstract_method">on_selection_changed</a></b> ()
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.SearchableDropdown.on_key_pressed.html" class="virtual_method">on_key_pressed</a></b> (<span class="main_basic_type"><span class="struct">uint</span></span> keyval, <span class="main_basic_type"><span class="struct">uint</span></span> keycode, <span class="main_type"><span class="enum">ModifierType</span></span> state)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handle selection changes in dropdown.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Handle key press events. Follows GTK suggestion entry pattern from 
+                sample code.</span>
+            </div></li>
+          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.on_selected.html" class="abstract_method">on_selected</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Handle when an item is selected in dropdown (via click or Enter key).
+              </span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.set_item_store.html" class="virtual_method">set_item_store</a></b> (<span class="main_type"><span class="class">ListStore</span></span> store)
             </span>
@@ -151,11 +177,14 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.set_popup_visible.html" class="method">set_popup_visible</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> visible)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Set popover visibility.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Set popover visibility. Follows GTK suggestion entry pattern: show 
+                popup when typing, hide when selection made.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.SearchableDropdown.set_selected_item_internal.html" class="method">set_selected_item_internal</a></b> (<span class="main_type"><a href="OLLMcoder.Files.FileBase.html" class="abstract_class">FileBase</a></span>? value)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Set selected item by finding it in the filtered model.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Set selected item by finding it in the filtered model. DISABLED: This 
+                method is disabled to prevent programmatic selection changes that trigger cascading activations. Selection should only be changed by 
+                user interaction.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.SearchableDropdown.size_allocate.html" class="virtual_method">size_allocate</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> width, <span class="main_basic_type"><span class="struct">int</span></span> height, <span class="main_basic_type"><span class="struct">int</span></span> baseline)
             </span>

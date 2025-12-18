@@ -116,6 +116,13 @@ namespace OLLMchat
 			}
 			this.right_pane_visible = true;
 			
+			// Get window and queue resize, then present
+			var window = this.get_root() as Gtk.Window;
+			if (window != null) {
+				window.queue_resize();
+				window.present();
+			}
+			
 			// In idle callback, remove the minimum width constraints
 			GLib.Idle.add(() => {
 				if (start_child != null) {
@@ -123,6 +130,12 @@ namespace OLLMchat
 				}
 				if (right_pane != null) {
 					right_pane.set_size_request(-1, -1);
+				}
+				// Queue another resize and present after constraints are removed
+				var win = this.get_root() as Gtk.Window;
+				if (win != null) {
+					win.queue_resize();
+					win.present();
 				}
 				return false;
 			});

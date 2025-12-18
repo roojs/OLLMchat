@@ -40,7 +40,10 @@
           <li class="property"><a href="OLLMcoder.Files.FileBase.id.html">id</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.is_active.html">is_active</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.is_alias.html">is_alias</a></li>
+          <li class="property"><a href="OLLMcoder.Files.FileBase.is_ignored.html">is_ignored</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.is_project.html">is_project</a></li>
+          <li class="property"><a href="OLLMcoder.Files.FileBase.is_repo.html">is_repo</a></li>
+          <li class="property"><a href="OLLMcoder.Files.FileBase.is_text.html">is_text</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.is_unsaved.html">is_unsaved</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.language.html">language</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
@@ -51,6 +54,7 @@
           <li class="property"><a href="OLLMcoder.Files.FileBase.parent.html">parent</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.parent_id.html">parent_id</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.path.html">path</a></li>
+          <li class="property"><a href="OLLMcoder.Files.FileBase.path_basename.html">path_basename</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.points_to.html">points_to</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.points_to_id.html">points_to_id</a></li>
           <li class="property"><a href="OLLMcoder.Files.FileBase.scroll_position.html">scroll_position</a></li>
@@ -151,10 +155,25 @@
             <div class="leaf_brief_description"><span class="brief_description">Whether this is an alias/symlink. Computed property: Returns true if 
                 this is a FileAlias.</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.FileBase.is_ignored.html" class="property">is_ignored</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether this file is ignored by git (stored in database, default: 
+                false).</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.FileBase.is_project.html" class="property">is_project</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether this folder represents a project (stored in database, default:
                 false).</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMcoder.Files.FileBase.is_repo.html" class="property">is_repo</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether this folder is a git repository (stored in database, default: 
+                -1). -1 = not checked, 0 = checked and not a repo, 1 = it is a repo.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.FileBase.is_text.html" class="property">is_text</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether this file is a text file (stored in database, default: false).
+              </span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.Files.FileBase.is_unsaved.html" class="property">is_unsaved</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -198,6 +217,10 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.FileBase.path.html" class="property">path</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">File/folder path.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Files.FileBase.path_basename.html" class="property">path_basename</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Basename derived from path (for property binding).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="abstract_class">FileBase</span></span>? <b><a href="OLLMcoder.Files.FileBase.points_to.html" class="property">points_to</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>

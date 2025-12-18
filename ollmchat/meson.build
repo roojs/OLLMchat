@@ -22,6 +22,8 @@ ollmchat_deps = [
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
+  dependency('libgit2-glib-1.0'),
+
   valac.find_library('posix'),
 ]
 
@@ -52,6 +54,7 @@ ollmchat = executable('ollmchat',
     '--pkg=ocsqlite',
     '--pkg=ocagent',
     '--pkg=occoder',
+    '--pkg=libgit2-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',

@@ -262,10 +262,12 @@ namespace OLLMcoder.Files
 			foreach (var child in folder.children.items) {
 				// GLib.debug("DEBUG update_from_recursive: child.path=%s, child type=%s", child.path, child.get_type().name());
 				// Handle File objects - add real files to project_files
-				if (child is File && !(child is FileAlias)) {
+				// Skip ignored files and non-text files
+				if (child is File) {
+				 
 					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
 					this.add_file_if_new(
-						(File)child,
+						child as File,
 						project_folder,
 						found_files,
 						symlink_path);
@@ -276,7 +278,7 @@ namespace OLLMcoder.Files
 				if (child is FileAlias) {
 					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
 					this.handle_file_alias(
-						(FileAlias)child,
+						child as FileAlias,
 						project_folder,
 						scanned_folders,
 						found_files,
@@ -313,6 +315,11 @@ namespace OLLMcoder.Files
 			Gee.HashSet<string> found_files,
 			string symlink_path = "")
 		{
+			// Skip ignored files
+			if (file.is_ignored || !file.is_text) {
+				return;
+			}
+			
 			// GLib.debug("DEBUG add_file_if_new: file.path=%s, symlink_path='%s'", file.path, symlink_path);
 			found_files.add(file.path);
 			

@@ -104,14 +104,16 @@ namespace OLLMchat.History
 			// Store base client
 			this.base_client = base_client;
 
-            this.session = new EmptySession(this);
+			// Register JustAsk agent (always available as default)
+			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
+			// which tries to get "just-ask" from this.agents
+			this.agents.set("just-ask", new OLLMagent.JustAsk());
+
+			this.session = new EmptySession(this);
 			this.session.activate(); // contects signals alhtough to nowhere..
 			
 			// Set up title generator from config
 			this.title_generator = new TitleGenerator(this.base_client.config);
-			
-			// Register JustAsk agent (always available as default)
-			this.agents.set("just-ask", new OLLMagent.JustAsk());
 		}
 		
 		/**
@@ -129,10 +131,11 @@ namespace OLLMchat.History
 			client.stream = this.base_client.stream;
 			client.format = this.base_client.format;
 			client.think = this.base_client.think;
-			client.keep_alive = this.base_client.keep_alive;
-			
-			// Set prompt_assistant to just-ask (default agent)
-			client.prompt_assistant = this.agents.get("just-ask");
+		client.keep_alive = this.base_client.keep_alive;
+		
+		// Set prompt_assistant to just-ask (default agent)
+		// JustAsk agent is always registered in Manager constructor before EmptySession is created
+		client.prompt_assistant = this.agents.get("just-ask");
 			
 			client.permission_provider = this.base_client.permission_provider; // Shared reference - MUST be shared
 			client.options = this.base_client.options.clone();

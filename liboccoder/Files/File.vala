@@ -63,6 +63,40 @@ namespace OLLMcoder.Files
 			if (mod_time != null) {
 				this.last_modified = mod_time.to_unix();
 			}
+			
+			// Detect and set is_text from content type
+			var  content_type = info.get_content_type();
+ 			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
+			
+			// Detect language from filename if not already set
+			if (this.language == null || this.language == "") {
+				this.detect_language();
+			}
+		}
+		
+		/**
+		 * Detect programming language from file extension using GtkSource.LanguageManager.
+		 * Sets the language property if a match is found.
+		 */
+		private void detect_language()
+		{
+			if (this.path == null || this.path == "") {
+				return;
+			}
+			
+			try {
+				var lang_manager = GtkSource.LanguageManager.get_default();
+				var language = lang_manager.guess_language(this.path, null);
+				if (language != null) {
+					// Get the language ID (e.g., "vala", "python", "javascript")
+					this.language = language.get_id();
+					GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
+						this.language, this.path);
+				}
+			} catch (GLib.Error e) {
+				GLib.debug("File.detect_language: Failed to detect language for '%s': %s", 
+					this.path, e.message);
+			}
 		}
 		
 		/**

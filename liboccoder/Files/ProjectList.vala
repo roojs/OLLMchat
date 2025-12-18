@@ -175,9 +175,22 @@ namespace OLLMcoder.Files
 		 */
 		public Folder? get_active_project()
 		{
-			return this.find_first(
+			// Count how many projects have is_active = true
+			int active_count = 0;
+			foreach (var project in this.items) {
+				if (project.is_active && project.is_project) {
+					active_count++;
+					GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
+						project.path, active_count);
+				}
+			}
+			GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
+			var result = this.find_first(
 				(p) => { return  p.is_active && p.is_project; } 
 			);
+			GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
+				result != null ? result.path : "null");
+			return result;
 		}
 		
 	}

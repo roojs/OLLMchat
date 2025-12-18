@@ -103,6 +103,13 @@ namespace OLLMcoder.Files
 		public string display_name { get; set; default = ""; }
 		
 		/**
+		 * Basename derived from path (for property binding).
+		 */
+		public string path_basename {
+			owned get { return GLib.Path.get_basename(this.path); }
+		}
+		
+		/**
 		 * Display text with status indicators.
 		 * Base implementation just returns display_name.
 		 */
@@ -205,6 +212,22 @@ namespace OLLMcoder.Files
 		public int64 last_modified { get; set; default = 0; }
 		
 		/**
+		 * Whether this file is ignored by git (stored in database, default: false).
+		 */
+		public bool is_ignored { get; set; default = false; }
+		
+		/**
+		 * Whether this file is a text file (stored in database, default: false).
+		 */
+		public bool is_text { get; set; default = false; }
+		
+		/**
+		 * Whether this folder is a git repository (stored in database, default: -1).
+		 * -1 = not checked, 0 = checked and not a repo, 1 = it is a repo.
+		 */
+		public int is_repo { get; set; default = -1; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void initDB(SQ.Database db)
@@ -225,7 +248,10 @@ namespace OLLMcoder.Files
 				"last_modified INT64 NOT NULL DEFAULT 0, " +
 				"points_to_id INT64 NOT NULL DEFAULT 0, " +
 				"target_path TEXT NOT NULL DEFAULT '', " +
-				"is_project INTEGER NOT NULL DEFAULT 0" +
+				"is_project INTEGER NOT NULL DEFAULT 0, " +
+				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
+				"is_text INTEGER NOT NULL DEFAULT 0, " +
+				"is_repo INTEGER NOT NULL DEFAULT -1" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -302,7 +328,13 @@ namespace OLLMcoder.Files
 			target.cursor_offset = this.cursor_offset;
 			target.scroll_position = this.scroll_position;
 			target.is_project = this.is_project;
+			target.is_ignored = this.is_ignored;
+			target.is_text = this.is_text;
+			target.is_repo = this.is_repo;
 		}
+		
+		// Static counter for tracking saveToDB calls
+		private static int64 saveToDB_call_count = 0;
 		
 		/**
 		 * Save filebase object to SQLite database.
@@ -316,20 +348,32 @@ namespace OLLMcoder.Files
 		 */
 		public void saveToDB(SQ.Database db, FileBase? new_values = null, bool sync = true)
 		{
+			saveToDB_call_count++;
+			var call_id = saveToDB_call_count;
+			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
+			
+			GLib.debug("FileBase.saveToDB[%lld] @%s: path='%s', id=%lld, new_values=%s, sync=%s, type=%s", 
+				call_id, timestamp, this.path, this.id, 
+				new_values != null ? "set" : "null", sync.to_string(), this.get_type().name());
+			
 			var sq = new SQ.Query<FileBase>(db, "filebase");
 			if (this.id <= 0) {
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
+				GLib.debug("FileBase.saveToDB[%lld]: Inserted new record, id=%lld", call_id, this.id);
 			} else {
 				if (new_values != null) {
 					sq.updateOld(this, new_values);
+					GLib.debug("FileBase.saveToDB[%lld]: Updated with new_values (old id=%lld)", call_id, this.id);
 				} else {
 					sq.updateById(this);
+					GLib.debug("FileBase.saveToDB[%lld]: Updated by id=%lld", call_id, this.id);
 				}
 			}
 			// Backup in-memory database to disk only if sync is true
 			if (sync) {
 				db.backupDB();
+				GLib.debug("FileBase.saveToDB[%lld]: Database synced to disk", call_id);
 			}
 		}
 		

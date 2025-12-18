@@ -136,6 +136,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=sqlite3',
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
+    '--pkg=libgit2-glib-1.0',
     '--pkg=posix',
     # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, ocagent, occoder)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
