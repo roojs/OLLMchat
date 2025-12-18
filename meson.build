@@ -57,7 +57,8 @@ executables_info = [
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],
-  ['oc-migrate-editors', 'examples/oc-migrate-editors']
+  ['oc-migrate-editors', 'examples/oc-migrate-editors'],
+  ['oc-vector-index', 'examples/oc-vector-index']
 ]
 
 # Library paths for LD_LIBRARY_PATH
@@ -68,7 +69,8 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'liboccoder',
   meson.current_build_dir() / 'libollmchat',
   meson.current_build_dir() / 'libocagent',
-  meson.current_build_dir() / 'libollmchatgtk'
+  meson.current_build_dir() / 'libollmchatgtk',
+  meson.current_build_dir() / 'libocvector'
 ])
 
 # Create wrapper scripts in top-level build directory
