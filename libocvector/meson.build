@@ -47,10 +47,8 @@ lib_build_rpath = ':'.join([
 ])
 
 # Build the library
-# Note: Dependencies on ocsqlite_vapi_dep and ollmchat_vapi_dep will be added
-# when those libraries are available in the build context
 ocvector_base_lib = library('ocvector',
-  dependencies: [ocvector_deps],  # ocsqlite_vapi_dep, ollmchat_vapi_dep will be added later
+  dependencies: [ocvector_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep],
   sources: ocvector_src,
   vala_header: 'ocvector.h',
   vala_vapi: 'ocvector-meson.vapi',  # Use different name so our custom_target can use 'ocvector.vapi'
@@ -59,6 +57,8 @@ ocvector_base_lib = library('ocvector',
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
+    '--pkg=fiass',  # FAISS via vapi
+    '--pkg=ollmchat',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
