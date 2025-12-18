@@ -74,13 +74,14 @@ namespace OLLMvector
 			}
 		}
 		
-		~Index()
-		{
-			// Explicitly free the index using the method from VAPI
-			if (this.index != null) {
-				((Faiss.Index)this.index).free();
-			}
-		}
+	~Index()
+	{
+		// Disabled explicit free - Vala's free_function in VAPI handles cleanup automatically
+		// If we free here, it causes a double-free since VAPI also frees it
+		// if (this.index != null) {
+		// 	((Faiss.Index)this.index).free();
+		// }
+	}
 		
 		public void add_vectors(FloatArray vectors) throws Error
 		{

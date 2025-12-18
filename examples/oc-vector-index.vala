@@ -83,7 +83,7 @@ async void run_test(string[] args) throws Error
 	yield db.add_documents(test_texts);
 	stdout.printf("✓ Documents added successfully\n\n");
 
-	// Test search
+	// Test search with first document (exact match)
 	stdout.printf("Testing search with query: \"%s\"\n", test_texts[0]);
 	var results = yield db.search(test_texts[0], 3);
 	stdout.printf("✓ Search completed, found %u results:\n", results.length);
@@ -95,6 +95,22 @@ async void run_test(string[] args) throws Error
 			result.search_result.document_id,
 			result.search_result.similarity_score
 		);
+	}
+	
+	// Test search with different query to verify it finds different documents
+	if (test_texts.length > 1) {
+		stdout.printf("\nTesting search with different query: \"database\"\n");
+		var results2 = yield db.search("database", 3);
+		stdout.printf("✓ Search completed, found %u results:\n", results2.length);
+		
+		for (int i = 0; i < results2.length; i++) {
+			var result = results2[i];
+			stdout.printf("  %d. Document ID: %lld, Score: %.4f\n", 
+				i + 1, 
+				result.search_result.document_id,
+				result.search_result.similarity_score
+			);
+		}
 	}
 
 	// TODO: Test save/load once C API wrapper is available

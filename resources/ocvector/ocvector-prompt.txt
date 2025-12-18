@@ -1,0 +1,91 @@
+Analyze the following {language} code and extract structured information for semantic search indexing.
+
+## OUTPUT REQUIREMENTS
+- Output ONLY valid JSON matching the provided schema
+- No explanatory text, markdown, or additional commentary
+- Ensure all JSON is properly formatted and escaped
+
+## ANALYSIS INSTRUCTIONS
+
+### FILE-LEVEL INFORMATION
+- Determine programming language from file extension and syntax
+- Write a concise one-paragraph summary of the file's purpose
+- List all import/using/include statements with their line numbers
+
+### FOR EACH CODE ELEMENT
+
+Extract the following for each class, function, method, property, field, struct, interface, enum, namespace, constructor, delegate, signal, constant, and other significant elements:
+
+**Identification:**
+- Element type (class, method, property, etc.)
+- Name
+- Access modifier (public, private, protected, etc.)
+- Exact line numbers (start and end, 1-indexed)
+- Complete signature/declaration
+
+**Documentation:**
+- Clear description of what the element does and its purpose
+- Extract documentation comments if present
+
+**For Functions/Methods:**
+- Parameters: names and types
+- Return type (use "void" or "None" for no return)
+
+**For Classes/Structs:**
+- Properties/fields: names, types, and accessors (get/set/init)
+- Include all properties, fields, methods, and nested types as separate elements
+
+**Relationships:**
+- Inheritance (extends, implements)
+- Type usage in parameters, returns, or properties
+- Method/function calls within the element
+- External module dependencies
+
+## SPECIAL CASES
+
+- **Properties**: Include as separate elements with property-type "property"
+- **Fields**: Include as separate elements with property-type "field"
+- **Constructors**: Include as separate elements with property-type "constructor"
+- **Nested types**: Include as separate elements
+
+## QUALITY CHECKS
+
+Before outputting JSON, verify:
+1. All required fields are present
+2. Line numbers are accurate and 1-indexed
+3. Descriptions are informative but concise
+4. JSON is valid and properly structured
+
+Format the response as JSON matching this schema:
+{
+    "file-path": "string",
+    "language": "string",
+    "summary": "overall file summary",
+    "imports": [
+        {"module": "module_name", "line": 1}
+    ],
+    "elements": [
+        {
+            "property-type": "class|function|method|property|field|struct|interface|enum|namespace|constructor|delegate|signal|constant",
+            "name": "element_name",
+            "access-modifier": "public|private|protected|internal|package|default",
+            "start-line": number,
+            "end-line": number,
+            "signature": "full declaration",
+            "description": "what it does",
+            "parameters": [
+                {"name": "param1", "argument-type": "string"}
+            ],
+            "return-type": "return_type",
+            "properties": [
+                {"name": "prop1", "value-type": "string", "accessors": ["get", "set"]}
+            ],
+            "dependencies": [
+                {"relationship-type": "inherits", "target": "BaseClass"}
+            ]
+        }
+    ]
+}
+
+Code:
+{code}
