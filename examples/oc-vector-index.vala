@@ -62,7 +62,7 @@ async void run_test(string[] args) throws Error
 	config = new OLLMchat.Config() {
 		url = obj.get_string_member("url"),
 		model = obj.get_string_member("model"),
-		api_key = obj.get_string_member("api_key")
+		api_key = obj.get_string_member("api-key")
 	};
 
 

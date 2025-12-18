@@ -38,11 +38,15 @@ ocvector_src = files([
   'Index.vala',      # FAISS integration
   'Database.vala',  # Vector database with embeddings
   
+  # Code structure classes
+  'CodeElement.vala',  # Code element representation
+  'CodeFile.vala',     # Code file with analyzed elements
+  
   # Files/ directory removed - now using libocfiles instead
   # No need to copy Files classes - use OLLMfiles namespace from libocfiles
   
   # Indexing/ directory
-  # 'Indexing/Analysis.vala',
+  'Indexing/Analysis.vala',  # Code analysis layer
   # 'Indexing/VectorBuilder.vala',
   # 'Indexing/Indexer.vala',
   
