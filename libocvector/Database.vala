@@ -23,6 +23,59 @@ namespace OLLMvector
 			}
 		}
 		
+		/**
+		 * Gets the embedding dimension.
+		 * 
+		 * @return The embedding dimension, or 0 if not initialized
+		 */
+		public uint64 get_embedding_dimension()
+		{
+			return this.embedding_dimension;
+		}
+		
+		/**
+		 * Gets the total number of vectors in the index.
+		 * 
+		 * @return The total vector count, or 0 if index is not initialized
+		 */
+		public uint64 get_total_vectors()
+		{
+			if (this.index == null) {
+				return 0;
+			}
+			return this.index.get_total_vectors();
+		}
+		
+		/**
+		 * Initializes the index with a given dimension.
+		 * 
+		 * @param dimension The embedding dimension
+		 */
+		public void init_index(uint64 dimension) throws Error
+		{
+			if (this.index == null) {
+				this.embedding_dimension = dimension;
+				this.index = new Index(this.embedding_dimension);
+			} else if (this.embedding_dimension != dimension) {
+				throw new GLib.IOError.FAILED(
+					"Dimension mismatch: index has %llu, requested %llu".printf(
+						this.embedding_dimension, dimension));
+			}
+		}
+		
+		/**
+		 * Adds vectors in batch to the FAISS index.
+		 * 
+		 * @param vectors The FloatArray containing vectors to add
+		 */
+		public void add_vectors_batch(FloatArray vectors) throws Error
+		{
+			if (this.index == null) {
+				throw new GLib.IOError.FAILED("Index not initialized. Call init_index() first.");
+			}
+			this.index.add_vectors(vectors);
+		}
+		
 		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws Error
 		{
 			var float_array = new float[embed.size];
