@@ -410,7 +410,8 @@ namespace OLLMcoder.Files
 				return target_file_obj.query_info(
 					GLib.FileAttribute.STANDARD_TYPE + "," +
 					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-					GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
+					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
