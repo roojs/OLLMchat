@@ -25,11 +25,11 @@ namespace OLLMvector.Indexing
 	 */
 	private class ElementMetadata
 	{
-		public int64 file_id { get; set; }
-		public int start_line { get; set; }
-		public int end_line { get; set; }
-		public string element_type { get; set; }
-		public string element_name { get; set; }
+		public int64 file_id;
+		public int start_line;
+		public int end_line;
+		public string element_type;
+		public string element_name;
 	}
 	/**
 	 * Vector building layer for code file processing.
@@ -81,13 +81,13 @@ namespace OLLMvector.Indexing
 				documents.add(this.format_element_document(
 					element, code_file, file.path));
 				
-				element_metadata.add(new ElementMetadata {
-					file_id = file.id,
-					start_line = element.start_line,
-					end_line = element.end_line,
-					element_type = element.property_type,
-					element_name = element.name
-				});
+				var metadata = new ElementMetadata();
+				metadata.file_id = file.id;
+				metadata.start_line = element.start_line;
+				metadata.end_line = element.end_line;
+				metadata.element_type = element.property_type;
+				metadata.element_name = element.name;
+				element_metadata.add(metadata);
 			}
 			
 			// Generate embeddings for all elements in the file at once
