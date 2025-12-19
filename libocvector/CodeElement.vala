@@ -29,6 +29,12 @@ namespace OLLMvector
 		public Parameter()
 		{
 		}
+		
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			var propname = property_name.replace("-", "_");
+			return default_deserialize_property(propname, out value, pspec, property_node);
+		}
 	}
 	
 	/**
@@ -46,7 +52,9 @@ namespace OLLMvector
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			if (property_name == "accessors") {
+			var propname = property_name.replace("-", "_");
+			
+			if (propname == "accessors") {
 				this.accessors.clear();
 				if (property_node.get_node_type() == Json.NodeType.ARRAY) {
 					var json_array = property_node.get_array();
@@ -61,7 +69,7 @@ namespace OLLMvector
 				value.set_object(this.accessors);
 				return true;
 			}
-			return default_deserialize_property(property_name, out value, pspec, property_node);
+			return default_deserialize_property(propname, out value, pspec, property_node);
 		}
 	}
 	
@@ -75,6 +83,12 @@ namespace OLLMvector
 		
 		public Dependency()
 		{
+		}
+		
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			var propname = property_name.replace("-", "_");
+			return default_deserialize_property(propname, out value, pspec, property_node);
 		}
 	}
 	
@@ -95,7 +109,7 @@ namespace OLLMvector
 		public int end_line { get; set; default = 0; }
 		public string signature { get; set; default = ""; }
 		public string description { get; set; default = ""; }
-		public string code_snippet { get; set; default = ""; }
+		public string[] code_snippet_lines { get; set; default = {}; }
 		public Gee.ArrayList<Parameter> parameters { get; set; default = new Gee.ArrayList<Parameter>(); }
 		public string return_type { get; set; default = ""; }
 		public Gee.ArrayList<ElementProperty> properties { get; set; default = new Gee.ArrayList<ElementProperty>(); }
@@ -129,7 +143,9 @@ namespace OLLMvector
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			switch (property_name) {
+			var propname = property_name.replace("-", "_");
+			
+			switch (propname) {
 				case "parameters":
 					this.parameters.clear();
 					if (property_node.get_node_type() == Json.NodeType.ARRAY) {
@@ -179,7 +195,7 @@ namespace OLLMvector
 					return true;
 				
 				default:
-					return default_deserialize_property(property_name, out value, pspec, property_node);
+					return default_deserialize_property(propname, out value, pspec, property_node);
 			}
 		}
 		

@@ -41,6 +41,7 @@ ocvector_src = files([
   # Code structure classes
   'CodeElement.vala',  # Code element representation
   'CodeFile.vala',     # Code file with analyzed elements
+  'VectorMetadata.vala',  # Vector metadata storage (SQL database)
   
   # Files/ directory removed - now using libocfiles instead
   # No need to copy Files classes - use OLLMfiles namespace from libocfiles

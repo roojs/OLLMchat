@@ -23,7 +23,7 @@ namespace OLLMvector.Indexing
 	/**
 	 * Metadata structure for batch processing.
 	 */
-	private class ElementMetadata
+	private class ElementMetadata : Object
 	{
 		public int64 file_id;
 		public int start_line;
@@ -81,13 +81,13 @@ namespace OLLMvector.Indexing
 				documents.add(this.format_element_document(
 					element, code_file, file.path));
 				
-				var metadata = new ElementMetadata();
-				metadata.file_id = file.id;
-				metadata.start_line = element.start_line;
-				metadata.end_line = element.end_line;
-				metadata.element_type = element.property_type;
-				metadata.element_name = element.name;
-				element_metadata.add(metadata);
+				element_metadata.add(new ElementMetadata() {
+					file_id = file.id,
+					start_line = element.start_line,
+					end_line = element.end_line,
+					element_type = element.property_type,
+					element_name = element.name
+				});
 			}
 			
 			// Generate embeddings for all elements in the file at once
@@ -213,45 +213,37 @@ namespace OLLMvector.Indexing
 			
 			// Code snippet (with smart truncation)
 			doc.append("Code:\n");
-			var code_snippet_lines = this.get_truncated_code_snippet(element);
-			if (code_snippet_lines.length > 0) {
-				doc.append(string.joinv("\n", code_snippet_lines));
-			}
+			var code_snippet = this.get_truncated_code_snippet(element);
+			doc.append(code_snippet);
 			
 			return doc.str;
 		}
 		
 		/**
-		 * Gets a truncated code snippet based on element type.
+		 * Gets a truncated code snippet as a string.
 		 * 
 		 * Trusts LLM analysis - uses the code snippet lines as provided.
 		 * Only applies simple length-based truncation if needed to prevent
 		 * extremely large snippets.
 		 * 
 		 * @param element The CodeElement
-		 * @return Code snippet as line array
+		 * @return Code snippet as joined string
 		 */
-		private string[] get_truncated_code_snippet(OLLMvector.CodeElement element)
+		private string get_truncated_code_snippet(OLLMvector.CodeElement element)
 		{
-			var lines = element.code_snippet_lines;
-			if (lines == null || lines.length == 0) {
-				return {};
+			if (element.code_snippet_lines == null || element.code_snippet_lines.length == 0) {
+				return "";
 			}
 			
 			// Simple truncation if snippet is extremely large (max 200 lines)
 			// Trust LLM to provide appropriate snippets for each element type
 			const int MAX_LINES = 200;
-			if (lines.length > MAX_LINES) {
-				var truncated = lines[0:MAX_LINES];
-				var result = new string[MAX_LINES + 1];
-				for (int i = 0; i < MAX_LINES; i++) {
-					result[i] = truncated[i];
-				}
-				result[MAX_LINES] = "// ... (truncated)";
-				return result;
+			if (element.code_snippet_lines.length > MAX_LINES) {
+				return string.joinv("\n", element.code_snippet_lines[0:MAX_LINES]) 
+					+ "\n// ... (truncated)";
 			}
 			
-			return lines;
+			return string.joinv("\n", element.code_snippet_lines);
 		}
 		
 		/**

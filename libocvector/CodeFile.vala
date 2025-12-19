@@ -19,9 +19,6 @@
 namespace OLLMvector
 {
 	/**
-	 * Represents a code file with its analyzed elements.
-	 */
-	/**
 	 * Represents an import statement with module and line number.
 	 */
 	public class Import : Object, Json.Serializable
@@ -36,15 +33,48 @@ namespace OLLMvector
 	
 	/**
 	 * Represents a code file with its analyzed elements.
+	 * 
+	 * This class contains data deserialized from the LLM's JSON response (language, summary,
+	 * imports, elements) and is augmented with additional data we already have:
+	 * - `lines`: The file contents split into lines (for code snippet extraction)
+	 * - `file`: Reference to the original OLLMfiles.File object (for file path, ID, etc.)
+	 * 
+	 * The LLM provides structured analysis of code elements, while we provide the actual
+	 * file content and metadata.
 	 */
 	public class CodeFile : Object, Json.Serializable
 	{
-		public string file_path { get; set; default = ""; }
+		/**
+		 * Programming language identifier (from LLM response, may be overridden with actual file language).
+		 */
 		public string language { get; set; default = ""; }
-		public string raw_code { get; set; default = ""; }
+		
+		/**
+		 * File contents split into lines (augmented by us, not from LLM).
+		 * Used for efficient code snippet extraction by slicing this array.
+		 */
+		public string[] lines { get; set; default = {}; }
+		
+		/**
+		 * One-paragraph summary of the file's purpose (from LLM response).
+		 */
 		public string summary { get; set; default = ""; }
+		
+		/**
+		 * Import/using/include statements (from LLM response).
+		 */
 		public Gee.ArrayList<Import> imports { get; set; default = new Gee.ArrayList<Import>(); }
+		
+		/**
+		 * Code elements (classes, functions, methods, etc.) extracted by LLM.
+		 */
 		public Gee.ArrayList<CodeElement> elements { get; set; default = new Gee.ArrayList<CodeElement>(); }
+		
+		/**
+		 * Reference to the original file object (augmented by us, not from LLM).
+		 * Provides access to file path, ID, and other file metadata.
+		 */
+		public OLLMfiles.File? file { get; set; default = null; }
 		
 		public CodeFile()
 		{
