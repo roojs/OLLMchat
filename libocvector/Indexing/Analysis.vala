@@ -208,20 +208,17 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Validate required fields
-			if (code_file.file_path == "" || code_file.language == "" || code_file.elements == null) {
-				throw new GLib.IOError.FAILED("Invalid response: missing required fields (file_path, language, or elements)");
+			if (code_file.language == "" || code_file.elements == null) {
+				throw new GLib.IOError.FAILED("Invalid response: missing required fields (language or elements)");
 			}
 			
-			// Set additional fields
-			code_file.file_path = file.path;
+			// Set additional fields (override LLM response with actual file data)
 			code_file.language = file.language;
+			code_file.file = file;
 			
-			// Read file contents for code snippets
+			// Read file contents and split into lines once
 			var code = yield file.read_async();
-			code_file.raw_code = code;
-			
-			// Split code into lines once
-			var lines = code.split("\n");
+			code_file.lines = code.split("\n");
 			
 			// Validate and extract code snippets for each element
 			var valid_elements = new Gee.ArrayList<CodeElement>();
@@ -232,8 +229,11 @@ namespace OLLMvector.Indexing
 					continue;
 				}
 				
-				// Extract code snippet
-				element.code_snippet = this.extract_code_snippet(lines, element.start_line, element.end_line);
+				// Extract code snippet by slicing from CodeFile.lines
+				// Convert 1-based line numbers to 0-based array indices
+				int start_idx = (element.start_line - 1).clamp(0, code_file.lines.length - 1);
+				int end_idx = element.end_line.clamp(0, code_file.lines.length);
+				element.code_snippet_lines = code_file.lines[start_idx:end_idx];
 				valid_elements.add(element);
 			}
 			
@@ -247,30 +247,5 @@ namespace OLLMvector.Indexing
 			return code_file;
 		}
 		
-		/**
-		 * Extracts a code snippet from the lines array based on line numbers.
-		 * 
-		 * @param lines The code split into lines
-		 * @param start_line The starting line number (1-based)
-		 * @param end_line The ending line number (1-based)
-		 * @return The extracted code snippet
-		 */
-		private string extract_code_snippet(string[] lines, int start_line, int end_line)
-		{
-			var snippet = new GLib.StringBuilder();
-			
-			// Convert 1-based line numbers to 0-based array indices
-			int start_idx = (start_line - 1).clamp(0, lines.length - 1);
-			int end_idx = (end_line - 1).clamp(0, lines.length - 1);
-			
-			for (int i = start_idx; i <= end_idx && i < lines.length; i++) {
-				snippet.append(lines[i]);
-				if (i < end_idx) {
-					snippet.append("\n");
-				}
-			}
-			
-			return snippet.str;
-		}
 	}
 }

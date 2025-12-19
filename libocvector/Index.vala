@@ -63,7 +63,7 @@ namespace OLLMvector
 	public class Index : Object
 	{
 		private Faiss.IndexFlatIP index;
-		private uint64 dimension;
+		public uint64 dimension { get; private set; }
 		private bool normalized = false;
 		
 		public Index(uint64 dim) throws Error
@@ -74,14 +74,13 @@ namespace OLLMvector
 			}
 		}
 		
-	~Index()
-	{
+	 
 		// Disabled explicit free - Vala's free_function in VAPI handles cleanup automatically
 		// If we free here, it causes a double-free since VAPI also frees it
 		// if (this.index != null) {
 		// 	((Faiss.Index)this.index).free();
 		// }
-	}
+	
 		
 		public void add_vectors(FloatArray vectors) throws Error
 		{

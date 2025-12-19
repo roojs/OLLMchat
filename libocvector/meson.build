@@ -41,13 +41,14 @@ ocvector_src = files([
   # Code structure classes
   'CodeElement.vala',  # Code element representation
   'CodeFile.vala',     # Code file with analyzed elements
+  'VectorMetadata.vala',  # Vector metadata storage (SQL database)
   
   # Files/ directory removed - now using libocfiles instead
   # No need to copy Files classes - use OLLMfiles namespace from libocfiles
   
   # Indexing/ directory
   'Indexing/Analysis.vala',  # Code analysis layer
-  # 'Indexing/VectorBuilder.vala',
+  'Indexing/VectorBuilder.vala',  # Vector generation and FAISS storage
   # 'Indexing/Indexer.vala',
   
   # Search/ directory
@@ -89,6 +90,7 @@ ocvector_base_lib = library('ocvector',
     '--pkg=ocagent',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
+    '--pkg=ocsqlite',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',

@@ -13,7 +13,6 @@ namespace OLLMvector
 		private OLLMchat.Client ollama;
 		// TODO: needs to store metadata mapping: vector_id -> (file_path, start_line, end_line, element_type, element_name)
 		// Code snippets will be read from filesystem when needed, not stored here
-		private uint64 embedding_dimension = 768; // Default for nomic-embed-text
 		
 		public Database(OLLMchat.Client ollama)
 		{
@@ -21,6 +20,51 @@ namespace OLLMvector
 			if (this.ollama.config.model == "") {
 				throw new GLib.IOError.FAILED("Ollama client model is not set");
 			}
+		}
+		
+		/**
+		 * The embedding dimension.
+		 */
+		public uint64 dimension {
+			get { return this.index == null ? 0 : this.index.dimension; }
+		}
+		
+		/**
+		 * The total number of vectors in the index.
+		 */
+		public uint64 vector_count {
+			get { return this.index == null ? 0 : this.index.get_total_vectors(); }
+		}
+		
+		/**
+		 * Initializes the index with a given dimension.
+		 * 
+		 * @param dimension The embedding dimension
+		 */
+		public void init_index(uint64 dim) throws GLib.Error
+		{
+			if (this.index == null) {
+				this.index = new Index(dim);
+			}
+			
+			if (this.index.dimension != dim) {
+				throw new GLib.IOError.FAILED(
+					"Dimension mismatch: index has %llu, requested %llu".printf(
+						this.index.dimension, dim));
+			}
+		}
+		
+		/**
+		 * Adds vectors in batch to the FAISS index.
+		 * 
+		 * @param vectors The FloatArray containing vectors to add
+		 */
+		public void add_vectors_batch(FloatArray vectors) throws GLib.Error
+		{
+			if (this.index == null) {
+				throw new GLib.IOError.FAILED("Index not initialized. Call init_index() first.");
+			}
+			this.index.add_vectors(vectors);
 		}
 		
 		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws Error
@@ -50,12 +94,11 @@ namespace OLLMvector
 			
 			// Init index from first embed to get dimension
 			if (this.index == null) {
-				this.embedding_dimension = (uint64)first_response.embeddings[0].size;
-				this.index = new Index(this.embedding_dimension);
+				this.index = new Index((uint64)first_response.embeddings[0].size);
 			}
 			
 			// Build FloatArray with known width (all vectors have fixed width)
-			var vector_batch = FloatArray(this.embedding_dimension);
+			var vector_batch = FloatArray(this.dimension);
 			
 			// Add first vector
 			vector_batch.add(this.embed_to_floats(first_response.embeddings[0]));
@@ -86,22 +129,22 @@ namespace OLLMvector
 			// Init index from query embed if not already initialized
 			// (This can happen if search is called before add_documents)
 			if (this.index == null) {
-				this.embedding_dimension = (uint64)response.embeddings[0].size;
-				this.index = new Index(this.embedding_dimension);
+				this.index = new Index((uint64)response.embeddings[0].size);
 			}
 			
 			// Extract the first embed vector and convert to float[]
-			var query_embed = this.embed_to_floats(response.embeddings[0]);
-			var results = this.index.search(query_embed, k);
+			var results = this.index.search(
+				this.embed_to_floats(response.embeddings[0]),
+				k
+			);
 			var enhanced_results = new SearchResultWithDocument[results.length];
 			
 			for (int i = 0; i < results.length; i++) {
-				var result = results[i];
-				// TODO: lookup metadata from vector_id (result.document_id) to get file_path, line_range, element_info
+				// TODO: lookup metadata from vector_id (results[i].document_id) to get file_path, line_range, element_info
 				// TODO: read code snippet from file_path using line_range when needed
 				
 				enhanced_results[i] = SearchResultWithDocument() {
-					search_result = result,
+					search_result = results[i],
 					document_text = "" // TODO: will be populated from file_path + line_range lookup
 				};
 			}
@@ -122,12 +165,10 @@ namespace OLLMvector
 		
 		public void load_index(string filename) throws Error
 		{
-			if (this.index == null && this.embedding_dimension > 0) {
-				this.index = new Index(this.embedding_dimension);
-			}
-			
+			// TODO: Need to know dimension to create index before loading
+			// This will need to be updated when load_from_file is implemented
 			if (this.index == null) {
-				return;
+				throw new GLib.IOError.FAILED("Cannot load index: dimension unknown. Call init_index() first.");
 			}
 			
 			this.index.load_from_file(filename);
