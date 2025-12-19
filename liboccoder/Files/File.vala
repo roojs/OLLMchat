@@ -65,7 +65,8 @@ namespace OLLMcoder.Files
 			}
 			
 			// Detect and set is_text from content type
-			var  content_type = info.get_content_type();
+			// Use get_attribute_string to avoid warning if attribute wasn't requested or isn't available
+			var content_type = info.get_attribute_string(GLib.FileAttribute.STANDARD_CONTENT_TYPE);
  			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
 			
 			// Set icon_name from content type if available
