@@ -71,9 +71,8 @@ namespace OLLMcoder.Files
 			// Set icon_name from content type if available
 			if (content_type != null && content_type != "") {
 				var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
-				if (icon_name != null && icon_name != "") {
-					this.icon_name = icon_name;
-				}
+				this.icon_name = (icon_name != null && icon_name != "") ? icon_name : "text-x-generic";
+				
 			}
 			
 			// Detect language from filename if not already set
