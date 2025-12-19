@@ -68,6 +68,14 @@ namespace OLLMcoder.Files
 			var  content_type = info.get_content_type();
  			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
 			
+			// Set icon_name from content type if available
+			if (content_type != null && content_type != "") {
+				var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
+				if (icon_name != null && icon_name != "") {
+					this.icon_name = icon_name;
+				}
+			}
+			
 			// Detect language from filename if not already set
 			if (this.language == null || this.language == "") {
 				this.detect_language();
