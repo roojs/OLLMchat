@@ -73,7 +73,7 @@ namespace OLLMcoder.Files
 		 */
 		public override string icon_name {
 			get { return this.file.icon_name; }
-			set { this.file.icon_name = value; }
+			set {    }
 		}
 		
 		/**
