@@ -78,7 +78,7 @@ namespace OLLMvector.Indexing
 		 * @param code_file The CodeFile from Analysis layer
 		 * @param file The OLLMfiles.File object (for file_id)
 		 */
-		public async void process_file(CodeFile code_file, OLLMfiles.File file) throws GLib.Error
+		public async void process_file(OLLMvector.CodeFile code_file, OLLMfiles.File file) throws GLib.Error
 		{
 			if (code_file.elements.size == 0) {
 				GLib.debug("No elements to process in file: %s", code_file.file_path);
@@ -133,7 +133,7 @@ namespace OLLMvector.Indexing
 				}
 				
 				// Convert embeddings to float arrays and store in FAISS
-				var vector_batch = FloatArray(this.database.get_embedding_dimension());
+				var vector_batch = OLLMvector.FloatArray(this.database.get_embedding_dimension());
 				
 				// Get current vector count to determine starting vector_id
 				int64 start_vector_id = (int64)this.database.get_total_vectors();
@@ -178,7 +178,7 @@ namespace OLLMvector.Indexing
 		 * @param code_file The CodeFile containing the element
 		 * @return Formatted document string
 		 */
-		private string format_element_document(CodeElement element, CodeFile code_file)
+		private string format_element_document(OLLMvector.CodeElement element, OLLMvector.CodeFile code_file)
 		{
 			var doc = new GLib.StringBuilder();
 			
@@ -261,7 +261,7 @@ namespace OLLMvector.Indexing
 		 * @param element The CodeElement
 		 * @return Truncated code snippet
 		 */
-		private string get_truncated_code_snippet(CodeElement element)
+		private string get_truncated_code_snippet(OLLMvector.CodeElement element)
 		{
 			var snippet = element.code_snippet;
 			if (snippet == null || snippet == "") {

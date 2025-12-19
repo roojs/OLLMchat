@@ -51,7 +51,7 @@ namespace OLLMvector
 		 * 
 		 * @param dimension The embedding dimension
 		 */
-		public void init_index(uint64 dimension) throws Error
+		public void init_index(uint64 dimension) throws GLib.Error
 		{
 			if (this.index == null) {
 				this.embedding_dimension = dimension;
@@ -68,7 +68,7 @@ namespace OLLMvector
 		 * 
 		 * @param vectors The FloatArray containing vectors to add
 		 */
-		public void add_vectors_batch(FloatArray vectors) throws Error
+		public void add_vectors_batch(FloatArray vectors) throws GLib.Error
 		{
 			if (this.index == null) {
 				throw new GLib.IOError.FAILED("Index not initialized. Call init_index() first.");
