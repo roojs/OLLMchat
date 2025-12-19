@@ -126,9 +126,14 @@ namespace OLLMvector.Indexing
 							batch_docs.size, embed_response.embeddings.size));
 				}
 				
+				// Initialize database index from first embedding if needed
+				if (this.database.get_embedding_dimension() == 0) {
+					var first_embedding = embed_response.embeddings[0];
+					this.database.init_index((uint64)first_embedding.size);
+				}
+				
 				// Convert embeddings to float arrays and store in FAISS
 				var vector_batch = FloatArray(this.database.get_embedding_dimension());
-				var vector_ids = new Gee.ArrayList<int64>();
 				
 				// Get current vector count to determine starting vector_id
 				int64 start_vector_id = (int64)this.database.get_total_vectors();
