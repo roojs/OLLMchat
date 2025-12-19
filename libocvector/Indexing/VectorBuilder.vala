@@ -25,11 +25,11 @@ namespace OLLMvector.Indexing
 	 */
 	private class ElementMetadata
 	{
-		public int64 file_id;
-		public int start_line;
-		public int end_line;
-		public string element_type;
-		public string element_name;
+		public int64 file_id { get; set; }
+		public int start_line { get; set; }
+		public int end_line { get; set; }
+		public string element_type { get; set; }
+		public string element_name { get; set; }
 	}
 	/**
 	 * Vector building layer for code file processing.
