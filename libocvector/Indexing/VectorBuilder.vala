@@ -27,7 +27,7 @@ namespace OLLMvector.Indexing
 	public class VectorBuilder : Object
 	{
 		private OLLMchat.Client client;
-		private Database database;
+		private OLLMvector.Database database;
 		private SQ.Database sql_db;
 		private const int BATCH_SIZE = 15; // Process 10-20 documents per batch
 		

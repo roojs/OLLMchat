@@ -47,7 +47,7 @@ ocvector_src = files([
   
   # Indexing/ directory
   'Indexing/Analysis.vala',  # Code analysis layer
-  # 'Indexing/VectorBuilder.vala',
+  'Indexing/VectorBuilder.vala',  # Vector generation and FAISS storage
   # 'Indexing/Indexer.vala',
   
   # Search/ directory
@@ -89,6 +89,7 @@ ocvector_base_lib = library('ocvector',
     '--pkg=ocagent',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
+    '--pkg=ocsqlite',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
