@@ -53,6 +53,9 @@ namespace OLLMvector.Indexing
 		 */
 		private void ensure_schema()
 		{
+			// Note: Foreign key constraint removed - file_id references OLLMfiles.File.id
+			// but the exact table name/structure may vary. The relationship is maintained
+			// at the application level.
 			var create_table = """
 				CREATE TABLE IF NOT EXISTS vector_metadata (
 					vector_id INTEGER PRIMARY KEY,
@@ -60,8 +63,7 @@ namespace OLLMvector.Indexing
 					start_line INTEGER NOT NULL,
 					end_line INTEGER NOT NULL,
 					element_type TEXT NOT NULL,
-					element_name TEXT NOT NULL,
-					FOREIGN KEY (file_id) REFERENCES files(id)
+					element_name TEXT NOT NULL
 				);
 			""";
 			
