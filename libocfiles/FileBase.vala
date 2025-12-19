@@ -90,12 +90,9 @@ namespace OLLMfiles
 		
 		/**
 		 * Icon name for binding in lists.
-		 * Returns icon_name if set, otherwise a default based on type.
+		 * Defaults to "folder" for folders, computed from content type for files.
 		 */
-		public virtual string icon_name {
-			get { return "folder"; }
-			set {}
-		}
+		public string icon_name { get; set; default = "folder"; }
  		
 		/**
 		 * Display name for binding in lists.
@@ -111,10 +108,10 @@ namespace OLLMfiles
 		
 		/**
 		 * Display text with status indicators.
-		 * Base implementation just returns display_name.
+		 * Base implementation returns "oops" - should be overridden in subclasses.
 		 */
 		public virtual string display_with_indicators {
-			get { return this.display_name; 	}
+			get { return "oops"; }
 		}
 		
 		/**
@@ -201,11 +198,11 @@ namespace OLLMfiles
 		 */
 		public bool is_project { get; set; default = false; }
 		
-		/**
+		 /**
 		 * Unix timestamp of last view (stored in database, default: 0).
 		 */
 		public int64 last_viewed { get; set; default = 0; }
-		
+		 
 		/**
 		 * Unix timestamp of last modification (stored in database, default: 0).
 		 */
@@ -251,7 +248,8 @@ namespace OLLMfiles
 				"is_project INTEGER NOT NULL DEFAULT 0, " +
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
-				"is_repo INTEGER NOT NULL DEFAULT -1" +
+				"is_repo INTEGER NOT NULL DEFAULT -1, " +
+				"icon_name TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -331,6 +329,7 @@ namespace OLLMfiles
 			target.is_ignored = this.is_ignored;
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
+			target.icon_name = this.icon_name;
 		}
 		
 		// Static counter for tracking saveToDB calls
@@ -410,7 +409,8 @@ namespace OLLMfiles
 				return target_file_obj.query_info(
 					GLib.FileAttribute.STANDARD_TYPE + "," +
 					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-					GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
+					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);

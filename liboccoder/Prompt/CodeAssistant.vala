@@ -159,8 +159,8 @@ namespace OLLMcoder.Prompt
 					// Create a new ProjectManager from db (lazy initialization)
 					manager = new OLLMfiles.ProjectManager(this.db);
 					// Set providers
-					manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-					manager.git_provider = new OLLMcoder.Files.GitProvider();
+					manager.buffer_provider = new OLLMcoder.BufferProvider();
+					manager.git_provider = new OLLMcoder.GitProvider();
 					this.cached_manager = manager;
 					// Load projects from database
 					manager.load_projects_from_db();
@@ -259,8 +259,8 @@ namespace OLLMcoder.Prompt
 				// Database file doesn't exist - run migration
 				var project_manager = new OLLMfiles.ProjectManager(this.db);
 				// Set providers
-				project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-				project_manager.git_provider = new OLLMcoder.Files.GitProvider();
+				project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+				project_manager.git_provider = new OLLMcoder.GitProvider();
 				var migrator = new OLLMcoder.ProjectMigrate(project_manager);
 				migrator.migrate_all();
 				// Save migrated data to database file
@@ -270,8 +270,8 @@ namespace OLLMcoder.Prompt
 			// Create ProjectManager with database
 			var project_manager = new OLLMfiles.ProjectManager(this.db);
 			// Set providers
-			project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.Files.GitProvider();
+			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			project_manager.git_provider = new OLLMcoder.GitProvider();
 			
 			// Create SourceView with ProjectManager
 			this.widget = new OLLMcoder.SourceView(project_manager);

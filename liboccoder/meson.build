@@ -1,4 +1,7 @@
 # Build occoder library (liboccoder.so) - depends on libocsqlite, libocfiles
+#
+# NOTE: If you add/remove/change source files in this directory, you MUST also
+# update docs/meson.build to include the same files in the valadoc input list.
 
 # Dependencies for occoder library
 valac = meson.get_compiler('vala')
@@ -16,8 +19,8 @@ occoder_deps = [
 ]
 
 occoder_src = files([
-  'Files/BufferProvider.vala',
-  'Files/GitProvider.vala',
+  'BufferProvider.vala',
+  'GitProvider.vala',
   'ProjectMigrate.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',

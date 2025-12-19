@@ -440,9 +440,9 @@ namespace OLLMfiles
 			var cutoff_time = new DateTime.now_local().add_days(-days);
 			var filtered_files = new Gee.ArrayList<File>();
 			
-			// Filter files to only those that are open and modified within the specified days
+			// Filter files to only those that are active and modified within the specified days
 			foreach (var project_file in this.items) {
-				if (!project_file.file.is_open || project_file.file.last_modified < 1) {
+				if (!project_file.file.is_active || project_file.file.last_modified < 1) {
 					continue;
 				}
 				var file_time = new DateTime.from_unix_local(project_file.file.last_modified);

@@ -127,8 +127,8 @@ namespace OLLMchat
 		// Create ProjectManager with the database
 		var manager = new OLLMfiles.ProjectManager(db);
 		// Set providers
-		manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-		manager.git_provider = new OLLMcoder.Files.GitProvider();
+		manager.buffer_provider = new OLLMcoder.BufferProvider();
+		manager.git_provider = new OLLMcoder.GitProvider();
 		
 		// Create a Folder with is_project = true for the current directory
 		var project = new OLLMfiles.Folder(manager);

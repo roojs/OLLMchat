@@ -390,11 +390,23 @@ namespace OLLMcoder
 				this.selection.selected = Gtk.INVALID_LIST_POSITION;
 				
 				// Ensure entry has focus before showing popup
-				// Use grab_focus_without_selecting if available, otherwise grab_focus
+				// Only grab focus if entry doesn't already have it to avoid selecting text
 				if (!this.entry.has_focus) {
 					this.entry.grab_focus();
 				}
+				// Always ensure cursor is at end and no text is selected when showing popup
+				this.entry.set_position(-1);
+				this.entry.select_region(-1, -1);
 				this.popup.popup();
+				
+				// Scroll to top after popup is shown (use idle to ensure layout is complete)
+				GLib.Idle.add(() => {
+					var scrolled = this.popup.child as Gtk.ScrolledWindow;
+					if (scrolled != null) {
+						scrolled.vadjustment.value = scrolled.vadjustment.lower;
+					}
+					return false;
+				});
 			} else {
 				this.popup.popdown();
 			}

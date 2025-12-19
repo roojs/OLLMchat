@@ -28,7 +28,10 @@ namespace OLLMcoder
 	{
 		private OLLMfiles.Folder? current_project;
 		private Gtk.SortListModel sorted_items;
-		private Gtk.CustomFilter? wildcard_filter;
+		private Gtk.CustomFilter? search_filter;
+		private Gtk.CustomSorter? sorter;
+		private string current_search_text = "";
+		private GLib.ListModel? current_model = null;
 		
 		/**
 		 * Currently selected file.
@@ -79,11 +82,169 @@ namespace OLLMcoder
 			if (this.current_project == null || !this.current_project.is_project) {
 				// Clear by using empty store
 				this.set_item_store(new GLib.ListStore(typeof(OLLMfiles.ProjectFile)));
+				// Reset filter when clearing
+				this.current_search_text = "";
 				return;
 			}
 			
 			// Use project_files directly as the ListModel (no copying)
 			this.set_item_model(this.current_project.project_files);
+			
+			// Reset filter when refreshing (e.g., when window opens)
+			this.current_search_text = "";
+			if (this.entry != null) {
+				this.entry.text = "";
+			}
+			this.update_filter_and_sort();
+		}
+		
+		/**
+		 * Update filter and sorted models based on current search text.
+		 * This is called when search text changes or when filter needs to be reset.
+		 */
+		private void update_filter_and_sort()
+		{
+			// Use current_model if set (from set_item_model), otherwise fall back to item_store
+			var model_to_filter = this.current_model != null ? this.current_model : this.item_store as GLib.ListModel;
+			
+			// Ensure filter exists
+			this.create_search_filter();
+			
+			// Recreate filtered_items to apply current search filter
+			this.filtered_items = new Gtk.FilterListModel(
+				model_to_filter, this.search_filter);
+			
+			// Update sorted model with new filtered model
+			if (this.sorted_items != null) {
+				this.sorted_items = new Gtk.SortListModel(this.filtered_items, this.sorter);
+				this.selection.model = this.sorted_items;
+			}
+		}
+		
+		/**
+		 * Trigger re-sort of the list (useful when last_viewed changes).
+		 */
+		private void trigger_resort()
+		{
+			if (this.sorted_items == null || this.sorter == null) {
+				return;
+			}
+			
+			// Use set_sorter to trigger re-sort without recreating the model
+			this.sorted_items.set_sorter(this.sorter);
+		}
+		
+		/**
+		 * Create the unified search filter (handles both wildcard and regular search).
+		 * Filter closure references this.current_search_text directly, so it reads current value.
+		 */
+		private void create_search_filter()
+		{
+			if (this.search_filter != null) {
+				return;
+			}
+			
+			this.search_filter = new Gtk.CustomFilter((item) => {
+				var search_text = this.current_search_text;
+				if (search_text == "") {
+					return true;
+				}
+				var project_file = item as OLLMfiles.ProjectFile;
+				if (project_file == null) {
+					return false;
+				}
+				
+				var basename = project_file.display_basename;
+				var path = project_file.file.path;
+				
+				// Check if search contains wildcards
+				if (search_text.contains("*") || search_text.contains("?")) {
+					// Use wildcard matching
+					return this.match_wildcard(basename, search_text) ||
+						this.match_wildcard(path, search_text);
+				} else {
+					// Use regular substring matching (case-insensitive)
+					var search_lower = search_text.down();
+					var basename_lower = basename.down();
+					var path_lower = path.down();
+					return basename_lower.contains(search_lower) || path_lower.contains(search_lower);
+				}
+			});
+		}
+		
+		/**
+		 * Create the custom sorter (prioritizes basename matches when searching, recent files when not).
+		 * Sorter closure references this.current_search_text directly, so it reads current value.
+		 */
+		private void create_sorter()
+		{
+			if (this.sorter != null) {
+				return;
+			}
+			
+			this.sorter = new Gtk.CustomSorter((a, b) => {
+				var pf_a = a as OLLMfiles.ProjectFile;
+				var pf_b = b as OLLMfiles.ProjectFile;
+				if (pf_a == null || pf_b == null) {
+					return Gtk.Ordering.EQUAL;
+				}
+				
+				// If searching, prioritize starts_with matches, then contains matches
+				if (this.current_search_text != "") {
+					var search_lower = this.current_search_text.down();
+					var a_basename_lower = pf_a.display_basename.down();
+					var b_basename_lower = pf_b.display_basename.down();
+					
+					var a_starts_with = a_basename_lower.has_prefix(search_lower);
+					var b_starts_with = b_basename_lower.has_prefix(search_lower);
+					var a_contains = a_basename_lower.contains(search_lower);
+					var b_contains = b_basename_lower.contains(search_lower);
+					
+					// Prioritize: starts_with > contains > no match
+					// If one starts with and the other doesn't, starts_with comes first
+					if (a_starts_with != b_starts_with) {
+						return a_starts_with ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+					}
+					
+					// Both start with or both don't start with
+					// If both start with, sort alphabetically
+					if (a_starts_with && b_starts_with) {
+						if (a_basename_lower != b_basename_lower) {
+							return a_basename_lower < b_basename_lower ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+						}
+						return Gtk.Ordering.EQUAL;
+					}
+					
+					// Neither starts with - check contains
+					if (a_contains != b_contains) {
+						return a_contains ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+					}
+					
+					// Both contain or both don't - sort alphabetically
+					if (a_basename_lower != b_basename_lower) {
+						return a_basename_lower < b_basename_lower ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+					}
+					return Gtk.Ordering.EQUAL;
+				}
+				
+				// No search: recent files first (sorted by last_viewed desc), then by name
+				if (pf_a.is_recent != pf_b.is_recent) {
+					return pf_a.is_recent ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				}
+				
+				// Both recent or both not recent - if recent, sort by last_viewed desc
+				if (pf_a.is_recent && pf_b.is_recent) {
+					if (pf_a.file.last_viewed != pf_b.file.last_viewed) {
+						return pf_a.file.last_viewed > pf_b.file.last_viewed ? 
+							Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+					}
+				}
+				
+				// Sort by basename
+				var a_basename = pf_a.display_basename.down();
+				var b_basename = pf_b.display_basename.down();
+				return a_basename < b_basename ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+			});
 		}
 		
 		/**
@@ -91,30 +252,20 @@ namespace OLLMcoder
 		 */
 		private void set_item_model(GLib.ListModel model)
 		{
+			this.current_model = model;
+			
+			// Create unified search filter once
+			this.create_search_filter();
+			
 			// Use the model directly for filtering (no copying)
 			this.filtered_items = new Gtk.FilterListModel(
-				model, this.string_filter);
+				model, this.search_filter);
 			
-			// Create custom sorter: open files first, then sort by display_name
-			var sorter = new Gtk.CustomSorter((a, b) => {
-				var pf_a = a as OLLMfiles.ProjectFile;
-				var pf_b = b as OLLMfiles.ProjectFile;
-				if (pf_a == null || pf_b == null) {
-					return Gtk.Ordering.EQUAL;
-				}
-				// Sort by is_open first (open files come first)
-				if (pf_a.is_open != pf_b.is_open) {
-					return pf_a.is_open ? 
-						Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
-				}
-				
-				// Then sort by path
-				return pf_a.file.path < pf_b.file.path ? 
-					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
-			});
+			// Create custom sorter once
+			this.create_sorter();
 			
 			// Create sorted model
-			this.sorted_items = new Gtk.SortListModel(this.filtered_items, sorter);
+			this.sorted_items = new Gtk.SortListModel(this.filtered_items, this.sorter);
 			
 			// Update selection model to use sorted model
 			this.selection = new Gtk.SingleSelection(this.sorted_items) {
@@ -138,17 +289,21 @@ namespace OLLMcoder
 		{
 			base.set_item_store(store);
 			
-			// Create custom sorter: open files first, then sort by display_name
+			// Create custom sorter: active files first, then sort by display_name
 			var sorter = new Gtk.CustomSorter((a, b) => {
-				// Sort by is_open first (open files come first)
-				if (((OLLMfiles.File)a).is_open != ((OLLMfiles.File)b).is_open) {
-					return ((OLLMfiles.File)a).is_open ? 
-						Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				var file_a = a as OLLMfiles.FileBase;
+				var file_b = b as OLLMfiles.FileBase;
+				if (file_a == null || file_b == null) {
+					return Gtk.Ordering.EQUAL;
+				}
+				
+				// Sort by is_active first (active files come first)
+				if (file_a.is_active != file_b.is_active) {
+					return file_a.is_active ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 				}
 				
 				// Then sort by path
-				return ((OLLMfiles.File)a).path < ((OLLMfiles.File)b).path ? 
-					Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
+				return file_a.path < file_b.path ? Gtk.Ordering.SMALLER : Gtk.Ordering.LARGER;
 			});
 			
 			// Create sorted model
@@ -204,6 +359,8 @@ namespace OLLMcoder
 					margin_end = 5
 				};
 				
+				// CSS class will be set via display_css binding
+				
 				// Icon for file type
 				var file_icon = new Gtk.Image() {
 					visible = true
@@ -215,10 +372,11 @@ namespace OLLMcoder
 					tooltip_text = "Open file"
 				};
 				
-				// Label for file name
+				// Label for file name (with pango markup support)
 				var label = new Gtk.Label("") {
 					halign = Gtk.Align.START,
-					hexpand = true
+					hexpand = true,
+					use_markup = true
 				};
 				
 				box.append(file_icon);
@@ -258,8 +416,15 @@ namespace OLLMcoder
 				}
 				
 				if (open_icon != null) {
-					project_file.bind_property("is_open", 
+					project_file.bind_property("is_active", 
 						open_icon, "visible", BindingFlags.SYNC_CREATE);
+				}
+				
+				// Bind CSS classes for recent files using display_css property
+				var box = list_item.child as Gtk.Box;
+				if (box != null) {
+					project_file.bind_property("display_css",
+						box, "css-classes", BindingFlags.SYNC_CREATE);
 				}
 			});
 			
@@ -271,57 +436,61 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Override on_entry_changed to support wildcard filtering.
+		 * Override on_entry_changed to support custom search (basename first, then path).
 		 */
 		protected override void on_entry_changed()
 		{
 			var search_text = this.entry.text;
+			this.current_search_text = search_text;
 			
-			// Check if search text contains wildcards
-			if (search_text.contains("*") || search_text.contains("?")) {
-				// Use wildcard filter
-				if (this.wildcard_filter == null) {
-					this.wildcard_filter = new Gtk.CustomFilter((item) => {
-						var project_file = item as OLLMfiles.ProjectFile;
-						if (project_file == null) {
-							return false;
-						}
-						return this.match_wildcard(project_file.display_name, search_text);
-					});
-					
-					// Combine string filter and wildcard filter
-					// For now, just use wildcard filter when wildcards are present
-					// TODO: Combine filters properly
+			// Handle empty search text
+			if (search_text == "") {
+				// Restore placeholder when text is cleared
+				this.entry.placeholder_text = this.placeholder_text;
+				// Hide popup if visible
+				if (this.popup.visible) {
+					this.set_popup_visible(false);
 				}
-				// Update wildcard filter search text
-				// Note: CustomFilter doesn't have a way to update, so we need to recreate
-				this.wildcard_filter = new Gtk.CustomFilter((item) => {
-					var project_file = item as OLLMfiles.ProjectFile;
-					if (project_file == null) {
-						return false;
-					}
-					return this.match_wildcard(project_file.display_name, search_text);
-				});
-				
-				// Replace filtered_items with wildcard filter
-				this.filtered_items = new Gtk.FilterListModel(
-					this.item_store, this.wildcard_filter);
-			} else {
-				// Use normal string filter
-				this.string_filter.search = search_text;
-				this.filtered_items = new Gtk.FilterListModel(
-					this.item_store, this.string_filter);
+				return;
 			}
 			
-			// Recreate sorted model with new filtered model
-			if (this.sorted_items != null) {
-				var sorter = this.sorted_items.sorter;
-				this.sorted_items = new Gtk.SortListModel(this.filtered_items, sorter);
-				this.selection.model = this.sorted_items;
+			// Update filter and sorted models
+			this.update_filter_and_sort();
+			
+			// Clear placeholder when user starts typing
+			this.entry.placeholder_text = "";
+			
+			// Ensure cursor is at end and no text is selected before showing popup
+			this.entry.set_position(-1);
+			this.entry.select_region(-1, -1);
+			
+			// Show popup when user types (if there are filtered items)
+			if (this.filtered_items.get_n_items() > 0) {
+				this.set_popup_visible(true);
+			}
+		}
+		
+		/**
+		 * Override set_popup_visible to reset filter and trigger re-sort when showing popup with no search.
+		 */
+		protected void set_popup_visible(bool visible)
+		{
+			if (visible) {
+				// Always sync current_search_text with entry text when opening popup
+				// This ensures filter is reset correctly when clicking arrow to open
+				var entry_text = this.entry.text;
+				if (entry_text != this.current_search_text) {
+					this.current_search_text = entry_text;
+					this.update_filter_and_sort();
+				}
 			}
 			
-			// Don't automatically show popover - only update filter
-			// Popup should only be shown when explicitly requested (e.g., clicking arrow)
+			base.set_popup_visible(visible);
+			
+			// If showing popup with no search, trigger re-sort to ensure last_viewed order is current
+			if (visible && this.current_search_text == "" && this.sorted_items != null) {
+				this.trigger_resort();
+			}
 		}
 		
 		/**

@@ -94,7 +94,7 @@ namespace OLLMfiles
 		 */
 		public void activate_file(File? file)
 		{
-			// Deactivate previous active file
+			// Deactivate previous active file (if different from the one being activated)
 			if (this.active_file != null && this.active_file != file) {
 				this.active_file.is_active = false;
 				if (this.db != null) {

@@ -29,3 +29,13 @@ popover.menu listview > row:selected {
   color: @theme_text_color;
   background-color: shade(#f6f5f4, 0.97);
 }
+
+/* Recent files - light yellow background */
+popover.menu listview > row box.oc-file-item.oc-recent {
+  background-color: #fff9c4;
+  border-radius: 4px;
+}
+
+popover.menu listview > row:selected box.oc-file-item.oc-recent {
+  background-color: #fcee72;
+}

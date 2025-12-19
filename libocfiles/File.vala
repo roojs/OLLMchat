@@ -67,6 +67,13 @@ namespace OLLMfiles
 			// Detect and set is_text from content type
 			var  content_type = info.get_content_type();
  			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
+			this.icon_name = "application-octet-stream"; // Default for unknown/binary files
+		 
+			// Set icon_name from content type if available
+			if (content_type != null && content_type != "") {
+				var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
+				this.icon_name = (icon_name != null && icon_name != "") ? icon_name : this.icon_name;
+			}  
 			
 			// Detect language from filename if not already set
 			if (this.language == null || this.language == "") {
@@ -107,23 +114,8 @@ namespace OLLMfiles
 		 */
 		public int scroll_position { get; set; default = 0; }
 		
-		/**
-		 * Whether file is currently open in editor.
-		 * Computed property: Returns true if file was viewed within last week.
-		 */
-		public bool is_open {
-			get {
-				if (this.last_viewed == 0) {
-					return false;
-				}
-				var now = new DateTime.now_local();
-				var one_week_ago = now.add_days(-7);
-				var viewed_time = new DateTime.from_unix_local(this.last_viewed);
-				return viewed_time.compare(one_week_ago) > 0;
-			}
-		}
 		
-		
+		 
 		/**
 		 * Whether the file needs approval (inverted from is_approved).
 		 * true = needs approval, false = approved.
@@ -141,48 +133,6 @@ namespace OLLMfiles
 		 */
 		public string last_approved_copy_path { get; set; default = ""; }
 		
-		private string _icon_name = "";
-		/**
-		 * Icon name for binding in lists.
-		 * Returns icon_name if set, otherwise derives from file content type.
-		 */
-		public override string icon_name {
-			get {
-				if (this._icon_name != "") {
-					return this._icon_name;
-				}
-				if (this.path == "") {
-					return "text-x-generic";
-				}
-				// Use Gio.ContentType to guess content type from filename
-				string? content_type = null;
-				try {
-					var file = GLib.File.new_for_path(this.path);
-					var file_info = file.query_info(
-						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					content_type = file_info.get_content_type();
-				} catch {
-					// If we can't query, try guessing from filename
-					content_type = GLib.ContentType.guess(this.path, null, null);
-				}
-				if (content_type != null && content_type != "") {
-					// Get generic icon name from content type
-					var icon_name = GLib.ContentType.get_generic_icon_name(content_type);
-					if (icon_name != null && icon_name != "") {
-						this._icon_name = icon_name;
-						return this._icon_name;
-					}
-				}
-				// Default fallback
-				return "text-x-generic";
-			}
-			set {
-				this._icon_name = value; // as we can save it in the DB to save time..
-			}
-		}
 		
 		/**
 		 * Display name with path: basename on first line, dirname on second line in grey.

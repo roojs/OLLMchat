@@ -96,8 +96,8 @@ namespace OLLMcoder
 			this.manager = manager;
 			
 			// Set providers on ProjectManager
-			this.manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-			this.manager.git_provider = new OLLMcoder.Files.GitProvider();
+			this.manager.buffer_provider = new OLLMcoder.BufferProvider();
+			this.manager.git_provider = new OLLMcoder.GitProvider();
 			
 			// Create header bar with dropdowns
 			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
@@ -384,10 +384,11 @@ namespace OLLMcoder
 				this.restore_scroll_position(file);
 			}
 			
-			// Update last_viewed and last_modified timestamps
+			// Update last_viewed timestamp when file is actually opened (saved to database)
 			var now = new DateTime.now_local();
 			file.last_viewed = now.to_unix();
 			file.last_modified = file.mtime_on_disk();
+			// Save to database (notify_file_changed calls saveToDB)
 			this.manager.notify_file_changed(file);
 			
 			// Update placeholder text with file basename

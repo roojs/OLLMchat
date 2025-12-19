@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>OLLMchat.Response.Chat &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">OLLMchat.Response.Chat &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.Response.html">Response</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="class">Chat</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Response.Chat.call.html">call</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.chat_content.html">chat_content</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.created_at.html">created_at</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.done.html">done</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.done_reason.html">done_reason</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.eval_count.html">eval_count</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.eval_duration.html">eval_duration</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.eval_duration_s.html">eval_duration_s</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.is_thinking.html">is_thinking</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.load_duration.html">load_duration</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.message.html">message</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.model.html">model</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.new_content.html">new_content</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.new_thinking.html">new_thinking</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.prompt_eval_count.html">prompt_eval_count</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.prompt_eval_duration.html">prompt_eval_duration</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.thinking.html">thinking</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.tokens_per_second.html">tokens_per_second</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.total_duration.html">total_duration</a></li>
+          <li class="property"><a href="OLLMchat.Response.Chat.total_duration_s.html">total_duration_s</a></li>
+          <li class="creation_method"><a href="OLLMchat.Response.Chat.Chat.html">Chat</a></li>
+          <li class="method"><a href="OLLMchat.Response.Chat.addChunk.html">addChunk</a></li>
+          <li class="method"><a href="OLLMchat.Response.Chat.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Response.Chat.get_summary.html">get_summary</a></li>
+          <li class="method"><a href="OLLMchat.Response.Chat.reply.html">reply</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Response.Chat.serialize_property.html">serialize_property</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">Chat</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Object Hierarchy:</h2>
+        <img class="main_diagram" usemap="#OLLMchat.Response.Chat" alt="Object hierarchy for Chat" src="img/OLLMchat.Response.Chat.png"/>
+
+      <map id="OLLMchat.Response.Chat" name="OLLMchat.Response.Chat">
+<area shape="rect" id="node1" href="OLLMchat.Response.Chat.html" title="OLLMchat.Response.Chat" alt="" coords="163,293,380,341"/>
+<area shape="rect" id="node2" href="OLLMchat.Response.Base.html" title="OLLMchat.Response.Base" alt="" coords="29,197,247,245"/>
+<area shape="rect" id="node3" href="OLLMchat.OllamaBase.html" title="OLLMchat.OllamaBase" alt="" coords="39,101,237,149"/>
+<area shape="rect" id="node6" href="OLLMchat.ChatContentInterface.html" title="OLLMchat.ChatContentInterface" alt="" coords="272,197,537,245"/>
+</map>
+
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Chat</span></b> : <span class="main_type"><a href="OLLMchat.Response.Base.html" class="abstract_class">Base</a></span>, <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>
+        </div>
+        <div class="description">
+          <p>Response from a chat API call.</p>
+          <p>Contains the assistant's message, tool calls (if any), and metadata. Handles streaming responses and tool call detection for automatic 
+            execution.</p>
+        </div><br/>
+        <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Response.html">OLLMchat.Response</a>
+        </div>
+        <div class="package_note"><b>Package:</b> <a href="index.htm">ollmchat</a>
+        </div>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Properties:</h3>
+        <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.Response.Chat.call.html" class="property">call</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.chat_content.html" class="property">chat_content</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.created_at.html" class="property">created_at</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Response.Chat.done.html" class="property">done</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Response.Chat.done_reason.html" class="property">done_reason</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Chat.eval_count.html" class="property">eval_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Chat.eval_duration.html" class="property">eval_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Response.Chat.eval_duration_s.html" class="property">eval_duration_s</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Response.Chat.is_thinking.html" class="property">is_thinking</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Chat.load_duration.html" class="property">load_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> <b><a href="OLLMchat.Response.Chat.message.html" class="property">message</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.new_content.html" class="property">new_content</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.new_thinking.html" class="property">new_thinking</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Chat.prompt_eval_count.html" class="property">prompt_eval_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Chat.prompt_eval_duration.html" class="property">prompt_eval_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.thinking.html" class="property">thinking</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Response.Chat.tokens_per_second.html" class="property">tokens_per_second</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Chat.total_duration.html" class="property">total_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Response.Chat.total_duration_s.html" class="property">total_duration_s</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+        </ul>
+        <h3 class="main_title">Creation methods:</h3>
+        <ul class="navi_inline">
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Response.Chat.Chat.html" class="creation_method">Chat</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> call)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+        </ul>
+        <h3 class="main_title">Methods:</h3>
+        <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.addChunk.html" class="method">addChunk</a></b> (<span class="main_type"><span class="class">Object</span></span> chunk)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Response.Chat.deserialize_property.html" class="method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Chat.get_summary.html" class="method">get_summary</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Generates a summary string with performance metrics.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><span class="class">Chat</span></span> <b><a href="OLLMchat.Response.Chat.reply.html" class="method">reply</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates a reply Chat with conversation history and executes it. Adds 
+                the previous user message and this assistant response to the messages array, then executes the call.</span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Response.Chat.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+        </ul>
+        <h3 class="main_title">Inherited Members:</h3>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-137')">All known members inherited from class OLLMchat.Response.Base</div>
+          <div class="content" id="box-content-137">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="field"><a href="OLLMchat.Response.Base.id.html">id</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-138')">All known members inherited from class OLLMchat.OllamaBase</div>
+          <div class="content" id="box-content-138">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="property"><a href="OLLMchat.OllamaBase.chat_content.html">chat_content</a></li>
+                <li class="property"><a href="OLLMchat.OllamaBase.client.html">client</a></li>
+                <li class="virtual_method"><a href="OLLMchat.OllamaBase.deserialize_property.html">deserialize_property</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method"><a href="OLLMchat.OllamaBase.find_property.html">find_property</a></li>
+                <li class="method"><a href="OLLMchat.OllamaBase.get_property.html">get_property</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="virtual_method"><a href="OLLMchat.OllamaBase.serialize_property.html">serialize_property</a></li>
+                <li class="method"><a href="OLLMchat.OllamaBase.set_property.html">set_property</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-139')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-139">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">@get</li>
+                <li class="static_method">@new</li>
+                <li class="method">@ref</li>
+                <li class="method">@set</li>
+                <li class="method">add_toggle_ref</li>
+                <li class="method">add_weak_pointer</li>
+                <li class="method">bind_property</li>
+                <li class="method">connect</li>
+                <li class="virtual_method">constructed</li>
+                <li class="method">disconnect</li>
+                <li class="virtual_method">dispose</li>
+                <li class="method">dup_data</li>
+                <li class="method">dup_qdata</li>
+                <li class="method">force_floating</li>
+                <li class="method">freeze_notify</li>
+                <li class="method">get_class</li>
+                <li class="method">get_data</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">get_property</li>
+                <li class="method">get_qdata</li>
+                <li class="method">get_type</li>
+                <li class="method">getv</li>
+                <li class="static_method">interface_find_property</li>
+                <li class="static_method">interface_install_property</li>
+                <li class="static_method">interface_list_properties</li>
+                <li class="method">is_floating</li>
+                <li class="static_method">new_valist</li>
+                <li class="static_method">new_with_properties</li>
+                <li class="static_method">newv</li>
+                <li class="signal">notify</li>
+                <li class="method">notify_property</li>
+                <li class="field">ref_count</li>
+                <li class="method">ref_sink</li>
+                <li class="method">remove_toggle_ref</li>
+                <li class="method">remove_weak_pointer</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">replace_data</li>
+                <li class="method">replace_qdata</li>
+                <li class="method">set_data</li>
+                <li class="method">set_data_full</li>
+                <li class="method">set_property</li>
+                <li class="method">set_qdata</li>
+                <li class="method">set_qdata_full</li>
+                <li class="method">set_valist</li>
+                <li class="method">setv</li>
+                <li class="method">steal_data</li>
+                <li class="method">steal_qdata</li>
+                <li class="method">thaw_notify</li>
+                <li class="method">unref</li>
+                <li class="method">watch_closure</li>
+                <li class="method">weak_ref</li>
+                <li class="method">weak_unref</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-140')">All known members inherited from interface
+            OLLMchat.ChatContentInterface</div>
+          <div class="content" id="box-content-140">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="abstract_property"><a href="OLLMchat.ChatContentInterface.chat_content.html">chat_content</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-141')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-141">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method">default_deserialize_property</li>
+                <li class="method">default_serialize_property</li>
+                <li class="virtual_method">deserialize_property</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="virtual_method">find_property</li>
+                <li class="virtual_method">get_property</li>
+                <li class="virtual_method">list_properties</li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="virtual_method">serialize_property</li>
+                <li class="virtual_method">set_property</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

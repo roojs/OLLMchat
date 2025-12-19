@@ -44,13 +44,6 @@ namespace OLLMfiles
 			set {   }
 		}
 		
-		/**
-		 * Whether the wrapped file is open.
-		 */
-		public bool is_open {
-			get { return this.file.is_open; }
-			set { }
-		}
 		
 		/**
 		 * Whether the wrapped file needs approval.
@@ -66,6 +59,39 @@ namespace OLLMfiles
 		public bool is_unsaved {
 			get { return this.file.is_unsaved; }
 			set {   }
+		}
+		
+		/**
+		 * Whether the file was opened in the last 24 hours (recent).
+		 */
+		public bool is_recent {
+			get {
+				var last_viewed = this.file.last_viewed;
+				if (last_viewed == 0) {
+					return false;
+				}
+				var now = new GLib.DateTime.now_utc().to_unix();
+				var one_day_ago = now - (24 * 60 * 60);
+				return last_viewed >= one_day_ago;
+			}
+		}
+		
+		/**
+		 * CSS classes array for styling (e.g., ["oc-file-item", "oc-recent"] for recent files).
+		 * Notifies when is_recent changes (via file.last_viewed changes).
+		 */
+		public string[] display_css {
+			owned get {
+				return this.is_recent ? new string[] { "oc-file-item", "oc-recent" } : new string[] { "oc-file-item" };
+			}
+		}
+		
+		/**
+		 * Icon name for binding in lists - delegates to wrapped file.
+		 */
+		public new string icon_name {
+			get { return this.file.icon_name; }
+			set {    }
 		}
 		
 		/**
@@ -96,6 +122,23 @@ namespace OLLMfiles
 			} else {
 				this.path = path;
 			}
+			
+			// Watch file.last_viewed to notify display_css when is_recent changes
+			this.file.notify["last-viewed"].connect(() => {
+				this.notify_property("display-css");
+			});
+			
+			// Watch file properties to notify display_with_indicators when they change
+			this.file.notify["is-active"].connect(() => {
+				this.notify_property("is-active");
+				this.notify_property("display-with-indicators");
+			});
+			this.file.notify["needs-approval"].connect(() => {
+				this.notify_property("display-with-indicators");
+			});
+			this.file.notify["is-unsaved"].connect(() => {
+				this.notify_property("display-with-indicators");
+			});
 		}
 		
 		/**
@@ -139,11 +182,22 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Display text with status indicators - overridden for ProjectFile.
+		 * Display text with status indicators - shows basename + indicators on first line,
+		 * relative directory path in grey small text on second line.
 		 */
-		public override string display_with_indicators {
-			get {
-				return this.file.display_with_indicators;
+		public   string display_with_indicators {
+			owned get {
+				// Get relative path and extract directory part
+ 				// Remove leading slash from relpath if present
+				var relpath = this.display_relpath.has_prefix("/") ? this.display_relpath.substring(1) : relpath;
+				
+				// Build display text with basename and status indicators
+				var dir_suffix = relpath == "" ? "" : GLib.Markup.escape_text( GLib.Path.get_dirname(relpath) );
+					
+				return this.display_basename +
+					(!this.needs_approval ? " ✓" : "") +
+					(this.is_unsaved ? " ●" : "") +
+					"\n<span foreground=\"grey\" size=\"small\">"  + dir_suffix + "</span>";
 			}
 		}
 	}

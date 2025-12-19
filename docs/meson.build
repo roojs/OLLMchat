@@ -1,5 +1,12 @@
 # Generate Valadoc documentation (single unified documentation)
 # valadoc is required - meson will fail during configuration if it's not found
+#
+# IMPORTANT: When adding/removing/changing source files in any library directory,
+# you MUST update the input files list below to match. This includes:
+# - libocagent, libocsqlite, libocfiles, liboccoder, libollmchat, etc.
+# Check the corresponding meson.build file in each library directory for the
+# current list of source files.
+#
 valadoc = find_program('valadoc', required: true)
 
 # Combined documentation for both base and UI libraries
@@ -100,8 +107,8 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Tools/RunCommand.vala',
     '../libollmchat/Tools/RequestRunCommand.vala',
     # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
-    '../liboccoder/Files/BufferProvider.vala',
-    '../liboccoder/Files/GitProvider.vala',
+    '../liboccoder/BufferProvider.vala',
+    '../liboccoder/GitProvider.vala',
     '../liboccoder/ProjectMigrate.vala',
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
