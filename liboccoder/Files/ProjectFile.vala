@@ -69,6 +69,14 @@ namespace OLLMcoder.Files
 		}
 		
 		/**
+		 * Icon name for binding in lists - delegates to wrapped file.
+		 */
+		public override string icon_name {
+			get { return this.file.icon_name; }
+			set { this.file.icon_name = value; }
+		}
+		
+		/**
 		 * Relative path from project root when file is accessed through a symlink.
 		 * If empty (default), the file is not inside a symlink and display_relpath
 		 * will calculate the path normally.
