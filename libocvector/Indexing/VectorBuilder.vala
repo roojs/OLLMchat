@@ -34,7 +34,7 @@ namespace OLLMvector.Indexing
 	/**
 	 * Vector building layer for code file processing.
 	 * 
-	 * Takes CodeFile from Analysis layer and converts each CodeElement
+	 * Takes Tree from Analysis layer and converts each VectorMetadata
 	 * into vector embeddings, storing them in FAISS and metadata in SQL.
 	 */
 	public class VectorBuilder : Object
@@ -61,15 +61,14 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Processes a CodeFile and generates vectors for all elements.
+		 * Processes a Tree and generates vectors for all elements.
 		 * 
-		 * @param code_file The CodeFile from Analysis layer
-		 * @param file The OLLMfiles.File object (for file_id)
+		 * @param tree The Tree object from Analysis layer
 		 */
-		public async void process_file(OLLMvector.CodeFile code_file, OLLMfiles.File file) throws GLib.Error
+		public async void process_file(Tree tree) throws GLib.Error
 		{
-			if (code_file.elements.size == 0) {
-				GLib.debug("No elements to process in file: %s", file.path);
+			if (tree.elements.size == 0) {
+				GLib.debug("No elements to process in file: %s", tree.file.path);
 				return;
 			}
 			
@@ -77,22 +76,22 @@ namespace OLLMvector.Indexing
 			var documents = new Gee.ArrayList<string>();
 			var element_metadata = new Gee.ArrayList<ElementMetadata>();
 			
-			foreach (var element in code_file.elements) {
+			foreach (var element in tree.elements) {
 				var document = this.format_element_document(
-					element, code_file, file.path);
+					element, tree);
 				documents.add(document);
 				
 				element_metadata.add(new ElementMetadata() {
-					file_id = file.id,
+					file_id = tree.file.id,
 					start_line = element.start_line,
 					end_line = element.end_line,
-					element_type = element.property_type,
-					element_name = element.name
+					element_type = element.element_type,
+					element_name = element.element_name
 				});
 			}
 			
 			// Debug: output documents being sent to embedder
-			GLib.debug("Sending %d documents to embedder for file: %s", documents.size, file.path);
+			GLib.debug("Sending %d documents to embedder for file: %s", documents.size, tree.file.path);
 			for (int i = 0; i < documents.size; i++) {
 				GLib.debug("Document %d for embedding:\n%s", i + 1, documents[i]);
 			}
@@ -144,35 +143,38 @@ namespace OLLMvector.Indexing
 				}.saveToDB(this.sql_db, false);
 			}
 			
-			GLib.debug("Completed processing %d elements from file: %s", documents.size, file.path);
+			GLib.debug("Completed processing %d elements from file: %s", documents.size, tree.file.path);
 		}
 		
 		/**
-		 * Formats a CodeElement into a document string for vectorization.
+		 * Formats a VectorMetadata into a document string for vectorization.
 		 * 
 		 * Format follows the specification in the plan document:
-		 * - type, name, file, lines, description, parameters, return type, dependencies, code snippet
+		 * - type, name, file, lines, description, signature, code snippet
 		 * 
-		 * @param element The CodeElement to format
-		 * @param code_file The CodeFile containing the element
-		 * @param file_path The file path (from OLLMfiles.File)
+		 * @param element The VectorMetadata to format
+		 * @param tree The Tree object containing the element and file information
 		 * @return Formatted document string
 		 */
-		private string format_element_document(OLLMvector.CodeElement element, 
-			OLLMvector.CodeFile code_file, string file_path)
+		private string format_element_document(VectorMetadata element, Tree tree)
 		{
 			var doc = new GLib.StringBuilder();
 			
 			// Element type and name
-			doc.append_printf("%s: %s\n", element.property_type, element.name);
+			doc.append_printf("%s: %s\n", element.element_type, element.element_name);
 			
-			// Access modifier
-			if (element.access_modifier != null && element.access_modifier != "") {
-				doc.append_printf("Access: %s\n", element.access_modifier);
+			// Namespace
+			if (element.namespace != null && element.namespace != "") {
+				doc.append_printf("Namespace: %s\n", element.namespace);
+			}
+			
+			// Parent class/struct/interface
+			if (element.parent_class != null && element.parent_class != "") {
+				doc.append_printf("Class: %s\n", element.parent_class);
 			}
 			
 			// File location and line range (merged)
-			doc.append_printf("File: %s\nLines: %d-%d\n", file_path, element.start_line, element.end_line);
+			doc.append_printf("File: %s\nLines: %d-%d\n", tree.file.path, element.start_line, element.end_line);
 			
 			// Signature
 			if (element.signature != null && element.signature != "") {
@@ -184,74 +186,42 @@ namespace OLLMvector.Indexing
 				doc.append_printf("Description: %s\n", element.description);
 			}
 			
-			// Parameters (for functions/methods/constructors)
-			if (element.parameters.size > 0) {
-				var param_parts = new Gee.ArrayList<string>();
-				foreach (var param in element.parameters) {
-					param_parts.add("%s: %s".printf(param.name, param.argument_type));
-				}
-				doc.append_printf("Parameters: %s\n", string.joinv(", ", param_parts.to_array()));
-			}
-			
-			// Return type (for functions/methods)
-			if (element.return_type != null && element.return_type != "" && element.return_type != "void") {
-				doc.append_printf("Returns: %s\n", element.return_type);
-			}
-			
-			// Properties (for classes/structs/interfaces)
-			if (element.properties.size > 0) {
-				var prop_parts = new Gee.ArrayList<string>();
-				foreach (var prop in element.properties) {
-					prop_parts.add("%s: %s [%s]".printf(
-						prop.name,
-						prop.value_type,
-						string.joinv(", ", prop.accessors.to_array())));
-				}
-				doc.append_printf("Properties: %s\n", string.joinv(", ", prop_parts.to_array()));
-			}
-			
-			// Dependencies
-			if (element.dependencies.size > 0) {
-				var dep_parts = new Gee.ArrayList<string>();
-				foreach (var dep in element.dependencies) {
-					dep_parts.add("%s: %s".printf(dep.relationship_type, dep.target));
-				}
-				doc.append_printf("Dependencies: %s\n", string.joinv(", ", dep_parts.to_array()));
-			}
-			
-			// Code snippet (with smart truncation)
+			// Code snippet (using Tree.lines_to_string method)
 			doc.append("Code:\n");
-			var code_snippet = this.get_truncated_code_snippet(element);
+			var code_snippet = this.get_truncated_code_snippet(element, tree);
 			doc.append(code_snippet);
 			
 			return doc.str;
 		}
 		
 		/**
-		 * Gets a truncated code snippet as a string.
+		 * Gets a truncated code snippet as a string using Tree.lines_to_string().
 		 * 
-		 * Trusts LLM analysis - uses the code snippet lines as provided.
-		 * Only applies simple length-based truncation if needed to prevent
-		 * extremely large snippets.
+		 * Uses the Tree object's lines_to_string method to extract code snippets
+		 * from the file content. Applies simple length-based truncation if needed
+		 * to prevent extremely large snippets.
 		 * 
-		 * @param element The CodeElement
-		 * @return Code snippet as joined string
+		 * @param element The VectorMetadata element
+		 * @param tree The Tree object with lines_to_string method
+		 * @return Code snippet as string
 		 */
-		private string get_truncated_code_snippet(OLLMvector.CodeElement element)
+		private string get_truncated_code_snippet(VectorMetadata element, Tree tree)
 		{
-			if (element.code_snippet_lines == null || element.code_snippet_lines.length == 0) {
+			var code_snippet = tree.lines_to_string(element.start_line, element.end_line);
+			
+			if (code_snippet == null || code_snippet == "") {
 				return "";
 			}
 			
 			// Simple truncation if snippet is extremely large (max 200 lines)
-			// Trust LLM to provide appropriate snippets for each element type
+			var lines = code_snippet.split("\n");
 			const int MAX_LINES = 200;
-			if (element.code_snippet_lines.length > MAX_LINES) {
-				return string.joinv("\n", element.code_snippet_lines[0:MAX_LINES]) 
+			if (lines.length > MAX_LINES) {
+				return string.joinv("\n", lines[0:MAX_LINES]) 
 					+ "\n// ... (truncated)";
 			}
 			
-			return string.joinv("\n", element.code_snippet_lines);
+			return code_snippet;
 		}
 		
 		/**

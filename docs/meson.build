@@ -114,8 +114,6 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Prompt/CodeAssistantProvider.vala',
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
     '../libocvector/VectorMetadata.vala',
-    '../libocvector/CodeElement.vala',
-    '../libocvector/CodeFile.vala',
     '../libocvector/Index.vala',
     '../libocvector/Database.vala',
     '../libocvector/Indexing/Tree.vala',

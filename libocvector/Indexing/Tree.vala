@@ -102,7 +102,7 @@ namespace OLLMvector.Indexing
 			
 			// Traverse AST and extract elements
 			var root_node = tree.get_root_node();
-			this.traverse_ast(root_node, code_content);
+			this.traverse_ast(root_node, code_content, null, null, null);
 		}
 		
 		/**
@@ -196,12 +196,17 @@ namespace OLLMvector.Indexing
 		/**
 		 * Extract string from lines array using Vala string range syntax.
 		 * 
-		 * @param start_line Starting line number (1-indexed)
-		 * @param end_line Ending line number (1-indexed, exclusive)
-		 * @return Code snippet or documentation text
+		 * @param start_line Starting line number (1-indexed, or -1 for invalid/no content)
+		 * @param end_line Ending line number (1-indexed, exclusive, or -1 for invalid/no content)
+		 * @return Code snippet or documentation text (empty string if invalid range)
 		 */
 		public string lines_to_string(int start_line, int end_line)
 		{
+			// Handle invalid/negative line numbers (e.g., -1 indicates no documentation)
+			if (start_line <= 0 || end_line <= 0 || start_line > end_line) {
+				return "";
+			}
+			
 			// Convert 1-indexed line numbers to 0-based array indices
 			var start_idx = (start_line - 1).clamp(0, this.lines.length - 1);
 			var end_idx = end_line.clamp(0, this.lines.length);
@@ -221,23 +226,63 @@ namespace OLLMvector.Indexing
 		 * @param node Current AST node
 		 * @param code_content Source code content for text extraction
 		 */
-		private void traverse_ast(TreeSitter.Node node, string code_content)
+		private void traverse_ast(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? current_namespace = null, string? parent_class_name = null)
 		{
 			if (TreeSitter.node_is_null(node)) {
 				return;
 			}
 			
+			unowned string? node_type = TreeSitter.node_get_type(node);
+			var node_type_lower = (node_type ?? "").down();
+			
+			// Track parent enum name for enum_value nodes
+			string? current_parent_enum = parent_enum_name;
+			if (node_type_lower == "enum_declaration" || node_type_lower == "enum") {
+				// Extract the enum name to use as parent for enum values
+				var enum_name = this.get_element_name(node, code_content);
+				if (enum_name != null && enum_name != "") {
+					current_parent_enum = enum_name;
+				}
+			}
+			
+			// Track namespace for all elements
+			string? updated_namespace = current_namespace;
+			if (node_type_lower == "namespace_declaration") {
+				// Extract the namespace name
+				var namespace_name = this.get_element_name(node, code_content);
+				if (namespace_name != null && namespace_name != "") {
+					// Build full namespace path (e.g., "OLLMvector.Indexing")
+					if (current_namespace != null && current_namespace != "") {
+						updated_namespace = "%s.%s".printf(current_namespace, namespace_name);
+					} else {
+						updated_namespace = namespace_name;
+					}
+				}
+			}
+			
+			// Track parent class/struct/interface for methods, properties, fields, etc.
+			string? updated_parent_class = parent_class_name;
+			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
+			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
+			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
+				// Extract the class/struct/interface name to use as parent
+				var class_name = this.get_element_name(node, code_content);
+				if (class_name != null && class_name != "") {
+					updated_parent_class = class_name;
+				}
+			}
+			
 			// Extract element metadata if this node represents a code element
-			var metadata = this.extract_element_metadata(node, code_content);
+			var metadata = this.extract_element_metadata(node, code_content, current_parent_enum, updated_namespace, updated_parent_class);
 			if (metadata != null) {
 				this.elements.add(metadata);
 			}
 			
-			// Recursively traverse children
+			// Recursively traverse children, passing down the parent enum name, namespace, and parent class
 			uint child_count = TreeSitter.node_get_child_count(node);
 			for (uint i = 0; i < child_count; i++) {
 				var child = TreeSitter.node_get_child(node, i);
-				this.traverse_ast(child, code_content);
+				this.traverse_ast(child, code_content, current_parent_enum, updated_namespace, updated_parent_class);
 			}
 		}
 		
@@ -248,7 +293,7 @@ namespace OLLMvector.Indexing
 		 * @param code_content Source code content for text extraction
 		 * @return VectorMetadata object, or null if node is not a code element
 		 */
-		private VectorMetadata? extract_element_metadata(TreeSitter.Node node, string code_content)
+		private VectorMetadata? extract_element_metadata(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? namespace = null, string? parent_class = null)
 		{
 			// Only process named nodes (skip anonymous nodes)
 			if (!TreeSitter.node_is_named(node)) {
@@ -291,6 +336,27 @@ namespace OLLMvector.Indexing
 			// Get element name - skip elements without proper names
 			// Anonymous/internal elements aren't useful for code search
 			var element_name = this.get_element_name(node, code_content);
+			
+			// For enum_value nodes, prefix with parent enum name if available
+			if (node_type_lower == "enum_value" && parent_enum_name != null && parent_enum_name != "") {
+				if (element_name != null && element_name != "") {
+					element_name = "%s.%s".printf(parent_enum_name, element_name);
+				} else {
+					// If we can't get the enum value name, try to extract it from the node text
+					var start_byte = TreeSitter.node_get_start_byte(node);
+					var end_byte = TreeSitter.node_get_end_byte(node);
+					if (end_byte > start_byte) {
+						var value_text = code_content.substring((int)start_byte, (int)(end_byte - start_byte)).strip();
+						// Remove trailing comma if present
+						if (value_text.has_suffix(",")) {
+							value_text = value_text.substring(0, value_text.length - 1).strip();
+						}
+						if (value_text != null && value_text != "") {
+							element_name = "%s.%s".printf(parent_enum_name, value_text);
+						}
+					}
+				}
+			}
 			
 			// For classes and namespaces only, try fallback if primary extraction failed
 			// But only if the node type actually indicates it's a class/namespace declaration
@@ -339,6 +405,22 @@ namespace OLLMvector.Indexing
 			}
 			
 			metadata.element_name = element_name;
+			
+			// Set namespace if available
+			if (namespace != null && namespace != "") {
+				metadata.namespace = namespace;
+			}
+			
+			// Set parent class if available (for methods, properties, fields, etc.)
+			// Don't set it for the class/struct/interface itself
+			// Reuse node_type_lower that was already declared earlier
+			bool is_class_or_struct_or_interface = 
+					(node_type_lower == "class_declaration" || node_type_lower == "class" ||
+					node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
+					node_type_lower == "interface_declaration" || node_type_lower == "interface");
+			if (parent_class != null && parent_class != "" && !is_class_or_struct_or_interface) {
+				metadata.parent_class = parent_class;
+			}
 			
 			// Get line numbers (tree-sitter uses 0-indexed, we use 1-indexed)
 			metadata.start_line = (int)TreeSitter.node_get_start_point(node).row + 1;  // Convert to 1-indexed
@@ -442,8 +524,9 @@ namespace OLLMvector.Indexing
 			element_type_map.set("struct_declaration", "struct");
 			element_type_map.set("interface", "interface");
 			element_type_map.set("interface_declaration", "interface");
-			element_type_map.set("enum", "enum");
-			element_type_map.set("enum_declaration", "enum");
+			element_type_map.set("enum", "enum_type");
+			element_type_map.set("enum_declaration", "enum_type");
+			element_type_map.set("enum_value", "enum");
 			// Only map namespace_declaration, not namespace (which might be a member)
 			element_type_map.set("namespace_declaration", "namespace");
 			element_type_map.set("function", "function");
@@ -514,15 +597,19 @@ namespace OLLMvector.Indexing
 			string[] field_names = { "name", "identifier", "type", "property_name", "method_name" };
 			foreach (var field_name in field_names) {
 				var name_node = TreeSitter.node_get_child_by_field_name(node, field_name, (uint32)field_name.length);
-				if (!TreeSitter.node_is_null(name_node)) {
-					var start_byte = TreeSitter.node_get_start_byte(name_node);
-					var end_byte = TreeSitter.node_get_end_byte(name_node);
-					if (end_byte > start_byte) {
-						var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
-						if (name != null && name != "") {
-							return name;
-						}
-					}
+				if (TreeSitter.node_is_null(name_node)) {
+					continue;
+				}
+				
+				var start_byte = TreeSitter.node_get_start_byte(name_node);
+				var end_byte = TreeSitter.node_get_end_byte(name_node);
+				if (end_byte <= start_byte) {
+					continue;
+				}
+				
+				var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
+				if (name != null && name != "") {
+					return name;
 				}
 			}
 			
@@ -682,20 +769,13 @@ namespace OLLMvector.Indexing
 				var closing_brace_pos = node_text.last_index_of("}");
 				if (closing_brace_pos >= 0) {
 					// Extract up to and including the closing brace
-					var signature_text = node_text.substring(0, closing_brace_pos + 1).strip();
-					// Clean up - remove extra whitespace/newlines but preserve structure
-					signature_text = signature_text.replace("\n", " ").replace("\r", "");
-					// Collapse multiple spaces
-					while (signature_text.contains("  ")) {
-						signature_text = signature_text.replace("  ", " ");
-					}
+					var signature_text = node_text.substring(0, closing_brace_pos + 1);
+					signature_text = this.clean_signature_whitespace(signature_text);
 					// Ensure proper spacing around braces and semicolons
 					signature_text = signature_text.replace("{", " { ").replace("}", " } ");
 					signature_text = signature_text.replace(";", "; ");
 					// Collapse multiple spaces again after adding spacing
-					while (signature_text.contains("  ")) {
-						signature_text = signature_text.replace("  ", " ");
-					}
+					signature_text = this.clean_signature_whitespace(signature_text);
 					return signature_text.strip();
 				}
 			}
@@ -704,23 +784,37 @@ namespace OLLMvector.Indexing
 			var brace_pos = node_text.index_of("{");
 			if (brace_pos >= 0) {
 				// Extract up to the opening brace
-				var signature_text = node_text.substring(0, brace_pos).strip();
-				// Clean up - remove extra whitespace/newlines
-				signature_text = signature_text.replace("\n", " ").replace("\r", "");
-				// Collapse multiple spaces
-				while (signature_text.contains("  ")) {
-					signature_text = signature_text.replace("  ", " ");
-				}
+				var signature_text = node_text.substring(0, brace_pos);
+				signature_text = this.clean_signature_whitespace(signature_text);
 				return signature_text.strip();
 			}
 			
 			// Fallback: if no brace found, return first line
 			var first_newline = node_text.index_of("\n");
 			if (first_newline >= 0) {
-				return node_text.substring(0, first_newline).strip();
+				var signature_text = node_text.substring(0, first_newline);
+				signature_text = this.clean_signature_whitespace(signature_text);
+				return signature_text.strip();
 			}
 			
-			return node_text.strip();
+			var signature_text = node_text;
+			signature_text = this.clean_signature_whitespace(signature_text);
+			return signature_text.strip();
+		}
+		
+		/**
+		 * Clean excessive whitespace from signature text.
+		 * Removes newlines, tabs, and collapses multiple spaces to single spaces.
+		 */
+		private string clean_signature_whitespace(string text)
+		{
+			// Replace all newlines, carriage returns, and tabs with spaces
+			var cleaned = text.replace("\n", " ").replace("\r", " ").replace("\t", " ");
+			// Collapse multiple spaces to single spaces
+			while (cleaned.contains("  ")) {
+				cleaned = cleaned.replace("  ", " ");
+			}
+			return cleaned;
 		}
 	}
 }

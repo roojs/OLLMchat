@@ -32,7 +32,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMvector.Indexing.Analysis.Analysis.html">Analysis</a></li>
-          <li class="method"><a href="OLLMvector.Indexing.Analysis.analyze_file.html">analyze_file</a></li>
+          <li class="method"><a href="OLLMvector.Indexing.Analysis.analyze_tree.html">analyze_tree</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -52,8 +52,8 @@
         </div>
         <div class="description">
           <p>Analysis layer for code file processing.</p>
-          <p>Processes code files and sends them to LLM to generate structured JSON data for vector generation. Uses structured outputs via format_obj
-            for reliable JSON parsing.</p>
+          <p>Processes Tree objects from the Tree layer and generates one-line descriptions for code elements using LLM. Skips LLM analysis for simple
+            elements (enum types without documentation, simple properties, enum values, fields without docs).</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.Indexing.html">OLLMvector.Indexing</a>
         </div>
@@ -69,15 +69,15 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMvector.CodeFile.html" class="class">CodeFile</a></span> <b><a href="OLLMvector.Indexing.Analysis.analyze_file.html" class="method">analyze_file</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMvector.Indexing.Tree.html" class="class">Tree</a></span> <b><a href="OLLMvector.Indexing.Analysis.analyze_tree.html" class="method">analyze_tree</a></b> (<span class="main_type"><a href="OLLMvector.Indexing.Tree.html" class="class">Tree</a></span> tree) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Analyzes a code file using OLLMfiles.File.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Analyzes a Tree object and generates descriptions for elements.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-267')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-267">
+          <div class="headline" onclick="toggle_box (this, 'box-content-255')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-255">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

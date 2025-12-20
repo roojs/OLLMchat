@@ -151,14 +151,16 @@ async void run_test(string file_path) throws Error
 		throw new GLib.IOError.FAILED("Tree parsing failed: " + e.message);
 	}
 	
-	/* COMMENTED OUT FOR NOW
 	// Load analysis config from ~/.config/ollmchat/analysis.json
-	var analysis_config_path = Path.build_filename(
+	var analysis_config_path = GLib.Path.build_filename(
 		GLib.Environment.get_home_dir(), ".config", "ollmchat", "analysis.json"
 	);
 	
 	if (!GLib.FileUtils.test(analysis_config_path, GLib.FileTest.EXISTS)) {
-		throw new GLib.IOError.NOT_FOUND("Analysis config not found at " + analysis_config_path);
+		GLib.warning("Analysis config not found at %s - skipping analysis and vectorization", analysis_config_path);
+		stdout.printf("=== Test Complete (Analysis/Vectorization skipped) ===\n");
+		stdout.printf("Database saved at: %s\n", db_path);
+		return;
 	}
 	
 	GLib.debug("Loading analysis config from: %s", analysis_config_path);
@@ -173,12 +175,15 @@ async void run_test(string file_path) throws Error
 	};
 	
 	// Load embed config from ~/.config/ollmchat/embed.json
-	var embed_config_path = Path.build_filename(
+	var embed_config_path = GLib.Path.build_filename(
 		GLib.Environment.get_home_dir(), ".config", "ollmchat", "embed.json"
 	);
 	
 	if (!GLib.FileUtils.test(embed_config_path, GLib.FileTest.EXISTS)) {
-		throw new GLib.IOError.NOT_FOUND("Embed config not found at " + embed_config_path);
+		GLib.warning("Embed config not found at %s - skipping analysis and vectorization", embed_config_path);
+		stdout.printf("=== Test Complete (Analysis/Vectorization skipped) ===\n");
+		stdout.printf("Database saved at: %s\n", db_path);
+		return;
 	}
 	
 	GLib.debug("Loading embed config from: %s", embed_config_path);
@@ -189,7 +194,7 @@ async void run_test(string file_path) throws Error
 	var embed_config = new OLLMchat.Config() {
 		url = obj2.get_string_member("url"),
 		model = obj2.get_string_member("model"),
-		api_key =   obj2.get_string_member("api-key")
+		api_key = obj2.get_string_member("api-key")
 	};
 	
 	// Create clients with sensible temperature and context window settings
@@ -198,7 +203,7 @@ async void run_test(string file_path) throws Error
 	analysis_client.options.num_ctx = 65536;     // Reasonable context window
 	analysis_client.options.top_k = 1405;     // Reasonable context window
 	analysis_client.options.top_p = 0.9;     // Reasonable context window
-	analysis_client.options.min_p= 0.1;     // Reasonable context window
+	analysis_client.options.min_p = 0.1;     // Reasonable context window
 	
 	var embed_client = new OLLMchat.Client(embed_config);
 	embed_client.options.temperature = 0.0;     // Not used for embeddings, but set anyway
@@ -210,19 +215,29 @@ async void run_test(string file_path) throws Error
 	
 	// Run analysis
 	stdout.printf("=== Running Analysis ===\n");
-	GLib.debug("Sending file to LLM for analysis...");
+	GLib.debug("Sending elements to LLM for analysis...");
 	
 	var analysis = new OLLMvector.Indexing.Analysis(analysis_client);
-	OLLMvector.CodeFile code_file;
 	try {
-		code_file = yield analysis.analyze_file(ollm_file);
+		tree = yield analysis.analyze_tree(tree);
 		stdout.printf("✓ Analysis completed\n");
-		stdout.printf("  Found %d elements\n", code_file.elements.size);
+		stdout.printf("  Analyzed %d elements\n", tree.elements.size);
 		
-		// Show elements found
-		foreach (var element in code_file.elements) {
-			stdout.printf("    - %s: %s (lines %d-%d)\n", 
-				element.property_type, element.name, element.start_line, element.end_line);
+		// Show some elements with descriptions
+		int shown = 0;
+		foreach (var element in tree.elements) {
+			if (element.description != null && element.description != "" && shown < 5) {
+				var display_name = element.element_name;
+				if (display_name.length > 50) {
+					display_name = display_name.substring(0, 47) + "...";
+				}
+				stdout.printf("    - %s: %s\n", element.element_type, display_name);
+				stdout.printf("      Description: %s\n", element.description);
+				shown++;
+			}
+		}
+		if (shown < tree.elements.size) {
+			stdout.printf("    ... and %d more elements\n", tree.elements.size - shown);
 		}
 		stdout.printf("\n");
 	} catch (GLib.Error e) {
@@ -237,7 +252,7 @@ async void run_test(string file_path) throws Error
 	var vector_builder = new OLLMvector.Indexing.VectorBuilder(embed_client, vector_db, sql_db);
 	
 	try {
-		yield vector_builder.process_file(code_file, ollm_file);
+		yield vector_builder.process_file(tree);
 		stdout.printf("✓ Vectorization completed\n");
 		stdout.printf("  Stored %llu vectors in FAISS index\n", vector_db.vector_count);
 		stdout.printf("  Vector dimension: %llu\n", vector_db.dimension);
@@ -247,7 +262,9 @@ async void run_test(string file_path) throws Error
 	}
 	
 	// Perform search
+	var search_query = "database query execution";
 	stdout.printf("=== Running Search ===\n");
+	stdout.printf("Search query: \"%s\"\n", search_query);
 	GLib.debug("Searching for: %s", search_query);
 	
 	try {
@@ -274,6 +291,23 @@ async void run_test(string file_path) throws Error
 					var file_lookup = results_list[0];
 					stdout.printf("  File: %s\n", file_lookup.path);
 				}
+				
+				// Show code snippet if available
+				if (tree.lines != null && tree.lines.length > 0) {
+					var code_snippet = tree.lines_to_string(metadata.start_line, metadata.end_line);
+					if (code_snippet != null && code_snippet != "") {
+						var lines = code_snippet.split("\n");
+						if (lines.length > 0) {
+							stdout.printf("  Code snippet (first 3 lines):\n");
+							for (int j = 0; j < lines.length && j < 3; j++) {
+								stdout.printf("    %s\n", lines[j]);
+							}
+							if (lines.length > 3) {
+								stdout.printf("    ... (%d more lines)\n", lines.length - 3);
+							}
+						}
+					}
+				}
 			} else {
 				stdout.printf("  Vector ID: %lld (metadata not found)\n", result.search_result.document_id);
 			}
@@ -282,7 +316,6 @@ async void run_test(string file_path) throws Error
 	} catch (GLib.Error e) {
 		throw new GLib.IOError.FAILED("Search failed: " + e.message);
 	}
-	*/
 	
 	stdout.printf("=== Test Complete ===\n");
 	stdout.printf("Database saved at: %s\n", db_path);

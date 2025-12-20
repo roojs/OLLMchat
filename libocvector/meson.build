@@ -45,8 +45,6 @@ ocvector_src = files([
   'Database.vala',  # Vector database with embeddings
   
   # Code structure classes
-  'CodeElement.vala',  # Code element representation
-  'CodeFile.vala',     # Code file with analyzed elements
   'VectorMetadata.vala',  # Vector metadata storage (SQL database)
   
   # Files/ directory removed - now using libocfiles instead

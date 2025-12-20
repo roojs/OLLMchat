@@ -16,7 +16,7 @@
   </gresource>
   <gresource prefix="/ocvector">
     <file>ocvector/ocvector-prompt.txt</file>
- 
+    <file>ocvector/analysis-prompt.txt</file>
   </gresource>
 </gresources>
 

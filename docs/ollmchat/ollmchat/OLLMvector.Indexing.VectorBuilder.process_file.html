@@ -39,22 +39,16 @@
         <h1 class="main_title">process_file</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">process_file</span></b> (<span class="main_type"><a href="OLLMvector.CodeFile.html" class="class">CodeFile</a></span> code_file, <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">process_file</span></b> (<span class="main_type"><a href="OLLMvector.Indexing.Tree.html" class="class">Tree</a></span> tree) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Processes a CodeFile and generates vectors for all elements.</p>
+          <p>Processes a Tree and generates vectors for all elements.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">code_file</td>
+              <td class="main_parameter_table_name">tree</td>
               <td>
-                <p>The CodeFile from Analysis layer </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">file</td>
-              <td>
-                <p>The OLLMfiles.File object (for file_id) </p>
+                <p>The Tree object from Analysis layer </p>
               </td>
             </tr>
           </table>
