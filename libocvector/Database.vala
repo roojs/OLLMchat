@@ -121,6 +121,7 @@ namespace OLLMvector
 		
 		public async SearchResultWithDocument[] search(string query, uint64 k = 5) throws Error
 		{
+			GLib.debug("Sending search query to embedder: %s", query);
 			var response = yield this.ollama.embed(query);
 			if (response == null || response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embed");

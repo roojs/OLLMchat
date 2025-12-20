@@ -6,13 +6,17 @@ valac = meson.get_compiler('vala')
 cc = meson.get_compiler('c')
 
 # Find FAISS library (static library, C++ based)
-faiss_lib = cc.find_library('faiss', dirs: ['/usr/lib/x86_64-linux-gnu'], required: true)
+faiss_lib = cc.find_library('faiss',
+	 dirs: ['/usr/lib/x86_64-linux-gnu'], required: true)
 cpp = meson.get_compiler('cpp')
 cpp_std_lib = cpp.find_library('stdc++', required: true)
 # FAISS uses OpenMP for parallelization
 omp_dep = dependency('openmp', required: true)
 # FAISS uses BLAS for matrix operations
 blas_dep = dependency('blas', required: true)
+# Find tree-sitter library (C library for parsing)
+# Tree-sitter provides pkg-config support
+tree_sitter_lib = dependency('tree-sitter', required: true)
 
 # Our minimal C wrapper for FAISS C++ API
 faiss_wrapper_src = files('faiss_c_wrapper.cpp')
@@ -22,12 +26,14 @@ ocvector_deps = [
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
+  dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   dependency('sqlite3'),
   valac.find_library('posix'),
   faiss_lib,
-  cpp_std_lib
+  cpp_std_lib,
+  tree_sitter_lib  # Tree-sitter C library (required - Tree.vala uses TreeSitter API)
   # Note: OpenMP and BLAS added via link_args to avoid Vala package issues
 ]
 
@@ -47,6 +53,7 @@ ocvector_src = files([
   # No need to copy Files classes - use OLLMfiles namespace from libocfiles
   
   # Indexing/ directory
+  'Indexing/Tree.vala',  # Tree-sitter AST parsing and VectorMetadata creation
   'Indexing/Analysis.vala',  # Code analysis layer
   'Indexing/VectorBuilder.vala',  # Vector generation and FAISS storage
   # 'Indexing/Indexer.vala',
@@ -86,7 +93,9 @@ ocvector_base_lib = library('ocvector',
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
+    '--pkg=gmodule-2.0',  # GModule for dynamic library loading
     '--pkg=fiass',  # FAISS via vapi
+    '--pkg=tree-sitter',  # Tree-sitter via vapi
     '--pkg=ocagent',
     '--pkg=ocfiles',
     '--pkg=ollmchat',

@@ -78,8 +78,9 @@ namespace OLLMvector.Indexing
 			var element_metadata = new Gee.ArrayList<ElementMetadata>();
 			
 			foreach (var element in code_file.elements) {
-				documents.add(this.format_element_document(
-					element, code_file, file.path));
+				var document = this.format_element_document(
+					element, code_file, file.path);
+				documents.add(document);
 				
 				element_metadata.add(new ElementMetadata() {
 					file_id = file.id,
@@ -88,6 +89,12 @@ namespace OLLMvector.Indexing
 					element_type = element.property_type,
 					element_name = element.name
 				});
+			}
+			
+			// Debug: output documents being sent to embedder
+			GLib.debug("Sending %d documents to embedder for file: %s", documents.size, file.path);
+			for (int i = 0; i < documents.size; i++) {
+				GLib.debug("Document %d for embedding:\n%s", i + 1, documents[i]);
 			}
 			
 			// Generate embeddings for all elements in the file at once
@@ -126,8 +133,9 @@ namespace OLLMvector.Indexing
 			for (int j = 0; j < element_metadata.size; j++) {
 				var metadata = element_metadata[j];
 				
+				var vector_id = start_vector_id + j;
 				new VectorMetadata() {
-					vector_id = start_vector_id + j,
+					vector_id = vector_id,
 					file_id = metadata.file_id,
 					start_line = metadata.start_line,
 					end_line = metadata.end_line,

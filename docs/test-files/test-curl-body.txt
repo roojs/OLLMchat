@@ -1,0 +1,132 @@
+{
+  "model": "qwen3-coder:30b",
+  "format": {
+    "type": "object",
+    "properties": {
+      "file-path": {
+        "type": "string",
+        "description": "Path to the source file"
+      },
+      "language": {
+        "type": "string",
+        "description": "Programming language identifier"
+      },
+      "summary": {
+        "type": "string",
+        "description": "One-paragraph summary of the file's purpose"
+      },
+      "imports": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "module": {"type": "string"},
+            "line": {"type": "integer"}
+          },
+          "required": ["module", "line"]
+        },
+        "description": "Import/using/include statements"
+      },
+      "elements": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "property-type": {
+              "type": "string",
+              "enum": ["class", "function", "method", "property", "field", "struct", "interface", "enum", "namespace", "constructor", "delegate", "signal", "constant"],
+              "description": "Type of code element"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name of the element"
+            },
+            "access-modifier": {
+              "type": "string",
+              "enum": ["public", "private", "protected", "internal", "package", "default"],
+              "description": "Visibility/access level"
+            },
+            "start-line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "First line number (1-indexed)"
+            },
+            "end-line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Last line number (1-indexed)"
+            },
+            "signature": {
+              "type": "string",
+              "description": "Full declaration signature"
+            },
+            "description": {
+              "type": "string",
+              "description": "What the element does and its purpose"
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "argument-type": {"type": "string"}
+                },
+                "required": ["name", "argument-type"]
+              },
+              "description": "Function/method parameters with types"
+            },
+            "return-type": {
+              "type": "string",
+              "description": "Return type (or 'void'/'None' for no return)"
+            },
+            "properties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string"},
+                  "value-type": {"type": "string"},
+                  "accessors": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["get", "set", "init"]}
+                  }
+                },
+                "required": ["name", "value-type"]
+              },
+              "description": "Properties/fields for classes/structs"
+            },
+            "dependencies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "relationship-type": {
+                    "type": "string",
+                    "enum": ["inherits", "implements", "uses", "calls", "references", "imports"]
+                  },
+                  "target": {"type": "string"}
+                },
+                "required": ["relationship-type", "target"]
+              },
+              "description": "Relationships to other code elements"
+            }
+          },
+          "required": ["property-type", "name", "start-line", "end-line", "description", "access-modifier"]
+        }
+      }
+    },
+    "required": ["file-path", "language", "summary", "elements"]
+  },
+  "options": {
+    "temperature": 0.0,
+    "num_ctx": 8192
+  },
+  "stream" : true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Analyze the following vala code and extract structured information for semantic search indexing.\n\n## OUTPUT REQUIREMENTS\n- Output ONLY valid JSON matching the provided schema\n- No explanatory text, markdown, or additional commentary\n- Ensure all JSON is properly formatted and escaped\n\n## ANALYSIS INSTRUCTIONS\n\n### FILE-LEVEL INFORMATION\n- Determine programming language from file extension and syntax\n- Write a concise one-paragraph summary of the file's purpose\n- List all import/using/include statements with their line numbers\n\n### FOR EACH CODE ELEMENT\n\nExtract the following for each class, function, method, property, field, struct, interface, enum, namespace, constructor, delegate, signal, constant, and other significant elements:\n\n**Identification:**\n- Element type (class, method, property, etc.)\n- Name\n- Access modifier (public, private, protected, etc.)\n- Exact line numbers (start and end, 1-indexed)\n- Complete signature/declaration\n\n**Documentation:**\n- Clear description of what the element does and its purpose\n- Extract documentation comments if present\n\n**For Functions/Methods:**\n- Parameters: names and types\n- Return type (use \"void\" or \"None\" for no return)\n\n**For Classes/Structs:**\n- Properties/fields: names, types, and accessors (get/set/init)\n- Include all properties, fields, methods, and nested types as separate elements\n\n**Relationships:**\n- Inheritance (extends, implements)\n- Type usage in parameters, returns, or properties\n- Method/function calls within the element\n- External module dependencies\n\n## SPECIAL CASES\n\n- **Properties**: Include as separate elements with property-type \"property\"\n- **Fields**: Include as separate elements with property-type \"field\"\n- **Constructors**: Include as separate elements with property-type \"constructor\"\n- **Nested types**: Include as separate elements\n\n## QUALITY CHECKS\n\nBefore outputting JSON, verify:\n1. All required fields are present\n2. Line numbers are accurate and 1-indexed\n3. Descriptions are informative but concise\n4. JSON is valid and properly structured\n\nFormat the response as JSON matching this schema:\n{\n    \"file-path\": \"string\",\n    \"language\": \"string\",\n    \"summary\": \"overall file summary\",\n    \"imports\": [\n        {\"module\": \"module_name\", \"line\": 1}\n    ],\n    \"elements\": [\n        {\n            \"property-type\": \"class|function|method|property|field|struct|interface|enum|namespace|constructor|delegate|signal|constant\",\n            \"name\": \"element_name\",\n            \"access-modifier\": \"public|private|protected|internal|package|default\",\n            \"start-line\": number,\n            \"end-line\": number,\n            \"signature\": \"full declaration\",\n            \"description\": \"what it does\",\n            \"parameters\": [\n                {\"name\": \"param1\", \"argument-type\": \"string\"}\n            ],\n            \"return-type\": \"return_type\",\n            \"properties\": [\n                {\"name\": \"prop1\", \"value-type\": \"string\", \"accessors\": [\"get\", \"set\"]}\n            ],\n            \"dependencies\": [\n                {\"relationship-type\": \"inherits\", \"target\": \"BaseClass\"}\n            ]\n        }\n    ]\n}\n\nCode:\n/*\n * Copyright (C) 2025 Alan Knowles <alan@roojs.com>\n *\n * This library is free software; you can redistribute it and/or\n * modify it under the terms of the GNU Lesser General Public\n * License as published by the Free Software Foundation; either\n * version 3 of the License, or (at your option) any later version.\n *\n * This library is distributed in the hope that it will be useful,\n * but WITHOUT ANY WARRANTY; without even the implied warranty of\n * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU\n * Lesser General Public License for more details.\n *\n * You should have received a copy of the GNU Lesser General Public License\n * along with this library; if not, write to the Free Software Foundation,\n * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA\n */\n\nnamespace OLLMfiles\n{\n\t/**\n\t * Represents a file in the project.\n\t * \n\t * Files can be in multiple projects (due to softlinks/symlinks).\n\t * All alias references are tracked in ProjectManager's alias_map.\n\t */\n\tpublic class File : FileBase\n\t{\n\t\t/**\n\t\t * Constructor.\n\t\t * \n\t\t * @param manager The ProjectManager instance (required)\n\t\t */\n\t\tpublic File(ProjectManager manager)\n\t\t{\n\t\t\tbase(manager);\n\t\t\tthis.base_type = \"f\";\n\t\t}\n\t\t\n\t\t/**\n\t\t * Named constructor: Create a File from FileInfo.\n\t\t * \n\t\t * @param parent The parent Folder (required)\n\t\t * @param info The FileInfo object from directory enumeration\n\t\t * @param path The full path to the file\n\t\t */\n\t\tpublic File.new_from_info(\n\t\t\tProjectManager manager,\n\t\t\tFolder? parent,\n\t\t\tGLib.FileInfo info,\n\t\t\tstring path)\n\t\t{\n\t\t\tbase(manager);\n\t\t\tthis.base_type = \"f\";\n\t\t\tthis.path = path;\n\t\t\tif (parent != null) {\n\t\t\t\tthis.parent = parent;\n\t\t\t\tthis.parent_id = parent.id;\n\t\t\t}\n\t\t\t\n\t\t\t// Set last_modified from FileInfo\n\t\t\tvar mod_time = info.get_modification_date_time();\n\t\t\tif (mod_time != null) {\n\t\t\t\tthis.last_modified = mod_time.to_unix();\n\t\t\t}\n\t\t\t\n\t\t\t// Detect and set is_text from content type\n\t\t\tvar  content_type = info.get_content_type();\n\t\t\tthis.is_text = content_type != null && content_type != \"\" &&  content_type.has_prefix(\"text/\");\n\t\t\t\n\t\t\t// Detect language from filename if not already set\n\t\t\tif (this.language == null || this.language == \"\") {\n\t\t\t\tthis.detect_language();\n\t\t\t}\n\t\t}\n\t\t\n\t\t/**\n\t\t * Detect programming language from file extension using buffer provider.\n\t\t * Sets the language property if a match is found.\n\t\t */\n\t\tprivate void detect_language()\n\t\t{\n\t\t\tif (this.path == null || this.path == \"\") {\n\t\t\t\treturn;\n\t\t\t}\n\t\t\t\n\t\t\tvar detected = this.manager.buffer_provider.detect_language(this);\n\t\t\tif (detected != null && detected != \"\") {\n\t\t\t\tthis.language = detected;\n\t\t\t\tGLib.debug(\"File.detect_language: Detected language '%s' for file '%s'\", \n\t\t\t\t\tthis.language, this.path);\n\t\t\t}\n\t\t}\n\t\t\n\t\t/**\n\t\t * Last cursor line number (stored in database, default: 0).\n\t\t */\n\t\tpublic int cursor_line { get; set; default = 0; }\n\t\t\n\t\t/**\n\t\t * Last cursor character offset (stored in database, default: 0).\n\t\t */\n\t\tpublic int cursor_offset { get; set; default = 0; }\n\t\t\n\t\t/**\n\t\t * Last scroll position (stored in database, optional, default: 0).\n\t\t */\n\t\tpublic int scroll_position { get; set; default = 0; }\n\t\t\n\t\t/**\n\t\t * Whether file is currently open in editor.\n\t\t * Computed property: Returns true if file was viewed within last week.\n\t\t */\n\t\tpublic bool is_open {\n\t\t\tget {\n\t\t\t\tif (this.last_viewed == 0) {\n\t\t\t\t\treturn false;\n\t\t\t\t}\n\t\t\t\tvar now = new DateTime.now_local();\n\t\t\t\tvar one_week_ago = now.add_days(-7);\n\t\t\t\tvar viewed_time = new DateTime.from_unix_local(this.last_viewed);\n\t\t\t\treturn viewed_time.compare(one_week_ago) > 0;\n\t\t\t}\n\t\t}\n\t\t\n\t\t\n\t\t/**\n\t\t * Whether the file needs approval (inverted from is_approved).\n\t\t * true = needs approval, false = approved.\n\t\t */\n\t\tpublic bool needs_approval { get; set; default = true; }\n\t\t/**\n\t\t * Whether the file has unsaved changes.\n\t\t */\n\t\tpublic bool is_unsaved { get; set; default = false; }\n\t\t\n\t\t\n\t\t/**\n\t\t * Filename of last approved copy (default: empty string).\n\t\t */\n\t\tpublic string last_approved_copy_path { get; set; default = \"\"; }\n\t\t\n\t\tprivate string _icon_name = \"\";\n\t\t/**\n\t\t * Icon name for binding in lists.\n\t\t * Returns icon_name if set, otherwise derives from file content type.\n\t\t */\n\t\tpublic override string icon_name {\n\t\t\tget {\n\t\t\t\tif (this._icon_name != \"\") {\n\t\t\t\t\treturn this._icon_name;\n\t\t\t\t}\n\t\t\t\tif (this.path == \"\") {\n\t\t\t\t\treturn \"text-x-generic\";\n\t\t\t\t}\n\t\t\t\t// Use Gio.ContentType to guess content type from filename\n\t\t\t\tstring? content_type = null;\n\t\t\t\ttry {\n\t\t\t\t\tvar file = GLib.File.new_for_path(this.path);\n\t\t\t\t\tvar file_info = file.query_info(\n\t\t\t\t\t\tGLib.FileAttribute.STANDARD_CONTENT_TYPE,\n\t\t\t\t\t\tGLib.FileQueryInfoFlags.NONE,\n\t\t\t\t\t\tnull\n\t\t\t\t);\n\t\t\t\t\tcontent_type = file_info.get_content_type();\n\t\t\t\t} catch {\n\t\t\t\t\t// If we can't query, try guessing from filename\n\t\t\t\t\tcontent_type = GLib.ContentType.guess(this.path, null, null);\n\t\t\t\t}\n\t\t\t\tif (content_type != null && content_type != \"\") {\n\t\t\t\t\t// Get generic icon name from content type\n\t\t\t\t\tvar icon_name = GLib.ContentType.get_generic_icon_name(content_type);\n\t\t\t\t\tif (icon_name != null && icon_name != \"\") {\n\t\t\t\t\t\tthis._icon_name = icon_name;\n\t\t\t\t\t\treturn this._icon_name;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t// Default fallback\n\t\t\t\treturn \"text-x-generic\";\n\t\t\t}\n\t\t\tset {\n\t\t\t\tthis._icon_name = value; // as we can save it in the DB to save time..\n\t\t\t}\n\t\t}\n\t\t\n\t\t/**\n\t\t * Display name with path: basename on first line, dirname on second line in grey.\n\t\t * Format: {basename}\\n<span grey small dirname>\n\t\t */\n\t\tpublic string display_with_path {\n\t\t\towned get {\n\t\t\t\treturn GLib.Path.get_basename(this.path) +\n\t\t\t\t\t \"\\n<span foreground=\\\"grey\\\" size=\\\"small\\\">\" + \n\t\t\t\t\tGLib.Markup.escape_text(GLib.Path.get_dirname(this.path)) + \n\t\t\t\t\t\"</span>\";\n\t\t\t}\n\t\t}\n\t\t\n\t\t/**\n\t\t * Display name with basename only: basename on first line.\n\t\t * Format: {basename}\\n\n\t\t */\n\t\tpublic string display_basename {\n\t\t\towned get {\n\t\t\t\treturn GLib.Path.get_basename(this.path) + \"\\n\";\n\t\t\t}\n\t\t}\n\t\t// we need the private to get around woned issues...\n\t\tprivate string _display_with_indicators = \"\";\n\t\t/**\n\t\t * Display text with status indicators (approved, unsaved).\n\t\t */\n\t\tpublic override string display_with_indicators {\n\t\t\tget {\n\t\t\t\tthis._display_with_indicators = \n\t\t\t\t\tthis.display_basename + (!this.needs_approval ? \" ✓\" : \"\") \n\t\t\t\t\t+ (this.is_unsaved ? \" ●\" : \"\");\n\t\t\t\treturn this._display_with_indicators; // Checkmark when approved (not needs_approval)\n\t\t\t}\n\t\t}\n\t\t\n\t\t/**\n\t\t * Emitted when file content changes.\n\t\t */\n\t\tpublic signal void changed();\n\t\t\n\t\t/**\n\t\t * Read file contents asynchronously.\n\t\t * \n\t\t * @return File contents as string\n\t\t * @throws Error if file cannot be read\n\t\t */\n\t\tpublic async string read_async() throws Error\n\t\t{\n\t\t\tvar file = GLib.File.new_for_path(this.path);\n\t\t\tif (!file.query_exists()) {\n\t\t\t\tthrow new GLib.FileError.NOENT(\"File not found: \" + this.path);\n\t\t\t}\n\t\t\t\n\t\t\tuint8[] data;\n\t\t\tstring etag;\n\t\t\tyield file.load_contents_async(null, out data, out etag);\n\t\t\t\n\t\t\treturn (string)data;\n\t\t}\n\t\t\n\t\t/**\n\t\t * Write file contents.\n\t\t * \n\t\t * @param contents Contents to write\n\t\t * @throws Error if file cannot be written\n\t\t */\n\t\tpublic void write(string contents) throws Error\n\t\t{\n\t\t\tvar file = GLib.File.new_for_path(this.path);\n\t\t\tvar parent = file.get_parent();\n\t\t\tif (parent != null && !parent.query_exists()) {\n\t\t\t\tparent.make_directory_with_parents(null);\n\t\t\t}\n\t\t\t\n\t\t\tvar output_stream = file.replace(null, false, GLib.FileCreateFlags.NONE, null);\n\t\t\tvar data_stream = new GLib.DataOutputStream(output_stream);\n\t\t\tdata_stream.put_string(contents, null);\n\t\t\tdata_stream.close(null);\n\t\t\t\n\t\t\t// Update last_modified from filesystem after writing\n\t\t\tthis.last_modified = this.mtime_on_disk();\n\t\t\t\n\t\t\t// Save to database with sync to disk\n\t\t\tif (this.manager.db != null) {\n\t\t\t\tthis.saveToDB(this.manager.db, null, true);\n\t\t\t}\n\t\t\t\n\t\t\tthis.changed();\n\t\t}\n\t\t\n\t\t/**\n\t\t * Gets file contents, optionally limited to first N lines.\n\t\t * \n\t\t * @param max_lines Maximum number of lines to return (0 = all lines)\n\t\t * @return File contents, or empty string if not available\n\t\t */\n\t\tpublic string get_contents(int max_lines = 0)\n\t\t{\n\t\t\treturn this.manager.buffer_provider.get_buffer_text(this, 0, max_lines > 0 ? max_lines - 1 : -1);\n\t\t}\n\t\t\n\t\t/**\n\t\t * Gets the total number of lines in the file.\n\t\t * \n\t\t * @return Line count, or 0 if not available\n\t\t */\n\t\tpublic int get_line_count()\n\t\t{\n\t\t\treturn this.manager.buffer_provider.get_buffer_line_count(this);\n\t\t}\n\t\t\n\t\t/**\n\t\t * Gets the currently selected text (only valid for active file).\n\t\t * Updates cursor position and saves to database.\n\t\t * \n\t\t * @return Selected text, or empty string if nothing is selected\n\t\t */\n\t\tpublic string get_selected_code()\n\t\t{\n\t\t\tint cursor_line, cursor_offset;\n\t\t\tvar selected = this.manager.buffer_provider.get_buffer_selection(this, out cursor_line, out cursor_offset);\n\t\t\t\n\t\t\t// Update cursor position from provider\n\t\t\tthis.cursor_line = cursor_line;\n\t\t\tthis.cursor_offset = cursor_offset;\n\t\t\t\n\t\t\t// Save to database\n\t\t\tif (this.manager.db != null) {\n\t\t\t\tthis.saveToDB(this.manager.db, null, false);\n\t\t\t\tthis.manager.db.is_dirty = true;\n\t\t\t}\n\t\t\t\n\t\t\treturn selected;\n\t\t}\n\t\t\n\t\t/**\n\t\t * Gets the content of a specific line.\n\t\t * \n\t\t * @param line Line number (0-based)\n\t\t * @return Line content, or empty string if not available\n\t\t */\n\t\tpublic string get_line_content(int line)\n\t\t{\n\t\t\treturn this.manager.buffer_provider.get_buffer_line(this, line);\n\t\t}\n\t\t\n\t\t/**\n\t\t * Gets the current cursor position (line number).\n\t\t * Updates cursor_line and cursor_offset properties and saves to database.\n\t\t * \n\t\t * @return Line number (0-based), or -1 if not available\n\t\t */\n\t\tpublic int get_cursor_position()\n\t\t{\n\t\t\tint line, offset;\n\t\t\tthis.manager.buffer_provider.get_buffer_cursor(this, out line, out offset);\n\t\t\t\n\t\t\tthis.cursor_line = line;\n\t\t\tthis.cursor_offset = offset;\n\t\t\t\n\t\t\t// Save to database\n\t\t\tif (this.manager.db != null) {\n\t\t\t\tthis.saveToDB(this.manager.db, null, false);\n\t\t\t\tthis.manager.db.is_dirty = true;\n\t\t\t}\n\t\t\t\n\t\t\treturn this.cursor_line;\n\t\t}\n\t}\n}"
+    }
+  ]
+}

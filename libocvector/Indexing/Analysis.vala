@@ -45,15 +45,38 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Loads the JSON schema from resources.
+		 * Loads a prompt template from resources.
 		 * 
-		 * @return The JSON schema as a Json.Object
+		 * @param template_name The template name (e.g., "types", "properties", "methods")
+		 * @return The prompt template string
 		 */
-		public Json.Object? load_schema() throws GLib.Error
+		private string load_prompt_template(string template_name) throws GLib.Error
 		{
 			var resource_path = GLib.Path.build_filename(
 				RESOURCE_BASE_PREFIX,
-				"result-schema.json"
+				"ocvector",
+				"prompt-" + template_name + ".txt"
+			);
+			var file = GLib.File.new_for_uri("resource://" + resource_path);
+			
+			uint8[] data;
+			string etag;
+			file.load_contents(null, out data, out etag);
+			return (string)data;
+		}
+		
+		/**
+		 * Loads a JSON schema from resources.
+		 * 
+		 * @param schema_name The schema name (e.g., "types", "properties", "methods")
+		 * @return The JSON schema as a Json.Object
+		 */
+		private Json.Object? load_schema(string schema_name) throws GLib.Error
+		{
+			var resource_path = GLib.Path.build_filename(
+				RESOURCE_BASE_PREFIX,
+				"ocvector",
+				"schema-" + schema_name + ".json"
 			);
 			var file = GLib.File.new_for_uri("resource://" + resource_path);
 			
@@ -73,23 +96,40 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Analyzes a code file using OLLMfiles.File.
+		 * Generic extraction method that loads a prompt template and schema, makes LLM call, and returns elements.
 		 * 
 		 * @param file The OLLMfiles.File to analyze
-		 * @return A CodeFile object with analyzed elements
+		 * @param template_name The template name (e.g., "types", "properties", "methods")
+		 * @param type_ranges Optional string with type line ranges for properties extraction
+		 * @return A list of CodeElement objects
 		 */
-		public async CodeFile analyze_file(OLLMfiles.File file) throws GLib.Error
+		private async Gee.ArrayList<CodeElement> extract(OLLMfiles.File file, string template_name, string? type_ranges = null) throws GLib.Error
 		{
-			// Generate analysis prompt
-			var prompt = yield this.generate_analysis_prompt(file);
+			// Load prompt template (this will be used as system message)
+			var template = this.load_prompt_template(template_name);
+			
+			// Generate system message from template
+			var system_message = template.replace("{language}", file.language);
+			
+			// For properties extraction, replace type_ranges placeholder in system message
+			if (type_ranges != null) {
+				system_message = system_message.replace("{type_ranges}", type_ranges);
+			}
+			
+			// Read file content
+			var code = yield file.read_async();
 			
 			// Load JSON schema for structured outputs
 			Json.Object? schema = null;
 			try {
-				schema = this.load_schema();
+				schema = this.load_schema(template_name);
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to load JSON schema, falling back to string format: %s", e.message);
+				GLib.warning("Failed to load JSON schema for %s, falling back to string format: %s", template_name, e.message);
 			}
+			
+			// Enable streaming on the client
+			var original_stream_setting = this.client.stream;
+			this.client.stream = true;
 			
 			// Create chat call with structured outputs
 			var chat = new OLLMchat.Call.Chat(this.client);
@@ -98,74 +138,80 @@ namespace OLLMvector.Indexing
 			if (schema != null) {
 				chat.format_obj = schema;
 			} else {
-				GLib.warning("Schema not available, attempting analysis without structured outputs");
+				GLib.warning("Schema not available for %s, attempting analysis without structured outputs", template_name);
 			}
 			
 			// Set temperature to 0 for more deterministic structured outputs
 			chat.options.temperature = 0.0;
+			// Add restrictive sampling parameters to reduce hallucination
+			chat.options.top_p = 0.9;  // Reduce sampling diversity
+			chat.options.top_k = 40;    // Limit token choices
+			chat.options.repeat_penalty = 1.1;  // Penalize repetition
 			
-			// Set system and user messages
-			chat.system_content = "";
-			chat.chat_content = prompt;
+			// Set system message from template (instructions)
+			chat.system_content = system_message;
 			
-			// Execute the chat call
+			// Set user message with code wrapped in <code></code> tags
+			chat.chat_content = "Extract the requested information from this code:\n\n<code>\n" + code + "\n</code>";
+			
+			// Accumulate streaming content (both thinking and regular content)
+			var accumulated_content = new GLib.StringBuilder();
+			ulong stream_chunk_id = 0;
+			
+			// Connect to stream_chunk signal to capture and print partial content (including thinking)
+			stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
+				// Print the partial content as it arrives (both thinking and regular content)
+				stderr.printf(new_text);
+				// Accumulate only regular content (not thinking) for JSON parsing
+				if (!is_thinking) {
+					accumulated_content.append(new_text);
+				}
+			});
+			
+			// Execute the chat call (streaming)
 			OLLMchat.Response.Chat? response = null;
 			try {
 				response = yield chat.exec_chat();
 			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("LLM API call failed: " + e.message);
+				// Disconnect signal handler
+				if (stream_chunk_id != 0) {
+					this.client.disconnect(stream_chunk_id);
+				}
+				// Restore original stream setting
+				this.client.stream = original_stream_setting;
+				throw new GLib.IOError.FAILED("LLM API call failed for " + template_name + ": " + e.message);
 			}
 			
-			if (response == null || response.message == null || response.message.content == "") {
-				throw new GLib.IOError.FAILED("Empty response from LLM");
+			// Disconnect signal handler
+			if (stream_chunk_id != 0) {
+				this.client.disconnect(stream_chunk_id);
+			}
+			
+			// Restore original stream setting
+			this.client.stream = original_stream_setting;
+			
+			// Get the final content from response (should be complete after streaming)
+			string final_content = "";
+			if (response != null && response.message != null && response.message.content != "") {
+				final_content = response.message.content;
+			} else if (accumulated_content.str != "") {
+				// Fallback to accumulated content if response doesn't have it
+				final_content = accumulated_content.str;
+			} else {
+				throw new GLib.IOError.FAILED("Empty response from LLM for " + template_name);
 			}
 			
 			// Parse and validate JSON response
-			return yield this.parse_and_validate_response(response.message.content, file);
+			return yield this.parse_elements_response(final_content);
 		}
 		
 		/**
-		 * Loads the analysis prompt template from resources.
-		 * 
-		 * @return The prompt template string
-		 */
-		private string load_prompt_template() throws GLib.Error
-		{
-			var resource_path = GLib.Path.build_filename(
-				RESOURCE_BASE_PREFIX,
-				"ocvector-prompt.txt"
-			);
-			var file = GLib.File.new_for_uri("resource://" + resource_path);
-			
-			uint8[] data;
-			string etag;
-			file.load_contents(null, out data, out etag);
-			return (string)data;
-		}
-		
-		/**
-		 * Generates the analysis prompt for code analysis.
-		 * 
-		 * @param file The file object
-		 * @return The formatted prompt string
-		 */
-		private async string generate_analysis_prompt(OLLMfiles.File file) throws GLib.Error
-		{
-			var template = this.load_prompt_template();
-			// Replace placeholders in the template
-			var prompt = template.replace("{language}", file.language);
-			prompt = prompt.replace("{code}", yield file.read_async());
-			return prompt;
-		}
-		
-		/**
-		 * Parses and validates the JSON response from LLM.
+		 * Parses a JSON response containing elements array.
 		 * 
 		 * @param json_content The JSON string from LLM response
-		 * @param file The original file object
-		 * @return A validated CodeFile object
+		 * @return A list of CodeElement objects
 		 */
-		private async CodeFile parse_and_validate_response(string json_content, OLLMfiles.File file) throws GLib.Error
+		private async Gee.ArrayList<CodeElement> parse_elements_response(string json_content) throws GLib.Error
 		{
 			// Try to extract JSON from response - might be wrapped
 			string json_to_parse = json_content;
@@ -189,40 +235,114 @@ namespace OLLMvector.Indexing
 				GLib.debug("JSON extraction failed, using content as-is: %s", e.message);
 			}
 			
-			// Parse the JSON into CodeFile
-			CodeFile? code_file = null;
+			// Parse the JSON to get elements array
+			Json.Node? root_node = null;
 			try {
-				code_file = Json.gobject_from_data(typeof(CodeFile), json_to_parse, -1) as CodeFile;
+				var parser2 = new Json.Parser();
+				parser2.load_from_data(json_to_parse, -1);
+				root_node = parser2.get_root();
 			} catch (GLib.Error e) {
 				// Try once more with the original content if first attempt failed
 				try {
-					code_file = Json.gobject_from_data(typeof(CodeFile), json_content, -1) as CodeFile;
+					var parser2 = new Json.Parser();
+					parser2.load_from_data(json_content, -1);
+					root_node = parser2.get_root();
 				} catch (GLib.Error e2) {
 					throw new GLib.IOError.FAILED(
 						"Failed to parse JSON response: " + e.message + ". Original error: " + e2.message);
 				}
 			}
 			
-			if (code_file == null) {
-				throw new GLib.IOError.FAILED("Failed to deserialize code analysis response");
+			if (root_node == null || root_node.get_node_type() != Json.NodeType.OBJECT) {
+				throw new GLib.IOError.FAILED("Invalid JSON response: root is not an object");
 			}
 			
-			// Validate required fields
-			if (code_file.language == "" || code_file.elements == null) {
-				throw new GLib.IOError.FAILED("Invalid response: missing required fields (language or elements)");
+			var response_obj = root_node.get_object();
+			if (!response_obj.has_member("elements")) {
+				throw new GLib.IOError.FAILED("Invalid response: missing 'elements' field");
 			}
 			
-			// Set additional fields (override LLM response with actual file data)
+			var elements_node = response_obj.get_member("elements");
+			if (elements_node.get_node_type() != Json.NodeType.ARRAY) {
+				throw new GLib.IOError.FAILED("Invalid response: 'elements' is not an array");
+			}
+			
+			var elements_array = elements_node.get_array();
+			var elements = new Gee.ArrayList<CodeElement>();
+			
+			for (uint i = 0; i < elements_array.get_length(); i++) {
+				var element_node = elements_array.get_element(i);
+				var element = Json.gobject_deserialize(typeof(CodeElement), element_node) as CodeElement;
+				if (element != null) {
+					elements.add(element);
+				}
+			}
+			
+			return elements;
+		}
+		
+		/**
+		 * Analyzes a code file using OLLMfiles.File.
+		 * 
+		 * @param file The OLLMfiles.File to analyze
+		 * @return A CodeFile object with analyzed elements
+		 */
+		public async CodeFile analyze_file(OLLMfiles.File file) throws GLib.Error
+		{
+			// Step 1: Extract types (classes, structs, enums)
+			Gee.ArrayList<CodeElement> types = new Gee.ArrayList<CodeElement>();
+			try {
+				types = yield this.extract(file, "types");
+				GLib.debug("Extracted %d types from file: %s", types.size, file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to extract types from file %s: %s", file.path, e.message);
+			}
+			
+			// Step 2: Extract properties from identified types
+			Gee.ArrayList<CodeElement> properties = new Gee.ArrayList<CodeElement>();
+			try {
+				// Build type ranges string for properties prompt
+				var type_ranges = new GLib.StringBuilder();
+				foreach (var type in types) {
+					type_ranges.append_printf("- %s '%s' between lines %d-%d\n", 
+						type.property_type, type.name, type.start_line, type.end_line);
+				}
+				
+				if (types.size > 0) {
+					properties = yield this.extract(file, "properties", type_ranges.str);
+					GLib.debug("Extracted %d properties from file: %s", properties.size, file.path);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to extract properties from file %s: %s", file.path, e.message);
+			}
+			
+			// Step 3: Extract methods
+			Gee.ArrayList<CodeElement> methods = new Gee.ArrayList<CodeElement>();
+			try {
+				methods = yield this.extract(file, "methods");
+				GLib.debug("Extracted %d methods from file: %s", methods.size, file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to extract methods from file %s: %s", file.path, e.message);
+			}
+			
+			// Combine all results into CodeFile
+			var code_file = new CodeFile();
 			code_file.language = file.language;
 			code_file.file = file;
 			
-			// Read file contents and split into lines once
+			// Read file contents and split into lines
 			var code = yield file.read_async();
 			code_file.lines = code.split("\n");
 			
+			// Combine all elements
+			var all_elements = new Gee.ArrayList<CodeElement>();
+			all_elements.add_all(types);
+			all_elements.add_all(properties);
+			all_elements.add_all(methods);
+			
 			// Validate and extract code snippets for each element
 			var valid_elements = new Gee.ArrayList<CodeElement>();
-			foreach (var element in code_file.elements) {
+			foreach (var element in all_elements) {
 				// Validate element
 				if (element.property_type == "" || element.name == "" || element.start_line <= 0 || element.end_line <= 0) {
 					GLib.warning("Skipping invalid element: type='" + element.property_type + "', name='" + element.name + "', start_line=" + element.start_line.to_string() + ", end_line=" + element.end_line.to_string());
@@ -237,7 +357,7 @@ namespace OLLMvector.Indexing
 				valid_elements.add(element);
 			}
 			
-			// Update elements list with validated elements
+			// Set elements
 			code_file.elements = valid_elements;
 			
 			if (code_file.elements.size == 0) {
@@ -246,6 +366,5 @@ namespace OLLMvector.Indexing
 			
 			return code_file;
 		}
-		
 	}
 }

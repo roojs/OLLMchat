@@ -34,8 +34,9 @@ namespace OLLMvector
 	/**
 	 * Represents a code file with its analyzed elements.
 	 * 
-	 * This class contains data deserialized from the LLM's JSON response (language, summary,
+	 * This class contains data deserialized from the LLM's JSON response (summary,
 	 * imports, elements) and is augmented with additional data we already have:
+	 * - `language`: Programming language identifier (from file, not from LLM)
 	 * - `lines`: The file contents split into lines (for code snippet extraction)
 	 * - `file`: Reference to the original OLLMfiles.File object (for file path, ID, etc.)
 	 * 
@@ -45,7 +46,7 @@ namespace OLLMvector
 	public class CodeFile : Object, Json.Serializable
 	{
 		/**
-		 * Programming language identifier (from LLM response, may be overridden with actual file language).
+		 * Programming language identifier (set from file object, not from LLM response).
 		 */
 		public string language { get; set; default = ""; }
 		

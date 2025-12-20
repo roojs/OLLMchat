@@ -112,6 +112,15 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Diff/Differ.vala',
     '../liboccoder/Prompt/CodeAssistant.vala',
     '../liboccoder/Prompt/CodeAssistantProvider.vala',
+    # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
+    '../libocvector/VectorMetadata.vala',
+    '../libocvector/CodeElement.vala',
+    '../libocvector/CodeFile.vala',
+    '../libocvector/Index.vala',
+    '../libocvector/Database.vala',
+    '../libocvector/Indexing/Tree.vala',
+    '../libocvector/Indexing/Analysis.vala',
+    '../libocvector/Indexing/VectorBuilder.vala',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)
     '../libollmchatgtk/ChatWidget.vala',
     '../libollmchatgtk/ChatView.vala',
@@ -143,7 +152,9 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=gtksourceview-5',
     '--pkg=libgit2-glib-1.0',
     '--pkg=posix',
-    # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, ocagent, occoder)
+    '--pkg=fiass',  # FAISS via vapi (used by libocvector)
+    '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
+    # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, ocagent, occoder, ocvector)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.
     '--doclet=html',

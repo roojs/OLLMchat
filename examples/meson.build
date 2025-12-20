@@ -6,6 +6,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'liboccoder',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
@@ -203,16 +204,26 @@ oc_migrate_editors = executable('oc-migrate-editors',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Compile resources for ocvector (needed by oc-vector-index)
+ocvector_resources = gnome.compile_resources(
+  'ocvector-resources',
+  '../resources/gresources.xml',
+  source_dir: ['../resources/ollmchat-agents', '../resources'],
+  c_name: 'ocvector_resources'
+)
+
 # Build oc-vector-index executable (FAISS test tool)
 oc_vector_index = executable('oc-vector-index',
-  dependencies: [test_ollama_deps, ocvector_vapi_dep],
+  dependencies: [occoder_test_deps, dependency('libsoup-3.0'), ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep, ocfiles_vapi_dep],
   link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
-  sources: ['oc-vector-index.vala'],
+  sources: ['oc-vector-index.vala', ocvector_resources],
   include_directories: [
     include_directories('../libocvector'),
     include_directories('../libollmchat'),
     include_directories('../libocagent'),
-    include_directories('../libocsqlite')
+    include_directories('../libocsqlite'),
+    include_directories('../liboccoder'),
+    include_directories('../libocfiles')
   ],
   build_rpath: build_rpath,
   vala_args: [
@@ -223,11 +234,16 @@ oc_vector_index = executable('oc-vector-index',
     '--pkg=ocagent',
     '--pkg=ollmchat',
     '--pkg=ocvector',  # Find VAPI via vapidir (ocvector.vapi copy)
+    '--pkg=occoder',
+    '--pkg=ocfiles',
+    '--pkg=libgit2-glib-1.0',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
   ],
   install: true,
   install_dir: get_option('bindir')

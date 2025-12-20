@@ -34,6 +34,7 @@ namespace OLLMchat.Call
 		public int top_k { get; set; default = -1; }
 		public int num_predict { get; set; default = -1; }
 		public double repeat_penalty { get; set; default = -1.0; }
+		public double min_p { get; set; default = -1.0; }
 		public int num_ctx { get; set; default = -1; }
 		
 		// String options - default to empty string (no value set)
@@ -79,6 +80,7 @@ namespace OLLMchat.Call
 				|| this.top_k != -1
 				|| this.num_predict != -1
 				|| this.repeat_penalty != -1.0
+				|| this.min_p != -1.0
 				|| this.num_ctx != -1
 				|| this.stop != "";
 		}
@@ -118,6 +120,7 @@ namespace OLLMchat.Call
 				case "temperature":
 				case "top_p":
 				case "repeat_penalty":
+				case "min_p":
 					if (value.get_double() == -1.0) {
 						return null;
 					}
