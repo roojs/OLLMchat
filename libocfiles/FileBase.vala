@@ -228,6 +228,13 @@ namespace OLLMfiles
 		public int is_repo { get; set; default = -1; }
 		
 		/**
+		 * Unix timestamp of last scan (stored in database, default: 0).
+		 * For files: timestamp when scan completed (after successful vectorization).
+		 * For folders: timestamp when scan started (to prevent re-recursion during same scan).
+		 */
+		public int64 last_scan { get; set; default = 0; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void initDB(SQ.Database db)
@@ -251,10 +258,20 @@ namespace OLLMfiles
 				"is_project INTEGER NOT NULL DEFAULT 0, " +
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
-				"is_repo INTEGER NOT NULL DEFAULT -1" +
+				"is_repo INTEGER NOT NULL DEFAULT -1, " +
+				"last_scan INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
+			}
+			
+			// Migrate existing databases: add last_scan column if it doesn't exist
+			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_scan INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
 			}
 		}
 		
@@ -331,6 +348,7 @@ namespace OLLMfiles
 			target.is_ignored = this.is_ignored;
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
+			target.last_scan = this.last_scan;
 		}
 		
 		// Static counter for tracking saveToDB calls

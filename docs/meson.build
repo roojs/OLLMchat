@@ -119,6 +119,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/Indexing/Tree.vala',
     '../libocvector/Indexing/Analysis.vala',
     '../libocvector/Indexing/VectorBuilder.vala',
+    '../libocvector/Indexing/Indexer.vala',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)
     '../libollmchatgtk/ChatWidget.vala',
     '../libollmchatgtk/ChatView.vala',

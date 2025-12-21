@@ -1,0 +1,241 @@
+/*
+ * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMvector.Indexing
+{
+	/**
+	 * Main indexing orchestrator.
+	 * 
+	 * Integrates Tree, Analysis, and VectorBuilder components to process
+	 * files and folders for vector indexing. Implements incremental update
+	 * logic and folder-based indexing with recursion support.
+	 */
+	public class Indexer : Object
+	{
+		private OLLMchat.Client analysis_client;
+		private OLLMchat.Client embed_client;
+		private OLLMvector.Database vector_db;
+		private SQ.Database sql_db;
+		private OLLMfiles.ProjectManager manager;
+		
+		/**
+		 * Constructor.
+		 * 
+		 * @param analysis_client The OLLMchat client for analysis (LLM summarization)
+		 * @param embed_client The OLLMchat client for embeddings API
+		 * @param vector_db The vector database for FAISS storage
+		 * @param sql_db The SQLite database for metadata storage
+		 * @param manager The ProjectManager for file/folder operations
+		 */
+		public Indexer(
+			OLLMchat.Client analysis_client,
+			OLLMchat.Client embed_client,
+			OLLMvector.Database vector_db,
+			SQ.Database sql_db,
+			OLLMfiles.ProjectManager manager)
+		{
+			this.analysis_client = analysis_client;
+			this.embed_client = embed_client;
+			this.vector_db = vector_db;
+			this.sql_db = sql_db;
+			this.manager = manager;
+		}
+		
+		/**
+		 * Index a single file.
+		 * 
+		 * Processes the file through Tree → Analysis → VectorBuilder pipeline.
+		 * Updates last_scan timestamp after successful indexing.
+		 * 
+		 * @param file The file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		public async bool index_file(OLLMfiles.File file, bool force = false) throws GLib.Error
+		{
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			
+			GLib.debug("Processing file '%s'", file.path);
+			
+			var tree = new Tree(file);
+			yield tree.parse();
+			
+			if (tree.elements.size == 0) {
+				GLib.debug("No elements found in file '%s'", file.path);
+				file.last_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			
+			var analysis = new Analysis(this.analysis_client);
+			tree = yield analysis.analyze_tree(tree);
+			
+			var vector_builder = new VectorBuilder(
+				this.embed_client, this.vector_db, this.sql_db);
+			yield vector_builder.process_file(tree);
+			
+			file.last_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			
+			GLib.debug("Completed indexing file '%s' (%d elements)", file.path, tree.elements.size);
+			return true;
+		}
+		
+		/**
+		 * Index a folder and optionally recurse into subfolders.
+		 * 
+		 * Processes all files in the folder through the indexing pipeline.
+		 * For folders: updates last_scan at start (to prevent re-recursion during same scan).
+		 * Handles FileAlias objects by following them to their target files/folders.
+		 * 
+		 * @param folder The folder to index (must exist in database)
+		 * @param recurse If true, recursively process subfolders
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @param scan_time Fixed scan time for this scan session (0 = create new)
+		 * @return Number of files indexed
+		 */
+		public async int index_folder(OLLMfiles.Folder folder, bool recurse = false, bool force = false, int64 scan_time = 0) throws GLib.Error
+		{
+			if (scan_time == 0) {
+				scan_time = new DateTime.now_local().to_unix();
+			}
+			
+			if (!force && folder.last_scan == scan_time) {
+				GLib.debug("Skipping folder '%s' (already being scanned in this session)", folder.path);
+				return 0;
+			}
+			
+			folder.last_scan = scan_time;
+			folder.saveToDB(this.sql_db, null, false);
+			
+			GLib.debug("Processing folder '%s' (recurse=%s)", folder.path, recurse.to_string());
+			
+			if (folder.children.items.size == 0) {
+				GLib.debug("Loading folder children from database for '%s'", folder.path);
+				yield folder.load_files_from_db();
+			}
+				
+			int files_indexed = 0;
+			
+			// First pass: Index all files (including alias targets that are files)
+			foreach (var child in folder.children.items) {
+				if (child.is_alias) {
+					if (child.points_to == null || !(child.points_to is OLLMfiles.File)) {
+						continue;
+					}
+					
+					try {
+						if (yield this.index_file((OLLMfiles.File)child.points_to, force)) {
+							files_indexed++;
+						}
+					} catch (GLib.Error e) {
+						GLib.warning("Failed to index alias target file '%s': %s", child.points_to.path, e.message);
+					}
+					continue;
+				}
+				
+				if (!(child is OLLMfiles.File)) {
+					continue;
+				}
+				
+				try {
+					if (yield this.index_file((OLLMfiles.File)child, force)) {
+						files_indexed++;
+					}
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to index file '%s': %s", child.path, e.message);
+				}
+			}
+			
+			// Early return if not recursing
+			if (!recurse) {
+				GLib.debug("Completed indexing folder '%s' (%d files indexed)", folder.path, files_indexed);
+				return files_indexed;
+			}
+			
+			// Second pass: Recursively index folders
+			foreach (var child in folder.children.items) {
+				if (child.is_alias) {
+					if (child.points_to == null || !(child.points_to is OLLMfiles.Folder)) {
+						continue;
+					}
+					
+					try {
+						files_indexed += yield this.index_folder(
+							(OLLMfiles.Folder)child.points_to, true, force, scan_time);
+					} catch (GLib.Error e) {
+						GLib.warning("Failed to index alias target folder '%s': %s", child.points_to.path, e.message);
+					}
+					continue;
+				}
+				
+				if (!(child is OLLMfiles.Folder)) {
+					continue;
+				}
+				
+				try {
+					files_indexed += yield this.index_folder(
+						(OLLMfiles.Folder)child, true, force, scan_time);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to index subfolder '%s': %s", child.path, e.message);
+				}
+			}
+			
+			GLib.debug("Completed indexing folder '%s' (%d files indexed)", folder.path, files_indexed);
+			return files_indexed;
+		}
+		
+		/**
+		 * Index a file or folder.
+		 * 
+		 * Processes the FileBase object through the appropriate indexing method.
+		 * Handles FileAlias by following to target.
+		 * 
+		 * @param filebase The file or folder to index (must exist in database)
+		 * @param recurse If true and filebase is a folder, recursively process subfolders
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return Number of files indexed
+		 */
+		public async int index_filebase(OLLMfiles.FileBase filebase, bool recurse = false, bool force = false) throws GLib.Error
+		{
+			if (filebase.is_alias && filebase.points_to != null) {
+				filebase = filebase.points_to;
+			}
+			
+			if (filebase is OLLMfiles.File) {
+				if (yield this.index_file((OLLMfiles.File)filebase, force)) {
+					return 1;
+				}
+				return 0;
+			}
+			
+			if (filebase is OLLMfiles.Folder) {
+				return yield this.index_folder((OLLMfiles.Folder)filebase, recurse, force);
+			}
+			
+			throw new GLib.IOError.INVALID_ARGUMENT("FileBase is not a file or folder: " + filebase.path);
+		}
+	}
+
+}
