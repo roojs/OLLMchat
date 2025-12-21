@@ -19,17 +19,20 @@
 int main(string[] args)
 {
 	bool debug = false;
-	string? file_path = null;
+	bool recurse = false;
+	string? path = null;
 	
 	// Parse command line arguments
 	for (int i = 1; i < args.length; i++) {
 		if (args[i] == "--debug" || args[i] == "-d") {
 			debug = true;
+		} else if (args[i] == "--recurse" || args[i] == "-r") {
+			recurse = true;
 		} else if (args[i].has_prefix("-")) {
 			stderr.printf("Unknown option: %s\n", args[i]);
 			return 1;
 		} else {
-			file_path = args[i];
+			path = args[i];
 		}
 	}
 	
@@ -42,22 +45,25 @@ int main(string[] args)
 		});
 	}
 
-	if (file_path == null) {
-		stderr.printf("Usage: %s [--debug] <file_path>\n", args[0]);
-		stderr.printf("Tests tree-sitter parsing with a single file.\n");
+	if (path == null) {
+		stderr.printf("Usage: %s [--debug] [--recurse] <file_or_folder_path>\n", args[0]);
+		stderr.printf("Tests tree-sitter parsing and vectorization.\n");
 		stderr.printf("\n");
 		stderr.printf("Options:\n");
-		stderr.printf("  --debug, -d    Enable debug output\n");
+		stderr.printf("  --debug, -d       Enable debug output\n");
+		stderr.printf("  --recurse, -r     Recurse into subfolders (only for folders)\n");
 		stderr.printf("\n");
-		stderr.printf("Example:\n");
+		stderr.printf("Examples:\n");
 		stderr.printf("  %s libocvector/Database.vala\n", args[0]);
 		stderr.printf("  %s --debug libocvector/Database.vala\n", args[0]);
+		stderr.printf("  %s libocvector/\n", args[0]);
+		stderr.printf("  %s --recurse libocvector/\n", args[0]);
 		return 1;
 	}
 
 	var main_loop = new MainLoop();
 
-	run_test.begin(file_path, debug, (obj, res) => {
+	run_test.begin(path, debug, recurse, (obj, res) => {
 		try {
 			run_test.end(res);
 		} catch (Error e) {
@@ -72,23 +78,35 @@ int main(string[] args)
 	return 0;
 }
 
-async void run_test(string file_path, bool debug) throws Error
+async void run_test(string path, bool debug, bool recurse) throws Error
 {
 	stdout.printf("=== Code Indexer Test Tool ===\n\n");
 	
-	// Check if file exists
-	var file = GLib.File.new_for_path(file_path);
+	// Check if path exists
+	var file = GLib.File.new_for_path(path);
 	if (!file.query_exists()) {
-		throw new GLib.IOError.NOT_FOUND("File not found: " + file_path);
+		throw new GLib.IOError.NOT_FOUND("Path not found: " + path);
 	}
 	
 	// Get absolute path
 	var abs_path = file.get_path();
 	if (abs_path == null) {
-		throw new GLib.IOError.FAILED("Failed to get absolute path for: " + file_path);
+		throw new GLib.IOError.FAILED("Failed to get absolute path for: " + path);
 	}
 	
-	stdout.printf("File: %s\n\n", abs_path);
+	// Determine if it's a file or folder
+	var file_info = file.query_info("standard::type", GLib.FileQueryInfoFlags.NONE, null);
+	bool is_folder = file_info.get_file_type() == GLib.FileType.DIRECTORY;
+	
+	if (is_folder) {
+		stdout.printf("Folder: %s\n", abs_path);
+		if (recurse) {
+			stdout.printf("Recursion: enabled\n");
+		}
+		stdout.printf("\n");
+	} else {
+		stdout.printf("File: %s\n\n", abs_path);
+	}
 	
 	// Create temporary database at /tmp/files.sqlite
 	var db_path = "/tmp/files.sqlite";
