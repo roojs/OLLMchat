@@ -18,27 +18,46 @@
 
 int main(string[] args)
 {
-	// Set up debug handler with nice formatting
-	GLib.Log.set_default_handler((dom, lvl, msg) => {
-		var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
-		var level_str = lvl.to_string();
-		stderr.printf("%s [%s] %s\n", timestamp, level_str, msg);
-	});
+	bool debug = false;
+	string? file_path = null;
+	
+	// Parse command line arguments
+	for (int i = 1; i < args.length; i++) {
+		if (args[i] == "--debug" || args[i] == "-d") {
+			debug = true;
+		} else if (args[i].has_prefix("-")) {
+			stderr.printf("Unknown option: %s\n", args[i]);
+			return 1;
+		} else {
+			file_path = args[i];
+		}
+	}
+	
+	// Set up debug handler only if --debug is specified
+	if (debug) {
+		GLib.Log.set_default_handler((dom, lvl, msg) => {
+			var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
+			var level_str = lvl.to_string();
+			stderr.printf("%s [%s] %s\n", timestamp, level_str, msg);
+		});
+	}
 
-	if (args.length < 2) {
-		stderr.printf("Usage: %s <file_path>\n", args[0]);
+	if (file_path == null) {
+		stderr.printf("Usage: %s [--debug] <file_path>\n", args[0]);
 		stderr.printf("Tests tree-sitter parsing with a single file.\n");
+		stderr.printf("\n");
+		stderr.printf("Options:\n");
+		stderr.printf("  --debug, -d    Enable debug output\n");
 		stderr.printf("\n");
 		stderr.printf("Example:\n");
 		stderr.printf("  %s libocvector/Database.vala\n", args[0]);
+		stderr.printf("  %s --debug libocvector/Database.vala\n", args[0]);
 		return 1;
 	}
 
-	var file_path = args[1];
-
 	var main_loop = new MainLoop();
 
-	run_test.begin(file_path, (obj, res) => {
+	run_test.begin(file_path, debug, (obj, res) => {
 		try {
 			run_test.end(res);
 		} catch (Error e) {
@@ -53,7 +72,7 @@ int main(string[] args)
 	return 0;
 }
 
-async void run_test(string file_path) throws Error
+async void run_test(string file_path, bool debug) throws Error
 {
 	stdout.printf("=== Code Indexer Test Tool ===\n\n");
 	
