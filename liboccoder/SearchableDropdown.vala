@@ -198,7 +198,7 @@ namespace OLLMcoder
 				can_focus = false  // Don't allow scrolled window to receive focus
 			};
 			// Note: No scroll controller on scrolled window - let it handle scrolls naturally
-			// Scroll propagation is stopped at the popup and list view levels
+			// Scroll propagation is stopped at the popup level to prevent events reaching background
 			
 			// Create list view
 			// Enable single_click_activate so clicking activates items
