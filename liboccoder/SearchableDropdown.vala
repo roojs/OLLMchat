@@ -174,9 +174,9 @@ namespace OLLMcoder
 				Gtk.EventControllerScrollFlags.DISCRETE
 			);
 			popup_scroll_controller.scroll.connect((dx, dy) => {
-				// Allow the scrolled window to handle scrolling, but stop propagation to background
-				// Return false to allow default scrolling behavior in the scrolled window
-				return false;
+				// Return true to stop propagation to background
+				// The scrolled window will still handle scrolling as it receives events directly
+				return true;
 			});
 			popup_scroll_controller.scroll_begin.connect((event) => {
 				// Stop propagation when scroll begins on the popup
@@ -204,9 +204,9 @@ namespace OLLMcoder
 				Gtk.EventControllerScrollFlags.DISCRETE
 			);
 			scroll_controller.scroll.connect((dx, dy) => {
-				// Let the scrolled window handle the scroll, but stop propagation
-				// This prevents scroll events from reaching the background SourceView
-				return false; // Return false to allow default scrolling behavior
+				// Return true to stop propagation to background
+				// The scrolled window will still handle scrolling as it receives events directly
+				return true;
 			});
 			scroll_controller.scroll_begin.connect((event) => {
 				// Stop propagation when scroll begins
