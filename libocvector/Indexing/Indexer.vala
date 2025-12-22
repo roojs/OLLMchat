@@ -101,7 +101,7 @@ namespace OLLMvector.Indexing
 				return true;
 			}
 			
-			var analysis = new Analysis(this.analysis_client);
+			var analysis = new Analysis(this.analysis_client, this.sql_db);
 			tree = yield analysis.analyze_tree(tree);
 			
 			var vector_builder = new VectorBuilder(

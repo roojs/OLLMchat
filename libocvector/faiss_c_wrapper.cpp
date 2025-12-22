@@ -258,4 +258,39 @@ int faiss_read_index_fname(
     }
 }
 
+// Reconstruct vector by ID
+int faiss_Index_reconstruct(
+    FaissIndex index,
+    int64_t key,
+    float* recons
+) {
+    if (!index) {
+        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: index is null\n");
+        return -1;
+    }
+    if (!recons) {
+        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: recons pointer is null\n");
+        return -1;
+    }
+    if (key < 0) {
+        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: invalid key=%ld\n", key);
+        return -1;
+    }
+    try {
+        faiss::Index* idx = static_cast<faiss::Index*>(index);
+        if (key >= idx->ntotal) {
+            fprintf(stderr, "[FAISS] faiss_Index_reconstruct: key %ld >= ntotal %ld\n", key, idx->ntotal);
+            return -1;
+        }
+        idx->reconstruct((faiss::idx_t)key, recons);
+        return 0;
+    } catch (const std::exception& e) {
+        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: exception: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: unknown exception\n");
+        return -1;
+    }
+}
+
 } // extern "C"

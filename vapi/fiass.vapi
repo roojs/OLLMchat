@@ -47,4 +47,7 @@ namespace Faiss {
     
     [CCode (cname = "faiss_read_index_fname")]
     int read_index_fname(string fname, int io_flags, out Index index);
+    
+    [CCode (cname = "faiss_Index_reconstruct")]
+    int index_reconstruct(Index index, int64 key, [CCode (array_length = false)] float* recons);
 }

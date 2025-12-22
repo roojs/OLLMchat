@@ -33,16 +33,19 @@ namespace OLLMvector.Indexing
 	public class Analysis : Object
 	{
 		private OLLMchat.Client client;
+		private SQ.Database sql_db;
 		private PromptTemplate? cached_template = null;
 		
 		/**
 		 * Constructor.
 		 * 
 		 * @param client The OLLMchat client for LLM API calls
+		 * @param sql_db The SQLite database for syncing after file processing
 		 */
-		public Analysis(OLLMchat.Client client)
+		public Analysis(OLLMchat.Client client, SQ.Database sql_db)
 		{
 			this.client = client;
+			this.sql_db = sql_db;
 			// Enable streaming so we can see progress during analysis
 			this.client.stream = true;
 		}
@@ -217,6 +220,9 @@ namespace OLLMvector.Indexing
 			GLib.debug("Complete for file %s: %d succeeded, %d failed", 
 			           tree.file.path, success_count, failure_count);
 			
+			// Sync database to file after processing this file
+			this.sql_db.backupDB();
+			
 			return tree;
 		}
 		
@@ -229,33 +235,6 @@ namespace OLLMvector.Indexing
 		 * @param element The VectorMetadata element to analyze (description will be updated)
 		 * @param tree The Tree object (for accessing lines)
 		 */
-		/**
-		 * Gets truncated code snippet with truncation notice if needed.
-		 * 
-		 * @param element The VectorMetadata element
-		 * @param tree The Tree object
-		 * @return Code snippet (truncated to 100 lines if longer) with truncation notice
-		 */
-		private string get_truncated_code(VectorMetadata element, Tree tree)
-		{
-			var code = tree.lines_to_string(element.start_line, element.end_line);
-			
-			if (code == null || code == "") {
-				return "";
-			}
-			
-			var lines = code.split("\n");
-			const int MAX_LINES = 100;
-			
-			if (lines.length > MAX_LINES) {
-				var truncated = string.joinv("\n", lines[0:MAX_LINES]);
-				var total_lines = element.end_line - element.start_line + 1;
-				return truncated + "\n\n// ... (code truncated: showing first 100 of " + total_lines.to_string() + " lines) ...";
-			}
-			
-			return code;
-		}
-		
 		private async void analyze_element(VectorMetadata element, Tree tree) throws GLib.Error
 		{
 			// Build user message from template with context
@@ -264,7 +243,7 @@ namespace OLLMvector.Indexing
 			
 			var user_message = this.cached_template.user_template.replace(
 				"{code}",
-				this.get_truncated_code(element, tree)
+				tree.lines_to_string(element.start_line, element.end_line, 100)
 			).replace(			
 				"{documentation}",
 				tree.lines_to_string(element.codedoc_start, element.codedoc_end)

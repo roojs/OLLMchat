@@ -231,64 +231,51 @@ Embed Model: $(embed_client.config.model)
 		
 		stdout.printf("=== Indexing ===\n");
 		
-		OLLMfiles.FileBase? filebase = null;
+		// Look up FileBase object from database
+		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
+		var query = OLLMfiles.FileBase.query(sql_db, manager);
+		var stmt = query.selectPrepare(
+				"SELECT " + string.joinv(",", query.getColsExcept(null)) +
+					 " FROM filebase WHERE path = $path");
+		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
+		query.selectExecute(stmt, results_list);
 		
-		try {
-			// Look up FileBase object from database
-			stdout.printf("Looking up path in database...\n");
-			var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
-			var query = OLLMfiles.FileBase.query(sql_db, manager);
-			var stmt = query.selectPrepare(
-					"SELECT " + string.joinv(",", query.getColsExcept(null)) +
-						 " FROM filebase WHERE path = $path");
-			stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
-			query.selectExecute(stmt, results_list);
-			
-			if (results_list.size > 0) {
-				filebase = results_list[0];
-				stdout.printf("Found existing entry in database (ID: %lld)\n\n", filebase.id);
-			}
-		} catch (GLib.Error e) {
-			stdout.printf("Error querying database: %s\n", e.message);
-			throw e;
+		OLLMfiles.FileBase? filebase = null;
+		if (results_list.size > 0) {
+			filebase = results_list[0];
 		}
 		
 		if (filebase == null) {
 			stdout.printf("Path not found in database. Adding to database first...\n");
 			
-			try {
-				var file_info_detailed = file.query_info("standard::*", GLib.FileQueryInfoFlags.NONE, null);
-				
-				if (is_folder) {
-					var folder = new OLLMfiles.Folder(manager);
-					folder.path = abs_path;
-					var mod_time = file_info_detailed.get_modification_date_time();
-					if (mod_time != null) {
-						folder.last_modified = mod_time.to_unix();
-					}
-					folder.saveToDB(sql_db, null, false);
-					stdout.printf("Added folder to database (ID: %lld)\n\n", folder.id);
-					filebase = folder;
-				} else {
-					var ollm_file = new OLLMfiles.File(manager);
-					ollm_file.path = abs_path;
-					var mod_time = file_info_detailed.get_modification_date_time();
-					if (mod_time != null) {
-						ollm_file.last_modified = mod_time.to_unix();
-					}
-					var content_type = file_info_detailed.get_content_type();
-					ollm_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
-					var detected_lang = manager.buffer_provider.detect_language(ollm_file);
-					if (detected_lang != null && detected_lang != "") {
-						ollm_file.language = detected_lang;
-					}
-					ollm_file.saveToDB(sql_db, null, false);
-					stdout.printf("Added file to database (ID: %lld, Language: %s)\n\n", ollm_file.id, ollm_file.language);
-					filebase = ollm_file;
+			var file_info_detailed = file.query_info("standard::*", GLib.FileQueryInfoFlags.NONE, null);
+			
+			if (is_folder) {
+				var folder = new OLLMfiles.Folder(manager);
+				folder.path = abs_path;
+				var mod_time = file_info_detailed.get_modification_date_time();
+				if (mod_time != null) {
+					folder.last_modified = mod_time.to_unix();
 				}
-			} catch (GLib.Error e) {
-				stdout.printf("Error adding to database: %s\n", e.message);
-				throw e;
+				folder.saveToDB(sql_db, null, false);
+				stdout.printf("Added folder to database (ID: %lld)\n\n", folder.id);
+				filebase = folder;
+			} else {
+				var ollm_file = new OLLMfiles.File(manager);
+				ollm_file.path = abs_path;
+				var mod_time = file_info_detailed.get_modification_date_time();
+				if (mod_time != null) {
+					ollm_file.last_modified = mod_time.to_unix();
+				}
+				var content_type = file_info_detailed.get_content_type();
+				ollm_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
+				var detected_lang = manager.buffer_provider.detect_language(ollm_file);
+				if (detected_lang != null && detected_lang != "") {
+					ollm_file.language = detected_lang;
+				}
+				ollm_file.saveToDB(sql_db, null, false);
+				stdout.printf("Added file to database (ID: %lld, Language: %s)\n\n", ollm_file.id, ollm_file.language);
+				filebase = ollm_file;
 			}
 		}
 		

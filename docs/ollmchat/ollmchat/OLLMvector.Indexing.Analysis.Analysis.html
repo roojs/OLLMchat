@@ -39,7 +39,7 @@
         <h1 class="main_title">Analysis</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Analysis</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Analysis</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> sql_db)
         </div>
         <div class="description">
           <p>Constructor.</p>
@@ -49,6 +49,12 @@
               <td class="main_parameter_table_name">client</td>
               <td>
                 <p>The OLLMchat client for LLM API calls </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">sql_db</td>
+              <td>
+                <p>The SQLite database for syncing after file processing </p>
               </td>
             </tr>
           </table>

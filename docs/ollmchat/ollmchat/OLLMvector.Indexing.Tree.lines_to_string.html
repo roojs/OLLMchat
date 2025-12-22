@@ -43,7 +43,7 @@
         <h1 class="main_title">lines_to_string</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="method">lines_to_string</span></b> (<span class="main_basic_type"><span class="struct">int</span></span> start_line, <span class="main_basic_type"><span class="struct">int</span></span> end_line)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="method">lines_to_string</span></b> (<span class="main_basic_type"><span class="struct">int</span></span> start_line, <span class="main_basic_type"><span class="struct">int</span></span> end_line, <span class="main_basic_type"><span class="struct">int</span></span> max_lines = <span class="main_literal">0</span>)
         </div>
         <div class="description">
           <p>Extract string from lines array using Vala string range syntax.</p>
@@ -61,12 +61,18 @@
                 <p>Ending line number (1-indexed, exclusive, or -1 for invalid/no content) </p>
               </td>
             </tr>
+            <tr>
+              <td class="main_parameter_table_name">max_lines</td>
+              <td>
+                <p>Maximum number of lines to return (0 or negative = no truncation) </p>
+              </td>
+            </tr>
           </table>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>
               <td>
-                <p>Code snippet or documentation text (empty string if invalid range) </p>
+                <p>Code snippet or documentation text (empty string if invalid range, truncated if max_lines &gt; 0) </p>
               </td>
             </tr>
           </table>

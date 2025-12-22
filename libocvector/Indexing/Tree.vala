@@ -232,9 +232,10 @@ namespace OLLMvector.Indexing
 		 * 
 		 * @param start_line Starting line number (1-indexed, or -1 for invalid/no content)
 		 * @param end_line Ending line number (1-indexed, exclusive, or -1 for invalid/no content)
-		 * @return Code snippet or documentation text (empty string if invalid range)
+		 * @param max_lines Maximum number of lines to return (0 or negative = no truncation)
+		 * @return Code snippet or documentation text (empty string if invalid range, truncated if max_lines > 0)
 		 */
-		public string lines_to_string(int start_line, int end_line)
+		public string lines_to_string(int start_line, int end_line, int max_lines = 0)
 		{
 			// Handle invalid/negative line numbers (e.g., -1 indicates no documentation)
 			if (start_line <= 0 || end_line <= 0 || start_line > end_line) {
@@ -251,7 +252,17 @@ namespace OLLMvector.Indexing
 			
 			// Use Vala array slicing: lines[start_idx:end_idx]
 			var slice = this.lines[start_idx:end_idx];
-			return string.joinv("\n", slice);
+			var result = string.joinv("\n", slice);
+			
+			// Apply truncation if max_lines is specified and positive
+			if (max_lines > 0 && slice.length > max_lines) {
+				var truncated_slice = this.lines[start_idx:start_idx + max_lines];
+				var truncated = string.joinv("\n", truncated_slice);
+				var total_lines = end_line - start_line + 1;
+				return truncated + "\n\n// ... (code truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines) ...";
+			}
+			
+			return result;
 		}
 		
 		/**
