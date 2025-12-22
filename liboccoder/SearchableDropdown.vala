@@ -168,6 +168,26 @@ namespace OLLMcoder
 			this.popup.set_parent(this);
 			this.popup.add_css_class("menu");
 			
+			// Add scroll event controller to popup to stop scroll events from propagating to background
+			var popup_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE
+			);
+			popup_scroll_controller.scroll.connect((dx, dy) => {
+				// Allow the scrolled window to handle scrolling, but stop propagation to background
+				// Return false to allow default scrolling behavior in the scrolled window
+				return false;
+			});
+			popup_scroll_controller.scroll_begin.connect((event) => {
+				// Stop propagation when scroll begins on the popup
+				event.stop_propagation();
+			});
+			popup_scroll_controller.scroll_end.connect((event) => {
+				// Stop propagation when scroll ends on the popup
+				event.stop_propagation();
+			});
+			this.popup.add_controller(popup_scroll_controller);
+			
 			// Create scrolled window for list
 			var sw = new Gtk.ScrolledWindow() {
 				hscrollbar_policy = Gtk.PolicyType.NEVER,
