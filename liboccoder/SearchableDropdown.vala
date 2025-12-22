@@ -237,6 +237,24 @@ namespace OLLMcoder
 			
 			this.update_arrow();
 			
+			// Add scroll event controller at widget level to catch and stop scroll events when popup is visible
+			// Use BUBBLE phase so children (scrolled window) handle events first, then we stop propagation
+			var widget_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			widget_scroll_controller.scroll.connect((dx, dy) => {
+				// If popup is visible, stop scroll events from propagating to parent widgets
+				// This catches events after they've been handled by the scrolled window
+				if (this.popup.visible) {
+					return true;
+				}
+				return false;
+			});
+			// Use BUBBLE phase to catch events after children have handled them
+			widget_scroll_controller.propagation_phase = Gtk.PropagationPhase.BUBBLE;
+			this.add_controller(widget_scroll_controller);
 		}
 		
 		public override bool grab_focus()

@@ -13,7 +13,11 @@ valadoc = find_program('valadoc', required: true)
 valadoc_dir = meson.current_source_dir() / 'ollmchat'
 valadoc_clean = custom_target('valadoc-clean',
   output: 'valadoc-clean',
-  command: [find_program('rm'), '-rf', valadoc_dir],
+  command: [
+    find_program('sh'),
+    '-c',
+    'if [ -d "@0@" ]; then find "@0@" -mindepth 1 -delete; fi'.format(valadoc_dir)
+  ],
   build_by_default: false
 )
 
