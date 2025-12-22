@@ -238,8 +238,8 @@ namespace OLLMchat.Call
 				GLib.debug("  Message %d: role='%s', content='%s'%s", 
 					i + 1, 
 					msg.role, 
-					msg.content.length > 100 ? msg.content.substring(0, 100) + "..." : msg.content,
-					msg.thinking != "" ? @", thinking='$(msg.thinking.length > 50 ? msg.thinking.substring(0, 50) + "..." : msg.thinking)'" : "");
+					msg.content,
+					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
 			}
 			
 			if (this.stream) {
@@ -382,8 +382,8 @@ namespace OLLMchat.Call
 				GLib.debug("  Message %d: role='%s', content='%s'%s", 
 					i + 1, 
 					msg.role, 
-					msg.content.length > 100 ? msg.content.substring(0, 100) + "..." : msg.content,
-					msg.thinking != "" ? @", thinking='$(msg.thinking.length > 50 ? msg.thinking.substring(0, 50) + "..." : msg.thinking)'" : "");
+					msg.content,
+					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
 			}
 			
 			if (this.stream) {

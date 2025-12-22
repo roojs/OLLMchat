@@ -443,7 +443,7 @@ namespace Markdown
 			byte_length = 0;
 			lang_out = "";
 			
-			GLib.debug("Parser.peekFormat: chunk_pos=%d, in_literal=%s", chunk_pos, this.in_literal.to_string());
+			//GLib.debug("Parser.peekFormat: chunk_pos=%d, in_literal=%s", chunk_pos, this.in_literal.to_string());
 			
 			// Use peekMap for the common matching logic
 			int result = this.peekMap(chunk, chunk_pos, is_end_of_chunks, format_map, out matched_format, out byte_length);
@@ -744,8 +744,8 @@ namespace Markdown
 				var c = chunk.get_char(chunk_pos);
 				
 				// Handle newline - end current block and prepare for next line
-				GLib.debug("chunk_pos=%d, c='%s', at_line_start=%s, current_block=%s",
-					 chunk_pos, c.to_string(), this.at_line_start.to_string(), this.current_block.to_string());
+				//GLib.debug("chunk_pos=%d, c='%s', at_line_start=%s, current_block=%s",
+				//	 chunk_pos, c.to_string(), this.at_line_start.to_string(), this.current_block.to_string());
 				if (c == '\n') {
 					// If we're in a fenced code block, send the newline as code text and set at_line_start
 					if (this.current_block == FormatType.FENCED_CODE_QUOTE || this.current_block == FormatType.FENCED_CODE_TILD) {
@@ -913,8 +913,8 @@ namespace Markdown
 					out unused_lang_out
 				);
 				
-				GLib.debug("after peekformat chunk_pos=%d, c='%s', at_line_start=%s, matched_format=%s, match_len=%d",
-					 chunk_pos, c.to_string(), this.at_line_start.to_string(), matched_format.to_string(), match_len);
+				//GLib.debug("after peekformat chunk_pos=%d, c='%s', at_line_start=%s, matched_format=%s, match_len=%d",
+				//	 chunk_pos, c.to_string(), this.at_line_start.to_string(), matched_format.to_string(), match_len);
 				
 				if (match_len == -1) {
 					// Cannot determine - need more characters
@@ -1007,7 +1007,7 @@ namespace Markdown
 			switch (format_type) {
 				case FormatType.TASK_LIST:
 				case FormatType.TASK_LIST_DONE:
-					GLib.debug("got_format: TASK_LIST_DONE called");
+					//GLib.debug("got_format: TASK_LIST_DONE called");
 					this.do_format(true, format_type);
 					return;
 				default:
@@ -1069,14 +1069,14 @@ namespace Markdown
 				case FormatType.TASK_LIST:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
-						GLib.debug("Parser.do_format: TASK_LIST called");
+						//GLib.debug("Parser.do_format: TASK_LIST called");
 						this.renderer.on_task_list(true, false);
 					}
 					break;
 				case FormatType.TASK_LIST_DONE:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
-						GLib.debug("Parser.do_format: TASK_LIST_DONE called");
+						//GLib.debug("Parser.do_format: TASK_LIST_DONE called");
 						this.renderer.on_task_list(true, true);
 					}
 					break;
@@ -1214,9 +1214,7 @@ namespace Markdown
 		/**
 		 * Handles block start/end by calling the appropriate renderer method.
 		 * 
-		 * @param is_start True to start the block, false to e
-
-* ParserStartList (and continue) - for lines nd it
+		 * @param is_start True to start the block, false to end it
 		 * @param block_type The block type
 		 * @param lang Language for fenced code blocks (only used when is_start is true)
 		 */

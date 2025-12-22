@@ -15,6 +15,13 @@ Return ONLY the one-line description text - no explanations, no markdown, no JSO
 ---
 Analyze the following code element and generate a SHORT ONE-LINE description:
 
+IMPORTANT: Do not extract or infer any additional context beyond what is provided here. Only summarize based on the information given in this prompt - the code, documentation, and context provided below.
+
+You are analyzing a {element_type} named '{element_name}' from the file '{file_basename}'.
+{namespace_context}{parent_class_context}{signature_context}
+
+Here is the code for this element:
+
 <code>
 {code}
 </code>

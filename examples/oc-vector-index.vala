@@ -143,8 +143,9 @@ Recursion: enabled
 		GLib.debug("Using database: %s", db_path);
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
-		manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-		manager.git_provider = new OLLMcoder.Files.GitProvider();
+		// Use base BufferProviderBase (not GTK-based) - correctly maps .js to "javascript"
+		// manager.buffer_provider defaults to BufferProviderBase which is sufficient for indexing
+		// manager.git_provider defaults to GitProviderBase which is sufficient for indexing
 		
 		var analysis_config_path = GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(), ".config", "ollmchat", "analysis.json"

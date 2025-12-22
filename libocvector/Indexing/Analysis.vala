@@ -66,6 +66,7 @@ namespace OLLMvector.Indexing
 		{
 			var resource_path = GLib.Path.build_filename(
 				RESOURCE_BASE_PREFIX,
+				"ocvector",
 				"analysis-prompt.txt"
 			);
 			var file = GLib.File.new_for_uri("resource://" + resource_path);
@@ -140,26 +141,17 @@ namespace OLLMvector.Indexing
 		 * Gets the prompt template, loading and caching it if needed.
 		 * 
 		 * @return PromptTemplate (cached after first load)
+		 * @throws GLib.Error if template cannot be loaded
 		 */
-		private PromptTemplate get_prompt_template()
+		private PromptTemplate get_prompt_template() throws GLib.Error
 		{
 			if (this.cached_template != null) {
 				return this.cached_template;
 			}
 			
-			// Try to load from resources
-			try {
-				this.cached_template = this.load_prompt_template();
-				return this.cached_template;
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load prompt template: %s. Using fallback template.", e.message);
-				// Fallback to simple template if resource loading fails
-				this.cached_template = PromptTemplate() {
-					system_message = "You are a code analysis assistant. Generate a concise one-line description of what the code element does.",
-					user_template = "Describe this code element:\n\n<code>\n{code}\n</code>\n\n{documentation}"
-				};
-				return this.cached_template;
-			}
+			// Load from resources - fail if it doesn't work
+			this.cached_template = this.load_prompt_template();
+			return this.cached_template;
 		}
 		
 		/**
@@ -199,7 +191,16 @@ namespace OLLMvector.Indexing
 			
 			foreach (var element in elements_to_process) {
 				try {
+					// Print element info before analysis starts
+					stdout.printf("\n[Analyzing: %s (%s)]\n", element.element_name, element.element_type);
+					stdout.flush();
+					
 					yield this.analyze_element(element, tree);
+					
+					// Print newline after analysis completes
+					stdout.printf("\n");
+					stdout.flush();
+					
 					if (element.description != null && element.description != "") {
 						success_count++;
 						continue;
@@ -228,16 +229,97 @@ namespace OLLMvector.Indexing
 		 * @param element The VectorMetadata element to analyze (description will be updated)
 		 * @param tree The Tree object (for accessing lines)
 		 */
+		/**
+		 * Gets truncated code snippet with truncation notice if needed.
+		 * 
+		 * @param element The VectorMetadata element
+		 * @param tree The Tree object
+		 * @return Code snippet (truncated to 100 lines if longer) with truncation notice
+		 */
+		private string get_truncated_code(VectorMetadata element, Tree tree)
+		{
+			var code = tree.lines_to_string(element.start_line, element.end_line);
+			
+			if (code == null || code == "") {
+				return "";
+			}
+			
+			var lines = code.split("\n");
+			const int MAX_LINES = 100;
+			
+			if (lines.length > MAX_LINES) {
+				var truncated = string.joinv("\n", lines[0:MAX_LINES]);
+				var total_lines = element.end_line - element.start_line + 1;
+				return truncated + "\n\n// ... (code truncated: showing first 100 of " + total_lines.to_string() + " lines) ...";
+			}
+			
+			return code;
+		}
+		
 		private async void analyze_element(VectorMetadata element, Tree tree) throws GLib.Error
 		{
-			// Build user message from template
+			// Build user message from template with context
+			// Get file basename for context
+			var file_basename = GLib.Path.get_basename(tree.file.path);
+			
 			var user_message = this.cached_template.user_template.replace(
 				"{code}",
-				tree.lines_to_string(element.start_line, element.end_line)
+				this.get_truncated_code(element, tree)
 			).replace(			
 				"{documentation}",
 				tree.lines_to_string(element.codedoc_start, element.codedoc_end)
+			).replace(
+				"{element_type}",
+				element.element_type != "" ? element.element_type : "unknown"
+			).replace(
+				"{element_name}",
+				element.element_name != "" ? element.element_name : "unnamed"
+			).replace(
+				"{file_basename}",
+				file_basename != "" ? file_basename : "unknown"
 			);
+			
+			// Add namespace context if available
+			var namespace_context = "";
+			if (element.namespace != null && element.namespace != "") {
+				namespace_context = "- This code is in the namespace '" + element.namespace + "'\n";
+			}
+			user_message = user_message.replace("{namespace_context}", namespace_context);
+			
+			// Add parent class context if available (for methods, properties, fields, etc.)
+			var parent_class_context = "";
+			if (element.parent_class != null && element.parent_class != "") {
+				// Try to find the parent class element to get its documentation
+				VectorMetadata? parent_class_element = null;
+				foreach (var e in tree.elements) {
+					if (e.element_type == "class" && e.element_name == element.parent_class) {
+						parent_class_element = e;
+						break;
+					}
+				}
+				
+				if (parent_class_element != null) {
+					// Get parent class documentation if available
+					var parent_doc = tree.lines_to_string(parent_class_element.codedoc_start, parent_class_element.codedoc_end);
+					if (parent_doc != null && parent_doc.strip() != "") {
+						parent_class_context = "- This is a " + element.element_type + " of the class '" + element.parent_class + "', which: " + parent_doc.strip() + "\n";
+					} else {
+						// Fallback to just the class name
+						parent_class_context = "- This is a " + element.element_type + " of the class '" + element.parent_class + "'\n";
+					}
+				} else {
+					// Parent class not found in elements, just mention it
+					parent_class_context = "- This is a " + element.element_type + " of the class '" + element.parent_class + "'\n";
+				}
+			}
+			user_message = user_message.replace("{parent_class_context}", parent_class_context);
+			
+			// Add signature context if available (for methods, functions, properties, etc.)
+			var signature_context = "";
+			if (element.signature != null && element.signature != "") {
+				signature_context = "- Full signature: " + element.signature + "\n";
+			}
+			user_message = user_message.replace("{signature_context}", signature_context);
 			
 			// Retry up to 2 times
 			const int MAX_RETRIES = 2;
@@ -258,7 +340,9 @@ namespace OLLMvector.Indexing
 					ulong stream_chunk_id = 0;
 					stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
 						// Print the partial content as it arrives (both thinking and regular content)
-						stderr.printf(new_text);
+						// Use stdout and flush immediately so output appears on command line in real-time
+						stdout.printf("%s", new_text);
+						stdout.flush();
 					});
 					
 					// Execute LLM call (streaming enabled, plain text response)

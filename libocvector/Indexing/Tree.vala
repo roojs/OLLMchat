@@ -59,6 +59,35 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
+		 * Check if language is supported by tree-sitter (or should be skipped).
+		 * 
+		 * @param lang_name Language name (normalized to lowercase)
+		 * @return true if language should be skipped (not a code file), false if we should try to load it
+		 */
+		private bool is_unsupported_language(string lang_name)
+		{
+			// Handle empty/null language as unsupported
+			if (lang_name == null || lang_name == "") {
+				return true;
+			}
+			
+			var lang_lower = lang_name.down();
+			switch (lang_lower) {
+				case "markdown":
+				case "html":
+				case "htm":
+				case "xhtml":
+				case "css":
+				case "txt":
+				case "text":
+				case "plaintext":
+					return true;
+				default:
+					return false;
+			}
+		}
+		
+		/**
 		 * Main entry point: parse file and populate elements array.
 		 * 
 		 * @throws Error if parsing fails
@@ -75,9 +104,11 @@ namespace OLLMvector.Indexing
 			// Split into lines
 			this.lines = code_content.split("\n");
 			
-			// Get language from file (already provided by buffer implementation)
-			if (this.file.language == null || this.file.language == "") {
-				GLib.warning("No language available for file: %s", this.file.path);
+			// Check if this is a non-code file that we should skip (including empty language)
+			// This check must come before the empty language warning
+			if (this.is_unsupported_language(this.file.language ?? "")) {
+				GLib.debug("SKIP - not a code file: %s (language: %s)", 
+					this.file.path, this.file.language ?? "empty");
 				return;
 			}
 			
@@ -123,8 +154,8 @@ namespace OLLMvector.Indexing
 			
 			// Map language names to tree-sitter library/function names using switch/case
 			// Most languages use the name as-is (default case)
-			// Note: Buffer provider should already return normalized language names
-			// We only map tree-sitter-specific naming differences here
+			// Note: GtkSource.LanguageManager returns "js" but tree-sitter uses "javascript"
+			// We map these differences here
 			switch (lang_name) {
 				case "c++":
 				case "cxx":
@@ -135,6 +166,9 @@ namespace OLLMvector.Indexing
 					break;
 				case "sh":
 					lang_name = "bash";  // tree-sitter uses "bash" not "sh"
+					break;
+				case "js":
+					lang_name = "javascript";  // GtkSource returns "js" but tree-sitter uses "javascript"
 					break;
 				default:
 					break;
