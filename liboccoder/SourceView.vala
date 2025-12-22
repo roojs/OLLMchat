@@ -182,6 +182,22 @@ namespace OLLMcoder
 				});
 			}
 			
+			// Add scroll controller to prevent background scrolling when dropdown popups are visible
+			var scroll_blocker = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			scroll_blocker.scroll.connect((dx, dy) => {
+				// If any dropdown popup is visible, stop scroll events from reaching the source view
+				if (this.project_dropdown.popup_visible || this.file_dropdown.popup_visible) {
+					return true;
+				}
+				return false;
+			});
+			scroll_blocker.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			this.add_controller(scroll_blocker);
+			
 			// Add keyboard shortcuts
 			var controller = new Gtk.EventControllerKey();
 			controller.key_pressed.connect((keyval, keycode, state) => {

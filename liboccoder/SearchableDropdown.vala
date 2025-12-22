@@ -73,6 +73,13 @@ namespace OLLMcoder
 		public bool show_arrow { get; set; default = true; }
 		
 		/**
+		 * Whether the popup is currently visible.
+		 */
+		public bool popup_visible {
+			get { return this.popup.visible; }
+		}
+		
+		/**
 		 * Get the property name to filter on (e.g., "display_name").
 		 */
 		protected abstract string get_filter_property();

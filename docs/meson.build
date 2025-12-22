@@ -16,7 +16,14 @@ valadoc_clean = custom_target('valadoc-clean',
   command: [
     find_program('sh'),
     '-c',
-    'if [ -d "@0@" ]; then find "@0@" -mindepth 1 -delete; fi'.format(valadoc_dir)
+    '''if [ -d "@0@" ]; then
+      # Preserve .generated if it exists
+      if [ -d "@0@/.generated" ]; then
+        mv "@0@/.generated" "@0@/../.generated.tmp"
+      fi
+      # Remove the directory completely (valadoc needs to recreate it)
+      rm -rf "@0@"
+    fi'''.format(valadoc_dir)
   ],
   build_by_default: false
 )
@@ -160,6 +167,19 @@ valadoc_docs = custom_target('valadoc',
     '--doclet=html',
     '--directory=' + valadoc_dir,
     '@INPUT@'
+  ],
+  build_by_default: true,
+  install: false
+)
+
+# Restore .generated folder if it was preserved during clean
+valadoc_restore_generated = custom_target('valadoc-restore-generated',
+  output: 'valadoc-restore-generated',
+  depends: [valadoc_docs],
+  command: [
+    find_program('sh'),
+    '-c',
+    'if [ -d "@0@/../.generated.tmp" ]; then mv "@0@/../.generated.tmp" "@0@/.generated"; fi'.format(valadoc_dir)
   ],
   build_by_default: true,
   install: false
