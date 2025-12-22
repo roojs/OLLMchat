@@ -174,6 +174,7 @@ namespace OLLMcoder
 				vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
 				max_content_height = 400,
 				propagate_natural_height = true,
+				propagate_natural_width = false,  // Prevent horizontal expansion
 				can_focus = false  // Don't allow scrolled window to receive focus
 			};
 			
@@ -287,8 +288,11 @@ namespace OLLMcoder
 				this.arrow.allocate(arrow_nat, height, baseline, arrow_transform);
 			}
 			
-			// Update popover width to match widget width
+			// Update popover width to match widget width (fixed width to prevent resizing)
+			// Set both min and max to same value to prevent resizing based on content
 			this.popup.set_size_request(width, -1);
+			// Also set max width to prevent expansion beyond widget width
+			this.popup.set_max_content_width(width);
 		}
 		
 		/**
