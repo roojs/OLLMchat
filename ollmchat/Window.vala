@@ -46,7 +46,8 @@ namespace OLLMchat
 		{
 			this.app = app;
 			this.title = "OLLMchat";
-			this.set_default_size(800, 600);
+			// Start window 20% smaller (640x480 instead of 800x600)
+			this.set_default_size(640, 600);
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();

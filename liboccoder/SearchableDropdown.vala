@@ -168,26 +168,6 @@ namespace OLLMcoder
 			this.popup.set_parent(this);
 			this.popup.add_css_class("menu");
 			
-			// Add scroll event controller to popup to stop scroll events from propagating to background
-			var popup_scroll_controller = new Gtk.EventControllerScroll(
-				Gtk.EventControllerScrollFlags.BOTH_AXES |
-				Gtk.EventControllerScrollFlags.DISCRETE
-			);
-			popup_scroll_controller.scroll.connect((dx, dy) => {
-				// Return true to stop propagation to background
-				// The scrolled window will still handle scrolling as it receives events directly
-				return true;
-			});
-			popup_scroll_controller.scroll_begin.connect((event) => {
-				// Stop propagation when scroll begins on the popup
-				event.stop_propagation();
-			});
-			popup_scroll_controller.scroll_end.connect((event) => {
-				// Stop propagation when scroll ends on the popup
-				event.stop_propagation();
-			});
-			this.popup.add_controller(popup_scroll_controller);
-			
 			// Create scrolled window for list
 			var sw = new Gtk.ScrolledWindow() {
 				hscrollbar_policy = Gtk.PolicyType.NEVER,
@@ -197,8 +177,6 @@ namespace OLLMcoder
 				propagate_natural_width = false,  // Prevent horizontal expansion
 				can_focus = false  // Don't allow scrolled window to receive focus
 			};
-			// Note: No scroll controller on scrolled window - let it handle scrolls naturally
-			// Scroll propagation is stopped at the popup level to prevent events reaching background
 			
 			// Create list view
 			// Enable single_click_activate so clicking activates items
@@ -213,12 +191,36 @@ namespace OLLMcoder
 				this.on_selected();
 			});
 			
-			// Note: No scroll controller on list view - let scroll events propagate to scrolled window
-			// The popup controller will catch events and stop propagation to background
-			
-			
 			sw.child = this.list;
-			this.popup.child = sw;
+			
+			// Wrap scrolled window in a box that fills the popup to catch all scroll events
+			var popup_wrapper = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true
+			};
+			popup_wrapper.append(sw);
+			
+			// Add scroll controller to wrapper to catch scroll events over popup area
+			// This will catch events that don't hit the scrolled window directly
+			var wrapper_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			wrapper_scroll_controller.scroll.connect((dx, dy) => {
+				// Forward scroll to scrolled window if it has room to scroll
+				var vadjustment = sw.vadjustment;
+				if (vadjustment != null && dy != 0) {
+					var current_value = vadjustment.value;
+					var new_value = current_value + dy * vadjustment.step_increment * 3;
+					vadjustment.value = new_value.clamp(vadjustment.lower, vadjustment.upper - vadjustment.page_size);
+				}
+				// Always stop propagation to prevent background scrolling
+				return true;
+			});
+			popup_wrapper.add_controller(wrapper_scroll_controller);
+			
+			this.popup.child = popup_wrapper;
 			
 			// Update arrow visibility when show_arrow changes
 			this.notify["show-arrow"].connect(() => {
@@ -234,6 +236,7 @@ namespace OLLMcoder
 			});
 			
 			this.update_arrow();
+			
 		}
 		
 		public override bool grab_focus()
@@ -313,11 +316,9 @@ namespace OLLMcoder
 				this.arrow.allocate(arrow_nat, height, baseline, arrow_transform);
 			}
 			
-			// Update popover width to match widget width (fixed width to prevent resizing)
+			// Update popover width to be 2x widget width (fixed width to prevent resizing)
 			// Set both min and max to same value to prevent resizing based on content
-			this.popup.set_size_request(width, -1);
-			// Also set max width to prevent expansion beyond widget width
-			this.popup.set_max_content_width(width);
+			this.popup.set_size_request(width * 2, -1);
 		}
 		
 		/**
