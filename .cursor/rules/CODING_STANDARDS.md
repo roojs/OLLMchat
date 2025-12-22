@@ -155,6 +155,8 @@ class MyClass
 
 **IMPORTANT:** Avoid nested code by using early returns, break/continue statements, and avoiding else clauses when possible. This improves readability and reduces cognitive complexity.
 
+**IMPORTANT:** Put shorter code in if statements and return/continue if feasible, rather than having large nested code blocks. Extract complex logic into separate methods when the main flow becomes hard to follow.
+
 **Bad:**
 ```vala
 public void process_items(List<Item> items)
@@ -216,6 +218,44 @@ public bool is_authorized(User user)
     }
     
     return user.has_permission();
+}
+```
+
+**Also Good (extracting complex logic):**
+```vala
+public int64 cleanup_orphaned_vectors(SQ.Database sql_db) throws GLib.Error
+{
+    if (this.index == null) {
+        throw new GLib.IOError.FAILED("Index not initialized");
+    }
+    
+    uint64 total_vectors = this.vector_count;
+    if (total_vectors == 0) {
+        return 0;
+    }
+    
+    var valid_ids_list = this.get_valid_vector_ids(sql_db, total_vectors);
+    if (valid_ids_list.size == 0) {
+        this.index = new Index(this.dimension);
+        return (int64)total_vectors;
+    }
+    
+    bool needs_cleanup = (uint64)valid_ids_list.size < total_vectors;
+    bool needs_remapping = this.check_needs_remapping(valid_ids_list, needs_cleanup);
+    
+    if (!needs_cleanup && !needs_remapping) {
+        return 0;
+    }
+    
+    if (needs_cleanup) {
+        this.rebuild_index_with_valid_vectors(valid_ids_list);
+    }
+    
+    if (needs_remapping) {
+        this.remap_metadata_vector_ids(sql_db, valid_ids_list);
+    }
+    
+    return (int64)total_vectors - (int64)valid_ids_list.size;
 }
 ```
 

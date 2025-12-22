@@ -40,10 +40,12 @@
           <li class="property"><a href="OLLMvector.VectorMetadata.signature.html">signature</a></li>
           <li class="property"><a href="OLLMvector.VectorMetadata.start_line.html">start_line</a></li>
           <li class="property"><a href="OLLMvector.VectorMetadata.vector_id.html">vector_id</a></li>
+          <li class="static_method"><a href="OLLMvector.VectorMetadata.get_all_vector_ids.html">get_all_vector_ids</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.initDB.html">initDB</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.lookup.html">lookup</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.lookup_vectors.html">lookup_vectors</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.query.html">query</a></li>
+          <li class="static_method"><a href="OLLMvector.VectorMetadata.reset_database.html">reset_database</a></li>
           <li class="creation_method"><a href="OLLMvector.VectorMetadata.VectorMetadata.html">VectorMetadata</a></li>
           <li class="method"><a href="OLLMvector.VectorMetadata.removeFromDB.html">removeFromDB</a></li>
           <li class="method"><a href="OLLMvector.VectorMetadata.saveToDB.html">saveToDB</a></li>
@@ -141,6 +143,10 @@
         </ul>
         <h3 class="main_title">Static methods:</h3>
         <ul class="navi_inline">
+          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><span class="class">HashSet</span></span>&lt;<span class="main_basic_type"><span class="struct">int64</span></span>?&gt; <b><a href="OLLMvector.VectorMetadata.get_all_vector_ids.html" class="static_method">get_all_vector_ids</a></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> db)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get all vector_ids from the metadata table.</span>
+            </div></li>
           <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.VectorMetadata.initDB.html" class="static_method">initDB</a></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> db)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Initialize database table for vector_metadata objects.</span>
@@ -156,6 +162,10 @@
           <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><a href="SQ.Query.html" class="class">Query</a></span>&lt;<span class="main_type"><span class="class">VectorMetadata</span></span>&gt; <b><a href="OLLMvector.VectorMetadata.query.html" class="static_method">query</a></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> db)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Create a query object for vector_metadata table.</span>
+            </div></li>
+          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.VectorMetadata.reset_database.html" class="static_method">reset_database</a></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> sql_db, <span class="main_basic_type"><span class="class">string</span></span> vector_db_path) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Resets the vector database.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>

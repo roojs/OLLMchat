@@ -38,7 +38,7 @@ namespace OLLMvector.Indexing
 		 * 
 		 * @param analysis_client The OLLMchat client for analysis (LLM summarization)
 		 * @param embed_client The OLLMchat client for embeddings API
-		 * @param vector_db The vector database for FAISS storage
+		 * @param vector_db The vector database for FAISS storage (should have filename set in constructor to auto-save)
 		 * @param sql_db The SQLite database for metadata storage
 		 * @param manager The ProjectManager for file/folder operations
 		 */
@@ -111,6 +111,13 @@ namespace OLLMvector.Indexing
 			file.last_scan = new DateTime.now_local().to_unix();
 			file.saveToDB(this.sql_db, null, false);
 			
+			// Save vector database after each file
+			try {
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after indexing '%s': %s", file.path, e.message);
+			}
+			
 			GLib.debug("Completed indexing file '%s' (%d elements)", file.path, tree.elements.size);
 			return true;
 		}
@@ -175,6 +182,13 @@ namespace OLLMvector.Indexing
 			}
 			
 			GLib.debug("Completed indexing folder '%s' (%d files indexed)", folder.path, files_indexed);
+			
+			// At end of scan: delete metadata with invalid file_ids
+			this.sql_db.exec(
+				"DELETE FROM vector_metadata " +
+				"WHERE file_id NOT IN (SELECT id FROM filebase WHERE base_type = 'f')"
+			);
+			
 			return files_indexed;
 		}
 		
@@ -207,6 +221,38 @@ namespace OLLMvector.Indexing
 			}
 			
 			throw new GLib.IOError.INVALID_ARGUMENT("FileBase is not a file or folder: " + filebase.path);
+		}
+		
+		/**
+		 * Resets the entire vector database.
+		 * 
+		 * Deletes the FAISS vector database file, resets all file scan dates to 0,
+		 * and deletes all vector metadata entries.
+		 * 
+		 * @param vector_db_path Path to the FAISS vector database file (e.g., "codedb.faiss.vectors")
+		 */
+		public async void reset_database(string vector_db_path) throws GLib.Error
+		{
+			// Delete FAISS vector database file
+			var vector_db_file = GLib.File.new_for_path(vector_db_path);
+			if (vector_db_file.query_exists()) {
+				try {
+					vector_db_file.delete();
+					GLib.debug("Deleted vector database file: %s", vector_db_path);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to delete vector database file '%s': %s", vector_db_path, e.message);
+				}
+			}
+			
+			// Get dimension first, then create new Database object (clears in-memory index)
+			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embed_client);
+			this.vector_db = new OLLMvector.Database(this.embed_client, vector_db_path, dimension);
+			
+			// Delete all vector metadata
+			this.sql_db.exec("DELETE FROM vector_metadata");
+			
+			// Reset all file scan dates to -1
+			this.sql_db.exec("UPDATE filebase SET last_scan = -1 WHERE base_type = 'f'");
 		}
 	}
 

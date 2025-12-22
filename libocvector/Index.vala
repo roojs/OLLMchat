@@ -62,15 +62,79 @@ namespace OLLMvector
 
 	public class Index : Object
 	{
-		private Faiss.IndexFlatIP index;
-		public uint64 dimension { get; private set; }
+		// Store as generic Index type - works for both creating new indexes (IndexFlatIP) and loading from file
+		private Faiss.Index index;
+		public uint64 dimension { get; internal set; }
 		private bool normalized = false;
+		private string filename;
 		
-		public Index(uint64 dim) throws Error
+		public Index(string filename, uint64 dim) throws Error
 		{
+			this.filename = filename;
+			
+			// Check if index file exists - if so, load it (dimension comes from file)
+			var index_file = GLib.File.new_for_path(this.filename);
+			if (index_file.query_exists()) {
+				// Load existing index
+				Faiss.Index loaded_index;
+				if (Faiss.read_index_fname(this.filename, 0, out loaded_index) != 0) {
+					throw new GLib.IOError.FAILED("Failed to load FAISS index from " + this.filename);
+				}
+				
+				// Get dimension from loaded index
+				int loaded_dim = Faiss.index_d(loaded_index);
+				if (loaded_dim < 0) {
+					loaded_index.free();
+					throw new GLib.IOError.FAILED("Failed to get dimension from loaded FAISS index");
+				}
+				
+				// Verify dimension matches
+				if ((uint64)loaded_dim != dim) {
+					loaded_index.free();
+					throw new GLib.IOError.FAILED(
+						"Dimension mismatch: file has %llu, requested %llu".printf(
+							(uint64)loaded_dim, dim));
+				}
+				
+				this.dimension = (uint64)loaded_dim;
+				this.index = (owned)loaded_index;
+				return;
+			}
+			
+			// File doesn't exist - create new index with provided dimension
 			this.dimension = dim;
-			if (Faiss.index_flat_ip_new(out this.index, (int64)dim) != 0) {
+			
+			// Create IndexFlatIP, write to temp file, then read back as generic Index
+			// This avoids Vala's type conversion issues
+			Faiss.IndexFlatIP flat_ip;
+			if (Faiss.index_flat_ip_new(out flat_ip, (int64)dim) != 0) {
 				throw new GLib.IOError.FAILED("Failed to create FAISS index");
+			}
+			
+			// Write to temporary file
+			var temp_file = GLib.File.new_for_path(this.filename + ".tmp");
+			var temp_path = temp_file.get_path();
+			if (Faiss.write_index_fname((Faiss.Index)flat_ip, temp_path) != 0) {
+				// Don't free explicitly - Vala's free_function will handle it
+				throw new GLib.IOError.FAILED("Failed to write temporary index file");
+			}
+			
+			// Don't free flat_ip explicitly - Vala's ownership system will free it when it goes out of scope
+			
+			// Read back as generic Index
+			if (Faiss.read_index_fname(temp_path, 0, out this.index) != 0) {
+				// Clean up temp file on error
+				try {
+					temp_file.delete();
+				} catch {}
+				throw new GLib.IOError.FAILED("Failed to read temporary index file");
+			}
+			
+			// Delete temporary file
+			try {
+				temp_file.delete();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to delete temporary index file: %s", e.message);
 			}
 		}
 		
@@ -97,7 +161,7 @@ namespace OLLMvector
 				);
 			}
 			
-			if (Faiss.index_add((Faiss.Index)this.index, (int64)vectors.rows, vectors.data) != 0) {
+			if (Faiss.index_add(this.index, (int64)vectors.rows, vectors.data) != 0) {
 				throw new GLib.IOError.FAILED("Failed to add vectors to FAISS index");
 			}
 		}
@@ -116,7 +180,7 @@ namespace OLLMvector
 			var distances = new float[k];
 			var labels = new int64[k];
 			
-			if (Faiss.index_search((Faiss.Index)this.index, 1, query_vector, (int64)k, distances, labels) != 0) {
+			if (Faiss.index_search(this.index, 1, query_vector, (int64)k, distances, labels) != 0) {
 				throw new GLib.IOError.FAILED("Failed to search FAISS index");
 			}
 			
@@ -134,19 +198,53 @@ namespace OLLMvector
 		
 		public uint64 get_total_vectors()
 		{
-			return (uint64)Faiss.index_ntotal((Faiss.Index)this.index);
+			return (uint64)Faiss.index_ntotal(this.index);
 		}
 		
-		public void save_to_file(string filename) throws Error
+		/**
+		 * Reconstruct a vector by its ID.
+		 * 
+		 * @param vector_id The ID of the vector to reconstruct
+		 * @return The reconstructed vector as a float array
+		 */
+		public float[] reconstruct_vector(int64 vector_id) throws Error
 		{
-			// TODO: Implement once C API wrapper is available
-			throw new GLib.IOError.FAILED("Save not yet implemented - C API wrapper required");
-		}
+			if (vector_id < 0 || (uint64)vector_id >= this.get_total_vectors()) {
+				throw new GLib.IOError.FAILED(
+					"Vector ID out of range: %lld (total vectors: %llu)".printf(
+						vector_id, this.get_total_vectors()));
+			}
 			
-		public void load_from_file(string filename) throws Error
+			var vector = new float[this.dimension];
+			if (Faiss.index_reconstruct(this.index, vector_id, vector) != 0) {
+				throw new GLib.IOError.FAILED("Failed to reconstruct vector %lld".printf(vector_id));
+			}
+			
+			return vector;
+		}
+		
+		internal unowned Faiss.Index get_faiss_index()
 		{
-			// TODO: Implement once C API wrapper is available
-			throw new GLib.IOError.FAILED("Load not yet implemented - C API wrapper required");
+			return this.index;
+		}
+		
+		internal void set_faiss_index(owned Faiss.Index new_index)
+		{
+			// Free old index before replacing
+			if (this.index != null) {
+				this.index.free();
+			}
+			// Store loaded index (loaded indexes are generic Index type)
+			this.index = (owned)new_index;
+		}
+		
+		internal uint64 get_dimension_from_index() throws Error
+		{
+			int dim = Faiss.index_d(this.index);
+			if (dim < 0) {
+				throw new GLib.IOError.FAILED("Failed to get dimension from FAISS index");
+			}
+			return (uint64)dim;
 		}
 	}
 

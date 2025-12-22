@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMvector.VectorMetadata.saveToDB &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMvector.VectorMetadata.reset_database &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMvector.VectorMetadata.saveToDB &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMvector.VectorMetadata.reset_database &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -45,32 +45,33 @@
           <li class="static_method"><a href="OLLMvector.VectorMetadata.lookup.html">lookup</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.lookup_vectors.html">lookup_vectors</a></li>
           <li class="static_method"><a href="OLLMvector.VectorMetadata.query.html">query</a></li>
-          <li class="static_method"><a href="OLLMvector.VectorMetadata.reset_database.html">reset_database</a></li>
+          <li class="static_method">reset_database</li>
           <li class="creation_method"><a href="OLLMvector.VectorMetadata.VectorMetadata.html">VectorMetadata</a></li>
           <li class="method"><a href="OLLMvector.VectorMetadata.removeFromDB.html">removeFromDB</a></li>
-          <li class="method">saveToDB</li>
+          <li class="method"><a href="OLLMvector.VectorMetadata.saveToDB.html">saveToDB</a></li>
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">saveToDB</h1>
+        <h1 class="main_title">reset_database</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">saveToDB</span></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> db, <span class="main_basic_type"><span class="struct">bool</span></span> sync = <span class="main_literal">false</span>)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><span class="static_method">reset_database</span></b> (<span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> sql_db, <span class="main_basic_type"><span class="class">string</span></span> vector_db_path) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Save this VectorMetadata to the database.</p>
+          <p>Resets the vector database.</p>
+          <p>Deletes the FAISS vector database file (if it exists), deletes all vector metadata, and resets all file scan dates to -1.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">db</td>
+              <td class="main_parameter_table_name">sql_db</td>
               <td>
-                <p>The database instance </p>
+                <p>The SQLite database </p>
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">sync</td>
+              <td class="main_parameter_table_name">vector_db_path</td>
               <td>
-                <p>Whether to sync database to disk after save </p>
+                <p>Path to the FAISS vector database file </p>
               </td>
             </tr>
           </table>

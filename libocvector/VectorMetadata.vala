@@ -250,5 +250,45 @@ namespace OLLMvector
 			);
 			return results;
 		}
+		
+		/**
+		 * Get all vector_ids from the metadata table.
+		 * 
+		 * @param db The database instance
+		 * @return Set of all vector_ids that have metadata entries
+		 */
+		public static Gee.HashSet<int64?> get_all_vector_ids(SQ.Database db)
+		{
+			var results = new Gee.ArrayList<VectorMetadata>();
+			VectorMetadata.query(db).select("", results);
+			
+			var vector_ids = new Gee.HashSet<int64?>();
+			foreach (var metadata in results) {
+				vector_ids.add(metadata.vector_id);
+			}
+			return vector_ids;
+		}
+		
+		/**
+		 * Resets the vector database.
+		 * 
+		 * Deletes the FAISS vector database file (if it exists), deletes all vector metadata,
+		 * and resets all file scan dates to -1.
+		 * 
+		 * @param sql_db The SQLite database
+		 * @param vector_db_path Path to the FAISS vector database file
+		 */
+		public static void reset_database(SQ.Database sql_db, string vector_db_path) throws GLib.Error
+		{
+			// Delete FAISS vector database file (ignore if doesn't exist)
+			var vector_db_file = GLib.File.new_for_path(vector_db_path);
+			if (vector_db_file.query_exists()) {
+				vector_db_file.delete();
+			}
+			
+			// Delete metadata and reset scan dates
+			sql_db.exec("DELETE FROM vector_metadata");
+			sql_db.exec("UPDATE filebase SET last_scan = -1 WHERE base_type = 'f'");
+		}
 	}
 }

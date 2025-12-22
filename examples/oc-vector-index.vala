@@ -18,8 +18,20 @@
 
 class VectorIndexerApp : Application
 {
-	private bool debug = false;
-	private bool recurse = false;
+	private static bool opt_debug = false;
+	private static bool opt_recurse = false;
+	private static bool opt_reset_database = false;
+	
+	private string data_dir;
+	private string db_path;
+	private string vector_db_path;
+	
+	const OptionEntry[] options = {
+		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
+		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
+		{ null }
+	};
 	
 	public VectorIndexerApp()
 	{
@@ -27,24 +39,30 @@ class VectorIndexerApp : Application
 			application_id: "org.roojs.oc-vector-index",
 			flags: ApplicationFlags.HANDLES_COMMAND_LINE
 		);
-		
-		this.add_main_option("debug", 'd', OptionFlags.NONE, OptionArg.NONE, "Enable debug output", null);
-		this.add_main_option("recurse", 'r', OptionFlags.NONE, OptionArg.NONE, "Recurse into subfolders (only for folders)", null);
 	}
 	
 	protected override int command_line(ApplicationCommandLine command_line)
 	{
-		var options = command_line.get_options_dict();
+		// Reset static option variables at start of each command line invocation
+		opt_reset_database = false;
+		opt_debug = false;
+		opt_recurse = false;
 		
-		if (options.contains("debug")) {
-			this.debug = true;
+		string[] args = command_line.get_arguments();
+		var opt_context = new OptionContext("Code Vector Indexer");
+		opt_context.set_help_enabled(true);
+		opt_context.add_main_entries(options, null);
+		
+		try {
+			unowned string[] unowned_args = args;
+			opt_context.parse(ref unowned_args);
+		} catch (OptionError e) {
+			command_line.printerr("error: %s\n", e.message);
+			command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
+			return 1;
 		}
 		
-		if (options.contains("recurse")) {
-			this.recurse = true;
-		}
-		
-		if (this.debug) {
+		if (opt_debug) {
 			GLib.Log.set_default_handler((dom, lvl, msg) => {
 				var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
 				var level_str = lvl.to_string();
@@ -52,30 +70,52 @@ class VectorIndexerApp : Application
 			});
 		}
 		
-		string[] args = command_line.get_arguments();
+		// Build paths at start
+		this.data_dir = GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat");
+		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
+		
 		string? path = null;
 		if (args.length > 1) {
 			path = args[1];
 		}
 		
-		if (path == null) {
+		if (path == null && !opt_reset_database) {
 			var usage = @"Usage: $(args[0]) [OPTIONS] <file_or_folder_path>
 
 Index files or folders for vector search.
 
 Options:
-  -d, --debug       Enable debug output
-  -r, --recurse     Recurse into subfolders (only for folders)
+  -d, --debug          Enable debug output
+  -r, --recurse        Recurse into subfolders (only for folders)
+  --reset-database     Reset the vector database (delete vectors, metadata, and reset scan dates)
 
 Examples:
   $(args[0]) libocvector/Database.vala
   $(args[0]) --debug libocvector/Database.vala
   $(args[0]) libocvector/
   $(args[0]) --recurse libocvector/
+  $(args[0]) --reset-database
 ";
 			command_line.printerr("%s", usage);
 			return 1;
 		}
+		
+		if (opt_reset_database) {
+			GLib.debug("opt_reset_database is true - resetting database");
+			try {
+				var sql_db = new SQ.Database(this.db_path, false);
+				OLLMvector.VectorMetadata.reset_database(sql_db, this.vector_db_path);
+				stdout.printf("✓ Database reset complete\n");
+			} catch (Error e) {
+				command_line.printerr("Error: %s\n", e.message);
+				return 1;
+			}
+			return 0;
+		}
+		
+		GLib.debug("opt_reset_database is false - proceeding with normal indexing");
 		
 		// Hold the application to keep main loop running during async operations
 		this.hold();
@@ -113,7 +153,7 @@ Examples:
 		bool is_folder = file_info.get_file_type() == GLib.FileType.DIRECTORY;
 		
 		if (is_folder) {
-			var folder_info = this.recurse ? 
+			var folder_info = opt_recurse ? 
 				@"Folder: $(abs_path)
 Recursion: enabled
 
@@ -126,11 +166,7 @@ Recursion: enabled
 			stdout.printf("File: %s\n\n", abs_path);
 		}
 		
-		var data_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat");
-		var db_path = GLib.Path.build_filename(data_dir, "files.sqlite");
-		
-		var data_dir_file = GLib.File.new_for_path(data_dir);
+		var data_dir_file = GLib.File.new_for_path(this.data_dir);
 		if (!data_dir_file.query_exists()) {
 			try {
 				data_dir_file.make_directory_with_parents(null);
@@ -139,8 +175,8 @@ Recursion: enabled
 			}
 		}
 		
-		var sql_db = new SQ.Database(db_path, false);
-		GLib.debug("Using database: %s", db_path);
+		var sql_db = new SQ.Database(this.db_path, false);
+		GLib.debug("Using database: %s", this.db_path);
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
 		// Use base BufferProviderBase (not GTK-based) - correctly maps .js to "javascript"
@@ -202,24 +238,11 @@ Embed Model: $(embed_client.config.model)
 ";
 		stdout.printf("%s", model_info);
 		
-		var vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
-		var vector_db = new OLLMvector.Database(embed_client);
+		// Get dimension first, then create Database with it
+		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
+		var vector_db = new OLLMvector.Database(embed_client, this.vector_db_path, dimension);
 		
-		var vector_db_file = GLib.File.new_for_path(vector_db_path);
-		if (vector_db_file.query_exists()) {
-			try {
-				var test_embed = yield embed_client.embed("test");
-				if (test_embed != null && test_embed.embeddings.size > 0) {
-					vector_db.init_index((uint64)test_embed.embeddings[0].size);
-					vector_db.load_index(vector_db_path);
-					GLib.debug("Loaded existing vector database: %s", vector_db_path);
-				}
-			} catch (GLib.Error e) {
-				GLib.debug("Could not load existing vector database (will create new): %s", e.message);
-			}
-		}
-		
-		GLib.debug("Using vector database: %s", vector_db_path);
+		GLib.debug("Using vector database: %s", this.vector_db_path);
 		
 		var indexer = new OLLMvector.Indexing.Indexer(
 			analysis_client,
@@ -283,14 +306,14 @@ Embed Model: $(embed_client.config.model)
 			stdout.printf("Starting indexing process...\n");
 			if (filebase is OLLMfiles.Folder) {
 				var folder_obj = (OLLMfiles.Folder)filebase;
-				stdout.printf("Indexing folder: %s (recurse=%s)\n", folder_obj.path, this.recurse.to_string());
+				stdout.printf("Indexing folder: %s (recurse=%s)\n", folder_obj.path, opt_recurse.to_string());
 			} else if (filebase is OLLMfiles.File) {
 				var file_obj = (OLLMfiles.File)filebase;
 				stdout.printf("Indexing file: %s\n", file_obj.path);
 			}
 			try {
 				stdout.printf("Calling indexer.index_filebase...\n");
-				int files_indexed = yield indexer.index_filebase(filebase, this.recurse, false);
+				int files_indexed = yield indexer.index_filebase(filebase, opt_recurse, false);
 				stdout.printf("index_filebase returned: %d files indexed\n", files_indexed);
 				var completion_info = @"✓ Indexing completed
   Files indexed: $(files_indexed)
@@ -308,15 +331,15 @@ Embed Model: $(embed_client.config.model)
 		}
 		
 		try {
-			vector_db.save_index(vector_db_path);
-			GLib.debug("Saved vector database: %s", vector_db_path);
+			vector_db.save_index();
+			GLib.debug("Saved vector database: %s", this.vector_db_path);
 		} catch (GLib.Error e) {
 			GLib.warning("Failed to save vector database: %s", e.message);
 		}
 		
 		var final_info = @"=== Indexing Complete ===
-Database: $(db_path)
-Vector database: $(vector_db_path)
+Database: $(this.db_path)
+Vector database: $(this.vector_db_path)
 ";
 		stdout.printf("%s", final_info);
 	}

@@ -29,11 +29,10 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMvector.Database.dimension.html">dimension</a></li>
           <li class="property"><a href="OLLMvector.Database.vector_count.html">vector_count</a></li>
+          <li class="static_method"><a href="OLLMvector.Database.get_embedding_dimension.html">get_embedding_dimension</a></li>
           <li class="creation_method"><a href="OLLMvector.Database.Database.html">Database</a></li>
           <li class="method"><a href="OLLMvector.Database.add_documents.html">add_documents</a></li>
           <li class="method"><a href="OLLMvector.Database.add_vectors_batch.html">add_vectors_batch</a></li>
-          <li class="method"><a href="OLLMvector.Database.init_index.html">init_index</a></li>
-          <li class="method"><a href="OLLMvector.Database.load_index.html">load_index</a></li>
           <li class="method"><a href="OLLMvector.Database.save_index.html">save_index</a></li>
           <li class="method"><a href="OLLMvector.Database.search.html">search</a></li>
         </ul>
@@ -67,11 +66,19 @@
             <div class="leaf_brief_description"><span class="brief_description">The total number of vectors in the index.</span>
             </div></li>
         </ul>
+        <h3 class="main_title">Static methods:</h3>
+        <ul class="navi_inline">
+          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.Database.get_embedding_dimension.html" class="static_method">get_embedding_dimension</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the embedding dimension from the client by doing a test embed.
+              </span>
+            </div></li>
+        </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Database.Database.html" class="creation_method">Database</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Database.Database.html" class="creation_method">Database</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama, <span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">uint64</span></span> dimension) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
@@ -84,17 +91,9 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Adds vectors in batch to the FAISS index.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.init_index.html" class="method">init_index</a></b> (<span class="main_basic_type"><span class="struct">uint64</span></span> dim) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.save_index.html" class="method">save_index</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Initializes the index with a given dimension.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.load_index.html" class="method">load_index</a></b> (<span class="main_basic_type"><span class="class">string</span></span> filename) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.save_index.html" class="method">save_index</a></b> (<span class="main_basic_type"><span class="class">string</span></span> filename) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Saves the index to the file specified in constructor.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMvector.SearchResultWithDocument.html" class="struct">SearchResultWithDocument</a></span>[] <b><a href="OLLMvector.Database.search.html" class="method">search</a></b> (<span class="main_basic_type"><span class="class">string</span></span> query, <span class="main_basic_type"><span class="struct">uint64</span></span> k = <span class="main_literal">5</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

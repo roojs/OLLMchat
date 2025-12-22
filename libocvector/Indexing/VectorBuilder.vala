@@ -63,10 +63,16 @@ namespace OLLMvector.Indexing
 		/**
 		 * Processes a Tree and generates vectors for all elements.
 		 * 
+		 * Removes existing metadata for the file before indexing to ensure
+		 * clean re-indexing without orphaned data.
+		 * 
 		 * @param tree The Tree object from Analysis layer
 		 */
 		public async void process_file(Tree tree) throws GLib.Error
 		{
+			// Remove existing metadata for this file before re-indexing
+			this.sql_db.exec("DELETE FROM vector_metadata WHERE file_id = " + tree.file.id.to_string());
+			
 			if (tree.elements.size == 0) {
 				GLib.debug("No elements to process in file: %s", tree.file.path);
 				return;
@@ -110,10 +116,7 @@ namespace OLLMvector.Indexing
 					embed_response.embeddings.size.to_string());
 			}
 			
-			// Initialize database index from first embedding if needed
-			if (this.database.dimension == 0) {
-				this.database.init_index((uint64)embed_response.embeddings[0].size);
-			}
+			// Index will be auto-initialized in add_vectors_batch with the correct dimension
 			
 			// Convert embeddings to float arrays and store in FAISS
 			var vector_batch = OLLMvector.FloatArray(this.database.dimension);

@@ -9,50 +9,76 @@ namespace OLLMvector
 	public class Database : Object
 	{
 			
-		private Index? index = null;
+		internal Index? index = null;
 		private OLLMchat.Client ollama;
+		private string filename;
 		// TODO: needs to store metadata mapping: vector_id -> (file_path, start_line, end_line, element_type, element_name)
 		// Code snippets will be read from filesystem when needed, not stored here
 		
-		public Database(OLLMchat.Client ollama)
+		/**
+		 * Gets the embedding dimension from the client by doing a test embed.
+		 * 
+		 * @param ollama The OLLMchat client for embeddings
+		 * @return The embedding dimension
+		 */
+		public static async uint64 get_embedding_dimension(OLLMchat.Client ollama) throws GLib.Error
+		{
+			if (ollama.config.model == "") {
+				throw new GLib.IOError.FAILED("Ollama client model is not set");
+			}
+			
+			var test_response = yield ollama.embed("test");
+			if (test_response == null || test_response.embeddings.size == 0) {
+				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
+			}
+			
+			return (uint64)test_response.embeddings[0].size;
+		}
+		
+		/**
+		 * Constructor.
+		 * 
+		 * @param ollama The OLLMchat client for embeddings
+		 * @param filename Path to the FAISS index file
+		 * @param dimension The embedding dimension (use get_dimension() to obtain this)
+		 */
+		public Database(OLLMchat.Client ollama, string filename, uint64 dimension) throws GLib.Error
 		{
 			this.ollama = ollama;
 			if (this.ollama.config.model == "") {
 				throw new GLib.IOError.FAILED("Ollama client model is not set");
 			}
+			this.filename = filename;
+			
+			// Create Index immediately with the provided dimension
+			// Index constructor will load from file if it exists, or create new if it doesn't
+			this.index = new Index(this.filename, dimension);
 		}
 		
 		/**
 		 * The embedding dimension.
 		 */
 		public uint64 dimension {
-			get { return this.index == null ? 0 : this.index.dimension; }
+			get { return this.index.dimension; }
 		}
 		
 		/**
 		 * The total number of vectors in the index.
 		 */
 		public uint64 vector_count {
-			get { return this.index == null ? 0 : this.index.get_total_vectors(); }
+			get { return this.index.get_total_vectors(); }
 		}
 		
-		/**
-		 * Initializes the index with a given dimension.
-		 * 
-		 * @param dimension The embedding dimension
-		 */
-		public void init_index(uint64 dim) throws GLib.Error
+		private void ensure_index(uint64 dim) throws GLib.Error
 		{
-			if (this.index == null) {
-				this.index = new Index(dim);
-			}
-			
+			// Index should always exist after constructor, but check dimension matches
 			if (this.index.dimension != dim) {
 				throw new GLib.IOError.FAILED(
 					"Dimension mismatch: index has %llu, requested %llu".printf(
 						this.index.dimension, dim));
 			}
 		}
+		
 		
 		/**
 		 * Adds vectors in batch to the FAISS index.
@@ -61,9 +87,8 @@ namespace OLLMvector
 		 */
 		public void add_vectors_batch(FloatArray vectors) throws GLib.Error
 		{
-			if (this.index == null) {
-				throw new GLib.IOError.FAILED("Index not initialized. Call init_index() first.");
-			}
+			// Auto-initialize index if needed (dimension comes from vectors.width)
+			this.ensure_index(vectors.width);
 			this.index.add_vectors(vectors);
 		}
 		
@@ -92,10 +117,8 @@ namespace OLLMvector
 				throw new GLib.IOError.FAILED("Failed to get embed for first document");
 			}
 			
-			// Init index from first embed to get dimension
-			if (this.index == null) {
-				this.index = new Index((uint64)first_response.embeddings[0].size);
-			}
+			// Ensure index is initialized with correct dimension
+			this.ensure_index((uint64)first_response.embeddings[0].size);
 			
 			// Build FloatArray with known width (all vectors have fixed width)
 			var vector_batch = FloatArray(this.dimension);
@@ -127,11 +150,9 @@ namespace OLLMvector
 				throw new GLib.IOError.FAILED("Failed to get query embed");
 			}
 			
-			// Init index from query embed if not already initialized
+			// Ensure index is initialized with correct dimension
 			// (This can happen if search is called before add_documents)
-			if (this.index == null) {
-				this.index = new Index((uint64)response.embeddings[0].size);
-			}
+			this.ensure_index((uint64)response.embeddings[0].size);
 			
 			// Extract the first embed vector and convert to float[]
 			var results = this.index.search(
@@ -153,29 +174,23 @@ namespace OLLMvector
 			return enhanced_results;
 		}
 		
-		public void save_index(string filename) throws Error
+		/**
+		 * Saves the index to the file specified in constructor.
+		 */
+		public void save_index() throws Error
 		{
 			if (this.index == null) {
 				return;
 			}
 			
-			this.index.save_to_file(filename);
+			if (Faiss.write_index_fname(this.index.get_faiss_index(), this.filename) != 0) {
+				throw new GLib.IOError.FAILED("Failed to save FAISS index to " + this.filename);
+			}
 			
 			// TODO: save metadata mapping (vector_id -> file_path, line_range, element_info) to database
 		}
 		
-		public void load_index(string filename) throws Error
-		{
-			// TODO: Need to know dimension to create index before loading
-			// This will need to be updated when load_from_file is implemented
-			if (this.index == null) {
-				throw new GLib.IOError.FAILED("Cannot load index: dimension unknown. Call init_index() first.");
-			}
-			
-			this.index.load_from_file(filename);
-			
-			// TODO: load metadata mapping (vector_id -> file_path, line_range, element_info) from database
-		}
+		
 	}
 
 	
