@@ -211,6 +211,21 @@ namespace OLLMcoder
 				this.on_selected();
 			});
 			
+			// Add scroll event controller to list view to stop scroll events from propagating
+			var list_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE
+			);
+			list_scroll_controller.scroll_begin.connect((event) => {
+				// Stop propagation when scroll begins on the list
+				event.stop_propagation();
+			});
+			list_scroll_controller.scroll_end.connect((event) => {
+				// Stop propagation when scroll ends on the list
+				event.stop_propagation();
+			});
+			this.list.add_controller(list_scroll_controller);
+			
 			
 			sw.child = this.list;
 			this.popup.child = sw;
