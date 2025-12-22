@@ -178,6 +178,26 @@ namespace OLLMcoder
 				can_focus = false  // Don't allow scrolled window to receive focus
 			};
 			
+			// Add scroll event controller to stop scroll events from propagating to background
+			var scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE
+			);
+			scroll_controller.scroll.connect((dx, dy) => {
+				// Let the scrolled window handle the scroll, but stop propagation
+				// This prevents scroll events from reaching the background SourceView
+				return false; // Return false to allow default scrolling behavior
+			});
+			scroll_controller.scroll_begin.connect((event) => {
+				// Stop propagation when scroll begins
+				event.stop_propagation();
+			});
+			scroll_controller.scroll_end.connect((event) => {
+				// Stop propagation when scroll ends
+				event.stop_propagation();
+			});
+			sw.add_controller(scroll_controller);
+			
 			// Create list view
 			// Enable single_click_activate so clicking activates items
 			// This follows the GTK suggestion entry pattern
