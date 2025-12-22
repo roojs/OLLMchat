@@ -68,6 +68,19 @@ namespace OLLMvector.Indexing
 		 */
 		public async bool index_file(OLLMfiles.File file, bool force = false) throws GLib.Error
 		{
+			// Skip ignored files
+			if (file.is_ignored) {
+				GLib.debug("Skipping file '%s' (is_ignored=true)", file.path);
+				return false;
+			}
+			
+			// Only index text files
+			if (!file.is_text) {
+				GLib.debug("Skipping file '%s' (not a text file, is_text=false)", file.path);
+				return false;
+			}
+			
+			
 			if (!force) {
 				var mtime = file.mtime_on_disk();
 				if (file.last_scan >= mtime && mtime > 0) {
@@ -105,12 +118,11 @@ namespace OLLMvector.Indexing
 		/**
 		 * Index a folder and optionally recurse into subfolders.
 		 * 
-		 * Processes all files in the folder through the indexing pipeline.
-		 * For folders: updates last_scan at start (to prevent re-recursion during same scan).
-		 * Handles FileAlias objects by following them to their target files/folders.
+		 * Uses ProjectFiles to get the list of files to index. ProjectFiles already
+		 * filters out ignored files and non-text files, and handles recursion.
 		 * 
 		 * @param folder The folder to index (must exist in database)
-		 * @param recurse If true, recursively process subfolders
+		 * @param recurse If true, recursively process subfolders (used by ProjectFiles.update_from)
 		 * @param force If true, skip incremental check and force re-indexing
 		 * @param scan_time Fixed scan time for this scan session (0 = create new)
 		 * @return Number of files indexed
@@ -131,74 +143,34 @@ namespace OLLMvector.Indexing
 			
 			GLib.debug("Processing folder '%s' (recurse=%s)", folder.path, recurse.to_string());
 			
+			// Load children from database if needed
 			if (folder.children.items.size == 0) {
 				GLib.debug("Loading folder children from database for '%s'", folder.path);
 				yield folder.load_files_from_db();
 			}
-				
-			int files_indexed = 0;
 			
-			// First pass: Index all files (including alias targets that are files)
-			foreach (var child in folder.children.items) {
-				if (child.is_alias) {
-					if (child.points_to == null || !(child.points_to is OLLMfiles.File)) {
-						continue;
-					}
-					
-					try {
-						if (yield this.index_file((OLLMfiles.File)child.points_to, force)) {
-							files_indexed++;
-						}
-					} catch (GLib.Error e) {
-						GLib.warning("Failed to index alias target file '%s': %s", child.points_to.path, e.message);
-					}
+			// Update ProjectFiles to get the list of files to index
+			// ProjectFiles.update_from already filters ignored and non-text files
+			folder.project_files.update_from(folder);
+			
+			int files_indexed = 0;
+			uint n_items = folder.project_files.get_n_items();
+			GLib.debug("Folder '%s' has %u files in project_files", folder.path, n_items);
+			
+			// Index all files from ProjectFiles
+			for (uint i = 0; i < n_items; i++) {
+				var project_file = folder.project_files.get_item(i) as OLLMfiles.ProjectFile;
+				if (project_file == null) {
 					continue;
 				}
 				
-				if (!(child is OLLMfiles.File)) {
-					continue;
-				}
-				
+				var file = project_file.file;
 				try {
-					if (yield this.index_file((OLLMfiles.File)child, force)) {
+					if (yield this.index_file(file, force)) {
 						files_indexed++;
 					}
 				} catch (GLib.Error e) {
-					GLib.warning("Failed to index file '%s': %s", child.path, e.message);
-				}
-			}
-			
-			// Early return if not recursing
-			if (!recurse) {
-				GLib.debug("Completed indexing folder '%s' (%d files indexed)", folder.path, files_indexed);
-				return files_indexed;
-			}
-			
-			// Second pass: Recursively index folders
-			foreach (var child in folder.children.items) {
-				if (child.is_alias) {
-					if (child.points_to == null || !(child.points_to is OLLMfiles.Folder)) {
-						continue;
-					}
-					
-					try {
-						files_indexed += yield this.index_folder(
-							(OLLMfiles.Folder)child.points_to, true, force, scan_time);
-					} catch (GLib.Error e) {
-						GLib.warning("Failed to index alias target folder '%s': %s", child.points_to.path, e.message);
-					}
-					continue;
-				}
-				
-				if (!(child is OLLMfiles.Folder)) {
-					continue;
-				}
-				
-				try {
-					files_indexed += yield this.index_folder(
-						(OLLMfiles.Folder)child, true, force, scan_time);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to index subfolder '%s': %s", child.path, e.message);
+					GLib.warning("Failed to index file '%s': %s", file.path, e.message);
 				}
 			}
 			

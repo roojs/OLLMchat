@@ -535,24 +535,45 @@ namespace OLLMfiles
 		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
+				GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
 				return;
 			}
 			
-			// Step a: Create id => FileBase map
+			// Step a: Create id => FileBase map and add self (root folder) to it
 			var id_map = new Gee.HashMap<int, FileBase>();
+			id_map.set((int)this.id, this);
+			GLib.debug("Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
 			
 		// Step b: Load children starting from project path using while loop
 		string[] paths = { this.path };
 		var seen_ids = new Gee.ArrayList<string>();
 		seen_ids.add(this.id.to_string());
+		int iteration = 0;
 		while (paths.length > 0) {
+			iteration++;
+			GLib.debug("Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
 			paths = yield this.load_children(id_map, paths, seen_ids);
+			GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
 		}
 			
+			GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
+			// Check how many items have parent_id matching this folder's id
+			int direct_children_count = 0;
+			foreach (var file_base in id_map.values) {
+				if (file_base.parent_id == this.id) {
+					direct_children_count++;
+					if (direct_children_count <= 5) {
+						GLib.debug("Folder.load_files_from_db: Direct child %d: path='%s', parent_id=%lld, base_type='%s'", 
+							direct_children_count, file_base.path, file_base.parent_id, file_base.base_type);
+					}
+				}
+			}
+			GLib.debug("Folder.load_files_from_db: Found %d direct children (parent_id=%lld)", direct_children_count, this.id);
 			// Step c: Build the tree structure
 			foreach (var file_base in id_map.values) {
 				this.build_tree_structure(file_base, id_map);
 			}
+			GLib.debug("Folder.load_files_from_db: After building tree, folder '%s' has %d children", this.path, this.children.items.size);
 		}
 		
 	/**
@@ -582,9 +603,12 @@ namespace OLLMfiles
 			// Load files matching the path conditions
 			var query = FileBase.query(this.manager.db, this.manager);
 			var new_files = new Gee.ArrayList<FileBase>();
-			yield query.select_async("WHERE (" + 
+			var where_clause = "WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids.to_array()) + ")", new_files);
+				string.joinv(", ", seen_ids.to_array()) + ")";
+			GLib.debug("Folder.load_children: Querying with WHERE: %s", where_clause);
+			yield query.select_async(where_clause, new_files);
+			GLib.debug("Folder.load_children: Found %d new files", new_files.size);
 				
 			// If no new files found, we're done
 			if (new_files.size == 0) {
@@ -648,18 +672,42 @@ namespace OLLMfiles
 				// i dont think points to id will ever be not available...
 				file_base.points_to = id_map.get((int)file_base.points_to_id);
 			}
-			if (file_base.parent != null) {
-				return;
-			}
-			// Set parent reference
-			if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
-				return;
-			}
 			
-			file_base.parent = id_map.get((int)file_base.parent_id) as Folder;
+			// Get or set parent reference
+			Folder? parent = null;
+			if (file_base.parent != null) {
+				parent = file_base.parent as Folder;
+			} else {
+				// Set parent reference if not already set
+				if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
+					GLib.debug("Folder.build_tree_structure: Skipping '%s' (parent_id=%lld, parent_in_map=%s)", 
+						file_base.path, file_base.parent_id, id_map.has_key((int)file_base.parent_id).to_string());
+					return;
+				}
+				
+				parent = id_map.get((int)file_base.parent_id) as Folder;
+				if (parent == null) {
+					GLib.debug("Folder.build_tree_structure: Parent %lld is not a Folder for '%s'", file_base.parent_id, file_base.path);
+					return;
+				}
+				
+				file_base.parent = parent;
+			}
 			
 			// Add to parent's children (append handles duplicates)
-			file_base.parent.children.append(file_base);
+			// Check if already in children list to avoid duplicates
+			bool already_in_list = false;
+			foreach (var child in parent.children.items) {
+				if (child.id == file_base.id) {
+					already_in_list = true;
+					break;
+				}
+			}
+			if (!already_in_list) {
+				parent.children.append(file_base);
+				GLib.debug("Folder.build_tree_structure: Added '%s' to parent '%s' (parent now has %d children)", 
+					file_base.path, parent.path, parent.children.items.size);
+			}
 		}
 	}
 }

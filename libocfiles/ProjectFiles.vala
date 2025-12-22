@@ -254,6 +254,11 @@ namespace OLLMfiles
 				return;
 			}
 			
+			// Skip ignored folders (e.g., folders with .generated file)
+			if (folder.is_ignored) {
+				return;
+			}
+			
 			// Mark this folder as scanned
 			scanned_folders.add((int)folder.id);
 			
@@ -315,7 +320,7 @@ namespace OLLMfiles
 			Gee.HashSet<string> found_files,
 			string symlink_path = "")
 		{
-			// Skip ignored files
+			// Skip ignored files and non-text files
 			if (file.is_ignored || !file.is_text) {
 				return;
 			}

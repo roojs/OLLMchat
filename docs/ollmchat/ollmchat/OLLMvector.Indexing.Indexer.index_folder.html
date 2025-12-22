@@ -45,8 +45,8 @@
         </div>
         <div class="description">
           <p>Index a folder and optionally recurse into subfolders.</p>
-          <p>Processes all files in the folder through the indexing pipeline. For folders: updates last_scan at start (to prevent re-recursion during 
-            same scan). Handles FileAlias objects by following them to their target files/folders.</p>
+          <p>Uses ProjectFiles to get the list of files to index. ProjectFiles already filters out ignored files and non-text files, and handles 
+            recursion.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
@@ -58,7 +58,7 @@
             <tr>
               <td class="main_parameter_table_name">recurse</td>
               <td>
-                <p>If true, recursively process subfolders </p>
+                <p>If true, recursively process subfolders (used by ProjectFiles.update_from) </p>
               </td>
             </tr>
             <tr>
