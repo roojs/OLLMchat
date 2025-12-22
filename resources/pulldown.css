@@ -10,6 +10,9 @@ entry.suggestion {
 popover.menu {
   margin-top: 6px;
   padding: 0;
+  /* Prevent popover from resizing based on content width */
+  min-width: 0;
+  max-width: none;
 }
 
 popover.menu > scrolledwindow {
