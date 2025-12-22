@@ -376,7 +376,8 @@ namespace OLLMcoder
 				var label = new Gtk.Label("") {
 					halign = Gtk.Align.START,
 					hexpand = true,
-					use_markup = true
+					use_markup = true,
+					ellipsize = Pango.EllipsizeMode.END  // Truncate long filenames with "..."
 				};
 				
 				box.append(file_icon);
