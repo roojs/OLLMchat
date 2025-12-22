@@ -11,8 +11,8 @@ popover.menu {
   margin-top: 6px;
   padding: 0;
   /* Prevent popover from resizing based on content width */
+  /* Width is controlled programmatically via set_size_request() and set_max_content_width() */
   min-width: 0;
-  max-width: none;
 }
 
 popover.menu > scrolledwindow {
