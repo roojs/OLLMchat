@@ -20,6 +20,7 @@ tree_sitter_lib = dependency('tree-sitter', required: true)
 
 # Our minimal C wrapper for FAISS C++ API
 faiss_wrapper_src = files('faiss_c_wrapper.cpp')
+faiss_wrapper_hdr = files('faiss_c_wrapper.h')
 
 ocvector_deps = [
   dependency('gee-0.8'),
@@ -82,6 +83,7 @@ ocvector_base_lib = library('ocvector',
   vala_vapi: 'ocvector.vapi',  # Generate ocvector.vapi directly
   build_rpath: lib_build_rpath,
   include_directories: [
+    include_directories('.'),
     include_directories('..' / 'libollmchat'),
     include_directories('..' / 'libocagent'),
     include_directories('..' / 'libocsqlite'),

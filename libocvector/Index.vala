@@ -84,13 +84,11 @@ namespace OLLMvector
 				// Get dimension from loaded index
 				int loaded_dim = Faiss.index_d(loaded_index);
 				if (loaded_dim < 0) {
-					loaded_index.free();
 					throw new GLib.IOError.FAILED("Failed to get dimension from loaded FAISS index");
 				}
 				
 				// Verify dimension matches
 				if ((uint64)loaded_dim != dim) {
-					loaded_index.free();
 					throw new GLib.IOError.FAILED(
 						"Dimension mismatch: file has %llu, requested %llu".printf(
 							(uint64)loaded_dim, dim));
@@ -101,41 +99,18 @@ namespace OLLMvector
 				return;
 			}
 			
-			// File doesn't exist - create new index with provided dimension
+			// File doesn't exist - create new HNSW index with provided dimension
 			this.dimension = dim;
 			
-			// Create IndexFlatIP, write to temp file, then read back as generic Index
-			// This avoids Vala's type conversion issues
-			Faiss.IndexFlatIP flat_ip;
-			if (Faiss.index_flat_ip_new(out flat_ip, (int64)dim) != 0) {
-				throw new GLib.IOError.FAILED("Failed to create FAISS index");
+			// Create IndexHNSWFlat with M=16 (good balance of speed/recall/memory)
+			// M=16 gives ~6% memory overhead, good performance for 500k vectors
+			Faiss.IndexHNSW hnsw_index;
+			if (Faiss.index_hnsw_flat_new(out hnsw_index, (int64)dim, 16) != 0) {
+				throw new GLib.IOError.FAILED("Failed to create FAISS HNSW index");
 			}
 			
-			// Write to temporary file
-			var temp_file = GLib.File.new_for_path(this.filename + ".tmp");
-			var temp_path = temp_file.get_path();
-			if (Faiss.write_index_fname((Faiss.Index)flat_ip, temp_path) != 0) {
-				// Don't free explicitly - Vala's free_function will handle it
-				throw new GLib.IOError.FAILED("Failed to write temporary index file");
-			}
-			
-			// Don't free flat_ip explicitly - Vala's ownership system will free it when it goes out of scope
-			
-			// Read back as generic Index
-			if (Faiss.read_index_fname(temp_path, 0, out this.index) != 0) {
-				// Clean up temp file on error
-				try {
-					temp_file.delete();
-				} catch {}
-				throw new GLib.IOError.FAILED("Failed to read temporary index file");
-			}
-			
-			// Delete temporary file
-			try {
-				temp_file.delete();
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to delete temporary index file: %s", e.message);
-			}
+			// Use the HNSW index directly - IndexHNSW inherits from Index
+			this.index = (owned)hnsw_index;
 		}
 		
 	 
@@ -166,7 +141,15 @@ namespace OLLMvector
 			}
 		}
 		
-		public SearchResult[] search(float[] query_vector, uint64 k = 5) throws Error
+		/**
+		 * Search for similar vectors.
+		 * 
+		 * @param query_vector Query vector
+		 * @param k Number of results to return
+		 * @param selector Optional IDSelector for filtering (null = search all)
+		 * @return Array of SearchResult objects
+		 */
+		public SearchResult[] search(float[] query_vector, uint64 k = 5, Faiss.IDSelector? selector = null) throws Error
 		{
 			if (query_vector.length != this.dimension) {
 				throw new GLib.IOError.FAILED(
@@ -180,7 +163,7 @@ namespace OLLMvector
 			var distances = new float[k];
 			var labels = new int64[k];
 			
-			if (Faiss.index_search(this.index, 1, query_vector, (int64)k, distances, labels) != 0) {
+			if (Faiss.index_search_with_ids(this.index, 1, query_vector, (int64)k, selector, distances, labels) != 0) {
 				throw new GLib.IOError.FAILED("Failed to search FAISS index");
 			}
 			
@@ -230,10 +213,7 @@ namespace OLLMvector
 		
 		internal void set_faiss_index(owned Faiss.Index new_index)
 		{
-			// Free old index before replacing
-			if (this.index != null) {
-				this.index.free();
-			}
+			// Don't free old index - Vala's ownership system handles it
 			// Store loaded index (loaded indexes are generic Index type)
 			this.index = (owned)new_index;
 		}

@@ -2,41 +2,101 @@
 // Since libfaiss-dev doesn't include the C API wrapper implementation,
 // we create our own minimal wrapper that directly uses the C++ API
 
-#include <faiss/IndexFlat.h>
+#include <faiss/IndexHNSW.h>
+#include <faiss/impl/IDSelector.h>
 #include <faiss/index_io.h>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
+#include <vector>
 
 extern "C" {
 
-// Opaque pointer type
+// Opaque pointer types
 typedef void* FaissIndex;
-typedef void* FaissIndexFlatIP;
+typedef void* FaissIndexHNSW;
+typedef void* FaissIDSelector;
 
-// Create IndexFlatIP
-int faiss_IndexFlatIP_new_with(
-    FaissIndexFlatIP* index,
-    int64_t d
+// Create IndexHNSWFlat
+int faiss_IndexHNSWFlat_new(
+    FaissIndexHNSW* index,
+    int64_t d,
+    int64_t M
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_IndexFlatIP_new_with: index pointer is null\n");
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: index pointer is null\n");
         return -1;
     }
     if (d <= 0) {
-        fprintf(stderr, "[FAISS] faiss_IndexFlatIP_new_with: invalid dimension %ld\n", d);
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: invalid dimension %ld\n", d);
+        return -1;
+    }
+    if (M <= 0) {
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: invalid M %ld (using default 32)\n", M);
+        M = 32;
+    }
+    try {
+        faiss::IndexHNSWFlat* hnsw_index = new faiss::IndexHNSWFlat((faiss::idx_t)d, (int)M);
+        // Set default parameters
+        hnsw_index->hnsw.efConstruction = 64;
+        hnsw_index->hnsw.efSearch = 32;
+        *index = hnsw_index;
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: created HNSW index with dimension %ld, M=%ld\n", d, M);
+        return 0;
+    } catch (const std::exception& e) {
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: exception: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: unknown exception\n");
+        return -1;
+    }
+}
+
+// Create IDSelectorBatch for filtering by vector IDs
+int faiss_IDSelectorBatch_new(
+    FaissIDSelector** selector,
+    int64_t n,
+    const int64_t* ids
+) {
+    if (!selector) {
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: selector pointer is null\n");
+        return -1;
+    }
+    if (n < 0) {
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: invalid n=%ld\n", n);
+        return -1;
+    }
+    if (n == 0) {
+        // Empty selector - return null (will search all)
+        *selector = nullptr;
+        return 0;
+    }
+    if (!ids) {
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: ids pointer is null\n");
         return -1;
     }
     try {
-        *index = new faiss::IndexFlatIP((faiss::idx_t)d);
-        fprintf(stderr, "[FAISS] faiss_IndexFlatIP_new_with: created index with dimension %ld\n", d);
+        // IDSelectorBatch constructor takes (size_t n, const idx_t* ids)
+        faiss::IDSelectorBatch* sel = new faiss::IDSelectorBatch((size_t)n, ids);
+        // selector is FaissIDSelector** which is void***, so *selector is void**
+        // We need to assign the void* to what *selector points to
+        void** sel_ptr = reinterpret_cast<void**>(selector);
+        *sel_ptr = static_cast<void*>(sel);
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: created IDSelector with %ld IDs\n", n);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_IndexFlatIP_new_with: exception: %s\n", e.what());
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: exception: %s\n", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_IndexFlatIP_new_with: unknown exception\n");
+        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: unknown exception\n");
         return -1;
+    }
+}
+
+// Free IDSelector
+void faiss_IDSelector_free(FaissIDSelector selector) {
+    if (selector) {
+        delete static_cast<faiss::IDSelector*>(selector);
     }
 }
 
@@ -117,7 +177,7 @@ int faiss_Index_add_with_ids(
     }
 }
 
-// Search
+// Search (without filtering)
 int faiss_Index_search(
     FaissIndex index,
     int64_t n,
@@ -177,6 +237,74 @@ int faiss_Index_search(
         return -1;
     } catch (...) {
         fprintf(stderr, "[FAISS] faiss_Index_search: unknown exception\n");
+        return -1;
+    }
+}
+
+// Search with IDSelector (for filtering)
+int faiss_Index_search_with_ids(
+    FaissIndex index,
+    int64_t n,
+    const float* x,
+    int64_t k,
+    FaissIDSelector sel,
+    float* distances,
+    int64_t* labels
+) {
+    fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: called with n=%ld, k=%ld, selector=%s\n", 
+        n, k, sel ? "set" : "null");
+    
+    if (!index) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: index is null\n");
+        return -1;
+    }
+    if (!x) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: x pointer is null\n");
+        return -1;
+    }
+    if (!distances) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: distances pointer is null\n");
+        return -1;
+    }
+    if (!labels) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: labels pointer is null\n");
+        return -1;
+    }
+    if (n <= 0) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: invalid n=%ld\n", n);
+        return -1;
+    }
+    if (k <= 0) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: invalid k=%ld\n", k);
+        return -1;
+    }
+    
+    faiss::Index* idx = static_cast<faiss::Index*>(index);
+    
+    // If no selector, use regular search
+    if (!sel) {
+        return faiss_Index_search(index, n, x, k, distances, labels);
+    }
+    
+    try {
+        const faiss::IDSelector* selector = static_cast<const faiss::IDSelector*>(sel);
+        faiss::SearchParameters params;
+        params.sel = const_cast<faiss::IDSelector*>(selector);
+        idx->search(
+            (faiss::idx_t)n,
+            x,
+            (faiss::idx_t)k,
+            distances,
+            labels,
+            &params
+        );
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: search completed successfully\n");
+        return 0;
+    } catch (const std::exception& e) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: exception: %s\n", e.what());
+        return -1;
+    } catch (...) {
+        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: unknown exception\n");
         return -1;
     }
 }

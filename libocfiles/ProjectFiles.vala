@@ -55,6 +55,36 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Lookup File by file_id using index_of with a temporary ProjectFile.
+		 * 
+		 * @param file_id The file ID to lookup
+		 * @return File object, or null if not found
+		 */
+		public File? get_by_id(int64 file_id)
+		{
+			if (file_id <= 0 || this.items.size == 0) {
+				return null;
+			}
+			
+			var index = this.items.index_of(
+				new ProjectFile(
+					this.items[0].file.manager,
+					new File(this.items[0].file.manager) {
+						id = file_id
+					},
+					this.items[0].project,
+					"",
+					""
+				)
+			);
+			if (index < 0) {
+				return null;
+			}
+			
+			return this.items[index].file;
+		}
+		
+		/**
 		 * ListModel interface implementation: Get the item type.
 		 */
 		public Type get_item_type()

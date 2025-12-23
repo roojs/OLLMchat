@@ -39,7 +39,39 @@
         <h1 class="main_title">search</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMvector.SearchResult.html" class="struct">SearchResult</a></span>[] <b><span class="method">search</span></b> (<span class="main_basic_type"><span class="struct">float</span></span>[] query_vector, <span class="main_basic_type"><span class="struct">uint64</span></span> k = <span class="main_literal">5</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMvector.SearchResult.html" class="struct">SearchResult</a></span>[] <b><span class="method">search</span></b> (<span class="main_basic_type"><span class="struct">float</span></span>[] query_vector, <span class="main_basic_type"><span class="struct">uint64</span></span> k = <span class="main_literal">5</span>, <span class="main_type"><span class="class">IDSelector</span></span>? selector = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        </div>
+        <div class="description">
+          <p>Search for similar vectors.</p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">query_vector</td>
+              <td>
+                <p>Query vector </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">k</td>
+              <td>
+                <p>Number of results to return </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">selector</td>
+              <td>
+                <p>Optional IDSelector for filtering (null = search all) </p>
+              </td>
+            </tr>
+          </table>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>Array of SearchResult objects </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

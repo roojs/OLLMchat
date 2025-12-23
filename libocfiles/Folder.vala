@@ -659,25 +659,26 @@ namespace OLLMfiles
 			}
 			
 			// Get or set parent reference
-			Folder? parent = null;
-			if (file_base.parent != null) {
-				parent = file_base.parent as Folder;
-			} else {
-				// Set parent reference if not already set
-				if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
-					GLib.debug("Folder.build_tree_structure: Skipping '%s' (parent_id=%lld, parent_in_map=%s)", 
-						file_base.path, file_base.parent_id, id_map.has_key((int)file_base.parent_id).to_string());
-					return;
-				}
+ 			if (file_base.parent != null) {
 				
-				parent = id_map.get((int)file_base.parent_id) as Folder;
-				if (parent == null) {
-					GLib.debug("Folder.build_tree_structure: Parent %lld is not a Folder for '%s'", file_base.parent_id, file_base.path);
-					return;
-				}
-				
-				file_base.parent = parent;
+				file_base.parent.children.append(file_base);
+				return;
+			} 
+			// Set parent reference if not already set
+			if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
+				GLib.debug("Folder.build_tree_structure: Skipping '%s' (parent_id=%lld, parent_in_map=%s)", 
+					file_base.path, file_base.parent_id, id_map.has_key((int)file_base.parent_id).to_string());
+				return;
 			}
+				
+			var	parent = id_map.get((int)file_base.parent_id) as Folder;
+			if (parent == null) {
+				GLib.debug("Folder.build_tree_structure: Parent %lld is not a Folder for '%s'", file_base.parent_id, file_base.path);
+				return;
+			}
+				
+			file_base.parent = parent;
+			 
 			
 			// Add to parent's children (append handles duplicates)
 			parent.children.append(file_base);
