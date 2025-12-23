@@ -29,13 +29,12 @@ namespace OLLMcoder.Prompt
 		/**
 		 * The provider for context data.
 		 */
-		private CodeAssistantProvider? provider;
+		private CodeAssistantProvider provider;
 		
 		/**
-		 * Database instance for ProjectManager (optional).
-		 * Set this to enable project/file persistence.
+		 * ProjectManager instance for project/file management.
 		 */
-		public SQ.Database? db { get; set; default = null; }
+		public OLLMfiles.ProjectManager project_manager { get; private set; }
 		
 		/**
 		 * Cached widget instance (lazy initialization).
@@ -43,20 +42,16 @@ namespace OLLMcoder.Prompt
 		private OLLMcoder.SourceView? widget = null;
 		
 		/**
-		 * Cached ProjectManager instance (created on demand if widget doesn't exist).
-		 */
-		private OLLMfiles.ProjectManager? cached_manager = null;
-		
-		/**
 		 * Constructor.
 		 * 
-		 * @param provider The provider for context data. If null, no context will be provided.
+		 * @param project_manager The ProjectManager instance (required)
 		 */
-		public CodeAssistant(CodeAssistantProvider? provider = null)
+		public CodeAssistant(OLLMfiles.ProjectManager project_manager)
 		{
 			this.name = "code-assistant";
 			this.title = "Coding Assistant";
-			this.provider = provider;
+			this.project_manager = project_manager;
+			this.provider = new CodeAssistantProvider(project_manager);
 		}
 		
 		/**
@@ -117,11 +112,9 @@ namespace OLLMcoder.Prompt
 			var result = "<user_info>\n";
 			result += "OS Version: " + this.get_os_version() + "\n";
 			
-			if (this.provider != null) {
-				var workspace_path = this.provider.get_workspace_path();
-				if (workspace_path != "") {
-					result += "Workspace Path: " + workspace_path + "\n";
-				}
+			var workspace_path = this.provider.get_workspace_path();
+			if (workspace_path != "") {
+				result += "Workspace Path: " + workspace_path + "\n";
 			}
 			
 			if (this.shell != "") {
@@ -138,45 +131,6 @@ namespace OLLMcoder.Prompt
 		 */
 		private string generate_context_section()
 		{
-			// Try to initialize provider if widget exists but provider is null
-			if (this.provider == null && this.widget != null && this.widget.manager != null) {
-				this.provider = new CodeAssistantProvider(this.widget.manager);
-				this.cached_manager = this.widget.manager; // Cache the manager reference
-			}
-			
-			// If provider is still null, try to create it from cached manager or create a new ProjectManager
-			if (this.provider == null && this.db != null) {
-				OLLMfiles.ProjectManager? manager = null;
-				
-				// Use cached manager if available
-				if (this.cached_manager != null) {
-					manager = this.cached_manager;
-				} else if (this.widget != null && this.widget.manager != null) {
-					// Use widget's manager if widget exists
-					manager = this.widget.manager;
-					this.cached_manager = manager;
-				} else {
-					// Create a new ProjectManager from db (lazy initialization)
-					manager = new OLLMfiles.ProjectManager(this.db);
-					// Set providers
-					manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-					manager.git_provider = new OLLMcoder.Files.GitProvider();
-					this.cached_manager = manager;
-					// Load projects from database
-					manager.load_projects_from_db();
-					// Try to restore active state synchronously (best effort)
-					// Note: restore_active_state is async, but we'll try to get what we can
-					// The active project/file should be loaded from DB with is_active flags
-				}
-				
-				if (manager != null) {
-					this.provider = new CodeAssistantProvider(manager);
-				}
-			}
-			
-			if (this.provider == null) {
-				return "";
-			}
 			
 			var result = "<additional_data>\n" +
 				"Below are some helpful pieces of information about the current state:\n\n";
@@ -240,53 +194,29 @@ namespace OLLMcoder.Prompt
 		{
 			// Return cached widget if already created
 			if (this.widget != null) {
-				// Ensure provider is set even if widget was cached
-				if (this.provider == null && this.widget.manager != null) {
-					this.provider = new CodeAssistantProvider(this.widget.manager);
-					this.cached_manager = this.widget.manager; // Update cached reference
-				}
 				return this.widget as Object;
 			}
 			
-			// Database is required for ProjectManager
-			if (this.db == null) {
+			// Database is required for migration check
+			if (this.project_manager.db == null) {
 				return null;
 			}
 			
 			// Run migration if database file doesn't exist
-			var db_file = GLib.File.new_for_path(this.db.filename);
+			var db_file = GLib.File.new_for_path(this.project_manager.db.filename);
 			if (!db_file.query_exists()) {
 				// Database file doesn't exist - run migration
-				var project_manager = new OLLMfiles.ProjectManager(this.db);
-				// Set providers
-				project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-				project_manager.git_provider = new OLLMcoder.Files.GitProvider();
-				var migrator = new OLLMcoder.ProjectMigrate(project_manager);
+				var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
 				migrator.migrate_all();
 				// Save migrated data to database file
-				this.db.backupDB();
+				this.project_manager.db.backupDB();
 			}
 			
-			// Create ProjectManager with database
-			var project_manager = new OLLMfiles.ProjectManager(this.db);
-			// Set providers
-			project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.Files.GitProvider();
-			
 			// Create SourceView with ProjectManager
-			this.widget = new OLLMcoder.SourceView(project_manager);
-			
-			// Cache the manager reference
-			this.cached_manager = project_manager;
+			this.widget = new OLLMcoder.SourceView(this.project_manager);
 			
 			// Initialize widget (load projects, restore state, apply UI state)
 			yield this.initialize_widget();
-			
-			// Create provider from widget's manager so context can be included in prompts
-			if (this.provider == null && this.widget.manager != null) {
-				this.provider = new CodeAssistantProvider(this.widget.manager);
-				this.cached_manager = this.widget.manager; // Update cached reference
-			}
 			
 			// Return widget (cast as Object)
 			return this.widget as Object;

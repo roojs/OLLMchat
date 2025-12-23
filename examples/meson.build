@@ -142,63 +142,54 @@ vmd2html = executable('oc-md2html',
 # Only depends on liboccoder (which already includes libocsqlite)
 # Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
 test_files = executable('oc-test-files',
-  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
+  dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
   sources: ['oc-test-files.vala'],
-  include_directories: include_directories('../liboccoder'),
+  include_directories: include_directories('../libocfiles'),
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=ocagent',
-    '--pkg=libgit2-glib-1.0',
-    '--pkg=occoder',
+    '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
 # Build oc-diff executable (unified diff output)
-# Only depends on liboccoder (which already includes libocsqlite)
-# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+# Only depends on libocfiles (no GTK or vector search dependencies)
+# Diff classes moved from liboccoder to libocfiles
 oc_diff = executable('oc-diff',
-  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
-  sources: ['oc-diff.vala'],
-  include_directories: include_directories('../liboccoder'),
+  dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
+  sources: [meson.current_source_dir() / '../libocfiles/oc-diff.vala'],
+  include_directories: include_directories('../libocfiles'),
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=ocagent',
-    '--pkg=libgit2-glib-1.0',
-    '--pkg=occoder',
+    '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
   ],
   install: true,
   install_dir: get_option('bindir')
 )
 
 # Build oc-migrate-editors executable (project migration test)
-# Only depends on liboccoder (which already includes libocsqlite)
-# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+# Only depends on libocfiles (no GTK or vector search dependencies)
+# ProjectMigrate moved from liboccoder to libocfiles
 oc_migrate_editors = executable('oc-migrate-editors',
-  dependencies: [occoder_test_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep],
+  dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
   sources: ['oc-migrate-editors.vala'],
-  include_directories: include_directories('../liboccoder'),
+  include_directories: include_directories('../libocfiles'),
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=ocagent',
-    '--pkg=libgit2-glib-1.0',
-    '--pkg=occoder',
+    '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -234,7 +225,7 @@ oc_vector_index = executable('oc-vector-index',
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',
-    '--pkg=ocvector',  # Find VAPI via vapidir (ocvector.vapi copy)
+    # Don't use --pkg=ocvector when linking with ocvector_base_lib - meson includes ocvector-meson.vapi automatically
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -269,7 +260,7 @@ oc_vector_search = executable('oc-vector-search',
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',
-    '--pkg=ocvector',  # Find VAPI via vapidir (ocvector.vapi copy)
+    # Don't use --pkg=ocvector when linking with ocvector_base_lib - meson includes ocvector-meson.vapi automatically
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',

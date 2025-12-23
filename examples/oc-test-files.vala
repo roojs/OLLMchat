@@ -125,10 +125,8 @@ namespace OLLMchat
 		var db = new SQ.Database(db_path, false);
 		
 		// Create ProjectManager with the database
+		// Uses default BufferProviderBase and GitProviderBase from ocfiles (no GTK dependencies)
 		var manager = new OLLMfiles.ProjectManager(db);
-		// Set providers
-		manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-		manager.git_provider = new OLLMcoder.Files.GitProvider();
 		
 		// Create a Folder with is_project = true for the current directory
 		var project = new OLLMfiles.Folder(manager);

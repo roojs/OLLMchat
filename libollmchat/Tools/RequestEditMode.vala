@@ -76,7 +76,7 @@ namespace OLLMchat.Tools
 			return true;
 		}
 		
-		protected override string execute_request() throws Error
+		protected override async string execute_request() throws Error
 		{
 			// Validate parameters with descriptive errors
 			if (this.file_path == "") {

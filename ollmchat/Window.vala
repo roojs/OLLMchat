@@ -212,9 +212,15 @@ namespace OLLMchat
 			this.history_manager = new OLLMchat.History.Manager(client, data_dir);
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(null) {
-				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash",
-				db =  new SQ.Database(Path.build_filename(data_dir, "files.sqlite"))  // Set separate database for ProjectManager
+			// Create ProjectManager first to share with tools
+			var project_manager = new OLLMfiles.ProjectManager(
+				new SQ.Database(Path.build_filename(data_dir, "files.sqlite"))
+			);
+			project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
+			project_manager.git_provider = new OLLMcoder.Files.GitProvider();
+			
+			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(project_manager) {
+				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
 			};
 			this.history_manager.agents.set(code_assistant.name, code_assistant);
 			
@@ -235,6 +241,15 @@ namespace OLLMchat
 			client.addTool(new OLLMchat.Tools.ReadFile(client));
 			client.addTool(new OLLMchat.Tools.EditMode(client));
 			client.addTool(new OLLMchatGtk.Tools.RunCommand(client, GLib.Environment.get_home_dir()));
+			
+			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
+			// Use same ProjectManager instance as CodeAssistant
+			// Initialize codebase search tool asynchronously
+			this.initialize_codebase_search_tool.begin(
+				client,
+				project_manager,
+				data_dir
+			);
 
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
@@ -265,6 +280,61 @@ namespace OLLMchat
 			
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
+		}
+		
+		/**
+		 * Initializes the codebase search tool asynchronously.
+		 * 
+		 * Loads embed config, creates vector database, and registers the tool.
+		 * Only registers if embed.json config exists.
+		 */
+		private async void initialize_codebase_search_tool(
+			OLLMchat.Client client,
+			OLLMfiles.ProjectManager project_manager,
+			string data_dir
+		)
+		{
+			// Load embed config for vector database
+			var embed_config_path = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(), ".config", "ollmchat", "embed.json"
+			);
+			
+			if (!GLib.FileUtils.test(embed_config_path, GLib.FileTest.EXISTS)) {
+				// Embed config not found - tool won't be available
+				return;
+			}
+			
+			try {
+				var parser = new Json.Parser();
+				parser.load_from_file(embed_config_path);
+				var embed_obj = parser.get_root().get_object();
+				
+				var embed_client = new OLLMchat.Client(new OLLMchat.Config() {
+					url = embed_obj.get_string_member("url"),
+					model = embed_obj.get_string_member("model"),
+					api_key = embed_obj.get_string_member("api-key")
+				});
+				embed_client.options = new OLLMchat.Call.Options() {
+					temperature = 0.0,
+					num_ctx = 2048
+				};
+				
+				// Get dimension and create vector database
+				var vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
+				 var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
+				/*var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
+				
+				// Register the tool
+				client.addTool(new OLLMvector.Tool.CodebaseSearchTool(
+					client,
+					project_manager,
+					vector_db,
+					embed_client
+				));
+				*/
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to initialize codebase search tool: %s", e.message);
+			}
 		}
 		
 		/**

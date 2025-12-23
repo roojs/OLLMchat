@@ -155,7 +155,7 @@ namespace OLLMchat.Tool
 			
 			// Execute the request
 			try {
-				var result = this.execute_request();
+				var result = yield this.execute_request();
 				GLib.debug("RequestBase.execute: Tool '%s' executed successfully, result length: %zu", this.tool.name, result.length);
 				return result;
 			} catch (Error e) {
@@ -172,6 +172,6 @@ namespace OLLMchat.Tool
 		 * 
 		 * @return String content result (will be wrapped in JSON by execute())
 		 */
-		protected abstract string execute_request() throws Error;
+		protected abstract async string execute_request() throws Error;
 	}
 }

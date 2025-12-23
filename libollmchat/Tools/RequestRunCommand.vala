@@ -368,7 +368,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Required by base class, but we handle everything in execute().
 		 */
-		protected override string execute_request() throws Error
+		protected override async string execute_request() throws Error
 		{
 			// This should never be called since we override execute()
 			throw new GLib.IOError.NOT_SUPPORTED("execute_request() should not be called");

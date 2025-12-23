@@ -31,7 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Prompt.CodeAssistant.db.html">db</a></li>
+          <li class="property"><a href="OLLMcoder.Prompt.CodeAssistant.project_manager.html">project_manager</a></li>
           <li class="creation_method">CodeAssistant</li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_system_prompt.html">generate_system_prompt</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_info_section.html">generate_user_info_section</a></li>
@@ -43,16 +43,16 @@
         <h1 class="main_title">CodeAssistant</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">CodeAssistant</span></b> (<span class="main_type"><a href="OLLMcoder.Prompt.CodeAssistantProvider.html" class="class">CodeAssistantProvider</a></span>? provider = <span class="main_literal">null</span>)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">CodeAssistant</span></b> (<span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span> project_manager)
         </div>
         <div class="description">
           <p>Constructor.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">provider</td>
+              <td class="main_parameter_table_name">project_manager</td>
               <td>
-                <p>The provider for context data. If null, no context will be provided. </p>
+                <p>The ProjectManager instance (required) </p>
               </td>
             </tr>
           </table>

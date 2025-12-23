@@ -619,3 +619,74 @@ return string.joinv("\n", lines[start_line:end_line+1]);
 
 Note: Array slicing uses `[start:end]` where `end` is exclusive, so use `end_line+1` to include the end line.
 
+## Property Getters vs Get Methods
+
+**IMPORTANT:** Avoid `get_*()` methods for simple property access. Use property getters with `get; private set;` or `get; set;` instead. Only use `get_*()` methods when the operation is complex, involves computation, or requires parameters.
+
+**Bad:**
+```vala
+public class MyClass
+{
+    private string name;
+    
+    public string get_name()
+    {
+        return this.name;
+    }
+    
+    public ProjectManager get_project_manager()
+    {
+        if (this.cached_manager != null) {
+            return this.cached_manager;
+        }
+        return this.create_manager();
+    }
+}
+```
+
+**Good:**
+```vala
+public class MyClass
+{
+    public string name { get; private set; }
+    
+    public ProjectManager project_manager {
+        get {
+            if (this.cached_manager != null) {
+                return this.cached_manager;
+            }
+            return this.create_manager();
+        }
+    }
+}
+```
+
+**Also Good (for computed properties with simple logic):**
+```vala
+public class MyClass
+{
+    private ProjectManager? cached_manager = null;
+    
+    public ProjectManager project_manager {
+        get {
+            if (this.cached_manager == null) {
+                this.cached_manager = this.create_manager();
+            }
+            return this.cached_manager;
+        }
+    }
+}
+```
+
+**Exception (use get_* method when operation requires parameters):**
+```vala
+public class MyClass
+{
+    // This is OK - requires a parameter
+    public File? get_file_by_path(string path)
+    {
+        return this.files.get(path);
+    }
+}
+```
+

@@ -31,7 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMcoder.Prompt.CodeAssistant.db.html">db</a></li>
+          <li class="property"><a href="OLLMcoder.Prompt.CodeAssistant.project_manager.html">project_manager</a></li>
           <li class="creation_method"><a href="OLLMcoder.Prompt.CodeAssistant.CodeAssistant.html">CodeAssistant</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_system_prompt.html">generate_system_prompt</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_info_section.html">generate_user_info_section</a></li>
@@ -66,15 +66,14 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span>? <b><a href="OLLMcoder.Prompt.CodeAssistant.db.html" class="property">db</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span> <b><a href="OLLMcoder.Prompt.CodeAssistant.project_manager.html" class="property">project_manager</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Database instance for ProjectManager (optional). Set this to enable 
-                project/file persistence.</span>
+            <div class="leaf_brief_description"><span class="brief_description">ProjectManager instance for project/file management.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Prompt.CodeAssistant.CodeAssistant.html" class="creation_method">CodeAssistant</a></b> (<span class="main_type"><a href="OLLMcoder.Prompt.CodeAssistantProvider.html" class="class">CodeAssistantProvider</a></span>? provider = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMcoder.Prompt.CodeAssistant.CodeAssistant.html" class="creation_method">CodeAssistant</a></b> (<span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span> project_manager)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>

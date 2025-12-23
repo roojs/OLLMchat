@@ -61,7 +61,7 @@ namespace OLLMchat.Tools
 			return true;
 		}
 		
-		protected override string execute_request() throws Error
+		protected override async string execute_request() throws Error
 		{
 			// Normalize and validate file path
 			var file_path = this.normalize_file_path(this.file_path);
