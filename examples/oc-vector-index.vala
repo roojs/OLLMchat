@@ -252,6 +252,11 @@ Embed Model: $(embed_client.config.model)
 			manager
 		);
 		
+		indexer.progress.connect((current, total, file_path) => {
+			int percentage = (int)((current * 100.0) / total);
+			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, file_path);
+		});
+		
 		stdout.printf("=== Indexing ===\n");
 		
 		// Look up FileBase object from database
@@ -314,6 +319,7 @@ Embed Model: $(embed_client.config.model)
 			try {
 				stdout.printf("Calling indexer.index_filebase...\n");
 				int files_indexed = yield indexer.index_filebase(filebase, opt_recurse, false);
+				stdout.printf("\n");
 				stdout.printf("index_filebase returned: %d files indexed\n", files_indexed);
 				var completion_info = @"✓ Indexing completed
   Files indexed: $(files_indexed)

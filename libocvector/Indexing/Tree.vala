@@ -463,6 +463,13 @@ namespace OLLMvector.Indexing
 					(node_type_lower == "class_declaration" || node_type_lower == "class" ||
 					node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
 					node_type_lower == "interface_declaration" || node_type_lower == "interface");
+			
+			// Detect constructors: methods with the same name as their parent class
+			if (element_type == "method" && parent_class != null && parent_class != "" && 
+			    element_name == parent_class) {
+				element_type = "constructor";
+				metadata.element_type = "constructor";
+			}
 			if (parent_class != null && parent_class != "" && !is_class_or_struct_or_interface) {
 				metadata.parent_class = parent_class;
 			}

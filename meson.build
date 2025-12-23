@@ -59,7 +59,8 @@ executables_info = [
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],
   ['oc-migrate-editors', 'examples/oc-migrate-editors'],
-  ['oc-vector-index', 'examples/oc-vector-index']
+  ['oc-vector-index', 'examples/oc-vector-index'],
+  ['oc-vector-search', 'examples/oc-vector-search']
 ]
 
 # Library paths for LD_LIBRARY_PATH

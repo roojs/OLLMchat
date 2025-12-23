@@ -58,8 +58,8 @@ ocvector_src = files([
   'Indexing/Indexer.vala',  # Main indexing orchestrator
   
   # Search/ directory
-  # 'Search/Searcher.vala',
-  # 'Search/QueryProcessor.vala',
+  'Search/Search.vala',  # Vector search execution
+  'Search/SearchResult.vala',  # Search result representation
   
   # Tool/ directory
   # 'Tool/CodebaseSearchTool.vala',

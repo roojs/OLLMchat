@@ -561,7 +561,9 @@ namespace OLLMfiles
 			foreach (var file_base in id_map.values) {
 				this.build_tree_structure(file_base, id_map);
 			}
-			GLib.debug("Folder.load_files_from_db: After building tree, folder '%s' has %d children", this.path, this.children.items.size);
+			
+			// Populate project_files from children
+			this.project_files.update_from(this);
 		}
 		
 	/**

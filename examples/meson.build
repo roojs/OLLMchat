@@ -247,3 +247,38 @@ oc_vector_index = executable('oc-vector-index',
   install_dir: get_option('bindir')
 )
 
+# Build oc-vector-search executable (vector search tool)
+# Note: Does NOT depend on liboccoder - uses base BufferProviderBase instead
+# This allows the search tool to work without GTK dependencies
+oc_vector_search = executable('oc-vector-search',
+  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
+  link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
+  sources: ['oc-vector-search.vala'],
+  include_directories: [
+    include_directories('../libocvector'),
+    include_directories('../libollmchat'),
+    include_directories('../libocagent'),
+    include_directories('../libocsqlite'),
+    include_directories('../libocfiles')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=json-glib-1.0',
+    '--pkg=libsoup-3.0',
+    '--pkg=fiass',
+    '--pkg=ocagent',
+    '--pkg=ollmchat',
+    '--pkg=ocvector',  # Find VAPI via vapidir (ocvector.vapi copy)
+    '--pkg=ocfiles',
+    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+  ],
+  install: true,
+  install_dir: get_option('bindir')
+)
+

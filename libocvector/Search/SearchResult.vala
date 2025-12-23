@@ -31,9 +31,9 @@ namespace OLLMvector.Search
 		public int64 vector_id { get; set; default = 0; }
 		
 		/**
-		 * FAISS similarity score.
+		 * FAISS distance (L2 distance - lower is better).
 		 */
-		public float similarity_score { get; set; default = 0.0f; }
+		public float distance { get; set; default = 0.0f; }
 		
 		/**
 		 * Code location metadata.
@@ -41,17 +41,13 @@ namespace OLLMvector.Search
 		public OLLMvector.VectorMetadata metadata { get; set; }
 		
 		/**
-		 * Get file path (computed from metadata.file_id).
+		 * Get file object (computed from metadata.file_id).
 		 * 
-		 * @return File path, or "unknown" if not found
+		 * @return File object
 		 */
-		public string file_path()
+		public OLLMfiles.File file()
 		{
-			if (this.folder.project_files != null) {
-				var file = this.folder.project_files.get_by_id(this.metadata.file_id);
-				return file != null ? file.path : "unknown";
-			}
-			return "unknown";
+			return this.folder.project_files.get_by_id(this.metadata.file_id);
 		}
 		
 		/**
@@ -70,21 +66,21 @@ namespace OLLMvector.Search
 		 * @param sql_db SQL database for file lookup and VectorMetadata access
 		 * @param folder Project folder for file operations (to read code snippets)
 		 * @param vector_id FAISS vector ID
-		 * @param similarity_score FAISS similarity score
+		 * @param distance FAISS distance (L2 distance - lower is better)
 		 * @param metadata Code location metadata
 		 */
 		public SearchResult(
 			SQ.Database sql_db,
 			OLLMfiles.Folder folder,
 			int64 vector_id,
-			float similarity_score,
+			float distance,
 			OLLMvector.VectorMetadata metadata
 		)
 		{
 			this.sql_db = sql_db;
 			this.folder = folder;
 			this.vector_id = vector_id;
-			this.similarity_score = similarity_score;
+			this.distance = distance;
 			this.metadata = metadata;
 		}
 		
@@ -94,19 +90,12 @@ namespace OLLMvector.Search
 		 * Uses metadata.file_id to lookup File via folder.project_files,
 		 * then uses buffer_provider to get code snippet using metadata.start_line and metadata.end_line.
 		 * 
-		 * @return Code snippet as string
+		 * @param max_lines Maximum number of lines to return (-1 for no limit)
+		 * @return Code snippet as string, truncated to max_lines if specified
 		 */
-		public string code_snippet()
+		public string code_snippet(int max_lines = -1)
 		{
-			// Lookup File by file_id using project's ProjectFiles
-			if (this.folder.project_files == null) {
-				return "";
-			}
-			
-			var file = this.folder.project_files.get_by_id(this.metadata.file_id);
-			if (file == null) {
-				return "";
-			}
+			var file = this.file();
 			
 			// Use buffer_provider to get code snippet (0-based line numbers)
 			// Convert from 1-indexed (metadata) to 0-based (buffer_provider)
@@ -116,6 +105,10 @@ namespace OLLMvector.Search
 			if (start_line > end_line) {
 				return "";
 			}
+			
+			// Apply max_lines truncation if specified
+			end_line = (max_lines != -1 && (end_line - start_line + 1) > max_lines) ?
+					 start_line + max_lines - 1 : end_line;
 			
 			return this.folder.manager.buffer_provider.get_buffer_text(file, start_line, end_line);
 		}

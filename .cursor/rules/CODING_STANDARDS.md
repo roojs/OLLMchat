@@ -4,6 +4,8 @@
 
 **IMPORTANT:** Do NOT use `@"` string interpolation unless explicitly asked. Use normal string concatenation instead.
 
+**Exception:** Multi-line strings for usage/help text, error messages, or documentation may use `@"""` (triple-quoted string interpolation) for better readability.
+
 **Bad:**
 ```vala
 var message = @"Error: Tool '$tool_name' not found";
@@ -12,6 +14,22 @@ var message = @"Error: Tool '$tool_name' not found";
 **Good:**
 ```vala
 var message = "Error: Tool '" + tool_name + "' not found";
+```
+
+**Also Good (exception for multi-line usage/help text):**
+```vala
+var usage = @"Usage: $(args[0]) [OPTIONS] <folder> <query>
+
+Search indexed codebase using semantic vector search.
+
+Arguments:
+  folder                 Folder path to search within (required)
+  query                  Search query text (required)
+
+Options:
+  -d, --debug          Enable debug output
+  -j, --json           Output results as JSON
+";
 ```
 
 ## Temporary Variables
@@ -556,4 +574,48 @@ if (map.has_key(key)) {
 ```vala
 map.unset(key);
 ```
+
+## SQL Table Aliases
+
+**IMPORTANT:** Do NOT use table aliases in SQL queries. Always use full table names. This improves readability and avoids confusion.
+
+**Bad:**
+```vala
+var sql = "SELECT DISTINCT vm.vector_id FROM vector_metadata vm WHERE vm.file_id IN (1, 2, 3)";
+```
+
+**Good:**
+```vala
+var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (1, 2, 3)";
+```
+
+**Also Bad (with JOINs):**
+```vala
+var sql = "SELECT f.path, vm.vector_id FROM vector_metadata vm JOIN filebase f ON vm.file_id = f.id";
+```
+
+**Also Good (with JOINs, no aliases):**
+```vala
+var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata JOIN filebase ON vector_metadata.file_id = filebase.id";
+```
+
+## String Array Operations
+
+**IMPORTANT:** Never loop over a string array to build another string array. Use Vala's array slicing syntax with `string.joinv()` instead.
+
+**Bad:**
+```vala
+var result_lines = new Gee.ArrayList<string>();
+for (int i = start_line; i <= end_line; i++) {
+    result_lines.add(lines[i]);
+}
+return string.joinv("\n", result_lines.to_array());
+```
+
+**Good:**
+```vala
+return string.joinv("\n", lines[start_line:end_line+1]);
+```
+
+Note: Array slicing uses `[start:end]` where `end` is exclusive, so use `end_line+1` to include the end line.
 

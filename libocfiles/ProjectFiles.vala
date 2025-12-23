@@ -500,5 +500,27 @@ namespace OLLMfiles
 			
 			return filtered_files;
 		}
+		
+		/**
+		 * Gets a list of file IDs as strings, optionally filtered by language.
+		 * 
+		 * @param language Optional language filter (e.g., "vala", "python"). If empty string, all files are included.
+		 * @return ArrayList of file IDs as strings
+		 */
+		public Gee.ArrayList<string> get_ids(string language = "")
+		{
+			var file_ids = new Gee.ArrayList<string>();
+			
+			foreach (var project_file in this.items) {
+				// Apply language filter if specified
+				if (language != "" && project_file.file.language != language) {
+					continue;
+				}
+				
+				file_ids.add(project_file.file.id.to_string());
+			}
+			
+			return file_ids;
+		}
 	}
 }

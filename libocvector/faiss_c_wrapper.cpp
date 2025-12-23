@@ -4,6 +4,7 @@
 
 #include <faiss/IndexHNSW.h>
 #include <faiss/impl/IDSelector.h>
+#include <faiss/impl/HNSW.h>
 #include <faiss/index_io.h>
 #include <cstdint>
 #include <cstdio>
@@ -288,16 +289,33 @@ int faiss_Index_search_with_ids(
     
     try {
         const faiss::IDSelector* selector = static_cast<const faiss::IDSelector*>(sel);
-        faiss::SearchParameters params;
-        params.sel = const_cast<faiss::IDSelector*>(selector);
-        idx->search(
-            (faiss::idx_t)n,
-            x,
-            (faiss::idx_t)k,
-            distances,
-            labels,
-            &params
-        );
+        
+        // Check if this is an HNSW index - it needs SearchParametersHNSW
+        faiss::IndexHNSW* hnsw_idx = dynamic_cast<faiss::IndexHNSW*>(idx);
+        if (hnsw_idx) {
+            faiss::SearchParametersHNSW params;
+            params.sel = const_cast<faiss::IDSelector*>(selector);
+            idx->search(
+                (faiss::idx_t)n,
+                x,
+                (faiss::idx_t)k,
+                distances,
+                labels,
+                &params
+            );
+        } else {
+            // For other index types, use base SearchParameters
+            faiss::SearchParameters params;
+            params.sel = const_cast<faiss::IDSelector*>(selector);
+            idx->search(
+                (faiss::idx_t)n,
+                x,
+                (faiss::idx_t)k,
+                distances,
+                labels,
+                &params
+            );
+        }
         fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: search completed successfully\n");
         return 0;
     } catch (const std::exception& e) {

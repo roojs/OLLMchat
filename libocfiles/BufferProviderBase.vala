@@ -19,6 +19,19 @@
 namespace OLLMfiles
 {
 	/**
+	 * Cached file contents with lines array.
+	 */
+	private class FileCacheEntry : Object
+	{
+		public string[] lines { get; set; }
+		
+		public FileCacheEntry(string[] lines)
+		{
+			this.lines = lines;
+		}
+	}
+	
+	/**
 	 * Base class for buffer operations with default no-op implementations.
 	 * 
 	 * Provides a default implementation that does nothing, allowing
@@ -32,6 +45,12 @@ namespace OLLMfiles
 		 * Static hashmap mapping file extensions to language identifiers.
 		 */
 		private static Gee.HashMap<string, string>? extension_map = null;
+		
+		/**
+		 * Cache of file contents (path => FileCacheEntry with lines array).
+		 */
+		private Gee.HashMap<string, FileCacheEntry> file_cache { 
+			get; set; default = new Gee.HashMap<string, FileCacheEntry>(); }
 		
 		/**
 		 * Initialize the extension map with common file extensions.
@@ -220,7 +239,41 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Get lines array from cache or file.
+		 * 
+		 * @param file_path The path to the file to load
+		 * @return Lines array, or empty array if file cannot be read
+		 */
+		private string[] get_lines(string file_path)
+		{
+			// Check cache first
+			if (this.file_cache.has_key(file_path)) {
+				return this.file_cache.get(file_path).lines;
+			}
+			string[] ret = {}; 
+			// Load from file
+			try {
+				if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
+					return ret;
+				}
+				
+				string contents;
+				GLib.FileUtils.get_contents(file_path, out contents);
+				
+				var lines_array = contents.split("\n");
+				var cache_entry = new FileCacheEntry(lines_array);
+				this.file_cache.set(file_path, cache_entry);
+				return lines_array;
+			} catch (GLib.Error e) {
+				GLib.debug("BufferProviderBase.get_lines: Failed to read file %s: %s", file_path, e.message);
+				return ret;
+			}
+		}
+		
+		/**
 		 * Get text from the buffer, optionally limited to a line range.
+		 * 
+		 * Reads file directly from disk if not in cache, and caches the result.
 		 * 
 		 * @param file The file to get text from
 		 * @param start_line Starting line number (0-based, inclusive)
@@ -228,8 +281,21 @@ namespace OLLMfiles
 		 * @return The buffer text, or empty string if not available
 		 */
 		public virtual string get_buffer_text(File file, int start_line = 0, int end_line = -1) 
-		{ 
-			return ""; 
+		{
+			
+			
+			var lines = this.get_lines(file.path);
+			
+			// Handle line range
+			start_line = start_line < 0 ? 0 : start_line;
+			end_line = end_line == -1 ? lines.length - 1 : (end_line >= lines.length ? lines.length - 1 : end_line);
+			
+			if (start_line > end_line) {
+				return "";
+			}
+			
+			// Extract lines and join
+			return string.joinv("\n", lines[start_line:end_line+1]);
 		}
 		
 		/**

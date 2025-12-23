@@ -34,6 +34,15 @@ namespace OLLMvector.Indexing
 		private OLLMfiles.ProjectManager manager;
 		
 		/**
+		 * Emitted when indexing progress is made.
+		 * 
+		 * @param current Current file number being processed (1-based)
+		 * @param total Total number of files to process
+		 * @param file_path Path of the file currently being processed
+		 */
+		public signal void progress(int current, int total, string file_path);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param analysis_client The OLLMchat client for analysis (LLM summarization)
@@ -172,6 +181,7 @@ namespace OLLMvector.Indexing
 				}
 				
 				var file = project_file.file;
+				this.progress((int)(i + 1), (int)n_items, file.path);
 				try {
 					if (yield this.index_file(file, force)) {
 						files_indexed++;
@@ -209,12 +219,14 @@ namespace OLLMvector.Indexing
 				filebase = filebase.points_to;
 			}
 			
-			if (filebase is OLLMfiles.File) {
-				if (yield this.index_file((OLLMfiles.File)filebase, force)) {
-					return 1;
-				}
-				return 0;
+		if (filebase is OLLMfiles.File) {
+			var file = (OLLMfiles.File)filebase;
+			this.progress(1, 1, file.path);
+			if (yield this.index_file(file, force)) {
+				return 1;
 			}
+			return 0;
+		}
 			
 			if (filebase is OLLMfiles.Folder) {
 				return yield this.index_folder((OLLMfiles.Folder)filebase, recurse, force);

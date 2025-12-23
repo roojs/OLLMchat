@@ -638,10 +638,10 @@ namespace SQ {
 		 		}
 		 		
 		 		if (this.property_names != null && this.property_values != null) {
-					GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
+				//	GLib.debug("new_with_properties %s", string.joinv(",", this.property_names));
 		 			row = (T) Object.new_with_properties(object_type, this.property_names, this.property_values);
 		 		} else {
-					GLib.debug("new %s", object_type.name());
+				//	GLib.debug("new %s", object_type.name());
 		 			row = (T) Object.new(object_type);
 		 		}
 				this.fetchRow(stmt, row);

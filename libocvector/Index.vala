@@ -3,7 +3,7 @@ namespace OLLMvector
 	public struct SearchResult
 	{
 		public int64 document_id;
-		public float similarity_score;
+		public float distance;
 		public int rank;
 	}
 	
@@ -171,7 +171,7 @@ namespace OLLMvector
 			for (int i = 0; i < k; i++) {
 				results[i] = SearchResult() {
 					document_id = labels[i],
-					similarity_score = distances[i],
+					distance = distances[i],
 					rank = i + 1
 				};
 			}

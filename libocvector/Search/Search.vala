@@ -58,9 +58,9 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Filtered vector IDs (from SQL filter query).
-		 * Empty set means search all vectors.
+		 * Empty list means search all vectors.
 		 */
-		private Gee.HashSet<int64?> filtered_vector_ids;
+		private Gee.ArrayList<int> filtered_vector_ids;
 		
 		/**
 		 * Constructor with all required dependencies.
@@ -71,7 +71,7 @@ namespace OLLMvector.Search
 		 * @param folder Project folder for file operations
 		 * @param query Search query text
 		 * @param max_results Maximum number of results (default: 10)
-		 * @param filtered_vector_ids Set of vector IDs to filter search (empty set = search all)
+		 * @param filtered_vector_ids List of vector IDs to filter search (empty list = search all)
 		 */
 		public Search(
 			OLLMvector.Database vector_db,
@@ -80,7 +80,7 @@ namespace OLLMvector.Search
 			OLLMfiles.Folder folder,
 			string query,
 			uint64 max_results = 10,
-			Gee.HashSet<int64?> filtered_vector_ids
+			Gee.ArrayList<int> filtered_vector_ids
 		)
 		{
 			this.vector_db = vector_db;
@@ -156,44 +156,24 @@ namespace OLLMvector.Search
 			
 			var query_vector = this.embed_to_floats(embed_response.embeddings[0]);
 			
-			// Step 3: Create IDSelector if filtering is needed
+			// Step 3: Create IDSelector for filtering
+			var id_array = new int64[this.filtered_vector_ids.size];
+			for (int i = 0; i < this.filtered_vector_ids.size; i++) {
+				id_array[i] = this.filtered_vector_ids[i];
+			}
+			
 			Faiss.IDSelector? selector = null;
-			if (this.filtered_vector_ids.size > 0) {
-				// Convert HashSet to array for IDSelector
-				var id_list = new Gee.ArrayList<int64>();
-				foreach (var id in this.filtered_vector_ids) {
-					if (id != null) {
-						id_list.add(id);
-					}
-				}
-				
-				if (id_list.size > 0) {
-					var id_array = new int64[id_list.size];
-					for (int i = 0; i < id_list.size; i++) {
-						id_array[i] = id_list[i];
-					}
-					
-					if (Faiss.id_selector_batch_new(out selector, (int64)id_list.size, id_array) != 0) {
-						throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
-					}
-				}
+			if (Faiss.id_selector_batch_new(out selector, (int64)this.filtered_vector_ids.size, id_array) != 0) {
+				throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
 			}
 			
 			// Step 4: Perform FAISS similarity search with native filtering
 			// Access internal index property (same library, so accessible)
 			if (this.vector_db.index == null) {
-				if (selector != null) {
-					selector.free();
-				}
 				throw new GLib.IOError.FAILED("Vector database index is not initialized");
 			}
 			
 			var faiss_results = this.vector_db.index.search(query_vector, this.max_results, selector);
-			
-			// Free selector if we created it
-			if (selector != null) {
-				selector.free();
-			}
 			
 			if (faiss_results.length == 0) {
 				return new Gee.ArrayList<SearchResult>();
@@ -210,15 +190,15 @@ namespace OLLMvector.Search
 					this.sql_db, result_vector_ids);
 			
 			// Create a map of vector_id -> metadata for quick lookup
-			var metadata_map = new Gee.HashMap<int64, OLLMvector.VectorMetadata>();
+			var metadata_map = new Gee.HashMap<int, OLLMvector.VectorMetadata>();
 			foreach (var metadata in metadata_list) {
-				metadata_map.set(metadata.vector_id, metadata);
+				metadata_map.set((int)metadata.vector_id, metadata);
 			}
 			
 			// Step 7: Create SearchResult ArrayList
 			var search_results = new Gee.ArrayList<SearchResult>();
 			foreach (var faiss_result in faiss_results) {
-				var metadata = metadata_map.get(faiss_result.document_id);
+				var metadata = metadata_map.get((int)faiss_result.document_id);
 				if (metadata == null) {
 					// Skip results without metadata
 					continue;
@@ -228,7 +208,7 @@ namespace OLLMvector.Search
 					this.sql_db,
 					this.folder,
 					faiss_result.document_id,
-					faiss_result.similarity_score,
+					faiss_result.distance,
 					metadata
 				);
 				search_results.add(search_result);

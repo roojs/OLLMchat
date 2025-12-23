@@ -134,6 +134,7 @@ namespace OLLMvector.Indexing
 			// Store metadata in SQL database
 			for (int j = 0; j < element_metadata.size; j++) {
 				var metadata = element_metadata[j];
+				var element = tree.elements[j];
 				
 				var vector_id = start_vector_id + j;
 				new VectorMetadata() {
@@ -142,7 +143,8 @@ namespace OLLMvector.Indexing
 					start_line = metadata.start_line,
 					end_line = metadata.end_line,
 					element_type = metadata.element_type,
-					element_name = metadata.element_name
+					element_name = metadata.element_name,
+					description = element.description
 				}.saveToDB(this.sql_db, false);
 			}
 			
@@ -189,10 +191,12 @@ namespace OLLMvector.Indexing
 				doc.append_printf("Description: %s\n", element.description);
 			}
 			
-			// Code snippet (using Tree.lines_to_string method)
-			doc.append("Code:\n");
-			var code_snippet = this.get_truncated_code_snippet(element, tree);
-			doc.append(code_snippet);
+			// Code snippet - skip for classes and namespaces (only use signature)
+			if (element.element_type != "class" && element.element_type != "namespace") {
+				doc.append("Code:\n");
+				var code_snippet = this.get_truncated_code_snippet(element, tree);
+				doc.append(code_snippet);
+			}
 			
 			return doc.str;
 		}
