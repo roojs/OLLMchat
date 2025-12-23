@@ -12,7 +12,9 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
+  - `libocfiles.so` - File and project management library (depends on libocsqlite, no GTK dependencies)
   - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
+  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies) - **Status: In Progress**
   - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
   - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
@@ -23,7 +25,7 @@ OLLMchat is a work-in-progress library and embeddable widget that provides LLM a
 - **Generation** - Supports text generation from LLM models
 - **Sample Tools** - Includes working tools: ReadFile, EditMode, RunCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds five shared libraries with headers, VAPI, and GIR files. Includes the main `ollmchat` application, test executables (`oc-test-cli`, `oc-markdown-test`, `oc-html2md`) and example tools (`oc-md2html`)
+- **Current Status** - Builds seven shared libraries with headers, VAPI, and GIR files. Includes the main `ollmchat` application, test executables (`oc-test-cli`, `oc-markdown-test`, `oc-html2md`), example tools (`oc-md2html`), and vector indexing tool (`oc-vector-index`)
 
 ## Demo
 
@@ -71,7 +73,9 @@ This will build:
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
+- `libocfiles.so` - File and project management library (with headers, VAPI, and GIR files)
 - `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
+- `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmchat` - Main application executable
@@ -79,6 +83,7 @@ This will build:
 - `oc-markdown-test` - Markdown parser test executable
 - `oc-html2md` - HTML to Markdown converter (reads from stdin)
 - `oc-md2html` - Markdown to HTML converter (takes file as argument)
+- `oc-vector-index` - Vector indexing tool for codebase search (indexes files/folders for semantic search)
 - Valadoc documentation (in `docs/ollmchat/`)
 
 ### 3. Running executables without installing
@@ -93,6 +98,7 @@ The executables are configured with `build_rpath` so they can find the libraries
 ./build/oc-markdown-test
 ./build/oc-html2md
 ./build/oc-md2html
+./build/oc-vector-index --help
 ```
 
 The wrapper scripts are automatically generated during the build process and set up the library paths correctly. Note that only `ollmchat` has a `.bin` wrapper; the other executables can be run directly from the build directory.
@@ -108,12 +114,37 @@ The project is organized into component directories, each with its own `meson.bu
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
 
+**File Management Library (`libocfiles.so`):**
+- `libocfiles/` - File and project management (libocfiles.so, namespace: `OLLMfiles`)
+  - Provides file tracking and project management without GTK/git dependencies
+  - Used by `libocvector` for file operations
+  - `File.vala`, `FileBase.vala`, `FileAlias.vala` - File classes
+  - `Folder.vala`, `FolderFiles.vala` - Folder classes
+  - `ProjectFile.vala`, `ProjectFiles.vala`, `ProjectList.vala`, `ProjectManager.vala` - Project management
+  - `BufferProviderBase.vala`, `GitProviderBase.vala` - Provider base classes
+
 **Code Editor Library (`liboccoder.so`):**
 - `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
   - `Files/` - File, folder, and project classes (namespace: `OLLMcoder.Files`)
   - `ProjectManager.vala` - Project and file management
   - `SourceView.vala` - Code editor component with syntax highlighting
   - `SearchableDropdown.vala`, `ProjectDropdown.vala`, `FileDropdown.vala` - Dropdown widgets
+
+**Vector Search Library (`libocvector.so`):**
+- `libocvector/` - Semantic codebase search using vector embeddings and FAISS (libocvector.so, namespace: `OLLMvector`)
+  - **Status**: In Progress - Indexing layer complete, Search layer pending
+  - **Intentions**: Provides semantic code search capabilities by indexing code elements (classes, methods, functions, etc.) using tree-sitter AST parsing, LLM analysis for descriptions, and FAISS for vector similarity search
+  - `Index.vala` - FAISS vector index integration
+  - `Database.vala` - Vector database with embeddings storage
+  - `VectorMetadata.vala` - Metadata storage (SQL database) mapping vector IDs to code locations
+  - `Indexing/` - Code indexing components (namespace: `OLLMvector.Indexing`)
+    - `Tree.vala` - Tree-sitter AST parsing and code element extraction
+    - `Analysis.vala` - LLM-based code analysis and description generation
+    - `VectorBuilder.vala` - Vector generation and FAISS storage
+    - `Indexer.vala` - Main indexing orchestrator for files and folders
+  - `Search/` - Search components (namespace: `OLLMvector.Search`) - *Pending implementation*
+  - Uses `libocfiles` (OLLMfiles namespace) for file tracking and project management
+  - Example tool: `oc-vector-index` - Command-line tool for indexing files/folders
 
 **OLLMchat Base Library (`libollmchat.so`):**
 - `libollmchat/` - Main namespace (`OLLMchat`)
@@ -163,6 +194,12 @@ The project is organized into component directories, each with its own `meson.bu
 - GLib/GIO
 - sqlite3
 
+**File management library (`libocfiles.so`)**:
+- Gee
+- GLib/GIO
+- sqlite3
+- libocsqlite (depends on libocsqlite.so)
+
 **Code editor library (`liboccoder.so`)**:
 - Gee
 - GLib/GIO
@@ -171,6 +208,20 @@ The project is organized into component directories, each with its own `meson.bu
 - sqlite3
 - json-glib
 - libocsqlite (depends on libocsqlite.so)
+
+**Vector search library (`libocvector.so`)**:
+- Gee
+- GLib/GIO
+- sqlite3
+- json-glib
+- libsoup-3.0
+- FAISS (via C++ wrapper)
+- tree-sitter (via VAPI)
+- libocfiles (depends on libocfiles.so, uses OLLMfiles namespace)
+- libollmchat (depends on libollmchat.so, uses OLLMchat namespace)
+- libocsqlite (depends on libocsqlite.so)
+- libocagent (depends on libocagent.so)
+- BLAS, LAPACK, OpenMP (for FAISS)
 
 **OLLMchat base library (`libollmchat.so`)**:
 - Gee
