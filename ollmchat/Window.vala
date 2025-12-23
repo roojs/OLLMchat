@@ -321,8 +321,8 @@ namespace OLLMchat
 				
 				// Get dimension and create vector database
 				var vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
-				 var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
-				/*var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
+				var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
+				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
 				
 				// Register the tool
 				client.addTool(new OLLMvector.Tool.CodebaseSearchTool(
@@ -331,7 +331,6 @@ namespace OLLMchat
 					vector_db,
 					embed_client
 				));
-				*/
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize codebase search tool: %s", e.message);
 			}
