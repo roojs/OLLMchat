@@ -188,7 +188,7 @@ namespace OLLMvector.Tool
 			);
 			
 			// Step 5: Format results for LLM consumption (this will cache files)
-			var formatted = this.format_results(results, this.query);
+			var formatted = yield this.format_results(results, this.query);
 			
 			// Clear file cache at end of query
 			var cache_size = this.file_cache.size;
