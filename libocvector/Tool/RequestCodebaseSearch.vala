@@ -269,7 +269,7 @@ namespace OLLMvector.Tool
 		 * @param query Original search query
 		 * @return Formatted string with code citations
 		 */
-		private string format_results(
+		private async string format_results(
 			Gee.ArrayList<OLLMvector.Search.SearchResult> results,
 			string query
 		)
@@ -303,8 +303,8 @@ namespace OLLMvector.Tool
 				}
 				
 				// Code citation block (citation format: startLine:endLine:filepath in language tag position)
-				// Use our own get_code_snippet method that uses file cache
-				var snippet = this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
+				// Use our own get_code_snippet method that uses file cache and File.read_async()
+				var snippet = yield this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
 				
 				// Debug: Log snippet details
 				GLib.debug("codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
