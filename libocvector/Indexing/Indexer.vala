@@ -245,26 +245,12 @@ namespace OLLMvector.Indexing
 		 */
 		public async void reset_database(string vector_db_path) throws GLib.Error
 		{
-			// Delete FAISS vector database file
-			var vector_db_file = GLib.File.new_for_path(vector_db_path);
-			if (vector_db_file.query_exists()) {
-				try {
-					vector_db_file.delete();
-					GLib.debug("Deleted vector database file: %s", vector_db_path);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to delete vector database file '%s': %s", vector_db_path, e.message);
-				}
-			}
+			// Use the static VectorMetadata.reset_database method to do the actual reset
+			OLLMvector.VectorMetadata.reset_database(this.sql_db, vector_db_path);
 			
-			// Get dimension first, then create new Database object (clears in-memory index)
+			// Recreate the vector_db object (clears in-memory index)
 			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embed_client);
 			this.vector_db = new OLLMvector.Database(this.embed_client, vector_db_path, dimension);
-			
-			// Delete all vector metadata
-			this.sql_db.exec("DELETE FROM vector_metadata");
-			
-			// Reset all file scan dates to -1
-			this.sql_db.exec("UPDATE filebase SET last_scan = -1 WHERE base_type = 'f'");
 		}
 	}
 

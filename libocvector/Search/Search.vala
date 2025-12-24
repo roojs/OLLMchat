@@ -63,6 +63,12 @@ namespace OLLMvector.Search
 		private Gee.ArrayList<int> filtered_vector_ids;
 		
 		/**
+		 * Optional element_type filter for metadata results.
+		 * If set, only metadata with matching element_type will be included.
+		 */
+		private string? element_type_filter;
+		
+		/**
 		 * Constructor with all required dependencies.
 		 * 
 		 * @param vector_db Vector database for FAISS search
@@ -72,6 +78,7 @@ namespace OLLMvector.Search
 		 * @param query Search query text
 		 * @param max_results Maximum number of results (default: 10)
 		 * @param filtered_vector_ids List of vector IDs to filter search (empty list = search all)
+		 * @param element_type_filter Optional element_type to filter metadata results (e.g., "class", "method")
 		 */
 		public Search(
 			OLLMvector.Database vector_db,
@@ -80,7 +87,8 @@ namespace OLLMvector.Search
 			OLLMfiles.Folder folder,
 			string query,
 			uint64 max_results = 10,
-			Gee.ArrayList<int> filtered_vector_ids
+			Gee.ArrayList<int> filtered_vector_ids,
+			string? element_type_filter = null
 		)
 		{
 			this.vector_db = vector_db;
@@ -90,6 +98,7 @@ namespace OLLMvector.Search
 			this.query = query;
 			this.max_results = max_results;
 			this.filtered_vector_ids = filtered_vector_ids;
+			this.element_type_filter = element_type_filter;
 		}
 		
 		/**
@@ -162,6 +171,28 @@ namespace OLLMvector.Search
 				id_array[i] = this.filtered_vector_ids[i];
 			}
 			
+			// Debug: Log filtered vector IDs being passed to FAISS
+			var first_ids_str = "";
+			if (this.filtered_vector_ids.size > 0) {
+				var first_ids = new string[this.filtered_vector_ids.size > 10 ? 10 : this.filtered_vector_ids.size];
+				for (int i = 0; i < first_ids.length; i++) {
+					first_ids[i] = this.filtered_vector_ids[i].to_string();
+				}
+				first_ids_str = string.joinv(",", first_ids);
+			} else {
+				first_ids_str = "none";
+			}
+			GLib.debug("Search.execute: Creating IDSelector with %d filtered_vector_ids (first 10: %s)",
+				this.filtered_vector_ids.size,
+				first_ids_str
+			);
+			
+			// Create a set for quick lookup to verify results
+			var filtered_set = new Gee.HashSet<int>();
+			foreach (var vid in this.filtered_vector_ids) {
+				filtered_set.add(vid);
+			}
+			
 			Faiss.IDSelector? selector = null;
 			if (Faiss.id_selector_batch_new(out selector, (int64)this.filtered_vector_ids.size, id_array) != 0) {
 				throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
@@ -179,15 +210,55 @@ namespace OLLMvector.Search
 				return new Gee.ArrayList<SearchResult>();
 			}
 			
-			// Step 5: Extract vector IDs from results
+			// Step 5: Extract vector IDs from results and verify they're in filtered set
 			var result_vector_ids = new int64[faiss_results.length];
+			var invalid_count = 0;
 			for (int i = 0; i < faiss_results.length; i++) {
 				result_vector_ids[i] = faiss_results[i].document_id;
+				// Verify document_id is in filtered set
+				if (!filtered_set.contains((int)faiss_results[i].document_id)) {
+					invalid_count++;
+					GLib.debug("Search.execute: WARNING - FAISS returned vector_id=%lld which is NOT in filtered list", 
+						faiss_results[i].document_id);
+				}
+			}
+			
+			// Debug: Log FAISS results
+			GLib.debug("Search.execute: FAISS returned %d results, %d valid (in filtered list), %d invalid",
+				faiss_results.length,
+				faiss_results.length - invalid_count,
+				invalid_count
+			);
+			
+			if (invalid_count > 0) {
+				var result_ids_str = new string[result_vector_ids.length];
+				for (int i = 0; i < result_vector_ids.length; i++) {
+					result_ids_str[i] = result_vector_ids[i].to_string();
+				}
+				GLib.debug("Search.execute: FAISS returned vector_ids: %s",
+					string.joinv(",", result_ids_str)
+				);
 			}
 			
 			// Step 6: Lookup metadata for result vector_ids
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
+			
+			// Filter metadata by element_type if filter is set
+			if (this.element_type_filter != null) {
+				var filtered_metadata = new Gee.ArrayList<OLLMvector.VectorMetadata>();
+				foreach (var metadata in metadata_list) {
+					if (metadata.element_type == this.element_type_filter) {
+						filtered_metadata.add(metadata);
+					}
+				}
+				metadata_list = filtered_metadata;
+				GLib.debug("Search.execute: Filtered metadata from %d to %d entries matching element_type='%s'",
+					metadata_list.size + (metadata_list.size - filtered_metadata.size),
+					filtered_metadata.size,
+					this.element_type_filter
+				);
+			}
 			
 			// Create a map of vector_id -> metadata for quick lookup
 			var metadata_map = new Gee.HashMap<int, OLLMvector.VectorMetadata>();

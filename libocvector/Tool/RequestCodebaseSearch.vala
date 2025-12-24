@@ -19,6 +19,19 @@
 namespace OLLMvector.Tool
 {
 	/**
+	 * Cached file contents with lines array (same as BufferProviderBase).
+	 */
+	private class FileCacheEntry : Object
+	{
+		public string[] lines { get; set; }
+		
+		public FileCacheEntry(string[] lines)
+		{
+			this.lines = lines;
+		}
+	}
+	
+	/**
 	 * Request handler for codebase search operations.
 	 */
 	public class RequestCodebaseSearch : OLLMchat.Tool.RequestBase
@@ -28,6 +41,12 @@ namespace OLLMvector.Tool
 		public string? language { get; set; default = null; }
 		public string? element_type { get; set; default = null; }
 		public int max_results { get; set; default = 10; }
+		
+		/**
+		 * File cache for this query (same structure as BufferProviderBase).
+		 * Maps file path => FileCacheEntry with lines array.
+		 */
+		private Gee.HashMap<string, FileCacheEntry> file_cache = new Gee.HashMap<string, FileCacheEntry>();
 		
 		/**
 		 * Default constructor.
@@ -70,6 +89,14 @@ namespace OLLMvector.Tool
 				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required");
 			}
 			
+			// Debug: Log input parameters
+			GLib.debug("codebase_search input: query='%s', language=%s, element_type=%s, max_results=%d",
+				this.query,
+				this.language ?? "null",
+				this.element_type ?? "null",
+				this.max_results
+			);
+			
 			// Emit execution message
 			this.chat_call.client.tool_message(
 				new OLLMchat.Message(
@@ -109,6 +136,13 @@ namespace OLLMvector.Tool
 				sql = sql + " AND element_type = $element_type";
 			}
 			
+			// Debug: Log vector filtering query
+			GLib.debug("codebase_search vector filter: file_ids_count=%d, element_type=%s, sql='%s'",
+				file_ids.size,
+				this.element_type ?? "null",
+				sql
+			);
+			
 			// Use VectorMetadata.query() helper
 			var sql_db = this.project_manager.db;
 			if (sql_db == null) {
@@ -128,6 +162,11 @@ namespace OLLMvector.Tool
 				filtered_vector_ids.add((int)int64.parse(vector_id_str));
 			}
 			
+			// Debug: Log vector filtering results
+			GLib.debug("codebase_search vector filter: found %d vector_id(s) matching filter",
+				filtered_vector_ids.size
+			);
+			
 			// Step 4: Create and execute search (exactly as oc-vector-search.vala does)
 			var search = new OLLMvector.Search.Search(
 				this.vector_db,
@@ -136,14 +175,89 @@ namespace OLLMvector.Tool
 				active_project,
 				this.query,
 				(uint64)this.max_results,
-				filtered_vector_ids
+				filtered_vector_ids,
+				this.element_type  // Pass element_type filter to Search
 			);
 			
 			// Execute search
 			var results = yield search.execute();
 			
-			// Step 5: Format results for LLM consumption
-			return this.format_results(results, this.query);
+			// Debug: Log output results
+			GLib.debug("codebase_search output: found %d result(s) for query '%s'",
+				results.size,
+				this.query
+			);
+			
+			// Step 5: Format results for LLM consumption (this will cache files)
+			var formatted = yield this.format_results(results, this.query);
+			
+			// Clear file cache at end of query
+			var cache_size = this.file_cache.size;
+			this.file_cache.clear();
+			GLib.debug("codebase_search: cleared file cache (%d entries)", cache_size);
+			
+			return formatted;
+		}
+		
+		/**
+		 * Get lines array from cache or file.
+		 * 
+		 * @param file The file to load
+		 * @return Lines array, or empty array if file cannot be read
+		 */
+		private async string[] get_lines(OLLMfiles.File file)
+		{
+			// Check cache first
+			if (this.file_cache.has_key(file.path)) {
+				return this.file_cache.get(file.path).lines;
+			}
+			string[] ret = {}; 
+			// Load from file
+			try {
+				var contents = yield file.read_async();
+				
+				var lines_array = contents.split("\n");
+				var cache_entry = new FileCacheEntry(lines_array);
+				this.file_cache.set(file.path, cache_entry);
+				return lines_array;
+			} catch (GLib.Error e) {
+				GLib.debug("codebase_search.get_lines: Failed to read file %s: %s", file.path, e.message);
+				return ret;
+			}
+		}
+		
+		/**
+		 * Get code snippet from file using cached lines array.
+		 * 
+		 * @param file The file to get snippet from
+		 * @param start_line Starting line number (1-based, inclusive)
+		 * @param end_line Ending line number (1-based, inclusive)
+		 * @param max_lines Maximum number of lines to return (-1 for no limit)
+		 * @return Code snippet as string
+		 */
+		private async string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
+		{
+			var lines = yield this.get_lines(file);
+			
+			if (lines.length == 0) {
+				return "";
+			}
+			
+			// Convert from 1-indexed (metadata) to 0-based (array)
+			var start_idx = (start_line - 1).clamp(0, lines.length - 1);
+			var end_idx = (end_line - 1).clamp(0, lines.length - 1);
+			
+			if (start_idx > end_idx) {
+				return "";
+			}
+			
+			// Apply max_lines truncation if specified
+			if (max_lines != -1 && (end_idx - start_idx + 1) > max_lines) {
+				end_idx = start_idx + max_lines - 1;
+			}
+			
+			// Extract lines and join
+			return string.joinv("\n", lines[start_idx:end_idx+1]);
 		}
 		
 		/**
@@ -153,7 +267,7 @@ namespace OLLMvector.Tool
 		 * @param query Original search query
 		 * @return Formatted string with code citations
 		 */
-		private string format_results(
+		private async string format_results(
 			Gee.ArrayList<OLLMvector.Search.SearchResult> results,
 			string query
 		)
@@ -187,7 +301,20 @@ namespace OLLMvector.Tool
 				}
 				
 				// Code citation block (citation format: startLine:endLine:filepath in language tag position)
-				var snippet = result.code_snippet(50);
+				// Use our own get_code_snippet method that uses file cache and File.read_async()
+				var snippet = yield this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
+				
+				// Debug: Log snippet details
+				GLib.debug("codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
+					i + 1,
+					metadata.element_name,
+					metadata.element_type,
+					metadata.start_line,
+					metadata.end_line,
+					snippet.length,
+					snippet
+				);
+				
 				output.append_printf(
 					"```%d:%d:%s\n%s\n```\n",
 					metadata.start_line,
