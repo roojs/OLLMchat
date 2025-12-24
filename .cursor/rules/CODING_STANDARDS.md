@@ -4,6 +4,8 @@
 
 **IMPORTANT:** Do NOT use `@"` string interpolation unless explicitly asked. Use normal string concatenation instead.
 
+**Exception:** Multi-line strings for usage/help text, error messages, or documentation may use `@"""` (triple-quoted string interpolation) for better readability.
+
 **Bad:**
 ```vala
 var message = @"Error: Tool '$tool_name' not found";
@@ -12,6 +14,22 @@ var message = @"Error: Tool '$tool_name' not found";
 **Good:**
 ```vala
 var message = "Error: Tool '" + tool_name + "' not found";
+```
+
+**Also Good (exception for multi-line usage/help text):**
+```vala
+var usage = @"Usage: $(args[0]) [OPTIONS] <folder> <query>
+
+Search indexed codebase using semantic vector search.
+
+Arguments:
+  folder                 Folder path to search within (required)
+  query                  Search query text (required)
+
+Options:
+  -d, --debug          Enable debug output
+  -j, --json           Output results as JSON
+";
 ```
 
 ## Temporary Variables
@@ -155,6 +173,8 @@ class MyClass
 
 **IMPORTANT:** Avoid nested code by using early returns, break/continue statements, and avoiding else clauses when possible. This improves readability and reduces cognitive complexity.
 
+**IMPORTANT:** Put shorter code in if statements and return/continue if feasible, rather than having large nested code blocks. Extract complex logic into separate methods when the main flow becomes hard to follow.
+
 **Bad:**
 ```vala
 public void process_items(List<Item> items)
@@ -216,6 +236,44 @@ public bool is_authorized(User user)
     }
     
     return user.has_permission();
+}
+```
+
+**Also Good (extracting complex logic):**
+```vala
+public int64 cleanup_orphaned_vectors(SQ.Database sql_db) throws GLib.Error
+{
+    if (this.index == null) {
+        throw new GLib.IOError.FAILED("Index not initialized");
+    }
+    
+    uint64 total_vectors = this.vector_count;
+    if (total_vectors == 0) {
+        return 0;
+    }
+    
+    var valid_ids_list = this.get_valid_vector_ids(sql_db, total_vectors);
+    if (valid_ids_list.size == 0) {
+        this.index = new Index(this.dimension);
+        return (int64)total_vectors;
+    }
+    
+    bool needs_cleanup = (uint64)valid_ids_list.size < total_vectors;
+    bool needs_remapping = this.check_needs_remapping(valid_ids_list, needs_cleanup);
+    
+    if (!needs_cleanup && !needs_remapping) {
+        return 0;
+    }
+    
+    if (needs_cleanup) {
+        this.rebuild_index_with_valid_vectors(valid_ids_list);
+    }
+    
+    if (needs_remapping) {
+        this.remap_metadata_vector_ids(sql_db, valid_ids_list);
+    }
+    
+    return (int64)total_vectors - (int64)valid_ids_list.size;
 }
 ```
 
@@ -515,5 +573,120 @@ if (map.has_key(key)) {
 **Also Good (for removal):**
 ```vala
 map.unset(key);
+```
+
+## SQL Table Aliases
+
+**IMPORTANT:** Do NOT use table aliases in SQL queries. Always use full table names. This improves readability and avoids confusion.
+
+**Bad:**
+```vala
+var sql = "SELECT DISTINCT vm.vector_id FROM vector_metadata vm WHERE vm.file_id IN (1, 2, 3)";
+```
+
+**Good:**
+```vala
+var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (1, 2, 3)";
+```
+
+**Also Bad (with JOINs):**
+```vala
+var sql = "SELECT f.path, vm.vector_id FROM vector_metadata vm JOIN filebase f ON vm.file_id = f.id";
+```
+
+**Also Good (with JOINs, no aliases):**
+```vala
+var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata JOIN filebase ON vector_metadata.file_id = filebase.id";
+```
+
+## String Array Operations
+
+**IMPORTANT:** Never loop over a string array to build another string array. Use Vala's array slicing syntax with `string.joinv()` instead.
+
+**Bad:**
+```vala
+var result_lines = new Gee.ArrayList<string>();
+for (int i = start_line; i <= end_line; i++) {
+    result_lines.add(lines[i]);
+}
+return string.joinv("\n", result_lines.to_array());
+```
+
+**Good:**
+```vala
+return string.joinv("\n", lines[start_line:end_line+1]);
+```
+
+Note: Array slicing uses `[start:end]` where `end` is exclusive, so use `end_line+1` to include the end line.
+
+## Property Getters vs Get Methods
+
+**IMPORTANT:** Avoid `get_*()` methods for simple property access. Use property getters with `get; private set;` or `get; set;` instead. Only use `get_*()` methods when the operation is complex, involves computation, or requires parameters.
+
+**Bad:**
+```vala
+public class MyClass
+{
+    private string name;
+    
+    public string get_name()
+    {
+        return this.name;
+    }
+    
+    public ProjectManager get_project_manager()
+    {
+        if (this.cached_manager != null) {
+            return this.cached_manager;
+        }
+        return this.create_manager();
+    }
+}
+```
+
+**Good:**
+```vala
+public class MyClass
+{
+    public string name { get; private set; }
+    
+    public ProjectManager project_manager {
+        get {
+            if (this.cached_manager != null) {
+                return this.cached_manager;
+            }
+            return this.create_manager();
+        }
+    }
+}
+```
+
+**Also Good (for computed properties with simple logic):**
+```vala
+public class MyClass
+{
+    private ProjectManager? cached_manager = null;
+    
+    public ProjectManager project_manager {
+        get {
+            if (this.cached_manager == null) {
+                this.cached_manager = this.create_manager();
+            }
+            return this.cached_manager;
+        }
+    }
+}
+```
+
+**Exception (use get_* method when operation requires parameters):**
+```vala
+public class MyClass
+{
+    // This is OK - requires a parameter
+    public File? get_file_by_path(string path)
+    {
+        return this.files.get(path);
+    }
+}
 ```
 

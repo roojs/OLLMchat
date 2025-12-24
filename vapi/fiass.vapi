@@ -1,4 +1,4 @@
-[CCode (cheader_filename = "faiss/c_api/IndexFlat_c.h,faiss/c_api/Index_c.h,faiss/c_api/index_io_c.h")]
+[CCode (cheader_filename = "faiss_c_wrapper.h")]
 namespace Faiss {
     [CCode (cname = "FaissIndex", has_type_id = false, free_function = "faiss_Index_free")]
     [Compact]
@@ -9,23 +9,24 @@ namespace Faiss {
         public void free();
     }
     
-    [CCode (cname = "FaissIndexFlat", has_type_id = false)]
+    [CCode (cname = "FaissIndexHNSW", has_type_id = false)]
     [Compact]
     [SimpleType]
-    public class IndexFlat : Index {}
+    public class IndexHNSW : Index {}
     
-    [CCode (cname = "FaissIndexFlatIP", has_type_id = false)]
+    [CCode (cname = "FaissIDSelector", has_type_id = false, free_function = "faiss_IDSelector_free")]
     [Compact]
     [SimpleType]
-    public class IndexFlatIP : Index {}
+    public class IDSelector {
+        [CCode (cname = "faiss_IDSelector_free")]
+        public void free();
+    }
     
-    [CCode (cname = "FaissIndexIDMap", has_type_id = false)]
-    [Compact]
-    [SimpleType]
-    public class IndexIDMap : Index {}
+    [CCode (cname = "faiss_IndexHNSWFlat_new")]
+    int index_hnsw_flat_new(out IndexHNSW index, int64 d, int64 M);
     
-    [CCode (cname = "faiss_IndexFlatIP_new_with")]
-    int index_flat_ip_new(out IndexFlatIP index, int64 d);
+    [CCode (cname = "faiss_IDSelectorBatch_new")]
+    int id_selector_batch_new(out IDSelector selector, int64 n, [CCode (array_length = false)] int64* ids);
     
     [CCode (cname = "faiss_Index_add")]
     int index_add(Index index, int64 n, [CCode (array_length = false)] float* x);
@@ -35,6 +36,9 @@ namespace Faiss {
     
     [CCode (cname = "faiss_Index_search")]
     int index_search(Index index, int64 n, [CCode (array_length = false)] float* x, int64 k, [CCode (array_length = false)] float* distances, [CCode (array_length = false)] int64* labels);
+    
+    [CCode (cname = "faiss_Index_search_with_ids")]
+    int index_search_with_ids(Index index, int64 n, [CCode (array_length = false)] float* x, int64 k, IDSelector? sel, [CCode (array_length = false)] float* distances, [CCode (array_length = false)] int64* labels);
     
     [CCode (cname = "faiss_Index_d")]
     int index_d(Index index);
@@ -47,4 +51,7 @@ namespace Faiss {
     
     [CCode (cname = "faiss_read_index_fname")]
     int read_index_fname(string fname, int io_flags, out Index index);
+    
+    [CCode (cname = "faiss_Index_reconstruct")]
+    int index_reconstruct(Index index, int64 key, [CCode (array_length = false)] float* recons);
 }

@@ -93,13 +93,9 @@ namespace OLLMcoder
 		public SourceView(OLLMfiles.ProjectManager manager)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
-			this.manager = manager;
-			
-			// Set providers on ProjectManager
-			this.manager.buffer_provider = new OLLMcoder.BufferProvider();
-			this.manager.git_provider = new OLLMcoder.GitProvider();
-			
-			// Create header bar with dropdowns
+		this.manager = manager;
+		
+		// Create header bar with dropdowns
 			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				margin_start = 5,
 				margin_end = 5,

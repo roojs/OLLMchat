@@ -90,9 +90,12 @@ namespace OLLMfiles
 		
 		/**
 		 * Icon name for binding in lists.
-		 * Defaults to "folder" for folders, computed from content type for files.
+		 * Returns icon_name if set, otherwise a default based on type.
 		 */
-		public string icon_name { get; set; default = "folder"; }
+		public virtual string icon_name {
+			get { return "folder"; }
+			set {}
+		}
  		
 		/**
 		 * Display name for binding in lists.
@@ -108,10 +111,10 @@ namespace OLLMfiles
 		
 		/**
 		 * Display text with status indicators.
-		 * Base implementation returns "oops" - should be overridden in subclasses.
+		 * Base implementation just returns display_name.
 		 */
 		public virtual string display_with_indicators {
-			get { return "oops"; }
+			get { return this.display_name; 	}
 		}
 		
 		/**
@@ -198,11 +201,11 @@ namespace OLLMfiles
 		 */
 		public bool is_project { get; set; default = false; }
 		
-		 /**
+		/**
 		 * Unix timestamp of last view (stored in database, default: 0).
 		 */
 		public int64 last_viewed { get; set; default = 0; }
-		 
+		
 		/**
 		 * Unix timestamp of last modification (stored in database, default: 0).
 		 */
@@ -223,6 +226,13 @@ namespace OLLMfiles
 		 * -1 = not checked, 0 = checked and not a repo, 1 = it is a repo.
 		 */
 		public int is_repo { get; set; default = -1; }
+		
+		/**
+		 * Unix timestamp of last scan (stored in database, default: 0).
+		 * For files: timestamp when scan completed (after successful vectorization).
+		 * For folders: timestamp when scan started (to prevent re-recursion during same scan).
+		 */
+		public int64 last_scan { get; set; default = 0; }
 		
 		/**
 		 * Initialize database table for filebase objects.
@@ -249,10 +259,19 @@ namespace OLLMfiles
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
-				"icon_name TEXT NOT NULL DEFAULT ''" +
+				"last_scan INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
+			}
+			
+			// Migrate existing databases: add last_scan column if it doesn't exist
+			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_scan INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
 			}
 		}
 		
@@ -329,7 +348,7 @@ namespace OLLMfiles
 			target.is_ignored = this.is_ignored;
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
-			target.icon_name = this.icon_name;
+			target.last_scan = this.last_scan;
 		}
 		
 		// Static counter for tracking saveToDB calls
@@ -409,8 +428,7 @@ namespace OLLMfiles
 				return target_file_obj.query_info(
 					GLib.FileAttribute.STANDARD_TYPE + "," +
 					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
-					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);

@@ -44,6 +44,13 @@ namespace OLLMfiles
 			set {   }
 		}
 		
+		/**
+		 * Whether the wrapped file is open.
+		 */
+		public bool is_open {
+			get { return this.file.is_open; }
+			set { }
+		}
 		
 		/**
 		 * Whether the wrapped file needs approval.
@@ -77,24 +84,6 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * CSS classes array for styling (e.g., ["oc-file-item", "oc-recent"] for recent files).
-		 * Notifies when is_recent changes (via file.last_viewed changes).
-		 */
-		public string[] display_css {
-			owned get {
-				return this.is_recent ? new string[] { "oc-file-item", "oc-recent" } : new string[] { "oc-file-item" };
-			}
-		}
-		
-		/**
-		 * Icon name for binding in lists - delegates to wrapped file.
-		 */
-		public new string icon_name {
-			get { return this.file.icon_name; }
-			set {    }
-		}
-		
-		/**
 		 * Relative path from project root when file is accessed through a symlink.
 		 * If empty (default), the file is not inside a symlink and display_relpath
 		 * will calculate the path normally.
@@ -122,23 +111,6 @@ namespace OLLMfiles
 			} else {
 				this.path = path;
 			}
-			
-			// Watch file.last_viewed to notify display_css when is_recent changes
-			this.file.notify["last-viewed"].connect(() => {
-				this.notify_property("display-css");
-			});
-			
-			// Watch file properties to notify display_with_indicators when they change
-			this.file.notify["is-active"].connect(() => {
-				this.notify_property("is-active");
-				this.notify_property("display-with-indicators");
-			});
-			this.file.notify["needs-approval"].connect(() => {
-				this.notify_property("display-with-indicators");
-			});
-			this.file.notify["is-unsaved"].connect(() => {
-				this.notify_property("display-with-indicators");
-			});
 		}
 		
 		/**
@@ -182,22 +154,11 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Display text with status indicators - shows basename + indicators on first line,
-		 * relative directory path in grey small text on second line.
+		 * Display text with status indicators - overridden for ProjectFile.
 		 */
-		public   string display_with_indicators {
-			owned get {
-				// Get relative path and extract directory part
- 				// Remove leading slash from relpath if present
-				var relpath = this.display_relpath.has_prefix("/") ? this.display_relpath.substring(1) : relpath;
-				
-				// Build display text with basename and status indicators
-				var dir_suffix = relpath == "" ? "" : GLib.Markup.escape_text( GLib.Path.get_dirname(relpath) );
-					
-				return this.display_basename +
-					(!this.needs_approval ? " ✓" : "") +
-					(this.is_unsaved ? " ●" : "") +
-					"\n<span foreground=\"grey\" size=\"small\">"  + dir_suffix + "</span>";
+		public override string display_with_indicators {
+			get {
+				return this.file.display_with_indicators;
 			}
 		}
 	}

@@ -1,8 +1,5 @@
 # Build ocfiles library (libocfiles.so) - depends on libocsqlite
 # Provides file and project management without GTK/git dependencies
-#
-# NOTE: If you add/remove/change source files in this directory, you MUST also
-# update docs/meson.build to include the same files in the valadoc input list.
 
 # Dependencies for ocfiles library
 valac = meson.get_compiler('vala')
@@ -11,6 +8,7 @@ ocfiles_deps = [
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),  # Required for ProjectMigrate (JSON parsing)
   dependency('sqlite3'),
   valac.find_library('posix'),
 ]
@@ -27,6 +25,10 @@ ocfiles_src = files([
   'ProjectFiles.vala',
   'ProjectList.vala',
   'ProjectManager.vala',
+  'ProjectMigrate.vala',
+  'Diff/Patch.vala',
+  'Diff/PatchApplier.vala',
+  'Diff/Differ.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -43,6 +45,7 @@ ocfiles_base_lib = library('ocfiles',
   build_rpath: lib_build_rpath,
   vala_args: [
     '--pkg=sqlite3',
+    '--pkg=json-glib-1.0',  # Required for ProjectMigrate (JSON parsing)
     '--pkg=ocsqlite',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -67,6 +70,7 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
+    '--pkg', 'json-glib-1.0',  # Required for ProjectMigrate (JSON parsing)
     '--pkg', 'ocsqlite',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',

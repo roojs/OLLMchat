@@ -19,6 +19,19 @@
 namespace OLLMfiles
 {
 	/**
+	 * Cached file contents with lines array.
+	 */
+	private class FileCacheEntry : Object
+	{
+		public string[] lines { get; set; }
+		
+		public FileCacheEntry(string[] lines)
+		{
+			this.lines = lines;
+		}
+	}
+	
+	/**
 	 * Base class for buffer operations with default no-op implementations.
 	 * 
 	 * Provides a default implementation that does nothing, allowing
@@ -29,6 +42,167 @@ namespace OLLMfiles
 	public class BufferProviderBase : Object
 	{
 		/**
+		 * Static hashmap mapping file extensions to language identifiers.
+		 */
+		private static Gee.HashMap<string, string>? extension_map = null;
+		
+		/**
+		 * Cache of file contents (path => FileCacheEntry with lines array).
+		 */
+		private Gee.HashMap<string, FileCacheEntry> file_cache { 
+			get; set; default = new Gee.HashMap<string, FileCacheEntry>(); }
+		
+		/**
+		 * Initialize the extension map with common file extensions.
+		 */
+		private static void init_extension_map()
+		{
+			if (extension_map != null) {
+				return;
+			}
+			
+			extension_map = new Gee.HashMap<string, string>();
+			
+			// Vala
+			extension_map.set("vala", "vala");
+			extension_map.set("vapi", "vala");
+			
+			// C/C++
+			extension_map.set("c", "c");
+			extension_map.set("h", "c");
+			extension_map.set("cpp", "cpp");
+			extension_map.set("cxx", "cpp");
+			extension_map.set("cc", "cpp");
+			extension_map.set("hpp", "cpp");
+			extension_map.set("hxx", "cpp");
+			
+			// Python
+			extension_map.set("py", "python");
+			extension_map.set("pyw", "python");
+			extension_map.set("pyi", "python");
+			
+			// JavaScript/TypeScript
+			extension_map.set("js", "javascript");
+			extension_map.set("jsx", "javascript");
+			extension_map.set("mjs", "javascript");
+			extension_map.set("ts", "typescript");
+			extension_map.set("tsx", "typescript");
+			
+			// Java
+			extension_map.set("java", "java");
+			
+			// C#
+			extension_map.set("cs", "csharp");
+			
+			// Go
+			extension_map.set("go", "go");
+			
+			// Rust
+			extension_map.set("rs", "rust");
+			
+			// Ruby
+			extension_map.set("rb", "ruby");
+			extension_map.set("rake", "ruby");
+			
+			// PHP
+			extension_map.set("php", "php");
+			extension_map.set("phtml", "php");
+			
+			// Swift
+			extension_map.set("swift", "swift");
+			
+			// Kotlin
+			extension_map.set("kt", "kotlin");
+			extension_map.set("kts", "kotlin");
+			
+			// Scala
+			extension_map.set("scala", "scala");
+			extension_map.set("sc", "scala");
+			
+			// R
+			extension_map.set("r", "r");
+			extension_map.set("R", "r");
+			
+			// Shell/Bash
+			extension_map.set("sh", "sh");
+			extension_map.set("bash", "sh");
+			extension_map.set("zsh", "sh");
+			
+			// Perl
+			extension_map.set("pl", "perl");
+			extension_map.set("pm", "perl");
+			
+			// Lua
+			extension_map.set("lua", "lua");
+			
+			// Haskell
+			extension_map.set("hs", "haskell");
+			extension_map.set("lhs", "haskell");
+			
+			// Erlang
+			extension_map.set("erl", "erlang");
+			extension_map.set("hrl", "erlang");
+			
+			// Elixir
+			extension_map.set("ex", "elixir");
+			extension_map.set("exs", "elixir");
+			
+			// Clojure
+			extension_map.set("clj", "clojure");
+			extension_map.set("cljs", "clojure");
+			extension_map.set("cljc", "clojure");
+			
+			// OCaml
+			extension_map.set("ml", "ocaml");
+			extension_map.set("mli", "ocaml");
+			
+			// F#
+			extension_map.set("fs", "fsharp");
+			extension_map.set("fsi", "fsharp");
+			extension_map.set("fsx", "fsharp");
+			
+			// Dart
+			extension_map.set("dart", "dart");
+			
+			// Objective-C
+			extension_map.set("m", "objc");
+			extension_map.set("mm", "objc");
+			extension_map.set("h", "objc"); // Note: .h can be C or ObjC
+			
+			// SQL
+			extension_map.set("sql", "sql");
+			
+			// HTML/CSS
+			extension_map.set("html", "html");
+			extension_map.set("htm", "html");
+			extension_map.set("css", "css");
+			extension_map.set("scss", "css");
+			extension_map.set("sass", "css");
+			extension_map.set("less", "css");
+			
+			// XML
+			extension_map.set("xml", "xml");
+			extension_map.set("xsl", "xml");
+			extension_map.set("xslt", "xml");
+			
+			// JSON
+			extension_map.set("json", "json");
+			
+			// YAML
+			extension_map.set("yaml", "yaml");
+			extension_map.set("yml", "yaml");
+			
+			// Markdown
+			extension_map.set("md", "markdown");
+			extension_map.set("markdown", "markdown");
+			
+			// Makefile
+			extension_map.set("make", "makefile");
+			extension_map.set("Makefile", "makefile");
+			extension_map.set("mk", "makefile");
+		}
+		
+		/**
 		 * Detect programming language from file extension.
 		 * 
 		 * @param file The file to detect language for
@@ -36,7 +210,21 @@ namespace OLLMfiles
 		 */
 		public virtual string? detect_language(File file) 
 		{ 
-			return null; 
+			if (file.path == null || file.path == "") {
+				return null;
+			}
+			
+			init_extension_map();
+			
+			// Extract file extension
+			var path = file.path;
+			var last_dot = path.last_index_of_char('.');
+			if (last_dot < 0 || last_dot >= path.length - 1) {
+				return null;
+			}
+			
+			var extension = path.substring(last_dot + 1).down();
+			return extension_map.get(extension);
 		}
 		
 		/**
@@ -51,7 +239,41 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Get lines array from cache or file.
+		 * 
+		 * @param file_path The path to the file to load
+		 * @return Lines array, or empty array if file cannot be read
+		 */
+		private string[] get_lines(string file_path)
+		{
+			// Check cache first
+			if (this.file_cache.has_key(file_path)) {
+				return this.file_cache.get(file_path).lines;
+			}
+			string[] ret = {}; 
+			// Load from file
+			try {
+				if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
+					return ret;
+				}
+				
+				string contents;
+				GLib.FileUtils.get_contents(file_path, out contents);
+				
+				var lines_array = contents.split("\n");
+				var cache_entry = new FileCacheEntry(lines_array);
+				this.file_cache.set(file_path, cache_entry);
+				return lines_array;
+			} catch (GLib.Error e) {
+				GLib.debug("BufferProviderBase.get_lines: Failed to read file %s: %s", file_path, e.message);
+				return ret;
+			}
+		}
+		
+		/**
 		 * Get text from the buffer, optionally limited to a line range.
+		 * 
+		 * Reads file directly from disk if not in cache, and caches the result.
 		 * 
 		 * @param file The file to get text from
 		 * @param start_line Starting line number (0-based, inclusive)
@@ -59,8 +281,21 @@ namespace OLLMfiles
 		 * @return The buffer text, or empty string if not available
 		 */
 		public virtual string get_buffer_text(File file, int start_line = 0, int end_line = -1) 
-		{ 
-			return ""; 
+		{
+			
+			
+			var lines = this.get_lines(file.path);
+			
+			// Handle line range
+			start_line = start_line < 0 ? 0 : start_line;
+			end_line = end_line == -1 ? lines.length - 1 : (end_line >= lines.length ? lines.length - 1 : end_line);
+			
+			if (start_line > end_line) {
+				return "";
+			}
+			
+			// Extract lines and join
+			return string.joinv("\n", lines[start_line:end_line+1]);
 		}
 		
 		/**

@@ -25,8 +25,9 @@ namespace OLLMfiles
 	 * Provides both hierarchical tree structure (for UI tree views) and flat hashmap
 	 * (for fast lookups by full path).
 	 * Implements ListModel interface using Gee.ArrayList as backing store.
+	 * Implements Gee.Iterable for foreach iteration over items.
 	 */
-	public class ProjectFiles : Object, GLib.ListModel
+	public class ProjectFiles : Object, GLib.ListModel, Gee.Traversable<ProjectFile>, Gee.Iterable<ProjectFile>
 	{
 		/**
 		 * Backing store: ArrayList containing ProjectFile objects.
@@ -41,6 +42,27 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Gee.Traversable interface implementation: Execute function for each item.
+		 * 
+		 * @param f Function to execute for each ProjectFile
+		 * @return true if all items were processed, false if iteration was stopped early
+		 */
+		public bool foreach(Gee.ForallFunc<ProjectFile> f)
+		{
+			return this.items.foreach(f);
+		}
+		
+		/**
+		 * Gee.Iterable interface implementation: Get iterator over items.
+		 * 
+		 * @return Iterator over ProjectFile items
+		 */
+		public Gee.Iterator<ProjectFile> iterator()
+		{
+			return this.items.iterator();
+		}
+		
+		/**
 		 * Hashmap of file path => ProjectFile object for quick lookup.
 		 */
 		public Gee.HashMap<string, ProjectFile> child_map { get; private set;
@@ -52,6 +74,36 @@ namespace OLLMfiles
 		public ProjectFiles()
 		{
 			Object();
+		}
+		
+		/**
+		 * Lookup File by file_id using index_of with a temporary ProjectFile.
+		 * 
+		 * @param file_id The file ID to lookup
+		 * @return File object, or null if not found
+		 */
+		public File? get_by_id(int64 file_id)
+		{
+			if (file_id <= 0 || this.items.size == 0) {
+				return null;
+			}
+			
+			var index = this.items.index_of(
+				new ProjectFile(
+					this.items[0].file.manager,
+					new File(this.items[0].file.manager) {
+						id = file_id
+					},
+					this.items[0].project,
+					"",
+					""
+				)
+			);
+			if (index < 0) {
+				return null;
+			}
+			
+			return this.items[index].file;
 		}
 		
 		/**
@@ -254,6 +306,11 @@ namespace OLLMfiles
 				return;
 			}
 			
+			// Skip ignored folders (e.g., folders with .generated file)
+			if (folder.is_ignored) {
+				return;
+			}
+			
 			// Mark this folder as scanned
 			scanned_folders.add((int)folder.id);
 			
@@ -315,7 +372,7 @@ namespace OLLMfiles
 			Gee.HashSet<string> found_files,
 			string symlink_path = "")
 		{
-			// Skip ignored files
+			// Skip ignored files and non-text files
 			if (file.is_ignored || !file.is_text) {
 				return;
 			}
@@ -440,9 +497,9 @@ namespace OLLMfiles
 			var cutoff_time = new DateTime.now_local().add_days(-days);
 			var filtered_files = new Gee.ArrayList<File>();
 			
-			// Filter files to only those that are active and modified within the specified days
+			// Filter files to only those that are open and modified within the specified days
 			foreach (var project_file in this.items) {
-				if (!project_file.file.is_active || project_file.file.last_modified < 1) {
+				if (!project_file.file.is_open || project_file.file.last_modified < 1) {
 					continue;
 				}
 				var file_time = new DateTime.from_unix_local(project_file.file.last_modified);
@@ -464,6 +521,28 @@ namespace OLLMfiles
 			});
 			
 			return filtered_files;
+		}
+		
+		/**
+		 * Gets a list of file IDs as strings, optionally filtered by language.
+		 * 
+		 * @param language Optional language filter (e.g., "vala", "python"). If empty string, all files are included.
+		 * @return ArrayList of file IDs as strings
+		 */
+		public Gee.ArrayList<string> get_ids(string language = "")
+		{
+			var file_ids = new Gee.ArrayList<string>();
+			
+			foreach (var project_file in this.items) {
+				// Apply language filter if specified
+				if (language != "" && project_file.file.language != language) {
+					continue;
+				}
+				
+				file_ids.add(project_file.file.id.to_string());
+			}
+			
+			return file_ids;
 		}
 	}
 }

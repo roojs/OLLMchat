@@ -25,9 +25,9 @@ subdir('libocmarkdown')    # No dependencies
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocagent')       # No dependencies
 subdir('libocfiles')       # Depends on libocsqlite
-subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles
 subdir('libollmchat')      # Depends on libocsqlite, libocagent
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
+subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles, libocvector, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
@@ -59,7 +59,8 @@ executables_info = [
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],
   ['oc-migrate-editors', 'examples/oc-migrate-editors'],
-  ['oc-vector-index', 'examples/oc-vector-index']
+  ['oc-vector-index', 'examples/oc-vector-index'],
+  ['oc-vector-search', 'examples/oc-vector-search']
 ]
 
 # Library paths for LD_LIBRARY_PATH

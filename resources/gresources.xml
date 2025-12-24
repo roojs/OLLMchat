@@ -15,8 +15,8 @@
     <file>pulldown.css</file>
   </gresource>
   <gresource prefix="/ocvector">
-    <file>ocvector/result-schema.json</file>
     <file>ocvector/ocvector-prompt.txt</file>
+    <file>ocvector/analysis-prompt.txt</file>
   </gresource>
 </gresources>
 

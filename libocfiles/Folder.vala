@@ -535,24 +535,35 @@ namespace OLLMfiles
 		public async void load_files_from_db()
 		{
 			if (this.id <= 0 || this.manager.db == null) {
+				GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
 				return;
 			}
 			
-			// Step a: Create id => FileBase map
+			// Step a: Create id => FileBase map and add self (root folder) to it
 			var id_map = new Gee.HashMap<int, FileBase>();
+			id_map.set((int)this.id, this);
+			GLib.debug("Folder.load_files_from_db: Starting for '%s' (id=%lld)", this.path, this.id);
 			
 		// Step b: Load children starting from project path using while loop
-		string[] paths = { this.path };
-		var seen_ids = new Gee.ArrayList<string>();
-		seen_ids.add(this.id.to_string());
-		while (paths.length > 0) {
-			paths = yield this.load_children(id_map, paths, seen_ids);
-		}
+			string[] paths = { this.path };
+			var seen_ids = new Gee.ArrayList<string>();
+			seen_ids.add(this.id.to_string());
+			int iteration = 0;
+			while (paths.length > 0) {
+				iteration++;
+				GLib.debug("Folder.load_files_from_db: Iteration %d, loading %d paths", iteration, paths.length);
+				paths = yield this.load_children(id_map, paths, seen_ids);
+				GLib.debug("Folder.load_files_from_db: After iteration %d, id_map has %d items, next_paths=%d", iteration, id_map.size, paths.length);
+			}
 			
+			GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
 			// Step c: Build the tree structure
 			foreach (var file_base in id_map.values) {
 				this.build_tree_structure(file_base, id_map);
 			}
+			
+			// Populate project_files from children
+			this.project_files.update_from(this);
 		}
 		
 	/**
@@ -648,18 +659,31 @@ namespace OLLMfiles
 				// i dont think points to id will ever be not available...
 				file_base.points_to = id_map.get((int)file_base.points_to_id);
 			}
-			if (file_base.parent != null) {
-				return;
-			}
-			// Set parent reference
-			if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
-				return;
-			}
 			
-			file_base.parent = id_map.get((int)file_base.parent_id) as Folder;
+			// Get or set parent reference
+ 			if (file_base.parent != null) {
+				
+				file_base.parent.children.append(file_base);
+				return;
+			} 
+			// Set parent reference if not already set
+			if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
+				GLib.debug("Folder.build_tree_structure: Skipping '%s' (parent_id=%lld, parent_in_map=%s)", 
+					file_base.path, file_base.parent_id, id_map.has_key((int)file_base.parent_id).to_string());
+				return;
+			}
+				
+			var	parent = id_map.get((int)file_base.parent_id) as Folder;
+			if (parent == null) {
+				GLib.debug("Folder.build_tree_structure: Parent %lld is not a Folder for '%s'", file_base.parent_id, file_base.path);
+				return;
+			}
+				
+			file_base.parent = parent;
+			 
 			
 			// Add to parent's children (append handles duplicates)
-			file_base.parent.children.append(file_base);
+			parent.children.append(file_base);
 		}
 	}
 }
