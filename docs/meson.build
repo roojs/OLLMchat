@@ -17,10 +17,6 @@ valadoc_clean = custom_target('valadoc-clean',
     find_program('sh'),
     '-c',
     '''if [ -d "@0@" ]; then
-      # Preserve .generated if it exists
-      if [ -d "@0@/.generated" ]; then
-        mv "@0@/.generated" "@0@/../.generated.tmp"
-      fi
       # Remove the directory completely (valadoc needs to recreate it)
       rm -rf "@0@"
     fi'''.format(valadoc_dir)
@@ -130,6 +126,12 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Diff/Differ.vala',
     '../liboccoder/Prompt/CodeAssistant.vala',
     '../liboccoder/Prompt/CodeAssistantProvider.vala',
+    # libocvector sources (depends on libocsqlite, libocagent, libollmchat, libocfiles)
+    '../libocvector/Index.vala',
+    '../libocvector/Database.vala',
+    '../libocvector/CodeElement.vala',
+    '../libocvector/CodeFile.vala',
+    '../libocvector/Indexing/Analysis.vala',
     # libollmchatgtk sources (depends on libollmchat, libocmarkdown, libocmarkdowngtk)
     '../libollmchatgtk/ChatWidget.vala',
     '../libollmchatgtk/ChatView.vala',
@@ -172,15 +174,16 @@ valadoc_docs = custom_target('valadoc',
   install: false
 )
 
-# Restore .generated folder if it was preserved during clean
-valadoc_restore_generated = custom_target('valadoc-restore-generated',
-  output: 'valadoc-restore-generated',
+# Touch .generated file after valadoc completes
+# this is used to stop the code scanner from treating generated docs as part of the codebase
+valadoc_touch_generated = custom_target('valadoc-touch-generated',
+  output: 'valadoc-touch-generated',
   depends: [valadoc_docs],
   command: [
-    find_program('sh'),
-    '-c',
-    'if [ -d "@0@/../.generated.tmp" ]; then mv "@0@/../.generated.tmp" "@0@/.generated"; fi'.format(valadoc_dir)
+    find_program('touch'),
+    valadoc_dir / '.generated'
   ],
   build_by_default: true,
   install: false
 )
+

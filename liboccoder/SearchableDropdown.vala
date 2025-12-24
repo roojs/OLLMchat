@@ -29,7 +29,7 @@ namespace OLLMcoder
 	{
 		protected Gtk.Entry entry;
 		protected Gtk.Image? arrow;
-		protected Gtk.Popover popup;
+		public Gtk.Popover popup { get; private set; }
 		protected Gtk.ListView list;
 		protected GLib.ListStore item_store;
 		protected Gtk.FilterListModel filtered_items;
@@ -71,13 +71,6 @@ namespace OLLMcoder
 		 * Whether to show the arrow button.
 		 */
 		public bool show_arrow { get; set; default = true; }
-		
-		/**
-		 * Whether the popup is currently visible.
-		 */
-		public bool popup_visible {
-			get { return this.popup.visible; }
-		}
 		
 		/**
 		 * Get the property name to filter on (e.g., "display_name").

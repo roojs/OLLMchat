@@ -190,7 +190,7 @@ namespace OLLMcoder
 			);
 			scroll_blocker.scroll.connect((dx, dy) => {
 				// If any dropdown popup is visible, stop scroll events from reaching the source view
-				if (this.project_dropdown.popup_visible || this.file_dropdown.popup_visible) {
+				if (this.project_dropdown.popup.visible || this.file_dropdown.popup.visible) {
 					return true;
 				}
 				return false;
