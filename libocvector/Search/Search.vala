@@ -244,6 +244,22 @@ namespace OLLMvector.Search
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
 			
+			// Filter metadata by element_type if filter is set
+			if (this.element_type_filter != null) {
+				var filtered_metadata = new Gee.ArrayList<OLLMvector.VectorMetadata>();
+				foreach (var metadata in metadata_list) {
+					if (metadata.element_type == this.element_type_filter) {
+						filtered_metadata.add(metadata);
+					}
+				}
+				metadata_list = filtered_metadata;
+				GLib.debug("Search.execute: Filtered metadata from %d to %d entries matching element_type='%s'",
+					metadata_list.size + (metadata_list.size - filtered_metadata.size),
+					filtered_metadata.size,
+					this.element_type_filter
+				);
+			}
+			
 			// Create a map of vector_id -> metadata for quick lookup
 			var metadata_map = new Gee.HashMap<int, OLLMvector.VectorMetadata>();
 			foreach (var metadata in metadata_list) {
