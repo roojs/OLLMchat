@@ -41,10 +41,10 @@ namespace OLLMchat
 		var db = new SQ.Database(db_path, false);
 		GLib.debug("Created database: %s", db_path);
 		
-		// Create ProjectManager with the database
+ 
 		// Uses default BufferProviderBase and GitProviderBase from ocfiles (no GTK dependencies)
 		var manager = new OLLMfiles.ProjectManager(db);
-		GLib.debug("Created ProjectManager");
+ 		GLib.debug("Created ProjectManager");
 		
 		// Create ProjectMigrate instance
 		var migrator = new OLLMfiles.ProjectMigrate(manager);

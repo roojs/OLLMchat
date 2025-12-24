@@ -31,7 +31,8 @@ namespace OLLMchat
 		public Adw.ViewStack tab_view;
 		private bool right_pane_visible = false;
 		private int saved_start_width = 0;
-		private int source_view_min_width = 400;
+		private int source_view_min_width = 520;  // 30% wider than 400
+		private int saved_space_from_smaller_window = 160;  // 20% of 800px original width
 		
 		/**
 		 * Intended visibility state for the right pane.
@@ -84,7 +85,7 @@ namespace OLLMchat
 		 * Shows the right pane with window resizing strategy.
 		 * 
 		 * Captures current start pane width, sets minimum widths, unhides pane,
-		 * then removes constraints in idle callback.
+		 * then resizes window to accommodate the new pane.
 		 * 
 		 * @since 1.0
 		 */
@@ -94,19 +95,40 @@ namespace OLLMchat
 				return;
 			}
 			
+			// Get window first to check current size
+			var window = this.get_root() as Gtk.Window;
+			if (window == null) {
+				return;
+			}
+			
+			// Capture current window size
+			int current_width = window.default_width;
+			int current_height = window.default_height;
+			
+			// If window is realized, get actual size
+			if (window.get_realized()) {
+				current_width = window.get_width();
+				current_height = window.get_height();
+			}
+			
 			// Capture current start pane width
 			var start_child = this.paned.get_start_child();
 			if (start_child != null) {
 				this.saved_start_width = start_child.get_width();
+				if (this.saved_start_width <= 0) {
+					// If width not available yet, use a reasonable default
+					this.saved_start_width = current_width > 0 ? current_width - this.source_view_min_width : 400;
+				}
 				
 				// Set minimum width of start pane to its current width
 				start_child.set_size_request(this.saved_start_width, -1);
 			}
 			
-			// Set minimum width of source view
+			// Set minimum width of source view (add saved space from smaller initial window)
 			var right_pane = this.paned.get_end_child();
 			if (right_pane != null) {
-				right_pane.set_size_request(this.source_view_min_width, -1);
+				int editor_width = this.source_view_min_width + this.saved_space_from_smaller_window;
+				right_pane.set_size_request(editor_width, -1);
 			}
 			
 			// Unhide right pane
@@ -116,27 +138,79 @@ namespace OLLMchat
 			}
 			this.right_pane_visible = true;
 			
-			// Get window and queue resize, then present
-			var window = this.get_root() as Gtk.Window;
-			if (window != null) {
-				window.queue_resize();
-				window.present();
+			// Calculate new window size: add width for right pane (including saved space)
+			int editor_width = this.source_view_min_width + this.saved_space_from_smaller_window;
+			int new_width = current_width + editor_width;
+			if (new_width < this.saved_start_width + editor_width) {
+				new_width = this.saved_start_width + editor_width;
 			}
 			
-			// In idle callback, remove the minimum width constraints
+			// Make window 30% taller when showing right pane
+			int new_height = (int)(current_height * 1.3);
+			
+			// Temporarily disable resize on start child to prevent expansion
+			this.paned.set_resize_start_child(false);
+			
+			// Resize window to accommodate both panes
+			window.set_default_size(new_width, new_height);
+			window.queue_resize();
+			this.queue_resize();  // Also queue resize on WindowPane itself
+			window.present();
+			
+			// Poll repeatedly until window has actually resized
+			// This is necessary because set_default_size() doesn't resize immediately
 			GLib.Idle.add(() => {
-				if (start_child != null) {
-					start_child.set_size_request(-1, -1);
+				var check_window = this.get_root() as Gtk.Window;
+				int actual_width = check_window != null && check_window.get_realized() ? check_window.get_width() : 0;
+				
+				// Keep checking until window has resized (with 10px tolerance)
+				if (actual_width < new_width - 10) {
+					return true;  // Keep polling
 				}
-				if (right_pane != null) {
-					right_pane.set_size_request(-1, -1);
-				}
-				// Queue another resize and present after constraints are removed
-				var win = this.get_root() as Gtk.Window;
-				if (win != null) {
-					win.queue_resize();
-					win.present();
-				}
+				
+				// Set paned position to keep left pane at its current width
+				// This ensures the right pane gets the new space
+				this.paned.set_position(this.saved_start_width);
+				
+				// In a second idle callback, remove the minimum width constraints
+				// and re-enable resize on start child
+				GLib.Idle.add(() => {
+					if (start_child != null) {
+						start_child.set_size_request(-1, -1);
+					}
+					if (right_pane != null) {
+						right_pane.set_size_request(-1, -1);
+					}
+					
+					// Re-assert position after removing constraints
+					this.paned.set_position(this.saved_start_width);
+					
+					// Re-enable resize on start child so user can adjust
+					this.paned.set_resize_start_child(true);
+					
+					// Immediately re-check and fix position after re-enabling resize
+					GLib.Idle.add(() => {
+						int check_pos = this.paned.get_position();
+						if (check_pos != this.saved_start_width) {
+							this.paned.set_position(this.saved_start_width);
+						}
+						return false;
+					});
+					
+					// Use a third idle callback to check final state after paned has allocated
+					GLib.Idle.add(() => {
+						// If position drifted, fix it one more time
+						int final_pos = this.paned.get_position();
+						if (final_pos != this.saved_start_width) {
+							this.paned.set_position(this.saved_start_width);
+						}
+						
+						return false;
+					});
+					
+					return false;
+				});
+				
 				return false;
 			});
 		}
@@ -154,10 +228,30 @@ namespace OLLMchat
 				return;
 			}
 			
+			// Get window first to check current size
+			var window = this.get_root() as Gtk.Window;
+			if (window == null) {
+				return;
+			}
+			
+			// Capture current window size
+			int current_width = window.default_width;
+			int current_height = window.default_height;
+			
+			// If window is realized, get actual size
+			if (window.get_realized()) {
+				current_width = window.get_width();
+				current_height = window.get_height();
+			}
+			
 			// Capture current start pane width before hiding
 			var start_child = this.paned.get_start_child();
 			if (start_child != null) {
 				this.saved_start_width = start_child.get_width();
+				if (this.saved_start_width <= 0) {
+					// If width not available yet, estimate from window size
+					this.saved_start_width = current_width > 0 ? current_width - this.source_view_min_width : 400;
+				}
 			}
 			
 			// Hide right pane
@@ -172,6 +266,17 @@ namespace OLLMchat
 			if (start_child != null) {
 				start_child.set_size_request(this.saved_start_width, -1);
 			}
+			
+			// Calculate new window size: subtract width for hidden right pane
+			int editor_width = this.source_view_min_width + this.saved_space_from_smaller_window;
+			int new_width = current_width - editor_width;
+			if (new_width < this.saved_start_width) {
+				new_width = this.saved_start_width;
+			}
+			
+			// Resize window to match start pane width
+			window.set_default_size(new_width, current_height);
+			window.queue_resize();
 			
 			// In idle callback, remove the minimum width constraint
 			GLib.Idle.add(() => {

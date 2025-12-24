@@ -2,6 +2,9 @@
 # We'll generate VAPI manually via custom_target to control command line order
 # Meson will generate a VAPI with default name 'ocmarkdowngtk.vapi', but we override it
 # by generating our own via custom_target. The meson-generated one won't be used.
+#
+# NOTE: If you add/remove/change source files in this directory, you MUST also
+# update docs/meson.build to include the same files in the valadoc input list.
 
 # Dependencies for ocmarkdowngtk library
 valac = meson.get_compiler('vala')

@@ -93,13 +93,9 @@ namespace OLLMcoder
 		public SourceView(OLLMfiles.ProjectManager manager)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
-			this.manager = manager;
-			
-			// Set providers on ProjectManager
-			this.manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-			this.manager.git_provider = new OLLMcoder.Files.GitProvider();
-			
-			// Create header bar with dropdowns
+		this.manager = manager;
+		
+		// Create header bar with dropdowns
 			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				margin_start = 5,
 				margin_end = 5,
@@ -181,6 +177,22 @@ namespace OLLMcoder
 					this.on_scroll_changed();
 				});
 			}
+			
+			// Add scroll controller to prevent background scrolling when dropdown popups are visible
+			var scroll_blocker = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			scroll_blocker.scroll.connect((dx, dy) => {
+				// If any dropdown popup is visible, stop scroll events from reaching the source view
+				if (this.project_dropdown.popup.visible || this.file_dropdown.popup.visible) {
+					return true;
+				}
+				return false;
+			});
+			scroll_blocker.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+			this.add_controller(scroll_blocker);
 			
 			// Add keyboard shortcuts
 			var controller = new Gtk.EventControllerKey();
@@ -384,10 +396,11 @@ namespace OLLMcoder
 				this.restore_scroll_position(file);
 			}
 			
-			// Update last_viewed and last_modified timestamps
+			// Update last_viewed timestamp when file is actually opened (saved to database)
 			var now = new DateTime.now_local();
 			file.last_viewed = now.to_unix();
 			file.last_modified = file.mtime_on_disk();
+			// Save to database (notify_file_changed calls saveToDB)
 			this.manager.notify_file_changed(file);
 			
 			// Update placeholder text with file basename

@@ -18,8 +18,8 @@ occoder_deps = [
 ]
 
 occoder_src = files([
-  'Files/BufferProvider.vala',
-  'Files/GitProvider.vala',
+  'BufferProvider.vala',
+  'GitProvider.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
   'FileDropdown.vala',

@@ -1,12 +1,26 @@
 # Generate Valadoc documentation (single unified documentation)
 # valadoc is required - meson will fail during configuration if it's not found
+#
+# IMPORTANT: When adding/removing/changing source files in any library directory,
+# you MUST update the input files list below to match. This includes:
+# - libocagent, libocsqlite, libocfiles, liboccoder, libollmchat, etc.
+# Check the corresponding meson.build file in each library directory for the
+# current list of source files.
+#
 valadoc = find_program('valadoc', required: true)
 
 # Combined documentation for both base and UI libraries
 valadoc_dir = meson.current_source_dir() / 'ollmchat'
 valadoc_clean = custom_target('valadoc-clean',
   output: 'valadoc-clean',
-  command: [find_program('rm'), '-rf', valadoc_dir],
+  command: [
+    find_program('sh'),
+    '-c',
+    '''if [ -d "@0@" ]; then
+      # Remove the directory completely (valadoc needs to recreate it)
+      rm -rf "@0@"
+    fi'''.format(valadoc_dir)
+  ],
   build_by_default: false
 )
 
@@ -103,8 +117,8 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Tools/RunCommand.vala',
     '../libollmchat/Tools/RequestRunCommand.vala',
     # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
-    '../liboccoder/Files/BufferProvider.vala',
-    '../liboccoder/Files/GitProvider.vala',
+    '../liboccoder/BufferProvider.vala',
+    '../liboccoder/GitProvider.vala',
     '../libocfiles/ProjectMigrate.vala',
     '../liboccoder/SearchableDropdown.vala',
     '../liboccoder/ProjectDropdown.vala',
@@ -166,3 +180,17 @@ valadoc_docs = custom_target('valadoc',
   build_by_default: true,
   install: false
 )
+
+# Touch .generated file after valadoc completes
+# this is used to stop the code scanner from treating generated docs as part of the codebase
+valadoc_touch_generated = custom_target('valadoc-touch-generated',
+  output: 'valadoc-touch-generated',
+  depends: [valadoc_docs],
+  command: [
+    find_program('touch'),
+    valadoc_dir / '.generated'
+  ],
+  build_by_default: true,
+  install: false
+)
+

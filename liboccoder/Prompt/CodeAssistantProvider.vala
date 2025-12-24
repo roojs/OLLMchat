@@ -88,8 +88,8 @@ namespace OLLMcoder.Prompt
 			// Limit to 15 most recent
 			var limited_files = files.size > 15 ? files.slice(0, 15) : files;
 			foreach (var file in limited_files) {
-				GLib.debug("CodeAssistantProvider.get_open_files: Adding recent file: %s (is_open=%s, last_modified=%lld)",
-					file.path, file.is_open.to_string(), file.last_modified);
+				GLib.debug("CodeAssistantProvider.get_open_files: Adding recent file: %s (is_active=%s, last_modified=%lld)",
+					file.path, file.is_active.to_string(), file.last_modified);
 				result.add(file.path);
 			}
 			

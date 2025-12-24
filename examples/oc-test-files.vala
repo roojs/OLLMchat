@@ -127,7 +127,7 @@ namespace OLLMchat
 		// Create ProjectManager with the database
 		// Uses default BufferProviderBase and GitProviderBase from ocfiles (no GTK dependencies)
 		var manager = new OLLMfiles.ProjectManager(db);
-		
+ 		
 		// Create a Folder with is_project = true for the current directory
 		var project = new OLLMfiles.Folder(manager);
 		project.path = cwd;

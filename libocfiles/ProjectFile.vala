@@ -69,6 +69,21 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Whether the file was opened in the last 24 hours (recent).
+		 */
+		public bool is_recent {
+			get {
+				var last_viewed = this.file.last_viewed;
+				if (last_viewed == 0) {
+					return false;
+				}
+				var now = new GLib.DateTime.now_utc().to_unix();
+				var one_day_ago = now - (24 * 60 * 60);
+				return last_viewed >= one_day_ago;
+			}
+		}
+		
+		/**
 		 * Relative path from project root when file is accessed through a symlink.
 		 * If empty (default), the file is not inside a symlink and display_relpath
 		 * will calculate the path normally.

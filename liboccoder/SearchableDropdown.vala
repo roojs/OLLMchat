@@ -29,7 +29,7 @@ namespace OLLMcoder
 	{
 		protected Gtk.Entry entry;
 		protected Gtk.Image? arrow;
-		protected Gtk.Popover popup;
+		public Gtk.Popover popup { get; private set; }
 		protected Gtk.ListView list;
 		protected GLib.ListStore item_store;
 		protected Gtk.FilterListModel filtered_items;
@@ -174,6 +174,7 @@ namespace OLLMcoder
 				vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
 				max_content_height = 400,
 				propagate_natural_height = true,
+				propagate_natural_width = false,  // Prevent horizontal expansion
 				can_focus = false  // Don't allow scrolled window to receive focus
 			};
 			
@@ -190,9 +191,36 @@ namespace OLLMcoder
 				this.on_selected();
 			});
 			
-			
 			sw.child = this.list;
-			this.popup.child = sw;
+			
+			// Wrap scrolled window in a box that fills the popup to catch all scroll events
+			var popup_wrapper = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true
+			};
+			popup_wrapper.append(sw);
+			
+			// Add scroll controller to wrapper to catch scroll events over popup area
+			// This will catch events that don't hit the scrolled window directly
+			var wrapper_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			wrapper_scroll_controller.scroll.connect((dx, dy) => {
+				// Forward scroll to scrolled window if it has room to scroll
+				var vadjustment = sw.vadjustment;
+				if (vadjustment != null && dy != 0) {
+					var current_value = vadjustment.value;
+					var new_value = current_value + dy * vadjustment.step_increment * 3;
+					vadjustment.value = new_value.clamp(vadjustment.lower, vadjustment.upper - vadjustment.page_size);
+				}
+				// Always stop propagation to prevent background scrolling
+				return true;
+			});
+			popup_wrapper.add_controller(wrapper_scroll_controller);
+			
+			this.popup.child = popup_wrapper;
 			
 			// Update arrow visibility when show_arrow changes
 			this.notify["show-arrow"].connect(() => {
@@ -208,6 +236,25 @@ namespace OLLMcoder
 			});
 			
 			this.update_arrow();
+			
+			// Add scroll event controller at widget level to catch and stop scroll events when popup is visible
+			// Use BUBBLE phase so children (scrolled window) handle events first, then we stop propagation
+			var widget_scroll_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.BOTH_AXES |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			widget_scroll_controller.scroll.connect((dx, dy) => {
+				// If popup is visible, stop scroll events from propagating to parent widgets
+				// This catches events after they've been handled by the scrolled window
+				if (this.popup.visible) {
+					return true;
+				}
+				return false;
+			});
+			// Use BUBBLE phase to catch events after children have handled them
+			widget_scroll_controller.propagation_phase = Gtk.PropagationPhase.BUBBLE;
+			this.add_controller(widget_scroll_controller);
 		}
 		
 		public override bool grab_focus()
@@ -287,8 +334,9 @@ namespace OLLMcoder
 				this.arrow.allocate(arrow_nat, height, baseline, arrow_transform);
 			}
 			
-			// Update popover width to match widget width
-			this.popup.set_size_request(width, -1);
+			// Update popover width to be 2x widget width (fixed width to prevent resizing)
+			// Set both min and max to same value to prevent resizing based on content
+			this.popup.set_size_request(width * 2, -1);
 		}
 		
 		/**
@@ -390,11 +438,23 @@ namespace OLLMcoder
 				this.selection.selected = Gtk.INVALID_LIST_POSITION;
 				
 				// Ensure entry has focus before showing popup
-				// Use grab_focus_without_selecting if available, otherwise grab_focus
+				// Only grab focus if entry doesn't already have it to avoid selecting text
 				if (!this.entry.has_focus) {
 					this.entry.grab_focus();
 				}
+				// Always ensure cursor is at end and no text is selected when showing popup
+				this.entry.set_position(-1);
+				this.entry.select_region(-1, -1);
 				this.popup.popup();
+				
+				// Scroll to top after popup is shown (use idle to ensure layout is complete)
+				GLib.Idle.add(() => {
+					var scrolled = this.popup.child as Gtk.ScrolledWindow;
+					if (scrolled != null) {
+						scrolled.vadjustment.value = scrolled.vadjustment.lower;
+					}
+					return false;
+				});
 			} else {
 				this.popup.popdown();
 			}

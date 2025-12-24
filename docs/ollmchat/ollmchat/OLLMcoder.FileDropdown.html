@@ -38,6 +38,7 @@
           <li class="virtual_method"><a href="OLLMcoder.FileDropdown.on_selected.html">on_selected</a></li>
           <li class="method"><a href="OLLMcoder.FileDropdown.refresh.html">refresh</a></li>
           <li class="virtual_method"><a href="OLLMcoder.FileDropdown.set_item_store.html">set_item_store</a></li>
+          <li class="method"><a href="OLLMcoder.FileDropdown.set_popup_visible.html">set_popup_visible</a></li>
           <li class="signal"><a href="OLLMcoder.FileDropdown.file_selected.html">file_selected</a></li>
         </ul>
       </div>
@@ -104,7 +105,8 @@
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.FileDropdown.on_entry_changed.html" class="virtual_method">on_entry_changed</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Override on_entry_changed to support wildcard filtering.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Override on_entry_changed to support custom search (basename first, 
+                then path).</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.FileDropdown.on_selected.html" class="virtual_method">on_selected</a></b> ()
             </span>
@@ -119,6 +121,11 @@
             <div class="leaf_brief_description"><span class="brief_description">Override set_item_store to add sorting (open files first, then by 
                 name).</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.FileDropdown.set_popup_visible.html" class="method">set_popup_visible</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> visible)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Override set_popup_visible to reset filter and trigger re-sort when 
+                showing popup with no search.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
@@ -129,9 +136,9 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-235')">All known members inherited from class OLLMcoder.SearchableDropdown
+          <div class="headline" onclick="toggle_box (this, 'box-content-239')">All known members inherited from class OLLMcoder.SearchableDropdown
           </div>
-          <div class="content" id="box-content-235">
+          <div class="content" id="box-content-239">
             <div class="column">
               <ul class="navi_inline">
                 <li class="field"><a href="OLLMcoder.SearchableDropdown.arrow.html">arrow</a></li>
@@ -155,7 +162,7 @@
                 <li class="virtual_method"><a href="OLLMcoder.SearchableDropdown.on_key_pressed.html">on_key_pressed</a></li>
                 <li class="abstract_method"><a href="OLLMcoder.SearchableDropdown.on_selected.html">on_selected</a></li>
                 <li class="property"><a href="OLLMcoder.SearchableDropdown.placeholder_text.html">placeholder_text</a></li>
-                <li class="field"><a href="OLLMcoder.SearchableDropdown.popup.html">popup</a></li>
+                <li class="property"><a href="OLLMcoder.SearchableDropdown.popup.html">popup</a></li>
               </ul>
             </div>
             <div class="column">
@@ -173,8 +180,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-236')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-236">
+          <div class="headline" onclick="toggle_box (this, 'box-content-240')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-240">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -417,8 +424,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-237')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-237">
+          <div class="headline" onclick="toggle_box (this, 'box-content-241')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-241">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -484,8 +491,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-238')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-238">
+          <div class="headline" onclick="toggle_box (this, 'box-content-242')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-242">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -521,8 +528,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-239')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-239">
+          <div class="headline" onclick="toggle_box (this, 'box-content-243')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-243">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>

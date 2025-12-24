@@ -10,10 +10,16 @@ entry.suggestion {
 popover.menu {
   margin-top: 6px;
   padding: 0;
+  /* Prevent popover from resizing based on content width */
+  /* Width is controlled programmatically via set_size_request() and set_max_content_width() */
+  min-width: 0;
 }
 
 popover.menu > scrolledwindow {
   padding: 0;
+  /* Prevent scrolled window from expanding horizontally */
+  min-width: 0;
+  max-width: 100%;
 }
 
 popover.menu listview {
@@ -22,10 +28,23 @@ popover.menu listview {
 
 popover.menu listview > row {
   padding: 8px;
+  /* Prevent rows from expanding beyond popover width */
+  min-width: 0;
+  max-width: 100%;
 }
 
 popover.menu listview > row:selected {
   outline-color: rgba(1,1,1,0.2);
   color: @theme_text_color;
   background-color: shade(#f6f5f4, 0.97);
+}
+
+/* Recent files - light yellow background */
+popover.menu listview > row box.oc-file-item.oc-recent {
+  background-color: #fff9c4;
+  border-radius: 4px;
+}
+
+popover.menu listview > row:selected box.oc-file-item.oc-recent {
+  background-color: #fcee72;
 }
