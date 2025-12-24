@@ -66,6 +66,15 @@ namespace OLLMchat.Tools
 			// Normalize and validate file path
 			var file_path = this.normalize_file_path(this.file_path);
 			
+			// Validate that file_path was provided
+			if (file_path == null || file_path == "") {
+				if (this.file_path == null || this.file_path == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("File path parameter is required but was not provided or is empty");
+				} else {
+					throw new GLib.IOError.INVALID_ARGUMENT("File path parameter is empty after normalization");
+				}
+			}
+			
 			// Emit execution message with human-friendly tool name and file path
 			var message = "Executing %s on file: %s".printf(
 					this.tool.description.strip().split("\n")[0],

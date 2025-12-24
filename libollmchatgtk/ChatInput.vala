@@ -42,6 +42,7 @@ namespace OLLMchatGtk
 		private bool is_loading_models = false;
 		private Gtk.MenuButton tools_menu_button;
 		private Binding? tools_button_binding = null;
+		
 
 		/**
 		* Default message text to display in the input field.
@@ -183,6 +184,12 @@ namespace OLLMchatGtk
 			var controller = new Gtk.EventControllerKey();
 			controller.key_pressed.connect(this.on_key_pressed);
 			this.text_view.add_controller(controller);
+			
+			// TODO: Clipboard feature needs proper design - see TODO.md
+			// Connect to paste-clipboard signal to intercept paste and replace with file reference if available
+			// this.text_view.paste_clipboard.connect(() => {
+			// 	this.on_paste_clipboard();
+			// });
 		}
 
 		/**
@@ -261,6 +268,92 @@ namespace OLLMchatGtk
 
 			return false;
 		}
+
+		// TODO: Clipboard feature needs proper design - see TODO.md
+		// /**
+		//  * Handle paste-clipboard signal to replace pasted text with file reference if available.
+		//  * 
+		//  * Note: This handler needs to work synchronously to prevent default paste behavior.
+		//  * We use a workaround: read clipboard content provider to check for metadata.
+		//  */
+		// private void on_paste_clipboard()
+		// {
+		// 	// Get clipboard
+		// 	var display = Gdk.Display.get_default();
+		// 	if (display == null) {
+		// 		return;
+		// 	}
+		// 	
+		// 	var clipboard = display.get_clipboard();
+		// 	
+		// 	// Try to read clipboard text synchronously using content provider
+		// 	// This is a workaround since we need to check before default paste happens
+		// 	var content = clipboard.get_content();
+		// 	if (content == null) {
+		// 		return;
+		// 	}
+		// 	
+		// 	// Check if we can get text from content provider
+		// 	// We'll use a MainLoop to make this synchronous within the signal handler
+		// 	string? clipboard_text = null;
+		// 	bool got_text = false;
+		// 	
+		// 	content.read_async.begin(typeof(string), Gdk.ContentProvider.PRIORITY_DEFAULT, null, (obj, res) => {
+		// 		try {
+		// 			var value = content.read_async.end(res);
+		// 			if (value != null && value.holds(typeof(string))) {
+		// 				clipboard_text = (string)value.get_string();
+		// 			}
+		// 			got_text = true;
+		// 		} catch (Error e) {
+		// 			got_text = true; // Mark as done even on error
+		// 		}
+		// 	});
+		// 	
+		// 	// Wait for async operation to complete (with timeout)
+		// 	var loop = new MainLoop();
+		// 	var timeout_id = Timeout.add(100, () => {
+		// 		loop.quit();
+		// 		return false;
+		// 	});
+		// 	
+		// 	// Wait for result or timeout
+		// 	while (!got_text) {
+		// 		loop.run();
+		// 		if (got_text) {
+		// 			Source.remove(timeout_id);
+		// 			break;
+		// 		}
+		// 	}
+		// 	
+		// 	if (clipboard_text == null) {
+		// 		// Couldn't read clipboard, let default paste happen
+		// 		return;
+		// 	}
+		// 	
+		// 	// Check if clipboard metadata is available and can provide a file reference
+		// 	if (ClipboardManager.metadata != null) {
+		// 		string? file_ref = ClipboardManager.metadata.get_file_reference_for_clipboard_text(clipboard_text);
+		// 		if (file_ref != null) {
+		// 			// File reference found - replace paste with file reference
+		// 			// Get cursor position
+		// 			Gtk.TextIter cursor_iter;
+		// 			this.buffer.get_iter_at_mark(out cursor_iter, this.buffer.get_insert());
+		// 			
+		// 			// Insert file reference at cursor position
+		// 			this.buffer.insert(ref cursor_iter, file_ref, -1);
+		// 			
+		// 			// Move cursor to end of inserted text
+		// 			this.buffer.place_cursor(cursor_iter);
+		// 			
+		// 			// Stop signal emission to prevent default paste behavior
+		// 			// Note: In GTK4, we can't directly stop signal, but we've already inserted our text
+		// 			// The default paste will still happen, but we'll handle it by checking if our text was already inserted
+		// 			return;
+		// 		}
+		// 	}
+		// 	// If no clipboard manager or no metadata, let default paste behavior proceed
+		// }
 
 		private void send_current_text()
 		{

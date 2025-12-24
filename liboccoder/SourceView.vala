@@ -170,6 +170,12 @@ namespace OLLMcoder
 				}
 			});
 			
+			// TODO: Clipboard feature needs proper design - see TODO.md
+			// Connect to copy-clipboard signal to store file reference metadata
+			// this.source_view.copy_clipboard.connect(() => {
+			// 	this.on_copy_clipboard();
+			// });
+			
 			// Connect to scroll events to track scroll position
 			var vadjustment = this.scrolled_window.vadjustment;
 			if (vadjustment != null) {
@@ -852,6 +858,40 @@ namespace OLLMcoder
 			this.current_buffer.place_cursor(st);
 			this.source_view.scroll_to_iter(st, 0.1, true, 0.0, 0.5);
 		}
+		
+		// TODO: Clipboard feature needs proper design - see TODO.md
+		// /**
+		//  * Handle copy-clipboard signal to store file reference metadata.
+		//  */
+		// private void on_copy_clipboard()
+		// {
+		// 	if (this.current_file == null) {
+		// 		return;
+		// 	}
+		// 	
+		// 	var buffer = this.source_view.buffer as GtkSource.Buffer;
+		// 	if (buffer == null) {
+		// 		return;
+		// 	}
+		// 	
+		// 	// Get selection bounds
+		// 	Gtk.TextIter start_iter, end_iter;
+		// 	if (!buffer.get_selection_bounds(out start_iter, out end_iter)) {
+		// 		// No selection, don't store metadata
+		// 		return;
+		// 	}
+		// 	
+		// 	// Get line numbers (0-based)
+		// 	int start_line = start_iter.get_line();
+		// 	int end_line = end_iter.get_line();
+		// 	
+		// 	// Get selected text
+		// 	string? selected_text = buffer.get_text(start_iter, end_iter, false);
+		// 	
+		// 	// Store metadata for later retrieval on paste
+		// 	// Use static method directly since we're in the same library and have File object
+		// 	OLLMcoder.ClipboardMetadata.store_file(this.current_file, start_line, end_line, selected_text);
+		// }
 		
 		/**
 		 * Save current file to disk.

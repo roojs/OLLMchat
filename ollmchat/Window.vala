@@ -225,6 +225,10 @@ namespace OLLMchat
 			};
 			this.history_manager.agents.set(code_assistant.name, code_assistant);
 			
+			// TODO: Clipboard feature needs proper design - see TODO.md
+			// Register clipboard metadata for file reference paste support
+			// OLLMchatGtk.ClipboardManager.metadata = new OLLMcoder.ClipboardMetadata();
+			
 			// Enable new chat button now that history manager is ready
 			this.new_chat_button.sensitive = true;
 			

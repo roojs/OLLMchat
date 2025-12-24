@@ -35,3 +35,23 @@ Completed plans (for reference):
 
 
 * annoying bug that the tool icon shows up on a thinking model pulldown during first load - tried to debug but could not find any solution - the pulldonw list is fine, tis' just the button.
+
+## Code Editor Bugs/TODO
+
+* **Clipboard file reference feature needs proper design**
+  * Current implementation was commented out - needs architectural review
+  * Requirements:
+    - When user copies text from SourceView, store file path and line range metadata
+    - When user pastes into ChatInput, replace pasted text with file reference (e.g., "file:path:123" or "file:path:123-456")
+  * Issues with current approach:
+    - Clipboard metadata storage/retrieval design needs refinement
+    - Interface between libollmchatgtk and liboccoder needs proper decoupling
+    - GTK4 clipboard API usage (async operations in sync signal handlers)
+    - Need to handle edge cases (multiple copies, clipboard changes, etc.)
+  * Files involved:
+    - libollmchatgtk/ClipboardManager.vala (interface)
+    - libollmchatgtk/ClipboardMetadata.vala (interface)
+    - liboccoder/ClipboardMetadata.vala (implementation)
+    - liboccoder/SourceView.vala (copy handler)
+    - libollmchatgtk/ChatInput.vala (paste handler)
+    - ollmchat/Window.vala (initialization)

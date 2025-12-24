@@ -19,6 +19,8 @@ occoder_deps = [
 
 occoder_src = files([
   'BufferProvider.vala',
+  # TODO: Clipboard feature needs proper design - see TODO.md
+  # 'ClipboardMetadata.vala',
   'GitProvider.vala',
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',

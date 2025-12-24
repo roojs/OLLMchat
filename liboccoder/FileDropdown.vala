@@ -474,16 +474,18 @@ namespace OLLMcoder
 		/**
 		 * Override set_popup_visible to reset filter and trigger re-sort when showing popup with no search.
 		 */
-		protected void set_popup_visible(bool visible)
+		protected new void set_popup_visible(bool visible)
 		{
-			if (visible) {
-				// Always sync current_search_text with entry text when opening popup
-				// This ensures filter is reset correctly when clicking arrow to open
-				var entry_text = this.entry.text;
-				if (entry_text != this.current_search_text) {
-					this.current_search_text = entry_text;
-					this.update_filter_and_sort();
-				}
+			if (!visible) {
+				// Reset search when popup hides - ensures clean state when reopening
+				this.entry.text = "";
+				this.current_search_text = "";
+				this.update_filter_and_sort();
+			} 
+			if (visible && this.entry.text != this.current_search_text) {
+				// Sync current_search_text with entry text when opening popup while typing
+				this.current_search_text = this.entry.text;
+				this.update_filter_and_sort();
 			}
 			
 			base.set_popup_visible(visible);

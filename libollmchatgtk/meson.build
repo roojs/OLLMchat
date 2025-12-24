@@ -32,6 +32,9 @@ ollmchatgtk_src = files([
   'ChatView.vala',
   'ChatInput.vala',
   'ChatPermission.vala',
+  # TODO: Clipboard feature needs proper design - see TODO.md
+  # 'ClipboardManager.vala',
+  # 'ClipboardMetadata.vala',
   'HistoryBrowser.vala',
   'Message.vala',
 ]) + ollmchat_tools_gtk_src
