@@ -199,7 +199,7 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
-		 * Get lines array from cache or file using File.read_async().
+		 * Get lines array from cache or file.
 		 * 
 		 * @param file The file to load
 		 * @return Lines array, or empty array if file cannot be read
@@ -210,17 +210,14 @@ namespace OLLMvector.Tool
 			if (this.file_cache.has_key(file.path)) {
 				return this.file_cache.get(file.path).lines;
 			}
-			
 			string[] ret = {}; 
-			// Load from file using File.read_async()
+			// Load from file
 			try {
 				var contents = yield file.read_async();
 				
 				var lines_array = contents.split("\n");
 				var cache_entry = new FileCacheEntry(lines_array);
 				this.file_cache.set(file.path, cache_entry);
-				GLib.debug("codebase_search.get_lines: Loaded and cached file: %s (%d lines)", 
-					file.path, lines_array.length);
 				return lines_array;
 			} catch (GLib.Error e) {
 				GLib.debug("codebase_search.get_lines: Failed to read file %s: %s", file.path, e.message);
