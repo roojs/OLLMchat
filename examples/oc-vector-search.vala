@@ -300,9 +300,8 @@ Examples:
 		for (int i = 0; i < results.size; i++) {
 			var rank = i + 1;
 			
-			// Convert distance to score: 1.0 - distance (higher score = better match)
-			var score = 1.0f - results[i].distance;
-			stdout.printf("--- Result %d (score: %.4f) ---\n", rank, score);
+			// Display distance (lower distance = better match)
+			stdout.printf("--- Result %d (distance: %.4f) ---\n", rank, results[i].distance);
 			stdout.printf("File: %s\n", results[i].file().path);
 			stdout.printf("Element: %s (%s)\n", results[i].metadata.element_name, results[i].metadata.element_type);
 			stdout.printf("Lines: %d-%d\n", results[i].metadata.start_line, results[i].metadata.end_line);	
