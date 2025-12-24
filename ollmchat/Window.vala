@@ -217,8 +217,8 @@ namespace OLLMchat
 			var project_manager = new OLLMfiles.ProjectManager(
 				new SQ.Database(Path.build_filename(data_dir, "files.sqlite"))
 			);
-			project_manager.buffer_provider = new OLLMcoder.Files.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.Files.GitProvider();
+			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			project_manager.git_provider = new OLLMcoder.GitProvider();
 			
 			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(project_manager) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"

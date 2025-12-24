@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMcoder.Files
+namespace OLLMcoder
 {
 	/**
 	 * Git implementation of git provider for Folder and ProjectManager operations.
