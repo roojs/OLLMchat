@@ -163,10 +163,19 @@ namespace OLLMvector.Search
 			}
 			
 			// Debug: Log filtered vector IDs being passed to FAISS
+			var first_ids_str = "";
+			if (this.filtered_vector_ids.size > 0) {
+				var first_ids = new string[this.filtered_vector_ids.size > 10 ? 10 : this.filtered_vector_ids.size];
+				for (int i = 0; i < first_ids.length; i++) {
+					first_ids[i] = this.filtered_vector_ids[i].to_string();
+				}
+				first_ids_str = string.joinv(",", first_ids);
+			} else {
+				first_ids_str = "none";
+			}
 			GLib.debug("Search.execute: Creating IDSelector with %d filtered_vector_ids (first 10: %s)",
 				this.filtered_vector_ids.size,
-				this.filtered_vector_ids.size > 0 ? 
-					string.joinv(",", this.filtered_vector_ids.slice(0, this.filtered_vector_ids.size > 10 ? 10 : this.filtered_vector_ids.size).to_array().map<string>((id) => id.to_string())) : "none"
+				first_ids_str
 			);
 			
 			// Create a set for quick lookup to verify results
