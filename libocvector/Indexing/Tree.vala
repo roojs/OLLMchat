@@ -372,6 +372,12 @@ namespace OLLMvector.Indexing
 				return null;
 			}
 			
+			// Skip namespace declarations - we track namespace for context but don't vectorize them separately
+			if (element_type == "namespace") {
+				GLib.debug("Skipping node: namespace_declaration (lines %d-%d) - namespace tracked for context only", start_line, end_line);
+				return null;
+			}
+			
 			// Create VectorMetadata object early and assign values as we compute them
 			var metadata = new VectorMetadata() {
 				file_id = this.file.id,

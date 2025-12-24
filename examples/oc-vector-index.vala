@@ -254,7 +254,10 @@ Embed Model: $(embed_client.config.model)
 		
 		indexer.progress.connect((current, total, file_path) => {
 			int percentage = (int)((current * 100.0) / total);
-			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, file_path);
+			// Trim any trailing whitespace from file_path in case of database corruption
+			var clean_path = file_path.strip();
+			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, clean_path);
+			stdout.flush();
 		});
 		
 		stdout.printf("=== Indexing ===\n");
