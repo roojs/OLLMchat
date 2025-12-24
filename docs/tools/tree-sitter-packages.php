@@ -1216,20 +1216,33 @@ PKGCONFIG;
 
 // Main execution
 try {
-    // Check for required dependencies
-    $requiredCommands = ['git', 'npm', 'gcc', 'dpkg-buildpackage'];
-    $missingCommands = [];
+    // Check for required dependencies using dpkg -l
+    $requiredPackages = [
+        'git',
+        'nodejs',
+        'npm',
+        'build-essential',
+        'devscripts',
+        'debhelper',
+        'libtree-sitter-dev',
+        'libc6-dev',
+        'tree-sitter-cli'
+    ];
     
-    foreach ($requiredCommands as $cmd) {
-        exec("which {$cmd} 2>/dev/null", $output, $returnCode);
+    $missingPackages = [];
+    
+    foreach ($requiredPackages as $package) {
+        // Check if package is installed using dpkg-query (more reliable, handles :arch suffix)
+        exec("dpkg-query -W " . escapeshellarg($package) . " >/dev/null 2>&1", $output, $returnCode);
         if ($returnCode !== 0) {
-            $missingCommands[] = $cmd;
+            $missingPackages[] = $package;
         }
     }
     
-    if (!empty($missingCommands)) {
-        echo "Error: Missing required commands: " . implode(', ', $missingCommands) . "\n";
-        echo "Please install: sudo apt install git nodejs build-essential devscripts\n";
+    if (!empty($missingPackages)) {
+        echo "Error: Missing required packages.\n";
+        echo "You should install these:\n";
+        echo "sudo apt-get install " . implode(' ', $missingPackages) . "\n";
         exit(1);
     }
     
