@@ -244,10 +244,11 @@ namespace OLLMchat.Call
 			if (((Chat)this).streaming_response.message == null) {
 				GLib.debug("First streaming response: %s", trimmed);
 			}
-			if (chunk_node.get_object().get_boolean_member("done") == true) {
+			var chunk_obj = chunk_node.get_object();
+			if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
 				GLib.debug("Last streaming response: %s", trimmed);
 			}				
-			on_chunk(chunk_node.get_object());
+			on_chunk(chunk_obj);
 		} catch (Error e) {
 			// Log JSON parsing errors
 			GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);
