@@ -575,6 +575,38 @@ if (map.has_key(key)) {
 map.unset(key);
 ```
 
+## Gee.ArrayList Access
+
+**IMPORTANT:** Always use `.set()` and `.get()` methods for `Gee.ArrayList` operations instead of array-style accessors (`[]`). This is more explicit and consistent with the API.
+
+**Bad:**
+```vala
+var list = new Gee.ArrayList<string>();
+list[0] = "value";
+var item = list[0];
+```
+
+**Good:**
+```vala
+var list = new Gee.ArrayList<string>();
+list.set(0, "value");
+var item = list.get(0);
+```
+
+**Also Good (for iteration):**
+```vala
+for (int i = 0; i < list.size; i++) {
+    var item = list.get(i);
+    // process item
+}
+```
+
+**Also Good (for adding/removing):**
+```vala
+list.add(item);
+list.remove_at(index);
+```
+
 ## SQL Table Aliases
 
 **IMPORTANT:** Do NOT use table aliases in SQL queries. Always use full table names. This improves readability and avoids confusion.

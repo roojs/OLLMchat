@@ -97,6 +97,7 @@ ollmchat_base_lib = library('ollmchat',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
+  link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
   vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocagent', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocagent'],
   install: true
 )
