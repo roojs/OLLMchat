@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMcoder
+namespace OLLMcoder.Files
 {
 	/**
 	 * GTK implementation of buffer provider for File operations.
