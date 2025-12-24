@@ -52,7 +52,7 @@ making it more effective than simple text search for finding relevant code.
 			return """
 @param query {string} [required] The search query text describing what code to find.
 @param language {string} [optional] Filter results by programming language (e.g., "vala", "python", "javascript").
-@param element_type {string} [optional] Filter results by element type (e.g., "class", "method", "function", "property").
+@param element_type {string} [optional] Filter results by element type (e.g., "class", "method", "function", "property", "struct", "interface", "enum", "constructor", "field", "delegate", "signal", "constant"). Note: "namespace" is not searchable as namespace declarations are not indexed.
 @param max_results {integer} [optional] Maximum number of results to return (default: 10).
 """;
 		} }

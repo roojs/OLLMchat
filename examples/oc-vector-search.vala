@@ -33,7 +33,7 @@ class VectorSearchApp : Application
 		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
 		{ "language", 'l', 0, OptionArg.STRING, ref opt_language, "Filter by language (e.g., vala, python)", "LANG" },
-		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function)", "TYPE" },
+		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)", "TYPE" },
 		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 10)", "N" },
 		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
 		{ null }
@@ -108,7 +108,7 @@ Options:
   -d, --debug          Enable debug output
   -j, --json           Output results as JSON
   -l, --language=LANG Filter by language (e.g., vala, python)
-  -e, --element-type=TYPE Filter by element type (e.g., class, method, function)
+  -e, --element-type=TYPE Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)
   -n, --max-results=N  Maximum number of results (default: 10)
   -s, --max-snippet-lines=N Maximum lines of code snippet to display (default: 10, -1 for no limit)
 
