@@ -237,9 +237,9 @@ namespace OLLMvector.Tool
 		 * @param max_lines Maximum number of lines to return (-1 for no limit)
 		 * @return Code snippet as string
 		 */
-		private string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
+		private async string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
 		{
-			var lines = this.get_lines(file.path);
+			var lines = yield this.get_lines(file);
 			
 			if (lines.length == 0) {
 				return "";
