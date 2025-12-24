@@ -359,7 +359,7 @@ namespace OLLMcoder
 					margin_end = 5
 				};
 				
-				// CSS class will be set via display_css binding
+				// CSS classes (including oc-file-item and oc-recent) will be set via display_css binding
 				
 				// Icon for file type
 				var file_icon = new Gtk.Image() {

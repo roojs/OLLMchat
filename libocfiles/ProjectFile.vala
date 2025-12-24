@@ -111,6 +111,11 @@ namespace OLLMfiles
 			} else {
 				this.path = path;
 			}
+			
+			// Watch file.last_viewed to notify display_css when is_recent changes
+			this.file.notify["last-viewed"].connect(() => {
+				this.notify_property("display-css");
+			});
 		}
 		
 		/**
@@ -160,6 +165,27 @@ namespace OLLMfiles
 			get {
 				return this.file.display_with_indicators;
 			}
+		}
+		
+		/**
+		 * CSS classes array for styling (e.g., ["oc-file-item", "oc-recent"] for recent files).
+		 * Notifies when is_recent changes (via file.last_viewed changes).
+		 */
+		public string[] display_css {
+			owned get {
+				if (this.is_recent) {
+					return { "oc-file-item", "oc-recent" };
+				}
+				return { "oc-file-item" };
+			}
+		}
+		
+		/**
+		 * Icon name for binding in lists - delegates to wrapped file.
+		 */
+		public new string icon_name {
+			get { return this.file.icon_name; }
+			set { }
 		}
 	}
 }

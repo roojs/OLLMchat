@@ -28,10 +28,12 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMfiles.ProjectFile.display_basename.html">display_basename</a></li>
+          <li class="property"><a href="OLLMfiles.ProjectFile.display_css.html">display_css</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.display_relpath.html">display_relpath</a></li>
           <li class="virtual_property"><a href="OLLMfiles.ProjectFile.display_with_indicators.html">display_with_indicators</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.display_with_path.html">display_with_path</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.file.html">file</a></li>
+          <li class="property"><a href="OLLMfiles.ProjectFile.icon_name.html">icon_name</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.is_active.html">is_active</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.is_open.html">is_open</a></li>
           <li class="property"><a href="OLLMfiles.ProjectFile.is_recent.html">is_recent</a></li>
@@ -72,6 +74,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Display name with basename only - overridden for ProjectFile.</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>[] <b><a href="OLLMfiles.ProjectFile.display_css.html" class="property">display_css</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">CSS classes array for styling (e.g., ["oc-file-item", "oc-recent"] for
+                recent files). Notifies when is_recent changes (via file.last_viewed changes).</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.ProjectFile.display_relpath.html" class="property">display_relpath</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Display relative path from project root. If relpath is set (file 
@@ -89,6 +96,10 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> <b><a href="OLLMfiles.ProjectFile.file.html" class="property">file</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">The wrapped File object.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.ProjectFile.icon_name.html" class="property">icon_name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Icon name for binding in lists - delegates to wrapped file.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.ProjectFile.is_active.html" class="property">is_active</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
