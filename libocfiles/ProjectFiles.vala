@@ -25,8 +25,9 @@ namespace OLLMfiles
 	 * Provides both hierarchical tree structure (for UI tree views) and flat hashmap
 	 * (for fast lookups by full path).
 	 * Implements ListModel interface using Gee.ArrayList as backing store.
+	 * Implements Gee.Iterable for foreach iteration over items.
 	 */
-	public class ProjectFiles : Object, GLib.ListModel
+	public class ProjectFiles : Object, GLib.ListModel, Gee.Traversable<ProjectFile>, Gee.Iterable<ProjectFile>
 	{
 		/**
 		 * Backing store: ArrayList containing ProjectFile objects.
@@ -38,6 +39,27 @@ namespace OLLMfiles
 			default = new Gee.ArrayList<ProjectFile>((a, b) => {
 				return a.file.id == b.file.id;
 			});
+		}
+		
+		/**
+		 * Gee.Traversable interface implementation: Execute function for each item.
+		 * 
+		 * @param f Function to execute for each ProjectFile
+		 * @return true if all items were processed, false if iteration was stopped early
+		 */
+		public bool foreach(Gee.ForallFunc<ProjectFile> f)
+		{
+			return this.items.foreach(f);
+		}
+		
+		/**
+		 * Gee.Iterable interface implementation: Get iterator over items.
+		 * 
+		 * @return Iterator over ProjectFile items
+		 */
+		public Gee.Iterator<ProjectFile> iterator()
+		{
+			return this.items.iterator();
 		}
 		
 		/**

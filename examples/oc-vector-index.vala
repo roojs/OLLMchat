@@ -273,67 +273,58 @@ Embed Model: $(embed_client.config.model)
 			filebase = results_list[0];
 		}
 		
+		// Error condition: filebase must exist in database
 		if (filebase == null) {
-			stdout.printf("Path not found in database. Adding to database first...\n");
-			
-			var file_info_detailed = file.query_info("standard::*", GLib.FileQueryInfoFlags.NONE, null);
-			
-			if (is_folder) {
-				var folder = new OLLMfiles.Folder(manager);
-				folder.path = abs_path;
-				var mod_time = file_info_detailed.get_modification_date_time();
-				if (mod_time != null) {
-					folder.last_modified = mod_time.to_unix();
-				}
-				folder.saveToDB(sql_db, null, false);
-				stdout.printf("Added folder to database (ID: %lld)\n\n", folder.id);
-				filebase = folder;
-			} else {
-				var ollm_file = new OLLMfiles.File(manager);
-				ollm_file.path = abs_path;
-				var mod_time = file_info_detailed.get_modification_date_time();
-				if (mod_time != null) {
-					ollm_file.last_modified = mod_time.to_unix();
-				}
-				var content_type = file_info_detailed.get_content_type();
-				ollm_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
-				var detected_lang = manager.buffer_provider.detect_language(ollm_file);
-				if (detected_lang != null && detected_lang != "") {
-					ollm_file.language = detected_lang;
-				}
-				ollm_file.saveToDB(sql_db, null, false);
-				stdout.printf("Added file to database (ID: %lld, Language: %s)\n\n", ollm_file.id, ollm_file.language);
-				filebase = ollm_file;
-			}
+			throw new GLib.IOError.FAILED("Failed to get or create filebase entry");
 		}
 		
-		if (filebase != null) {
-			stdout.printf("Starting indexing process...\n");
-			if (filebase is OLLMfiles.Folder) {
-				var folder_obj = (OLLMfiles.Folder)filebase;
-				stdout.printf("Indexing folder: %s (recurse=%s)\n", folder_obj.path, opt_recurse.to_string());
-			} else if (filebase is OLLMfiles.File) {
-				var file_obj = (OLLMfiles.File)filebase;
-				stdout.printf("Indexing file: %s\n", file_obj.path);
-			}
-			try {
-				stdout.printf("Calling indexer.index_filebase...\n");
-				int files_indexed = yield indexer.index_filebase(filebase, opt_recurse, false);
-				stdout.printf("\n");
-				stdout.printf("index_filebase returned: %d files indexed\n", files_indexed);
-				var completion_info = @"✓ Indexing completed
+		// Error condition: only folders are supported for indexing
+		if (!(filebase is OLLMfiles.Folder)) {
+			throw new GLib.IOError.INVALID_ARGUMENT("Only folders can be indexed, not files");
+		}
+		
+		var folder_obj = (OLLMfiles.Folder)filebase;
+		stdout.printf("Starting indexing process...\n");
+		stdout.printf("Indexing folder: %s (recurse=%s)\n", folder_obj.path, opt_recurse.to_string());
+		
+		// Set up folder for indexing: scan files and update project_files
+		// Disable background_recurse to ensure file scan completes before indexing
+		// (No need to restore - process exits at end)
+		OLLMfiles.Folder.background_recurse = false;
+		
+		// Load children from database if needed
+		if (folder_obj.children.items.size == 0) {
+			stdout.printf("Loading folder children from database...\n");
+			yield folder_obj.load_files_from_db();
+		}
+		
+		// Scan the folder (like the desktop does)
+		stdout.printf("Scanning folder for files...\n");
+		var scan_time = new DateTime.now_local().to_unix();
+		folder_obj.last_scan = scan_time;
+		folder_obj.saveToDB(sql_db, null, false);
+		yield folder_obj.read_dir(scan_time, true);
+		
+		// Update project_files to get the list of files to index
+		// This filters ignored/non-text files and handles removals
+		stdout.printf("Updating project files list...\n");
+		folder_obj.project_files.update_from(folder_obj);
+		
+		try {
+			stdout.printf("Calling indexer.index_filebase...\n");
+			int files_indexed = yield indexer.index_filebase(folder_obj, opt_recurse, false);
+			stdout.printf("\n");
+			stdout.printf("index_filebase returned: %d files indexed\n", files_indexed);
+			var completion_info = @"✓ Indexing completed
   Files indexed: $(files_indexed)
   Total vectors: $(vector_db.vector_count)
   Vector dimension: $(vector_db.dimension)
 
 ";
-				stdout.printf("%s", completion_info);
-			} catch (GLib.Error e) {
-				stdout.printf("Error during indexing: %s\n", e.message);
-				throw e;
-			}
-		} else {
-			throw new GLib.IOError.FAILED("Failed to get or create filebase entry");
+			stdout.printf("%s", completion_info);
+		} catch (GLib.Error e) {
+			stdout.printf("Error during indexing: %s\n", e.message);
+			throw e;
 		}
 		
 		try {

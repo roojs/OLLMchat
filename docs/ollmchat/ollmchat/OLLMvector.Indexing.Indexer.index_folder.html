@@ -43,36 +43,30 @@
         <h1 class="main_title">index_folder</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><span class="method">index_folder</span></b> (<span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span> folder, <span class="main_basic_type"><span class="struct">bool</span></span> recurse = <span class="main_literal">false</span>, <span class="main_basic_type"><span class="struct">bool</span></span> force = <span class="main_literal">false</span>, <span class="main_basic_type"><span class="struct">int64</span></span> scan_time = <span class="main_literal">0</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><span class="method">index_folder</span></b> (<span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span> folder, <span class="main_basic_type"><span class="struct">bool</span></span> recurse = <span class="main_literal">false</span>, <span class="main_basic_type"><span class="struct">bool</span></span> force = <span class="main_literal">false</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Index a folder and optionally recurse into subfolders.</p>
-          <p>Uses ProjectFiles to get the list of files to index. ProjectFiles already filters out ignored files and non-text files, and handles 
-            recursion.</p>
+          <p>Index a folder.</p>
+          <p>Indexes all files in the folder's project_files list. The caller should ensure that the folder has been scanned (via read_dir) and 
+            project_files has been updated (via update_from) before calling this method.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">folder</td>
               <td>
-                <p>The folder to index (must exist in database) </p>
+                <p>The folder to index (must exist in database and have project_files populated) </p>
               </td>
             </tr>
             <tr>
               <td class="main_parameter_table_name">recurse</td>
               <td>
-                <p>If true, recursively process subfolders (used by ProjectFiles.update_from) </p>
+                <p>Unused (kept for API compatibility) </p>
               </td>
             </tr>
             <tr>
               <td class="main_parameter_table_name">force</td>
               <td>
                 <p>If true, skip incremental check and force re-indexing </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">scan_time</td>
-              <td>
-                <p>Fixed scan time for this scan session (0 = create new) </p>
               </td>
             </tr>
           </table>

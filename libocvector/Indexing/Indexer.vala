@@ -132,56 +132,31 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Index a folder and optionally recurse into subfolders.
+		 * Index a folder.
 		 * 
-		 * Uses ProjectFiles to get the list of files to index. ProjectFiles already
-		 * filters out ignored files and non-text files, and handles recursion.
+		 * Indexes all files in the folder's project_files list. The caller should
+		 * ensure that the folder has been scanned (via read_dir) and project_files
+		 * has been updated (via update_from) before calling this method.
 		 * 
-		 * @param folder The folder to index (must exist in database)
-		 * @param recurse If true, recursively process subfolders (used by ProjectFiles.update_from)
+		 * @param folder The folder to index (must exist in database and have project_files populated)
+		 * @param recurse Unused (kept for API compatibility)
 		 * @param force If true, skip incremental check and force re-indexing
-		 * @param scan_time Fixed scan time for this scan session (0 = create new)
 		 * @return Number of files indexed
 		 */
-		public async int index_folder(OLLMfiles.Folder folder, bool recurse = false, bool force = false, int64 scan_time = 0) throws GLib.Error
+		public async int index_folder(OLLMfiles.Folder folder, bool recurse = false, bool force = false) throws GLib.Error
 		{
-			if (scan_time == 0) {
-				scan_time = new DateTime.now_local().to_unix();
-			}
-			
-			if (!force && folder.last_scan == scan_time) {
-				GLib.debug("Skipping folder '%s' (already being scanned in this session)", folder.path);
-				return 0;
-			}
-			
-			folder.last_scan = scan_time;
-			folder.saveToDB(this.sql_db, null, false);
-			
-			GLib.debug("Processing folder '%s' (recurse=%s)", folder.path, recurse.to_string());
-			
-			// Load children from database if needed
-			if (folder.children.items.size == 0) {
-				GLib.debug("Loading folder children from database for '%s'", folder.path);
-				yield folder.load_files_from_db();
-			}
-			
-			// Update ProjectFiles to get the list of files to index
-			// ProjectFiles.update_from already filters ignored and non-text files
-			folder.project_files.update_from(folder);
+			GLib.debug("Processing folder '%s'", folder.path);
 			
 			int files_indexed = 0;
 			uint n_items = folder.project_files.get_n_items();
 			GLib.debug("Folder '%s' has %u files in project_files", folder.path, n_items);
 			
 			// Index all files from ProjectFiles
-			for (uint i = 0; i < n_items; i++) {
-				var project_file = folder.project_files.get_item(i) as OLLMfiles.ProjectFile;
-				if (project_file == null) {
-					continue;
-				}
-				
+			uint current = 0;
+			foreach (var project_file in folder.project_files) {
+				current++;
 				var file = project_file.file;
-				this.progress((int)(i + 1), (int)n_items, file.path);
+				this.progress((int)current, (int)n_items, file.path);
 				try {
 					if (yield this.index_file(file, force)) {
 						files_indexed++;
@@ -219,14 +194,14 @@ namespace OLLMvector.Indexing
 				filebase = filebase.points_to;
 			}
 			
-		if (filebase is OLLMfiles.File) {
-			var file = (OLLMfiles.File)filebase;
-			this.progress(1, 1, file.path);
-			if (yield this.index_file(file, force)) {
-				return 1;
+			if (filebase is OLLMfiles.File) {
+				var file = (OLLMfiles.File)filebase;
+				this.progress(1, 1, file.path);
+				if (yield this.index_file(file, force)) {
+					return 1;
+				}
+				return 0;
 			}
-			return 0;
-		}
 			
 			if (filebase is OLLMfiles.Folder) {
 				return yield this.index_folder((OLLMfiles.Folder)filebase, recurse, force);
