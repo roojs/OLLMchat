@@ -191,8 +191,9 @@ namespace OLLMvector.Tool
 			var formatted = this.format_results(results, this.query);
 			
 			// Clear file cache at end of query
+			var cache_size = this.file_cache.size;
 			this.file_cache.clear();
-			GLib.debug("codebase_search: cleared file cache (%d entries)", this.file_cache.size);
+			GLib.debug("codebase_search: cleared file cache (%d entries)", cache_size);
 			
 			return formatted;
 		}
