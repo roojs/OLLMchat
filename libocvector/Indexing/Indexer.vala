@@ -265,6 +265,9 @@ namespace OLLMvector.Indexing
 			
 			// Reset all file scan dates to -1
 			this.sql_db.exec("UPDATE filebase SET last_scan = -1 WHERE base_type = 'f'");
+			
+			// Sync database to disk after reset
+			this.sql_db.backupDB();
 		}
 	}
 
