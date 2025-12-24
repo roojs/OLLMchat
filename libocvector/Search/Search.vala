@@ -222,8 +222,12 @@ namespace OLLMvector.Search
 			);
 			
 			if (invalid_count > 0) {
+				var result_ids_str = new string[result_vector_ids.length];
+				for (int i = 0; i < result_vector_ids.length; i++) {
+					result_ids_str[i] = result_vector_ids[i].to_string();
+				}
 				GLib.debug("Search.execute: FAISS returned vector_ids: %s",
-					string.joinv(",", result_vector_ids.map<string>((id) => id.to_string()))
+					string.joinv(",", result_ids_str)
 				);
 			}
 			
