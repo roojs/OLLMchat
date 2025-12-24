@@ -162,6 +162,19 @@ namespace OLLMvector.Search
 				id_array[i] = this.filtered_vector_ids[i];
 			}
 			
+			// Debug: Log filtered vector IDs being passed to FAISS
+			GLib.debug("Search.execute: Creating IDSelector with %d filtered_vector_ids (first 10: %s)",
+				this.filtered_vector_ids.size,
+				this.filtered_vector_ids.size > 0 ? 
+					string.joinv(",", this.filtered_vector_ids.slice(0, this.filtered_vector_ids.size > 10 ? 10 : this.filtered_vector_ids.size).to_array().map<string>((id) => id.to_string())) : "none"
+			);
+			
+			// Create a set for quick lookup to verify results
+			var filtered_set = new Gee.HashSet<int>();
+			foreach (var vid in this.filtered_vector_ids) {
+				filtered_set.add(vid);
+			}
+			
 			Faiss.IDSelector? selector = null;
 			if (Faiss.id_selector_batch_new(out selector, (int64)this.filtered_vector_ids.size, id_array) != 0) {
 				throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
@@ -179,10 +192,30 @@ namespace OLLMvector.Search
 				return new Gee.ArrayList<SearchResult>();
 			}
 			
-			// Step 5: Extract vector IDs from results
+			// Step 5: Extract vector IDs from results and verify they're in filtered set
 			var result_vector_ids = new int64[faiss_results.length];
+			var invalid_count = 0;
 			for (int i = 0; i < faiss_results.length; i++) {
 				result_vector_ids[i] = faiss_results[i].document_id;
+				// Verify document_id is in filtered set
+				if (!filtered_set.contains((int)faiss_results[i].document_id)) {
+					invalid_count++;
+					GLib.debug("Search.execute: WARNING - FAISS returned vector_id=%lld which is NOT in filtered list", 
+						faiss_results[i].document_id);
+				}
+			}
+			
+			// Debug: Log FAISS results
+			GLib.debug("Search.execute: FAISS returned %d results, %d valid (in filtered list), %d invalid",
+				faiss_results.length,
+				faiss_results.length - invalid_count,
+				invalid_count
+			);
+			
+			if (invalid_count > 0) {
+				GLib.debug("Search.execute: FAISS returned vector_ids: %s",
+					string.joinv(",", result_vector_ids.map<string>((id) => id.to_string()))
+				);
 			}
 			
 			// Step 6: Lookup metadata for result vector_ids
