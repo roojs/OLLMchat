@@ -175,7 +175,8 @@ namespace OLLMvector.Tool
 				active_project,
 				this.query,
 				(uint64)this.max_results,
-				filtered_vector_ids
+				filtered_vector_ids,
+				this.element_type  // Pass element_type filter to Search
 			);
 			
 			// Execute search
