@@ -63,6 +63,12 @@ namespace OLLMvector.Search
 		private Gee.ArrayList<int> filtered_vector_ids;
 		
 		/**
+		 * Optional element_type filter for metadata results.
+		 * If set, only metadata with matching element_type will be included.
+		 */
+		private string? element_type_filter;
+		
+		/**
 		 * Constructor with all required dependencies.
 		 * 
 		 * @param vector_db Vector database for FAISS search
@@ -72,6 +78,7 @@ namespace OLLMvector.Search
 		 * @param query Search query text
 		 * @param max_results Maximum number of results (default: 10)
 		 * @param filtered_vector_ids List of vector IDs to filter search (empty list = search all)
+		 * @param element_type_filter Optional element_type to filter metadata results (e.g., "class", "method")
 		 */
 		public Search(
 			OLLMvector.Database vector_db,
@@ -80,7 +87,8 @@ namespace OLLMvector.Search
 			OLLMfiles.Folder folder,
 			string query,
 			uint64 max_results = 10,
-			Gee.ArrayList<int> filtered_vector_ids
+			Gee.ArrayList<int> filtered_vector_ids,
+			string? element_type_filter = null
 		)
 		{
 			this.vector_db = vector_db;
@@ -90,6 +98,7 @@ namespace OLLMvector.Search
 			this.query = query;
 			this.max_results = max_results;
 			this.filtered_vector_ids = filtered_vector_ids;
+			this.element_type_filter = element_type_filter;
 		}
 		
 		/**
