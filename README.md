@@ -6,26 +6,43 @@
 
 ## Summary
 
-OLLMchat is a work-in-progress library and embeddable widget that provides LLM access and tool integration for applications. The project focuses on Vala and GTK4, with the main library written in pure Vala.
+OLLMchat is a work-in-progress AI application for interacting with LLMs (Large Language Models) such as Ollama and OpenAI, featuring a full-featured chat interface with code assistant capabilities including semantic codebase search. The project is built as a modular set of reusable libraries that can be integrated into other applications, with the main application serving as a complete AI chat client. The project focuses on Vala and GTK4, with all libraries written in pure Vala.
 
-- **Libraries** - A set of libraries for LLM access, tool integration, and markdown processing
+- **Main Application (`ollmchat`)** - A complete AI chat client with:
+  - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
+  - Code assistant agent with semantic codebase search capabilities
+  - Chat history management with session browser
+  - Tool integration: ReadFile, EditMode, RunCommand, and CodebaseSearch (semantic search)
+  - Project management and file tracking
+  - Bootstrap dialog for initial server configuration
+  - Permission system for secure tool access
+  - Support for multiple agent types (Just Ask, Code Assistant)
+- **Libraries** - A set of reusable libraries for LLM access, tool integration, and markdown processing
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
   - `libocfiles.so` - File and project management library (depends on libocsqlite, no GTK dependencies)
   - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
-  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies) - **Status: In Progress**
+  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies)
   - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
   - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
+- **Example Tools** - Command-line utilities demonstrating library capabilities:
+  - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
+  - `oc-test-files` - Test tool for file and folder management (recursively lists files/folders with git status)
+  - `oc-markdown-test` - Markdown parser test tool (parses markdown and outputs callback trace)
+  - `oc-html2md` - HTML to Markdown converter (reads HTML from stdin, outputs Markdown)
+  - `oc-md2html` - Markdown to HTML converter (converts markdown file to HTML)
+  - `oc-diff` - Unified diff tool (compares two files and outputs differences in unified diff format)
+  - `oc-vector-index` - Codebase indexing tool for semantic search (indexes files/folders using tree-sitter and vector embeddings)
+  - `oc-vector-search` - Command-line semantic code search tool (searches indexed codebase by semantic meaning)
+  - `oc-migrate-editors` - Project migration tool (migrates projects from Cursor editor configuration)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
-- **Tool Dependencies** - Some tools will rely on third-party applications (e.g., semantic code search which is in another repository)
+- **Tool Dependencies** - Some tools will rely on third-party applications
 - **Tool Calling** - Supports tool calling functionality
 - **Permission System** - Includes a permission system for secure tool access
 - **Prompt Manipulation** - Provides prompt manipulation capabilities
 - **Generation** - Supports text generation from LLM models
-- **Sample Tools** - Includes working tools: ReadFile, EditMode, RunCommand
 - **Embeddable Widget** - Reusable chat widget (`ChatWidget`) that can be embedded in applications
-- **Current Status** - Builds seven shared libraries with headers, VAPI, and GIR files. Includes the main `ollmchat` application, test executables (`oc-test-cli`, `oc-markdown-test`, `oc-html2md`), example tools (`oc-md2html`), and vector indexing tool (`oc-vector-index`)
 
 ## Demo
 
@@ -83,7 +100,10 @@ This will build:
 - `oc-markdown-test` - Markdown parser test executable
 - `oc-html2md` - HTML to Markdown converter (reads from stdin)
 - `oc-md2html` - Markdown to HTML converter (takes file as argument)
+- `oc-diff` - Unified diff tool (compares two files and outputs differences)
 - `oc-vector-index` - Vector indexing tool for codebase search (indexes files/folders for semantic search)
+- `oc-vector-search` - Command-line semantic code search tool
+- `oc-migrate-editors` - Project migration tool
 - Valadoc documentation (in `docs/ollmchat/`)
 
 ### 3. Running executables without installing
@@ -98,7 +118,9 @@ The executables are configured with `build_rpath` so they can find the libraries
 ./build/oc-markdown-test
 ./build/oc-html2md
 ./build/oc-md2html
+./build/oc-diff file1.txt file2.txt
 ./build/oc-vector-index --help
+./build/oc-vector-search --help
 ```
 
 The wrapper scripts are automatically generated during the build process and set up the library paths correctly. Note that only `ollmchat` has a `.bin` wrapper; the other executables can be run directly from the build directory.
@@ -129,11 +151,14 @@ The project is organized into component directories, each with its own `meson.bu
   - `ProjectManager.vala` - Project and file management
   - `SourceView.vala` - Code editor component with syntax highlighting
   - `SearchableDropdown.vala`, `ProjectDropdown.vala`, `FileDropdown.vala` - Dropdown widgets
+  - `Prompt/CodeAssistant.vala` - Code assistant agent with semantic search capabilities
+    - The code assistant can perform semantic codebase search using the vector indexing system
+    - Includes an indexer tool (`oc-vector-index`) for indexing codebases to enable semantic search
+    - Semantic search allows finding code elements by meaning rather than just text matching
 
 **Vector Search Library (`libocvector.so`):**
 - `libocvector/` - Semantic codebase search using vector embeddings and FAISS (libocvector.so, namespace: `OLLMvector`)
-  - **Status**: In Progress - Indexing layer complete, Search layer pending
-  - **Intentions**: Provides semantic code search capabilities by indexing code elements (classes, methods, functions, etc.) using tree-sitter AST parsing, LLM analysis for descriptions, and FAISS for vector similarity search
+  - **Status**: Mostly complete - Provides semantic code search capabilities by indexing code elements (classes, methods, functions, etc.) using tree-sitter AST parsing, LLM analysis for descriptions, and FAISS for vector similarity search
   - `Index.vala` - FAISS vector index integration
   - `Database.vala` - Vector database with embeddings storage
   - `VectorMetadata.vala` - Metadata storage (SQL database) mapping vector IDs to code locations
@@ -142,9 +167,15 @@ The project is organized into component directories, each with its own `meson.bu
     - `Analysis.vala` - LLM-based code analysis and description generation
     - `VectorBuilder.vala` - Vector generation and FAISS storage
     - `Indexer.vala` - Main indexing orchestrator for files and folders
-  - `Search/` - Search components (namespace: `OLLMvector.Search`) - *Pending implementation*
+  - `Search/` - Search components (namespace: `OLLMvector.Search`)
+    - `Search.vala` - Vector similarity search execution
+    - `SearchResult.vala` - Search result representation
+  - `Tool/` - Tool integration (namespace: `OLLMvector.Tool`)
+    - `CodebaseSearchTool.vala` - Tool interface for semantic codebase search
+    - `RequestCodebaseSearch.vala` - Request handling for codebase search tool
   - Uses `libocfiles` (OLLMfiles namespace) for file tracking and project management
   - Example tool: `oc-vector-index` - Command-line tool for indexing files/folders
+  - **Tree-sitter Language Support**: A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers. This script automates building Debian packages for various tree-sitter parsers from GitHub repositories, making it easy to install language support for the vector indexing system.
 
 **OLLMchat Base Library (`libollmchat.so`):**
 - `libollmchat/` - Main namespace (`OLLMchat`)
