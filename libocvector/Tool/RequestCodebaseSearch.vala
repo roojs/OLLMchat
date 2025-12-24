@@ -199,37 +199,31 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
-		 * Get lines array from cache or file (same logic as BufferProviderBase).
+		 * Get lines array from cache or file using File.read_async().
 		 * 
-		 * @param file_path The path to the file to load
+		 * @param file The file to load
 		 * @return Lines array, or empty array if file cannot be read
 		 */
-		private string[] get_lines(string file_path)
+		private async string[] get_lines(OLLMfiles.File file)
 		{
 			// Check cache first
-			if (this.file_cache.has_key(file_path)) {
-				return this.file_cache.get(file_path).lines;
+			if (this.file_cache.has_key(file.path)) {
+				return this.file_cache.get(file.path).lines;
 			}
 			
 			string[] ret = {}; 
-			// Load from file
+			// Load from file using File.read_async()
 			try {
-				if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
-					GLib.debug("codebase_search.get_lines: File does not exist: %s", file_path);
-					return ret;
-				}
-				
-				string contents;
-				GLib.FileUtils.get_contents(file_path, out contents);
+				var contents = yield file.read_async();
 				
 				var lines_array = contents.split("\n");
 				var cache_entry = new FileCacheEntry(lines_array);
-				this.file_cache.set(file_path, cache_entry);
+				this.file_cache.set(file.path, cache_entry);
 				GLib.debug("codebase_search.get_lines: Loaded and cached file: %s (%d lines)", 
-					file_path, lines_array.length);
+					file.path, lines_array.length);
 				return lines_array;
 			} catch (GLib.Error e) {
-				GLib.debug("codebase_search.get_lines: Failed to read file %s: %s", file_path, e.message);
+				GLib.debug("codebase_search.get_lines: Failed to read file %s: %s", file.path, e.message);
 				return ret;
 			}
 		}
