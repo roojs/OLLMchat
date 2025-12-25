@@ -19,59 +19,67 @@
 namespace OLLMchat.Settings
 {
 	/**
-	 * Configuration management for OLLMchat client settings (Version 1).
+	 * Main serializable configuration holder for version 2 format (multiple clients, extended structure).
 	 * 
-	 * This is a copy of the original Config class for version 1 format support.
-	 * Handles loading and saving client configuration to JSON file.
-	 * Supports single client configuration (Phase 1) with structure
-	 * designed to support multiple clients in the future.
+	 * This is the top-level container class that holds all configuration data.
+	 * Supports GType registration for external configuration sections.
 	 * 
 	 * @since 1.0
 	 */
-	public class Config1 : Object, Json.Serializable
+	public class Config2 : Object, Json.Serializable
 	{
 		/**
-		 * Server URL e.g. http:\/\/localhost:11434\/api
+		 * Map of connection URL → Connection objects
 		 */
-		public string url { get; set; default = "http://localhost:11434/api"; }
+		public Gee.Map<string, Connection> connections { get; set; default = new Gee.HashMap<string, Connection>(); }
 		
 		/**
-		 * Optional API key for authentication
+		 * Map of model name → Call.Options (per-model option overrides)
 		 */
-		public string api_key { get; set; default = ""; }
-
+		public Gee.Map<string, OLLMchat.Call.Options> model_options { get; set; default = new Gee.HashMap<string, OLLMchat.Call.Options>(); }
+		
 		/**
-		 * Model name to use for chat requests
+		 * Map of section name → external config objects (handled by registered GTypes)
 		 */
-		public string model { get; set; default = ""; }
-
+		public Gee.Map<string, Object> external_configs { get; set; default = new Gee.HashMap<string, Object>(); }
+		
 		/**
-		 * Model name for title generation (optional)
+		 * Map of registered key → GType for deserialization
 		 */
-		public string title_model { get; set; default = ""; }
-
-		/**
-		 * Whether to return separate thinking output in addition to content
-		 */
-		public bool think { get; set; default = true; }
-
+		private Gee.HashMap<string, Type> registered_types = new Gee.HashMap<string, Type>();
+		
 		/**
 		 * Configuration file path
 		 */
-		public string config_path   = ""; 
-
+		public string config_path = "";
+		
 		/**
 		 * Whether the config was successfully loaded from a file.
 		 * This property is not serialized.
 		 */
-		public bool loaded = false;  
+		public bool loaded = false;
 
 		/**
 		 * Default constructor.
 		 */
-		public Config1()
+		public Config2()
 		{
 		}
+
+		/**
+		 * Registers a GType for a property/section key.
+		 * 
+		 * When deserializing JSON, Config2 will use the registered GType to deserialize
+		 * the property using standard Json.Serializable.
+		 * 
+		 * @param key The property/section key name
+		 * @param gtype The GType to use for deserialization
+		 */
+		public void register_type(string key, Type gtype)
+		{
+			this.registered_types.set(key, gtype);
+		}
+ 
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -92,28 +100,41 @@ namespace OLLMchat.Settings
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			 
 			return default_serialize_property(property_name, value, pspec);
 		}
 
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
+			// Check if this is a registered external config type
+			if (this.registered_types.has_key(property_name)) {
+				var gtype = this.registered_types.get(property_name);
+				
+				// Deserialize using the registered GType directly from Json.Node
+				var obj = Json.gobject_deserialize(gtype, property_node);
+				if (obj != null) {
+					value = Value(gtype);
+					value.set_object(obj);
+					return true;
+				}
+			}
+			
+			// Use default deserialization for known properties
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 
 		/**
-		 * Creates a new Config1 object loaded from a file.
+		 * Creates a new Config2 object loaded from a file.
 		 * 
 		 * The caller should ensure the file exists before calling this method.
-		 * If the file cannot be read/parsed, returns a Config1 object with default
+		 * If the file cannot be read/parsed, returns a Config2 object with default
 		 * values and loaded set to false.
 		 * 
 		 * @param config_path Path to the configuration file
-		 * @return A new Config1 instance loaded from the file
+		 * @return A new Config2 instance loaded from the file
 		 */
-		public static Config1 from_file(string config_path)
+		public static Config2 from_file(string config_path)
 		{
-			var config = new Config1();
+			var config = new Config2();
 			config.config_path = config_path;
 			config.loaded = false;
 
@@ -122,10 +143,10 @@ namespace OLLMchat.Settings
 				GLib.FileUtils.get_contents(config_path, out contents);
 				
 				var loaded_config = Json.gobject_from_data(
-					typeof(Config1),
+					typeof(Config2),
 					contents,
 					-1
-				) as Config1;
+				) as Config2;
 				
 				if (loaded_config == null) {
 					GLib.warning("Failed to deserialize config file");
@@ -153,10 +174,6 @@ namespace OLLMchat.Settings
 		 */
 		public void save() throws Error
 		{
-			if (this.config_path == null || this.config_path == "") {
-				throw new GLib.FileError.INVAL("Config path is not set");
-			}
-			
 			// Ensure directory exists
 			var dir = File.new_for_path(Path.get_dirname(this.config_path));
 			if (!dir.query_exists()) {
@@ -167,7 +184,7 @@ namespace OLLMchat.Settings
 				}
 			}
 
-			// Serialize Config1 object to JSON
+			// Serialize Config2 object to JSON
 			var generator = new Json.Generator();
 			generator.pretty = true;
 			generator.indent = 4;
@@ -175,35 +192,6 @@ namespace OLLMchat.Settings
 			
 			generator.to_file(this.config_path);
 		}
-
-		/**
-		 * Converts this Config1 instance to a Config2 instance.
-		 * 
-		 * Creates a Config2 with a connection based on this Config1's url and api_key.
-		 * The connection is set as the default connection.
-		 * 
-		 * @return A new Config2 instance with the migrated configuration
-		 */
-		public Config2 toV2()
-		{
-			var config2 = new Config2();
-			
-			// Create a connection from this Config1's data
-			var connection = new Connection();
-			connection.name = "Default";
-			connection.url = this.url;
-			connection.api_key = this.api_key;
-			connection.default = true;
-			
-			// Add connection to Config2
-			config2.connections.set(this.url, connection);
-			
-			// Initialize empty model_options map (no model-specific options in v1)
-			config2.model_options = new Gee.HashMap<string, OLLMchat.Call.Options>();
-			
-			return config2;
-		}
-
 	}
 }
 
