@@ -27,14 +27,32 @@ namespace OLLMchat
 	 */
 	public class Client : Object
 	{
-			/**
-		 * Configuration object for this client.
+		/**
+		 * Connection configuration for this client.
 		 * 
-		 * Contains URL, API key, and other client settings.
+		 * Contains URL, API key, and connection settings.
 		 * 
 		 * @since 1.0
 		 */
-		public Config config { get; set; }
+		public Settings.Connection connection { get; set; }
+		
+		/**
+		 * Configuration settings (Config2 instance).
+		 * 
+		 * Contains all configuration including connections, model_options, and usage map.
+		 * 
+		 * @since 1.0
+		 */
+		public Settings.Config2? config { get; set; }
+		
+		/**
+		 * Model name to use for chat requests.
+		 * 
+		 * Set by caller after constructor from Config2's usage map if needed.
+		 * 
+		 * @since 1.0
+		 */
+		public string model { get; set; default = ""; }
 
 		
 		/**
@@ -144,9 +162,9 @@ namespace OLLMchat
 		 */
 		public uint timeout { get; set; default = 300; }
 
-		public Client(Config config)
+		public Client(Settings.Connection connection)
 		{
-			this.config = config;
+			this.connection = connection;
 		}
 
 
@@ -311,42 +329,7 @@ namespace OLLMchat
 			return result;
 		}
 
-		/**
-		 * Sets the model from the first running model on the server (ps()).
-		 * 
-		 * Only sets the model if it's not already configured (empty string).
-		 * If running models are found and model is empty, sets this.config.model to the first model's name.
-		 * If no running models are found or an error occurs, leaves model unchanged.
-		 * 
-		 * Note: Always uses model.name (not model.model) to ensure consistency.
-		 * 
-		 * @since 1.0
-		 */
-		public void set_model_from_ps()
-		{
-			// Don't override model if it's already set (e.g., from config)
-			if (this.config.model != "") {
-				return;
-			}
-			
-			var main_loop = new MainLoop();
-			Gee.ArrayList<Response.Model>? running_models = null;
-			
-			this.ps.begin((obj, res) => {
-				try {
-					running_models = this.ps.end(res);
-					if (running_models.size > 0) {
-						// Always use model.name for consistency (not model.model)
-						this.config.model = running_models[0].name;
-					}
-				} catch (Error e) {
-					GLib.warning("Failed to set model from ps(): %s", e.message);
-				}
-				main_loop.quit();
-			});
-			
-			main_loop.run();
-		}
+
 
 		/**
 		* Gets detailed information about a specific model including capabilities and stores it in available_models.

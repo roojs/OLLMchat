@@ -24,6 +24,9 @@ class VectorSearchApp : Application
 	private static string? opt_element_type = null;
 	private static int opt_max_results = 10;
 	private static int opt_max_snippet_lines = 10;
+	private static string? opt_url = null;
+	private static string? opt_api_key = null;
+	private static string? opt_embed_model = null;
 	
 	private string data_dir;
 	private string db_path;
@@ -36,6 +39,9 @@ class VectorSearchApp : Application
 		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)", "TYPE" },
 		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 10)", "N" },
 		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
+		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
+		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
+		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ null }
 	};
 	
@@ -56,6 +62,9 @@ class VectorSearchApp : Application
 		opt_element_type = null;
 		opt_max_results = 10;
 		opt_max_snippet_lines = 10;
+		opt_url = null;
+		opt_api_key = null;
+		opt_embed_model = null;
 		
 		string[] args = command_line.get_arguments();
 		var opt_context = new OptionContext("Code Vector Search");
@@ -111,6 +120,9 @@ Options:
   -e, --element-type=TYPE Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)
   -n, --max-results=N  Maximum number of results (default: 10)
   -s, --max-snippet-lines=N Maximum lines of code snippet to display (default: 10, -1 for no limit)
+  --url=URL           Ollama server URL (required if config not found)
+  --api-key=KEY       API key (optional)
+  --embed-model=MODEL Embedding model name (default: bge-m3)
 
 Examples:
   $(args[0]) libocvector \"database connection\"
@@ -155,28 +167,88 @@ Examples:
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
 		
-		// Load embed config
-		var embed_config_path = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat", "embed.json");
+		// Register ocvector types before loading config
+		OLLMvector.Database.register_config();
+		OLLMvector.Indexing.Analysis.register_config();
 		
-		if (!GLib.FileUtils.test(embed_config_path, GLib.FileTest.EXISTS)) {
-			throw new GLib.IOError.NOT_FOUND("Embed config not found at " + embed_config_path);
+		// Load Config2
+		var config_dir = GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(), ".config", "ollmchat"
+		);
+		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
+		
+		var config = OLLMchat.Settings.Config2.load();
+		
+		OLLMchat.Client embed_client;
+		
+		// Shortest if first - config loaded
+		if (config.loaded) {
+			embed_client = config.create_client("ocvector.embed");
+			if (embed_client == null) {
+				throw new GLib.IOError.NOT_FOUND("ocvector.embed not configured in config.2.json");
+			}
+		} else {
+			// Config not loaded - check if URL provided
+			if (opt_url == null || opt_url == "") {
+				stderr.printf("Error: Config not found and --url not provided.\n");
+				stderr.printf("Please set up the server first or provide --url option.\n");
+				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
+			}
+			
+			// Create connection from command line args
+			var connection = new OLLMchat.Settings.Connection() {
+				name = "CLI",
+				url = opt_url,
+				api_key = opt_api_key ?? "",
+				is_default = true
+			};
+			
+			// Add connection to config (needed for setup methods)
+			config.connections.set(opt_url, connection);
+			
+			// Test connection
+			stdout.printf("Testing connection to %s...\n", opt_url);
+			var test_client = new OLLMchat.Client(connection);
+			try {
+				yield test_client.version();
+				stdout.printf("Connection successful.\n");
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+			}
+			
+			// Setup embed usage in config (creates entry with default)
+			OLLMvector.Database.setup_embed_usage(config);
+			
+			// Get usage object and apply command-line override if provided
+			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
+			
+			if (opt_embed_model != null) {
+				embed_usage.model = opt_embed_model;
+			}
+			
+			// Verify embed model exists
+			stdout.printf("Verifying embed model '%s'...\n", embed_usage.model);
+			try {
+				yield test_client.show_model(embed_usage.model);
+				stdout.printf("Embed model found.\n");
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED("Embed model '%s' not found: %s", embed_usage.model, e.message);
+			}
+			
+			// Create embed client from usage
+			embed_client = config.create_client("ocvector.embed");
+			if (embed_client == null) {
+				throw new GLib.IOError.FAILED("Failed to create embed client");
+			}
+			
+			// Save config since we created it
+			try {
+				config.save();
+				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save config: %s", e.message);
+			}
 		}
-		
-		GLib.debug("Loading embed config from: %s", embed_config_path);
-		var parser = new Json.Parser();
-		parser.load_from_file(embed_config_path);
-		var obj = parser.get_root().get_object();
-	 
-		var embed_client = new OLLMchat.Client(new OLLMchat.Config() {
-			url = obj.get_string_member("url"),
-			model = obj.get_string_member("model"),
-			api_key = obj.get_string_member("api-key")
-		});
-		embed_client.options = new OLLMchat.Call.Options() {
-			temperature = 0.0,
-			num_ctx = 2048
-		};
 		
 		// Get dimension and create vector database
 		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);

@@ -33,6 +33,7 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.Manager.agents.html">agents</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.base_client.html">base_client</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.session.html">session</a></li>
@@ -60,16 +61,16 @@
         <h1 class="main_title">Manager</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Manager</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> base_client, <span class="main_basic_type"><span class="class">string</span></span> directory)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Manager</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> directory)
         </div>
         <div class="description">
           <p>Constructor.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">base_client</td>
+              <td class="main_parameter_table_name">config</td>
               <td>
-                <p>Base client to use for creating new session clients </p>
+                <p>Config2 instance (required for creating base client and accessing title_model) </p>
               </td>
             </tr>
             <tr>

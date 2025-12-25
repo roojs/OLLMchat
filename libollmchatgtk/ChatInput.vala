@@ -32,7 +32,6 @@ namespace OLLMchatGtk
 		private Gtk.TextView text_view;
 		private Gtk.TextBuffer buffer;
 		private Gtk.Button action_button;
-		private Gtk.DropDown agent_dropdown;
 		private Gtk.DropDown model_dropdown;
 		private Gtk.Label model_loading_label;
 		private GLib.ListStore? model_store = null;
@@ -137,11 +136,6 @@ namespace OLLMchatGtk
 				hexpand = true
 			};
 
-			// Create agent dropdown (will be set up in setup_agent_dropdown)
-			this.agent_dropdown = new Gtk.DropDown(null, null) {
-				hexpand = false
-			};
-			
 			// Create model-related widgets (always created, visibility controlled later)
 			this.model_loading_label = new Gtk.Label("Loading Model data...") {
 				visible = false,
@@ -162,8 +156,7 @@ namespace OLLMchatGtk
 				hexpand = false
 			};
 			
-			// Always add widgets to button box in order (agent dropdown before model dropdown)
-			button_box.append(this.agent_dropdown);
+			// Add widgets to button box
 			button_box.append(this.model_loading_label);
 			button_box.append(this.model_dropdown);
 			button_box.append(this.tools_menu_button);
@@ -411,98 +404,6 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Sets up the agent dropdown widget.
-		 * 
-		 * @since 1.0
-		 */
-		public void setup_agent_dropdown()
-		{
-			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMagent.BaseAgent));
-			
-			// Add all registered agents to the store and set selection during load
-			uint selected_index = 0;
-			uint i = 0;
-			foreach (var agent in this.manager.agents.values) {
-				agent_store.append(agent);
-				if (agent.name == this.manager.session.agent_name) {
-					selected_index = i;
-				}
-				i++;
-			}
-			
-			// Create factory for agent dropdown
-			var factory = new Gtk.SignalListItemFactory();
-			factory.setup.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null) {
-					return;
-				}
-				
-				var label = new Gtk.Label("") {
-					halign = Gtk.Align.START
-				};
-				list_item.set_data<Gtk.Label>("label", label);
-				list_item.child = label;
-			});
-			
-			factory.bind.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null || list_item.item == null) {
-					return;
-				}
-				
-				var agent = list_item.item as OLLMagent.BaseAgent;
-				var label = list_item.get_data<Gtk.Label>("label");
-				
-				if (label != null && agent != null) {
-					label.label = agent.title;
-				}
-			});
-			
-			// Set up dropdown with agents
-			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory(factory);
-			this.agent_dropdown.set_list_factory(factory);
-			this.agent_dropdown.selected = selected_index;
-			
-			// Connect selection change to update session's agent_name and client
-			this.agent_dropdown.notify["selected"].connect(() => {
-				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
-					return;
-				}
-				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMagent.BaseAgent;
-				  
-				this.manager.session.agent_name = agent.name;
-				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
-				this.manager.session.client.prompt_assistant = agent;
-				
-				// Emit agent_activated signal for UI updates (Window listens to this)
-				this.manager.agent_activated(agent);
-			});
-			
-			// Connect to session_activated signal to update when session changes
-			this.manager.session_activated.connect((session) => {
-				// Update agent selection to match session's agent
-				var store = this.agent_dropdown.model as GLib.ListStore;
-				if (store == null) {
-					return;
-				}
-				
- 				for (uint j = 0; j < store.get_n_items(); j++) {
-					
-					if (((OLLMagent.BaseAgent)store.get_item(j)).name != session.agent_name) {
-						continue;
-					}
-					this.agent_dropdown.selected = j;
-					break;
-					
-				}
-			});
-		}
-		
-		/**
 		 * Sets up the model dropdown widget.
 		 * 
 		 * @since 1.0
@@ -588,7 +489,7 @@ namespace OLLMchatGtk
 			this.model_dropdown.set_factory(factory);
 			this.model_dropdown.set_list_factory(factory);
 
-			// Connect selection change to update client.config.model, think, and tools
+			// Connect selection change to update client.model, think, and tools
 			// Ignore selection changes during model loading to preserve configured values
 			this.model_dropdown.notify["selected"].connect(() => {
 				// Ignore selection changes while loading models
@@ -599,7 +500,7 @@ namespace OLLMchatGtk
 				if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
 					var model = this.sorted_models.get_item(this.model_dropdown.selected) as OLLMchat.Response.Model;
 					
-					this.manager.session.client.config.model = model.name;
+					this.manager.session.client.model = model.name;
 					// Set think based on model capability
 					this.manager.session.client.think = model.is_thinking;
 					
@@ -684,7 +585,7 @@ namespace OLLMchatGtk
 		 */
 		public async void update_models()
 		{
-			GLib.debug("update_models: client.model='%s'", this.manager.session.client.config.model);
+			GLib.debug("update_models: client.model='%s'", this.manager.session.client.model);
 			this.is_loading_models = true;
 			try {
 				// Get basic model list - this populates available_models automatically
@@ -695,16 +596,16 @@ namespace OLLMchatGtk
 
 				// Add models from available_models (populated by models() call)
 				// Prioritize the current model by adding it first
-				if (this.manager.session.client.config.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.config.model)) {
-					var current_model = this.manager.session.client.available_models.get(this.manager.session.client.config.model);
+				if (this.manager.session.client.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.model)) {
+					var current_model = this.manager.session.client.available_models.get(this.manager.session.client.model);
 					this.model_store.append(current_model);
 				} else {
-					GLib.debug("Current model '%s' not in available_models", this.manager.session.client.config.model);
+					GLib.debug("Current model '%s' not in available_models", this.manager.session.client.model);
 				}
 				
 				// Add all other models (excluding the current one if it was already added)
 				foreach (var model in this.manager.session.client.available_models.values) {
-					if (this.manager.session.client.config.model != "" && model.name == this.manager.session.client.config.model) {
+					if (this.manager.session.client.model != "" && model.name == this.manager.session.client.model) {
 						continue; // Skip current model as it was already added first
 					}
 					this.model_store.append(model);
@@ -713,10 +614,10 @@ namespace OLLMchatGtk
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
 				OLLMchat.Response.Model? current_model_obj = null;
-				if (this.manager.session.client.config.model != "") {
+				if (this.manager.session.client.model != "") {
 					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
 						var model = this.sorted_models.get_item(i) as OLLMchat.Response.Model;
-						if (model.name != this.manager.session.client.config.model) {
+						if (model.name != this.manager.session.client.model) {
 							continue;
 						}
 						this.model_dropdown.selected = i;
@@ -748,20 +649,20 @@ namespace OLLMchatGtk
 				// Asynchronously fetch detailed info for each model
 				// Prioritize the current model by fetching its details first
 				// This will automatically update the UI since we're updating the same Model objects
-				if (this.manager.session.client.config.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.config.model)) {
+				if (this.manager.session.client.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.model)) {
 					try {
-						yield this.manager.session.client.show_model(this.manager.session.client.config.model);
+						yield this.manager.session.client.show_model(this.manager.session.client.model);
 						// Update tools button visibility immediately after current model details are loaded
 						this.update_model_widgets_visibility();
 					} catch (Error e) {
-						GLib.warning("Failed to get details for current model %s: %s", this.manager.session.client.config.model, e.message);
+						GLib.warning("Failed to get details for current model %s: %s", this.manager.session.client.model, e.message);
 					}
 				}
 				
 				// Then fetch details for all other models (in background)
 				foreach (var model in models_list) {
 					// Skip current model as it was already fetched
-					if (this.manager.session.client.config.model != "" && model.name == this.manager.session.client.config.model) {
+					if (this.manager.session.client.model != "" && model.name == this.manager.session.client.model) {
 						continue;
 					}
 					try {

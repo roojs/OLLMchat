@@ -163,9 +163,6 @@ namespace OLLMchatGtk
 			// Add paned to this widget
 			this.append(this.paned);
 
-			// Set up agent dropdown
-			this.chat_input.setup_agent_dropdown();
-			
 			// Set up model dropdown
 			this.chat_input.setup_model_dropdown();
 
@@ -381,8 +378,8 @@ namespace OLLMchatGtk
 			
 			// Copy model and agent from current session if available
 			if (this.manager.session != null && this.manager.session.client != null) {
-				if (this.manager.session.client.config.model != "") {
-					empty_session.client.config.model = this.manager.session.client.config.model;
+				if (this.manager.session.client.model != "") {
+					empty_session.client.model = this.manager.session.client.model;
 				}
 				if (this.manager.session.agent_name != "") {
 					empty_session.agent_name = this.manager.session.agent_name;
@@ -516,7 +513,7 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.config.url + ".";
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.connection.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";

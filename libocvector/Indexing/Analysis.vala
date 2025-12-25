@@ -37,6 +37,45 @@ namespace OLLMvector.Indexing
 		private PromptTemplate? cached_template = null;
 		
 		/**
+		 * Registers the analysis ModelUsage type in Config2.
+		 * 
+		 * This should be called before loading config to register
+		 * "ocvector.analysis" as a ModelUsage type for deserialization.
+		 */
+		public static void register_config()
+		{
+			OLLMchat.Settings.Config2.register_type("ocvector.analysis", typeof(OLLMchat.Settings.ModelUsage));
+		}
+		
+		/**
+		 * Sets up the analysis ModelUsage entry in Config2.
+		 * 
+		 * Creates a ModelUsage entry for "ocvector.analysis" in the config's usage map
+		 * if it doesn't already exist. Uses the default connection and "qwen3-coder:30b" model.
+		 * This should be called when setting up the codebase search tool.
+		 * 
+		 * @param config The Config2 instance to update
+		 */
+		public static void setup_analysis_usage(OLLMchat.Settings.Config2 config)
+		{
+			// Only create if it doesn't already exist
+			if (config.usage.has_key("ocvector.analysis")) {
+				return;
+			}
+			
+			var default_connection = config.get_default_connection();
+			var analysis_usage = new OLLMchat.Settings.ModelUsage() {
+				connection = default_connection.url,
+				model = "qwen3-coder:30b",
+				options = new OLLMchat.Call.Options() {
+					temperature = 0.0
+				}
+			};
+			
+			config.usage.set("ocvector.analysis", analysis_usage);
+		}
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param client The OLLMchat client for LLM API calls
