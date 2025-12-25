@@ -66,26 +66,8 @@ namespace OLLMchat.History
 		 */
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Create client for new session
-			var new_client = this.manager.new_client();
-			
-			// Copy client properties from EmptySession
-			new_client.config.model = this.client.config.model;
-			new_client.think = this.client.think;
-			new_client.stream = this.client.stream;
-			new_client.format = this.client.format;
-			new_client.keep_alive = this.client.keep_alive;
-			new_client.options = this.client.options.clone();
-			new_client.timeout = this.client.timeout;
-			
-			// IMPORTANT: Copy prompt_assistant from EmptySession's client
-			// new_client() sets it to "just-ask" by default, but we want to preserve the agent from EmptySession
-			new_client.prompt_assistant = this.client.prompt_assistant;
-			
-			// Copy available_models
-			foreach (var entry in this.client.available_models.entries) {
-				new_client.available_models.set(entry.key, entry.value);
-			}
+			// Create client for new session, copying from EmptySession's client
+			var new_client = this.manager.new_client(this.client);
 			
 			// Create chat with new client
 			var chat = new Call.Chat(new_client);
@@ -102,7 +84,7 @@ namespace OLLMchat.History
 			// Add session to manager.sessions and emit session_added signal immediately
 			// This ensures the history widget updates right away
 			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, new_client.config.model);
+				real_session.fid, real_session.agent_name, new_client.model);
 			this.manager.sessions.add(real_session);
 			this.manager.session_added(real_session);
 			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");

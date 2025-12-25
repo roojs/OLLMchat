@@ -43,7 +43,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Whether this is the default connection
 		 */
-		public bool default { get; set; default = false; }
+		public bool is_default { get; set; default = false; }
 		
 		/**
 		 * List of model names to hide from the UI
@@ -93,11 +93,41 @@ namespace OLLMchat.Settings
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			switch (property_name) {
+				case "hidden-models":
+					// Serialize hidden_models list as a JSON array
+					var array_node = new Json.Node(Json.NodeType.ARRAY);
+					array_node.init_array(new Json.Array());
+					var json_array = array_node.get_array();
+					foreach (var model in this.hidden_models) {
+						json_array.add_string_element(model);
+					}
+					return array_node;
+			}
 			return default_serialize_property(property_name, value, pspec);
 		}
 
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
+			switch (property_name) {
+				case "hidden-models":
+					// Deserialize hidden_models from JSON array
+					if (property_node.get_node_type() != Json.NodeType.ARRAY) {
+						break;
+					}
+					
+					var json_array = property_node.get_array();
+					json_array.foreach_element((array, index, node) => {
+						if (node.get_value_type() == typeof(string)) {
+							this.hidden_models.add(node.get_string());
+						}
+					});
+					
+					// Return the hidden_models list as the value
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.hidden_models);
+					return true;
+			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}

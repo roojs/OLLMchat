@@ -56,9 +56,9 @@ namespace OLLMchat.Settings
 		public bool think { get; set; default = true; }
 
 		/**
-		 * Configuration file path
+		 * Configuration file path (static, set once at application startup)
 		 */
-		public string config_path   = ""; 
+		public static string config_path = ""; 
 
 		/**
 		 * Whether the config was successfully loaded from a file.
@@ -102,24 +102,23 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Creates a new Config1 object loaded from a file.
+		 * Loads Config1 from file.
 		 * 
+		 * Uses the static config_path property which must be set before calling.
 		 * The caller should ensure the file exists before calling this method.
 		 * If the file cannot be read/parsed, returns a Config1 object with default
 		 * values and loaded set to false.
 		 * 
-		 * @param config_path Path to the configuration file
 		 * @return A new Config1 instance loaded from the file
 		 */
-		public static Config1 from_file(string config_path)
+		public static Config1 load()
 		{
 			var config = new Config1();
-			config.config_path = config_path;
 			config.loaded = false;
 
 			try {
 				string contents;
-				GLib.FileUtils.get_contents(config_path, out contents);
+				GLib.FileUtils.get_contents(Config1.config_path, out contents);
 				
 				var loaded_config = Json.gobject_from_data(
 					typeof(Config1),
@@ -133,7 +132,6 @@ namespace OLLMchat.Settings
 				}
 
 				// Set metadata properties on loaded config
-				loaded_config.config_path = config_path;
 				loaded_config.loaded = true;
 				return loaded_config;
 			} catch (GLib.Error e) {
@@ -143,44 +141,14 @@ namespace OLLMchat.Settings
 			return config;
 		}
 
-		/**
-		 * Saves configuration to file.
-		 * 
-		 * Creates the directory structure if it doesn't exist.
-		 * Uses the config_path property set during construction or loading.
-		 * 
-		 * @throws Error if file cannot be written
-		 */
-		public void save() throws Error
-		{
-			if (this.config_path == null || this.config_path == "") {
-				throw new GLib.FileError.INVAL("Config path is not set");
-			}
-			
-			// Ensure directory exists
-			var dir = File.new_for_path(Path.get_dirname(this.config_path));
-			if (!dir.query_exists()) {
-				try {
-					dir.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					throw new GLib.FileError.FAILED("Failed to create config directory: %s", e.message);
-				}
-			}
-
-			// Serialize Config1 object to JSON
-			var generator = new Json.Generator();
-			generator.pretty = true;
-			generator.indent = 4;
-			generator.set_root(Json.gobject_serialize(this));
-			
-			generator.to_file(this.config_path);
-		}
+	 
 
 		/**
 		 * Converts this Config1 instance to a Config2 instance.
 		 * 
 		 * Creates a Config2 with a connection based on this Config1's url and api_key.
 		 * The connection is set as the default connection.
+		 * Preserves model and title_model as ModelUsage objects in Config2's usage map.
 		 * 
 		 * @return A new Config2 instance with the migrated configuration
 		 */
@@ -189,17 +157,38 @@ namespace OLLMchat.Settings
 			var config2 = new Config2();
 			
 			// Create a connection from this Config1's data
-			var connection = new Connection();
-			connection.name = "Default";
-			connection.url = this.url;
-			connection.api_key = this.api_key;
-			connection.default = true;
+			var connection = new Connection() {
+				name = "Default",
+				url = this.url,
+				api_key = this.api_key,
+				is_default = true
+			};
 			
 			// Add connection to Config2
 			config2.connections.set(this.url, connection);
 			
 			// Initialize empty model_options map (no model-specific options in v1)
 			config2.model_options = new Gee.HashMap<string, OLLMchat.Call.Options>();
+			
+			// Preserve model and title_model as ModelUsage objects in usage map
+			// Create ModelUsage for "default_model" key
+			var default_model_usage = new ModelUsage() {
+				connection = this.url,
+				model = this.model,
+				options = new OLLMchat.Call.Options()
+			};
+			config2.usage.set("default_model", default_model_usage);
+			
+			// Create ModelUsage for "title_model" key
+			var title_model_usage = new ModelUsage() {
+				connection = this.url,
+				model = this.title_model,
+				options = new OLLMchat.Call.Options()
+			};
+			config2.usage.set("title_model", title_model_usage);
+			
+			// Mark as loaded since this conversion is from a loaded Config1
+			config2.loaded = true;
 			
 			return config2;
 		}

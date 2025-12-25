@@ -29,7 +29,7 @@ namespace OLLMchat.Call
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
-			get { return this.client.config.model; }
+			get { return this.client.model; }
 			set { } // Fake setter for serialization
 		}
 		
@@ -108,11 +108,11 @@ namespace OLLMchat.Call
 				
 				case "tools":
 					// Only serialize tools if model is set and tools exist
-					if (this.client.config.model == "" || this.tools.size == 0) {
+					if (this.client.model == "" || this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.client.config.model) 
-						|| !this.client.available_models.get(this.client.config.model).can_call) {
+					if (!this.client.available_models.has_key(this.client.model) 
+						|| !this.client.available_models.get(this.client.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -149,7 +149,17 @@ namespace OLLMchat.Call
 					if (!this.options.has_values()) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
+					// Serialize options and convert hyphen keys to underscores for Ollama API
+					var options_node = Json.gobject_serialize(this.options);
+					var obj = options_node.get_object();
+					obj.foreach_member((o, key, node) => {
+						if (!key.contains("-")) {
+							return;
+						}
+						obj.set_member(key.replace("-", "_"), node);
+						obj.remove_member(key);
+					});
+					return options_node;
 				
 				case "messages":
 					// Serialize the message array built in exec_chat()
@@ -512,9 +522,9 @@ namespace OLLMchat.Call
 		{
 			var message = new Soup.Message(this.http_method, url);
 
-			if (this.client.config.api_key != "") {
-				message.request_headers.append("Authorization", 
-					"Bearer " + this.client.config.api_key 
+			if (this.client.connection.api_key != "") {
+				message.request_headers.append("Authorization",
+					"Bearer " + this.client.connection.api_key 
 				);
 			}
 

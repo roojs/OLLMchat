@@ -39,8 +39,8 @@ namespace OLLMchat.History
 		//fixme have to set th emodel correctly when we init theclient..
 		private string _model  = "";
 		public string model {
-			get { return this.client != null ? this.client.config.model : this._model; }
-			set { if (this.client != null) { this.client.config.model = value; } else { this._model = value; } }	
+			get { return this.client != null ? this.client.model : this._model; }
+			set { if (this.client != null) { this.client.model = value; } else { this._model = value; } }	
 		}
 		
 		// Display properties for UI

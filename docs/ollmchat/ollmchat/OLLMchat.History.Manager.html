@@ -33,6 +33,7 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.Manager.agents.html">agents</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.base_client.html">base_client</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.session.html">session</a></li>
@@ -89,6 +90,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> <b><a href="OLLMchat.History.Manager.config.html" class="property">config</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> <b><a href="OLLMchat.History.Manager.db.html" class="property">db</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -112,7 +117,7 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.History.Manager.Manager.html" class="creation_method">Manager</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> base_client, <span class="main_basic_type"><span class="class">string</span></span> directory)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.History.Manager.Manager.html" class="creation_method">Manager</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> directory)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
@@ -129,10 +134,9 @@
             <div class="leaf_brief_description"><span class="brief_description">Load all chat sessions from SQLite database and store in manager. 
                 Sessions are loaded as SessionPlaceholder instances until load() is called.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><a href="OLLMchat.History.Manager.new_client.html" class="method">new_client</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><a href="OLLMchat.History.Manager.new_client.html" class="method">new_client</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? copy_from = <span class="main_literal">null</span>)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Creates a new client instance from the base client. Copies all 
-                properties and creates fresh tool instances.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates a new client instance.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Manager.switch_to_session.html" class="method">switch_to_session</a></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
@@ -189,8 +193,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-186')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-186">
+          <div class="headline" onclick="toggle_box (this, 'box-content-192')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-192">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

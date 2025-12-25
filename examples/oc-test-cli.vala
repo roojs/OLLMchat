@@ -16,61 +16,216 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat
+class TestCliApp : Application
 {
-	MainLoop? main_loop = null;
-
-	void on_stream(string partial, bool is_thinking, OLLMchat.Response.Chat response)
+	private static bool opt_debug = false;
+	private static string? opt_url = null;
+	private static string? opt_api_key = null;
+	private static string? opt_model = null;
+	
+	const OptionEntry[] options = {
+		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
+		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
+		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
+		{ null }
+	};
+	
+	public TestCliApp()
 	{
-		if (is_thinking) {
-			// Optionally handle thinking differently, or just output it
-			stdout.write(partial.data);
-		} else {
-			stdout.write(partial.data);
-		}
-		stdout.flush();
+		Object(
+			application_id: "org.roojs.oc-test-cli",
+			flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
+		);
 	}
-
-	async void run_test(OLLMchat.Client client) throws Error
+	
+	protected override int command_line(ApplicationCommandLine command_line)
 	{
-		// Commented out ps() call - using model from config file instead
-		stdout.printf("--- Running Models (ps) ---\n");
-		var models = yield client.models();
-
-		if (models.size == 0) {
-			stdout.printf("No running models found.\n");
-			return;
-		}
-
-		foreach (var model in models) {
-			stdout.printf("Model: %s\n", model.name != "" ? model.name : model.model);
-			stdout.printf("  Size: %lld bytes\n", model.size);
-			stdout.printf("  VRAM: %lld bytes\n", model.size_vram);
-			stdout.printf("  Total Duration: %lld ns\n", model.total_duration);
-			stdout.printf("\n");
+		// Reset static option variables at start of each command line invocation
+		opt_debug = false;
+		opt_url = null;
+		opt_api_key = null;
+		opt_model = null;
+		
+		string[] args = command_line.get_arguments();
+		var opt_context = new OptionContext("OLLMchat Test CLI");
+		opt_context.set_help_enabled(true);
+		opt_context.add_main_entries(options, null);
+		
+		try {
+			unowned string[] unowned_args = args;
+			opt_context.parse(ref unowned_args);
+		} catch (OptionError e) {
+			command_line.printerr("error: %s\n", e.message);
+			command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
+			return 1;
 		}
 		
-
-		var first_model = models[0];
-		var model_name = first_model.name != "" ? first_model.name : first_model.model;
-		if (model_name == null || model_name == "") {
-			stdout.printf("No valid model name found.\n");
-			return;
+		if (opt_debug) {
+			GLib.Log.set_default_handler((dom, lvl, msg) => {
+				command_line.printerr("%s [%s] %s\n",
+					(new DateTime.now_local()).format("%H:%M:%S.%f"),
+					lvl.to_string(),
+					msg);
+			});
 		}
-
-		//client.model = model_name;
 		
+		// Get remaining arguments as the query
+		string query = "";
+		if (args.length > 1) {
+			// Join all remaining arguments as the query
+			var query_parts = new Gee.ArrayList<string>();
+			for (int i = 1; i < args.length; i++) {
+				query_parts.add(args[i]);
+			}
+			query = string.joinv(" ", query_parts.to_array());
+		}
+		
+		if (query == "") {
+			var usage = @"Usage: $(args[0]) [OPTIONS] <query>
 
-		stdout.printf("Sending query to OLLMchat...\n");
-		//var query = "Write a small vala program using gtk4 to show a window with a scrolled window inside is a windowlefttree and a few tree nodes - cat";
-		//var query = "Write a small vala program using gtk4 to show hello world";
-		var query = "Please read the first few lines of /var/log/syslog and tell me what you think the hostname of this system is";
+Send a query to the LLM and display the response.
+
+Options:
+  -d, --debug          Enable debug output
+  --url=URL           Ollama server URL (required if config not found)
+  --api-key=KEY       API key (optional)
+  -m, --model=MODEL    Model name (overrides config)
+
+Examples:
+  $(args[0]) \"What is the capital of France?\"
+  $(args[0]) --model llama2 \"Write a hello world program\"
+  $(args[0]) --debug --url http://localhost:11434/api \"Tell me a joke\"
+";
+			command_line.printerr("%s", usage);
+			return 1;
+		}
+		
+		// Hold the application to keep main loop running during async operations
+		this.hold();
+		
+		this.run_test.begin(query, command_line, (obj, res) => {
+			try {
+				this.run_test.end(res);
+			} catch (Error e) {
+				command_line.printerr("Error: %s\n", e.message);
+			} finally {
+				// Release hold and quit when done
+				this.release();
+				this.quit();
+			}
+		});
+		
+		return 0;
+	}
+	
+	private async void run_test(string query, ApplicationCommandLine command_line) throws Error
+	{
+		// Load Config2
+		var config_dir = GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(), ".config", "ollmchat"
+		);
+		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
+		
+		var config = OLLMchat.Settings.Config2.load();
+		
+		OLLMchat.Client client;
+		
+		// Shortest if first - config loaded
+		if (config.loaded) {
+			client = config.create_client("default_model");
+			if (client == null) {
+				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
+			}
+			
+			// Override model if provided
+			if (opt_model != null) {
+				client.model = opt_model;
+			}
+		} else {
+			// Config not loaded - check if URL provided
+			if (opt_url == null || opt_url == "") {
+				command_line.printerr("Error: Config not found and --url not provided.\n");
+				command_line.printerr("Please set up the server first or provide --url option.\n");
+				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
+			}
+		 
+			// Create connection from command line args
+			var connection = new OLLMchat.Settings.Connection() {
+				name = "CLI",
+				url = opt_url,
+				api_key = opt_api_key ?? "",
+				is_default = true
+			};
+			
+			// Add connection to config
+			config.connections.set(opt_url, connection);
+			
+			// Test connection
+			stdout.printf("Testing connection to %s...\n", opt_url);
+			var test_client = new OLLMchat.Client(connection);
+			try {
+				yield test_client.version();
+				stdout.printf("Connection successful.\n");
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+			}
+			
+			// Check if default_model exists
+			if (!config.usage.has_key("default_model")) {
+				command_line.printerr("Error: default_model not configured in config.2.json.\n");
+				command_line.printerr("Please configure default_model in the config file.\n");
+				throw new GLib.IOError.NOT_FOUND("default_model not configured");
+			}
+			
+			// Get usage object and apply command-line overrides if provided
+			var default_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+			if (opt_model != null) {
+				default_usage.model = opt_model;
+			}
+			
+			// Verify model exists if specified
+			if (default_usage.model != "") {
+				stdout.printf("Verifying model '%s'...\n", default_usage.model);
+				try {
+					yield test_client.show_model(default_usage.model);
+					stdout.printf("Model found.\n");
+				} catch (GLib.Error e) {
+					throw new GLib.IOError.FAILED("Model '%s' not found: %s", default_usage.model, e.message);
+				}
+			}
+		 
+			// Create client from usage
+			client = config.create_client("default_model");
+			if (client == null) {
+				throw new GLib.IOError.FAILED("Failed to create client");
+			}
+			
+			// Save config since we created it
+			try {
+				config.save();
+				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save config: %s", e.message);
+			}
+		}
+		
+		// Setup client for streaming
+		client.stream = true;
+		client.permission_provider = new OLLMchat.ChatPermission.Dummy();
+		client.stream_chunk.connect((new_text, is_thinking, response) => {
+			stdout.write(new_text.data);
+			stdout.flush();
+		});
+		
+		// Add ReadFile tool
+		client.addTool(new OLLMchat.Tools.ReadFile(client));
+		
 		stdout.printf("Query: %s\n\n", query);
 		stdout.printf("Response:\n");
-
-		// Model is already set from config file (same as TestWindow)
+		
 		var response = yield client.chat(query);
-
+		
 		stdout.printf("\n\n--- Complete Response ---\n");
 		if (response.thinking != "") {
 			stdout.printf("Thinking: %s\n", response.thinking);
@@ -80,75 +235,11 @@ namespace OLLMchat
 		if (response.done_reason != null) {
 			stdout.printf("Done Reason: %s\n", response.done_reason);
 		}
-		
-		// Test reply functionality - ask to read dmesg
-		stdout.printf("\n\n--- Testing Reply ---\n");
-		var reply_query = "Please read the first few lines of /var/log/dmesg and tell me what kernel version we are running";
-		stdout.printf("Reply Query: %s\n\n", reply_query);
-		stdout.printf("Reply Response:\n");
-
-		var reply_response = yield response.reply(reply_query);
-
-		stdout.printf("\n\n--- Complete Reply Response ---\n");
-		if (reply_response.thinking != "") {
-			stdout.printf("Thinking: %s\n", reply_response.thinking);
-		}
-		stdout.printf("Content: %s\n", reply_response.message.content);
-		stdout.printf("Done: %s\n", reply_response.done.to_string());
-		if (reply_response.done_reason != null) {
-			stdout.printf("Done Reason: %s\n", reply_response.done_reason);
-		}
 	}
+}
 
-	int main(string[] args)
-	{
-		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
-		});
-
-		// Read configuration from ~/.local/share/roobuilder/ollama.json
-		// Example file content:
-		/* 
+int main(string[] args)
 {
-	"url": "http://192.168.88.14:11434/api",
-	"model": "MichelRosselli/GLM-4.5-Air:Q4_K_M",
-	"api_key": "your-api-key-here"
+	var app = new TestCliApp();
+	return app.run(args);
 }
-		 */
-		var parser = new Json.Parser();
-		parser.load_from_file(Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat", "ollama.json"
-		));
-		var obj = parser.get_root().get_object();
-		var config = new OLLMchat.Config() {
-			url = obj.get_string_member("url"),
-			model = obj.get_string_member("model"),
-			api_key = obj.get_string_member("api_key"),
-			think = true
-		};
-		var client = new OLLMchat.Client(config) {
-			stream = true,
-			permission_provider = new OLLMchat.ChatPermission.Dummy()
-		};
-		client.stream_chunk.connect(on_stream);
-		
-		// Add ReadFile
-		client.addTool(new OLLMchat.Tools.ReadFile(client));
-
-		main_loop = new MainLoop();
-
-		run_test.begin(client, (obj, res) => {
-			try {
-				run_test.end(res);
-			} catch (Error e) {
-				stderr.printf("Error: %s\n", e.message);
-			}
-			main_loop.quit();
-		});
-
-		main_loop.run();
-
-		return 0;
-	}
-}
-

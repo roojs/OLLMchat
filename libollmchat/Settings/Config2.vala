@@ -39,25 +39,56 @@ namespace OLLMchat.Settings
 		public Gee.Map<string, OLLMchat.Call.Options> model_options { get; set; default = new Gee.HashMap<string, OLLMchat.Call.Options>(); }
 		
 		/**
-		 * Map of section name → external config objects (handled by registered GTypes)
+		 * Map of usage key → model usage objects (handled by registered GTypes)
+		 * 
+		 * Contains model usage configurations such as "default_model", "title_model",
+		 * and external library configurations like "ocvector".
 		 */
-		public Gee.Map<string, Object> external_configs { get; set; default = new Gee.HashMap<string, Object>(); }
+		public Gee.Map<string, Object> usage { get; set; default = new Gee.HashMap<string, Object>(); }
 		
 		/**
-		 * Map of registered key → GType for deserialization
+		 * Map of usage key → Json.Node for unregistered types.
+		 * 
+		 * Stores unregistered usage configurations as JSON nodes so they can be
+		 * serialized back later when the type is registered.
 		 */
-		private Gee.HashMap<string, Type> registered_types = new Gee.HashMap<string, Type>();
+		public Gee.Map<string, Json.Node> usage_unregistered { get; set; default = new Gee.HashMap<string, Json.Node>(); }
 		
 		/**
-		 * Configuration file path
+		 * Static registry of key → GType for deserialization.
+		 * Shared across all Config2 instances.
 		 */
-		public string config_path = "";
+		private static Gee.HashMap<string, Type>? usage_types = null;
+		
+		/**
+		 * Configuration file path (static, set once at application startup)
+		 */
+		public static string config_path = "";
 		
 		/**
 		 * Whether the config was successfully loaded from a file.
 		 * This property is not serialized.
 		 */
 		public bool loaded = false;
+
+		/**
+		 * Initializes the usage_types map and registers default types.
+		 * This is called lazily when first needed.
+		 */
+		private static void init()
+		{
+			// Return early if already initialized
+			if (usage_types != null) {
+				return;
+			}
+			
+			// Initialize usage_types map
+			usage_types = new Gee.HashMap<string, Type>();
+			
+			// Register default ModelUsage types
+			usage_types.set("default_model", typeof(ModelUsage));
+			usage_types.set("title_model", typeof(ModelUsage));
+		}
 
 		/**
 		 * Default constructor.
@@ -67,7 +98,7 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Registers a GType for a property/section key.
+		 * Registers a GType for a property/section key (static method).
 		 * 
 		 * When deserializing JSON, Config2 will use the registered GType to deserialize
 		 * the property using standard Json.Serializable.
@@ -75,9 +106,12 @@ namespace OLLMchat.Settings
 		 * @param key The property/section key name
 		 * @param gtype The GType to use for deserialization
 		 */
-		public void register_type(string key, Type gtype)
+		public static void register_type(string key, Type gtype)
 		{
-			this.registered_types.set(key, gtype);
+			// Always call init (it will return early if already initialized)
+			init();
+			
+			usage_types.set(key, gtype);
 		}
  
 
@@ -100,22 +134,142 @@ namespace OLLMchat.Settings
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			return default_serialize_property(property_name, value, pspec);
+			switch (property_name) {
+				case "connections":
+					// Serialize connections map as a JSON object (key-value pairs)
+					var obj = new Json.Object();
+					foreach (var entry in this.connections.entries) {
+						var key = entry.key;
+						var connection = entry.value;
+						var node = Json.gobject_serialize(connection);
+						obj.set_member(key, node);
+					}
+					var result = new Json.Node(Json.NodeType.OBJECT);
+					result.set_object(obj);
+					return result;
+					
+				case "model-options":
+					// Serialize model_options map as a JSON object (key-value pairs)
+					var obj = new Json.Object();
+					foreach (var entry in this.model_options.entries) {
+						var key = entry.key;
+						var options = entry.value;
+						var node = Json.gobject_serialize(options);
+						obj.set_member(key, node);
+					}
+					var result = new Json.Node(Json.NodeType.OBJECT);
+					result.set_object(obj);
+					return result;
+					
+				case "usage":
+					// Serialize both registered and unregistered usage types
+					var obj = new Json.Object();
+					
+					// Serialize registered types from usage map
+					foreach (var entry in this.usage.entries) {
+						var key = entry.key;
+						var usage_obj = entry.value;
+						var node = Json.gobject_serialize(usage_obj);
+						obj.set_member(key, node);
+					}
+					
+					// Serialize unregistered types from usage_unregistered map
+					foreach (var entry in this.usage_unregistered.entries) {
+						var key = entry.key;
+						var node = entry.value;
+						obj.set_member(key, node);
+					}
+					
+					var result = new Json.Node(Json.NodeType.OBJECT);
+					result.set_object(obj);
+					return result;
+					
+				case "usage-unregistered":
+					// Exclude usage_unregistered from serialization - it's already included in "usage"
+					return null;
+					
+				case "loaded":
+					// Exclude loaded flag from serialization (it's metadata, not config data)
+					return null;
+					
+				default:
+					// Return null for any unhandled properties to avoid Gee collection warnings
+					return null;
+			}
 		}
 
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Check if this is a registered external config type
-			if (this.registered_types.has_key(property_name)) {
-				var gtype = this.registered_types.get(property_name);
-				
-				// Deserialize using the registered GType directly from Json.Node
-				var obj = Json.gobject_deserialize(gtype, property_node);
-				if (obj != null) {
-					value = Value(gtype);
-					value.set_object(obj);
+			switch (property_name) {
+				case "connections":
+					// Deserialize connections from JSON object (key-value pairs)
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					
+					var obj = property_node.get_object();
+					obj.foreach_member((object, key, node) => {
+						// Deserialize each Connection object
+						var connection = Json.gobject_deserialize(typeof(Connection), node) as Connection;
+						if (connection != null) {
+							this.connections.set(key, connection);
+						}
+					});
+					
+					// Return the connections map as the value
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.connections);
 					return true;
-				}
+					
+				case "model-options":
+					// Deserialize model_options from JSON object (key-value pairs)
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					
+					var obj = property_node.get_object();
+					obj.foreach_member((object, key, node) => {
+						// Deserialize each Call.Options object
+						var options = Json.gobject_deserialize(typeof(OLLMchat.Call.Options), node) as OLLMchat.Call.Options;
+						if (options != null) {
+							this.model_options.set(key, options);
+						}
+					});
+					
+					// Return the model_options map as the value
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.model_options);
+					return true;
+					
+				case "usage":
+					// Ensure usage_types is initialized
+					init();
+					
+					// usage will be an object - iterate through the object(node)
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					
+					var obj = property_node.get_object();
+					obj.foreach_member((object, key, node) => {
+						if (!usage_types.has_key(key)) {
+							// Unregistered type - save JSON node for later serialization
+							this.usage_unregistered.set(key, node);
+							return;
+						}
+						
+						// Registered type - deserialize and set in usage map
+						var deserialized_obj = Json.gobject_deserialize(usage_types.get(key), node);
+						if (deserialized_obj == null) {
+							return;
+						}
+						this.usage.set(key, deserialized_obj);
+					});
+					
+					// Return the usage map as the value
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.usage);
+					return true;
 			}
 			
 			// Use default deserialization for known properties
@@ -123,24 +277,23 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Creates a new Config2 object loaded from a file.
+		 * Loads Config2 from file.
 		 * 
+		 * Uses the static config_path property which must be set before calling.
 		 * The caller should ensure the file exists before calling this method.
 		 * If the file cannot be read/parsed, returns a Config2 object with default
 		 * values and loaded set to false.
 		 * 
-		 * @param config_path Path to the configuration file
 		 * @return A new Config2 instance loaded from the file
 		 */
-		public static Config2 from_file(string config_path)
+		public static Config2 load()
 		{
 			var config = new Config2();
-			config.config_path = config_path;
 			config.loaded = false;
 
 			try {
 				string contents;
-				GLib.FileUtils.get_contents(config_path, out contents);
+				GLib.FileUtils.get_contents(Config2.config_path, out contents);
 				
 				var loaded_config = Json.gobject_from_data(
 					typeof(Config2),
@@ -154,7 +307,6 @@ namespace OLLMchat.Settings
 				}
 
 				// Set metadata properties on loaded config
-				loaded_config.config_path = config_path;
 				loaded_config.loaded = true;
 				return loaded_config;
 			} catch (GLib.Error e) {
@@ -165,17 +317,78 @@ namespace OLLMchat.Settings
 		}
 
 		/**
+		 * Gets the default connection from the connections map.
+		 * 
+		 * @return The default connection, or null if no default connection is found
+		 */
+		public Connection? get_default_connection()
+		{
+			foreach (var entry in this.connections.entries) {
+				if (entry.value.is_default) {
+					return entry.value;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * Gets the default model name from the usage map.
+		 * 
+		 * @return The default model name, or empty string if not configured
+		 */
+		public string get_default_model()
+		{
+			var default_model_usage_obj = this.usage.get("default_model") as ModelUsage;
+			if (default_model_usage_obj != null) {
+				return default_model_usage_obj.model;
+			}
+			return "";
+		}
+
+		/**
+		 * Creates a Client instance configured from a usage entry.
+		 * 
+		 * Gets the ModelUsage for the given name, finds the connection specified
+		 * in ModelUsage.connection URL, and creates a Client with the connection,
+		 * model, and config. Returns null if the usage entry doesn't exist or
+		 * the specified connection is not found.
+		 * 
+		 * @param name The usage key name (e.g., "default_model", "title_model")
+		 * @return A new Client instance configured from the usage entry, or null if not found or connection invalid
+		 */
+		public OLLMchat.Client? create_client(string name)
+		{
+			var model_usage_obj = this.usage.get(name) as ModelUsage;
+			if (model_usage_obj == null) {
+				return null;
+			}
+
+			// Get connection from ModelUsage
+			if (model_usage_obj.connection == "" || 
+					!this.connections.has_key(model_usage_obj.connection)) {
+				return null;
+			}
+			
+
+			// Create client with connection, model, and config
+			return new OLLMchat.Client( this.connections.get(model_usage_obj.connection)) {
+				config = this,
+				model = model_usage_obj.model
+			};
+		}
+
+		/**
 		 * Saves configuration to file.
 		 * 
 		 * Creates the directory structure if it doesn't exist.
-		 * Uses the config_path property set during construction or loading.
+		 * Uses the static config_path property.
 		 * 
 		 * @throws Error if file cannot be written
 		 */
 		public void save() throws Error
 		{
 			// Ensure directory exists
-			var dir = File.new_for_path(Path.get_dirname(this.config_path));
+			var dir = GLib.File.new_for_path(GLib.Path.get_dirname(Config2.config_path));
 			if (!dir.query_exists()) {
 				try {
 					dir.make_directory_with_parents(null);
@@ -190,7 +403,7 @@ namespace OLLMchat.Settings
 			generator.indent = 4;
 			generator.set_root(Json.gobject_serialize(this));
 			
-			generator.to_file(this.config_path);
+			generator.to_file(Config2.config_path);
 		}
 	}
 }

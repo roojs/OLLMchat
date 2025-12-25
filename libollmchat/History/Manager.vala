@@ -38,6 +38,7 @@ namespace OLLMchat.History
 		public SQ.Database db { get; private set; }
 		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
+		public Settings.Config2 config { get; private set; }
 		public SessionBase session { get; internal set; }
 		public Gee.HashMap<string, OLLMagent.BaseAgent> agents { 
 			get; private set; default = new Gee.HashMap<string, OLLMagent.BaseAgent>(); 
@@ -72,10 +73,10 @@ namespace OLLMchat.History
 		/**
 		 * Constructor.
 		 * 
-		 * @param base_client Base client to use for creating new session clients
+		 * @param config Config2 instance (required for creating base client and accessing title_model)
 		 * @param directory Directory where history files are stored (will create history subdirectory if needed)
 		 */
-		public Manager(Client base_client, string directory)
+		public Manager(Settings.Config2 config, string directory)
 		{
 			if (directory == "") {
 				GLib.error("Manager: directory parameter cannot be empty");
@@ -101,54 +102,78 @@ namespace OLLMchat.History
 			// Initialize sessions table in database
 			Session.initDB(this.db);
 			
-			// Store base client
-			this.base_client = base_client;
+			// Store config
+			this.config = config;
+			
+			// Create base client from default_model usage
+			this.base_client = config.create_client("default_model");
+			if (this.base_client == null) {
+				GLib.error("Manager: failed to create base client from default_model");
+			}
+			
+			this.base_client.stream = true;
+			this.base_client.keep_alive = "5m";
+			this.base_client.prompt_assistant = new OLLMagent.JustAsk();
 
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
 			// which tries to get "just-ask" from this.agents
-			this.agents.set("just-ask", new OLLMagent.JustAsk());
+			this.agents.set("just-ask", this.base_client.prompt_assistant );
 
 			this.session = new EmptySession(this);
 			this.session.activate(); // contects signals alhtough to nowhere..
 			
-			// Set up title generator from config
-			this.title_generator = new TitleGenerator(this.base_client.config);
+			// Set up title generator with a client configured for title generation
+			var title_client = this.config.create_client("title_model");
+			if (title_client == null) {
+				// Fallback: use base_client's connection and model
+				title_client = new OLLMchat.Client(this.base_client.connection) {
+					stream = false,
+					config = this.config,
+					model = ""
+				};
+			}
+			title_client.stream = false;
+			
+			this.title_generator = new TitleGenerator(title_client);
 		}
 		
 		/**
-		 * Creates a new client instance from the base client.
-		 * Copies all properties and creates fresh tool instances.
+		 * Creates a new client instance.
 		 * 
+		 * If copy_from is provided, copies all properties from that client.
+		 * Otherwise, copies from base_client.
+		 * Always creates fresh tool instances.
+		 * 
+		 * @param copy_from Optional client to copy properties from. If null, uses base_client.
 		 * @return A new Client instance with copied properties and fresh tools
 		 */
-		public Client new_client()
+		public Client new_client(Client? copy_from = null)
 		{
-			// Create new config by copying from base client
-			var client = new OLLMchat.Client(this.base_client.config.clone());
+			var source = copy_from == null ? this.base_client : copy_from;
 			
-			// Copy all other properties
-			client.stream = this.base_client.stream;
-			client.format = this.base_client.format;
-			client.think = this.base_client.think;
-		client.keep_alive = this.base_client.keep_alive;
-		
-		// Set prompt_assistant to just-ask (default agent)
-		// JustAsk agent is always registered in Manager constructor before EmptySession is created
-		client.prompt_assistant = this.agents.get("just-ask");
 			
-			client.permission_provider = this.base_client.permission_provider; // Shared reference - MUST be shared
-			client.options = this.base_client.options.clone();
-			client.timeout = this.base_client.timeout;
+			// Share the same connection instance - connections are immutable configuration
+			var client = new OLLMchat.Client(source.connection) {
+				stream = source.stream,
+				format = source.format,
+				think = source.think,
+				keep_alive = source.keep_alive,
+				config = source.config,
+				model = source.model,
+				prompt_assistant = copy_from != null ? source.prompt_assistant : this.agents.get("just-ask"),
+				permission_provider = source.permission_provider, // Shared reference - MUST be shared
+				options = source.options.clone(),
+				timeout = source.timeout
+			};
 			
 			// Copy available_models (shared model data)
-			foreach (var entry in this.base_client.available_models.entries) {
+			foreach (var entry in source.available_models.entries) {
 				client.available_models.set(entry.key, entry.value);
 			}
 			
 			// Reuse the same tools, just set the client to the new value (leave active the same)
-			foreach (var tool in this.base_client.tools.values) {
-				//tool.active = this.session.client.tools.get(tool.name).active;
+			foreach (var tool in source.tools.values) {
 				client.addTool(tool);
 			}
 			
@@ -218,8 +243,8 @@ namespace OLLMchat.History
 			// Copy model from current session if available
 			if (this.session != null &&
 				this.session.client != null &&
-				this.session.client.config.model != "") {
-				client.config.model = this.session.client.config.model;
+				this.session.client.model != "") {
+				client.model = this.session.client.model;
 			}
 			
 			var session = new Session(this, new Call.Chat(client));

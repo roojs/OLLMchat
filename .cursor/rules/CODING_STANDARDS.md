@@ -277,6 +277,24 @@ public int64 cleanup_orphaned_vectors(SQ.Database sql_db) throws GLib.Error
 }
 ```
 
+## GLib Namespace Prefix
+
+**IMPORTANT:** Always prefix GLib namespace classes and functions with `GLib.` prefix. Never use unqualified GLib types or functions.
+
+**Bad:**
+```vala
+var path = Path.build_filename("/home", "user");
+var file = File.new_for_path(path);
+var home = Environment.get_home_dir();
+```
+
+**Good:**
+```vala
+var path = GLib.Path.build_filename("/home", "user");
+var file = GLib.File.new_for_path(path);
+var home = GLib.Environment.get_home_dir();
+```
+
 ## Using Statements
 
 **IMPORTANT:** Avoid using `using` statements. Use full namespace prefixes for class references instead. it is not required any information contrary to this is incorrect

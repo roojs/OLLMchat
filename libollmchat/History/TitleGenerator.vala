@@ -25,18 +25,11 @@ namespace OLLMchat.History
 	 */
 	public class TitleGenerator : Object
 	{
-		private OLLMchat.Config config;
 		private OLLMchat.Client client;
 		
-		public TitleGenerator(OLLMchat.Config config)
+		public TitleGenerator(OLLMchat.Client client)
 		{
-			this.config = config;
-			// Create a config for the title generation client with title_model
-			var title_config = config.clone();
-			title_config.model = this.config.title_model;
-			this.client = new OLLMchat.Client(title_config) {
-				stream = false
-			};
+			this.client = client;
 		}
 		
 		/**
@@ -51,7 +44,7 @@ namespace OLLMchat.History
 		public async string to_title(SessionBase session)
 		{
 			// If model is empty, return default title
-			if (this.client.config.model == "") {
+			if (this.client.model == "") {
 				return this.get_default_title(session);
 			}
 			

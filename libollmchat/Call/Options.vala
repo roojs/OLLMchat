@@ -105,12 +105,13 @@ namespace OLLMchat.Call
 		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			// Group cases by type and check default values
+			// Note: Vala converts underscores to hyphens when calling serialize_property
 			switch (property_name) {
 				// Integer properties - default -1
 				case "seed":
-				case "top_k":
-				case "num_predict":
-				case "num_ctx":
+				case "top-k":
+				case "num-predict":
+				case "num-ctx":
 					if (value.get_int() == -1) {
 						return null;
 					}
@@ -118,9 +119,9 @@ namespace OLLMchat.Call
 				
 				// Double properties - default -1.0
 				case "temperature":
-				case "top_p":
-				case "repeat_penalty":
-				case "min_p":
+				case "top-p":
+				case "repeat-penalty":
+				case "min-p":
 					if (value.get_double() == -1.0) {
 						return null;
 					}

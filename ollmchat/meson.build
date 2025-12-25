@@ -34,8 +34,10 @@ ollmchat = executable('ollmchat',
   sources: [
     'Application.vala',
     'Window.vala',
-    'BootstrapDialog.vala',
     'WindowPane.vala',
+    'Settings/ConnectionAdd.vala',
+    'Settings/ConnectionsPage.vala',
+    'Settings/SettingsDialog.vala',
     ollmchat_resources
   ],
   link_with: [ollmchat_base_lib, ollmchatgtk_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi

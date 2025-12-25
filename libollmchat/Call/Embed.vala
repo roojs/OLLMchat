@@ -28,7 +28,7 @@ namespace OLLMchat.Call
 	{
 		// Read-only getters that read from client (with fake setters for serialization)
 		public string model { 
-			get { return this.client.config.model; }
+			get { return this.client.model; }
 			set { } // Fake setter for serialization
 		}
 		
@@ -90,7 +90,17 @@ namespace OLLMchat.Call
 					if (!this.options.has_values()) {
 						return null;
 					}
-					return base.serialize_property(property_name, value, pspec);
+					// Serialize options and convert hyphen keys to underscores for Ollama API
+					var options_node = Json.gobject_serialize(this.options);
+					var obj = options_node.get_object();
+					obj.foreach_member((o, key, node) => {
+						if (!key.contains("-")) {
+							return;
+						}
+						obj.set_member(key.replace("-", "_"), node);
+						obj.remove_member(key);
+					});
+					return options_node;
 				default:
 					return base.serialize_property(property_name, value, pspec);
 			}

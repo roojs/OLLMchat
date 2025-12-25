@@ -33,6 +33,7 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.Manager.agents.html">agents</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.base_client.html">base_client</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.session.html">session</a></li>
@@ -60,10 +61,21 @@
         <h1 class="main_title">new_client</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><span class="method">new_client</span></b> ()
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><span class="method">new_client</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? copy_from = <span class="main_literal">null</span>)
         </div>
         <div class="description">
-          <p>Creates a new client instance from the base client. Copies all properties and creates fresh tool instances.</p>
+          <p>Creates a new client instance.</p>
+          <p>If copy_from is provided, copies all properties from that client. Otherwise, copies from base_client. Always creates fresh tool 
+            instances.</p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">copy_from</td>
+              <td>
+                <p>Optional client to copy properties from. If null, uses base_client. </p>
+              </td>
+            </tr>
+          </table>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

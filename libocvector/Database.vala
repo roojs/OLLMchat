@@ -16,6 +16,46 @@ namespace OLLMvector
 		// Code snippets will be read from filesystem when needed, not stored here
 		
 		/**
+		 * Registers the embed ModelUsage type in Config2.
+		 * 
+		 * This should be called before loading config to register
+		 * "ocvector.embed" as a ModelUsage type for deserialization.
+		 */
+		public static void register_config()
+		{
+			OLLMchat.Settings.Config2.register_type("ocvector.embed", typeof(OLLMchat.Settings.ModelUsage));
+		}
+		
+		/**
+		 * Sets up the embed ModelUsage entry in Config2.
+		 * 
+		 * Creates a ModelUsage entry for "ocvector.embed" in the config's usage map
+		 * if it doesn't already exist. Uses the default connection and "bge-m3" model.
+		 * This should be called when setting up the codebase search tool.
+		 * 
+		 * @param config The Config2 instance to update
+		 */
+		public static void setup_embed_usage(OLLMchat.Settings.Config2 config)
+		{
+			// Only create if it doesn't already exist
+			if (config.usage.has_key("ocvector.embed")) {
+				return;
+			}
+			
+			var default_connection = config.get_default_connection();
+			var embed_usage = new OLLMchat.Settings.ModelUsage() {
+				connection = default_connection.url,
+				model = "bge-m3",
+				options = new OLLMchat.Call.Options() {
+					temperature = 0.0,
+					num_ctx = 2048
+				}
+			};
+			
+			config.usage.set("ocvector.embed", embed_usage);
+		}
+		
+		/**
 		 * Gets the embedding dimension from the client by doing a test embed.
 		 * 
 		 * @param ollama The OLLMchat client for embeddings
@@ -23,7 +63,7 @@ namespace OLLMvector
 		 */
 		public static async uint64 get_embedding_dimension(OLLMchat.Client ollama) throws GLib.Error
 		{
-			if (ollama.config.model == "") {
+			if (ollama.model == "") {
 				throw new GLib.IOError.FAILED("Ollama client model is not set");
 			}
 			
@@ -45,7 +85,7 @@ namespace OLLMvector
 		public Database(OLLMchat.Client ollama, string filename, uint64 dimension) throws GLib.Error
 		{
 			this.ollama = ollama;
-			if (this.ollama.config.model == "") {
+			if (this.ollama.model == "") {
 				throw new GLib.IOError.FAILED("Ollama client model is not set");
 			}
 			this.filename = filename;
