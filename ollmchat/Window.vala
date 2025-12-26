@@ -641,7 +641,7 @@ namespace OLLMchat
 			
 			// Create and show settings dialog
 			var dialog = new OLLMchat.Settings.SettingsDialog(config);
-			dialog.show(this);
+			dialog.present(this);
 		}
 		
 	}
