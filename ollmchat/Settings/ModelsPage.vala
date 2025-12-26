@@ -138,28 +138,21 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_spinner);
 			this.loading_box.append(this.loading_label);
 
-			// Create main container with fixed action bar and scrollable content
-			var main_container = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			// Add action bar to dialog's action bar area (for tracking)
+			// The area is provided by the dialog for pages to add their action bars
+			if (this.settings_dialog.action_bar_area != null) {
+				this.settings_dialog.action_bar_area.append(this.action_box);
+			}
 			
-			// Add action bar at top (fixed, not scrollable)
-			main_container.append(this.action_box);
+			// Add action bar as first PreferencesGroup (will scroll, but at top)
+			// Note: Adw.PreferencesPage scrolls all content, so the action bar will scroll
+			// but it will always be at the top when you scroll to the top
+			var action_group = new Adw.PreferencesGroup();
+			action_group.add(this.action_box);
+			this.add(action_group);
 			
-			// Create scrollable area for models list
-			var scrolled = new Gtk.ScrolledWindow() {
-				vexpand = true,
-				hexpand = true
-			};
-			
-			// Wrap the preferences group in the scrollable window
-			scrolled.set_child(this.group);
-			main_container.append(scrolled);
-			
-			// Add main container to page as a PreferencesGroup
-			// Note: This will still be in PreferencesPage's scrollable area,
-			// but the action bar will be at the top and the models list will scroll independently
-			var container_group = new Adw.PreferencesGroup();
-			container_group.add(main_container);
-			this.add(container_group);
+			// Add preferences group with models list
+			this.add(this.group);
 		}
 
 		/**
