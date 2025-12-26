@@ -53,7 +53,7 @@ namespace OLLMchat.Settings
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
 		private bool has_rendered_once = false;
-		private OptionsWidget shared_options_widget;
+		private OptionsWidget options_widget;
 
 		/**
 		 * Creates a new ModelsPage.
@@ -116,7 +116,7 @@ namespace OLLMchat.Settings
 			this.group.add(this.boxed_list);
 
 			// Create shared options widget (will be reparented to expanded ModelRow)
-			this.shared_options_widget = new OptionsWidget();
+			this.options_widget = new OptionsWidget();
 
 			// Create loading indicator (will be added/removed as needed)
 			this.loading_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
@@ -237,7 +237,7 @@ namespace OLLMchat.Settings
 						// Update options in case config changed
 						model_row.update_options(options);
 					} else {
-						model_row = new ModelRow(model, connection_url, connection.name, options, this.shared_options_widget);
+						model_row = new ModelRow(model, connection_url, connection.name, options, this);
 						model_row.save_options.connect((opts, model_name) => {
 							this.save_model_options(model_name, opts);
 						});

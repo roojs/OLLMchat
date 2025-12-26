@@ -53,7 +53,7 @@ namespace OLLMchat.Settings
 		 */
 		public signal void save_options(OLLMchat.Call.Options options, string model_name);
 
-		private OptionsWidget shared_options_widget;
+		private ModelsPage models_page;
 		private bool is_expanded = false;
 
 		/**
@@ -63,14 +63,14 @@ namespace OLLMchat.Settings
 		 * @param connection_url Connection URL
 		 * @param connection_name Connection display name
 		 * @param options Initial options (will be cloned)
-		 * @param shared_options_widget Shared OptionsWidget to reparent
+		 * @param models_page Parent ModelsPage containing the shared options widget
 		 */
 		public ModelRow( 
 			OLLMchat.Response.Model model,
 			string connection_url,
 			string connection_name,
 			OLLMchat.Call.Options options,
-			OptionsWidget shared_options_widget
+			ModelsPage models_page
 		)
 		{
 			Object(
@@ -79,7 +79,7 @@ namespace OLLMchat.Settings
 				connection_name: connection_name
 			);
 			this.options = options.clone();
-			this.shared_options_widget = shared_options_widget;
+			this.models_page = models_page;
 			this.title = model.name;
 
 			// Connect expand/collapse signal
@@ -102,7 +102,7 @@ namespace OLLMchat.Settings
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
 			if (this.is_expanded) {
-				this.shared_options_widget.load_options(this.options);
+				this.models_page.options_widget.load_options(this.options);
 			}
 		}
 
@@ -113,7 +113,7 @@ namespace OLLMchat.Settings
 		public void save_current_options()
 		{
 			if (this.is_expanded) {
-				this.shared_options_widget.save_options(this.options);
+				this.models_page.options_widget.save_options(this.options);
 			}
 		}
 
@@ -124,15 +124,15 @@ namespace OLLMchat.Settings
 		{
 			if (this.is_expanded) {
 				// Already expanded, just update values
-				this.shared_options_widget.load_options(this.options);
+				this.models_page.options_widget.load_options(this.options);
 				return;
 			}
 
 			// Check if the widget is already parented elsewhere (another ModelRow is expanded)
-			var old_parent = this.shared_options_widget.get_parent();
+			var old_parent = this.models_page.options_widget.get_parent();
 			if (old_parent != null && old_parent != this) {
 				// Remove from previous parent
-				old_parent.remove(this.shared_options_widget);
+				old_parent.remove(this.models_page.options_widget);
 			}
 
 			// Add separator
@@ -144,18 +144,18 @@ namespace OLLMchat.Settings
 			this.add_row(separator_row);
 
 			// Add each option row from the OptionsWidget to the ExpanderRow
-			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
+			foreach (Gtk.Widget child in this.models_page.options_widget.get_children()) {
 				var row = child as Adw.ActionRow;
 				if (row != null) {
 					// Remove from OptionsWidget
-					this.shared_options_widget.remove(row);
+					this.models_page.options_widget.remove(row);
 					// Add to ExpanderRow
 					this.add_row(row);
 				}
 			}
 
 			// Load options into the widget
-			this.shared_options_widget.load_options(this.options);
+			this.models_page.options_widget.load_options(this.options);
 			this.is_expanded = true;
 		}
 
@@ -169,7 +169,7 @@ namespace OLLMchat.Settings
 			}
 
 			// Save options from widget
-			this.shared_options_widget.save_options(this.options);
+			this.models_page.options_widget.save_options(this.options);
 			
 			// Collect all rows (separator and option rows) to remove
 			var rows_to_remove = new Gee.ArrayList<Adw.ActionRow>();
@@ -186,7 +186,7 @@ namespace OLLMchat.Settings
 				// Add option rows back to OptionsWidget (skip separator)
 				var option_row = row as OptionRow;
 				if (option_row != null) {
-					this.shared_options_widget.append(option_row);
+					this.models_page.options_widget.append(option_row);
 				}
 			}
 
