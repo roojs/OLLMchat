@@ -414,8 +414,39 @@ namespace OLLMchatGtk
 			// Create ListStore for models
 			this.model_store = new GLib.ListStore(typeof(OLLMchat.Response.Model));
 
-			// Create sorted model that sorts by name
-			this.sorted_models = new Gtk.SortListModel(this.model_store, new Gtk.StringSorter(new Gtk.PropertyExpression(typeof(OLLMchat.Response.Model), null, "name")));
+			// Create custom sorter that sorts by name (case-insensitive)
+			// Split by "/" and sort by the second part (model name) if present,
+			// otherwise sort by the full name
+			var sorter = new Gtk.CustomSorter((a, b) => {
+				var model_a = a as OLLMchat.Response.Model;
+				var model_b = b as OLLMchat.Response.Model;
+				if (model_a == null || model_b == null) {
+					return Gtk.Ordering.EQUAL;
+				}
+				
+				string name_a = model_a.name;
+				string name_b = model_b.name;
+				
+				// Split by "/" and use the second part if it exists
+				var parts_a = name_a.split("/", 2);
+				var parts_b = name_b.split("/", 2);
+				
+				string sort_key_a = parts_a.length > 1 ? parts_a[1] : parts_a[0];
+				string sort_key_b = parts_b.length > 1 ? parts_b[1] : parts_b[0];
+				
+				// Case-insensitive comparison
+				int cmp = strcmp(sort_key_a.down(), sort_key_b.down());
+				if (cmp < 0) {
+					return Gtk.Ordering.SMALLER;
+				} else if (cmp > 0) {
+					return Gtk.Ordering.LARGER;
+				} else {
+					return Gtk.Ordering.EQUAL;
+				}
+			});
+
+			// Create sorted model
+			this.sorted_models = new Gtk.SortListModel(this.model_store, sorter);
 
 			// Create shared factory for both button and popup (with icons, name, size)
 			var factory = new Gtk.SignalListItemFactory();
