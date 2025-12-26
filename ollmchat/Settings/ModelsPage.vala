@@ -40,12 +40,11 @@ namespace OLLMchat.Settings
 		public string search_filter { get; private set; default = ""; }
 
 		private Gtk.Box action_box;
-		private Adw.SearchBar search_bar;
 		private Gtk.Entry search_entry;
 		private Gtk.Button add_model_btn;
 		private Gtk.Button refresh_btn;
 		private Adw.PreferencesGroup group;
-		private Adw.BoxedList boxed_list;
+		private Gtk.Box boxed_list;
 		private Gtk.Box loading_box;
 		private Gtk.Spinner loading_spinner;
 		private Gtk.Label loading_label;
@@ -71,8 +70,7 @@ namespace OLLMchat.Settings
 				margin_bottom = 12
 			};
 
-			// Create search bar
-			this.search_bar = new Adw.SearchBar();
+			// Create search entry
 			this.search_entry = new Gtk.Entry() {
 				placeholder_text = "Search Models",
 				hexpand = true
@@ -81,8 +79,6 @@ namespace OLLMchat.Settings
 				this.search_filter = this.search_entry.text;
 				this.filter_models(this.search_filter);
 			});
-			this.search_bar.connect_entry(this.search_entry);
-			this.action_box.append(this.search_bar);
 			this.action_box.append(this.search_entry);
 
 			// Create Add Model button (placeholder - not implemented)
@@ -108,7 +104,7 @@ namespace OLLMchat.Settings
 			};
 
 			// Create boxed list for models
-			this.boxed_list = new Adw.BoxedList();
+			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.group.add(this.boxed_list);
 
 			// Create shared options widget (will be reparented to expanded ModelRow)
