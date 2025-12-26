@@ -378,6 +378,28 @@ namespace OLLMchat.Settings
 		{
 			(this.widgets.get(url).get(5) as Gtk.Button).visible = can_remove;
 		}
+
+		/**
+		 * Called when this page is activated (becomes visible).
+		 * 
+		 * Pages can override this to perform actions when they become active,
+		 * such as showing/hiding action bars.
+		 */
+		public virtual void on_activated()
+		{
+			// ConnectionsPage doesn't have an action bar, so nothing to do
+		}
+
+		/**
+		 * Called when this page is deactivated (becomes hidden).
+		 * 
+		 * Pages can override this to perform cleanup when they become inactive,
+		 * such as hiding action bars.
+		 */
+		public virtual void on_deactivated()
+		{
+			// ConnectionsPage doesn't have an action bar, so nothing to do
+		}
 	}
 }
 

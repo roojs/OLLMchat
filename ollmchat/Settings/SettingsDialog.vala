@@ -45,6 +45,9 @@ namespace OLLMchat.Settings
 		
 		// Area for pages to add action bars (fixed at bottom, outside scrollable content)
 		public Gtk.Box action_bar_area { get; private set; }
+		
+		// Track previous visible child for activation/deactivation
+		private Gtk.Widget? previous_visible_child = null;
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -97,11 +100,15 @@ namespace OLLMchat.Settings
 
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
-			this.view_stack.add_titled(this.connections_page, this.connections_page.page_name, this.connections_page.page_title);
+			this.view_stack.add_titled(this.connections_page, 
+				this.connections_page.page_name, 
+				this.connections_page.page_title);
 
 			// Create models page (will add its action bar to action_bar_area)
 			this.models_page = new Settings.ModelsPage(this);
-			this.view_stack.add_titled(this.models_page, this.models_page.page_name, this.models_page.page_title);
+			this.view_stack.add_titled(this.models_page,
+				 this.models_page.page_name,
+				  this.models_page.page_title);
 			
 			// Connect to page visibility to show/hide action bar area
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
@@ -114,21 +121,30 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Updates visibility of action bar area based on which page is visible.
-		 */
-		private void update_action_bar_visibility()
-		{
-			// Show action bar area only when models page is visible
-			var visible_child = this.view_stack.get_visible_child();
-			this.action_bar_area.visible = (visible_child == this.models_page);
-		}
-		
-		/**
 		 * Called when page changes.
+		 * 
+		 * Notifies the previous page that it's been deactivated,
+		 * and the new page that it's been activated.
 		 */
 		private void on_page_changed()
 		{
-			this.update_action_bar_visibility();
+			// Get the previous and current visible children
+			var previous_child = this.view_stack.get_visible_child();
+			var current_child = this.view_stack.get_visible_child();
+
+			// Deactivate previous page (if it's a page that supports activation)
+			if (previous_child is ConnectionsPage) {
+				(previous_child as ConnectionsPage).on_deactivated();
+			} else if (previous_child is ModelsPage) {
+				(previous_child as ModelsPage).on_deactivated();
+			}
+
+			// Activate current page (if it's a page that supports activation)
+			if (current_child is ConnectionsPage) {
+				(current_child as ConnectionsPage).on_activated();
+			} else if (current_child is ModelsPage) {
+				(current_child as ModelsPage).on_activated();
+			}
 		}
 
 		/**

@@ -428,5 +428,29 @@ namespace OLLMchat.Settings
 			}
 				*/
 		}
+
+		/**
+		 * Called when this page is activated (becomes visible).
+		 * 
+		 * Shows the action bar area in the settings dialog.
+		 */
+		public virtual void on_activated()
+		{
+			if (this.settings_dialog.action_bar_area != null) {
+				this.settings_dialog.action_bar_area.visible = true;
+			}
+		}
+
+		/**
+		 * Called when this page is deactivated (becomes hidden).
+		 * 
+		 * Hides the action bar area in the settings dialog.
+		 */
+		public virtual void on_deactivated()
+		{
+			if (this.settings_dialog.action_bar_area != null) {
+				this.settings_dialog.action_bar_area.visible = false;
+			}
+		}
 	}
 }
