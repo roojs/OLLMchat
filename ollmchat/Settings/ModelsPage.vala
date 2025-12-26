@@ -350,14 +350,15 @@ namespace OLLMchat.Settings
 		 */
 		public void save_all_options()
 		{
+			// If there's an expanded row, collapse it (which saves widget options and saves to config)
+			var current_row = this.options_widget.current_model_row;
+			if (current_row != null) {
+				current_row.collapse();
+			}
+			
+			// Save all rows' options to config (including the one we just collapsed)
 			foreach (var row in this.model_rows.values) {
-				// If expanded, collapse it (which saves widget options and saves to config)
-				if (row.expanded) {
-					row.collapse();
-				} else {
-					// If not expanded, just save the current options to config
-					this.save_options(row.model.name, row.options);
-				}
+				this.save_options(row.model.name, row.options);
 			}
 		}
 
