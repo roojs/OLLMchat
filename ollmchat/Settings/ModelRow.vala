@@ -103,7 +103,13 @@ namespace OLLMchat.Settings
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
 			if (this.is_expanded) {
-				this.shared_options_widget.load_options(this.options);
+				// Load options directly into the reparented rows
+				foreach (Gtk.Widget child in this.get_children()) {
+					var row = child as OptionRow;
+					if (row != null) {
+						row.load_options(this.options);
+					}
+				}
 			}
 		}
 
@@ -114,7 +120,13 @@ namespace OLLMchat.Settings
 		public void save_current_options()
 		{
 			if (this.is_expanded) {
-				this.shared_options_widget.save_options(this.options);
+				// Save options directly from the reparented rows
+				foreach (Gtk.Widget child in this.get_children()) {
+					var row = child as OptionRow;
+					if (row != null) {
+						row.save_options(this.options);
+					}
+				}
 			}
 		}
 
