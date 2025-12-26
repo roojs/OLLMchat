@@ -54,7 +54,7 @@ namespace OLLMchat.Settings
 		public signal void save_options(OLLMchat.Call.Options options, string model_name);
 
 		private bool options_created = false;
-		private Gee.ArrayList<OptionWidget> option_widgets = new Gee.ArrayList<OptionWidget>();
+		public Gee.ArrayList<OptionWidget> option_widgets { get; private set; default = new Gee.ArrayList<OptionWidget>(); }
 
 		/**
 		 * Creates a new ModelRow.
