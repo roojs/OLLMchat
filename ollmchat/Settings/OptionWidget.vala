@@ -54,8 +54,11 @@ namespace OLLMchat.Settings
 		public double default_value { get; construct; }
 		public double unset_value { get; construct; }
 
-		public double get_value(OLLMchat.Call.Options options) { get; set; }
-		public void set_value(OLLMchat.Call.Options options, double value) { get; set; }
+		public delegate double GetValueFunc(OLLMchat.Call.Options options);
+		public delegate void SetValueFunc(OLLMchat.Call.Options options, double value);
+
+		public GetValueFunc get_value_func { get; set; }
+		public SetValueFunc set_value_func { get; set; }
 
 		private Gtk.SpinButton spin_button;
 
