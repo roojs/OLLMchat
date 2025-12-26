@@ -234,8 +234,8 @@ namespace OLLMchat.Settings
 					ModelRow model_row;
 					if (this.model_rows.has_key(composite_key)) {
 						model_row = this.model_rows.get(composite_key);
-						// Update options in case config changed
-						model_row.update_options(options);
+					// Update options in case config changed
+					model_row.load_options(options);
 					} else {
 						model_row = new ModelRow(model, connection_url, connection.name, options, this);
 						model_row.save_options.connect((opts, model_name) => {
@@ -356,7 +356,7 @@ namespace OLLMchat.Settings
 			foreach (var row in this.model_rows.values) {
 				// Update options from widgets if expanded
 				if (row.expanded) {
-					row.save_current_options();
+					row.save_options();
 				}
 				this.save_model_options(row.model.name, row.options);
 			}
