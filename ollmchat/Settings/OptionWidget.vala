@@ -47,48 +47,22 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionFloatWidget : OptionWidget
 	{
+		public double min_value { get; construct; }
+		public double max_value { get; construct; }
+		public double step_value { get; construct; }
+		public uint digits { get; construct; }
+		public double default_value { get; construct; }
+		public double unset_value { get; construct; }
+
+		public double get_value(OLLMchat.Call.Options options) { get; set; }
+		public void set_value(OLLMchat.Call.Options options, double value) { get; set; }
+
 		private Gtk.SpinButton spin_button;
-		private double default_value;
-		private double unset_value;
-		private unowned double get_value(OLLMchat.Call.Options options);
-		private unowned void set_value(OLLMchat.Call.Options options, double value);
 
-		/**
-		 * Creates a new OptionFloatWidget.
-		 * 
-		 * @param title Row title
-		 * @param subtitle Row subtitle
-		 * @param min Minimum value
-		 * @param max Maximum value
-		 * @param step Step increment
-		 * @param digits Number of decimal digits
-		 * @param default_value Default value to use when unset
-		 * @param unset_value Value that indicates unset (-1.0 typically)
-		 * @param get_value Callback to get value from Options
-		 * @param set_value Callback to set value in Options
-		 */
-		public OptionFloatWidget(
-			string title,
-			string subtitle,
-			double min,
-			double max,
-			double step,
-			uint digits,
-			double default_value,
-			double unset_value,
-			owned double get_value(OLLMchat.Call.Options options),
-			owned void set_value(OLLMchat.Call.Options options, double value)
-		)
+		construct
 		{
-			this.title = title;
-			this.subtitle = subtitle;
-			this.default_value = default_value;
-			this.unset_value = unset_value;
-			this.get_value = (owned)get_value;
-			this.set_value = (owned)set_value;
-
-			this.spin_button = new Gtk.SpinButton.with_range(min, max, step) {
-				digits = digits
+			this.spin_button = new Gtk.SpinButton.with_range(this.min_value, this.max_value, this.step_value) {
+				digits = this.digits
 			};
 			this.add_suffix(this.spin_button);
 		}
@@ -116,48 +90,22 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionIntWidget : OptionWidget
 	{
+		public double min_value { get; construct; }
+		public double max_value { get; construct; }
+		public double step_value { get; construct; }
+		public uint digits { get; construct; }
+		public double default_value { get; construct; }
+		public int unset_value { get; construct; }
+
+		public int get_value(OLLMchat.Call.Options options) { get; set; }
+		public void set_value(OLLMchat.Call.Options options, int value) { get; set; }
+
 		private Gtk.SpinButton spin_button;
-		private double default_value;
-		private int unset_value;
-		private unowned int get_value(OLLMchat.Call.Options options);
-		private unowned void set_value(OLLMchat.Call.Options options, int value);
 
-		/**
-		 * Creates a new OptionIntWidget.
-		 * 
-		 * @param title Row title
-		 * @param subtitle Row subtitle
-		 * @param min Minimum value
-		 * @param max Maximum value
-		 * @param step Step increment
-		 * @param digits Number of decimal digits (0 for integers)
-		 * @param default_value Default value to use when unset
-		 * @param unset_value Value that indicates unset (-1 typically)
-		 * @param get_value Callback to get value from Options
-		 * @param set_value Callback to set value in Options
-		 */
-		public OptionIntWidget(
-			string title,
-			string subtitle,
-			double min,
-			double max,
-			double step,
-			uint digits,
-			double default_value,
-			int unset_value,
-			owned int get_value(OLLMchat.Call.Options options),
-			owned void set_value(OLLMchat.Call.Options options, int value)
-		)
+		construct
 		{
-			this.title = title;
-			this.subtitle = subtitle;
-			this.default_value = default_value;
-			this.unset_value = unset_value;
-			this.get_value = (owned)get_value;
-			this.set_value = (owned)set_value;
-
-			this.spin_button = new Gtk.SpinButton.with_range(min, max, step) {
-				digits = digits
+			this.spin_button = new Gtk.SpinButton.with_range(this.min_value, this.max_value, this.step_value) {
+				digits = this.digits
 			};
 			this.add_suffix(this.spin_button);
 		}
@@ -185,34 +133,17 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionStringWidget : OptionWidget
 	{
+		public string placeholder_text { get; construct; }
+
+		public string get_value(OLLMchat.Call.Options options) { get; set; }
+		public void set_value(OLLMchat.Call.Options options, string value) { get; set; }
+
 		private Gtk.Entry entry;
-		private unowned string get_value(OLLMchat.Call.Options options);
-		private unowned void set_value(OLLMchat.Call.Options options, string value);
 
-		/**
-		 * Creates a new OptionStringWidget.
-		 * 
-		 * @param title Row title
-		 * @param subtitle Row subtitle
-		 * @param placeholder Placeholder text for entry
-		 * @param get_value Callback to get value from Options
-		 * @param set_value Callback to set value in Options
-		 */
-		public OptionStringWidget(
-			string title,
-			string subtitle,
-			string placeholder,
-			owned string get_value(OLLMchat.Call.Options options),
-			owned void set_value(OLLMchat.Call.Options options, string value)
-		)
+		construct
 		{
-			this.title = title;
-			this.subtitle = subtitle;
-			this.get_value = (owned)get_value;
-			this.set_value = (owned)set_value;
-
 			this.entry = new Gtk.Entry() {
-				placeholder_text = placeholder
+				placeholder_text = this.placeholder_text
 			};
 			this.add_suffix(this.entry);
 		}
