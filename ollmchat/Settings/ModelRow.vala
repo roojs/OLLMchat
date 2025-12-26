@@ -134,25 +134,12 @@ namespace OLLMchat.Settings
 				// Remove from previous parent
 				old_parent.remove(this.models_page.options_widget);
 			}
-
-			// Add separator
-			var separator_row = new Adw.ActionRow();
-			var separator = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
-				hexpand = true
-			};
-			separator_row.add_suffix(separator);
-			this.add_row(separator_row);
-
-			// Add each option row from the OptionsWidget to the ExpanderRow
-			foreach (Gtk.Widget child in this.models_page.options_widget.get_children()) {
-				var row = child as Adw.ActionRow;
-				if (row != null) {
-					// Remove from OptionsWidget
-					this.models_page.options_widget.remove(row);
-					// Add to ExpanderRow
-					this.add_row(row);
-				}
-			}
+			
+			// Add the OptionsWidget Box directly to the ExpanderRow
+			// Using append() to add it as a child of the ExpanderRow (not the parent list)
+			// This is the correct way - the theoretical code using this.parent.insert_child_after()
+			// would add it to the parent container after this ModelRow, not inside it
+			this.append(this.models_page.options_widget);			
 
 			// Load options into the widget
 			this.models_page.options_widget.load_options(this.options);
