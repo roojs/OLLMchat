@@ -52,10 +52,7 @@ namespace OLLMchat.Settings
 		public SettingsDialog(OLLMchat.Settings.Config2 config)
 		{
 			Object(config: config);
-		}
-
-		construct
-		{
+		
 			this.title = "Settings";
 			this.set_content_width(800);
 			this.set_content_height(600);
@@ -86,13 +83,26 @@ namespace OLLMchat.Settings
 			page.add(group);
 			this.add(page);
 
-			// Refresh models when dialog is shown (every time)
-			this.map.connect(() => {
-				this.models_page.render_models.begin();
-			});
-
 			// Connect closed signal to save config when dialog closes
 			this.closed.connect(this.on_closed);
+		}
+
+		/**
+		 * Shows the settings dialog and initializes models page.
+		 * 
+		 * @param parent Parent window to attach the dialog to
+		 */
+		public void show(Gtk.Window? parent = null)
+		{
+			// Refresh models when dialog is shown (every time)
+			this.models_page.render_models.begin();
+			
+			// Present the dialog
+			if (parent != null) {
+				this.present(parent);
+			} else {
+				this.present();
+			}
 		}
 
 		/**
