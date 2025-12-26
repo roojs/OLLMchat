@@ -137,13 +137,14 @@ namespace OLLMchat.Settings
 			});
 			this.models_action_box.append(this.models_refresh_btn);
 			
-			// Add action bar to dialog (outside scrollable area)
-			// We'll add it as a child of the dialog's content area
-			// Note: Adw.PreferencesDialog doesn't have a direct way to add widgets outside pages,
-			// so we'll need to use a workaround - add it to a header bar or use extra-child
-			// For now, let's try adding it as an extra child if available, or we might need
-			// to restructure to use a custom layout
-			// Actually, let's check if we can use set_extra_child or similar
+			// Add action bar to dialog using set_extra_child (if available)
+			// This adds it outside the scrollable content area
+			try {
+				this.set_extra_child(this.models_action_box);
+			} catch (Error e) {
+				// If set_extra_child doesn't exist, we'll need another approach
+				GLib.warning("Could not add models action bar to dialog: %s", e.message);
+			}
 		}
 		
 		/**
