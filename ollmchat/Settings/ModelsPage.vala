@@ -74,8 +74,10 @@ namespace OLLMchat.Settings
 				margin_bottom = 12
 			};
 
-			// Create search bar
-			this.search_bar = new Gtk.SearchBar();
+			// Create search bar (always visible)
+			this.search_bar = new Gtk.SearchBar() {
+				search_mode_enabled = true
+			};
 			this.search_entry = new Gtk.Entry() {
 				placeholder_text = "Search Models",
 				hexpand = true
