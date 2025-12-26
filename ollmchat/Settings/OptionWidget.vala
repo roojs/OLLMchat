@@ -29,7 +29,7 @@ namespace OLLMchat.Settings
 	{
 		public Gee.ArrayList<OptionRow> rows { get; private set; default = new Gee.ArrayList<OptionRow>(); }
 
-		public OptionsWidget(OLLMchat.Call.Options options)
+		public OptionsWidget()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
 
