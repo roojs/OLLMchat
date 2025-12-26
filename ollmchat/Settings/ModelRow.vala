@@ -172,6 +172,10 @@ namespace OLLMchat.Settings
 				this.models_page.options_widget.current_model_row = null;
 			}
 
+			// Set expanded property to false to keep UI in sync
+			// (This will trigger the signal handler, but the early return prevents recursion)
+			this.expanded = false;
+			
 			// Emit save signal
 			this.save_options(this.options, this.model.name);
 			this.is_expanded = false;
