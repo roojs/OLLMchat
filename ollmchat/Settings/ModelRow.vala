@@ -236,7 +236,7 @@ namespace OLLMchat.Settings
 			var num_predict_widget = new OptionIntWidget() {
 				title = "Num Predict",
 				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
-				property_name = "num-predict",
+				property_name = "num_predict",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1.0,
