@@ -161,7 +161,7 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Called when the row is collapsed - saves options and removes widget.
+		 * Called when the row is collapsed - saves options and reparents widget back.
 		 */
 		private void collapse()
 		{
@@ -172,17 +172,25 @@ namespace OLLMchat.Settings
 			// Save options from widget
 			this.shared_options_widget.save_options(this.options);
 			
-			// Remove all rows (separator and option rows)
-			// We need to remove rows in reverse order to avoid index issues
-			var rows_to_remove = new Gee.ArrayList<Adw.ActionRow>();
+			// Collect all option rows that need to be reparented back
+			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
 			foreach (Gtk.Widget child in this.get_children()) {
 				var row = child as Adw.ActionRow;
-				if (row != null) {
-					rows_to_remove.add(row);
+				if (row != null && row != this.separator_row) {
+					rows_to_reparent.add(row);
 				}
 			}
-			foreach (var row in rows_to_remove) {
+
+			// Remove option rows from ExpanderRow and add back to OptionsWidget
+			foreach (var row in rows_to_reparent) {
 				this.remove(row);
+				this.shared_options_widget.append(row);
+			}
+
+			// Remove separator
+			if (this.separator_row != null) {
+				this.remove(this.separator_row);
+				this.separator_row = null;
 			}
 
 			// Emit save signal
