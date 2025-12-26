@@ -235,11 +235,13 @@ namespace OLLMchat.Settings
 					if (this.model_rows.has_key(composite_key)) {
 						model_row = this.model_rows.get(composite_key);
 					// Update options in case config changed
-					model_row.load_options(options);
-					} else {
-						model_row = new ModelRow(model, connection, options, this);
-						this.model_rows.set(composite_key, model_row);
-						this.boxed_list.append(model_row);
+						model_row.load_options(options); 
+						model.row.visible = true;
+						continue;
+					} 
+					model_row = new ModelRow(model, connection, options, this);
+					this.model_rows.set(composite_key, model_row);
+					tis.boxed_list.append(model_row);
 					}
 					model_row.visible = true;
 				}
