@@ -141,14 +141,18 @@ namespace OLLMchat.Settings
 			action_group.add(this.action_box);
 			this.add(action_group);
 			this.add(this.group);
+		}
 
-			// Connect to show signal to render models when page becomes visible
-			this.map.connect(() => {
-				if (!this.has_rendered_once) {
-					this.render_models.begin();
-					this.has_rendered_once = true;
-				}
-			});
+		/**
+		 * Initializes the models page by rendering models.
+		 * Called by SettingsDialog when the page is shown.
+		 */
+		public void initialize()
+		{
+			if (!this.has_rendered_once) {
+				this.render_models.begin();
+				this.has_rendered_once = true;
+			}
 		}
 
 		/**
@@ -241,8 +245,8 @@ namespace OLLMchat.Settings
 					} 
 					model_row = new ModelRow(model, connection, options, this);
 					this.model_rows.set(composite_key, model_row);
-					tis.boxed_list.append(model_row);
-					}
+					this.boxed_list.append(model_row);
+					
 					model_row.visible = true;
 				}
 
