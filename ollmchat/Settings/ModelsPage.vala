@@ -238,9 +238,6 @@ namespace OLLMchat.Settings
 					model_row.load_options(options);
 					} else {
 						model_row = new ModelRow(model, connection, options, this);
-						model_row.save_options.connect((opts, model_name) => {
-							this.save_model_options(model_name, opts);
-						});
 						this.model_rows.set(composite_key, model_row);
 						this.boxed_list.append(model_row);
 					}
@@ -337,7 +334,7 @@ namespace OLLMchat.Settings
 		 * @param model_name Model name (used as key in config)
 		 * @param options Options object to save
 		 */
-		private void save_model_options(string model_name, OLLMchat.Call.Options options)
+		public void save_options(string model_name, OLLMchat.Call.Options options)
 		{
 			if (options.has_values()) {
 				// Save to config using model name only as key
@@ -356,9 +353,9 @@ namespace OLLMchat.Settings
 			foreach (var row in this.model_rows.values) {
 				// Update options from widgets if expanded
 				if (row.expanded) {
-					row.save_options();
+					row.save_widget_options();
 				}
-				this.save_model_options(row.model.name, row.options);
+				this.save_options(row.model.name, row.options);
 			}
 		}
 
