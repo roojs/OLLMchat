@@ -40,6 +40,7 @@ namespace OLLMchat.Settings
 		public string search_filter { get; private set; default = ""; }
 
 		private Gtk.Box action_box;
+		private Gtk.SearchBar search_bar;
 		private Gtk.Entry search_entry;
 		private Gtk.Button add_model_btn;
 		private Gtk.Button refresh_btn;
@@ -70,7 +71,8 @@ namespace OLLMchat.Settings
 				margin_bottom = 12
 			};
 
-			// Create search entry
+			// Create search bar
+			this.search_bar = new Gtk.SearchBar();
 			this.search_entry = new Gtk.Entry() {
 				placeholder_text = "Search Models",
 				hexpand = true
@@ -79,7 +81,9 @@ namespace OLLMchat.Settings
 				this.search_filter = this.search_entry.text;
 				this.filter_models(this.search_filter);
 			});
-			this.action_box.append(this.search_entry);
+			this.search_bar.connect_entry(this.search_entry);
+			this.search_bar.set_child(this.search_entry);
+			this.action_box.append(this.search_bar);
 
 			// Create Add Model button (placeholder - not implemented)
 			this.add_model_btn = new Gtk.Button.with_label("Add Model") {
