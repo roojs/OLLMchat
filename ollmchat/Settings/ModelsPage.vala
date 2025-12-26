@@ -62,10 +62,7 @@ namespace OLLMchat.Settings
 		public ModelsPage(SettingsDialog settings_dialog)
 		{
 			Object(settings_dialog: settings_dialog);
-		}
 
-		construct
-		{
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				margin_start = 12,
