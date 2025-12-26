@@ -177,19 +177,9 @@ namespace OLLMchat.Settings
 		public void detach_from_expander_row()
 		{
 			// Remove each OptionRow that was attached to an ExpanderRow
-			// We need to properly remove from the ListBox before unparenting
-			// to avoid GTK maintaining stale sibling references
 			foreach (var option_row in this.rows) {
-				var parent = option_row.get_parent();
-				if (parent != null) {
-					// If parent is an ExpanderRow, we need to remove from its ListBox
-					// Unparenting should handle this, but we ensure it's done properly
+				if (option_row.get_parent() != null) {
 					option_row.unparent();
-					// Force GTK to process the unparenting immediately
-					// by checking parent is null after unparenting
-					while (option_row.get_parent() != null) {
-						option_row.unparent();
-					}
 				}
 			}
 		}
