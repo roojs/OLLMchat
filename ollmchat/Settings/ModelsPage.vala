@@ -22,12 +22,12 @@ namespace OLLMchat.Settings
 	 * Models tab content for settings dialog.
 	 * 
 	 * Manages model list and model-specific options configuration.
-	 * Uses Adw.PreferencesPage with Adw.BoxedList for model list.
+	 * Uses Adw.PreferencesGroup with Adw.BoxedList for model list.
 	 * Models are grouped by connection with section headers.
 	 * 
 	 * @since 1.0
 	 */
-	public class ModelsPage : Adw.PreferencesPage
+	public class ModelsPage : Gtk.Box
 	{
 		/**
 		 * Reference to parent SettingsDialog (which has the config object)
@@ -61,10 +61,7 @@ namespace OLLMchat.Settings
 		 */
 		public ModelsPage(SettingsDialog settings_dialog)
 		{
-			Object(settings_dialog: settings_dialog);
-
-			// Set page title for tab
-			this.title = "Models";
+			Object(settings_dialog: settings_dialog, orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
@@ -139,13 +136,12 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_label);
 
 			// Add preferences group with models list (this will be scrollable)
-			this.add(this.group);
+			this.append(this.group);
 			
-			// Add action bar at the bottom of the page (will scroll, but at bottom)
-			// Add it as a PreferencesGroup so it appears at the bottom
-			var action_group = new Adw.PreferencesGroup();
-			action_group.add(this.action_box);
-			this.add(action_group);
+			// Add action bar to dialog's action bar area (fixed at bottom, outside scrollable content)
+			if (this.settings_dialog.action_bar_area != null) {
+				this.settings_dialog.action_bar_area.append(this.action_box);
+			}
 		}
 
 		/**

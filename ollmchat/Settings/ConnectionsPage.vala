@@ -22,12 +22,12 @@ namespace OLLMchat.Settings
 	 * Connections tab content for settings dialog.
 	 * 
 	 * Manages server connections (add, remove, edit connection details).
-	 * Uses Adw.PreferencesPage with Gtk.ListBox for connection list.
+	 * Uses Adw.PreferencesGroup with Gtk.ListBox for connection list.
 	 * Editing is inline - no separate edit/update methods needed.
 	 * 
 	 * @since 1.0
 	 */
-	public class ConnectionsPage : Adw.PreferencesPage
+	public class ConnectionsPage : Gtk.Box
 	{
 		/**
 		 * Reference to parent SettingsDialog (which has the config object)
@@ -56,10 +56,7 @@ namespace OLLMchat.Settings
 		 */
 		public ConnectionsPage(SettingsDialog dialog)
 		{
-			Object(dialog: dialog);
-		
-			// Set page title for tab
-			this.title = "Connections";
+			Object(dialog: dialog, orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
@@ -88,8 +85,8 @@ namespace OLLMchat.Settings
 			// Add action bar and preferences group to page
 			var action_group = new Adw.PreferencesGroup();
 			action_group.add(this.action_box);
-			this.add(action_group);
-			this.add(this.group);
+			this.append(action_group);
+			this.append(this.group);
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
