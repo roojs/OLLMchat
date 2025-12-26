@@ -72,17 +72,17 @@ namespace OLLMchat.Settings
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			var val = this.get_value(options);
+			var val = this.get_value_func(options);
 			this.spin_button.value = val != this.unset_value ? val : this.default_value;
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
 			var val = this.spin_button.value;
-			if (val == this.default_value && this.get_value(options) == this.unset_value) {
+			if (val == this.default_value && this.get_value_func(options) == this.unset_value) {
 				return; // No change
 			}
-			this.set_value(options, val);
+			this.set_value_func(options, val);
 		}
 	}
 
