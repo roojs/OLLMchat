@@ -138,11 +138,22 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_spinner);
 			this.loading_box.append(this.loading_label);
 
-			// Add action bar and preferences group to page
-			var action_group = new Adw.PreferencesGroup();
-			action_group.add(this.action_box);
-			this.add(action_group);
-			this.add(this.group);
+			// Create main container box with action bar outside scrollable area
+			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			
+			// Add action bar at top (not scrollable)
+			main_box.append(this.action_box);
+			
+			// Create scrollable area for preferences group
+			var scrolled = new Gtk.ScrolledWindow() {
+				vexpand = true,
+				hexpand = true
+			};
+			scrolled.set_child(this.group);
+			main_box.append(scrolled);
+			
+			// Add main box to page
+			this.add(main_box);
 		}
 
 		/**
