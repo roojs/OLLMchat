@@ -55,6 +55,7 @@ namespace OLLMchat.Settings
 
 		private OptionsWidget shared_options_widget;
 		private bool is_expanded = false;
+		private Adw.ActionRow? separator_row = null;
 
 		/**
 		 * Creates a new ModelRow.
@@ -118,7 +119,7 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Called when the row is expanded - reparents shared options widget.
+		 * Called when the row is eaxpanded - reparents shared options widget.
 		 */
 		private void expand()
 		{
