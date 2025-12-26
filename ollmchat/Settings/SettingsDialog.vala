@@ -82,13 +82,30 @@ namespace OLLMchat.Settings
 				// Get the current child (the PreferencesDialog's internal content)
 				var original_child = this.get_child();
 				if (original_child != null) {
-					// Check if it's already a Box (might be the content area)
-					// We want to insert the action bar area between header and content
-					// If the child is a Box, we can prepend to it
+					// Try to find the actual content area (not the header)
+					// PreferencesDialog might have a ViewStack or ScrolledWindow as the scrollable content
+					Gtk.Widget? content_target = null;
+					
+					// If child is a Box, look for the first ScrolledWindow or ViewStack
 					if (original_child is Gtk.Box) {
 						var content_box = original_child as Gtk.Box;
-						// Prepend action bar area (will be at top, but after header bar)
-						content_box.prepend(this.action_bar_area);
+						// Look for ScrolledWindow or ViewStack in the box
+						var first_child = content_box.get_first_child();
+						while (first_child != null) {
+							if (first_child is Gtk.ScrolledWindow || first_child is Adw.ViewStack) {
+								content_target = first_child;
+								break;
+							}
+							first_child = first_child.get_next_sibling();
+						}
+						
+						// If we found a scrollable content area, insert action bar before it
+						if (content_target != null) {
+							content_box.insert_child_after(this.action_bar_area, null);
+						} else {
+							// Otherwise, just prepend (will be after header)
+							content_box.prepend(this.action_bar_area);
+						}
 					} else {
 						// If not a Box, wrap it
 						original_child.unparent();
