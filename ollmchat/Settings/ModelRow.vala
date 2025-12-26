@@ -34,14 +34,9 @@ namespace OLLMchat.Settings
 		public OLLMchat.Response.Model model { get; construct; }
 
 		/**
-		 * The connection URL this model belongs to.
+		 * The connection this model belongs to.
 		 */
-		public string connection_url { get; construct; }
-
-		/**
-		 * The connection display name.
-		 */
-		public string connection_name { get; construct; }
+		public Connection connection { get; construct; }
 
 		/**
 		 * The model's options (can be modified).
@@ -60,23 +55,20 @@ namespace OLLMchat.Settings
 		 * Creates a new ModelRow.
 		 * 
 		 * @param model The model object
-		 * @param connection_url Connection URL
-		 * @param connection_name Connection display name
+		 * @param connection The connection object
 		 * @param options Initial options (will be cloned)
 		 * @param models_page Parent ModelsPage containing the shared options widget
 		 */
 		public ModelRow( 
 			OLLMchat.Response.Model model,
-			string connection_url,
-			string connection_name,
+			Connection connection,
 			OLLMchat.Call.Options options,
 			ModelsPage models_page
 		)
 		{
 			Object(
 				model: model,
-				connection_url: connection_url,
-				connection_name: connection_name
+				connection: connection
 			);
 			this.options = options.clone();
 			this.models_page = models_page;

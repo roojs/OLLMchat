@@ -237,7 +237,7 @@ namespace OLLMchat.Settings
 					// Update options in case config changed
 					model_row.load_options(options);
 					} else {
-						model_row = new ModelRow(model, connection_url, connection.name, options, this);
+						model_row = new ModelRow(model, connection, options, this);
 						model_row.save_options.connect((opts, model_name) => {
 							this.save_model_options(model_name, opts);
 						});
