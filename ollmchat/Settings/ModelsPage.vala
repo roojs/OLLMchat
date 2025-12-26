@@ -35,6 +35,16 @@ namespace OLLMchat.Settings
 		public SettingsDialog settings_dialog { get; construct; }
 
 		/**
+		 * Page name (used as ViewStack page name)
+		 */
+		public string page_name { get; construct; default = "models"; }
+
+		/**
+		 * Page title (used as ViewStack page title and preferences group title)
+		 */
+		public string page_title { get; construct; default = "Models"; }
+
+		/**
 		 * Current search filter text
 		 */
 		public string search_filter { get; private set; default = ""; }
@@ -110,7 +120,7 @@ namespace OLLMchat.Settings
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {
-				title = "Models"
+				title = this.page_title
 			};
 
 			// Create boxed list for models

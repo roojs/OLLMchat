@@ -34,6 +34,16 @@ namespace OLLMchat.Settings
 		 */
 		public SettingsDialog dialog { get; construct; }
 
+		/**
+		 * Page name (used as ViewStack page name)
+		 */
+		public string page_name { get; construct; default = "connections"; }
+
+		/**
+		 * Page title (used as ViewStack page title and preferences group title)
+		 */
+		public string page_title { get; construct; default = "Connections"; }
+
 		// Widget indices in widgets HashMap:
 		// [0] = Adw.ExpanderRow
 		// [1] = Gtk.Entry (name)
@@ -81,7 +91,7 @@ namespace OLLMchat.Settings
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {
-				title = "Connections"
+				title = this.page_title
 			};
 
 			// Create list box for connections
