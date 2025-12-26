@@ -139,33 +139,31 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionStringWidget : OptionWidget
 	{
+		public string property_name { get; set; }
 		public string placeholder_text { get; set; }
 
-		public signal string get_value(OLLMchat.Call.Options options);
-		public signal void set_value(OLLMchat.Call.Options options, string value);
-
 		private Gtk.Entry entry;
-		private bool configured = false;
 
 		construct
 		{
 			this.entry = new Gtk.Entry() {
 				placeholder_text = this.placeholder_text
 			};
+			this.add_suffix(this.entry);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			if (!this.configured) {
-				this.add_suffix(this.entry);
-				this.configured = true;
-			}
-			this.entry.text = this.get_value(options);
+			Value val = Value(typeof(string));
+			options.get_property(this.property_name, ref val);
+			this.entry.text = val.get_string();
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
-			this.set_value(options, this.entry.text);
+			Value value = Value(typeof(string));
+			value.set_string(this.entry.text);
+			options.set_property(this.property_name, value);
 		}
 	}
 }
