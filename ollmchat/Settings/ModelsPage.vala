@@ -190,9 +190,22 @@ namespace OLLMchat.Settings
 				};
 				var models_list = yield client.models();
 
-				// Sort models alphabetically by name
+				// Sort models alphabetically by name (case-insensitive)
+				// Split by "/" and sort by the second part (model name) if present,
+				// otherwise sort by the full name
 				models_list.sort((a, b) => {
-					return strcmp(a.name, b.name);
+					string name_a = a.name;
+					string name_b = b.name;
+					
+					// Split by "/" and use the second part if it exists
+					var parts_a = name_a.split("/", 2);
+					var parts_b = name_b.split("/", 2);
+					
+					string sort_key_a = parts_a.length > 1 ? parts_a[1] : parts_a[0];
+					string sort_key_b = parts_b.length > 1 ? parts_b[1] : parts_b[0];
+					
+					// Case-insensitive comparison
+					return strcmp(sort_key_a.down(), sort_key_b.down());
 				});
 
 				// Get or create section header for connection
