@@ -220,7 +220,7 @@ namespace OLLMchat.Settings
 						model_row = this.model_rows.get(composite_key);
 					// Update options in case config changed
 						model_row.load_options(options); 
-						model.row.visible = true;
+						model_row.visible = true;
 						continue;
 					} 
 					model_row = new ModelRow(model, connection, options, this);
@@ -239,10 +239,7 @@ namespace OLLMchat.Settings
 				}
 				foreach (var key in keys_to_remove) {
 					var row = this.model_rows.get(key);
-					var parent = row.get_parent();
-					if (parent != null) {
-						parent.remove(row);
-					}
+					row.unparent();
 					this.model_rows.unset(key);
 				}
 
@@ -264,10 +261,7 @@ namespace OLLMchat.Settings
 			}
 			foreach (var key in headers_to_remove) {
 				var header = this.section_headers.get(key);
-				var parent = header.get_parent();
-				if (parent != null) {
-					parent.remove(header);
-				}
+				header.unparent();
 				this.section_headers.unset(key);
 			}
 		}
