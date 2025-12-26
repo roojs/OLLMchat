@@ -23,7 +23,7 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public abstract class OptionWidget : Object
+	public abstract class OptionWidget : Adw.ActionRow
 	{
 		/**
 		 * Updates the widget's value from the options object.
@@ -41,353 +41,190 @@ namespace OLLMchat.Settings
 	}
 
 	/**
-	 * Temperature option widget (0.0-2.0).
+	 * Generic float option widget that extends Adw.ActionRow.
+	 * 
+	 * @since 1.0
 	 */
-	public class TemperatureWidget : OptionWidget
+	public class OptionFloatWidget : OptionWidget
 	{
 		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
+		private double default_value;
+		private double unset_value;
+		private unowned double get_value(OLLMchat.Call.Options options);
+		private unowned void set_value(OLLMchat.Call.Options options, double value);
 
-		public TemperatureWidget()
+		/**
+		 * Creates a new OptionFloatWidget.
+		 * 
+		 * @param title Row title
+		 * @param subtitle Row subtitle
+		 * @param min Minimum value
+		 * @param max Maximum value
+		 * @param step Step increment
+		 * @param digits Number of decimal digits
+		 * @param default_value Default value to use when unset
+		 * @param unset_value Value that indicates unset (-1.0 typically)
+		 * @param get_value Callback to get value from Options
+		 * @param set_value Callback to set value in Options
+		 */
+		public OptionFloatWidget(
+			string title,
+			string subtitle,
+			double min,
+			double max,
+			double step,
+			uint digits,
+			double default_value,
+			double unset_value,
+			owned double get_value(OLLMchat.Call.Options options),
+			owned void set_value(OLLMchat.Call.Options options, double value)
+		)
 		{
-			this.spin_button = new Gtk.SpinButton.with_range(0.0, 2.0, 0.1) {
-				digits = 1
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Temperature",
-				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
+			this.title = title;
+			this.subtitle = subtitle;
+			this.default_value = default_value;
+			this.unset_value = unset_value;
+			this.get_value = (owned)get_value;
+			this.set_value = (owned)set_value;
 
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
+			this.spin_button = new Gtk.SpinButton.with_range(min, max, step) {
+				digits = digits
+			};
+			this.add_suffix(this.spin_button);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			this.spin_button.value = options.temperature != -1.0 ? options.temperature : 0.0;
+			var val = this.get_value(options);
+			this.spin_button.value = val != this.unset_value ? val : this.default_value;
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
 			var val = this.spin_button.value;
-			if (val == 0.0 && options.temperature == -1.0) {
+			if (val == this.default_value && this.get_value(options) == this.unset_value) {
 				return; // No change
 			}
-			options.temperature = val;
+			this.set_value(options, val);
 		}
 	}
 
 	/**
-	 * Top P option widget (0.0-1.0).
+	 * Generic int option widget that extends Adw.ActionRow.
+	 * 
+	 * @since 1.0
 	 */
-	public class TopPWidget : OptionWidget
+	public class OptionIntWidget : OptionWidget
 	{
 		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
+		private double default_value;
+		private int unset_value;
+		private unowned int get_value(OLLMchat.Call.Options options);
+		private unowned void set_value(OLLMchat.Call.Options options, int value);
 
-		public TopPWidget()
+		/**
+		 * Creates a new OptionIntWidget.
+		 * 
+		 * @param title Row title
+		 * @param subtitle Row subtitle
+		 * @param min Minimum value
+		 * @param max Maximum value
+		 * @param step Step increment
+		 * @param digits Number of decimal digits (0 for integers)
+		 * @param default_value Default value to use when unset
+		 * @param unset_value Value that indicates unset (-1 typically)
+		 * @param get_value Callback to get value from Options
+		 * @param set_value Callback to set value in Options
+		 */
+		public OptionIntWidget(
+			string title,
+			string subtitle,
+			double min,
+			double max,
+			double step,
+			uint digits,
+			double default_value,
+			int unset_value,
+			owned int get_value(OLLMchat.Call.Options options),
+			owned void set_value(OLLMchat.Call.Options options, int value)
+		)
 		{
-			this.spin_button = new Gtk.SpinButton.with_range(0.0, 1.0, 0.01) {
-				digits = 2
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Top P",
-				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
+			this.title = title;
+			this.subtitle = subtitle;
+			this.default_value = default_value;
+			this.unset_value = unset_value;
+			this.get_value = (owned)get_value;
+			this.set_value = (owned)set_value;
 
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
+			this.spin_button = new Gtk.SpinButton.with_range(min, max, step) {
+				digits = digits
+			};
+			this.add_suffix(this.spin_button);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			this.spin_button.value = options.top_p != -1.0 ? options.top_p : 0.9;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = this.spin_button.value;
-			if (val == 0.9 && options.top_p == -1.0) {
-				return; // No change
-			}
-			options.top_p = val;
-		}
-	}
-
-	/**
-	 * Top K option widget (1-1000).
-	 */
-	public class TopKWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public TopKWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(1.0, 1000.0, 1.0) {
-				digits = 0
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Top K",
-				subtitle = "Limits sampling to top K most likely tokens"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.top_k != -1 ? (double)options.top_k : 40.0;
+			var val = this.get_value(options);
+			this.spin_button.value = val != this.unset_value ? (double)val : this.default_value;
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
 			var val = (int)this.spin_button.value;
-			if (val == 40 && options.top_k == -1) {
+			if (val == (int)this.default_value && this.get_value(options) == this.unset_value) {
 				return; // No change
 			}
-			options.top_k = val;
+			this.set_value(options, val);
 		}
 	}
 
 	/**
-	 * Num Ctx option widget (1-1000000).
+	 * Generic string option widget that extends Adw.ActionRow.
+	 * 
+	 * @since 1.0
 	 */
-	public class NumCtxWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public NumCtxWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(1.0, 1000000.0, 1.0) {
-				digits = 0
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Num Ctx",
-				subtitle = "Context window size - number of tokens the model can consider"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.num_ctx != -1 ? (double)options.num_ctx : 2048.0;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = (int)this.spin_button.value;
-			if (val == 2048 && options.num_ctx == -1) {
-				return; // No change
-			}
-			options.num_ctx = val;
-		}
-	}
-
-	/**
-	 * Num Predict option widget (1-1000000, -1 for no limit).
-	 */
-	public class NumPredictWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public NumPredictWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(1.0, 1000000.0, 1.0) {
-				digits = 0
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Num Predict",
-				subtitle = "Maximum number of tokens to generate (-1 = no limit)"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.num_predict != -1 ? (double)options.num_predict : -1.0;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = (int)this.spin_button.value;
-			options.num_predict = val;
-		}
-	}
-
-	/**
-	 * Repeat Penalty option widget (0.1-10.0).
-	 */
-	public class RepeatPenaltyWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public RepeatPenaltyWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(0.1, 10.0, 0.1) {
-				digits = 1
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Repeat Penalty",
-				subtitle = "Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.repeat_penalty != -1.0 ? options.repeat_penalty : 1.1;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = this.spin_button.value;
-			if (val == 1.1 && options.repeat_penalty == -1.0) {
-				return; // No change
-			}
-			options.repeat_penalty = val;
-		}
-	}
-
-	/**
-	 * Min P option widget (0.0-1.0).
-	 */
-	public class MinPWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public MinPWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(0.0, 1.0, 0.01) {
-				digits = 2
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Min P",
-				subtitle = "Minimum probability threshold for token selection"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.min_p != -1.0 ? options.min_p : 0.0;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = this.spin_button.value;
-			if (val == 0.0 && options.min_p == -1.0) {
-				return; // No change
-			}
-			options.min_p = val;
-		}
-	}
-
-	/**
-	 * Seed option widget (-1 or any int).
-	 */
-	public class SeedWidget : OptionWidget
-	{
-		private Gtk.SpinButton spin_button;
-		private Adw.ActionRow row;
-
-		public SeedWidget()
-		{
-			this.spin_button = new Gtk.SpinButton.with_range(-1.0, 2147483647.0, 1.0) {
-				digits = 0
-			};
-			this.row = new Adw.ActionRow() {
-				title = "Seed",
-				subtitle = "Random seed for reproducible outputs (-1 = random)"
-			};
-			this.row.add_suffix(this.spin_button);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
-		}
-
-		public override void update_from_options(OLLMchat.Call.Options options)
-		{
-			this.spin_button.value = options.seed != -1 ? (double)options.seed : -1.0;
-		}
-
-		public override void update_to_options(OLLMchat.Call.Options options)
-		{
-			var val = (int)this.spin_button.value;
-			options.seed = val == -1 ? -1 : val;
-		}
-	}
-
-	/**
-	 * Stop option widget (string entry).
-	 */
-	public class StopWidget : OptionWidget
+	public class OptionStringWidget : OptionWidget
 	{
 		private Gtk.Entry entry;
-		private Adw.ActionRow row;
+		private unowned string get_value(OLLMchat.Call.Options options);
+		private unowned void set_value(OLLMchat.Call.Options options, string value);
 
-		public StopWidget()
+		/**
+		 * Creates a new OptionStringWidget.
+		 * 
+		 * @param title Row title
+		 * @param subtitle Row subtitle
+		 * @param placeholder Placeholder text for entry
+		 * @param get_value Callback to get value from Options
+		 * @param set_value Callback to set value in Options
+		 */
+		public OptionStringWidget(
+			string title,
+			string subtitle,
+			string placeholder,
+			owned string get_value(OLLMchat.Call.Options options),
+			owned void set_value(OLLMchat.Call.Options options, string value)
+		)
 		{
+			this.title = title;
+			this.subtitle = subtitle;
+			this.get_value = (owned)get_value;
+			this.set_value = (owned)set_value;
+
 			this.entry = new Gtk.Entry() {
-				placeholder_text = "(optional)"
+				placeholder_text = placeholder
 			};
-			this.row = new Adw.ActionRow() {
-				title = "Stop",
-				subtitle = "Stop sequences that cause generation to stop (comma-separated)"
-			};
-			this.row.add_suffix(this.entry);
-		}
-
-		public Adw.ActionRow get_row()
-		{
-			return this.row;
+			this.add_suffix(this.entry);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			this.entry.text = options.stop != "" ? options.stop : "";
+			this.entry.text = this.get_value(options);
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
-			options.stop = this.entry.text;
+			this.set_value(options, this.entry.text);
 		}
 	}
 }
-
