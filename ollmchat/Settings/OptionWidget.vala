@@ -27,6 +27,8 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionsWidget : Gtk.Box
 	{
+		private Gee.ArrayList<OptionRow> option_rows = new Gee.ArrayList<OptionRow>();
+
 		public OptionsWidget()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
