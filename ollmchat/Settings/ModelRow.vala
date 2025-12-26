@@ -129,8 +129,20 @@ namespace OLLMchat.Settings
 				return;
 			}
 
-			// First, ensure any previously expanded row has collapsed
-			// (This is handled by ModelsPage ensuring only one is expanded at a time)
+			// Check if the shared widget's children are already parented elsewhere
+			// (i.e., another ModelRow is currently expanded)
+			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
+			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
+				var row = child as Adw.ActionRow;
+				if (row != null) {
+					var current_parent = row.get_parent();
+					if (current_parent != null && current_parent != this.shared_options_widget) {
+						// Row is already parented to another ExpanderRow, remove it first
+						current_parent.remove(row);
+					}
+					rows_to_reparent.add(row);
+				}
+			}
 
 			// Add separator
 			this.separator_row = new Adw.ActionRow();
@@ -140,18 +152,12 @@ namespace OLLMchat.Settings
 			this.separator_row.add_suffix(separator);
 			this.add_row(this.separator_row);
 
-			// Reparent each option row from OptionsWidget to this ExpanderRow
-			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
-			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
-				var row = child as Adw.ActionRow;
-				if (row != null) {
-					rows_to_reparent.add(row);
-				}
-			}
-
 			// Remove from OptionsWidget and add to ExpanderRow
 			foreach (var row in rows_to_reparent) {
-				this.shared_options_widget.remove(row);
+				// Remove from OptionsWidget if it's still there
+				if (row.get_parent() == this.shared_options_widget) {
+					this.shared_options_widget.remove(row);
+				}
 				this.add_row(row);
 			}
 
