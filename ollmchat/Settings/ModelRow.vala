@@ -171,25 +171,23 @@ namespace OLLMchat.Settings
 			// Save options from widget
 			this.shared_options_widget.save_options(this.options);
 			
-			// Collect all option rows that need to be reparented back
-			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
+			// Collect all rows (separator and option rows) to remove
+			var rows_to_remove = new Gee.ArrayList<Adw.ActionRow>();
 			foreach (Gtk.Widget child in this.get_children()) {
 				var row = child as Adw.ActionRow;
-				if (row != null && row != this.separator_row) {
-					rows_to_reparent.add(row);
+				if (row != null) {
+					rows_to_remove.add(row);
 				}
 			}
 
-			// Remove option rows from ExpanderRow and add back to OptionsWidget
-			foreach (var row in rows_to_reparent) {
+			// Remove all rows from ExpanderRow
+			foreach (var row in rows_to_remove) {
 				this.remove(row);
-				this.shared_options_widget.append(row);
-			}
-
-			// Remove separator
-			if (this.separator_row != null) {
-				this.remove(this.separator_row);
-				this.separator_row = null;
+				// Add option rows back to OptionsWidget (skip separator)
+				var option_row = row as OptionRow;
+				if (option_row != null) {
+					this.shared_options_widget.append(option_row);
+				}
 			}
 
 			// Emit save signal
