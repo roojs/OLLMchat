@@ -118,64 +118,23 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Called when the row is expanded - creates option widgets lazily.
+		 * Called when the row is expanded - reparents shared options widget.
 		 */
 		private void expand()
 		{
-			if (this.options_created) {
-				// Options already created, just update values
-				foreach (var widget in this.option_widgets) {
-					widget.load_options(this.options);
-				}
+			if (this.is_expanded) {
+				// Already expanded, just update values
+				this.shared_options_widget.load_options(this.options);
 				return;
 			}
 
-			// Create option widgets (only once)
-			this.create_option_widgets();
-			this.options_created = true;
-		}
-
-		/**
-		 * Called when the row is collapsed - saves options.
-		 */
-		private void collapse()
-		{
-			// Update options from widgets
-			foreach (var widget in this.option_widgets) {
-				widget.save_options(this.options);
+			// Reparent the shared widget to this expander
+			var old_parent = this.shared_options_widget.get_parent();
+			if (old_parent != null) {
+				old_parent.remove(this.shared_options_widget);
 			}
-			// Emit save signal
-			this.save_options(this.options, this.model.name);
-		}
 
-		/**
-		 * Creates all option widgets and adds them to the expander row.
-		 */
-		private void create_option_widgets()
-		{
-			// Connection (read-only label)
-			var connection_row = new Adw.ActionRow() {
-				title = "Connection"
-			};
-			var connection_label = new Gtk.Label(this.connection_name) {
-				halign = Gtk.Align.END,
-				hexpand = true
-			};
-			connection_row.add_suffix(connection_label);
-			this.add_row(connection_row);
-
-			// Model Name (read-only label)
-			var model_name_row = new Adw.ActionRow() {
-				title = "Model Name"
-			};
-			var model_name_label = new Gtk.Label(this.model.name) {
-				halign = Gtk.Align.END,
-				hexpand = true
-			};
-			model_name_row.add_suffix(model_name_label);
-			this.add_row(model_name_row);
-
-			// Separator
+			// Add separator
 			var separator_row = new Adw.ActionRow();
 			var separator = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
 				hexpand = true
@@ -183,11 +142,47 @@ namespace OLLMchat.Settings
 			separator_row.add_suffix(separator);
 			this.add_row(separator_row);
 
-			// Create all option widgets
-			this.option_widgets = OptionsWidget.create_option_rows(this.options);
-			foreach (var widget in this.option_widgets) {
-				this.add_row(widget);
+			// Add each child of the options widget as a row
+			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
+				var row = child as Adw.ActionRow;
+				if (row != null) {
+					this.add_row(row);
+				}
 			}
+
+			// Load options into the widget
+			this.shared_options_widget.load_options(this.options);
+			this.is_expanded = true;
+		}
+
+		/**
+		 * Called when the row is collapsed - saves options and removes widget.
+		 */
+		private void collapse()
+		{
+			if (!this.is_expanded) {
+				return;
+			}
+
+			// Save options from widget
+			this.shared_options_widget.save_options(this.options);
+			
+			// Remove all rows (separator and option rows)
+			// We need to remove rows in reverse order to avoid index issues
+			var rows_to_remove = new Gee.ArrayList<Adw.ActionRow>();
+			foreach (Gtk.Widget child in this.get_children()) {
+				var row = child as Adw.ActionRow;
+				if (row != null) {
+					rows_to_remove.add(row);
+				}
+			}
+			foreach (var row in rows_to_remove) {
+				this.remove(row);
+			}
+
+			// Emit save signal
+			this.save_options(this.options, this.model.name);
+			this.is_expanded = false;
 		}
 	}
 }
