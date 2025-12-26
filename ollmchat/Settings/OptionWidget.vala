@@ -143,14 +143,14 @@ namespace OLLMchat.Settings
 
 			// Defer adding rows until after GTK has fully processed the unparenting
 			// This ensures widgets are in a clean state without old sibling references
-			// The idle callback ensures GTK has processed all unparenting operations
-			Idle.add(() => {
+			// Use a priority lower than default to ensure unparenting is fully processed
+			Idle.add_full(Priority.LOW, () => {
 				// Verify this is still the current model row (might have changed)
 				if (this.current_model_row != model_row) {
 					return false; // Don't add if model row changed
 				}
 				
-				// Verify all widgets are unparented before adding
+				// Double-check all widgets are unparented before adding
 				foreach (var option_row in this.rows) {
 					var parent = option_row.get_parent();
 					if (parent != null) {
@@ -158,18 +158,13 @@ namespace OLLMchat.Settings
 					}
 				}
 				
-				// Add rows one at a time, ensuring each is fully processed before adding the next
-				// This prevents GTK from trying to maintain order based on old sibling relationships
+				// Now add each OptionRow to the ExpanderRow
+				// By this point, GTK should have processed all unparenting
+				// and widgets should be in a clean state without old sibling references
 				foreach (var option_row in this.rows) {
 					if (option_row.get_parent() == null) {
-						// Use a nested idle to ensure each widget is added after the previous one is fully processed
-						Idle.add(() => {
-							if (option_row.get_parent() == null && this.current_model_row == model_row) {
-								model_row.add_row(option_row);
-								option_row.visible = true;
-							}
-							return false;
-						});
+						model_row.add_row(option_row);
+						option_row.visible = true;
 					}
 				}
 				return false; // Don't repeat
