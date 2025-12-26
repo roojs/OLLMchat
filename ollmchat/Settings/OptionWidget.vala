@@ -119,27 +119,25 @@ namespace OLLMchat.Settings
 			});
 		}
 
-		public void load_options(OLLMchat.Call.Options options)
-		{
-			var children = this.observe_children();
-			for (uint i = 0; i < children.get_n_items(); i++) {
-				var child = children.get_item(i) as OptionRow;
-				if (child != null) {
-					child.load_options(options);
-				}
+	public void load_options(OLLMchat.Call.Options options)
+	{
+		foreach (Gtk.Widget element in this.get_children()) {
+			var row = element as OptionRow;
+			if (row != null) {
+				row.load_options(options);
 			}
 		}
+	}
 
-		public void save_options(OLLMchat.Call.Options options)
-		{
-			var children = this.observe_children();
-			for (uint i = 0; i < children.get_n_items(); i++) {
-				var child = children.get_item(i) as OptionRow;
-				if (child != null) {
-					child.save_options(options);
-				}
+	public void save_options(OLLMchat.Call.Options options)
+	{
+		foreach (Gtk.Widget element in this.get_children()) {
+			var row = element as OptionRow;
+			if (row != null) {
+				row.save_options(options);
 			}
 		}
+	}
 	}
 	/**
 	 * Base class for option rows that can update their values from Options objects.
