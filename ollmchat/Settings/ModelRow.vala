@@ -128,12 +128,14 @@ namespace OLLMchat.Settings
 				return;
 			}
 
-			// Check if the widget is already parented elsewhere (another ModelRow is expanded)
-			var old_parent = this.models_page.options_widget.get_parent();
-			if (old_parent != null && old_parent != this) {
-				// Remove from previous parent
-				old_parent.remove(this.models_page.options_widget);
+			// If another ModelRow currently has the widget, collapse it first
+			var previous_row = this.models_page.options_widget.current_model_row;
+			if (previous_row != null && previous_row != this) {
+				previous_row.collapse();
 			}
+			
+			// Set this row as the current owner of the options widget
+			this.models_page.options_widget.current_model_row = this;
 			
 			// Add the OptionsWidget Box directly to the ExpanderRow
 			// Using append() to add it as a child of the ExpanderRow (not the parent list)
@@ -148,8 +150,9 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Called when the row is collapsed - saves options and reparents widget back.
+		 * Can be called externally when another row expands.
 		 */
-		private void collapse()
+		internal void collapse()
 		{
 			if (!this.is_expanded) {
 				return;
@@ -162,6 +165,11 @@ namespace OLLMchat.Settings
 			// The OptionRows are already inside the OptionsWidget, so we just remove the Box
 			if (this.models_page.options_widget.get_parent() == this) {
 				this.remove(this.models_page.options_widget);
+			}
+
+			// Clear the reference to this row in the options widget
+			if (this.models_page.options_widget.current_model_row == this) {
+				this.models_page.options_widget.current_model_row = null;
 			}
 
 			// Emit save signal

@@ -27,6 +27,12 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionsWidget : Gtk.Box
 	{
+		/**
+		 * The ModelRow that currently has this widget assigned to it.
+		 * Used to call collapse() when another row expands.
+		 */
+		public ModelRow? current_model_row { get; set; }
+
 		public OptionsWidget()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
