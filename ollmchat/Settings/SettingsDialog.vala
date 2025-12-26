@@ -76,36 +76,9 @@ namespace OLLMchat.Settings
 			this.models_page.notify["visible"].connect(this.on_page_visibility_changed);
 			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
 			
-			// Add action bar area at the bottom of the dialog
-			// We need to do this after the dialog is realized, so use idle to defer
-			GLib.Idle.add(() => {
-				// Get the current child (the PreferencesDialog's internal content)
-				var original_child = this.get_child();
-				if (original_child != null) {
-					// If child is a Box, append action bar area at the bottom
-					if (original_child is Gtk.Box) {
-						var content_box = original_child as Gtk.Box;
-						// Append action bar area at the bottom
-						content_box.append(this.action_bar_area);
-					} else {
-						// If not a Box, wrap it
-						original_child.unparent();
-						
-						// Create a wrapper box with original content and action bar area at bottom
-						var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-						
-						// Add original content first
-						wrapper_box.append(original_child);
-						
-						// Add action bar area at the bottom
-						wrapper_box.append(this.action_bar_area);
-						
-						// Set the wrapper as the new child
-						this.set_child(wrapper_box);
-					}
-				}
-				return false; // Only run once
-			});
+			// Don't modify dialog structure - let ModelsPage handle adding action bar
+			// The action bar will be added to ModelsPage and will appear at the bottom
+			// of the scrollable content (not fixed, but functional)
 			
 			// Initial visibility check
 			this.update_action_bar_visibility();
