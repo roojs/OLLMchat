@@ -23,9 +23,12 @@ namespace OLLMchat.Settings
 	/**
 	 * Widget that contains all option rows for model configuration.
 	 * 
+	 * Stores option rows in an ArrayList and manages attaching/detaching them
+	 * to/from ExpanderRows.
+	 * 
 	 * @since 1.0
 	 */
-	public class OptionsWidget : Gtk.Box
+	public class OptionsWidget : GLib.Object
 	{
 		/**
 		 * The ModelRow that currently has this widget assigned to it.
@@ -33,11 +36,14 @@ namespace OLLMchat.Settings
 		 */
 		public ModelRow? current_model_row { get; set; }
 
+		/**
+		 * List of all option rows managed by this widget.
+		 */
+		private Gee.ArrayList<OptionRow> rows = new Gee.ArrayList<OptionRow>();
+
 		public OptionsWidget()
 		{
-			Object(orientation: Gtk.Orientation.VERTICAL);
-
-			this.append(new OptionFloatWidget() {
+			this.rows.add(new OptionFloatWidget() {
 				title = "Temperature",
 				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
 				property_name = "temperature",
@@ -48,7 +54,7 @@ namespace OLLMchat.Settings
 				default_value = 0.0
 			});
 
-			this.append(new OptionFloatWidget() {
+			this.rows.add(new OptionFloatWidget() {
 				title = "Top P",
 				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
 				property_name = "top_p",
@@ -59,7 +65,7 @@ namespace OLLMchat.Settings
 				default_value = 0.9
 			});
 
-			this.append(new OptionIntWidget() {
+			this.rows.add(new OptionIntWidget() {
 				title = "Top K",
 				subtitle = "Limits sampling to top K most likely tokens",
 				property_name = "top_k",
@@ -68,7 +74,7 @@ namespace OLLMchat.Settings
 				default_value = 40.0
 			});
 
-			this.append(new OptionIntWidget() {
+			this.rows.add(new OptionIntWidget() {
 				title = "Num Ctx",
 				subtitle = "Context window size - number of tokens the model can consider",
 				property_name = "num_ctx",
@@ -77,7 +83,7 @@ namespace OLLMchat.Settings
 				default_value = 2048.0
 			});
 
-			this.append(new OptionIntWidget() {
+			this.rows.add(new OptionIntWidget() {
 				title = "Num Predict",
 				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
 				property_name = "num_predict",
@@ -86,18 +92,7 @@ namespace OLLMchat.Settings
 				default_value = -1.0
 			});
 
-			this.append(new OptionFloatWidget() {
-				title = "Repeat Penalty",
-				subtitle = "Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)",
-				property_name = "repeat_penalty",
-				min_value = 0.1,
-				max_value = 10.0,
-				step_value = 0.1,
-				digits = 1,
-				default_value = 1.1
-			});
-
-			this.append(new OptionFloatWidget() {
+			this.rows.add(new OptionFloatWidget() {
 				title = "Min P",
 				subtitle = "Minimum probability threshold for token selection",
 				property_name = "min_p",
@@ -108,43 +103,64 @@ namespace OLLMchat.Settings
 				default_value = 0.0
 			});
 
-			this.append(new OptionIntWidget() {
+			this.rows.add(new OptionIntWidget() {
 				title = "Seed",
-				subtitle = "Random seed for reproducible outputs (-1 = random)",
+				subtitle = "Random seed used for reproducible outputs (-1 = random)",
 				property_name = "seed",
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				default_value = -1.0
 			});
-
-			this.append(new OptionStringWidget() {
-				title = "Stop",
-				subtitle = "Stop sequences that cause generation to stop (comma-separated)",
-				property_name = "stop",
-				placeholder_text = "(optional)"
-			});
 		}
 
-	public void load_options(OLLMchat.Call.Options options)
-	{
-		foreach (Gtk.Widget element in this.get_children()) {
-			var row = element as OptionRow;
-			if (row != null) {
+		public void load_options(OLLMchat.Call.Options options)
+		{
+			foreach (var row in this.rows) {
 				row.load_options(options);
 			}
 		}
-	}
 
-	public void save_options(OLLMchat.Call.Options options)
-	{
-		foreach (Gtk.Widget element in this.get_children()) {
-			var row = element as OptionRow;
-			if (row != null) {
+		public void save_options(OLLMchat.Call.Options options)
+		{
+			foreach (var row in this.rows) {
 				row.save_options(options);
 			}
 		}
+
+		/**
+		 * Attaches all option rows to the given ModelRow's ExpanderRow.
+		 * 
+		 * @param model_row The ModelRow to attach option rows to
+		 */
+		public void attach_to_model_row(ModelRow model_row)
+		{
+			// Clear any previously attached rows
+			this.detach_from_expander_row();
+
+			// Set this row as the current owner
+			this.current_model_row = model_row;
+
+			// Add each OptionRow from the list individually to the ExpanderRow
+			foreach (var option_row in this.rows) {
+				model_row.add_row(option_row);
+				option_row.visible = true;
+			}
+		}
+
+		/**
+		 * Detaches all option rows from their current ExpanderRow parent.
+		 */
+		public void detach_from_expander_row()
+		{
+			// Remove each OptionRow that was attached to an ExpanderRow
+			foreach (var option_row in this.rows) {
+				if (option_row.get_parent() != null) {
+					option_row.unparent();
+				}
+			}
+		}
 	}
-	}
+
 	/**
 	 * Base class for option rows that can update their values from Options objects.
 	 * 
@@ -199,7 +215,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(double));
-			options.get_property(this.property_name, ref val);
+			((GLib.Object)options).get_property(this.property_name, ref val);
 			var double_val = val.get_double();
 			this.spin_button.value = double_val != this.unset_value ? double_val : this.default_value;
 		}
@@ -209,7 +225,7 @@ namespace OLLMchat.Settings
 			var val = this.spin_button.value;
 			Value value = Value(typeof(double));
 			value.set_double(val);
-			options.set_property(this.property_name, value);
+			((GLib.Object)options).set_property(this.property_name, value);
 		}
 	}
 
@@ -245,7 +261,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(int));
-			options.get_property(this.property_name, ref val);
+			((GLib.Object)options).get_property(this.property_name, ref val);
 			var int_val = val.get_int();
 			this.spin_button.value = int_val != this.unset_value ? (double)int_val : this.default_value;
 		}
@@ -255,7 +271,7 @@ namespace OLLMchat.Settings
 			var val = (int)this.spin_button.value;
 			Value value = Value(typeof(int));
 			value.set_int(val);
-			options.set_property(this.property_name, value);
+			((GLib.Object)options).set_property(this.property_name, value);
 		}
 	}
 
@@ -280,7 +296,7 @@ namespace OLLMchat.Settings
 		public override void load_options(OLLMchat.Call.Options options)
 		{
 			Value val = Value(typeof(string));
-			options.get_property(this.property_name, ref val);
+			((GLib.Object)options).get_property(this.property_name, ref val);
 			this.entry.text = val.get_string();
 		}
 
@@ -288,7 +304,8 @@ namespace OLLMchat.Settings
 		{
 			Value value = Value(typeof(string));
 			value.set_string(this.entry.text);
-			options.set_property(this.property_name, value);
+			((GLib.Object)options).set_property(this.property_name, value);
 		}
 	}
 }
+

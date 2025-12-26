@@ -43,7 +43,7 @@ namespace OLLMchat.Settings
 		 */
 		public OLLMchat.Call.Options options { get; private set; }
 
-		private ModelsPage models_page { get; construct; }
+		public ModelsPage models_page { get; construct; }
 		private bool is_expanding = false;
 
 		/**
@@ -105,8 +105,8 @@ namespace OLLMchat.Settings
 			}
 			this.is_expanding = true;
 
-			// If already expanded, just update values
-			if (this.expanded) {
+			// If rows are already attached to this row, just update values
+			if (this.models_page.options_widget.current_model_row == this) {
 				this.models_page.options_widget.load_options(this.options);
 				this.is_expanding = false;
 				return;
@@ -118,15 +118,9 @@ namespace OLLMchat.Settings
 				previous_row.collapse();
 			}
 			
-			// Set this row as the current owner of the options widget
-			this.models_page.options_widget.current_model_row = this;
-			
-			// Add the OptionsWidget Box directly to the ExpanderRow
-			// Using append() to add it as a child of the ExpanderRow (not the parent list)
-			// This is the correct way - the theoretical code using this.parent.insert_child_after()
-			// would add it to the parent container after this ModelRow, not inside it
-			this.append(this.models_page.options_widget);			
-
+			// Attach option rows to this ExpanderRow (also sets current_model_row)
+			this.models_page.options_widget.attach_to_model_row(this);
+				
 			// Load options into the widget
 			this.models_page.options_widget.load_options(this.options);
 			this.is_expanding = false;
@@ -153,11 +147,8 @@ namespace OLLMchat.Settings
 			// Save options from widget
 			this.models_page.options_widget.save_options(this.options);
 			
-			// Remove the OptionsWidget Box from the ExpanderRow
-			// The OptionRows are already inside the OptionsWidget, so we just remove the Box
-			if (this.models_page.options_widget.get_parent() == this) {
-				this.remove(this.models_page.options_widget);
-			}
+			// Detach option rows from this ExpanderRow
+			this.models_page.options_widget.detach_from_expander_row();
 
 			// Clear the reference to this row in the options widget
 			if (this.models_page.options_widget.current_model_row == this) {

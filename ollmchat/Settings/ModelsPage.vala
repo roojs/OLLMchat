@@ -63,6 +63,9 @@ namespace OLLMchat.Settings
 		{
 			Object(settings_dialog: settings_dialog);
 
+			// Set page title for tab
+			this.title = "Models";
+
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				margin_start = 12,

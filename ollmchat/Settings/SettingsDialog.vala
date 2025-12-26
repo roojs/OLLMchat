@@ -21,7 +21,7 @@ namespace OLLMchat.Settings
 	/**
 	 * Main settings dialog for displaying and changing configuration.
 	 * 
-	 * Uses Adw.PreferencesDialog with Adw.ViewStack for tabs.
+	 * Uses Adw.PreferencesDialog with multiple Adw.PreferencesPage objects for tabs.
 	 * Only responsible for displaying and changing configuration, not loading/saving.
 	 * Loading is done by the caller before creating the dialog.
 	 * Saving is done automatically on close.
@@ -40,7 +40,6 @@ namespace OLLMchat.Settings
 		
 		// `refresh_models()` - Emitted when models need to be refreshed (main window can connect to this) (commented out until model tab is added)
 		
-		private Adw.ViewStack view_stack;
 		private Settings.ConnectionsPage connections_page;
 		private Settings.ModelsPage models_page;
 
@@ -57,31 +56,13 @@ namespace OLLMchat.Settings
 			this.set_content_width(800);
 			this.set_content_height(600);
 
-			// Create view stack for tabs
-			this.view_stack = new Adw.ViewStack();
-
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
-			this.view_stack.add_titled(
-				this.connections_page,
-				"connections",
-				"Connections"
-			);
+			this.add(this.connections_page);
 
 			// Create models page
 			this.models_page = new Settings.ModelsPage(this);
-			this.view_stack.add_titled(
-				this.models_page,
-				"models",
-				"Models"
-			);
-
-			// Add view stack to a preferences page
-			var page = new Adw.PreferencesPage();
-			var group = new Adw.PreferencesGroup();
-			group.add(this.view_stack);
-			page.add(group);
-			this.add(page);
+			this.add(this.models_page);
 
 			// Connect closed signal to save config when dialog closes
 			this.closed.connect(this.on_closed);
@@ -98,11 +79,7 @@ namespace OLLMchat.Settings
 			this.models_page.render_models.begin();
 			
 			// Present the dialog
-			if (parent != null) {
-				this.present(parent);
-			} else {
-				this.present();
-			}
+			this.present(parent);
 		}
 
 		/**

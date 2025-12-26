@@ -57,10 +57,10 @@ namespace OLLMchat.Settings
 		public ConnectionsPage(SettingsDialog dialog)
 		{
 			Object(dialog: dialog);
-		}
+		
+			// Set page title for tab
+			this.title = "Connections";
 
-		construct
-		{
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				margin_start = 12,
