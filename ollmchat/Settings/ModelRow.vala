@@ -251,7 +251,7 @@ namespace OLLMchat.Settings
 			var repeat_penalty_widget = new OptionFloatWidget() {
 				title = "Repeat Penalty",
 				subtitle = "Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)",
-				property_name = "repeat-penalty",
+				property_name = "repeat_penalty",
 				min_value = 0.1,
 				max_value = 10.0,
 				step_value = 0.1,
