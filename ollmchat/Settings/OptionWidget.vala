@@ -138,14 +138,11 @@ namespace OLLMchat.Settings
 
 		private Gtk.Entry entry;
 
-		public OptionStringWidget(string placeholder_text)
+		construct
 		{
-			this.placeholder_text = placeholder_text;
-
 			this.entry = new Gtk.Entry() {
 				placeholder_text = this.placeholder_text
 			};
-			this.add_suffix(this.entry);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
