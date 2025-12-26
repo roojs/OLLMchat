@@ -137,7 +137,7 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public class OptionStringWidget : OptionWidget
+	public class OptionStringWidget : OptionRow
 	{
 		public string property_name { get; set; }
 		public string placeholder_text { get; set; }
