@@ -26,18 +26,18 @@ namespace OLLMchat.Settings
 	public abstract class OptionWidget : Adw.ActionRow
 	{
 		/**
-		 * Updates the widget's value from the options object.
+		 * Loads the widget's value from the options object.
 		 * 
 		 * @param options Options object to read value from
 		 */
-		public abstract void update_from_options(OLLMchat.Call.Options options);
+		public abstract void load_options(OLLMchat.Call.Options options);
 
 		/**
-		 * Updates the options object from the widget's current value.
+		 * Saves the widget's current value to the options object.
 		 * 
 		 * @param options Options object to update
 		 */
-		public abstract void update_to_options(OLLMchat.Call.Options options);
+		public abstract void save_options(OLLMchat.Call.Options options);
 	}
 
 	/**
