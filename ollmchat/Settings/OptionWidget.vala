@@ -97,8 +97,8 @@ namespace OLLMchat.Settings
 		public double default_value { get; construct; }
 		public int unset_value { get; construct; }
 
-		public int get_value(OLLMchat.Call.Options options) { get; set; }
-		public void set_value(OLLMchat.Call.Options options, int value) { get; set; }
+		public signal int get_value(OLLMchat.Call.Options options);
+		public signal void set_value(OLLMchat.Call.Options options, int value);
 
 		private Gtk.SpinButton spin_button;
 
