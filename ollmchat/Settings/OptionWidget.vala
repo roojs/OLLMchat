@@ -47,6 +47,7 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionFloatWidget : OptionWidget
 	{
+		public string property_name { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; }
@@ -54,39 +55,34 @@ namespace OLLMchat.Settings
 		public double default_value { get; set; }
 		public double unset_value { get; set; }
 
-		public signal double get_value(OLLMchat.Call.Options options);
-		public signal void set_value(OLLMchat.Call.Options options, double value);
-
 		private Gtk.SpinButton spin_button;
-		private bool configured = false;
 
 		construct
 		{
 			this.spin_button = new Gtk.SpinButton.with_range(0.0, 100.0, 1.0) {
 				digits = 0
 			};
+			this.add_suffix(this.spin_button);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			if (!this.configured) {
-				this.spin_button.set_range(this.min_value, this.max_value);
-				this.spin_button.set_increments(this.step_value, this.step_value * 10);
-				this.spin_button.digits = this.digits;
-				this.add_suffix(this.spin_button);
-				this.configured = true;
-			}
-			var val = this.get_value(options);
-			this.spin_button.value = val != this.unset_value ? val : this.default_value;
+			this.spin_button.set_range(this.min_value, this.max_value);
+			this.spin_button.set_increments(this.step_value, this.step_value * 10);
+			this.spin_button.digits = this.digits;
+
+			Value val = Value(typeof(double));
+			options.get_property(this.property_name, ref val);
+			var double_val = val.get_double();
+			this.spin_button.value = double_val != this.unset_value ? double_val : this.default_value;
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
 			var val = this.spin_button.value;
-			if (val == this.default_value && this.get_value(options) == this.unset_value) {
-				return; // No change
-			}
-			this.set_value(options, val);
+			Value value = Value(typeof(double));
+			value.set_double(val);
+			options.set_property(this.property_name, value);
 		}
 	}
 
