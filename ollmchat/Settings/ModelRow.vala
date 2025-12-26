@@ -183,7 +183,8 @@ namespace OLLMchat.Settings
 			// (This will trigger the signal handler, but the early return prevents recursion)
 			this.expanded = false;
 			
-			// Emit save signal
+			// Emit save signal - the handler (save_model_options) will check if options
+			// have non-default values and only save to config if they do
 			this.save_options(this.options, this.model.name);
 			
 			this.is_expanding = false;
