@@ -84,7 +84,11 @@ namespace OLLMchat.Settings
 			
 			// Create action bar area (fixed at bottom, outside scrollable content)
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				visible = false
+				visible = false,
+				margin_start = 12,
+				margin_end = 12,
+				margin_top = 12,
+				margin_bottom = 12
 			};
 			main_box.append(this.action_bar_area);
 			

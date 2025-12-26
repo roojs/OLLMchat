@@ -65,10 +65,7 @@ namespace OLLMchat.Settings
 
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 12,
-				margin_bottom = 12
+				hexpand = true
 			};
 
 			// Create search bar (always visible)
