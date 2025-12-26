@@ -54,12 +54,8 @@ namespace OLLMchat.Settings
 		public double default_value { get; construct; }
 		public double unset_value { get; construct; }
 
-		public delegate double GetValueFunc(OLLMchat.Call.Options options);
-		public delegate void SetValueFunc(OLLMchat.Call.Options options, double value);
-
-		public GetValueFunc get_value_func { get; set; }
-		public SetValueFunc set_value_func { get; set; }
-
+		public signal double get_value(OLLMchat.Call.Options options);
+		public signal void set_value(OLLMchat.Call.Options options, double value);
 
 		private Gtk.SpinButton spin_button;
 
@@ -73,17 +69,17 @@ namespace OLLMchat.Settings
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
-			var val = this.get_value_func(options);
+			var val = this.get_value(options);
 			this.spin_button.value = val != this.unset_value ? val : this.default_value;
 		}
 
 		public override void update_to_options(OLLMchat.Call.Options options)
 		{
 			var val = this.spin_button.value;
-			if (val == this.default_value && this.get_value_func(options) == this.unset_value) {
+			if (val == this.default_value && this.get_value(options) == this.unset_value) {
 				return; // No change
 			}
-			this.set_value_func(options, val);
+			this.set_value(options, val);
 		}
 	}
 
