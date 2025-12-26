@@ -62,6 +62,12 @@ namespace OLLMchat.Settings
 		public ModelsPage(SettingsDialog settings_dialog)
 		{
 			Object(settings_dialog: settings_dialog, orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			
+			// Add proper margins to the page
+			this.margin_start = 12;
+			this.margin_end = 12;
+			this.margin_top = 12;
+			this.margin_bottom = 12;
 
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
