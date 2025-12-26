@@ -124,58 +124,38 @@ namespace OLLMchat.Settings
 		{
 			if (this.is_expanded) {
 				// Already expanded, just update values
-				foreach (Gtk.Widget child in this.get_children()) {
-					var row = child as OptionRow;
-					if (row != null) {
-						row.load_options(this.options);
-					}
-				}
+				this.shared_options_widget.load_options(this.options);
 				return;
 			}
 
-			// Collect all option rows from the shared widget
-			// They might be children of OptionsWidget or parented to another ExpanderRow
-			var rows_to_reparent = new Gee.ArrayList<OptionRow>();
-			
-			// First, try to get rows from OptionsWidget
-			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
-				var row = child as OptionRow;
-				if (row != null) {
-					rows_to_reparent.add(row);
-				}
+			// Check if the widget is already parented elsewhere (another ModelRow is expanded)
+			var old_parent = this.shared_options_widget.get_parent();
+			if (old_parent != null && old_parent != this) {
+				// Remove from previous parent
+				old_parent.remove(this.shared_options_widget);
 			}
-			
-			// If no rows found in OptionsWidget, they might be parented to another ExpanderRow
-			// In that case, we need to find them. But typically Adw.ExpanderRow will auto-collapse
-			// other rows, so they should be back in OptionsWidget. If not, we'll handle it below.
 
 			// Add separator
-			this.separator_row = new Adw.ActionRow();
+			var separator_row = new Adw.ActionRow();
 			var separator = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
 				hexpand = true
 			};
-			this.separator_row.add_suffix(separator);
-			this.add_row(this.separator_row);
+			separator_row.add_suffix(separator);
+			this.add_row(separator_row);
 
-			// Remove from OptionsWidget and add to ExpanderRow
-			foreach (var row in rows_to_reparent) {
-				// Remove from OptionsWidget (they should be there if no other row is expanded)
-				if (row.get_parent() == this.shared_options_widget) {
+			// Add each option row from the OptionsWidget to the ExpanderRow
+			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
+				var row = child as Adw.ActionRow;
+				if (row != null) {
+					// Remove from OptionsWidget
 					this.shared_options_widget.remove(row);
-				} else {
-					// Row is parented elsewhere (another ExpanderRow), remove it first
-					var old_parent = row.get_parent();
-					if (old_parent != null) {
-						old_parent.remove(row);
-					}
+					// Add to ExpanderRow
+					this.add_row(row);
 				}
-				this.add_row(row);
 			}
 
-			// Load options into each row directly
-			foreach (var row in rows_to_reparent) {
-				row.load_options(this.options);
-			}
+			// Load options into the widget
+			this.shared_options_widget.load_options(this.options);
 			this.is_expanded = true;
 		}
 
