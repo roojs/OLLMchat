@@ -122,9 +122,16 @@ namespace OLLMchat.Settings
 		 */
 		private void expand()
 		{
+			// Recursion guard - prevent re-entry
 			if (this.is_expanding) {
-				// Already expanded, just update values
+				return;
+			}
+			this.is_expanding = true;
+
+			// If already expanded, just update values
+			if (this.expanded) {
 				this.models_page.options_widget.load_options(this.options);
+				this.is_expanding = false;
 				return;
 			}
 
@@ -145,7 +152,7 @@ namespace OLLMchat.Settings
 
 			// Load options into the widget
 			this.models_page.options_widget.load_options(this.options);
-			this.is_expanding = true;
+			this.is_expanding = false;
 		}
 
 		/**
@@ -154,7 +161,15 @@ namespace OLLMchat.Settings
 		 */
 		internal void collapse()
 		{
-			if (!this.is_expanding) {
+			// Recursion guard - prevent re-entry
+			if (this.is_expanding) {
+				return;
+			}
+			this.is_expanding = true;
+
+			// Only collapse if actually expanded
+			if (!this.expanded) {
+				this.is_expanding = false;
 				return;
 			}
 
@@ -172,15 +187,14 @@ namespace OLLMchat.Settings
 				this.models_page.options_widget.current_model_row = null;
 			}
 
-			// Set is_expanding to false first to prevent recursion if signal fires
-			this.is_expanding = false;
-			
 			// Set expanded property to false to keep UI in sync
 			// (This will trigger the signal handler, but the early return prevents recursion)
 			this.expanded = false;
 			
 			// Emit save signal
 			this.save_options(this.options, this.model.name);
+			
+			this.is_expanding = false;
 		}
 	}
 }
