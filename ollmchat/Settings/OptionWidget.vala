@@ -57,7 +57,7 @@ namespace OLLMchat.Settings
 
 		private Gtk.SpinButton spin_button;
 
-		construct
+		public OptionFloatWidget()
 		{
 			this.spin_button = new Gtk.SpinButton.with_range(0.0, 100.0, 1.0) {
 				digits = 0
