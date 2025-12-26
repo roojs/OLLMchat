@@ -113,8 +113,8 @@ namespace OLLMchat.Settings
 			// Connect to page visibility to show/hide action bar area
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
 			
-			// Initial visibility check
-			this.update_action_bar_visibility();
+			// Initial activation of the default visible page
+			this.on_page_changed();
 
 			// Connect closed signal to save config when dialog closes
 			this.closed.connect(this.on_closed);
