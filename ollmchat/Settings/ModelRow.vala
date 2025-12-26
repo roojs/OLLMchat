@@ -63,12 +63,14 @@ namespace OLLMchat.Settings
 		 * @param connection_url Connection URL
 		 * @param connection_name Connection display name
 		 * @param options Initial options (will be cloned)
+		 * @param shared_options_widget Shared OptionsWidget to reparent
 		 */
 		public ModelRow(
 			OLLMchat.Response.Model model,
 			string connection_url,
 			string connection_name,
-			OLLMchat.Call.Options options
+			OLLMchat.Call.Options options,
+			OptionsWidget shared_options_widget
 		)
 		{
 			Object(
@@ -77,8 +79,8 @@ namespace OLLMchat.Settings
 				connection_name: connection_name
 			);
 			this.options = options.clone();
+			this.shared_options_widget = shared_options_widget;
 			this.title = model.name;
-			this.subtitle = connection_name;
 
 			// Connect expand/collapse signal
 			this.notify["expanded"].connect(() => {
@@ -98,11 +100,20 @@ namespace OLLMchat.Settings
 		public void update_options(OLLMchat.Call.Options new_options)
 		{
 			this.options = new_options.clone();
-			// Update widget values if they've been created
-			if (this.options_created) {
-				foreach (var widget in this.option_widgets) {
-					widget.load_options(this.options);
-				}
+			// Update widget values if currently expanded
+			if (this.is_expanded) {
+				this.shared_options_widget.load_options(this.options);
+			}
+		}
+
+		/**
+		 * Saves current options from the shared widget to this model's options.
+		 * Called when collapsing or when saving all options.
+		 */
+		public void save_current_options()
+		{
+			if (this.is_expanded) {
+				this.shared_options_widget.save_options(this.options);
 			}
 		}
 
