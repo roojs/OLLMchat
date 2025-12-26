@@ -352,8 +352,6 @@ namespace OLLMchat.Settings
 			foreach (var row in this.model_rows.values) {
 				// Update options from widgets if expanded
 				if (row.expanded) {
-					// Force update by collapsing and re-expanding
-					// Actually, we should just save directly
 					foreach (var widget in row.option_widgets) {
 						widget.update_to_options(row.options);
 					}
