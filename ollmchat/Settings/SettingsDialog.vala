@@ -60,9 +60,6 @@ namespace OLLMchat.Settings
 			this.set_content_height(600);
 
 			// Create action bar area (initially empty, pages can add widgets here)
-			// Note: Adw.PreferencesDialog manages its own structure, so we provide this area
-			// as a container that pages can add their action bars to. The area itself
-			// will be added as a PreferencesGroup to make it visible in the dialog.
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				visible = false
 			};
@@ -79,6 +76,23 @@ namespace OLLMchat.Settings
 			this.models_page.notify["visible"].connect(this.on_page_visibility_changed);
 			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
 			
+			// Wrap dialog content to add fixed header area
+			// Get the current child (the PreferencesDialog's internal content)
+			var original_child = this.get_child();
+			if (original_child != null) {
+				// Create a wrapper box with action bar area at top and original content below
+				var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+				
+				// Add action bar area at top (fixed, not scrollable)
+				wrapper_box.append(this.action_bar_area);
+				
+				// Add original content below (this will be scrollable)
+				wrapper_box.append(original_child);
+				
+				// Set the wrapper as the new child
+				this.set_child(wrapper_box);
+			}
+			
 			// Initial visibility check
 			this.update_action_bar_visibility();
 
@@ -91,8 +105,8 @@ namespace OLLMchat.Settings
 		 */
 		private void update_action_bar_visibility()
 		{
-			// Visibility is managed by ModelsPage when it adds/removes its action bar
-			// This method is kept for potential future use
+			// Show action bar area only when models page is visible
+			this.action_bar_area.visible = (this.models_page != null && this.models_page.visible);
 		}
 		
 		/**
