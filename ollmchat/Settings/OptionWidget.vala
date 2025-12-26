@@ -142,8 +142,16 @@ namespace OLLMchat.Settings
 			this.current_model_row = model_row;
 
 			// Add each OptionRow from the list individually to the ExpanderRow
+			// Use insert_after with null to ensure no previous sibling references
+			Gtk.Widget? previous = null;
 			foreach (var option_row in this.rows) {
-				model_row.add_row(option_row);
+				// Ensure widget is fully unparented before adding
+				if (option_row.get_parent() != null) {
+					option_row.unparent();
+				}
+				// Insert after previous (or at start if previous is null)
+				model_row.insert_row_after(option_row, previous);
+				previous = option_row;
 				option_row.visible = true;
 			}
 		}
