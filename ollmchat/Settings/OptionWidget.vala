@@ -97,17 +97,18 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionIntWidget : OptionWidget
 	{
-		private double min_value;
-		private double max_value;
-		private double step_value;
-		private uint digits;
-		private double default_value;
-		private int unset_value;
+		public double min_value { get; set; }
+		public double max_value { get; set; }
+		public double step_value { get; set; }
+		public uint digits { get; set; }
+		public double default_value { get; set; }
+		public int unset_value { get; set; }
 
 		public signal int get_value(OLLMchat.Call.Options options);
 		public signal void set_value(OLLMchat.Call.Options options, int value);
 
 		private Gtk.SpinButton spin_button;
+		private bool configured = false;
 
 		construct
 		{
@@ -118,6 +119,13 @@ namespace OLLMchat.Settings
 
 		public override void update_from_options(OLLMchat.Call.Options options)
 		{
+			if (!this.configured) {
+				this.spin_button.set_range(this.min_value, this.max_value);
+				this.spin_button.set_increments(this.step_value, this.step_value * 10);
+				this.spin_button.digits = this.digits;
+				this.add_suffix(this.spin_button);
+				this.configured = true;
+			}
 			var val = this.get_value(options);
 			this.spin_button.value = val != this.unset_value ? (double)val : this.default_value;
 		}
