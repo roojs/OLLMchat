@@ -91,7 +91,7 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public class OptionIntWidget : OptionWidget
+	public class OptionIntWidget : OptionRow
 	{
 		public string property_name { get; set; }
 		public double min_value { get; set; }
