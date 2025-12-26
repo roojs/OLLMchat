@@ -96,10 +96,10 @@ namespace OLLMchat.Settings
 		public string property_name { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
-		public double step_value { get; set; }
-		public uint digits { get; set; }
+		public double step_value { get; set; default = 1.0; }
+		public uint digits { get; set; default = 0; }
 		public double default_value { get; set; }
-		public int unset_value { get; set; }
+		public int unset_value { get; set; default = -1; }
 
 		private Gtk.SpinButton spin_button;
 
