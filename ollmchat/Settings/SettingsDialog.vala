@@ -101,9 +101,7 @@ namespace OLLMchat.Settings
 
 			// Create models page (will add its action bar to action_bar_area)
 			this.models_page = new Settings.ModelsPage(this);
-			this.view_stack.add_titled(this.models_page, 
-				this.models_page.page_name, 
-				this.models_page.page_title);
+			this.view_stack.add_titled(this.models_page, this.models_page.page_name, this.models_page.page_title);
 			
 			// Connect to page visibility to show/hide action bar area
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
