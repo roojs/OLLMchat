@@ -19,11 +19,11 @@
 namespace OLLMchat.Settings
 {
 	/**
-	 * Base class for option widgets that can update their values from Options objects.
+	 * Base class for option rows that can update their values from Options objects.
 	 * 
 	 * @since 1.0
 	 */
-	public abstract class OptionWidget : Adw.ActionRow
+	public abstract class OptionRow : Adw.ActionRow
 	{
 		/**
 		 * Loads the widget's value from the options object.
@@ -45,7 +45,7 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public class OptionFloatWidget : OptionWidget
+	public class OptionFloatWidget : OptionRow
 	{
 		public string property_name { get; set; }
 		public double min_value { get; set; }
