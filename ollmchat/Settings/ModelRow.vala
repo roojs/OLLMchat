@@ -137,27 +137,30 @@ namespace OLLMchat.Settings
 		{
 			if (this.is_expanded) {
 				// Already expanded, just update values
-				this.shared_options_widget.load_options(this.options);
+				foreach (Gtk.Widget child in this.get_children()) {
+					var row = child as OptionRow;
+					if (row != null) {
+						row.load_options(this.options);
+					}
+				}
 				return;
 			}
 
 			// Collect all option rows from the shared widget
 			// They might be children of OptionsWidget or parented to another ExpanderRow
-			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
+			var rows_to_reparent = new Gee.ArrayList<OptionRow>();
 			
-			// First, get rows that are currently children of OptionsWidget
+			// First, try to get rows from OptionsWidget
 			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
-				var row = child as Adw.ActionRow;
+				var row = child as OptionRow;
 				if (row != null) {
 					rows_to_reparent.add(row);
 				}
 			}
 			
-			// Also check if any rows are parented to another ExpanderRow (another ModelRow is expanded)
-			// We need to find them by searching the widget tree, but a simpler approach is to
-			// ensure they're in OptionsWidget first. If they're not, they must be in another ExpanderRow.
-			// For now, we'll handle rows that are in OptionsWidget, and if they're elsewhere,
-			// the collapse() of the other row should have put them back.
+			// If no rows found in OptionsWidget, they might be parented to another ExpanderRow
+			// In that case, we need to find them. But typically Adw.ExpanderRow will auto-collapse
+			// other rows, so they should be back in OptionsWidget. If not, we'll handle it below.
 
 			// Add separator
 			this.separator_row = new Adw.ActionRow();
@@ -182,8 +185,10 @@ namespace OLLMchat.Settings
 				this.add_row(row);
 			}
 
-			// Load options into the widget
-			this.shared_options_widget.load_options(this.options);
+			// Load options into each row directly
+			foreach (var row in rows_to_reparent) {
+				row.load_options(this.options);
+			}
 			this.is_expanded = true;
 		}
 
