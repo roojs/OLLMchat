@@ -48,7 +48,7 @@ namespace OLLMchat.Settings
 		 */
 		public signal void save_options(OLLMchat.Call.Options options, string model_name);
 
-		private ModelsPage models_page;
+		private ModelsPage models_page { get; construct; }
 		private bool is_expanding = false;
 
 		/**
@@ -68,11 +68,11 @@ namespace OLLMchat.Settings
 		{
 			Object(
 				model: model,
-				connection: connection
+				connection: connection,
+				models_page: models_page,
+				title: model.name
 			);
 			this.options = options.clone();
-			this.models_page = models_page;
-			this.title = model.name;
 
 			// Connect expand/collapse signal
 			this.notify["expanded"].connect(() => {
