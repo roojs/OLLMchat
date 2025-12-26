@@ -383,13 +383,13 @@ namespace OLLMchat.Settings
 				var model_name = parts[1];
 				
 				// Check if model name matches search
-				if (search_text == "" || model_name.down().contains(search_lower)) {
+				if (search_lower == "" || model_name.down().contains(search_lower)) {
 					row.visible = true;
 				} else {
 					row.visible = false;
 				}
 			}
-
+/*
 			// Filter section headers - hide if no visible models in that connection
 			foreach (var entry in this.section_headers.entries) {
 				var connection_url = entry.key;
@@ -409,6 +409,7 @@ namespace OLLMchat.Settings
 
 				header.visible = connection_has_visible;
 			}
+				*/
 		}
 	}
 }
