@@ -173,110 +173,133 @@ namespace OLLMchat.Settings
 			this.add_row(separator_row);
 
 			// Create all option widgets
-			var temp_widget = new OptionFloatWidget(
-				"Temperature",
-				"Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
-				0.0, 2.0, 0.1, 1,
-				0.0, -1.0,
-				(options) => options.temperature,
-				(options, val) => options.temperature = val
-			);
-			temp_widget.update_from_options(this.options);
+			var temp_widget = new OptionFloatWidget() {
+				title = "Temperature",
+				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
+				property_name = "temperature",
+				min_value = 0.0,
+				max_value = 2.0,
+				step_value = 0.1,
+				digits = 1,
+				default_value = 0.0,
+				unset_value = -1.0
+			};
+			temp_widget.load_options(this.options);
 			this.add_row(temp_widget);
 			this.option_widgets.add(temp_widget);
 
-			var top_p_widget = new OptionFloatWidget(
-				"Top P",
-				"Nucleus sampling - considers tokens with cumulative probability up to this value",
-				0.0, 1.0, 0.01, 2,
-				0.9, -1.0,
-				(options) => options.top_p,
-				(options, val) => options.top_p = val
-			);
-			top_p_widget.update_from_options(this.options);
+			var top_p_widget = new OptionFloatWidget() {
+				title = "Top P",
+				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
+				property_name = "top-p",
+				min_value = 0.0,
+				max_value = 1.0,
+				step_value = 0.01,
+				digits = 2,
+				default_value = 0.9,
+				unset_value = -1.0
+			};
+			top_p_widget.load_options(this.options);
 			this.add_row(top_p_widget);
 			this.option_widgets.add(top_p_widget);
 
-			var top_k_widget = new OptionIntWidget(
-				"Top K",
-				"Limits sampling to top K most likely tokens",
-				1.0, 1000.0, 1.0, 0,
-				40.0, -1,
-				(options) => options.top_k,
-				(options, val) => options.top_k = val
-			);
-			top_k_widget.update_from_options(this.options);
+			var top_k_widget = new OptionIntWidget() {
+				title = "Top K",
+				subtitle = "Limits sampling to top K most likely tokens",
+				property_name = "top-k",
+				min_value = 1.0,
+				max_value = 1000.0,
+				step_value = 1.0,
+				digits = 0,
+				default_value = 40.0,
+				unset_value = -1
+			};
+			top_k_widget.load_options(this.options);
 			this.add_row(top_k_widget);
 			this.option_widgets.add(top_k_widget);
 
-			var num_ctx_widget = new OptionIntWidget(
-				"Num Ctx",
-				"Context window size - number of tokens the model can consider",
-				1.0, 1000000.0, 1.0, 0,
-				2048.0, -1,
-				(options) => options.num_ctx,
-				(options, val) => options.num_ctx = val
-			);
-			num_ctx_widget.update_from_options(this.options);
+			var num_ctx_widget = new OptionIntWidget() {
+				title = "Num Ctx",
+				subtitle = "Context window size - number of tokens the model can consider",
+				property_name = "num-ctx",
+				min_value = 1.0,
+				max_value = 1000000.0,
+				step_value = 1.0,
+				digits = 0,
+				default_value = 2048.0,
+				unset_value = -1
+			};
+			num_ctx_widget.load_options(this.options);
 			this.add_row(num_ctx_widget);
 			this.option_widgets.add(num_ctx_widget);
 
-			var num_predict_widget = new OptionIntWidget(
-				"Num Predict",
-				"Maximum number of tokens to generate (-1 = no limit)",
-				1.0, 1000000.0, 1.0, 0,
-				-1.0, -1,
-				(options) => options.num_predict,
-				(options, val) => options.num_predict = val
-			);
-			num_predict_widget.update_from_options(this.options);
+			var num_predict_widget = new OptionIntWidget() {
+				title = "Num Predict",
+				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
+				property_name = "num-predict",
+				min_value = 1.0,
+				max_value = 1000000.0,
+				step_value = 1.0,
+				digits = 0,
+				default_value = -1.0,
+				unset_value = -1
+			};
+			num_predict_widget.load_options(this.options);
 			this.add_row(num_predict_widget);
 			this.option_widgets.add(num_predict_widget);
 
-			var repeat_penalty_widget = new OptionFloatWidget(
-				"Repeat Penalty",
-				"Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)",
-				0.1, 10.0, 0.1, 1,
-				1.1, -1.0,
-				(options) => options.repeat_penalty,
-				(options, val) => options.repeat_penalty = val
-			);
-			repeat_penalty_widget.update_from_options(this.options);
+			var repeat_penalty_widget = new OptionFloatWidget() {
+				title = "Repeat Penalty",
+				subtitle = "Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)",
+				property_name = "repeat-penalty",
+				min_value = 0.1,
+				max_value = 10.0,
+				step_value = 0.1,
+				digits = 1,
+				default_value = 1.1,
+				unset_value = -1.0
+			};
+			repeat_penalty_widget.load_options(this.options);
 			this.add_row(repeat_penalty_widget);
 			this.option_widgets.add(repeat_penalty_widget);
 
-			var min_p_widget = new OptionFloatWidget(
-				"Min P",
-				"Minimum probability threshold for token selection",
-				0.0, 1.0, 0.01, 2,
-				0.0, -1.0,
-				(options) => options.min_p,
-				(options, val) => options.min_p = val
-			);
-			min_p_widget.update_from_options(this.options);
+			var min_p_widget = new OptionFloatWidget() {
+				title = "Min P",
+				subtitle = "Minimum probability threshold for token selection",
+				property_name = "min-p",
+				min_value = 0.0,
+				max_value = 1.0,
+				step_value = 0.01,
+				digits = 2,
+				default_value = 0.0,
+				unset_value = -1.0
+			};
+			min_p_widget.load_options(this.options);
 			this.add_row(min_p_widget);
 			this.option_widgets.add(min_p_widget);
 
-			var seed_widget = new OptionIntWidget(
-				"Seed",
-				"Random seed for reproducible outputs (-1 = random)",
-				-1.0, 2147483647.0, 1.0, 0,
-				-1.0, -1,
-				(options) => options.seed,
-				(options, val) => options.seed = val == -1 ? -1 : val
-			);
-			seed_widget.update_from_options(this.options);
+			var seed_widget = new OptionIntWidget() {
+				title = "Seed",
+				subtitle = "Random seed for reproducible outputs (-1 = random)",
+				property_name = "seed",
+				min_value = -1.0,
+				max_value = 2147483647.0,
+				step_value = 1.0,
+				digits = 0,
+				default_value = -1.0,
+				unset_value = -1
+			};
+			seed_widget.load_options(this.options);
 			this.add_row(seed_widget);
 			this.option_widgets.add(seed_widget);
 
-			var stop_widget = new OptionStringWidget(
-				"Stop",
-				"Stop sequences that cause generation to stop (comma-separated)",
-				"(optional)",
-				(options) => options.stop,
-				(options, val) => options.stop = val
-			);
-			stop_widget.update_from_options(this.options);
+			var stop_widget = new OptionStringWidget() {
+				title = "Stop",
+				subtitle = "Stop sequences that cause generation to stop (comma-separated)",
+				property_name = "stop",
+				placeholder_text = "(optional)"
+			};
+			stop_widget.load_options(this.options);
 			this.add_row(stop_widget);
 			this.option_widgets.add(stop_widget);
 		}
