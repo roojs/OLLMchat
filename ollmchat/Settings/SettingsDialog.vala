@@ -80,6 +80,9 @@ namespace OLLMchat.Settings
 			// Get the current child (the PreferencesDialog's internal content)
 			var original_child = this.get_child();
 			if (original_child != null) {
+				// Unparent the original child so we can reparent it
+				original_child.unparent();
+				
 				// Create a wrapper box with action bar area at top and original content below
 				var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 				
