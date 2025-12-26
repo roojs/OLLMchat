@@ -26,11 +26,7 @@ namespace OLLMchat.Call
 	 */
 	public class Embed : Base
 	{
-		// Read-only getters that read from client (with fake setters for serialization)
-		public string model { 
-			get { return this.client.model; }
-			set { } // Fake setter for serialization
-		}
+		public string model { get; set; }
 		
 		public string input { get; set; default = ""; }
 		public Gee.ArrayList<string> input_array { get; set; default = new Gee.ArrayList<string>(); }
@@ -42,16 +38,24 @@ namespace OLLMchat.Call
 			set { } // Fake setter for serialization
 		}
 		
-		public Call.Options options { 
-			get { return this.client.options; }
-			set { } // Fake setter for serialization
-		}
+		public Call.Options options { get; set; }
 
-		public Embed(Client client)
+		public Embed(Client client, string model, Call.Options? options = null)
 		{
 			base(client);
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Model is required");
+			}
 			this.url_endpoint = "embed";
 			this.http_method = "POST";
+			this.model = model;
+			
+			// Load model options from config if options not provided
+			this.options = options != null
+				? options
+				: (this.client.config.model_options.has_key(model)
+					? this.client.config.model_options.get(model)
+					: new Call.Options());
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
@@ -93,14 +97,15 @@ namespace OLLMchat.Call
 					// Serialize options and convert hyphen keys to underscores for Ollama API
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
+					// Create a new object with renamed keys (hyphens to underscores)
+					var new_obj = new Json.Object();
 					obj.foreach_member((o, key, node) => {
-						if (!key.contains("-")) {
-							return;
-						}
-						obj.set_member(key.replace("-", "_"), node);
-						obj.remove_member(key);
+						var new_key = key.contains("-") ? key.replace("-", "_") : key;
+						new_obj.set_member(new_key, node);
 					});
-					return options_node;
+					var new_node = new Json.Node(Json.NodeType.OBJECT);
+					new_node.set_object(new_obj);
+					return new_node;
 				default:
 					return base.serialize_property(property_name, value, pspec);
 			}

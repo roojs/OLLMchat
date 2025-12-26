@@ -374,14 +374,6 @@ namespace OLLMchat
 				// switch_to_session() handles loading internally via load()
 				this.chat_widget.switch_to_session.begin(session);
 			});
-			
-			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
-			// Use same ProjectManager instance as CodeAssistant
-			// Initialize codebase search tool asynchronously
-			this.initialize_codebase_search_tool.begin(
-				this.history_manager.base_client,
-				project_manager
-			);
 
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
@@ -412,6 +404,19 @@ namespace OLLMchat
 			
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
+			
+			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
+			// Use same ProjectManager instance as CodeAssistant
+			// Initialize codebase search tool asynchronously AFTER everything else is set up
+			// Use idle add to ensure initialization happens after the current call stack completes
+			// This ensures config is fully loaded and ready
+			GLib.Idle.add(() => {
+				this.initialize_codebase_search_tool.begin(
+					this.history_manager.base_client,
+					project_manager
+				);
+				return false; // Don't repeat
+			});
 		}
 		
 		/**
@@ -428,15 +433,34 @@ namespace OLLMchat
 			// Get config from history manager (it has the Config2 instance)
 			var config = this.history_manager.config;
 			
+			// Ensure config is loaded before proceeding
+			if (config == null || !config.loaded) {
+				GLib.warning("Config not loaded, skipping codebase search tool initialization");
+				return;
+			}
+			
 			// Auto-create embed and analysis ModelUsage entries if they don't exist
 			// These use the default connection with hardcoded models
 			OLLMvector.Database.setup_embed_usage(config);
 			OLLMvector.Indexing.Analysis.setup_analysis_usage(config);
 			
+			// Save config if we created new entries (so they persist)
+			try {
+				config.save();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save config after setting up embed usage: %s", e.message);
+			}
+			
 			// Try to get embed client from config
 			var embed_client = config.create_client("ocvector.embed");
 			if (embed_client == null) {
 				// No embed configuration - tool won't be available
+				return;
+			}
+			
+			// Ensure embed_client has config set (should be set by create_client, but verify)
+			if (embed_client.config == null) {
+				GLib.warning("Embed client created without config, skipping codebase search tool initialization");
 				return;
 			}
 			

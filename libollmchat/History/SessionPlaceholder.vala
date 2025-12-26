@@ -78,7 +78,8 @@ namespace OLLMchat.History
 		public override async SessionBase? load() throws Error
 		{
 			// a) Create a new Session with chat
-			var real_session = new Session(this.manager, new Call.Chat(this.manager.new_client()));
+			var client = this.manager.new_client();
+			var real_session = new Session(this.manager, new Call.Chat(client, client.model));
 			
 			// copy the tools
 			// Copy properties from placeholder to real session

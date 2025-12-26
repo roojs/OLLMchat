@@ -344,11 +344,16 @@ namespace OLLMvector.Indexing
 			
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					// Create chat call
-					var chat = new OLLMchat.Call.Chat(this.client);
+					// Create chat call from config
+					var chat = this.client.config.create_chat("ocvector.analysis");
+					if (chat == null) {
+						throw new GLib.IOError.FAILED("Failed to create chat from ocvector.analysis config");
+					}
+					// Enable streaming on the client (same as constructor does for this.client)
+					chat.client.stream = true;
+					
 					chat.system_content = this.cached_template.system_message;
 					chat.chat_content = user_message;
-					chat.options.temperature = 0.0;
 					
 					// Streaming is enabled on client (set in constructor) so we can see progress
 					// The response will still have complete content when done=true
@@ -356,7 +361,7 @@ namespace OLLMvector.Indexing
 					
 					// Connect to stream_chunk signal to capture and print partial content (including thinking)
 					ulong stream_chunk_id = 0;
-					stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
+					stream_chunk_id = chat.client.stream_chunk.connect((new_text, is_thinking, response) => {
 						// Print the partial content as it arrives (both thinking and regular content)
 						// Use stdout and flush immediately so output appears on command line in real-time
 						stdout.printf("%s", new_text);
@@ -370,7 +375,7 @@ namespace OLLMvector.Indexing
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {
-							this.client.disconnect(stream_chunk_id);
+							chat.client.disconnect(stream_chunk_id);
 						}
 					}
 					

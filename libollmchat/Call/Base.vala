@@ -97,6 +97,8 @@ namespace OLLMchat.Call
 			switch (property_name) {
 				case "chat-content":
 				case "client":
+				case "cancellable":
+					// Exclude these properties from serialization
 					return null;
 				default:
 					return base.serialize_property(property_name, value, pspec);

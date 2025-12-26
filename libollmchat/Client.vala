@@ -168,6 +168,7 @@ namespace OLLMchat
 		}
 
 
+
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.
 		 * 
@@ -259,7 +260,7 @@ namespace OLLMchat
 		public async Response.Chat chat(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
 			// Create chat call
-			var call = new Call.Chat(this) {
+			var call = new Call.Chat(this, this.model) {
 				cancellable = cancellable
 			};
 			
@@ -425,7 +426,7 @@ namespace OLLMchat
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			var call = new Call.Embed(this) {
+			var call = new Call.Embed(this, this.model, new Call.Options()) {
 				cancellable = cancellable,
 				input = input,
 				dimensions = dimensions,
@@ -457,7 +458,7 @@ namespace OLLMchat
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			var call = new Call.Embed(this) {
+			var call = new Call.Embed(this, this.model, new Call.Options()) {
 				cancellable = cancellable,
 				input_array = input_array,
 				dimensions = dimensions,

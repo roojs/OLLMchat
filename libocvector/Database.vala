@@ -43,6 +43,11 @@ namespace OLLMvector
 			}
 			
 			var default_connection = config.get_default_connection();
+			if (default_connection == null) {
+				GLib.warning("No default connection found, cannot setup embed usage");
+				return;
+			}
+			
 			var embed_usage = new OLLMchat.Settings.ModelUsage() {
 				connection = default_connection.url,
 				model = "bge-m3",

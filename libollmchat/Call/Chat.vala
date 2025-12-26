@@ -27,11 +27,7 @@ namespace OLLMchat.Call
 	 */
 	public class Chat : Base, ChatContentInterface
 	{
-		// Read-only getters that read from client (with fake setters for serialization)
-		public string model { 
-			get { return this.client.model; }
-			set { } // Fake setter for serialization
-		}
+		public string model { get; set; }
 		
 		public bool stream { 
 			get { return this.client.stream; }
@@ -50,10 +46,7 @@ namespace OLLMchat.Call
 		 */
 		public Json.Object? format_obj { get; set; default = null; }
 		
-		public Call.Options options { 
-			get { return this.client.options; }
-			set { } // Fake setter for serialization
-		}
+		public Call.Options options { get; set; }
 		
 		public bool think { 
 			get { return this.client.think; }
@@ -78,14 +71,25 @@ namespace OLLMchat.Call
 		// Generated in constructor - will always be set
 		public string fid = "";
 		
-		public Chat(Client client)
+		public Chat(Client client, string model, Call.Options? options = null)
 		{
 			base(client);
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Model is required");
+			}
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
+			this.model = model;
 			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
 			var now = new DateTime.now_local();
 			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			
+			// Load model options from config if options not provided
+			this.options = options != null
+				? options
+				: (this.client.config.model_options.has_key(model)
+					? this.client.config.model_options.get(model)
+					: new Call.Options());
 		}
 		// this is only called by response - not by the user
 		  
@@ -107,12 +111,12 @@ namespace OLLMchat.Call
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "tools":
-					// Only serialize tools if model is set and tools exist
-					if (this.client.model == "" || this.tools.size == 0) {
+					// Only serialize tools if tools exist
+					if (this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.client.model) 
-						|| !this.client.available_models.get(this.client.model).can_call) {
+					if (!this.client.available_models.has_key(this.model) 
+						|| !this.client.available_models.get(this.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -152,14 +156,15 @@ namespace OLLMchat.Call
 					// Serialize options and convert hyphen keys to underscores for Ollama API
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
+					// Create a new object with renamed keys (hyphens to underscores)
+					var new_obj = new Json.Object();
 					obj.foreach_member((o, key, node) => {
-						if (!key.contains("-")) {
-							return;
-						}
-						obj.set_member(key.replace("-", "_"), node);
-						obj.remove_member(key);
+						var new_key = key.contains("-") ? key.replace("-", "_") : key;
+						new_obj.set_member(new_key, node);
 					});
-					return options_node;
+					var new_node = new Json.Node(Json.NodeType.OBJECT);
+					new_node.set_object(new_obj);
+					return new_node;
 				
 				case "messages":
 					// Serialize the message array built in exec_chat()
@@ -369,10 +374,6 @@ namespace OLLMchat.Call
 		
 		public async Response.Chat exec_chat() throws Error
 		{
-			if (this.model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Model is required");
-			}
-			 
 			// System and user messages are now created earlier via message_created signal
 			// But we still need to add API-compatible messages to messages array for the request
 			// Add system message if system_content is set (for API request)

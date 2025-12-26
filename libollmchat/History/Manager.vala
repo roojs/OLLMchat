@@ -181,6 +181,7 @@ namespace OLLMchat.History
 			// - streaming_response: Session-specific streaming state
 			// - session: Not applicable to new client instance
 			// - tools: Reused above (just set client property)
+			// - options: Will be loaded when Chat is created
 			
 			return client;
 		}
@@ -247,7 +248,7 @@ namespace OLLMchat.History
 				client.model = this.session.client.model;
 			}
 			
-			var session = new Session(this, new Call.Chat(client));
+			var session = new Session(this, new Call.Chat(client, client.model));
 			session.agent_name = agent_name;
 			this.sessions.add(session);
 			this.session_added(session);

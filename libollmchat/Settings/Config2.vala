@@ -378,6 +378,34 @@ namespace OLLMchat.Settings
 		}
 
 		/**
+		 * Creates a Chat instance configured from a usage entry.
+		 * 
+		 * Gets the ModelUsage for the given name, creates a Client using create_client(),
+		 * and creates a Chat object with the client, model, and options from the ModelUsage.
+		 * Returns null if the usage entry doesn't exist or the client cannot be created.
+		 * 
+		 * The caller can then set properties on chat.client (e.g., chat.client.stream = true).
+		 * 
+		 * @param name The usage key name (e.g., "default_model", "ocvector.analysis")
+		 * @return A new Chat instance configured from the usage entry, or null if not found or client invalid
+		 */
+		public OLLMchat.Call.Chat? create_chat(string name)
+		{
+			var model_usage_obj = this.usage.get(name) as ModelUsage;
+			if (model_usage_obj == null) {
+				return null;
+			}
+
+			var client = this.create_client(name);
+			if (client == null) {
+				return null;
+			}
+
+			// Create chat with client, model, and options from ModelUsage
+			return new OLLMchat.Call.Chat(client, model_usage_obj.model, model_usage_obj.options);
+		}
+
+		/**
 		 * Saves configuration to file.
 		 * 
 		 * Creates the directory structure if it doesn't exist.
