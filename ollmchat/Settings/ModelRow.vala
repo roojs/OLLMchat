@@ -110,7 +110,7 @@ namespace OLLMchat.Settings
 		 * Saves current options from the shared widget to this model's options.
 		 * Called when collapsing or when saving all options.
 		 */
-		public void save_options()
+		public void save_widget_options()
 		{
 			if (this.expanded) {
 				this.models_page.options_widget.save_options(this.options);

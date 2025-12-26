@@ -356,7 +356,7 @@ namespace OLLMchat.Settings
 			foreach (var row in this.model_rows.values) {
 				// Update options from widgets if expanded
 				if (row.expanded) {
-					row.save_options();
+					row.save_widget_options();
 				}
 				this.save_model_options(row.model.name, row.options);
 			}
