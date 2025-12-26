@@ -43,11 +43,6 @@ namespace OLLMchat.Settings
 		 */
 		public OLLMchat.Call.Options options { get; private set; }
 
-		/**
-		 * Callback to save options when collapsed.
-		 */
-		public signal void save_options(OLLMchat.Call.Options options, string model_name);
-
 		private ModelsPage models_page { get; construct; }
 		private bool is_expanding = false;
 
@@ -102,7 +97,7 @@ namespace OLLMchat.Settings
 		 * Saves current options from the shared widget to this model's options.
 		 * Called when collapsing or when saving all options.
 		 */
-		public void save_options()
+		public void save_widget_options()
 		{
 			if (this.expanded) {
 				this.models_page.options_widget.save_options(this.options);
@@ -183,9 +178,9 @@ namespace OLLMchat.Settings
 			// (This will trigger the signal handler, but the early return prevents recursion)
 			this.expanded = false;
 			
-			// Emit save signal - the handler (save_model_options) will check if options
+			// Save options to config - ModelsPage.save_options() will check if options
 			// have non-default values and only save to config if they do
-			this.save_options(this.options, this.model.name);
+			this.models_page.save_options(this.model.name, this.options);
 			
 			this.is_expanding = false;
 		}
