@@ -221,7 +221,7 @@ namespace OLLMchat.Settings
 			var num_ctx_widget = new OptionIntWidget() {
 				title = "Num Ctx",
 				subtitle = "Context window size - number of tokens the model can consider",
-				property_name = "num-ctx",
+				property_name = "num_ctx",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1.0,
