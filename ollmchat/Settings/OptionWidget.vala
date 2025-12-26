@@ -111,7 +111,7 @@ namespace OLLMchat.Settings
 			this.add_suffix(this.spin_button);
 		}
 
-		public override void update_from_options(OLLMchat.Call.Options options)
+		public override void load_options(OLLMchat.Call.Options options)
 		{
 			this.spin_button.set_range(this.min_value, this.max_value);
 			this.spin_button.set_increments(this.step_value, this.step_value * 10);
@@ -123,7 +123,7 @@ namespace OLLMchat.Settings
 			this.spin_button.value = int_val != this.unset_value ? (double)int_val : this.default_value;
 		}
 
-		public override void update_to_options(OLLMchat.Call.Options options)
+		public override void save_options(OLLMchat.Call.Options options)
 		{
 			var val = (int)this.spin_button.value;
 			Value value = Value(typeof(int));
