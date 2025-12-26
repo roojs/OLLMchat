@@ -101,7 +101,7 @@ namespace OLLMchat.Settings
 		{
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
-			if (this.is_expanding) {
+			if (this.expanded) {
 				this.models_page.options_widget.load_options(this.options);
 			}
 		}
@@ -112,7 +112,7 @@ namespace OLLMchat.Settings
 		 */
 		public void save_current_options()
 		{
-			if (this.is_expanding) {
+			if (this.expanded) {
 				this.models_page.options_widget.save_options(this.options);
 			}
 		}
