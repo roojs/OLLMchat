@@ -33,7 +33,7 @@ namespace OLLMchat.Settings
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
 
-			this.append(new OptionFloatWidget() {
+			var temp_row = new OptionFloatWidget() {
 				title = "Temperature",
 				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
 				property_name = "temperature",
@@ -42,9 +42,11 @@ namespace OLLMchat.Settings
 				step_value = 0.1,
 				digits = 1,
 				default_value = 0.0
-			});
+			};
+			this.option_rows.add(temp_row);
+			this.append(temp_row);
 
-			this.append(new OptionFloatWidget() {
+			var top_p_row = new OptionFloatWidget() {
 				title = "Top P",
 				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
 				property_name = "top_p",
@@ -53,36 +55,44 @@ namespace OLLMchat.Settings
 				step_value = 0.01,
 				digits = 2,
 				default_value = 0.9
-			});
+			};
+			this.option_rows.add(top_p_row);
+			this.append(top_p_row);
 
-			this.append(new OptionIntWidget() {
+			var top_k_row = new OptionIntWidget() {
 				title = "Top K",
 				subtitle = "Limits sampling to top K most likely tokens",
 				property_name = "top_k",
 				min_value = 1.0,
 				max_value = 1000.0,
 				default_value = 40.0
-			});
+			};
+			this.option_rows.add(top_k_row);
+			this.append(top_k_row);
 
-			this.append(new OptionIntWidget() {
+			var num_ctx_row = new OptionIntWidget() {
 				title = "Num Ctx",
 				subtitle = "Context window size - number of tokens the model can consider",
 				property_name = "num_ctx",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				default_value = 2048.0
-			});
+			};
+			this.option_rows.add(num_ctx_row);
+			this.append(num_ctx_row);
 
-			this.append(new OptionIntWidget() {
+			var num_predict_row = new OptionIntWidget() {
 				title = "Num Predict",
 				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
 				property_name = "num_predict",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				default_value = -1.0
-			});
+			};
+			this.option_rows.add(num_predict_row);
+			this.append(num_predict_row);
 
-			this.append(new OptionFloatWidget() {
+			var repeat_penalty_row = new OptionFloatWidget() {
 				title = "Repeat Penalty",
 				subtitle = "Penalty for repeating tokens (1.0 = no penalty, >1.0 = penalty)",
 				property_name = "repeat_penalty",
@@ -91,9 +101,11 @@ namespace OLLMchat.Settings
 				step_value = 0.1,
 				digits = 1,
 				default_value = 1.1
-			});
+			};
+			this.option_rows.add(repeat_penalty_row);
+			this.append(repeat_penalty_row);
 
-			this.append(new OptionFloatWidget() {
+			var min_p_row = new OptionFloatWidget() {
 				title = "Min P",
 				subtitle = "Minimum probability threshold for token selection",
 				property_name = "min_p",
@@ -102,42 +114,50 @@ namespace OLLMchat.Settings
 				step_value = 0.01,
 				digits = 2,
 				default_value = 0.0
-			});
+			};
+			this.option_rows.add(min_p_row);
+			this.append(min_p_row);
 
-			this.append(new OptionIntWidget() {
+			var seed_row = new OptionIntWidget() {
 				title = "Seed",
 				subtitle = "Random seed for reproducible outputs (-1 = random)",
 				property_name = "seed",
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				default_value = -1.0
-			});
+			};
+			this.option_rows.add(seed_row);
+			this.append(seed_row);
 
-			this.append(new OptionStringWidget() {
+			var stop_row = new OptionStringWidget() {
 				title = "Stop",
 				subtitle = "Stop sequences that cause generation to stop (comma-separated)",
 				property_name = "stop",
 				placeholder_text = "(optional)"
-			});
+			};
+			this.option_rows.add(stop_row);
+			this.append(stop_row);
+		}
+
+		/**
+		 * Returns all option rows, regardless of where they're currently parented.
+		 */
+		public Gee.ArrayList<OptionRow> get_option_rows()
+		{
+			return this.option_rows;
 		}
 
 	public void load_options(OLLMchat.Call.Options options)
 	{
-		foreach (Gtk.Widget element in this.get_children()) {
-			var row = element as OptionRow;
-			if (row != null) {
-				row.load_options(options);
-			}
+		foreach (var row in this.option_rows) {
+			row.load_options(options);
 		}
 	}
 
 	public void save_options(OLLMchat.Call.Options options)
 	{
-		foreach (Gtk.Widget element in this.get_children()) {
-			var row = element as OptionRow;
-			if (row != null) {
-				row.save_options(options);
-			}
+		foreach (var row in this.option_rows) {
+			row.save_options(options);
 		}
 	}
 	}
