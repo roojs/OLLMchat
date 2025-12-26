@@ -158,23 +158,10 @@ namespace OLLMchat.Settings
 			// Save options from widget
 			this.models_page.options_widget.save_options(this.options);
 			
-			// Collect all rows (separator and option rows) to remove
-			var rows_to_remove = new Gee.ArrayList<Adw.ActionRow>();
-			foreach (Gtk.Widget child in this.get_children()) {
-				var row = child as Adw.ActionRow;
-				if (row != null) {
-					rows_to_remove.add(row);
-				}
-			}
-
-			// Remove all rows from ExpanderRow
-			foreach (var row in rows_to_remove) {
-				this.remove(row);
-				// Add option rows back to OptionsWidget (skip separator)
-				var option_row = row as OptionRow;
-				if (option_row != null) {
-					this.models_page.options_widget.append(option_row);
-				}
+			// Remove the OptionsWidget Box from the ExpanderRow
+			// The OptionRows are already inside the OptionsWidget, so we just remove the Box
+			if (this.models_page.options_widget.get_parent() == this) {
+				this.remove(this.models_page.options_widget);
 			}
 
 			// Emit save signal
