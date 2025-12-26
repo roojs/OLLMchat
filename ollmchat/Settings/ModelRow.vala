@@ -93,11 +93,11 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Updates the options from config (called when refreshing).
+		 * Loads options from config into this model row (called when refreshing).
 		 * 
-		 * @param new_options New options to merge
+		 * @param new_options New options to load
 		 */
-		public void update_options(OLLMchat.Call.Options new_options)
+		public void load_options(OLLMchat.Call.Options new_options)
 		{
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
@@ -110,7 +110,7 @@ namespace OLLMchat.Settings
 		 * Saves current options from the shared widget to this model's options.
 		 * Called when collapsing or when saving all options.
 		 */
-		public void save_current_options()
+		public void save_options()
 		{
 			if (this.expanded) {
 				this.models_page.options_widget.save_options(this.options);
