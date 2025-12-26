@@ -351,11 +351,13 @@ namespace OLLMchat.Settings
 		public void save_all_options()
 		{
 			foreach (var row in this.model_rows.values) {
-				// Update options from widgets if expanded
+				// If expanded, collapse it (which saves widget options and saves to config)
 				if (row.expanded) {
-					this.options_widget.save_options(row.options);
+					row.collapse();
+				} else {
+					// If not expanded, just save the current options to config
+					this.save_options(row.model.name, row.options);
 				}
-				this.save_options(row.model.name, row.options);
 			}
 		}
 
