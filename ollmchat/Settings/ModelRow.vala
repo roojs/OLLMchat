@@ -191,7 +191,7 @@ namespace OLLMchat.Settings
 			var top_p_widget = new OptionFloatWidget() {
 				title = "Top P",
 				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
-				property_name = "top-p",
+				property_name = "top_p",
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
