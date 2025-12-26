@@ -21,29 +21,29 @@ namespace OLLMchat.Settings
 	/**
 	 * Main settings dialog for displaying and changing configuration.
 	 * 
-	 * Uses Adw.PreferencesDialog with multiple Adw.PreferencesPage objects for tabs.
+	 * Uses Adw.Dialog with ViewStack/ViewSwitcher for tabs and custom layout
+	 * to support fixed action bars outside scrollable content.
 	 * Only responsible for displaying and changing configuration, not loading/saving.
 	 * Loading is done by the caller before creating the dialog.
 	 * Saving is done automatically on close.
 	 * 
 	 * @since 1.0
 	 */
-	public class SettingsDialog : Adw.PreferencesDialog
+	public class SettingsDialog : Adw.Dialog
 	{
 		/**
 		 * Reference to configuration object (contains connections map)
 		 */
 		public OLLMchat.Settings.Config2 config { get; construct; }
 		
-		// `models_list` (Gee.List<ModelInfo>?) - List of available models from all connections (commented out until model tab is added)
-		// `model_manager` (ModelManager?) - Optional ModelManager for managing model list (if created) (commented out until model tab is added)
-		
-		// `refresh_models()` - Emitted when models need to be refreshed (main window can connect to this) (commented out until model tab is added)
-		
 		private Settings.ConnectionsPage connections_page;
 		private Settings.ModelsPage models_page;
 		
-		// Area for pages to add action bars (outside scrollable content)
+		// ViewStack for pages and ViewSwitcher for tabs
+		private Adw.ViewStack view_stack;
+		private Adw.ViewSwitcher view_switcher;
+		
+		// Area for pages to add action bars (fixed at bottom, outside scrollable content)
 		public Gtk.Box action_bar_area { get; private set; }
 
 		/**
@@ -59,26 +59,48 @@ namespace OLLMchat.Settings
 			this.set_content_width(800);
 			this.set_content_height(600);
 
-			// Create action bar area (initially empty, pages can add widgets here)
+			// Create main container
+			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			
+			// Create ViewStack for pages first
+			this.view_stack = new Adw.ViewStack();
+			
+			// Create header bar with ViewSwitcher for tabs
+			var header_bar = new Adw.HeaderBar();
+			this.view_switcher = new Adw.ViewSwitcher() {
+				stack = this.view_stack,
+				policy = Adw.ViewSwitcherPolicy.WIDE
+			};
+			header_bar.set_title_widget(this.view_switcher);
+			main_box.append(header_bar);
+			
+			// Create scrollable area for pages
+			var scrolled = new Gtk.ScrolledWindow() {
+				vexpand = true,
+				hexpand = true
+			};
+			scrolled.set_child(this.view_stack);
+			main_box.append(scrolled);
+			
+			// Create action bar area (fixed at bottom, outside scrollable content)
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				visible = false
 			};
+			main_box.append(this.action_bar_area);
+			
+			// Set main box as dialog content
+			this.set_child(main_box);
 
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
-			this.add(this.connections_page);
+			this.view_stack.add_titled(this.connections_page, "connections", "Connections");
 
 			// Create models page (will add its action bar to action_bar_area)
 			this.models_page = new Settings.ModelsPage(this);
-			this.add(this.models_page);
+			this.view_stack.add_titled(this.models_page, "models", "Models");
 			
 			// Connect to page visibility to show/hide action bar area
-			this.models_page.notify["visible"].connect(this.on_page_visibility_changed);
-			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
-			
-			// Note: Adw.PreferencesDialog doesn't easily support fixed headers/footers
-			// The action bar will be added to ModelsPage and appear at the bottom
-			// of the scrollable content area
+			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
 			
 			// Initial visibility check
 			this.update_action_bar_visibility();
@@ -93,13 +115,14 @@ namespace OLLMchat.Settings
 		private void update_action_bar_visibility()
 		{
 			// Show action bar area only when models page is visible
-			this.action_bar_area.visible = (this.models_page != null && this.models_page.visible);
+			var visible_child = this.view_stack.get_visible_child();
+			this.action_bar_area.visible = (visible_child == this.models_page);
 		}
 		
 		/**
-		 * Called when page visibility changes.
+		 * Called when page changes.
 		 */
-		private void on_page_visibility_changed()
+		private void on_page_changed()
 		{
 			this.update_action_bar_visibility();
 		}

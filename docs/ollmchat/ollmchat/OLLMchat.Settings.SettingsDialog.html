@@ -46,16 +46,17 @@
       
 
       <map id="OLLMchat.Settings.SettingsDialog" name="OLLMchat.Settings.SettingsDialog">
-<area shape="rect" id="node1" href="OLLMchat.Settings.SettingsDialog.html" title="OLLMchat.Settings.SettingsDialog" alt="" coords="213,485,492,533"/>
+<area shape="rect" id="node1" href="OLLMchat.Settings.SettingsDialog.html" title="OLLMchat.Settings.SettingsDialog" alt="" coords="301,389,580,437"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">SettingsDialog</span></b> : <span class="main_type"><span class="class">PreferencesDialog</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">SettingsDialog</span></b> : <span class="main_type"><span class="class">Dialog</span></span>
         </div>
         <div class="description">
           <p>Main settings dialog for displaying and changing configuration.</p>
-          <p>Uses Adw.PreferencesDialog with multiple Adw.PreferencesPage objects for tabs. Only responsible for displaying and changing 
-            configuration, not loading/saving. Loading is done by the caller before creating the dialog. Saving is done automatically on close.</p>
+          <p>Uses Adw.Dialog with ViewStack/ViewSwitcher for tabs and custom layout to support fixed action bars outside scrollable content. Only 
+            responsible for displaying and changing configuration, not loading/saving. Loading is done by the caller before creating the dialog. 
+            Saving is done automatically on close.</p>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div><br/>
@@ -91,39 +92,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-161')">All known members inherited from class Adw.PreferencesDialog</div>
-          <div class="content" id="box-content-161">
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="method">add</li>
-                <li class="method">add_toast</li>
-                <li class="method">get_search_enabled</li>
-                <li class="method">get_visible_page</li>
-                <li class="method">get_visible_page_name</li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="method">pop_subpage</li>
-                <li class="method">push_subpage</li>
-                <li class="method">remove</li>
-                <li class="property">search_enabled</li>
-                <li class="method">set_search_enabled</li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="method">set_visible_page</li>
-                <li class="method">set_visible_page_name</li>
-                <li class="property">visible_page</li>
-                <li class="property">visible_page_name</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-162')">All known members inherited from class Adw.Dialog</div>
-          <div class="content" id="box-content-162">
+          <div class="headline" onclick="toggle_box (this, 'box-content-163')">All known members inherited from class Adw.Dialog</div>
+          <div class="content" id="box-content-163">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">add_breakpoint</li>
@@ -174,8 +144,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-163')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-163">
+          <div class="headline" onclick="toggle_box (this, 'box-content-164')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-164">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -418,8 +388,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-164')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-164">
+          <div class="headline" onclick="toggle_box (this, 'box-content-165')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-165">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -485,8 +455,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-165')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-165">
+          <div class="headline" onclick="toggle_box (this, 'box-content-166')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-166">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -522,8 +492,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-166')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-166">
+          <div class="headline" onclick="toggle_box (this, 'box-content-167')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-167">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>
@@ -549,8 +519,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-167')">All known members inherited from interface Gtk.ShortcutManager</div>
-          <div class="content" id="box-content-167">
+          <div class="headline" onclick="toggle_box (this, 'box-content-168')">All known members inherited from interface Gtk.ShortcutManager</div>
+          <div class="content" id="box-content-168">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_controller</li>
