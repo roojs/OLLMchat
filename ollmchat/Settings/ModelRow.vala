@@ -119,7 +119,7 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Called when the row is eaxpanded - reparents shared options widget.
+		 * Called when the row is expanded - reparents shared options widget.
 		 */
 		private void expand()
 		{
@@ -129,26 +129,30 @@ namespace OLLMchat.Settings
 				return;
 			}
 
-			// Reparent the shared widget to this expander
-			var old_parent = this.shared_options_widget.get_parent();
-			if (old_parent != null) {
-				old_parent.remove(this.shared_options_widget);
-			}
+			// First, ensure any previously expanded row has collapsed
+			// (This is handled by ModelsPage ensuring only one is expanded at a time)
 
 			// Add separator
-			var separator_row = new Adw.ActionRow();
+			this.separator_row = new Adw.ActionRow();
 			var separator = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
 				hexpand = true
 			};
-			separator_row.add_suffix(separator);
-			this.add_row(separator_row);
+			this.separator_row.add_suffix(separator);
+			this.add_row(this.separator_row);
 
-			// Add each child of the options widget as a row
+			// Reparent each option row from OptionsWidget to this ExpanderRow
+			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
 			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
 				var row = child as Adw.ActionRow;
 				if (row != null) {
-					this.add_row(row);
+					rows_to_reparent.add(row);
 				}
+			}
+
+			// Remove from OptionsWidget and add to ExpanderRow
+			foreach (var row in rows_to_reparent) {
+				this.shared_options_widget.remove(row);
+				this.add_row(row);
 			}
 
 			// Load options into the widget
