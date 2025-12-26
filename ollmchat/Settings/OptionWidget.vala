@@ -146,9 +146,7 @@ namespace OLLMchat.Settings
 
 		public OptionStringWidget()
 		{
-			this.entry = new Gtk.Entry() {
-				placeholder_text = this.placeholder_text
-			};
+			this.entry = new Gtk.Entry();			};
 			this.add_suffix(this.entry);
 		}
 
