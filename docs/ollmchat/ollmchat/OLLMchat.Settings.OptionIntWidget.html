@@ -31,15 +31,17 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.auto_value.html">auto_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.default_value.html">default_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.digits.html">digits</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.max_value.html">max_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.min_value.html">min_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.property_name.html">property_name</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.step_value.html">step_value</a></li>
-          <li class="property"><a href="OLLMchat.Settings.OptionIntWidget.unset_value.html">unset_value</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.OptionIntWidget.OptionIntWidget.html">OptionIntWidget</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Settings.OptionIntWidget.is_default.html">is_default</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.OptionIntWidget.load_options.html">load_options</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Settings.OptionIntWidget.reset_default.html">reset_default</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.OptionIntWidget.save_options.html">save_options</a></li>
         </ul>
       </div>
@@ -71,6 +73,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Settings.OptionIntWidget.auto_value.html" class="property">auto_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionIntWidget.default_value.html" class="property">default_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -95,10 +101,6 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Settings.OptionIntWidget.unset_value.html" class="property">unset_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -109,7 +111,15 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Settings.OptionIntWidget.is_default.html" class="virtual_method">is_default</a></b> (<span class="main_type"><span class="struct">Value</span></span> value)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionIntWidget.load_options.html" class="virtual_method">load_options</a></b> (<span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span> options)
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionIntWidget.reset_default.html" class="virtual_method">reset_default</a></b> ()
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -125,16 +135,24 @@
           <div class="content" id="box-content-152">
             <div class="column">
               <ul class="navi_inline">
+                <li class="field"><a href="OLLMchat.Settings.OptionRow.auto_button.html">auto_button</a></li>
+                <li class="field"><a href="OLLMchat.Settings.OptionRow.button_box.html">button_box</a></li>
+                <li class="field"><a href="OLLMchat.Settings.OptionRow.clear_button.html">clear_button</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.is_default.html">is_default</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
                 <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.load_options.html">load_options</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.reset_default.html">reset_default</a></li>
+                <li class="method"><a href="OLLMchat.Settings.OptionRow.reset_to_auto.html">reset_to_auto</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.save_options.html">save_options</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
+                <li class="method"><a href="OLLMchat.Settings.OptionRow.set_to_default.html">set_to_default</a></li>
+                <li class="property"><a href="OLLMchat.Settings.OptionRow.value_widget.html">value_widget</a></li>
               </ul>
             </div>
           </div>

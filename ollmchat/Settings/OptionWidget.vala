@@ -51,7 +51,7 @@ namespace OLLMchat.Settings
 				max_value = 2.0,
 				step_value = 0.1,
 				digits = 1,
-				default_value = 0.0
+				default_value = 0.7
 			});
 
 			this.rows.add(new OptionFloatWidget() {
@@ -80,7 +80,8 @@ namespace OLLMchat.Settings
 				property_name = "num_ctx",
 				min_value = 1.0,
 				max_value = 1000000.0,
-				default_value = 2048.0
+				step_value = 1024.0,
+				default_value = 16384.0
 			});
 
 			this.rows.add(new OptionIntWidget() {
@@ -89,7 +90,7 @@ namespace OLLMchat.Settings
 				property_name = "num_predict",
 				min_value = 1.0,
 				max_value = 1000000.0,
-				default_value = -1.0
+				default_value = 16384.0
 			});
 
 			this.rows.add(new OptionFloatWidget() {
@@ -100,7 +101,7 @@ namespace OLLMchat.Settings
 				max_value = 1.0,
 				step_value = 0.01,
 				digits = 2,
-				default_value = 0.0
+				default_value = 0.1
 			});
 
 			this.rows.add(new OptionIntWidget() {
@@ -109,7 +110,7 @@ namespace OLLMchat.Settings
 				property_name = "seed",
 				min_value = -1.0,
 				max_value = 2147483647.0,
-				default_value = -1.0
+				default_value = 42.0
 			});
 		}
 
@@ -164,10 +165,83 @@ namespace OLLMchat.Settings
 	/**
 	 * Base class for option rows that can update their values from Options objects.
 	 * 
+	 * Provides Auto/clear button functionality for options that support auto mode.
+	 * 
 	 * @since 1.0
 	 */
 	public abstract class OptionRow : Adw.ActionRow
 	{
+		/**
+		 * The value widget (SpinButton, Entry, etc.) that should be shown/hidden.
+		 */
+		protected Gtk.Widget? value_widget { get; set; }
+
+		/**
+		 * Checks if the current value is in default/auto state (unset).
+		 * 
+		 * @param value The current value from the options object
+		 * @return true if value is unset (default/auto), false otherwise
+		 */
+		protected abstract bool is_default(Value value);
+
+		/**
+		 * Sets the value widget to its default value.
+		 */
+		protected abstract void reset_default();
+
+		protected Gtk.Button auto_button;
+		protected Gtk.Button clear_button;
+		protected Gtk.Box button_box;
+
+		protected OptionRow()
+		{
+			// Create Auto button
+			this.auto_button = new Gtk.Button.with_label("Auto") {
+				tooltip_text = "Click to set a custom value"
+			};
+			this.auto_button.clicked.connect(() => {
+				this.set_to_default();
+			});
+
+			// Create clear button with edit-clear icon
+			this.clear_button = new Gtk.Button.from_icon_name("edit-clear-symbolic");
+			this.clear_button.tooltip_text = "Reset to Auto";
+			this.clear_button.clicked.connect(() => {
+				this.reset_to_auto();
+			});
+
+			// Create button box to hold either Auto or (value widget + clear)
+			this.button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6);
+			this.button_box.append(this.auto_button);
+		}
+
+		protected void set_to_default()
+		{
+			if (this.value_widget == null) {
+				return;
+			}
+
+			// Hide Auto button, show value widget and clear button
+			this.auto_button.visible = false;
+			this.value_widget.visible = true;
+			this.clear_button.visible = true;
+			
+			// Set value widget to default value
+			this.reset_default();
+		}
+
+		protected void reset_to_auto()
+		{
+			if (this.value_widget == null) {
+				return;
+			}
+
+			// Hide value widget and clear button, show Auto button
+			this.value_widget.visible = false;
+			this.clear_button.visible = false;
+			this.auto_button.visible = true;
+		}
+
 		/**
 		 * Loads the widget's value from the options object.
 		 * 
@@ -196,16 +270,39 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; }
 		public uint digits { get; set; }
 		public double default_value { get; set; }
-		public double unset_value { get; set; default = -1.0; }
+		public double auto_value { get; set; default = -1.0; }
 
 		private Gtk.SpinButton spin_button;
 
 		public OptionFloatWidget()
 		{
+			// Create spin button
 			this.spin_button = new Gtk.SpinButton.with_range(0.0, 100.0, 1.0) {
-				digits = 0
+				digits = 0,
+				visible = false,
+				width_request = 150
 			};
-			this.add_suffix(this.spin_button);
+
+			// Set value widget for base class
+			this.value_widget = this.spin_button;
+
+			// Add value widget and clear button to button box (base class created it)
+			this.button_box.append(this.spin_button);
+			this.button_box.append(this.clear_button);
+			this.clear_button.visible = false;
+
+			// Add button box to suffix
+			this.add_suffix(this.button_box);
+		}
+
+		protected override bool is_default(Value value)
+		{
+			return value.get_double() == this.auto_value;
+		}
+
+		protected override void reset_default()
+		{
+			this.spin_button.value = this.default_value;
 		}
 
 		public override void load_options(OLLMchat.Call.Options options)
@@ -216,15 +313,27 @@ namespace OLLMchat.Settings
 
 			Value val = Value(typeof(double));
 			((GLib.Object)options).get_property(this.property_name, ref val);
-			var double_val = val.get_double();
-			this.spin_button.value = double_val != this.unset_value ? double_val : this.default_value;
+			
+			if (this.is_default(val)) {
+				// Value is unset, show Auto button
+				this.reset_to_auto();
+			} else {
+				// Value is set, show spin button with value
+				this.set_to_default();
+				this.spin_button.value = val.get_double();
+			}
 		}
 
 		public override void save_options(OLLMchat.Call.Options options)
 		{
-			var val = this.spin_button.value;
 			Value value = Value(typeof(double));
-			value.set_double(val);
+			if (this.auto_button.visible) {
+				// Auto is selected, save auto value (unset)
+				value.set_double(this.auto_value);
+			} else {
+				// Value is set, save the spin button value
+				value.set_double(this.spin_button.value);
+			}
 			((GLib.Object)options).set_property(this.property_name, value);
 		}
 	}
@@ -242,16 +351,39 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; default = 1.0; }
 		public uint digits { get; set; default = 0; }
 		public double default_value { get; set; }
-		public int unset_value { get; set; default = -1; }
+		public int auto_value { get; set; default = -1; }
 
 		private Gtk.SpinButton spin_button;
 
 		public OptionIntWidget()
 		{
+			// Create spin button
 			this.spin_button = new Gtk.SpinButton.with_range(0.0, 100.0, 1.0) {
-				digits = 0
+				digits = 0,
+				visible = false,
+				width_request = 150
 			};
-			this.add_suffix(this.spin_button);
+
+			// Set value widget for base class
+			this.value_widget = this.spin_button;
+
+			// Add value widget and clear button to button box (base class created it)
+			this.button_box.append(this.spin_button);
+			this.button_box.append(this.clear_button);
+			this.clear_button.visible = false;
+
+			// Add button box to suffix
+			this.add_suffix(this.button_box);
+		}
+
+		protected override bool is_default(Value value)
+		{
+			return value.get_int() == this.auto_value;
+		}
+
+		protected override void reset_default()
+		{
+			this.spin_button.value = this.default_value;
 		}
 
 		public override void load_options(OLLMchat.Call.Options options)
@@ -262,50 +394,30 @@ namespace OLLMchat.Settings
 
 			Value val = Value(typeof(int));
 			((GLib.Object)options).get_property(this.property_name, ref val);
-			var int_val = val.get_int();
-			this.spin_button.value = int_val != this.unset_value ? (double)int_val : this.default_value;
+			
+			if (this.is_default(val)) {
+				// Value is unset, show Auto button
+				this.reset_to_auto();
+			} else {
+				// Value is set, show spin button with value
+				this.set_to_default();
+				this.spin_button.value = (double)val.get_int();
+			}
 		}
 
 		public override void save_options(OLLMchat.Call.Options options)
 		{
-			var val = (int)this.spin_button.value;
 			Value value = Value(typeof(int));
-			value.set_int(val);
+			if (this.auto_button.visible) {
+				// Auto is selected, save auto value (unset)
+				value.set_int(this.auto_value);
+			} else {
+				// Value is set, save the spin button value
+				value.set_int((int)this.spin_button.value);
+			}
 			((GLib.Object)options).set_property(this.property_name, value);
 		}
 	}
 
-	/**
-	 * Generic string option widget that extends Adw.ActionRow.
-	 * 
-	 * @since 1.0
-	 */
-	public class OptionStringWidget : OptionRow
-	{
-		public string property_name { get; set; }
-		public string placeholder_text { get; set; }
-
-		private Gtk.Entry entry;
-
-		public OptionStringWidget()
-		{
-			this.entry = new Gtk.Entry();
-			this.add_suffix(this.entry);
-		}
-
-		public override void load_options(OLLMchat.Call.Options options)
-		{
-			Value val = Value(typeof(string));
-			((GLib.Object)options).get_property(this.property_name, ref val);
-			this.entry.text = val.get_string();
-		}
-
-		public override void save_options(OLLMchat.Call.Options options)
-		{
-			Value value = Value(typeof(string));
-			value.set_string(this.entry.text);
-			((GLib.Object)options).set_property(this.property_name, value);
-		}
-	}
 }
 
