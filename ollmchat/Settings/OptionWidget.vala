@@ -59,26 +59,11 @@ namespace OLLMchat.Settings
 
 		private Gtk.SpinButton spin_button;
 
-		public OptionFloatWidget(
-			double min_value,
-			double max_value,
-			double step_value,
-			uint digits,
-			double default_value,
-			double unset_value
-		)
+		construct
 		{
-			this.min_value = min_value;
-			this.max_value = max_value;
-			this.step_value = step_value;
-			this.digits = digits;
-			this.default_value = default_value;
-			this.unset_value = unset_value;
-
-			this.spin_button = new Gtk.SpinButton.with_range(this.min_value, this.max_value, this.step_value) {
-				digits = this.digits
+			this.spin_button = new Gtk.SpinButton.with_range(0.0, 100.0, 1.0) {
+				digits = 0
 			};
-			this.add_suffix(this.spin_button);
 		}
 
 		public override void update_from_options(OLLMchat.Call.Options options)
