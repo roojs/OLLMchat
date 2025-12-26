@@ -135,8 +135,8 @@ namespace OLLMchat.Settings
 	{
 		public string placeholder_text { get; construct; }
 
-		public string get_value(OLLMchat.Call.Options options) { get; set; }
-		public void set_value(OLLMchat.Call.Options options, string value) { get; set; }
+		public signal string get_value(OLLMchat.Call.Options options);
+		public signal void set_value(OLLMchat.Call.Options options, string value);
 
 		private Gtk.Entry entry;
 
