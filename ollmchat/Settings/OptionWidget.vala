@@ -53,7 +53,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; }
 		public uint digits { get; set; }
 		public double default_value { get; set; }
-		public double unset_value { get; set; }
+		public double unset_value { get; set; default = -1.0; }
 
 		private Gtk.SpinButton spin_button;
 
