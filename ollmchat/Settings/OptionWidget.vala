@@ -60,6 +60,7 @@ namespace OLLMchat.Settings
 		public GetValueFunc get_value_func { get; set; }
 		public SetValueFunc set_value_func { get; set; }
 
+
 		private Gtk.SpinButton spin_button;
 
 		construct
