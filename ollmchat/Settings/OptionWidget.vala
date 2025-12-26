@@ -144,7 +144,7 @@ namespace OLLMchat.Settings
 
 		private Gtk.Entry entry;
 
-		construct
+		public OptionStringWidget()
 		{
 			this.entry = new Gtk.Entry() {
 				placeholder_text = this.placeholder_text
