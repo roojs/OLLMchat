@@ -131,7 +131,7 @@ namespace OLLMchat.Settings
 		{
 			// Update options from widgets
 			foreach (var widget in this.option_widgets) {
-				widget.update_to_options(this.options);
+				widget.save_options(this.options);
 			}
 			// Emit save signal
 			this.save_options(this.options, this.model.name);
