@@ -308,22 +308,24 @@ namespace OLLMchat.Settings
 				foreach (var header in this.section_headers.values) {
 					header.visible = false;
 				}
-			} else {
-				// Remove loading indicator
-				if (this.loading_box.get_parent() != null) {
-					this.boxed_list.remove(this.loading_box);
-				}
-				this.loading_spinner.spinning = false;
-				this.loading_box.visible = false;
+				return;
 
-				// Show all model rows and headers
-				foreach (var row in this.model_rows.values) {
-					row.visible = true;
-				}
-				foreach (var header in this.section_headers.values) {
-					header.visible = true;
-				}
+			} 
+			// Remove loading indicator
+			if (this.loading_box.get_parent() != null) {
+				this.boxed_list.remove(this.loading_box);
 			}
+			this.loading_spinner.spinning = false;
+			this.loading_box.visible = false;
+
+			// Show all model rows and headers
+			foreach (var row in this.model_rows.values) {
+				row.visible = true;
+			}
+			foreach (var header in this.section_headers.values) {
+				header.visible = true;
+			}
+			
 		}
 
 		/**
