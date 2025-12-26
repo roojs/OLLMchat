@@ -133,15 +133,6 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Initializes the models page by rendering models.
-		 * Called by SettingsDialog when the dialog is shown (refreshes models every time).
-		 */
-		public void initialize()
-		{
-			this.render_models.begin();
-		}
-
-		/**
 		 * Main method to render/update models list.
 		 * 
 		 * Fetches models from all connections, updates the UI incrementally,

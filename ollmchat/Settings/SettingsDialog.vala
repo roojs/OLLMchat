@@ -86,9 +86,9 @@ namespace OLLMchat.Settings
 			page.add(group);
 			this.add(page);
 
-			// Initialize models page when dialog is shown (refresh models every time)
+			// Refresh models when dialog is shown (every time)
 			this.map.connect(() => {
-				this.models_page.initialize();
+				this.models_page.render_models.begin();
 			});
 
 			// Connect closed signal to save config when dialog closes
