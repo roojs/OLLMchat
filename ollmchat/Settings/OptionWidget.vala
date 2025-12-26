@@ -152,14 +152,14 @@ namespace OLLMchat.Settings
 			this.add_suffix(this.entry);
 		}
 
-		public override void update_from_options(OLLMchat.Call.Options options)
+		public override void load_options(OLLMchat.Call.Options options)
 		{
 			Value val = Value(typeof(string));
 			options.get_property(this.property_name, ref val);
 			this.entry.text = val.get_string();
 		}
 
-		public override void update_to_options(OLLMchat.Call.Options options)
+		public override void save_options(OLLMchat.Call.Options options)
 		{
 			Value value = Value(typeof(string));
 			value.set_string(this.entry.text);
