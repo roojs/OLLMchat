@@ -86,11 +86,9 @@ namespace OLLMchat.Settings
 			page.add(group);
 			this.add(page);
 
-			// Connect to view stack to initialize models page when it's shown
-			this.view_stack.notify["visible-child"].connect(() => {
-				if (this.view_stack.visible_child == this.models_page) {
-					this.models_page.initialize();
-				}
+			// Initialize models page when dialog is shown (refresh models every time)
+			this.map.connect(() => {
+				this.models_page.initialize();
 			});
 
 			// Connect closed signal to save config when dialog closes

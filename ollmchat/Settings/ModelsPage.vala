@@ -145,14 +145,11 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Initializes the models page by rendering models.
-		 * Called by SettingsDialog when the page is shown.
+		 * Called by SettingsDialog when the dialog is shown (refreshes models every time).
 		 */
 		public void initialize()
 		{
-			if (!this.has_rendered_once) {
-				this.render_models.begin();
-				this.has_rendered_once = true;
-			}
+			this.render_models.begin();
 		}
 
 		/**
