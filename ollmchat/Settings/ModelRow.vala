@@ -22,7 +22,7 @@ namespace OLLMchat.Settings
 	 * Model row widget that extends Adw.ExpanderRow.
 	 * 
 	 * Stores the model object and options data, handles expansion/collapse
-	 * and option editing.
+	 * and option editing using a shared OptionsWidget that gets reparented.
 	 * 
 	 * @since 1.0
 	 */
@@ -53,8 +53,8 @@ namespace OLLMchat.Settings
 		 */
 		public signal void save_options(OLLMchat.Call.Options options, string model_name);
 
-		private bool options_created = false;
-		public Gee.ArrayList<OptionRow> option_widgets { get; private set; default = new Gee.ArrayList<OptionRow>(); }
+		private OptionsWidget shared_options_widget;
+		private bool is_expanded = false;
 
 		/**
 		 * Creates a new ModelRow.
