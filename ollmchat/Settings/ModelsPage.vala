@@ -138,16 +138,14 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_spinner);
 			this.loading_box.append(this.loading_label);
 
-			// Add action bar to dialog's action bar area
-			// The area is now outside the scrollable content, so the action bar will be fixed
-			if (this.settings_dialog.action_bar_area != null) {
-				this.settings_dialog.action_bar_area.append(this.action_box);
-				// Make the area visible since it now has content
-				this.settings_dialog.action_bar_area.visible = true;
-			}
-			
 			// Add preferences group with models list (this will be scrollable)
 			this.add(this.group);
+			
+			// Add action bar at the bottom of the page (will scroll, but at bottom)
+			// Add it as a PreferencesGroup so it appears at the bottom
+			var action_group = new Adw.PreferencesGroup();
+			action_group.add(this.action_box);
+			this.add(action_group);
 		}
 
 		/**
