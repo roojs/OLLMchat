@@ -66,7 +66,7 @@ namespace OLLMchat.Settings
 		 * @param options Initial options (will be cloned)
 		 * @param shared_options_widget Shared OptionsWidget to reparent
 		 */
-		public ModelRow(
+		public ModelRow( 
 			OLLMchat.Response.Model model,
 			string connection_url,
 			string connection_name,
@@ -129,20 +129,23 @@ namespace OLLMchat.Settings
 				return;
 			}
 
-			// Check if the shared widget's children are already parented elsewhere
-			// (i.e., another ModelRow is currently expanded)
+			// Collect all option rows from the shared widget
+			// They might be children of OptionsWidget or parented to another ExpanderRow
 			var rows_to_reparent = new Gee.ArrayList<Adw.ActionRow>();
+			
+			// First, get rows that are currently children of OptionsWidget
 			foreach (Gtk.Widget child in this.shared_options_widget.get_children()) {
 				var row = child as Adw.ActionRow;
 				if (row != null) {
-					var current_parent = row.get_parent();
-					if (current_parent != null && current_parent != this.shared_options_widget) {
-						// Row is already parented to another ExpanderRow, remove it first
-						current_parent.remove(row);
-					}
 					rows_to_reparent.add(row);
 				}
 			}
+			
+			// Also check if any rows are parented to another ExpanderRow (another ModelRow is expanded)
+			// We need to find them by searching the widget tree, but a simpler approach is to
+			// ensure they're in OptionsWidget first. If they're not, they must be in another ExpanderRow.
+			// For now, we'll handle rows that are in OptionsWidget, and if they're elsewhere,
+			// the collapse() of the other row should have put them back.
 
 			// Add separator
 			this.separator_row = new Adw.ActionRow();
@@ -154,9 +157,15 @@ namespace OLLMchat.Settings
 
 			// Remove from OptionsWidget and add to ExpanderRow
 			foreach (var row in rows_to_reparent) {
-				// Remove from OptionsWidget if it's still there
+				// Remove from OptionsWidget (they should be there if no other row is expanded)
 				if (row.get_parent() == this.shared_options_widget) {
 					this.shared_options_widget.remove(row);
+				} else {
+					// Row is parented elsewhere (another ExpanderRow), remove it first
+					var old_parent = row.get_parent();
+					if (old_parent != null) {
+						old_parent.remove(row);
+					}
 				}
 				this.add_row(row);
 			}
