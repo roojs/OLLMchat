@@ -355,11 +355,6 @@ namespace OLLMchat.Settings
 			if (current_row != null) {
 				current_row.collapse();
 			}
-			
-			// Save all rows' options to config (including the one we just collapsed)
-			foreach (var row in this.model_rows.values) {
-				this.save_options(row.model.name, row.options);
-			}
 		}
 
 		/**
