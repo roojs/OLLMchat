@@ -92,7 +92,7 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param parent Parent window to attach the dialog to
 		 */
-		public void show(Gtk.Window? parent = null)
+		public void show_dialog(Gtk.Window? parent = null)
 		{
 			// Refresh models when dialog is shown (every time)
 			this.models_page.render_models.begin();
