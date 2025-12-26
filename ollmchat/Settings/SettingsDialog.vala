@@ -76,48 +76,29 @@ namespace OLLMchat.Settings
 			this.models_page.notify["visible"].connect(this.on_page_visibility_changed);
 			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
 			
-			// Wrap dialog content to add fixed header area
+			// Add action bar area at the bottom of the dialog
 			// We need to do this after the dialog is realized, so use idle to defer
 			GLib.Idle.add(() => {
 				// Get the current child (the PreferencesDialog's internal content)
 				var original_child = this.get_child();
 				if (original_child != null) {
-					// Try to find the actual content area (not the header)
-					// PreferencesDialog might have a ViewStack or ScrolledWindow as the scrollable content
-					Gtk.Widget? content_target = null;
-					
-					// If child is a Box, look for the first ScrolledWindow or ViewStack
+					// If child is a Box, append action bar area at the bottom
 					if (original_child is Gtk.Box) {
 						var content_box = original_child as Gtk.Box;
-						// Look for ScrolledWindow or ViewStack in the box
-						var first_child = content_box.get_first_child();
-						while (first_child != null) {
-							if (first_child is Gtk.ScrolledWindow || first_child is Adw.ViewStack) {
-								content_target = first_child;
-								break;
-							}
-							first_child = first_child.get_next_sibling();
-						}
-						
-						// If we found a scrollable content area, insert action bar before it
-						if (content_target != null) {
-							content_box.insert_child_after(this.action_bar_area, null);
-						} else {
-							// Otherwise, just prepend (will be after header)
-							content_box.prepend(this.action_bar_area);
-						}
+						// Append action bar area at the bottom
+						content_box.append(this.action_bar_area);
 					} else {
 						// If not a Box, wrap it
 						original_child.unparent();
 						
-						// Create a wrapper box with action bar area and original content
+						// Create a wrapper box with original content and action bar area at bottom
 						var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 						
-						// Add action bar area
-						wrapper_box.append(this.action_bar_area);
-						
-						// Add original content below
+						// Add original content first
 						wrapper_box.append(original_child);
+						
+						// Add action bar area at the bottom
+						wrapper_box.append(this.action_bar_area);
 						
 						// Set the wrapper as the new child
 						this.set_child(wrapper_box);
