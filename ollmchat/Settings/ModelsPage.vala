@@ -54,6 +54,16 @@ namespace OLLMchat.Settings
 		private bool is_rendering = false;
 		public OptionsWidget options_widget { get; private set; }
 
+		/**
+		 * Creates a new ModelsPage.
+		 * 
+		 * @param settings_dialog Parent SettingsDialog (which has the config object)
+		 */
+		public ModelsPage(SettingsDialog settings_dialog)
+		{
+			Object(settings_dialog: settings_dialog);
+		}
+
 		construct
 		{
 			// Create horizontal action bar
