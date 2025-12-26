@@ -206,7 +206,7 @@ namespace OLLMchat.Settings
 			var top_k_widget = new OptionIntWidget() {
 				title = "Top K",
 				subtitle = "Limits sampling to top K most likely tokens",
-				property_name = "top-k",
+				property_name = "top_k",
 				min_value = 1.0,
 				max_value = 1000.0,
 				step_value = 1.0,
