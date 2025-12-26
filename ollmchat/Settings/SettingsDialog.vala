@@ -76,9 +76,9 @@ namespace OLLMchat.Settings
 			this.models_page.notify["visible"].connect(this.on_page_visibility_changed);
 			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
 			
-			// Don't modify dialog structure - let ModelsPage handle adding action bar
-			// The action bar will be added to ModelsPage and will appear at the bottom
-			// of the scrollable content (not fixed, but functional)
+			// Note: Adw.PreferencesDialog doesn't easily support fixed headers/footers
+			// The action bar will be added to ModelsPage and appear at the bottom
+			// of the scrollable content area
 			
 			// Initial visibility check
 			this.update_action_bar_visibility();
