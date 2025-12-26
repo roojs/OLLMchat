@@ -101,7 +101,7 @@ namespace OLLMchat.Settings
 			// Update widget values if they've been created
 			if (this.options_created) {
 				foreach (var widget in this.option_widgets) {
-					widget.update_from_options(this.options);
+					widget.load_options(this.options);
 				}
 			}
 		}
