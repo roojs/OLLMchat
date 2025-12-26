@@ -77,24 +77,37 @@ namespace OLLMchat.Settings
 			this.connections_page.notify["visible"].connect(this.on_page_visibility_changed);
 			
 			// Wrap dialog content to add fixed header area
-			// Get the current child (the PreferencesDialog's internal content)
-			var original_child = this.get_child();
-			if (original_child != null) {
-				// Unparent the original child so we can reparent it
-				original_child.unparent();
-				
-				// Create a wrapper box with action bar area at top and original content below
-				var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
-				
-				// Add action bar area at top (fixed, not scrollable)
-				wrapper_box.append(this.action_bar_area);
-				
-				// Add original content below (this will be scrollable)
-				wrapper_box.append(original_child);
-				
-				// Set the wrapper as the new child
-				this.set_child(wrapper_box);
-			}
+			// We need to do this after the dialog is realized, so use idle to defer
+			GLib.Idle.add(() => {
+				// Get the current child (the PreferencesDialog's internal content)
+				var original_child = this.get_child();
+				if (original_child != null) {
+					// Check if it's already a Box (might be the content area)
+					// We want to insert the action bar area between header and content
+					// If the child is a Box, we can prepend to it
+					if (original_child is Gtk.Box) {
+						var content_box = original_child as Gtk.Box;
+						// Prepend action bar area (will be at top, but after header bar)
+						content_box.prepend(this.action_bar_area);
+					} else {
+						// If not a Box, wrap it
+						original_child.unparent();
+						
+						// Create a wrapper box with action bar area and original content
+						var wrapper_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+						
+						// Add action bar area
+						wrapper_box.append(this.action_bar_area);
+						
+						// Add original content below
+						wrapper_box.append(original_child);
+						
+						// Set the wrapper as the new child
+						this.set_child(wrapper_box);
+					}
+				}
+				return false; // Only run once
+			});
 			
 			// Initial visibility check
 			this.update_action_bar_visibility();
