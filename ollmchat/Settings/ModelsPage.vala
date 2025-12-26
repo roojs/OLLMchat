@@ -138,20 +138,15 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_spinner);
 			this.loading_box.append(this.loading_label);
 
-			// Add action bar to dialog's action bar area (for tracking)
-			// The area is provided by the dialog for pages to add their action bars
+			// Add action bar to dialog's action bar area
+			// The area is now outside the scrollable content, so the action bar will be fixed
 			if (this.settings_dialog.action_bar_area != null) {
 				this.settings_dialog.action_bar_area.append(this.action_box);
+				// Make the area visible since it now has content
+				this.settings_dialog.action_bar_area.visible = true;
 			}
 			
-			// Add action bar as first PreferencesGroup (will scroll, but at top)
-			// Note: Adw.PreferencesPage scrolls all content, so the action bar will scroll
-			// but it will always be at the top when you scroll to the top
-			var action_group = new Adw.PreferencesGroup();
-			action_group.add(this.action_box);
-			this.add(action_group);
-			
-			// Add preferences group with models list
+			// Add preferences group with models list (this will be scrollable)
 			this.add(this.group);
 		}
 
