@@ -158,13 +158,18 @@ namespace OLLMchat.Settings
 					}
 				}
 				
-				// Now add each OptionRow to the ExpanderRow
-				// By this point, GTK should have processed all unparenting
-				// and widgets should be in a clean state
+				// Add rows one at a time, ensuring each is fully processed before adding the next
+				// This prevents GTK from trying to maintain order based on old sibling relationships
 				foreach (var option_row in this.rows) {
 					if (option_row.get_parent() == null) {
-						model_row.add_row(option_row);
-						option_row.visible = true;
+						// Use a nested idle to ensure each widget is added after the previous one is fully processed
+						Idle.add(() => {
+							if (option_row.get_parent() == null && this.current_model_row == model_row) {
+								model_row.add_row(option_row);
+								option_row.visible = true;
+							}
+							return false;
+						});
 					}
 				}
 				return false; // Don't repeat
