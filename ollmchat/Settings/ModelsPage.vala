@@ -52,7 +52,6 @@ namespace OLLMchat.Settings
 		private Gee.HashMap<string, ModelRow> model_rows = new Gee.HashMap<string, ModelRow>();
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
-		private bool has_rendered_once = false;
 		public OptionsWidget options_widget { get; private set; }
 
 		/**
