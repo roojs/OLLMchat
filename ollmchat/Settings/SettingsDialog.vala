@@ -42,6 +42,7 @@ namespace OLLMchat.Settings
 		
 		private Adw.ViewStack view_stack;
 		private Settings.ConnectionsPage connections_page;
+		private Settings.ModelsPage models_page;
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -70,6 +71,14 @@ namespace OLLMchat.Settings
 				"Connections"
 			);
 
+			// Create models page
+			this.models_page = new Settings.ModelsPage(this);
+			this.view_stack.add_titled(
+				this.models_page,
+				"models",
+				"Models"
+			);
+
 			// Add view stack to a preferences page
 			var page = new Adw.PreferencesPage();
 			var group = new Adw.PreferencesGroup();
@@ -86,6 +95,9 @@ namespace OLLMchat.Settings
 		 */
 		private void on_closed()
 		{
+			// Save all model options before closing
+			this.models_page.save_all_options();
+			
 			try {
 				this.config.save();
 			} catch (GLib.Error e) {

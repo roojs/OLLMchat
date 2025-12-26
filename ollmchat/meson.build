@@ -37,6 +37,7 @@ ollmchat = executable('ollmchat',
     'WindowPane.vala',
     'Settings/ConnectionAdd.vala',
     'Settings/ConnectionsPage.vala',
+    'Settings/ModelsPage.vala',
     'Settings/SettingsDialog.vala',
     ollmchat_resources
   ],
