@@ -269,7 +269,7 @@ namespace OLLMchat.Settings
 
 		public OptionStringWidget()
 		{
-			this.entry = new Gtk.Entry();			};
+			this.entry = new Gtk.Entry();
 			this.add_suffix(this.entry);
 		}
 
