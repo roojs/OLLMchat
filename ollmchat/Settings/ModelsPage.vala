@@ -139,11 +139,19 @@ namespace OLLMchat.Settings
 			this.loading_box.append(this.loading_label);
 
 			// Add action bar to dialog's action bar area
-			// The area is provided by the dialog, but we manage adding our action bar to it
+			// The area is provided by the dialog, and we manage adding our action bar to it
 			if (this.settings_dialog.action_bar_area != null) {
 				this.settings_dialog.action_bar_area.append(this.action_box);
-				// Make the area visible when we add content
-				this.settings_dialog.action_bar_area.visible = true;
+			}
+			
+			// Add action bar area as a PreferencesGroup to this page (at the top)
+			// This makes it visible, though it will be in the scrollable area
+			// The area concept allows the dialog to provide a slot for action bars
+			if (this.settings_dialog.action_bar_area != null && 
+			    this.settings_dialog.action_bar_area.get_first_child() != null) {
+				var action_group = new Adw.PreferencesGroup();
+				action_group.add(this.settings_dialog.action_bar_area);
+				this.add(action_group);
 			}
 			
 			// Add preferences group to page
