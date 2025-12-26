@@ -60,18 +60,15 @@ namespace OLLMchat.Settings
 			this.set_content_height(600);
 
 			// Create action bar area (initially empty, pages can add widgets here)
+			// Note: Adw.PreferencesDialog doesn't have a direct way to add widgets outside pages,
+			// so this area will be managed by pages but we provide it as a public property
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				visible = false
 			};
 			
-			// Add action bar area to dialog using set_extra_child (if available)
-			// This adds it outside the scrollable content area
-			try {
-				this.set_extra_child(this.action_bar_area);
-			} catch (Error e) {
-				// If set_extra_child doesn't exist, we'll need another approach
-				GLib.warning("Could not add action bar area to dialog: %s", e.message);
-			}
+			// TODO: Find a way to add action_bar_area outside the scrollable content
+			// For now, pages will need to manage adding/removing from this area
+			// The area exists but needs to be added to the dialog structure somehow
 
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
