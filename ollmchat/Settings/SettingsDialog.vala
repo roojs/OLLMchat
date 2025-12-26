@@ -42,6 +42,13 @@ namespace OLLMchat.Settings
 		
 		private Settings.ConnectionsPage connections_page;
 		private Settings.ModelsPage models_page;
+		
+		// Models page action bar (shown only when Models tab is active)
+		private Gtk.Box models_action_box;
+		private Gtk.SearchBar models_search_bar;
+		private Gtk.SearchEntry models_search_entry;
+		private Gtk.Button models_add_btn;
+		private Gtk.Button models_refresh_btn;
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -56,6 +63,9 @@ namespace OLLMchat.Settings
 			this.set_content_width(800);
 			this.set_content_height(600);
 
+			// Create models action bar (initially hidden)
+			this.create_models_action_bar();
+
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
 			this.add(this.connections_page);
@@ -63,9 +73,102 @@ namespace OLLMchat.Settings
 			// Create models page
 			this.models_page = new Settings.ModelsPage(this);
 			this.add(this.models_page);
+			
+			// Connect to page visibility to show/hide action bar
+			this.models_page.notify["visible"].connect(this.on_models_page_visibility_changed);
+			this.connections_page.notify["visible"].connect(this.on_connections_page_visibility_changed);
+			
+			// Initial visibility check
+			this.update_models_action_bar_visibility();
 
 			// Connect closed signal to save config when dialog closes
 			this.closed.connect(this.on_closed);
+		}
+		
+		/**
+		 * Creates the models page action bar with search and buttons.
+		 */
+		private void create_models_action_bar()
+		{
+			// Create horizontal action bar
+			this.models_action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				margin_start = 12,
+				margin_end = 12,
+				margin_top = 12,
+				margin_bottom = 12,
+				visible = false
+			};
+
+			// Create search bar (always visible when shown)
+			this.models_search_bar = new Gtk.SearchBar();
+			this.models_search_entry = new Gtk.SearchEntry() {
+				placeholder_text = "Search Models",
+				hexpand = true
+			};
+			this.models_search_entry.changed.connect(() => {
+				if (this.models_page != null) {
+					this.models_page.search_filter = this.models_search_entry.text;
+					this.models_page.filter_models(this.models_search_entry.text);
+				}
+			});
+			this.models_search_bar.connect_entry(this.models_search_entry);
+			this.models_search_bar.set_child(this.models_search_entry);
+			// Make search bar always visible
+			this.models_search_bar.set_key_capture_widget(this);
+			this.models_search_bar.set_search_mode(true);
+			this.models_action_box.append(this.models_search_bar);
+
+			// Create Add Model button (placeholder - not implemented)
+			this.models_add_btn = new Gtk.Button.with_label("Add Model") {
+				css_classes = {"suggested-action"},
+				sensitive = false,
+				tooltip_text = "Not yet implemented"
+			};
+			this.models_action_box.append(this.models_add_btn);
+
+			// Create Refresh button
+			this.models_refresh_btn = new Gtk.Button.with_label("Refresh") {
+				css_classes = {"suggested-action"}
+			};
+			this.models_refresh_btn.clicked.connect(() => {
+				if (this.models_page != null) {
+					this.models_page.render_models.begin();
+				}
+			});
+			this.models_action_box.append(this.models_refresh_btn);
+			
+			// Add action bar to dialog (outside scrollable area)
+			// We'll add it as a child of the dialog's content area
+			// Note: Adw.PreferencesDialog doesn't have a direct way to add widgets outside pages,
+			// so we'll need to use a workaround - add it to a header bar or use extra-child
+			// For now, let's try adding it as an extra child if available, or we might need
+			// to restructure to use a custom layout
+			// Actually, let's check if we can use set_extra_child or similar
+		}
+		
+		/**
+		 * Updates visibility of models action bar based on which page is visible.
+		 */
+		private void update_models_action_bar_visibility()
+		{
+			// Show action bar only when models page is visible
+			this.models_action_box.visible = (this.models_page != null && this.models_page.visible);
+		}
+		
+		/**
+		 * Called when models page visibility changes.
+		 */
+		private void on_models_page_visibility_changed()
+		{
+			this.update_models_action_bar_visibility();
+		}
+		
+		/**
+		 * Called when connections page visibility changes.
+		 */
+		private void on_connections_page_visibility_changed()
+		{
+			this.update_models_action_bar_visibility();
 		}
 
 		/**
