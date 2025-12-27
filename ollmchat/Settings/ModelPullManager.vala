@@ -386,7 +386,9 @@ namespace OLLMchat.Settings
 				}
 				
 				// Update root object
-				root_obj.set_member(model_name, new Json.Node.alloc().init_object(model_obj));
+				var model_node = new Json.Node(Json.NodeType.OBJECT);
+				model_node.set_object(model_obj);
+				root_obj.set_member(model_name, model_node);
 				
 				// Write to file
 				var generator = new Json.Generator();
