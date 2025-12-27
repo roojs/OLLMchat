@@ -535,16 +535,16 @@ namespace OLLMchat.Settings
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
-		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
-		 * 1. Value in Options is unset (value == unset_value, e.g., -1):
+		 * 1. new_value in Options is unset (new_value == unset_value, e.g., -1):
 		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
 		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
-		 * 2. Value in Options is set (user has explicitly set a value, value != unset_value):
-		 *    - Display: Spin button visible with the actual saved value from Options
-		 *    - The value shown MUST be the value from Options, NOT default_value
+		 * 2. new_value in Options is set (user has explicitly set a value, new_value != unset_value):
+		 *    - Display: Spin button visible with the actual saved new_value from Options
+		 *    - The value shown MUST be the new_value from Options, NOT default_value
 		 *    - Auto button hidden
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
@@ -555,15 +555,15 @@ namespace OLLMchat.Settings
 		 * 4. User clicks clear button to reset to Auto:
 		 *    - Display: Show Auto button (with model default label if available), hide spin button
 		 * 
-		 * NOTE: In load_options() when value is set, we call set_to_default() which calls
-		 * reset_default(), but then immediately overwrite with the actual saved value.
+		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
+		 * reset_default(), but then immediately overwrite with the actual saved new_value.
 		 * This is inefficient - reset_default() should NOT be called in that scenario.
 		 */
 		protected override void reset_default()
 		{
 			// WRONG: This is only correct for scenario 3 (user clicking Auto button)
-			// When loading a saved value (scenario 2), we should NOT use default_value,
-			// we should use the actual saved value from Options
+			// When loading a saved new_value (scenario 2), we should NOT use default_value,
+			// we should use the actual saved new_value from Options
 			this.spin_button.value = this.default_value;
 		}
 		
