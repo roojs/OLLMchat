@@ -414,7 +414,7 @@ namespace OLLMchat.Settings
 		 * - What label is shown on Auto button when value is unset
 		 * - What value appears in spin button when user clicks "Auto" to set custom value
 		 */
-		public override void set_value(Value value)
+		public override void set_model_value(Value value)
 		{
 			var double_val = value.get_double();
 			// Clamp to valid range
