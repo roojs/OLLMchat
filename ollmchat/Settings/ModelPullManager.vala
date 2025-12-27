@@ -165,6 +165,8 @@ namespace OLLMchat.Settings
 		/**
 		 * Handles status updates from the background thread.
 		 * 
+		 * This single handler manages both state updates and rate-limited UI updates.
+		 * 
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param completed Bytes completed
@@ -172,7 +174,14 @@ namespace OLLMchat.Settings
 		 * @param last_chunk_status Last chunk status from API
 		 * @param retry_count Current retry count (from background thread)
 		 */
-		private void handle_status_update(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count)
+		private void handle_status_update(
+			string model_name,
+			string status,
+			int64 completed,
+			int64 total,
+			string last_chunk_status,
+			int retry_count
+		)
 		{
 			// Update status object in main thread (thread-safe)
 			if (this.loading_status_cache.has_key(model_name)) {
@@ -196,6 +205,15 @@ namespace OLLMchat.Settings
 			                   status == "failed" || 
 			                   status == "pending-retry";
 			this.update_loading_status(model_name, status, completed, total, last_chunk_status, force_write);
+			
+			// Calculate progress for rate-limited UI updates
+			int progress = 0;
+			if (total > 0) {
+				progress = (int)(((double)completed / (double)total) * 100.0);
+			}
+			
+			// Schedule progress update with rate limiting (for UI)
+			this.schedule_progress_update(model_name, status, progress);
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
@@ -222,26 +240,6 @@ namespace OLLMchat.Settings
 					return false;
 				});
 			}
-		}
-		
-		/**
-		 * Handles progress updates from the background thread.
-		 * 
-		 * @param model_name Model name
-		 * @param status Status string
-		 * @param completed Bytes completed
-		 * @param total Total bytes
-		 */
-		private void handle_progress_update(string model_name, string status, int64 completed, int64 total)
-		{
-			// Calculate progress from completed/total
-			int progress = 0;
-			if (total > 0) {
-				progress = (int)(((double)completed / (double)total) * 100.0);
-			}
-			
-			// Schedule progress update with rate limiting
-			this.schedule_progress_update(model_name, status, progress);
 		}
 		
 		/**
