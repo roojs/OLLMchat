@@ -144,7 +144,7 @@ namespace OLLMchat.Settings
 						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
 						var int_val = model_value.get_int();
 						if (int_val != -1) {
-							row.load_defaults(model_value);
+							row.set_value(model_value);
 						}
 						row.load_options(this.options);
 						break;
@@ -157,7 +157,7 @@ namespace OLLMchat.Settings
 						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
 						var double_val = model_value.get_double();
 						if (double_val != -1.0) {
-							row.load_defaults(model_value);
+							row.set_value(model_value);
 						}
 						row.load_options(this.options);
 						break;

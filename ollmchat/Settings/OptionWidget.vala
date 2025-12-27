@@ -216,11 +216,11 @@ namespace OLLMchat.Settings
 		protected abstract void reset_default();
 
 		/**
-		 * Loads the default value from a Value object.
+		 * Sets the default value from a Value object.
 		 * 
 		 * @param value The Value object containing the default value
 		 */
-		public abstract void load_defaults(Value value);
+		public abstract void set_value(Value value);
 
 		protected Gtk.Button auto_button;
 		protected Gtk.Button clear_button;
@@ -499,7 +499,7 @@ namespace OLLMchat.Settings
 			this.spin_button.value = this.default_value;
 		}
 		
-		public override void load_defaults(Value value)
+		public override void set_value(Value value)
 		{
 			var int_val = value.get_int();
 			// Clamp to valid range
