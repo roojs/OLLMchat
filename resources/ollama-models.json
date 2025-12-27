@@ -8528,6 +8528,24 @@
     "downloads": 59800
   },
   {
+    "name": "ebdm/gemma3-enhanced",
+    "slug": "ebdm/gemma3-enhanced",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "8K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 2636
+  },
+  {
     "name": "elyor/nomic-embed-text-long",
     "slug": "elyor/nomic-embed-text-long",
     "description": "",
@@ -19635,6 +19653,42 @@
     "downloads": 160300
   },
   {
+    "name": "lukaspetrik/gemma3-tools",
+    "slug": "lukaspetrik/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "1b",
+        "size": "815MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 983
+  },
+  {
     "name": "magicoder",
     "slug": "magicoder",
     "description": "🎩 Magicoder is a family of 7B parameter models trained on 75K synthetic instruction data using OSS-Instruct, a novel approach to enlightening LLMs with open-source code snippets.",
@@ -22612,6 +22666,36 @@
     "downloads": 79500
   },
   {
+    "name": "mix_77/gemma3-qat-tools",
+    "slug": "mix_77/gemma3-qat-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "4.0GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 1690
+  },
+  {
     "name": "mixtral",
     "slug": "mixtral",
     "description": "A set of Mixture of Experts (MoE) model with open weights by Mistral AI in 8x7b and 8x22b parameter sizes.",
@@ -23162,6 +23246,51 @@
     "downloads": 469400
   },
   {
+    "name": "MrScarySpaceCat/gemma3-tools",
+    "slug": "MrScarySpaceCat/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 965
+  },
+  {
+    "name": "mshojaei77/gemma3persian",
+    "slug": "mshojaei77/gemma3persian",
+    "description": "",
+    "features": [],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "4.1GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 1944
+  },
+  {
     "name": "mtaylor91/llama3.2-uncensored",
     "slug": "mtaylor91/llama3.2-uncensored",
     "description": "",
@@ -23212,6 +23341,30 @@
       }
     ],
     "downloads": 6000000
+  },
+  {
+    "name": "mychen76/gemma3_cline_roocode_qat",
+    "slug": "mychen76/gemma3_cline_roocode_qat",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 1956
   },
   {
     "name": "nemotron",
