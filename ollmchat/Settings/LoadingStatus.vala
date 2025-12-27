@@ -40,6 +40,8 @@ namespace OLLMchat.Settings
 		public bool active = false;
 		public int64 last_update_time = 0;
 		public OLLMchat.Settings.Connection? connection = null;
+		public int64 completed = 0;
+		public int64 total = 0;
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -61,7 +63,8 @@ namespace OLLMchat.Settings
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			// Don't serialize runtime-only fields
-			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection") {
+			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection" || 
+			    property_name == "completed" || property_name == "total") {
 				return null;
 			}
 			// Serialize all other fields (defaults will handle empty/zero values)

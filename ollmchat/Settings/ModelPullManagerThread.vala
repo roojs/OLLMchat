@@ -173,11 +173,8 @@ namespace OLLMchat.Settings
 			local_status.progress = 0;
 			local_status.last_chunk_status = "pulling";
 			local_status.retry_count = initial_retry_count;
-			
-			// Track additional state not in LoadingStatus
-			int64 completed = 0;
-			int64 total = 0;
-			bool saw_success = false;
+			local_status.completed = 0;
+			local_status.total = 0;
 			
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
@@ -202,9 +199,8 @@ namespace OLLMchat.Settings
 				// Get status from response object
 				local_status.last_chunk_status = response.status;
 				
-				// Track if we saw success status
+				// Update status based on chunk status
 				if (local_status.last_chunk_status == "success") {
-					saw_success = true;
 					local_status.status = "complete";
 					local_status.progress = 100;
 				} else if (local_status.last_chunk_status.has_prefix("error") || local_status.last_chunk_status == "failed") {
@@ -215,11 +211,11 @@ namespace OLLMchat.Settings
 				}
 				
 				// Get progress from response object
-				completed = response.completed;
-				total = response.total;
+				local_status.completed = response.completed;
+				local_status.total = response.total;
 				
-				if (total > 0) {
-					local_status.progress = (int)(((double)completed / (double)total) * 100.0);
+				if (local_status.total > 0) {
+					local_status.progress = (int)(((double)local_status.completed / (double)local_status.total) * 100.0);
 				}
 				
 				// Notify status update
@@ -243,7 +239,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Final status update - only complete if we saw success in chunks
-				if (local_status.status != "error" && saw_success) {
+				if (local_status.status != "error" && local_status.last_chunk_status == "success") {
 					local_status.status = "complete";
 					local_status.progress = 100;
 				} else if (local_status.status != "error") {
