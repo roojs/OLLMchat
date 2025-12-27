@@ -34,19 +34,11 @@ namespace OLLMchat.Settings
 		 */
 		public SettingsDialog dialog { get; construct; }
 
-		// Widget indices in widgets HashMap:
-		// [0] = Adw.ExpanderRow
-		// [1] = Gtk.Entry (name)
-		// [2] = Gtk.Entry (url)
-		// [3] = Gtk.PasswordEntry (api_key)
-		// [4] = Gtk.Switch (default)
-		// [5] = Gtk.Button (remove)
-
 		private Gtk.Box action_box;
 		private Gtk.Button add_btn;
 		private Adw.PreferencesGroup group;
 		private Gtk.ListBox list;
-		private Gee.HashMap<string, Gee.ArrayList<Gtk.Widget>> widgets = new Gee.HashMap<string, Gee.ArrayList<Gtk.Widget>>();
+		private Gee.HashMap<string, ConnectionRow> rows = new Gee.HashMap<string, ConnectionRow>();
 		private ConnectionAdd add_dialog;
 
 		/**
