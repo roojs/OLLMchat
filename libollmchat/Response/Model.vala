@@ -58,8 +58,26 @@ namespace OLLMchat.Response
 		 * Model parameters string from show API response.
 		 * 
 		 * Contains default parameter values in format like "temperature 0.7\nnum_ctx 2048"
+		 * When set, automatically fills this.options with parsed values.
 		 */
-		public string parameters { get; set; default = ""; }
+		private string _parameters = "";
+		public string parameters {
+			get { return this._parameters; }
+			set {
+				this._parameters = value;
+				// Automatically fill options from parameters when set
+				if (value != null && value != "") {
+					this.options.fill_from_model(this);
+				}
+			}
+		}
+		
+		/**
+		 * Default options parsed from model parameters.
+		 * 
+		 * Automatically populated when parameters property is set.
+		 */
+		public OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
 
 		/**
 		 * Returns whether the model supports thinking output
@@ -205,46 +223,16 @@ namespace OLLMchat.Response
 			}
 			
 			// Update parameters if present in show response
+			// This will automatically trigger fill_from_model via the setter
 			if (source.parameters != null && source.parameters != "") {
-				this.parameters = source.parameters;
+				this._parameters = source.parameters;
+				this.options.fill_from_model(this);
 			}
 			
 			this.thaw_notify();
 			// Thaw notifications - all property change signals will be emitted now
  		}
 		
-		/**
-		 * Parses the parameters string and returns a map of parameter names to values.
-		 * 
-		 * Parameters string format: "temperature 0.7\nnum_ctx 2048"
-		 * 
-		 * @return HashMap mapping parameter names to their string values
-		 */
-		public Gee.HashMap<string, string> parse_parameters()
-		{
-			var result = new Gee.HashMap<string, string>();
-			if (this.parameters == null || this.parameters == "") {
-				return result;
-			}
-			
-			var lines = this.parameters.split("\n");
-			foreach (var line in lines) {
-				line = line.strip();
-				if (line == "") {
-					continue;
-				}
-				// Split on first space to separate parameter name from value
-				var parts = line.split(" ", 2);
-				if (parts.length >= 2) {
-					var param_name = parts[0].strip();
-					var param_value = parts[1].strip();
-					if (param_name != "" && param_value != "") {
-						result.set(param_name, param_value);
-					}
-				}
-			}
-			return result;
-		}
 		
 		/**
 		* Gets the cache file path for this model.
