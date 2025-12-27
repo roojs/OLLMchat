@@ -70,7 +70,7 @@ namespace OLLMchat.Call
 					var chunk_node = new Json.Node(Json.NodeType.OBJECT);
 					chunk_node.set_object(chunk);
 					
-					var response = Json.gobject_deserialize(typeof(Response.Pull), chunk_node) as Response.Pull;
+					var response = Json.gobject_deserialize(typeof(OLLMchat.Response.Pull), chunk_node) as OLLMchat.Response.Pull;
 					if (response == null) {
 						GLib.warning("Failed to deserialize pull response chunk");
 						return;
