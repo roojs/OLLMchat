@@ -16,96 +16,20 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class VectorSearchApp : Application
+class VectorSearchApp : TestAppBase
 {
-	private static bool opt_debug = false;
-	private static bool opt_json = false;
-	private static string? opt_language = null;
-	private static string? opt_element_type = null;
-	private static int opt_max_results = 10;
-	private static int opt_max_snippet_lines = 10;
-	private static string? opt_url = null;
-	private static string? opt_api_key = null;
-	private static string? opt_embed_model = null;
+	protected static bool opt_json = false;
+	protected static string? opt_language = null;
+	protected static string? opt_element_type = null;
+	protected static int opt_max_results = 10;
+	protected static int opt_max_snippet_lines = 10;
+	protected static string? opt_embed_model = null;
 	
-	private string data_dir;
 	private string db_path;
 	private string vector_db_path;
 	
-	const GLib.OptionEntry[] options = {
-		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
-		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
-		{ "language", 'l', 0, OptionArg.STRING, ref opt_language, "Filter by language (e.g., vala, python)", "LANG" },
-		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)", "TYPE" },
-		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 10)", "N" },
-		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
-		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
-		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
-		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
-		{ null }
-	};
-	
-	public VectorSearchApp()
-	{
-		Object(
-			application_id: "org.roojs.oc-vector-search",
-			flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
-		);
-	}
-	
-	protected override int command_line(ApplicationCommandLine command_line)
-	{
-		// Reset static option variables at start of each command line invocation
-		opt_debug = false;
-		opt_json = false;
-		opt_language = null;
-		opt_element_type = null;
-		opt_max_results = 10;
-		opt_max_snippet_lines = 10;
-		opt_url = null;
-		opt_api_key = null;
-		opt_embed_model = null;
-		
-		string[] args = command_line.get_arguments();
-		var opt_context = new OptionContext("Code Vector Search");
-		opt_context.set_help_enabled(true);
-		opt_context.add_main_entries(options, null);
-		
-		try {
-			unowned string[] unowned_args = args;
-			opt_context.parse(ref unowned_args);
-		} catch (OptionError e) {
-			command_line.printerr("error: %s\n", e.message);
-			command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
-			return 1;
-		}
-		
-		if (opt_debug) {
-			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				var timestamp = (new DateTime.now_local()).format("%H:%M:%S.%f");
-				var level_str = lvl.to_string();
-				command_line.printerr("%s [%s] %s\n", timestamp, level_str, msg);
-			});
-		}
-		
-		// Build paths at start
-		this.data_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat");
-		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
-		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
-		
-		string? folder_path = null;
-		string? query = null;
-		
-		if (args.length > 1) {
-			folder_path = args[1];
-		}
-		if (args.length > 2) {
-			query = args[2];
-		}
-		
-		if (folder_path == null || folder_path == "" || query == null || query == "") {
-			var usage = @"Usage: $(args[0]) [OPTIONS] <folder> <query>
+	protected const string help = """
+Usage: {ARG} [OPTIONS] <folder> <query>
 
 Search indexed codebase using semantic vector search.
 
@@ -125,65 +49,116 @@ Options:
   --embed-model=MODEL Embedding model name (default: bge-m3)
 
 Examples:
-  $(args[0]) libocvector \"database connection\"
-  $(args[0]) --json libocvector \"async function\"
-  $(args[0]) --language=vala --element-type=method libocvector \"parse\"
-  $(args[0]) --max-results=20 libocvector \"search\"
-  $(args[0]) --max-snippet-lines=5 libocvector \"search\"
-";
-			command_line.printerr("%s", usage);
-			return 1;
+  {ARG} libocvector "database connection"
+  {ARG} --json libocvector "async function"
+  {ARG} --language=vala --element-type=method libocvector "parse"
+  {ARG} --max-results=20 libocvector "search"
+  {ARG} --max-snippet-lines=5 libocvector "search"
+""";
+	
+	protected const OptionEntry[] local_options = {
+		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
+		{ "language", 'l', 0, OptionArg.STRING, ref opt_language, "Filter by language (e.g., vala, python)", "LANG" },
+		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)", "TYPE" },
+		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 10)", "N" },
+		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
+		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
+		{ null }
+	};
+	
+	protected override OptionEntry[] get_options()
+	{
+		var options = new OptionEntry[base_options.length + local_options.length];
+		int i = 0;
+		foreach (var opt in base_options) {
+			options[i++] = opt;
+		}
+		foreach (var opt in local_options) {
+			options[i++] = opt;
+		}
+		return options;
+	}
+	
+	public VectorSearchApp()
+	{
+		base("org.roojs.oc-vector-search");
+	}
+	
+	public override OLLMchat.Settings.Config2 load_config()
+	{
+		// Register ocvector types before loading config
+		OLLMvector.Database.register_config();
+		OLLMvector.Indexing.Analysis.register_config();
+		
+		// Call base implementation
+		return base_load_config();
+	}
+	
+	protected override string? validate_args(string[] args)
+	{
+		// Reset static option variables at start of each command line invocation
+		opt_json = false;
+		opt_language = null;
+		opt_element_type = null;
+		opt_max_results = 10;
+		opt_max_snippet_lines = 10;
+		opt_embed_model = null;
+		
+		// Build paths at start
+		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
+		
+		string? folder_path = null;
+		string? query = null;
+		
+		if (args.length > 1) {
+			folder_path = args[1];
+		}
+		if (args.length > 2) {
+			query = args[2];
 		}
 		
-		// Hold the application to keep main loop running during async operations
-		this.hold();
+		if (folder_path == null || folder_path == "" || query == null || query == "") {
+			return help.replace("{ARG}", args[0]);
+		}
 		
-		this.run_search.begin(folder_path, query, (obj, res) => {
-			try {
-				this.run_search.end(res);
-			} catch (Error e) {
-				command_line.printerr("Error: %s\n", e.message);
-			} finally {
-				// Release hold and quit when done
-				this.release();
-				this.quit();
-			}
-		});
+		return null;
+	}
+	
+	protected override string get_app_name()
+	{
+		return "Code Vector Search";
+	}
+	
+	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	{
+		string[] args = command_line.get_arguments();
+		string? folder_path = args.length > 1 ? args[1] : null;
+		string? query = args.length > 2 ? args[2] : null;
 		
-		return 0;
+		if (folder_path == null || query == null) {
+			throw new GLib.IOError.NOT_FOUND("Folder and query required");
+		}
+		
+		yield this.run_search(folder_path, query);
 	}
 	
 	private async void run_search(string folder_path, string query) throws Error
 	{
 		stdout.printf("=== Code Vector Search ===\n\n");
 		
-		var data_dir_file = GLib.File.new_for_path(this.data_dir);
-		if (!data_dir_file.query_exists()) {
-			throw new GLib.IOError.NOT_FOUND("Data directory not found: " + this.data_dir);
-		}
+		this.ensure_data_dir();
 		
 		var sql_db = new SQ.Database(this.db_path, false);
 		GLib.debug("Using database: %s", this.db_path);
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
 		
-		// Register ocvector types before loading config
-		OLLMvector.Database.register_config();
-		OLLMvector.Indexing.Analysis.register_config();
-		
-		// Load Config2
-		var config_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat"
-		);
-		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-		
-		var config = OLLMchat.Settings.Config2.load();
-		
 		OLLMchat.Client embed_client;
 		
 		// Shortest if first - config loaded
-		if (config.loaded) {
-			embed_client = config.create_client("ocvector.embed");
+		if (this.config.loaded) {
+			embed_client = this.config.create_client("ocvector.embed");
 			if (embed_client == null) {
 				throw new GLib.IOError.NOT_FOUND("ocvector.embed not configured in config.2.json");
 			}
@@ -204,7 +179,7 @@ Examples:
 			};
 			
 			// Add connection to config (needed for setup methods)
-			config.connections.set(opt_url, connection);
+			this.config.connections.set(opt_url, connection);
 			
 			// Test connection
 			stdout.printf("Testing connection to %s...\n", opt_url);
@@ -217,10 +192,10 @@ Examples:
 			}
 			
 			// Setup embed usage in config (creates entry with default)
-			OLLMvector.Database.setup_embed_usage(config);
+			OLLMvector.Database.setup_embed_usage(this.config);
 			
 			// Get usage object and apply command-line override if provided
-			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
+			var embed_usage = this.config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
 			
 			if (opt_embed_model != null) {
 				embed_usage.model = opt_embed_model;
@@ -236,14 +211,14 @@ Examples:
 			}
 			
 			// Create embed client from usage
-			embed_client = config.create_client("ocvector.embed");
+			embed_client = this.config.create_client("ocvector.embed");
 			if (embed_client == null) {
 				throw new GLib.IOError.FAILED("Failed to create embed client");
 			}
 			
 			// Save config since we created it
 			try {
-				config.save();
+				this.config.save();
 				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);

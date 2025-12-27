@@ -60,6 +60,7 @@ namespace OLLMchat.Call
 			if (model_obj.name == "") {
 				model_obj.name = this.model;
 			}
+			GLib.debug("show_model '%s' - parameters: '%s'", this.model, model_obj.parameters ?? "(null)");
 			model_obj.client = this.client;
 			return model_obj;
 		}

@@ -16,12 +16,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class TestCliApp : Application
+class TestCliApp : Application, OLLMchat.ApplicationInterface
 {
 	private static bool opt_debug = false;
 	private static string? opt_url = null;
 	private static string? opt_api_key = null;
 	private static string? opt_model = null;
+	
+	public OLLMchat.Settings.Config2 config { get; set; }
+	public string data_dir { get; set; }
 	
 	const OptionEntry[] options = {
 		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
@@ -37,6 +40,19 @@ class TestCliApp : Application
 			application_id: "org.roojs.oc-test-cli",
 			flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 		);
+		
+		// Set up data_dir
+		this.data_dir = GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
+		);
+		
+		// Load config (no vector types needed for simple CLI)
+		this.config = this.load_config();
+	}
+	
+	public OLLMchat.Settings.Config2 load_config()
+	{
+		return base_load_config();
 	}
 	
 	protected override int command_line(ApplicationCommandLine command_line)
@@ -121,19 +137,13 @@ Examples:
 	
 	private async void run_test(string query, ApplicationCommandLine command_line) throws Error
 	{
-		// Load Config2
-		var config_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat"
-		);
-		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-		
-		var config = OLLMchat.Settings.Config2.load();
+		// Use config from base class
 		
 		OLLMchat.Client client;
 		
 		// Shortest if first - config loaded
-		if (config.loaded) {
-			client = config.create_client("default_model");
+		if (this.config.loaded) {
+			client = this.config.create_client("default_model");
 			if (client == null) {
 				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 			}
@@ -159,7 +169,7 @@ Examples:
 			};
 			
 			// Add connection to config
-			config.connections.set(opt_url, connection);
+			this.config.connections.set(opt_url, connection);
 			
 			// Test connection
 			stdout.printf("Testing connection to %s...\n", opt_url);
@@ -172,14 +182,14 @@ Examples:
 			}
 			
 			// Check if default_model exists
-			if (!config.usage.has_key("default_model")) {
+			if (!this.config.usage.has_key("default_model")) {
 				command_line.printerr("Error: default_model not configured in config.2.json.\n");
 				command_line.printerr("Please configure default_model in the config file.\n");
 				throw new GLib.IOError.NOT_FOUND("default_model not configured");
 			}
 			
 			// Get usage object and apply command-line overrides if provided
-			var default_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+			var default_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
 			if (opt_model != null) {
 				default_usage.model = opt_model;
 			}
@@ -196,14 +206,14 @@ Examples:
 			}
 		 
 			// Create client from usage
-			client = config.create_client("default_model");
+			client = this.config.create_client("default_model");
 			if (client == null) {
 				throw new GLib.IOError.FAILED("Failed to create client");
 			}
 			
 			// Save config since we created it
 			try {
-				config.save();
+				this.config.save();
 				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);

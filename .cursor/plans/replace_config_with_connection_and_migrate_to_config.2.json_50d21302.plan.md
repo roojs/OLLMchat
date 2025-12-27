@@ -184,4 +184,3 @@ Files to update:
 - Test loading existing `config.json` and conversion to `config.2.json`
 - Test loading `config.2.json` directly
 - Test creating new config when neither file exists
-- Verify all Client instances work with Connection instead of Config

@@ -13,6 +13,7 @@
   <gresource prefix="/ollmchat">
     <file>style.css</file>
     <file>pulldown.css</file>
+    <file>ollama-models.json</file>
   </gresource>
   <gresource prefix="/ocvector">
     <file>ocvector/ocvector-prompt.txt</file>

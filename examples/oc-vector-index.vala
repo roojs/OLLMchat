@@ -16,86 +16,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class VectorIndexerApp : Application
+class VectorIndexerApp : TestAppBase
 {
-	private static bool opt_debug = false;
-	private static bool opt_recurse = false;
-	private static bool opt_reset_database = false;
-	private static string? opt_url = null;
-	private static string? opt_api_key = null;
-	private static string? opt_embed_model = null;
-	private static string? opt_analyze_model = null;
+	protected static bool opt_recurse = false;
+	protected static bool opt_reset_database = false;
+	protected static string? opt_embed_model = null;
+	protected static string? opt_analyze_model = null;
 	
-	private string data_dir;
 	private string db_path;
 	private string vector_db_path;
 	
-	const OptionEntry[] options = {
-		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
-		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
-		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
-		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
-		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
-		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
-		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
-		{ null }
-	};
-	
-	public VectorIndexerApp()
-	{
-		Object(
-			application_id: "org.roojs.oc-vector-index",
-			flags: ApplicationFlags.HANDLES_COMMAND_LINE
-		);
-	}
-	
-	protected override int command_line(ApplicationCommandLine command_line)
-	{
-		// Reset static option variables at start of each command line invocation
-		opt_reset_database = false;
-		opt_debug = false;
-		opt_recurse = false;
-		opt_url = null;
-		opt_api_key = null;
-		opt_embed_model = null;
-		opt_analyze_model = null;
-		
-		string[] args = command_line.get_arguments();
-		var opt_context = new OptionContext("Code Vector Indexer");
-		opt_context.set_help_enabled(true);
-		opt_context.add_main_entries(options, null);
-		
-		try {
-			unowned string[] unowned_args = args;
-			opt_context.parse(ref unowned_args);
-		} catch (OptionError e) {
-			command_line.printerr("error: %s\n", e.message);
-			command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
-			return 1;
-		}
-		
-		if (opt_debug) {
-			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				command_line.printerr("%s [%s] %s\n",
-					(new DateTime.now_local()).format("%H:%M:%S.%f"),
-					lvl.to_string(),
-					msg);
-			});
-		}
-		
-		// Build paths at start
-		this.data_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat");
-		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
-		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
-		
-		string? path = null;
-		if (args.length > 1) {
-			path = args[1];
-		}
-		
-		if (path == null && !opt_reset_database) {
-			var usage = @"Usage: $(args[0]) [OPTIONS] <file_or_folder_path>
+	protected const string help = """
+Usage: {ARG} [OPTIONS] <file_or_folder_path>
 
 Index files or folders for vector search.
 
@@ -109,47 +41,102 @@ Options:
   --analyze-model=MODEL Analysis model name (default: qwen3-coder:30b)
 
 Examples:
-  $(args[0]) libocvector/Database.vala
-  $(args[0]) --debug libocvector/Database.vala
-  $(args[0]) libocvector/
-  $(args[0]) --recurse libocvector/
-  $(args[0]) --reset-database
-";
-			command_line.printerr("%s", usage);
-			return 1;
+  {ARG} libocvector/Database.vala
+  {ARG} --debug libocvector/Database.vala
+  {ARG} libocvector/
+  {ARG} --recurse libocvector/
+  {ARG} --reset-database
+""";
+	
+	protected const OptionEntry[] local_options = {
+		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
+		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
+		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
+		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
+		{ null }
+	};
+	
+	protected override OptionEntry[] get_options()
+	{
+		var options = new OptionEntry[base_options.length + local_options.length];
+		int i = 0;
+		foreach (var opt in base_options) {
+			options[i++] = opt;
+		}
+		foreach (var opt in local_options) {
+			options[i++] = opt;
+		}
+		return options;
+	}
+	
+	public VectorIndexerApp()
+	{
+		base("org.roojs.oc-vector-index");
+	}
+	
+	public override OLLMchat.Settings.Config2 load_config()
+	{
+		// Register ocvector types before loading config
+		OLLMvector.Database.register_config();
+		OLLMvector.Indexing.Analysis.register_config();
+		
+		// Call base implementation
+		return base_load_config();
+	}
+	
+	protected override string? validate_args(string[] args)
+	{
+		// Reset static option variables at start of each command line invocation
+		opt_recurse = false;
+		opt_reset_database = false;
+		opt_embed_model = null;
+		opt_analyze_model = null;
+		
+		// Build paths at start
+		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
+		
+		string? path = null;
+		if (args.length > 1) {
+			path = args[1];
 		}
 		
+		if (path == null && !opt_reset_database) {
+			return help.replace("{ARG}", args[0]);
+		}
+		
+		return null;
+	}
+	
+	protected override string get_app_name()
+	{
+		return "Code Vector Indexer";
+	}
+	
+	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	{
+		// Handle reset-database case
 		if (opt_reset_database) {
 			GLib.debug("opt_reset_database is true - resetting database");
-			try {
-				var sql_db = new SQ.Database(this.db_path, false);
-				OLLMvector.VectorMetadata.reset_database(sql_db, this.vector_db_path);
-				stdout.printf("✓ Database reset complete\n");
-			} catch (Error e) {
-				command_line.printerr("Error: %s\n", e.message);
-				return 1;
-			}
-			return 0;
+			var sql_db = new SQ.Database(this.db_path, false);
+			OLLMvector.VectorMetadata.reset_database(sql_db, this.vector_db_path);
+			stdout.printf("✓ Database reset complete\n");
+			return;
 		}
 		
 		GLib.debug("opt_reset_database is false - proceeding with normal indexing");
 		
-		// Hold the application to keep main loop running during async operations
-		this.hold();
+		string[] args = command_line.get_arguments();
+		string? path = null;
+		if (args.length > 1) {
+			path = args[1];
+		}
 		
-		this.run_index.begin(path, (obj, res) => {
-			try {
-				this.run_index.end(res);
-			} catch (Error e) {
-				command_line.printerr("Error: %s\n", e.message);
-			} finally {
-				// Release hold and quit when done
-				this.release();
-				this.quit();
-			}
-		});
+		if (path == null) {
+			throw new GLib.IOError.NOT_FOUND("Path required");
+		}
 		
-		return 0;
+		yield this.run_index(path);
 	}
 	
 	private async void run_index(string path) throws Error
@@ -179,14 +166,7 @@ Examples:
 			stdout.printf("File: %s\n\n", abs_path);
 		}
 		
-		var data_dir_file = GLib.File.new_for_path(this.data_dir);
-		if (!data_dir_file.query_exists()) {
-			try {
-				data_dir_file.make_directory_with_parents(null);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to create data directory: " + e.message);
-			}
-		}
+		this.ensure_data_dir();
 		
 		var sql_db = new SQ.Database(this.db_path, false);
 		GLib.debug("Using database: %s", this.db_path);
@@ -196,29 +176,17 @@ Examples:
 		// manager.buffer_provider defaults to BufferProviderBase which is sufficient for indexing
 		// manager.git_provider defaults to GitProviderBase which is sufficient for indexing
 		
-		// Register ocvector types before loading config
-		OLLMvector.Database.register_config();
-		OLLMvector.Indexing.Analysis.register_config();
-		
-		// Load Config2
-		var config_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat"
-		);
-		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-		
-		var config = OLLMchat.Settings.Config2.load();
-		
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
 		// Shortest if first - config loaded
-		if (config.loaded) {
-			embed_client = config.create_client("ocvector.embed");
+		if (this.config.loaded) {
+			embed_client = this.config.create_client("ocvector.embed");
 			if (embed_client == null) {
 				throw new GLib.IOError.NOT_FOUND("ocvector.embed not configured in config.2.json");
 			}
 			
-			analysis_client = config.create_client("ocvector.analysis");
+			analysis_client = this.config.create_client("ocvector.analysis");
 			if (analysis_client == null) {
 				throw new GLib.IOError.NOT_FOUND("ocvector.analysis not configured in config.2.json");
 			}
@@ -239,7 +207,7 @@ Examples:
 			};
 			
 			// Add connection to config (needed for setup methods)
-			config.connections.set(opt_url, connection);
+			this.config.connections.set(opt_url, connection);
 			
 			// Test connection
 			stdout.printf("Testing connection to %s...\n", opt_url);
@@ -252,12 +220,12 @@ Examples:
 			}
 			
 			// Setup embed and analysis usage in config (creates entries with defaults)
-			OLLMvector.Database.setup_embed_usage(config);
-			OLLMvector.Indexing.Analysis.setup_analysis_usage(config);
+			OLLMvector.Database.setup_embed_usage(this.config);
+			OLLMvector.Indexing.Analysis.setup_analysis_usage(this.config);
 			
 			// Get usage objects and apply command-line overrides if provided
-			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
-			var analyze_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
+			var embed_usage = this.config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
+			var analyze_usage = this.config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
 			
 			if (opt_embed_model != null) {
 				embed_usage.model = opt_embed_model;
@@ -285,19 +253,19 @@ Examples:
 			}
 		 
 			// Create clients from usage
-			embed_client = config.create_client("ocvector.embed");
+			embed_client = this.config.create_client("ocvector.embed");
 			if (embed_client == null) {
 				throw new GLib.IOError.FAILED("Failed to create embed client");
 			}
 			
-			analysis_client = config.create_client("ocvector.analysis");
+			analysis_client = this.config.create_client("ocvector.analysis");
 			if (analysis_client == null) {
 				throw new GLib.IOError.FAILED("Failed to create analysis client");
 			}
 			
 			// Save config since we created it
 			try {
-				config.save();
+				this.config.save();
 				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);

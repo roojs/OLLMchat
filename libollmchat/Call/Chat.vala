@@ -27,11 +27,7 @@ namespace OLLMchat.Call
 	 */
 	public class Chat : Base, ChatContentInterface
 	{
-		// Read-only getters that read from client (with fake setters for serialization)
-		public string model { 
-			get { return this.client.model; }
-			set { } // Fake setter for serialization
-		}
+		public string model { get; set; }
 		
 		public bool stream { 
 			get { return this.client.stream; }
@@ -50,10 +46,7 @@ namespace OLLMchat.Call
 		 */
 		public Json.Object? format_obj { get; set; default = null; }
 		
-		public Call.Options options { 
-			get { return this.client.options; }
-			set { } // Fake setter for serialization
-		}
+		public Call.Options options { get; set; }
 		
 		public bool think { 
 			get { return this.client.think; }
@@ -69,7 +62,6 @@ namespace OLLMchat.Call
 			get { return this.client.tools; }
 			set { } // Fake setter for serialization
 		}
-		public Response.Chat? streaming_response { get; set; default = null; }
 		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
@@ -78,14 +70,25 @@ namespace OLLMchat.Call
 		// Generated in constructor - will always be set
 		public string fid = "";
 		
-		public Chat(Client client)
+		public Chat(Client client, string model, Call.Options? options = null)
 		{
 			base(client);
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Model is required");
+			}
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
+			this.model = model;
 			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
 			var now = new DateTime.now_local();
 			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			
+			// Load model options from config if options not provided
+			this.options = options != null
+				? options
+				: (this.client.config.model_options.has_key(model)
+					? this.client.config.model_options.get(model)
+					: new Call.Options());
 		}
 		// this is only called by response - not by the user
 		  
@@ -107,12 +110,12 @@ namespace OLLMchat.Call
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "tools":
-					// Only serialize tools if model is set and tools exist
-					if (this.client.model == "" || this.tools.size == 0) {
+					// Only serialize tools if tools exist
+					if (this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.client.model) 
-						|| !this.client.available_models.get(this.client.model).can_call) {
+					if (!this.client.available_models.has_key(this.model) 
+						|| !this.client.available_models.get(this.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -152,14 +155,15 @@ namespace OLLMchat.Call
 					// Serialize options and convert hyphen keys to underscores for Ollama API
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
+					// Create a new object with renamed keys (hyphens to underscores)
+					var new_obj = new Json.Object();
 					obj.foreach_member((o, key, node) => {
-						if (!key.contains("-")) {
-							return;
-						}
-						obj.set_member(key.replace("-", "_"), node);
-						obj.remove_member(key);
+						var new_key = key.contains("-") ? key.replace("-", "_") : key;
+						new_obj.set_member(new_key, node);
 					});
-					return options_node;
+					var new_node = new Json.Node(Json.NodeType.OBJECT);
+					new_node.set_object(new_obj);
+					return new_node;
 				
 				case "messages":
 					// Serialize the message array built in exec_chat()
@@ -369,10 +373,6 @@ namespace OLLMchat.Call
 		
 		public async Response.Chat exec_chat() throws Error
 		{
-			if (this.model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Model is required");
-			}
-			 
 			// System and user messages are now created earlier via message_created signal
 			// But we still need to add API-compatible messages to messages array for the request
 			// Add system message if system_content is set (for API request)
@@ -470,10 +470,11 @@ namespace OLLMchat.Call
 			if (this.streaming_response == null) {
 				this.streaming_response = new Response.Chat(this.client, this);
 			}
+			var response = (Response.Chat?)this.streaming_response;
 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.create_streaming_message(url, request_body);
+			var message = this.client.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Request URL: %s", url);
 			GLib.debug("Request Body: %s", request_body);
@@ -485,51 +486,35 @@ namespace OLLMchat.Call
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
 					// User cancelled - ensure response is marked as done
-					this.streaming_response.done = true;
+					response.done = true;
 					// Return the response even if cancelled (may be partial)
-					return this.streaming_response;
+					return response;
 				}
 				// Re-throw other IO errors
 				throw e;
 			} catch (Error e) {
 				// Mark as done and re-throw
-				this.streaming_response.done = true;
+				response.done = true;
 				throw e;
 			}
 
 		// Check for tool calls and handle them recursively
 			GLib.debug("Chat.execute_streaming: done=%s, tool_calls.size=%d, content='%s'", 
-				this.streaming_response.done.to_string(),
-				this.streaming_response.message.tool_calls.size,
-				this.streaming_response.message.content);
+				response.done.to_string(),
+				response.message.tool_calls.size,
+				response.message.content);
 			
-			if (this.streaming_response.done && 
-				this.streaming_response.message.tool_calls.size > 0) {
+			if (response.done && 
+				response.message.tool_calls.size > 0) {
 				GLib.debug("Chat.execute_streaming: Calling toolsReply");
-				return yield this.toolsReply(this.streaming_response);
+				return yield this.toolsReply(response);
 			}
 			
 			GLib.debug("Chat.execute_streaming: Not calling toolsReply - done=%s, tool_calls.size=%d",
-				this.streaming_response.done.to_string(),
-				this.streaming_response.message.tool_calls.size);
+				response.done.to_string(),
+				response.message.tool_calls.size);
 			
-			return this.streaming_response;
-		}
-		
-		
-
-		private Soup.Message create_streaming_message(string url, string request_body)
-		{
-			var message = new Soup.Message(this.http_method, url);
-
-			if (this.client.connection.api_key != "") {
-				message.request_headers.append("Authorization",
-					"Bearer " + this.client.connection.api_key 
-				);
-			}
-
-			message.set_request_body_from_bytes("application/json", new Bytes(request_body.data));
-			return message;
+			return response;
 		}
 
 
@@ -539,40 +524,37 @@ namespace OLLMchat.Call
 			if (this.streaming_response == null) {
 				this.streaming_response = new Response.Chat(this.client, this);
 			}
+			var response = (Response.Chat?)this.streaming_response;
 
 			// Emit stream_start signal on first chunk (when message is null, this is the first chunk)
-			if (this.streaming_response.message == null) {
+			if (response.message == null) {
 				this.client.stream_start();
 			}
 
 			// Process chunk
-			this.streaming_response.addChunk(chunk);
+			response.addChunk(chunk);
 
 			// Emit stream_content signal for content only (not thinking)
-			if (this.streaming_response.new_content.length > 0) {
+			if (response.new_content.length > 0) {
 				this.client.stream_content(
-					this.streaming_response.new_content, this.streaming_response
+					response.new_content, response 
 				);
 			}
 
-			// Emit signal if there's new content (either regular content or thinking)
-			// Also emit when done=true even if no new content, so we can finalize
-			// Signal will only be delivered if handlers are connected
-			if (this.streaming_response == null 
-				|| this.client == null 
-				|| (
-					this.streaming_response.new_thinking.length == 0 && 
-					this.streaming_response.new_content.length == 0 && 
-					!this.streaming_response.done
-				)) {
+		// Emit signal if there's new content (either regular content or thinking)
+		// Also emit when done=true even if no new content, so we can finalize
+		// Signal will only be delivered if handlers are connected
+			if (response.new_thinking.length == 0 && 
+				response.new_content.length == 0 && 
+				!response.done) {
 				return;
 			}
 			this.client.stream_chunk(
-					this.streaming_response.new_thinking.length > 0 ? this.streaming_response.new_thinking : 
-						(this.streaming_response.new_content.length > 0 ? this.streaming_response.new_content : ""), 
-					this.streaming_response.new_thinking.length > 0 ? true : 
-						(this.streaming_response.new_content.length > 0 ? false : this.streaming_response.is_thinking),
-					this.streaming_response);
+					response.new_thinking.length > 0 ? response.new_thinking : 
+						(response.new_content.length > 0 ? response.new_content : ""), 
+					response.new_thinking.length > 0 ? true : 
+						(response.new_content.length > 0 ? false : response.is_thinking),
+					response);
 		}
 	}
 }

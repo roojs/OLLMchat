@@ -54,6 +54,31 @@ namespace OLLMchat.Response
 		public string? model { get; set; } 
 		public string? expires_at { get; set; }
 		public int context_length { get; set; default = 0; }
+		/**
+		 * Model parameters string from show API response.
+		 * 
+		 * Contains default parameter values in format like "temperature 0.7\nnum_ctx 2048"
+		 * When set, automatically fills this.options with parsed values.
+		 */
+		private string _parameters = "";
+		public string parameters {
+			get { return this._parameters; }
+			set {
+				this._parameters = value;
+				GLib.debug("Model.parameters set for '%s': '%s'", this.name, value ?? "(null)");
+				// Automatically fill options from parameters when set
+				if (value != null && value != "") {
+					this.options.fill_from_model(this);
+				}
+			}
+		}
+		
+		/**
+		 * Default options parsed from model parameters.
+		 * 
+		 * Automatically populated when parameters property is set.
+		 */
+		public OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
 
 		/**
 		 * Returns whether the model supports thinking output
@@ -167,6 +192,7 @@ namespace OLLMchat.Response
 		 * - modified_at
 		 * - capabilities
 		 * - context_length (if present in show response)
+		 * - parameters (if present in show response)
 		 * 
 		 * Does NOT update fields from models() API (name, size, digest) or
 		 * runtime fields from ps() API (size_vram, durations, counts).
@@ -196,9 +222,17 @@ namespace OLLMchat.Response
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
+			
+			// Update parameters if present in show response
+			// This will automatically trigger fill_from_model via the setter
+			if (source.parameters != null && source.parameters != "") {
+				this.parameters = source.parameters;
+			}
+			
 			this.thaw_notify();
 			// Thaw notifications - all property change signals will be emitted now
  		}
+		
 		
 		/**
 		* Gets the cache file path for this model.

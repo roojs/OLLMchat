@@ -94,6 +94,24 @@ test_ollama = executable('oc-test-cli',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build test-pull executable (pull streaming test)
+test_pull = executable('oc-test-pull',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-pull.vala'],
+  link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
+  include_directories: include_directories('../libollmchat'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
 test_html_parser_to_md = executable('oc-html2md',
@@ -209,7 +227,7 @@ ocvector_resources = gnome.compile_resources(
 oc_vector_index = executable('oc-vector-index',
   dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
   link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
-  sources: ['oc-vector-index.vala', ocvector_resources],
+  sources: ['TestAppBase.vala', 'oc-vector-index.vala', ocvector_resources],
   include_directories: [
     include_directories('../libocvector'),
     include_directories('../libollmchat'),
@@ -244,7 +262,7 @@ oc_vector_index = executable('oc-vector-index',
 oc_vector_search = executable('oc-vector-search',
   dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
   link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
-  sources: ['oc-vector-search.vala'],
+  sources: ['TestAppBase.vala', 'oc-vector-search.vala'],
   include_directories: [
     include_directories('../libocvector'),
     include_directories('../libollmchat'),

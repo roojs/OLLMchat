@@ -70,7 +70,7 @@ namespace OLLMchat.History
 			var new_client = this.manager.new_client(this.client);
 			
 			// Create chat with new client
-			var chat = new Call.Chat(new_client);
+			var chat = new Call.Chat(new_client, new_client.model);
 			
 			// Convert EmptySession to real Session
 			var real_session = new Session(this.manager, chat);

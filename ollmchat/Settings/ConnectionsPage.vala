@@ -22,51 +22,48 @@ namespace OLLMchat.Settings
 	 * Connections tab content for settings dialog.
 	 * 
 	 * Manages server connections (add, remove, edit connection details).
-	 * Uses Adw.PreferencesPage with Gtk.ListBox for connection list.
+	 * Uses Adw.PreferencesGroup with Gtk.ListBox for connection list.
 	 * Editing is inline - no separate edit/update methods needed.
 	 * 
 	 * @since 1.0
 	 */
-	public class ConnectionsPage : Adw.PreferencesPage
+	public class ConnectionsPage : SettingsPage
 	{
 		/**
-		 * Reference to parent SettingsDialog (which has the config object)
+		 * Reference to parent SettingsDialog (which has the app object)
 		 */
 		public SettingsDialog dialog { get; construct; }
 
-		// Widget indices in widgets HashMap:
-		// [0] = Adw.ExpanderRow
-		// [1] = Gtk.Entry (name)
-		// [2] = Gtk.Entry (url)
-		// [3] = Gtk.PasswordEntry (api_key)
-		// [4] = Gtk.Switch (default)
-		// [5] = Gtk.Button (remove)
-
-		private Gtk.Box action_box;
 		private Gtk.Button add_btn;
 		private Adw.PreferencesGroup group;
-		private Gtk.ListBox list;
-		private Gee.HashMap<string, Gee.ArrayList<Gtk.Widget>> widgets = new Gee.HashMap<string, Gee.ArrayList<Gtk.Widget>>();
+		private Gtk.Box boxed_list;
+		private Gee.HashMap<string, ConnectionRow> rows = new Gee.HashMap<string, ConnectionRow>();
 		private ConnectionAdd add_dialog;
 
 		/**
 		 * Creates a new ConnectionsPage.
 		 * 
-		 * @param dialog Parent SettingsDialog (which has the config object)
+		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
 		public ConnectionsPage(SettingsDialog dialog)
 		{
-			Object(dialog: dialog);
-		}
+			Object(
+				dialog: dialog,
+				page_name: "connections",
+				page_title: "Connections",
+				orientation: Gtk.Orientation.VERTICAL,
+				spacing: 0
+			);
+			
+			// Add proper margins to the page
+			this.margin_start = 12;
+			this.margin_end = 12;
+			this.margin_top = 12;
+			this.margin_bottom = 12;
 
-		construct
-		{
-			// Create horizontal action bar
-			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 12,
-				margin_bottom = 12
+			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
+			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+				hexpand = true
 			};
 
 			// Create Add Connection button
@@ -74,22 +71,19 @@ namespace OLLMchat.Settings
 				css_classes = {"suggested-action"}
 			};
 			this.add_btn.clicked.connect(this.add_connection);
-			this.action_box.append(this.add_btn);
+			this.action_widget.append(this.add_btn);
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {
-				title = "Connections"
+				title = this.page_title
 			};
 
-			// Create list box for connections
-			this.list = new Gtk.ListBox();
-			this.group.add(this.list);
+			// Create boxed list for connections (using Box instead of ListBox to avoid hover styles)
+			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			this.group.add(this.boxed_list);
 
-			// Add action bar and preferences group to page
-			var action_group = new Adw.PreferencesGroup();
-			action_group.add(this.action_box);
-			this.add(action_group);
-			this.add(this.group);
+			// Add preferences group to page (action bar will be added to dialog's action_bar_area on activation)
+			this.append(this.group);
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
@@ -115,12 +109,12 @@ namespace OLLMchat.Settings
 		private void on_add_closed()
 		{
 			if (this.add_dialog.verified_connection != null) {
-				this.dialog.config.connections.set(
+				this.dialog.app.config.connections.set(
 					this.add_dialog.verified_connection.url,
 					this.add_dialog.verified_connection
 				);
 				this.render_connections();
-				this.dialog.config.save();
+				this.dialog.app.config.save();
 			}
 		}
 
@@ -131,62 +125,57 @@ namespace OLLMchat.Settings
 		 */
 		private async void verify_connection(string url)
 		{
-			var new_url = (this.widgets.get(url).get(2) as Gtk.Entry).text.strip();
-			var new_name = (this.widgets.get(url).get(1) as Gtk.Entry).text.strip();
-			var new_api_key = (this.widgets.get(url).get(3) as Gtk.PasswordEntry).text.strip();
-			var new_default = (this.widgets.get(url).get(4) as Gtk.Switch).active;
+			var row = this.rows.get(url);
+			var newUrl = row.urlEntry.text.strip();
 
-			if (new_url == "") {
+			if (newUrl == "") {
 				return;
 			}
 
-			try {
-				// Create Connection object with current values
-				var test_connection = new Connection() {
-					name = new_name != "" ? new_name : new_url,
-					url = new_url,
-					api_key = new_api_key,
-					is_default = new_default
-				};
+			// Create Connection object with current values
+			var newName = row.nameEntry.text.strip();
+			var test_connection = new Connection() {
+				name = newName != "" ? newName : newUrl,
+				url = newUrl,
+				api_key = row.apiKeyEntry.text.strip(),
+				is_default = row.defaultSwitch.active
+			};
 
+			// Validate connection by testing it
+			try {
 				// NOTE: Client doesn't accept Connection yet - this will fail to compile until Client is updated
 				// TODO: Update Client to accept Connection directly
 				var test_client = new OLLMchat.Client(test_connection);
 
 				// Test connection by calling version endpoint
 				GLib.debug("Server version: %s", yield test_client.version());
-
-				// Update connection in config
-				// If URL changed, remove old entry and add new one
-				var widgets = this.widgets.get(url);
-				var expander = widgets.get(0) as Adw.ExpanderRow;
-				if (new_url != url) {
-					this.dialog.config.connections.unset(url);
-					this.dialog.config.connections.set(new_url, test_connection);
-					// Update expander row title/subtitle
-					expander.title = test_connection.name;
-					expander.subtitle = new_url;
-					// Update tracking map
-					this.widgets.set(new_url, widgets);
-					this.widgets.unset(url);
-				} else {
-					this.dialog.config.connections.set(url, test_connection);
-					// Update expander row title
-					expander.title = test_connection.name;
-				}
-
-				// Remove unverified CSS class from all fields
-				foreach (int i in new int[] {1, 2, 3, 4}) {
-					this.widgets.get(url).get(i).remove_css_class("oc-settings-unverified");
-				}
-
-				// Save config
-				this.dialog.config.save();
-
 			} catch (Error e) {
 				// Show error message
 				GLib.warning("Failed to verify connection: " + e.message);
+				return;
 			}
+
+			// Update connection in config
+			// If URL changed, remove old entry and add new one
+			if (newUrl != url) {
+				this.dialog.app.config.connections.unset(url);
+				this.dialog.app.config.connections.set(newUrl, test_connection);
+				// Update tracking map
+				this.rows.set(newUrl, row);
+				this.rows.unset(url);
+			} else {
+				this.dialog.app.config.connections.set(url, test_connection);
+			}
+
+			// Update expander row title/subtitle
+			row.expander.title = test_connection.name;
+			row.expander.subtitle = newUrl;
+
+			// Remove unverified CSS class from all fields
+			row.clearUnverified();
+
+			// Save config
+			this.dialog.app.config.save();
 		}
 
 		/**
@@ -197,13 +186,13 @@ namespace OLLMchat.Settings
 		 */
 		private void remove_connection(string url)
 		{
-			if (this.dialog.config.connections.size <= 1) {
+			if (this.dialog.app.config.connections.size <= 1) {
 				return; // Cannot remove last connection
 			}
 
-			this.dialog.config.connections.unset(url);
+			this.dialog.app.config.connections.unset(url);
 			this.render_connections();
-			this.dialog.config.save();
+			this.dialog.app.config.save();
 		}
 
 		/**
@@ -215,29 +204,29 @@ namespace OLLMchat.Settings
 		 */
 		private void render_connections()
 		{
-			bool can_remove = this.dialog.config.connections.size > 1;
+			bool can_remove = this.dialog.app.config.connections.size > 1;
 
 			// Find and remove connections that no longer exist in config
 			var urls_to_remove = new Gee.ArrayList<string>();
-			foreach (var entry in this.widgets.entries) {
-				if (!this.dialog.config.connections.has_key(entry.key)) {
+			foreach (var entry in this.rows.entries) {
+				if (!this.dialog.app.config.connections.has_key(entry.key)) {
 					urls_to_remove.add(entry.key);
 				}
 			}
 
 			foreach (var url in urls_to_remove) {
-				this.list.remove((this.widgets.get(url).get(0) as Adw.ExpanderRow));
-				this.widgets.unset(url);
+				this.rows.get(url).expander.unparent();
+				this.rows.unset(url);
 			}
 
 			// Add new connections that don't have rows yet
-			foreach (var entry in this.dialog.config.connections.entries) {
-				if (!this.widgets.has_key(entry.key)) {
+			foreach (var entry in this.dialog.app.config.connections.entries) {
+				if (!this.rows.has_key(entry.key)) {
 					this.add_connection_row(entry.key, entry.value, can_remove);
 					continue;
 				}
 				// Update Remove button visibility for existing row
-				this.update_remove_button_visibility(entry.key, can_remove);
+				this.rows.get(entry.key).removeButton.visible = can_remove;
 			}
 		}
 
@@ -250,121 +239,20 @@ namespace OLLMchat.Settings
 		 */
 		private void add_connection_row(string url, OLLMchat.Settings.Connection connection, bool can_remove)
 		{
-			var expander_row = new Adw.ExpanderRow() {
-				title = connection.name,
-				subtitle = url
-			};
+			var row = new ConnectionRow(connection, url, can_remove);
 
-			// Create form fields
-			var name_entry = new Gtk.Entry() {
-				text = connection.name
-			};
-			name_entry.changed.connect(() => {
-				name_entry.add_css_class("oc-settings-unverified");
+			row.remove_requested.connect(() => {
+				this.remove_connection(row.url);
+			});
+			row.verify_requested.connect(() => {
+				this.verify_connection.begin(row.url);
 			});
 
-			var url_entry = new Gtk.Entry() {
-				text = connection.url
-			};
-			url_entry.changed.connect(() => {
-				url_entry.add_css_class("oc-settings-unverified");
-			});
-
-			var api_key_entry = new Gtk.PasswordEntry() {
-				text = connection.api_key
-			};
-			api_key_entry.changed.connect(() => {
-				api_key_entry.add_css_class("oc-settings-unverified");
-			});
-
-			var default_switch = new Gtk.Switch() {
-				active = connection.is_default
-			};
-			default_switch.activate.connect(() => {
-				default_switch.add_css_class("oc-settings-unverified");
-			});
-
-			// Add form fields to expander row
-			var name_row = new Adw.ActionRow() {
-				title = "Name"
-			};
-			name_row.add_suffix(name_entry);
-			expander_row.add_row(name_row);
-
-			var url_row = new Adw.ActionRow() {
-				title = "URL"
-			};
-			url_row.add_suffix(url_entry);
-			expander_row.add_row(url_row);
-
-			var api_key_row = new Adw.ActionRow() {
-				title = "API Key"
-			};
-			api_key_row.add_suffix(api_key_entry);
-			expander_row.add_row(api_key_row);
-
-			var default_row = new Adw.ActionRow() {
-				title = "Default"
-			};
-			default_row.add_suffix(default_switch);
-			expander_row.add_row(default_row);
-
-			// Create action buttons at bottom
-			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 6,
-				margin_bottom = 6
-			};
-
-			// Remove button (red, left)
-			var remove_button = new Gtk.Button.with_label("Remove") {
-				css_classes = {"destructive-action"},
-				visible = can_remove
-			};
-			remove_button.clicked.connect(() => {
-				this.remove_connection(url);
-			});
-			button_box.append(remove_button);
-
-			// Verify button (green/blue, right)
-			var verify_button = new Gtk.Button.with_label("Verify") {
-				css_classes = {"suggested-action"}
-			};
-			verify_button.clicked.connect(() => {
-				this.verify_connection.begin(url);
-			});
-			button_box.append(verify_button);
-
-			// Add button box as last row
-			var button_row = new Adw.ActionRow();
-			button_row.add_suffix(button_box);
-			expander_row.add_row(button_row);
-
-			// Store all widgets in ArrayList: [0]=expander_row, [1]=name_entry, [2]=url_entry, [3]=api_key_entry, [4]=default_switch, [5]=remove_button
-			var widgets = new Gee.ArrayList<Gtk.Widget>();
-			widgets.add(expander_row);
-			widgets.add(name_entry);
-			widgets.add(url_entry);
-			widgets.add(api_key_entry);
-			widgets.add(default_switch);
-			widgets.add(remove_button);
-			this.widgets.set(url, widgets);
-
-			// Add expander row to connection list
-			this.list.append(expander_row);
+			this.rows.set(url, row);
+			this.boxed_list.append(row.expander);
 		}
 
-		/**
-		 * Updates Remove button visibility for a specific connection row.
-		 * 
-		 * @param url Connection URL
-		 * @param can_remove Whether Remove button should be visible
-		 */
-		private void update_remove_button_visibility(string url, bool can_remove)
-		{
-			(this.widgets.get(url).get(5) as Gtk.Button).visible = can_remove;
-		}
+
 	}
 }
 

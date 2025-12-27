@@ -31,10 +31,9 @@ namespace OLLMchat
 		private Adw.OverlaySplitView split_view;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private Gtk.Button new_chat_button;
-		private Gtk.Application app;
+		private OLLMchat.ApplicationInterface app;
 		private WindowPane? window_pane = null;
 		private Gtk.Widget? current_agent_widget = null;
-		private string data_dir;
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
 		private OLLMchat.Settings.ConnectionAdd? bootstrap_dialog = null;
@@ -42,30 +41,18 @@ namespace OLLMchat
 		/**
 		 * Creates a new OllmchatWindow instance.
 		 * 
-		 * @param app The Gtk.Application instance
+		 * @param app The OLLMchat.ApplicationInterface instance
 		 * @since 1.0
 		 */
-		public OllmchatWindow(Gtk.Application app)
+		public OllmchatWindow(OLLMchat.ApplicationInterface app)
 		{
 			this.app = app;
 			this.title = "OLLMchat";
 			// Start window 20% smaller (640x480 instead of 800x600)
-			this.set_default_size(640, 600);
+			this.set_default_size(640, 800);
 			
-			// Set up data directory
-			this.data_dir = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
-			);
-			
-			// Ensure data directory exists
-			var data_dir_file = GLib.File.new_for_path(this.data_dir);
-			if (!data_dir_file.query_exists()) {
-				try {
-					data_dir_file.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to create data directory %s: %s", this.data_dir, e.message);
-				}
-			}
+			// Ensure data directory exists (using interface)
+			app.ensure_data_dir();
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();
@@ -133,74 +120,13 @@ namespace OLLMchat
 		}
 
 		/**
-		 * Loads configuration from file system.
-		 * 
-		 * Checks for config.2.json first, then falls back to config.json and converts it.
-		 * Sets static config_path on Config1 and Config2 classes.
-		 * 
-		 * @return Config2 instance (check loaded property to determine if successfully loaded)
-		 */
-		private Settings.Config2 load_config()
-		{
-			var config_dir = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".config", "ollmchat"
-			);
-			
-			// Create instances first to ensure static properties are initialized
-			var dummy1 = new Settings.Config1();
-			var dummy2 = new Settings.Config2();
-			
-			// Set static config_path for both Config1 and Config2
-			Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-			Settings.Config1.config_path = GLib.Path.build_filename(config_dir, "config.json");
-			
-			// Register ocvector types before loading config (static registration)
-			OLLMvector.Database.register_config();
-			OLLMvector.Indexing.Analysis.register_config();
-			
-			// Check for config.2.json first
-			if (GLib.FileUtils.test(Settings.Config2.config_path, GLib.FileTest.EXISTS)) {
-				// Load config.2.json
-				GLib.debug("Loading config from %s", Settings.Config2.config_path);
-				var config = Settings.Config2.load();
-				return config;
-			}
-			
-			// Check for config.json and convert to config.2.json
-			if (!GLib.FileUtils.test(Settings.Config1.config_path, GLib.FileTest.EXISTS)) {
-				return new Settings.Config2();
-			}
-			
-			GLib.debug("Loading config.json and converting to config.2.json");
-			var config1 = Settings.Config1.load();
-			if (!config1.loaded) {
-				return new Settings.Config2();
-			}
-			var config = config1.toV2();
-			
-			// Save as config.2.json if conversion was successful
-			if (config.loaded) {
-				try {
-					config.save();
-					GLib.debug("Saved converted config as %s", Settings.Config2.config_path);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to save config.2.json: %s", e.message);
-				}
-			}
-			
-			return config;
-		}
-
-		/**
 		 * Loads configuration and initializes the client.
 		 * Shows bootstrap dialog if config is missing or connection fails.
 		 */
 		private async void load_config_and_initialize()
 		{
-			var config = this.load_config();
-			
 			// Show bootstrap dialog if no config was loaded
-			if (!config.loaded) {
+			if (!this.app.config.loaded) {
 				GLib.debug("Config not loaded, showing bootstrap dialog");
 				yield this.show_bootstrap_dialog("");
 				return;
@@ -208,7 +134,7 @@ namespace OLLMchat
 			
 			GLib.debug("Config loaded successfully, initializing client");
 			// Initialize client and test connection (will check for default connection internally)
-			yield this.initialize_unverified_client(config);
+			yield this.initialize_unverified_client(this.app.config);
 		}
 
 		/**
@@ -248,7 +174,7 @@ namespace OLLMchat
 			this.bootstrap_dialog.closed.connect(() => {
 				if (this.bootstrap_dialog.verified_connection == null) {
 					// No connection verified - close application
-					this.app.quit();
+					(this.app as Gtk.Application).quit();
 					return;
 				}
 				
@@ -330,7 +256,7 @@ namespace OLLMchat
 		private async void initialize_client(Settings.Config2 config)
 		{
 			// Create history manager (it will create base_client from config)
-			this.history_manager = new OLLMchat.History.Manager(config, this.data_dir);
+			this.history_manager = new OLLMchat.History.Manager(this.app);
 			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
@@ -345,7 +271,7 @@ namespace OLLMchat
 			// Register CodeAssistant agent
 			// Create ProjectManager first to share with tools
 			var project_manager = new OLLMfiles.ProjectManager(
-				new SQ.Database(GLib.Path.build_filename(this.data_dir, "files.sqlite"))
+				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
 			);
 			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			project_manager.git_provider = new OLLMcoder.GitProvider();
@@ -374,14 +300,6 @@ namespace OLLMchat
 				// switch_to_session() handles loading internally via load()
 				this.chat_widget.switch_to_session.begin(session);
 			});
-			
-			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
-			// Use same ProjectManager instance as CodeAssistant
-			// Initialize codebase search tool asynchronously
-			this.initialize_codebase_search_tool.begin(
-				this.history_manager.base_client,
-				project_manager
-			);
 
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
@@ -412,6 +330,19 @@ namespace OLLMchat
 			
 			// Set WindowPane as main content
 			this.split_view.content = this.window_pane;
+			
+			// Register CodebaseSearchTool (only available when CodeAssistant agent is active)
+			// Use same ProjectManager instance as CodeAssistant
+			// Initialize codebase search tool asynchronously AFTER everything else is set up
+			// Use idle add to ensure initialization happens after the current call stack completes
+			// This ensures config is fully loaded and ready
+			GLib.Idle.add(() => {
+				this.initialize_codebase_search_tool.begin(
+					this.history_manager.base_client,
+					project_manager
+				);
+				return false; // Don't repeat
+			});
 		}
 		
 		/**
@@ -428,10 +359,23 @@ namespace OLLMchat
 			// Get config from history manager (it has the Config2 instance)
 			var config = this.history_manager.config;
 			
+			// Ensure config is loaded before proceeding
+			if (config == null || !config.loaded) {
+				GLib.warning("Config not loaded, skipping codebase search tool initialization");
+				return;
+			}
+			
 			// Auto-create embed and analysis ModelUsage entries if they don't exist
 			// These use the default connection with hardcoded models
 			OLLMvector.Database.setup_embed_usage(config);
 			OLLMvector.Indexing.Analysis.setup_analysis_usage(config);
+			
+			// Save config if we created new entries (so they persist)
+			try {
+				config.save();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save config after setting up embed usage: %s", e.message);
+			}
 			
 			// Try to get embed client from config
 			var embed_client = config.create_client("ocvector.embed");
@@ -440,9 +384,15 @@ namespace OLLMchat
 				return;
 			}
 			
+			// Ensure embed_client has config set (should be set by create_client, but verify)
+			if (embed_client.config == null) {
+				GLib.warning("Embed client created without config, skipping codebase search tool initialization");
+				return;
+			}
+			
 			try {
 				// Get dimension and create vector database
-				var vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
+				var vector_db_path = GLib.Path.build_filename(this.app.data_dir, "codedb.faiss.vectors");
 				var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
 				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
 				
@@ -636,12 +586,9 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Get config from history manager
-			var config = this.history_manager.config;
-			
 			// Create and show settings dialog
-			var dialog = new OLLMchat.Settings.SettingsDialog(config);
-			dialog.present(this);
+			var dialog = new OLLMchat.Settings.SettingsDialog(this.app);
+			dialog.show_dialog(this);
 		}
 		
 	}

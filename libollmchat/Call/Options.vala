@@ -33,7 +33,6 @@ namespace OLLMchat.Call
 		public double top_p { get; set; default = -1.0; }
 		public int top_k { get; set; default = -1; }
 		public int num_predict { get; set; default = -1; }
-		public double repeat_penalty { get; set; default = -1.0; }
 		public double min_p { get; set; default = -1.0; }
 		public int num_ctx { get; set; default = -1; }
 		
@@ -79,10 +78,86 @@ namespace OLLMchat.Call
 				|| this.top_p != -1.0
 				|| this.top_k != -1
 				|| this.num_predict != -1
-				|| this.repeat_penalty != -1.0
 				|| this.min_p != -1.0
 				|| this.num_ctx != -1
 				|| this.stop != "";
+		}
+
+		/**
+		 * Fills this Options object with values parsed from model parameters string.
+		 * 
+		 * Parses the model's parameters string (format: "temperature 0.7\nnum_ctx 2048")
+		 * and sets the corresponding properties using set_property.
+		 * Uses switch case grouped by type (int, double, string).
+		 * 
+		 * @param model The model object containing the parameters string
+		 */
+		public void fill_from_model(OLLMchat.Response.Model model)
+		{
+			if (model.parameters == null || model.parameters == "") {
+				return;
+			}
+
+			var lines = model.parameters.split("\n");
+			foreach (var line in lines) {
+				line = line.strip();
+				if (line == "") {
+					continue;
+				}
+				
+				// Split on first space to separate parameter name from value
+				var parts = line.split(" ", 2);
+				if (parts.length < 2) {
+					continue;
+				}
+				
+				var param_name = parts[0].strip();
+				var param_value = parts[1].strip();
+				
+				if (param_name == "" || param_value == "") {
+					continue;
+				}
+
+				// Use switch case on parameter name to set the property
+				// Cast to Object to use set_property on Json.Serializable
+				switch (param_name) {
+					// Integer properties
+					case "seed":
+					case "top_k":
+					case "num_predict":
+					case "num_ctx":
+						int int_value;
+						if (int.try_parse(param_value, out int_value)) {
+							var value = Value(typeof(int));
+							value.set_int(int_value);
+							((GLib.Object)this).set_property(param_name, value);
+						}
+						break;
+					
+					// Double properties
+					case "temperature":
+					case "top_p":
+					case "min_p":
+						double double_value;
+						if (double.try_parse(param_value, out double_value)) {
+							var value = Value(typeof(double));
+							value.set_double(double_value);
+							((GLib.Object)this).set_property(param_name, value);
+						}
+						break;
+					
+					// String properties
+					case "stop":
+						var value = Value(typeof(string));
+						value.set_string(param_value);
+						((GLib.Object)this).set_property(param_name, value);
+						break;
+					
+					default:
+						// Unknown parameter name, skip
+						break;
+				}
+			}
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -120,7 +195,6 @@ namespace OLLMchat.Call
 				// Double properties - default -1.0
 				case "temperature":
 				case "top-p":
-				case "repeat-penalty":
 				case "min-p":
 					if (value.get_double() == -1.0) {
 						return null;
