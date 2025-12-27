@@ -264,6 +264,20 @@ namespace OLLMchat.Settings
 			this.clear_button.visible = false;
 			this.auto_button.visible = true;
 		}
+		
+		/**
+		 * Sets the auto button label to show a parsed parameter value.
+		 * 
+		 * @param label_text The text to display on the auto button (e.g., "0.7" or "2048")
+		 */
+		public void set_auto_label(string? label_text)
+		{
+			if (label_text != null && label_text != "") {
+				this.auto_button.label = label_text;
+			} else {
+				this.auto_button.label = "Auto";
+			}
+		}
 
 		/**
 		 * Loads the widget's value from the options object.
@@ -329,8 +343,41 @@ namespace OLLMchat.Settings
 		{
 			this.spin_button.value = this.default_value;
 		}
+		
+		/**
+		 * Sets the default value from a parsed parameter string.
+		 * 
+		 * @param param_value The parameter value as a string
+		 */
+		public void set_from_parameter(string? param_value)
+		{
+			if (param_value == null || param_value == "") {
+				return;
+			}
+			double parsed_value;
+			if (double.try_parse(param_value, out parsed_value)) {
+				// Clamp to valid range
+				if (parsed_value < this.min_value) {
+					parsed_value = this.min_value;
+				} else if (parsed_value > this.max_value) {
+					parsed_value = this.max_value;
+				}
+				this.default_value = parsed_value;
+			}
+		}
 
 		public override void load_options(OLLMchat.Call.Options options)
+		{
+			this.load_options_with_parameter(options, null);
+		}
+		
+		/**
+		 * Loads options with an optional parameter value from model.
+		 * 
+		 * @param options Options object to read value from
+		 * @param param_value Optional parameter value from model's parameters string
+		 */
+		public void load_options_with_parameter(OLLMchat.Call.Options options, string? param_value)
 		{
 			this.spin_button.set_range(this.min_value, this.max_value);
 			this.spin_button.set_increments(this.step_value, this.step_value * 10);
@@ -341,6 +388,27 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
+				// If we have a parameter value, use it as the default and show it on the button
+				if (param_value != null && param_value != "") {
+					this.set_from_parameter(param_value);
+					// Format the value for display based on digits
+					double parsed_value;
+					if (double.try_parse(param_value, out parsed_value)) {
+						// Clamp to valid range
+						if (parsed_value < this.min_value) {
+							parsed_value = this.min_value;
+						} else if (parsed_value > this.max_value) {
+							parsed_value = this.max_value;
+						}
+						// Format with appropriate digits
+						string formatted = "%.*f".printf((int)this.digits, parsed_value);
+						this.set_auto_label(formatted);
+					} else {
+						this.set_auto_label(null);
+					}
+				} else {
+					this.set_auto_label(null);
+				}
 				this.reset_to_auto();
 			} else {
 				// Value is set, show spin button with value
