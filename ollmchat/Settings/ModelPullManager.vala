@@ -64,22 +64,7 @@ namespace OLLMchat.Settings
 			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection") {
 				return null;
 			}
-			// Only serialize error if it's not empty
-			if (property_name == "error" && value.get_string() == "") {
-				return null;
-			}
-			// Only serialize last_chunk_status if it's not empty
-			if (property_name == "last_chunk_status" && value.get_string() == "") {
-				return null;
-			}
-			// Only serialize connection_url if it's not empty
-			if (property_name == "connection_url" && value.get_string() == "") {
-				return null;
-			}
-			// Only serialize retry_count if it's greater than 0
-			if (property_name == "retry_count" && value.get_int() == 0) {
-				return null;
-			}
+			// Serialize all other fields (defaults will handle empty/zero values)
 			return default_serialize_property(property_name, value, pspec);
 		}
 	}
