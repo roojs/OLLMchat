@@ -378,15 +378,25 @@ namespace OLLMchat.Settings
 			try {
 				var parser = new Json.Parser();
 				parser.load_from_file(this.loading_json_path);
+				var root = parser.get_root();
+				if (root == null || root.get_node_type() != Json.NodeType.ARRAY) {
+					return;
+				}
 				
-				var root_array = parser.get_root().get_array();
+				var root_array = root.get_array();
 				for (uint i = 0; i < root_array.get_length(); i++) {
 					var node = root_array.get_element(i);
+					if (node.get_node_type() != Json.NodeType.OBJECT) {
+						continue;
+					}
 					
 					var status_obj = Json.gobject_deserialize(
 						typeof(LoadingStatus),
 						node
 					) as LoadingStatus;
+					if (status_obj == null || status_obj.model_name == "") {
+						continue;
+					}
 					
 					this.loading_status_cache.set(status_obj.model_name, status_obj);
 				}
@@ -411,7 +421,7 @@ namespace OLLMchat.Settings
 				// Join with commas and wrap in array brackets
 				
 				GLib.FileUtils.set_contents(this.loading_json_path, 
-					"[" + string.joinv(",", json_parts) + "]";);
+					"[" + string.joinv(",", json_parts) + "]");
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
 			} catch (Error e) {
 				GLib.warning("Failed to write loading.json: " + e.message);
