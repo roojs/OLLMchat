@@ -32,10 +32,9 @@ namespace OLLMchat.Settings
 		/**
 		 * Signal emitted when pull progress updates.
 		 * 
-		 * @param model_name The model being pulled
-		 * @param status LoadingStatus object with all status information
+		 * @param status LoadingStatus object with all status information (including model_name)
 		 */
-		public signal void progress_updated(string model_name, LoadingStatus status);
+		public signal void progress_updated(LoadingStatus status);
 		
 		/**
 		 * Signal emitted when a model pull completes successfully.
@@ -140,6 +139,7 @@ namespace OLLMchat.Settings
 			this.pull_thread.ensure_thread();
 			
 			// Configure status for new pull
+			existing_status.model_name = model_name;
 			existing_status.active = true;
 			existing_status.connection_url = connection.url;
 			existing_status.connection = connection;
