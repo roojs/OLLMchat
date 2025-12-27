@@ -422,13 +422,11 @@ namespace OLLMchat.Settings
 				var root = new Json.Node(Json.NodeType.OBJECT);
 				root.set_object(root_obj);
 				
-				// Write to file
-				var generator = new Json.Generator();
-				generator.set_root(root);
-				generator.set_pretty(true);
-				var json_str = generator.to_data(null);
-				
-				GLib.FileUtils.set_contents(this.loading_json_path, json_str);
+			// Write to file
+			var generator = new Json.Generator();
+			generator.set_root(root);
+			generator.set_pretty(true);
+			generator.to_file(this.loading_json_path);
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
 			} catch (Error e) {
 				GLib.warning("Failed to write loading.json: " + e.message);
