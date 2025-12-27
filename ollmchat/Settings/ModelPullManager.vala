@@ -313,12 +313,16 @@ namespace OLLMchat.Settings
 				this.loading_status_cache.set(model_name, status_obj);
 			}
 			
+			// Update completed/total so progress can be calculated
+			status_obj.completed = completed;
+			status_obj.total = total;
+			
 			var now = GLib.get_real_time() / 1000000;
 			
 			// Always emit final status updates
 			if (status == "complete" || status == "error" || status == "failed") {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
+					this.progress_updated(model_name, status, status_obj.progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
@@ -329,7 +333,7 @@ namespace OLLMchat.Settings
 			// Emit if status changed
 			if (status != status_obj.status) {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
+					this.progress_updated(model_name, status, status_obj.progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
@@ -340,7 +344,7 @@ namespace OLLMchat.Settings
 			// Emit if enough time has passed
 			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
+					this.progress_updated(model_name, status, status_obj.progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
@@ -353,11 +357,12 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
-		 * @param progress Progress percentage (0-100)
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 * @param last_chunk_status Last chunk status from API
 		 * @param force_write If true, write immediately; if false, rate-limit to 5 minutes
 		 */
-		private void update_loading_status(string model_name, string status, int progress, string last_chunk_status, bool force_write)
+		private void update_loading_status(string model_name, string status, int64 completed, int64 total, string last_chunk_status, bool force_write)
 		{
 			// Get or create status object
 			LoadingStatus status_obj;
@@ -370,7 +375,9 @@ namespace OLLMchat.Settings
 			
 			// Update fields
 			status_obj.status = status;
-			status_obj.progress = progress;
+			status_obj.completed = completed;
+			status_obj.total = total;
+			// progress is calculated from completed/total, so no need to set it
 			if (last_chunk_status != "") {
 				status_obj.last_chunk_status = last_chunk_status;
 			}
