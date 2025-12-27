@@ -326,7 +326,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; }
 		public uint digits { get; set; }
 		public double default_value { get; set; }  // Hardcoded default (never changes)
-		public double? model_value { get; set; }   // Model's default value (set via set_value(), can be null)
+		public double model_value { get; set; default = -1.0; }   // Model's default value (set via set_value(), defaults to unset_value if not set)
 		public double unset_value { get; set; default = -1.0; }
 
 		private Gtk.SpinButton spin_button;
