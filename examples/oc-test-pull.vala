@@ -73,15 +73,7 @@ Examples:
 				stdout.printf(" | Progress: %lld/%lld (%.1f%%)", response.completed, response.total, percent);
 			}
 			stdout.printf("\n");
-			
-			// Also print full JSON for debugging
-			if (opt_debug) {
-				var generator = new Json.Generator();
-				var root = Json.gobject_serialize(response);
-				generator.set_root(root);
-				var json_str = generator.to_data(null);
-				stdout.printf("  Full JSON: %s\n", json_str);
-			}
+			 
 		});
 		
 		// Execute pull
