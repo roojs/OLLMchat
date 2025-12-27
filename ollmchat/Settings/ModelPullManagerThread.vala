@@ -86,6 +86,10 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Ensures the background thread is running.
+		 * 
+		 * ⚠️ NOTE: This method is called from the MAIN THREAD, not from within
+		 * the background thread. It creates and starts the background thread
+		 * if it doesn't already exist.
 		 */
 		public void ensure_thread()
 		{
@@ -122,6 +126,10 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Starts a pull operation asynchronously in the background thread.
+		 * 
+		 * ⚠️ NOTE: This method is called from the MAIN THREAD, not from within
+		 * the background thread. It schedules the pull operation to be executed
+		 * in the background thread's context via IdleSource.
 		 * 
 		 * ⚠️ THREAD SAFETY WARNING: This method passes a Connection object from
 		 * the main thread to the background thread. While Connection objects are
