@@ -128,12 +128,9 @@ namespace OLLMchat.Call
 					case "num_ctx":
 						int int_value;
 						if (int.try_parse(param_value, out int_value)) {
-							var pspec = this.find_property(param_name);
-							if (pspec != null) {
-								var value = Value(typeof(int));
-								value.set_int(int_value);
-								((GLib.Object)this).set_property(pspec, value);
-							}
+							var value = Value(typeof(int));
+							value.set_int(int_value);
+							((GLib.Object)this).set_property(param_name, value);
 						}
 						break;
 					
@@ -143,23 +140,17 @@ namespace OLLMchat.Call
 					case "min_p":
 						double double_value;
 						if (double.try_parse(param_value, out double_value)) {
-							var pspec = this.find_property(param_name);
-							if (pspec != null) {
-								var value = Value(typeof(double));
-								value.set_double(double_value);
-								((GLib.Object)this).set_property(pspec, value);
-							}
+							var value = Value(typeof(double));
+							value.set_double(double_value);
+							((GLib.Object)this).set_property(param_name, value);
 						}
 						break;
 					
 					// String properties
 					case "stop":
-						var pspec = this.find_property(param_name);
-						if (pspec != null) {
-							var value = Value(typeof(string));
-							value.set_string(param_value);
-							((GLib.Object)this).set_property(pspec, value);
-						}
+						var value = Value(typeof(string));
+						value.set_string(param_value);
+						((GLib.Object)this).set_property(param_name, value);
 						break;
 					
 					default:
