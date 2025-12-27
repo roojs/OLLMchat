@@ -206,6 +206,7 @@ namespace OLLMchat.Settings
 			}
 			
 			status_obj.active = true;
+			status_obj.connection_url = connection.url;
 			
 			// Start pull operation in background thread
 			this.start_pull_async(model_name, connection);
