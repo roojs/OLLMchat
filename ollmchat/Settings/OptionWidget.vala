@@ -430,9 +430,11 @@ namespace OLLMchat.Settings
 		/**
 		 * Loads the widget's value from the options object.
 		 * 
+		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * 
 		 * DISPLAY LOGIC:
-		 * - If value is unset (auto_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value is set: Show spin button with the actual saved value (NOT default_value)
+		 * - If value in Options is unset (value == auto_value): Show Auto button (with model default label if set_value() was called)
+		 * - If value in Options is set (value != auto_value): Show spin button with the actual saved value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
@@ -593,9 +595,11 @@ namespace OLLMchat.Settings
 		/**
 		 * Loads the widget's value from the options object.
 		 * 
+		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * 
 		 * DISPLAY LOGIC:
-		 * - If value is unset (auto_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value is set: Show spin button with the actual saved value (NOT default_value)
+		 * - If value in Options is unset (value == auto_value): Show Auto button (with model default label if set_value() was called)
+		 * - If value in Options is set (value != auto_value): Show spin button with the actual saved value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
