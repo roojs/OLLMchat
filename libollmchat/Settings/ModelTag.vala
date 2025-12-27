@@ -129,11 +129,31 @@ namespace OLLMchat.Settings
 		 */
 		public string dropdown_markup {
 			owned get {
-				if (this.size != "" || this.context != "" || this.input != "") {
-just 					       "</span>";
+				if (this.size == "" && this.context == "" && this.input == "") {
+					return GLib.Markup.escape_text(this.name, -1);
 				}
-				// Just escape the name if no details
-				return GLib.Markup.escape_text(this.name, -1);
+				
+				var details = "";
+				if (this.size != "") {
+					details = this.size;
+				}
+				if (this.context != "") {
+					if (details != "") {
+						details += " • ";
+					}
+					details += "context " + this.context;
+				}
+				if (this.input != "") {
+					if (details != "") {
+						details += " • ";
+					}
+					details += this.input;
+				}
+				
+				return GLib.Markup.escape_text(this.name, -1) +
+				       " <span size='small' foreground='grey'>" +
+				       GLib.Markup.escape_text(details, -1) +
+				       "</span>";
 			}
 		}
 	}
