@@ -116,8 +116,8 @@ namespace OLLMchat.Settings
 		public bool start_pull(string model_name, string connection_url)
 		{
 			// Check if already pulling
-			if (this.active_threads.has_key(model_name) && 
-			    this.active_threads.get(model_name) != null) {
+			if (this.active_pulls.has_key(model_name) && 
+			    this.active_pulls.get(model_name)) {
 				GLib.debug("Pull already in progress for model: %s", model_name);
 				return false;
 			}
@@ -129,22 +129,69 @@ namespace OLLMchat.Settings
 			}
 			var connection = this.app.config.connections.get(connection_url);
 			
-			// Mark thread as starting (null means starting, non-null means running)
-			this.active_threads.set(model_name, null);
+			// Ensure background thread is running
+			this.ensure_background_thread();
+			
+			// Mark pull as active
+			this.active_pulls.set(model_name, true);
+			
+			// Start pull operation in background thread
+			this.start_pull_async(model_name, connection);
+			
+			return true;
+		}
+		
+		/**
+		 * Ensures the background thread is running.
+		 */
+		private void ensure_background_thread()
+		{
+			if (this.background_thread != null) {
+				return; // Already running
+			}
+			
+			// Create MainContext for background thread
+			this.background_context = new MainContext();
 			
 			// Start background thread
 			try {
-				var thread = new Thread<bool>.try("pull-%s".printf(model_name), () => {
-					return this.pull_thread_func(model_name, connection);
+				this.background_thread = new Thread<bool>.try("model-pull-manager", () => {
+					// Set this context as thread default
+					this.background_context.push_thread_default();
+					
+					// Create and run MainLoop
+					this.background_loop = new MainLoop(this.background_context);
+					this.background_loop.run();
+					
+					// Clean up
+					this.background_context.pop_thread_default();
+					this.background_loop = null;
+					this.background_context = null;
+					
+					return true;
 				});
-				this.active_threads.set(model_name, thread);
 			} catch (Error e) {
-				GLib.warning("Failed to start pull thread for %s: %s", model_name, e.message);
-				this.active_threads.unset(model_name);
-				return false;
+				GLib.warning("Failed to start background thread: %s", e.message);
+				this.background_thread = null;
+				this.background_context = null;
 			}
-			
-			return true;
+		}
+		
+		/**
+		 * Starts a pull operation asynchronously in the background thread.
+		 * 
+		 * @param model_name Model name to pull
+		 * @param connection Connection to use
+		 */
+		private void start_pull_async(string model_name, OLLMchat.Settings.Connection connection)
+		{
+			// Schedule the pull operation in the background thread's context
+			var source = new IdleSource();
+			source.set_callback(() => {
+				this.execute_pull(model_name, connection);
+				return false; // Don't repeat
+			});
+			source.attach(this.background_context);
 		}
 		
 		/**
