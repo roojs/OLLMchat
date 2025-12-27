@@ -29,19 +29,37 @@ namespace OLLMchat.Settings
 	{
 		// Persistence fields (saved to JSON)
 		public string status { get; set; default = ""; }
-		public int progress { get; set; default = 0; }
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
 		public int retry_count { get; set; default = 0; }
 		public string connection_url { get; set; default = ""; }
+		public int64 completed { get; set; default = 0; }
+		public int64 total { get; set; default = 0; }
 		
 		// Runtime fields (not serialized)
 		public bool active = false;
 		public int64 last_update_time = 0;
 		public OLLMchat.Settings.Connection? connection = null;
-		public int64 completed = 0;
-		public int64 total = 0;
+		
+		/**
+		 * Progress percentage (0-100), calculated from completed/total.
+		 * 
+		 * This is a calculated property that derives from completed and total.
+		 * If total is 0, returns 0. Otherwise calculates percentage.
+		 */
+		public int progress {
+			get {
+				if (this.total > 0) {
+					return (int)(((double)this.completed / (double)this.total) * 100.0);
+				}
+				return 0;
+			}
+			set {
+				// Setter is a no-op - progress is always calculated
+				// This allows the property to be used in serialization if needed
+			}
+		}
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -63,8 +81,11 @@ namespace OLLMchat.Settings
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			// Don't serialize runtime-only fields
-			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection" || 
-			    property_name == "completed" || property_name == "total") {
+			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection") {
+				return null;
+			}
+			// Don't serialize progress - it's calculated from completed/total
+			if (property_name == "progress") {
 				return null;
 			}
 			// Serialize all other fields (defaults will handle empty/zero values)

@@ -199,23 +199,20 @@ namespace OLLMchat.Settings
 				// Get status from response object
 				local_status.last_chunk_status = response.status;
 				
+				// Get progress from response object
+				local_status.completed = response.completed;
+				local_status.total = response.total;
+				
 				// Update status based on chunk status
 				if (local_status.last_chunk_status == "success") {
 					local_status.status = "complete";
-					local_status.progress = 100;
+					// Set total = completed to ensure progress = 100
+					local_status.completed = local_status.total;
 				} else if (local_status.last_chunk_status.has_prefix("error") || local_status.last_chunk_status == "failed") {
 					local_status.status = "error";
 				} else {
 					// Keep pulling status for other statuses
 					local_status.status = "pulling";
-				}
-				
-				// Get progress from response object
-				local_status.completed = response.completed;
-				local_status.total = response.total;
-				
-				if (local_status.total > 0) {
-					local_status.progress = (int)(((double)local_status.completed / (double)local_status.total) * 100.0);
 				}
 				
 				// Notify status update
