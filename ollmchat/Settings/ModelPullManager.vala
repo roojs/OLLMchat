@@ -407,70 +407,100 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Writes pull status to loading.json file.
+		 * Updates loading status in memory and optionally writes to file.
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param progress Progress percentage (0-100)
+		 * @param force_write If true, write immediately; if false, rate-limit to 5 minutes
 		 */
-		private void write_loading_status(string model_name, string status, int progress)
+		private void update_loading_status(string model_name, string status, int progress, bool force_write)
+		{
+			// Get or create status object
+			LoadingStatus status_obj;
+			if (this.loading_status_cache.has_key(model_name)) {
+				status_obj = this.loading_status_cache.get(model_name);
+			} else {
+				status_obj = new LoadingStatus();
+				this.loading_status_cache.set(model_name, status_obj);
+			}
+			
+			// Update fields
+			status_obj.status = status;
+			status_obj.progress = progress;
+			
+			// Set started timestamp if not already set
+			if (status_obj.started == "") {
+				status_obj.started = (GLib.get_real_time() / 1000000).to_string();
+			}
+			
+			// Add error message if status is error
+			if (status == "error" && status_obj.error == "") {
+				status_obj.error = "Pull operation failed";
+			}
+			
+			// Write to file if forced or rate limit expired
+			if (force_write) {
+				this.write_to_file();
+			} else {
+				var now = GLib.get_real_time() / 1000000;
+				if ((now - this.last_file_write_time) >= FILE_WRITE_RATE_LIMIT_SECONDS) {
+					this.write_to_file();
+				}
+			}
+		}
+		
+		/**
+		 * Loads loading status from file into memory cache.
+		 */
+		private void load_from_file()
+		{
+			if (!GLib.File.new_for_path(this.loading_json_path).query_exists()) {
+				return;
+			}
+			
+			try {
+				var parser = new Json.Parser();
+				parser.load_from_file(this.loading_json_path);
+				var root = parser.get_root();
+				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+					return;
+				}
+				
+				var root_obj = root.get_object();
+				root_obj.foreach_member((obj, key, node) => {
+					if (node.get_node_type() == Json.NodeType.OBJECT) {
+						var status_obj = Json.gobject_deserialize(
+							typeof(LoadingStatus),
+							node
+						) as LoadingStatus;
+						if (status_obj != null) {
+							this.loading_status_cache.set(key, status_obj);
+						}
+					}
+				});
+			} catch (Error e) {
+				GLib.debug("Failed to load loading.json: %s", e.message);
+			}
+		}
+		
+		/**
+		 * Writes all loading status from memory cache to file.
+		 */
+		private void write_to_file()
 		{
 			try {
-				// Read existing data
+				var root_obj = new Json.Object();
+				
+				// Serialize all status objects
+				foreach (var entry in this.loading_status_cache.entries) {
+					var status_node = Json.gobject_serialize(entry.value);
+					root_obj.set_member(entry.key, status_node);
+				}
+				
+				// Create root node
 				var root = new Json.Node(Json.NodeType.OBJECT);
-				Json.Object? root_obj = null;
-				
-				if (GLib.File.new_for_path(this.loading_json_path).query_exists()) {
-					try {
-						var parser = new Json.Parser();
-						parser.load_from_file(this.loading_json_path);
-						var existing_root = parser.get_root();
-						if (existing_root != null && existing_root.get_node_type() == Json.NodeType.OBJECT) {
-							root_obj = existing_root.get_object();
-							root = existing_root;
-						}
-					} catch (Error e) {
-						GLib.debug("Failed to parse existing loading.json: %s", e.message);
-					}
-				}
-				
-				// Create new object if needed
-				if (root_obj == null) {
-					root_obj = new Json.Object();
-					root.set_object(root_obj);
-				}
-				
-				// Create or update model entry
-				Json.Object model_obj;
-				if (root_obj.has_member(model_name)) {
-					var model_node = root_obj.get_member(model_name);
-					if (model_node.get_node_type() == Json.NodeType.OBJECT) {
-						model_obj = model_node.get_object();
-					} else {
-						model_obj = new Json.Object();
-					}
-				} else {
-					model_obj = new Json.Object();
-				}
-				
-				// Update fields
-				model_obj.set_string_member("status", status);
-				model_obj.set_int_member("progress", progress);
-				
-				// Set started timestamp if not already set
-				if (!model_obj.has_member("started")) {
-					model_obj.set_string_member("started", (GLib.get_real_time() / 1000000).to_string());
-				}
-				
-				// Add error message if status is error
-				if (status == "error" && !model_obj.has_member("error")) {
-					model_obj.set_string_member("error", "Pull operation failed");
-				}
-				
-				// Update root object
-				var model_node = new Json.Node(Json.NodeType.OBJECT);
-				model_node.set_object(model_obj);
-				root_obj.set_member(model_name, model_node);
+				root.set_object(root_obj);
 				
 				// Write to file
 				var generator = new Json.Generator();
@@ -479,7 +509,7 @@ namespace OLLMchat.Settings
 				var json_str = generator.to_data(null);
 				
 				GLib.FileUtils.set_contents(this.loading_json_path, json_str);
-				
+				this.last_file_write_time = GLib.get_real_time() / 1000000;
 			} catch (Error e) {
 				GLib.warning("Failed to write loading.json: %s", e.message);
 			}
