@@ -117,7 +117,7 @@ namespace OLLMchat.Settings
 		public string dropdown_display {
 			owned get {
 				if (this.size != "" && this.context != "") {
-					return "%s (%s - context %s)".printf(this.name, this.size, this.context);
+					return this.name + " (" + this.size + " - context " + this.context + ")";
 				}
 				return this.name;
 			}
@@ -135,16 +135,16 @@ namespace OLLMchat.Settings
 						parts.add(this.size);
 					}
 					if (this.context != "") {
-						parts.add("context %s".printf(this.context));
+						parts.add("context " + this.context);
 					}
 					if (this.input != "") {
 						parts.add(this.input);
 					}
 					var details = string.joinv(" • ", parts.to_array());
-					// Escape markup in name and details
-					var escaped_name = GLib.Markup.escape_text(this.name, -1);
-					var escaped_details = GLib.Markup.escape_text(details, -1);
-					return "%s <span size='small' foreground='grey'>%s</span>".printf(escaped_name, escaped_details);
+					return GLib.Markup.escape_text(this.name, -1) +
+					       " <span size='small' foreground='grey'>" +
+					       GLib.Markup.escape_text(details, -1) +
+					       "</span>";
 				}
 				// Just escape the name if no details
 				return GLib.Markup.escape_text(this.name, -1);
