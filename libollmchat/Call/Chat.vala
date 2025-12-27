@@ -62,7 +62,6 @@ namespace OLLMchat.Call
 			get { return this.client.tools; }
 			set { } // Fake setter for serialization
 		}
-		public Response.Chat? streaming_response { get; set; default = null; }
 		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
@@ -471,10 +470,11 @@ namespace OLLMchat.Call
 			if (this.streaming_response == null) {
 				this.streaming_response = new Response.Chat(this.client, this);
 			}
+			var response = (Response.Chat?)this.streaming_response;
 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.create_streaming_message(url, request_body);
+			var message = this.client.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Request URL: %s", url);
 			GLib.debug("Request Body: %s", request_body);
@@ -486,51 +486,35 @@ namespace OLLMchat.Call
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
 					// User cancelled - ensure response is marked as done
-					this.streaming_response.done = true;
+					response.done = true;
 					// Return the response even if cancelled (may be partial)
-					return this.streaming_response;
+					return response;
 				}
 				// Re-throw other IO errors
 				throw e;
 			} catch (Error e) {
 				// Mark as done and re-throw
-				this.streaming_response.done = true;
+				response.done = true;
 				throw e;
 			}
 
 		// Check for tool calls and handle them recursively
 			GLib.debug("Chat.execute_streaming: done=%s, tool_calls.size=%d, content='%s'", 
-				this.streaming_response.done.to_string(),
-				this.streaming_response.message.tool_calls.size,
-				this.streaming_response.message.content);
+				response.done.to_string(),
+				response.message.tool_calls.size,
+				response.message.content);
 			
-			if (this.streaming_response.done && 
-				this.streaming_response.message.tool_calls.size > 0) {
+			if (response.done && 
+				response.message.tool_calls.size > 0) {
 				GLib.debug("Chat.execute_streaming: Calling toolsReply");
-				return yield this.toolsReply(this.streaming_response);
+				return yield this.toolsReply(response);
 			}
 			
 			GLib.debug("Chat.execute_streaming: Not calling toolsReply - done=%s, tool_calls.size=%d",
-				this.streaming_response.done.to_string(),
-				this.streaming_response.message.tool_calls.size);
+				response.done.to_string(),
+				response.message.tool_calls.size);
 			
-			return this.streaming_response;
-		}
-		
-		
-
-		private Soup.Message create_streaming_message(string url, string request_body)
-		{
-			var message = new Soup.Message(this.http_method, url);
-
-			if (this.client.connection.api_key != "") {
-				message.request_headers.append("Authorization",
-					"Bearer " + this.client.connection.api_key 
-				);
-			}
-
-			message.set_request_body_from_bytes("application/json", new Bytes(request_body.data));
-			return message;
+			return response;
 		}
 
 
@@ -540,40 +524,37 @@ namespace OLLMchat.Call
 			if (this.streaming_response == null) {
 				this.streaming_response = new Response.Chat(this.client, this);
 			}
+			var response = (Response.Chat?)this.streaming_response;
 
 			// Emit stream_start signal on first chunk (when message is null, this is the first chunk)
-			if (this.streaming_response.message == null) {
+			if (response.message == null) {
 				this.client.stream_start();
 			}
 
 			// Process chunk
-			this.streaming_response.addChunk(chunk);
+			response.addChunk(chunk);
 
 			// Emit stream_content signal for content only (not thinking)
-			if (this.streaming_response.new_content.length > 0) {
+			if (response.new_content.length > 0) {
 				this.client.stream_content(
-					this.streaming_response.new_content, this.streaming_response
+					response.new_content, response 
 				);
 			}
 
-			// Emit signal if there's new content (either regular content or thinking)
-			// Also emit when done=true even if no new content, so we can finalize
-			// Signal will only be delivered if handlers are connected
-			if (this.streaming_response == null 
-				|| this.client == null 
-				|| (
-					this.streaming_response.new_thinking.length == 0 && 
-					this.streaming_response.new_content.length == 0 && 
-					!this.streaming_response.done
-				)) {
+		// Emit signal if there's new content (either regular content or thinking)
+		// Also emit when done=true even if no new content, so we can finalize
+		// Signal will only be delivered if handlers are connected
+			if (response.new_thinking.length == 0 && 
+				response.new_content.length == 0 && 
+				!response.done) {
 				return;
 			}
 			this.client.stream_chunk(
-					this.streaming_response.new_thinking.length > 0 ? this.streaming_response.new_thinking : 
-						(this.streaming_response.new_content.length > 0 ? this.streaming_response.new_content : ""), 
-					this.streaming_response.new_thinking.length > 0 ? true : 
-						(this.streaming_response.new_content.length > 0 ? false : this.streaming_response.is_thinking),
-					this.streaming_response);
+					response.new_thinking.length > 0 ? response.new_thinking : 
+						(response.new_content.length > 0 ? response.new_content : ""), 
+					response.new_thinking.length > 0 ? true : 
+						(response.new_content.length > 0 ? false : response.is_thinking),
+					response);
 		}
 	}
 }

@@ -130,6 +130,34 @@ namespace OLLMchat.Settings
 			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
+
+		/**
+		 * Creates a Soup.Message with authorization headers set.
+		 * 
+		 * Creates a new HTTP message with the specified method and URL, and automatically
+		 * adds the Authorization header if an API key is configured.
+		 * 
+		 * @param method HTTP method (e.g., "GET", "POST")
+		 * @param url Full URL for the request
+		 * @param body Optional request body string (will be set as JSON content type)
+		 * @return A new Soup.Message with authorization headers configured
+		 */
+		public Soup.Message soup_message(string method, string url, string? body = null)
+		{
+			var message = new Soup.Message(method, url);
+
+			if (this.api_key != "") {
+				message.request_headers.append("Authorization",
+					"Bearer " + this.api_key 
+				);
+			}
+
+			if (body != null) {
+				message.set_request_body_from_bytes("application/json", new Bytes(body.data));
+			}
+
+			return message;
+		}
 	}
 }
 

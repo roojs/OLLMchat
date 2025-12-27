@@ -393,12 +393,13 @@ namespace OLLMchat.History
 			this.client.stream = true;
 			
 			// Check if we should use reply() or chat()
-			if (this.chat.streaming_response != null &&
-				this.chat.streaming_response.done &&
-				this.chat.streaming_response.call != null) {
+			var streaming_response = (Response.Chat?)this.chat.streaming_response;
+			if (streaming_response != null &&
+				streaming_response.done &&
+				streaming_response.call != null) {
 				// Use reply to continue conversation
 				this.chat.cancellable = cancellable;
-				return yield this.chat.streaming_response.reply(text);
+				return yield streaming_response.reply(text);
 			}
 			
 			// First message - use regular chat()

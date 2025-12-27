@@ -73,6 +73,11 @@ namespace OLLMchat.Settings
 		public Gtk.Button removeButton { get; set; }
 
 		/**
+		 * Verify button
+		 */
+		public Gtk.Button verifyButton { get; set; }
+
+		/**
 		 * Creates a new ConnectionRow with all widgets.
 		 * 
 		 * @param connection Connection object to initialize widgets from
@@ -94,15 +99,27 @@ namespace OLLMchat.Settings
 				focus_on_click = false
 			};
 
+			// Helper to show verify button when values change
+			void on_field_changed()
+			{
+				if (this.verifyButton != null) {
+					this.verifyButton.visible = true;
+				}
+			}
+			
+			// Check if connection is verified (no unverified classes on any field)
+			bool is_verified()
+			{
+				return !this.urlEntry.has_css_class("oc-settings-unverified") &&
+				       !this.apiKeyEntry.has_css_class("oc-settings-unverified");
+			}
+
 			// Create form fields
 			this.nameEntry = new Gtk.Entry() {
 				text = connection.name,
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
-			this.nameEntry.changed.connect(() => {
-				this.nameEntry.add_css_class("oc-settings-unverified");
-			});
 
 			this.urlEntry = new Gtk.Entry() {
 				text = connection.url,
@@ -111,6 +128,7 @@ namespace OLLMchat.Settings
 			};
 			this.urlEntry.changed.connect(() => {
 				this.urlEntry.add_css_class("oc-settings-unverified");
+				on_field_changed();
 			});
 
 			this.apiKeyEntry = new Gtk.PasswordEntry() {
@@ -120,6 +138,7 @@ namespace OLLMchat.Settings
 			};
 			this.apiKeyEntry.changed.connect(() => {
 				this.apiKeyEntry.add_css_class("oc-settings-unverified");
+				on_field_changed();
 			});
 
 			this.defaultSwitch = new Gtk.Switch() {
@@ -127,9 +146,6 @@ namespace OLLMchat.Settings
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};
-			this.defaultSwitch.activate.connect(() => {
-				this.defaultSwitch.add_css_class("oc-settings-unverified");
-			});
 
 			// Add form fields to expander row
 			var nameRow = new Adw.ActionRow() {
@@ -179,15 +195,17 @@ namespace OLLMchat.Settings
 			buttonBox.append(this.removeButton);
 
 			// Verify button (green/blue, right)
-			var verifyButton = new Gtk.Button.with_label("Verify") {
+			// Hide if connection is already verified (no unverified classes)
+			this.verifyButton = new Gtk.Button.with_label("Verify") {
 				css_classes = {"suggested-action"},
 				vexpand = false,
-				valign = Gtk.Align.CENTER
+				valign = Gtk.Align.CENTER,
+				visible = false  // Initially hidden, shown when fields change
 			};
-			verifyButton.clicked.connect(() => {
+			this.verifyButton.clicked.connect(() => {
 				this.verify_requested();
 			});
-			buttonBox.append(verifyButton);
+			buttonBox.append(this.verifyButton);
 
 			// Add button box as last row
 			var buttonRow = new Adw.ActionRow();
@@ -200,10 +218,10 @@ namespace OLLMchat.Settings
 		 */
 		public void clearUnverified()
 		{
-			this.nameEntry.remove_css_class("oc-settings-unverified");
 			this.urlEntry.remove_css_class("oc-settings-unverified");
 			this.apiKeyEntry.remove_css_class("oc-settings-unverified");
-			this.defaultSwitch.remove_css_class("oc-settings-unverified");
+			// Hide verify button after successful verification
+			this.verifyButton.visible = false;
 		}
 
 	}

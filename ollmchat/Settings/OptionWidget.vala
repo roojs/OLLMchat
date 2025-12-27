@@ -145,28 +145,30 @@ namespace OLLMchat.Settings
 			// Set this row as the current owner
 			this.current_model_row = model_row;
 
-			// Defer the entire operation (detach and attach) to an idle callback
-			// This ensures GTK has fully processed any previous operations before
-			// we start manipulating the widget hierarchy
+			// Detach immediately from any previous parent
+			this.detach_from_expander_row();
+
+			// Use idle callback to add widgets - retry if parent is not ready
 			Idle.add_full(Priority.LOW, () => {
-				// Verify this is still the current model row (might have changed)
+				// Check if this is still the current model row
 				if (this.current_model_row != model_row) {
 					return false; // Don't proceed if model row changed
 				}
 				
-				// Clear any previously attached rows (do this in idle too)
-				this.detach_from_expander_row();
-				
-				// Now add each OptionRow to the ExpanderRow
-				// By this point, GTK should have processed all unparenting
-				// and widgets should be in a clean state without old sibling references
+				// Check if any widgets still have a parent and unparent them
 				foreach (var option_row in this.rows) {
-					if (option_row.get_parent() == null) {
-						model_row.add_row(option_row);
-						option_row.visible = true;
+					if (option_row.get_parent() != null) {
+						option_row.unparent();
+						return true; // Retry - wait for GTK to process unparenting
 					}
 				}
-				return false; // Don't repeat
+				
+				// All widgets are unparented, now add them to the new parent
+				foreach (var option_row in this.rows) {
+					model_row.add_row(option_row);
+					option_row.visible = true;
+				}
+				return false; // Done, don't repeat
 			});
 		}
 
@@ -263,8 +265,8 @@ namespace OLLMchat.Settings
 		 * Shows the value widget (hides Auto button) and sets it to starting value.
 		 * 
 		 * This is called when:
-		 * - User clicks "Auto" button to set a custom value (scenario 3)
-		 *   In this case, set_start_value() is correct - we want to show the starting value
+		 * User clicks "Auto" button to set a custom value (scenario 3)
+		 * In this case, set_start_value() is correct - we want to show the starting value
 		 * 
 		 * NOTE: This is also incorrectly called from load_options() when loading a saved value.
 		 * In that case, we should NOT use set_start_value() because we want to show the saved value,
@@ -374,21 +376,21 @@ namespace OLLMchat.Settings
 		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * 1. new_value in Options is unset (new_value == unset_value, e.g., -1.0):
-		 *    - If model_value is set (model has default): Show Auto button with model_value as label
-		 *    - If model_value is unset: Show Auto button with "Auto" label
-		 *    - Display: Auto button visible, spin button hidden
+		 * If model_value is set (model has default): Show Auto button with model_value as label
+		 * If model_value is unset: Show Auto button with "Auto" label
+		 * Display: Auto button visible, spin button hidden
 		 * 
 		 * 2. new_value in Options is set (user has explicitly set a value, new_value != unset_value):
-		 *    - Display: Spin button visible with the actual saved new_value from Options
-		 *    - The value shown MUST be the new_value from Options, NOT default_value or model_value
-		 *    - Auto button hidden
+		 * - Display: Spin button visible with the actual saved new_value from Options
+		 * - The value shown MUST be the new_value from Options, NOT default_value or model_value
+		 * - Auto button hidden
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
-		 *    - Display: Show spin button with model_value if set, otherwise default_value
-		 *    - This is the ONLY scenario where set_start_value() should set the spin button value
+		 * - Display: Show spin button with model_value if set, otherwise default_value
+		 * - This is the ONLY scenario where set_start_value() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
-		 *    - Display: Show Auto button (with model_value label if available), hide spin button
+		 * - Display: Show Auto button (with model_value label if available), hide spin button
 		 * 
 		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
 		 * set_start_value(), but then immediately overwrite with the actual saved new_value.
@@ -545,21 +547,21 @@ namespace OLLMchat.Settings
 		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * 1. new_value in Options is unset (new_value == unset_value, e.g., -1):
-		 *    - If model_value is set (model has default): Show Auto button with model_value as label
-		 *    - If model_value is unset: Show Auto button with "Auto" label
-		 *    - Display: Auto button visible, spin button hidden
+		 * - If model_value is set (model has default): Show Auto button with model_value as label
+		 * - If model_value is unset: Show Auto button with "Auto" label
+		 * - Display: Auto button visible, spin button hidden
 		 * 
 		 * 2. new_value in Options is set (user has explicitly set a value, new_value != unset_value):
-		 *    - Display: Spin button visible with the actual saved new_value from Options
-		 *    - The value shown MUST be the new_value from Options, NOT default_value or model_value
-		 *    - Auto button hidden
+		 * - Display: Spin button visible with the actual saved new_value from Options
+		 * - The value shown MUST be the new_value from Options, NOT default_value or model_value
+		 * - Auto button hidden
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
-		 *    - Display: Show spin button with model_value if set, otherwise default_value
-		 *    - This is the ONLY scenario where set_start_value() should set the spin button value
+		 * - Display: Show spin button with model_value if set, otherwise default_value
+		 * - This is the ONLY scenario where set_start_value() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
-		 *    - Display: Show Auto button (with model_value label if available), hide spin button
+		 * - Display: Show Auto button (with model_value label if available), hide spin button
 		 * 
 		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
 		 * set_start_value(), but then immediately overwrite with the actual saved new_value.
@@ -567,7 +569,7 @@ namespace OLLMchat.Settings
 		 */
 		protected override void set_start_value()
 		{
-			// This is called when user clicks "Auto" button (scenario 3) to start editing
+			// This is called when user clicks "Auto" button (scenario 3)
 			// Use model_value if set, otherwise use hardcoded default_value
 			if (this.model_value != this.unset_value) {
 				this.spin_button.value = (double)this.model_value;

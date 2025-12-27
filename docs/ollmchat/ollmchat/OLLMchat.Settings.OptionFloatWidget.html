@@ -31,18 +31,19 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.auto_value.html">auto_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.default_value.html">default_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.digits.html">digits</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.max_value.html">max_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.min_value.html">min_value</a></li>
+          <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.model_value.html">model_value</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.step_value.html">step_value</a></li>
+          <li class="property"><a href="OLLMchat.Settings.OptionFloatWidget.unset_value.html">unset_value</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.OptionFloatWidget.OptionFloatWidget.html">OptionFloatWidget</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.is_default.html">is_default</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.load_options.html">load_options</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.reset_default.html">reset_default</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.save_options.html">save_options</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.set_value.html">set_value</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.set_model_value.html">set_model_value</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Settings.OptionFloatWidget.set_start_value.html">set_start_value</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -73,10 +74,6 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionFloatWidget.auto_value.html" class="property">auto_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionFloatWidget.default_value.html" class="property">default_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -93,7 +90,15 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionFloatWidget.model_value.html" class="property">model_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionFloatWidget.step_value.html" class="property">step_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.OptionFloatWidget.unset_value.html" class="property">unset_value</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -113,26 +118,27 @@
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.load_options.html" class="virtual_method">load_options</a></b> (<span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span> options)
             </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.reset_default.html" class="virtual_method">reset_default</a></b> ()
-            </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Loads the widget's value from the options object.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.save_options.html" class="virtual_method">save_options</a></b> (<span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span> options)
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.set_value.html" class="virtual_method">set_value</a></b> (<span class="main_type"><span class="struct">Value</span></span> value)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.set_model_value.html" class="virtual_method">set_model_value</a></b> (<span class="main_type"><span class="struct">Value</span></span> value)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Sets the model's default value (only called by model, not user).
+              </span>
+            </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionFloatWidget.set_start_value.html" class="virtual_method">set_start_value</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Sets the spin button to the default value.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-155')">All known members inherited from class OLLMchat.Settings.OptionRow
+          <div class="headline" onclick="toggle_box (this, 'box-content-158')">All known members inherited from class OLLMchat.Settings.OptionRow
           </div>
-          <div class="content" id="box-content-155">
+          <div class="content" id="box-content-158">
             <div class="column">
               <ul class="navi_inline">
                 <li class="field"><a href="OLLMchat.Settings.OptionRow.auto_button.html">auto_button</a></li>
@@ -145,23 +151,23 @@
               <ul class="navi_inline">
                 <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.load_options.html">load_options</a></li>
                 <li class="property"><a href="OLLMchat.Settings.OptionRow.pname.html">pname</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.reset_default.html">reset_default</a></li>
-                <li class="method"><a href="OLLMchat.Settings.OptionRow.reset_to_auto.html">reset_to_auto</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.save_options.html">save_options</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_model_value.html">set_model_value</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.save_options.html">save_options</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_start_value.html">set_start_value</a></li>
+                <li class="method"><a href="OLLMchat.Settings.OptionRow.set_to_auto.html">set_to_auto</a></li>
                 <li class="method"><a href="OLLMchat.Settings.OptionRow.set_to_default.html">set_to_default</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_value.html">set_value</a></li>
                 <li class="property"><a href="OLLMchat.Settings.OptionRow.value_widget.html">value_widget</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-156')">All known members inherited from class Adw.ActionRow</div>
-          <div class="content" id="box-content-156">
+          <div class="headline" onclick="toggle_box (this, 'box-content-159')">All known members inherited from class Adw.ActionRow</div>
+          <div class="content" id="box-content-159">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property">activatable_widget</li>
@@ -200,8 +206,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-157')">All known members inherited from class Adw.PreferencesRow</div>
-          <div class="content" id="box-content-157">
+          <div class="headline" onclick="toggle_box (this, 'box-content-160')">All known members inherited from class Adw.PreferencesRow</div>
+          <div class="content" id="box-content-160">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">get_title</li>
@@ -229,8 +235,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-158')">All known members inherited from class Gtk.ListBoxRow</div>
-          <div class="content" id="box-content-158">
+          <div class="headline" onclick="toggle_box (this, 'box-content-161')">All known members inherited from class Gtk.ListBoxRow</div>
+          <div class="content" id="box-content-161">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property">activatable</li>
@@ -261,8 +267,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-159')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-159">
+          <div class="headline" onclick="toggle_box (this, 'box-content-162')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-162">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -505,8 +511,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-160')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-160">
+          <div class="headline" onclick="toggle_box (this, 'box-content-163')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-163">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -572,8 +578,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-161')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-161">
+          <div class="headline" onclick="toggle_box (this, 'box-content-164')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-164">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -609,8 +615,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-162')">All known members inherited from interface Gtk.Actionable</div>
-          <div class="content" id="box-content-162">
+          <div class="headline" onclick="toggle_box (this, 'box-content-165')">All known members inherited from interface Gtk.Actionable</div>
+          <div class="content" id="box-content-165">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">action_name</li>
@@ -634,8 +640,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-163')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-163">
+          <div class="headline" onclick="toggle_box (this, 'box-content-166')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-166">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>

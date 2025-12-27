@@ -50,7 +50,7 @@ namespace OLLMchat
 			this.app = app;
 			this.title = "OLLMchat";
 			// Start window 20% smaller (640x480 instead of 800x600)
-			this.set_default_size(640, 600);
+			this.set_default_size(640, 800);
 			
 			// Set up data directory
 			this.data_dir = GLib.Path.build_filename(

@@ -45,6 +45,7 @@ namespace OLLMchat.Settings
 
 		public ModelsPage models_page { get; construct; }
 		private bool is_expanding = false;
+		private OptionsWidget? options_widget = null;
 
 		/**
 		 * Creates a new ModelRow.
@@ -105,24 +106,38 @@ namespace OLLMchat.Settings
 			}
 			this.is_expanding = true;
 
-			// If rows are already attached to this row, just update values
-			if (this.models_page.options_widget.current_model_row == this) {
+			// Collapse other expanded ModelRows
+			foreach (var row in this.models_page.model_rows.values) {
+				if (row != this && row.expanded) {
+					row.collapse();
+				}
+			}
+
+			// If widget already exists, just update values
+			if (this.options_widget != null) {
 				this.load_defaults();
 				this.is_expanding = false;
 				return;
 			}
-
-			// If another ModelRow currently has the widget, collapse it first
-			var previous_row = this.models_page.options_widget.current_model_row;
-			if (previous_row != null && previous_row != this) {
-				previous_row.collapse();
-			}
 			
-			// Attach option rows to this ExpanderRow (also sets current_model_row)
-			this.models_page.options_widget.attach_to_model_row(this);
+			// Create new OptionsWidget for this ModelRow
+			this.options_widget = new OptionsWidget();
+			
+			// Add rows from options_widget to this ExpanderRow
+			foreach (var row in this.options_widget.rows) {
+				this.add_row(row);
+			}
 				
 			// Load default values from model.options and then load options
 			this.load_defaults();
+			
+			// Scroll to position this row 20px below the top of the view
+			// Use timeout to wait for expand animation to complete
+			Timeout.add(300, () => {
+				this.models_page.scroll_to(this);
+				return false; // Don't repeat
+			});
+			
 			this.is_expanding = false;
 		}
 		
@@ -135,7 +150,7 @@ namespace OLLMchat.Settings
 			GLib.debug("load_defaults for model '%s' - parameters: '%s'", this.model.name, this.model.parameters ?? "(null)");
 			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
-			foreach (var row in this.models_page.options_widget.rows) {
+			foreach (var row in this.options_widget.rows) {
 				GLib.debug("load_defaults: Processing row.pname = '%s'", row.pname);
 				// Convert underscore to hyphen for GObject property name
 				var property_name = row.pname.replace("_", "-");
@@ -198,14 +213,8 @@ namespace OLLMchat.Settings
 			}
 
 			// Save options from widget
-			this.models_page.options_widget.save_options(this.options);
-			
-			// Detach option rows from this ExpanderRow
-			this.models_page.options_widget.detach_from_expander_row();
-
-			// Clear the reference to this row in the options widget
-			if (this.models_page.options_widget.current_model_row == this) {
-				this.models_page.options_widget.current_model_row = null;
+			if (this.options_widget != null) {
+				this.options_widget.save_options(this.options);
 			}
 
 			// Set expanded property to false to keep UI in sync

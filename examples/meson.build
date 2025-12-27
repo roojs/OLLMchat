@@ -94,6 +94,24 @@ test_ollama = executable('oc-test-cli',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build test-pull executable (pull streaming test)
+test_pull = executable('oc-test-pull',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-pull.vala'],
+  link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
+  include_directories: include_directories('../libollmchat'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build test-html-parser-to-md executable (HTML to Markdown converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
 test_html_parser_to_md = executable('oc-html2md',

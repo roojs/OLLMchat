@@ -30,6 +30,7 @@ namespace OLLMchat.Call
 		protected string url_endpoint;
 		protected string http_method = "POST";
 		public GLib.Cancellable? cancellable { get; set; default = null; }
+		public Response.Base? streaming_response { get; set; default = null; }
 
 		protected Base(Client client) 
 		{
@@ -61,13 +62,7 @@ namespace OLLMchat.Call
 			// Set/update timeout for long-running LLM requests
 			this.client.session.timeout = this.client.timeout;
 			
-			var message = new Soup.Message(this.http_method, url);
-
-			if (this.client.connection.api_key != "") {
-				message.request_headers.append("Authorization",
-				 	"Bearer " + this.client.connection.api_key 
-				);
-			}
+			var message = this.client.connection.soup_message(this.http_method, url);
 
 			if (needs_body && this.http_method == "POST") {
 				this.set_request_body(message);
@@ -98,6 +93,7 @@ namespace OLLMchat.Call
 				case "chat-content":
 				case "client":
 				case "cancellable":
+				case "streaming-response":
 					// Exclude these properties from serialization
 					return null;
 				default:
@@ -243,7 +239,9 @@ namespace OLLMchat.Call
 				GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
 				return;
 			}
-			if (((Chat)this).streaming_response.message == null) {
+			// Only log first chunk if streaming_response exists and message is null
+			// (streaming_response is null for Pull, but set for Chat)
+			if (this.streaming_response != null && this.streaming_response.message == null) {
 				GLib.debug("First streaming response: %s", trimmed);
 			}
 			var chunk_obj = chunk_node.get_object();

@@ -366,7 +366,6 @@ namespace OLLMchat
 			}
 			
 			// Not in cache, fetch from API
-			GLib.debug("show_model: Fetching model '%s' from API", model_name);
 			var result = yield new Call.ShowModel(this, model_name).exec_show();
 			
 			// Update model with API result
@@ -375,7 +374,6 @@ namespace OLLMchat
 			// Save to cache
 			model.save_to_cache();
 			
-			GLib.debug("show_model: Updated model '%s', parameters: '%s'", model_name, model.parameters ?? "(null)");
 			return model;
 		}
 

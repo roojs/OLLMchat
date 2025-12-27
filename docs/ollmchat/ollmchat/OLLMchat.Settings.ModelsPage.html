@@ -31,7 +31,6 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Settings.ModelsPage.options_widget.html">options_widget</a></li>
           <li class="property"><a href="OLLMchat.Settings.ModelsPage.search_filter.html">search_filter</a></li>
           <li class="property"><a href="OLLMchat.Settings.ModelsPage.settings_dialog.html">settings_dialog</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.ModelsPage.ModelsPage.html">ModelsPage</a></li>
@@ -39,6 +38,8 @@
           <li class="method"><a href="OLLMchat.Settings.ModelsPage.render_models.html">render_models</a></li>
           <li class="method"><a href="OLLMchat.Settings.ModelsPage.save_all_options.html">save_all_options</a></li>
           <li class="method"><a href="OLLMchat.Settings.ModelsPage.save_options.html">save_options</a></li>
+          <li class="method"><a href="OLLMchat.Settings.ModelsPage.scroll_to.html">scroll_to</a></li>
+          <li class="field"><a href="OLLMchat.Settings.ModelsPage.model_rows.html">model_rows</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -71,10 +72,6 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.OptionsWidget.html" class="class">OptionsWidget</a></span> <b><a href="OLLMchat.Settings.ModelsPage.options_widget.html" class="property">options_widget</a></b> { <span class="main_keyword">get</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.ModelsPage.search_filter.html" class="property">search_filter</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Current search filter text</span>
@@ -110,12 +107,23 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Saves model options to config if user has set any values.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.ModelsPage.scroll_to.html" class="method">scroll_to</a></b> (<span class="main_type"><span class="abstract_class">Widget</span></span> widget)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Scrolls a widget to 20px below the top of the viewport.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Fields:</h3>
+        <ul class="navi_inline">
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Settings.ModelRow.html" class="class">ModelRow</a></span>&gt; <b><a href="OLLMchat.Settings.ModelsPage.model_rows.html" class="field">model_rows</a></b>
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-138')">All known members inherited from class OLLMchat.Settings.SettingsPage
+          <div class="headline" onclick="toggle_box (this, 'box-content-141')">All known members inherited from class OLLMchat.Settings.SettingsPage
           </div>
-          <div class="content" id="box-content-138">
+          <div class="content" id="box-content-141">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.Settings.SettingsPage.action_widget.html">action_widget</a></li>
@@ -136,8 +144,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-139')">All known members inherited from class Gtk.Box</div>
-          <div class="content" id="box-content-139">
+          <div class="headline" onclick="toggle_box (this, 'box-content-142')">All known members inherited from class Gtk.Box</div>
+          <div class="content" id="box-content-142">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">append</li>
@@ -170,8 +178,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-140')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-140">
+          <div class="headline" onclick="toggle_box (this, 'box-content-143')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-143">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -414,8 +422,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-141')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-141">
+          <div class="headline" onclick="toggle_box (this, 'box-content-144')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-144">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -481,8 +489,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-142')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-142">
+          <div class="headline" onclick="toggle_box (this, 'box-content-145')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-145">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -518,8 +526,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-143')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-143">
+          <div class="headline" onclick="toggle_box (this, 'box-content-146')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-146">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>
@@ -545,8 +553,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-144')">All known members inherited from interface Gtk.Orientable</div>
-          <div class="content" id="box-content-144">
+          <div class="headline" onclick="toggle_box (this, 'box-content-147')">All known members inherited from interface Gtk.Orientable</div>
+          <div class="content" id="box-content-147">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">get_orientation</li>

@@ -27,6 +27,7 @@ namespace OLLMchat.Response
 	public abstract class Base : OllamaBase
 	{
 		protected string id = "";
+		public Message? message { get; set; default = null; }
 
 		protected Base(Client? client = null)
 		{

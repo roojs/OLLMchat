@@ -36,11 +36,11 @@
           <li class="creation_method"><a href="OLLMchat.Settings.OptionRow.OptionRow.html">OptionRow</a></li>
           <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.is_default.html">is_default</a></li>
           <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.load_options.html">load_options</a></li>
-          <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.reset_default.html">reset_default</a></li>
-          <li class="method"><a href="OLLMchat.Settings.OptionRow.reset_to_auto.html">reset_to_auto</a></li>
           <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.save_options.html">save_options</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_model_value.html">set_model_value</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_start_value.html">set_start_value</a></li>
+          <li class="method"><a href="OLLMchat.Settings.OptionRow.set_to_auto.html">set_to_auto</a></li>
           <li class="method">set_to_default</li>
-          <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_value.html">set_value</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.auto_button.html">auto_button</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.button_box.html">button_box</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.clear_button.html">clear_button</a></li>
@@ -51,6 +51,14 @@
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><span class="method">set_to_default</span></b> ()
+        </div>
+        <div class="description">
+          <p>Shows the value widget (hides Auto button) and sets it to starting value.</p>
+          <p>This is called when: User clicks "Auto" button to set a custom value (scenario 3) In this case, set_start_value() is correct - we want to
+            show the starting value</p>
+          <p>NOTE: This is also incorrectly called from load_options() when loading a saved value. In that case, we should NOT use set_start_value() 
+            because we want to show the saved value, not the starting value. The current code works because it overwrites the value immediately after,
+            but it's inefficient and confusing.</p>
         </div>
       </div>
     </div><br/>

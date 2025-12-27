@@ -48,10 +48,9 @@ namespace OLLMchat.Settings
 		private Gtk.Box loading_box;
 		private Gtk.Spinner loading_spinner;
 		private Gtk.Label loading_label;
-		private Gee.HashMap<string, ModelRow> model_rows = new Gee.HashMap<string, ModelRow>();
+		public Gee.HashMap<string, ModelRow> model_rows = new Gee.HashMap<string, ModelRow>();
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
-		public OptionsWidget options_widget { get; private set; }
 
 		/**
 		 * Creates a new ModelsPage.
@@ -121,9 +120,6 @@ namespace OLLMchat.Settings
 			// Create boxed list for models
 			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.group.add(this.boxed_list);
-
-			// Create shared options widget (will be reparented to expanded ModelRow)
-			this.options_widget = new OptionsWidget();
 
 			// Create loading indicator (will be added/removed as needed)
 			this.loading_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
@@ -370,9 +366,10 @@ namespace OLLMchat.Settings
 		public void save_all_options()
 		{
 			// If there's an expanded row, collapse it (which saves widget options and saves to config)
-			var current_row = this.options_widget.current_model_row;
-			if (current_row != null) {
-				current_row.collapse();
+			foreach (var row in this.model_rows.values) {
+				if (row.expanded) {
+					row.collapse();
+				}
 			}
 		}
 
@@ -429,6 +426,35 @@ namespace OLLMchat.Settings
 				header.visible = connection_has_visible;
 			}
 				*/
+		}
+
+		/**
+		 * Scrolls a widget to 20px below the top of the viewport.
+		 * 
+		 * @param widget The widget to scroll into view
+		 */
+		public void scroll_to(Gtk.Widget widget)
+		{
+			var vadjustment = this.settings_dialog.scrolled_window.vadjustment;
+			
+			// Get the viewport's child (the ViewStack) - this is our reference point
+			var viewport_child = this.settings_dialog.viewport.get_child();
+			
+			// Calculate Y position relative to viewport's child by walking up parent chain
+			double y = 0.0;
+			Gtk.Widget? current_widget = widget;
+			while (current_widget != null && current_widget != viewport_child) {
+				Gdk.Rectangle widget_alloc;
+				current_widget.get_allocation(out widget_alloc);
+				y += widget_alloc.y;
+				current_widget = current_widget.get_parent();
+			}
+			
+			// Scroll so the top of the widget is 20px below the top of the viewport
+			vadjustment.value = (y - 20.0).clamp(
+				vadjustment.lower,
+				vadjustment.upper - vadjustment.page_size
+			);
 		}
 
 	}

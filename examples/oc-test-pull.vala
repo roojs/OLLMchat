@@ -16,62 +16,22 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class TestPullApp : Application
+class TestPullApp : TestAppBase
 {
-	private static bool opt_debug = false;
-	private static string? opt_url = null;
-	private static string? opt_api_key = null;
-	private static string? opt_model = null;
-	
-	const OptionEntry[] options = {
-		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
-		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
-		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
-		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name to pull", "MODEL" },
-		{ null }
-	};
-	
 	public TestPullApp()
 	{
-		Object(
-			application_id: "org.roojs.oc-test-pull",
-			flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
-		);
+		base("org.roojs.oc-test-pull");
 	}
 	
-	protected override int command_line(ApplicationCommandLine command_line)
+	protected override string get_app_name()
 	{
-		// Reset static option variables at start of each command line invocation
-		opt_debug = false;
-		opt_url = null;
-		opt_api_key = null;
-		opt_model = null;
-		
-		string[] args = command_line.get_arguments();
-		var opt_context = new OptionContext("OLLMchat Test Pull Tool");
-		opt_context.set_help_enabled(true);
-		opt_context.add_main_entries(options, null);
-		
-		try {
-			unowned string[] unowned_args = args;
-			opt_context.parse(ref unowned_args);
-		} catch (OptionError e) {
-			command_line.printerr("error: %s\n", e.message);
-			command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
-			return 1;
-		}
-		
-		if (opt_debug) {
-			GLib.Log.set_default_handler((dom, lvl, msg) => {
-				command_line.printerr("%s [%s] %s\n",
-					(new DateTime.now_local()).format("%H:%M:%S.%f"),
-					lvl.to_string(),
-					msg);
-			});
-		}
-		
+		return "OLLMchat Test Pull Tool";
+	}
+	
+	protected override string? validate_args(string[] args)
+	{
 		if (opt_model == null || opt_model == "") {
-			var usage = @"Usage: $(args[0]) [OPTIONS] --model=MODEL
+			return @"Usage: $(args[0]) [OPTIONS] --model=MODEL
 
 Test tool for ollama pull with streaming enabled.
 
@@ -85,92 +45,19 @@ Examples:
   $(args[0]) --model llama2
   $(args[0]) --debug --url http://localhost:11434/api --model llama2
 ";
-			command_line.printerr("%s", usage);
-			return 1;
 		}
-		
-		// Hold the application to keep main loop running during async operations
-		this.hold();
-		
-		this.run_test.begin(opt_model, command_line, (obj, res) => {
-			try {
-				this.run_test.end(res);
-			} catch (Error e) {
-				command_line.printerr("Error: %s\n", e.message);
-			} finally {
-				// Release hold and quit when done
-				this.release();
-				this.quit();
-			}
-		});
-		
-		return 0;
+		return null;
 	}
 	
-	private async void run_test(string model_name, ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line) throws Error
 	{
-		// Load Config2
-		var config_dir = GLib.Path.build_filename(
-			GLib.Environment.get_home_dir(), ".config", "ollmchat"
-		);
-		OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
+		var client = yield this.setup_client(command_line);
 		
-		var config = OLLMchat.Settings.Config2.load();
-		
-		OLLMchat.Client client;
-		
-		// Shortest if first - config loaded
-		if (config.loaded) {
-			client = config.create_client("default_model");
-			if (client == null) {
-				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
-			}
-		} else {
-			// Config not loaded - check if URL provided
-			if (opt_url == null || opt_url == "") {
-				command_line.printerr("Error: Config not found and --url not provided.\n");
-				command_line.printerr("Please set up the server first or provide --url option.\n");
-				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
-			}
-		 
-			// Create connection from command line args
-			var connection = new OLLMchat.Settings.Connection() {
-				name = "CLI",
-				url = opt_url,
-				api_key = opt_api_key ?? "",
-				is_default = true
-			};
-			
-			// Add connection to config
-			config.connections.set(opt_url, connection);
-			
-			// Test connection
-			stdout.printf("Testing connection to %s...\n", opt_url);
-			var test_client = new OLLMchat.Client(connection);
-			try {
-				yield test_client.version();
-				stdout.printf("Connection successful.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
-			}
-		 
-			// Create client from connection
-			client = new OLLMchat.Client(connection);
-			
-			// Save config since we created it
-			try {
-				config.save();
-				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to save config: %s", e.message);
-			}
-		}
-		
-		stdout.printf("Pulling model: %s\n", model_name);
+		stdout.printf("Pulling model: %s\n", opt_model);
 		stdout.printf("Streaming progress updates:\n\n");
 		
 		// Create Pull call
-		var pull_call = new OLLMchat.Call.Pull(client, model_name) {
+		var pull_call = new OLLMchat.Call.Pull(client, opt_model) {
 			stream = true
 		};
 		

@@ -50,25 +50,16 @@ namespace OLLMchat.Call
 		/**
 		 * Executes the pull API call.
 		 * 
-		 * If streaming is enabled (default), processes streaming JSON chunks and emits
-		 * progress_chunk signals for each update. The pull operation completes when done.
+		 * Processes streaming JSON chunks and emits progress_chunk signals for each update.
+		 * The pull operation completes when done.
 		 * 
 		 * @throws Error if the request fails or response is invalid
 		 */
 		public async void exec_pull() throws Error
 		{
-			if (this.stream) {
-				yield this.execute_streaming();
-			} else {
-				yield this.execute_non_streaming();
-			}
-		}
-
-		private async void execute_streaming() throws Error
-		{
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.create_streaming_message(url, request_body);
+			var message = this.client.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Pull request URL: %s", url);
 			GLib.debug("Pull request Body: %s", request_body);
@@ -85,34 +76,6 @@ namespace OLLMchat.Call
 				// Re-throw other IO errors
 				throw e;
 			}
-		}
-
-		private async void execute_non_streaming() throws Error
-		{
-			var bytes = yield this.send_request(true);
-			var root = this.parse_response(bytes);
-
-			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
-			}
-
-			// For non-streaming, emit the final chunk as progress
-			var root_obj = root.get_object();
-			this.progress_chunk(root_obj);
-		}
-
-		private Soup.Message create_streaming_message(string url, string request_body)
-		{
-			var message = new Soup.Message(this.http_method, url);
-
-			if (this.client.connection.api_key != "") {
-				message.request_headers.append("Authorization",
-					"Bearer " + this.client.connection.api_key 
-				);
-			}
-
-			message.set_request_body_from_bytes("application/json", new Bytes(request_body.data));
-			return message;
 		}
 	}
 }

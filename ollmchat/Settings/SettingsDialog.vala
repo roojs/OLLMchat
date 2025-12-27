@@ -43,6 +43,12 @@ namespace OLLMchat.Settings
 		private Adw.ViewStack view_stack;
 		private Adw.ViewSwitcher view_switcher;
 		
+		// ScrolledWindow for pages
+		public Gtk.ScrolledWindow scrolled_window { get; private set; }
+		
+		// Viewport for pages (child of ScrolledWindow)
+		public Gtk.Viewport viewport { get; private set; }
+		
 		// Area for pages to add action bars (fixed at bottom, outside scrollable content)
 		public Gtk.Box action_bar_area { get; private set; }
 		
@@ -61,7 +67,7 @@ namespace OLLMchat.Settings
 		
 			this.title = "Settings";
 			this.set_content_width(800);
-			this.set_content_height(600);
+			this.set_content_height(800);
 
 			// Create main container
 			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
@@ -79,12 +85,15 @@ namespace OLLMchat.Settings
 			main_box.append(header_bar);
 			
 			// Create scrollable area for pages
-			var scrolled = new Gtk.ScrolledWindow() {
+			this.scrolled_window = new Gtk.ScrolledWindow() {
 				vexpand = true,
 				hexpand = true
 			};
-			scrolled.set_child(this.view_stack);
-			main_box.append(scrolled);
+			// ScrolledWindow automatically wraps non-scrollable children in a Viewport
+			this.scrolled_window.set_child(this.view_stack);
+			// Get the Viewport that was automatically created
+			this.viewport = this.scrolled_window.get_child() as Gtk.Viewport;
+			main_box.append(this.scrolled_window);
 			
 			// Create action bar area (fixed at bottom, outside scrollable content)
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -144,6 +153,9 @@ namespace OLLMchat.Settings
 			// Show current page's action widget
 			current_page.action_widget.visible = true;
 			this.action_bar_area.visible = true;
+			
+			// Scroll to top when switching tabs
+			this.scrolled_window.vadjustment.value = 0;
 		}
 
 		/**
