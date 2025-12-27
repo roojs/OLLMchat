@@ -28,6 +28,7 @@ namespace OLLMchat.Settings
 	internal class LoadingStatus : GLib.Object, Json.Serializable
 	{
 		// Persistence fields (saved to JSON)
+		public string model_name { get; set; default = ""; }
 		public string status { get; set; default = ""; }
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }

@@ -162,10 +162,16 @@ namespace OLLMchat.Settings
 		private LoadingStatus get_or_create_status(string model_name)
 		{
 			if (this.loading_status_cache.has_key(model_name)) {
-				return this.loading_status_cache.get(model_name);
+				var status_obj = this.loading_status_cache.get(model_name);
+				// Ensure model_name is set (for backwards compatibility with loaded data)
+				if (status_obj.model_name == "") {
+					status_obj.model_name = model_name;
+				}
+				return status_obj;
 			}
 			
 			var status_obj = new LoadingStatus();
+			status_obj.model_name = model_name;
 			this.loading_status_cache.set(model_name, status_obj);
 			return status_obj;
 		}
@@ -194,6 +200,7 @@ namespace OLLMchat.Settings
 			// Update status object in main thread (thread-safe)
 			var status_obj = this.get_or_create_status(model_name);
 			var old_status = status_obj.status;
+			status_obj.model_name = model_name;
 			status_obj.status = status;
 			status_obj.retry_count = retry_count;
 			status_obj.completed = completed;
@@ -225,7 +232,7 @@ namespace OLLMchat.Settings
 			this.write_to_file_rate_limited(force_write);
 			
 			// Schedule progress update with rate limiting (for UI)
-			this.schedule_progress_update(model_name, status_obj, old_status);
+			this.schedule_progress_update(status_obj, old_status);
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
@@ -291,7 +298,7 @@ namespace OLLMchat.Settings
 						check_status.status = "failed";
 						check_status.error = "Connection not found for retry";
 						this.write_to_file();
-						this.progress_updated(model_name, check_status);
+						this.progress_updated(check_status);
 						this.finish_pull(model_name, "failed");
 						return false;
 					}
@@ -316,11 +323,10 @@ namespace OLLMchat.Settings
 		 * - Status has changed, OR
 		 * - This is a final update (complete/error)
 		 * 
-		 * @param model_name Model name
-		 * @param status_obj LoadingStatus object with current status
+		 * @param status_obj LoadingStatus object with current status (includes model_name)
 		 * @param old_status Previous status (to detect changes)
 		 */
-		private void schedule_progress_update(string model_name, LoadingStatus status_obj, string old_status)
+		private void schedule_progress_update(LoadingStatus status_obj, string old_status)
 		{
 			var now = GLib.get_real_time() / 1000000;
 			
@@ -336,7 +342,7 @@ namespace OLLMchat.Settings
 			
 			// Emit update
 			Idle.add(() => {
-				this.progress_updated(model_name, status_obj);
+				this.progress_updated(status_obj);
 				return false;
 			});
 			status_obj.last_update_time = now;
