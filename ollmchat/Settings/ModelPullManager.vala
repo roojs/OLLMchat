@@ -173,7 +173,7 @@ namespace OLLMchat.Settings
 			try {
 				app.ensure_data_dir();
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to ensure data directory exists: %s", e.message);
+				GLib.warning("Failed to ensure data directory exists: " + e.message);
 			}
 			
 			// Load existing status from file
@@ -194,7 +194,7 @@ namespace OLLMchat.Settings
 			// Check if already pulling
 			if (this.loading_status_cache.has_key(model_name) && 
 			    this.loading_status_cache.get(model_name).active) {
-				GLib.debug("Pull already in progress for model: %s", model_name);
+				GLib.debug("Pull already in progress for model: " + model_name);
 				return false;
 			}
 			
@@ -250,7 +250,7 @@ namespace OLLMchat.Settings
 					return true;
 				});
 			} catch (Error e) {
-				GLib.warning("Failed to start background thread: %s", e.message);
+				GLib.warning("Failed to start background thread: " + e.message);
 				this.background_thread = null;
 				this.background_context = null;
 			}
@@ -306,8 +306,6 @@ namespace OLLMchat.Settings
 				stream = true
 			};
 			
-			// Status object already retrieved above
-			
 			// Track progress
 			int progress = 0;
 			string status = "pulling";
@@ -360,10 +358,10 @@ namespace OLLMchat.Settings
 				} catch (GLib.IOError e) {
 					// Treat all IO errors as errors (including CANCELLED - could be network issue)
 					status = "error";
-					GLib.warning("Pull failed for %s: %s", model_name, e.message);
+					GLib.warning("Pull failed for " + model_name + ": " + e.message);
 				} catch (Error e) {
 					status = "error";
-					GLib.warning("Pull failed for %s: %s", model_name, e.message);
+					GLib.warning("Pull failed for " + model_name + ": " + e.message);
 				}
 				
 				// Final status update - only complete if we saw success in chunks
@@ -390,42 +388,16 @@ namespace OLLMchat.Settings
 							return false;
 						});
 						
-						// Schedule retry from main thread (not background thread)
-						// Use Idle.add to schedule on main thread, then use Timeout.add_seconds
-						Idle.add(() => {
-							GLib.Timeout.add_seconds((uint)RETRY_DELAY_SECONDS, () => {
-								// Check if still in pending-retry status (not completed or failed)
-								if (this.loading_status_cache.has_key(model_name)) {
-									var check_status = this.loading_status_cache.get(model_name);
-									if (check_status.status == "pending-retry") {
-										// Use stored connection object
-										if (check_status.connection != null) {
-											// Retry the pull
-											this.start_pull_async(model_name, check_status.connection);
-										} else {
-											// Connection not found - mark as failed
-											check_status.status = "failed";
-											check_status.error = "Connection not found for retry";
-											this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
-											this.progress_updated(model_name, "failed", progress);
-											this.model_failed(model_name);
-											this.loading_status_cache.unset(model_name);
-											this.write_to_file();
-										}
-									}
-								}
-								return false; // Don't repeat
-							});
-							return false;
-						});
+						// Schedule retry from main thread
+						this.schedule_retry(model_name, progress, last_chunk_status);
 						
 						// Clean up active flag (will be set again on retry)
 						status_obj.active = false;
 						return;
-					} else {
-						// All retries exhausted - mark as failed
-						status = "failed";
 					}
+					
+					// All retries exhausted - mark as failed
+					status = "failed";
 				}
 				
 				// Update final status in memory and write to file (finish event)
@@ -441,9 +413,11 @@ namespace OLLMchat.Settings
 						this.loading_status_cache.unset(model_name);
 						// Write to file to remove completed entry
 						this.write_to_file();
+						return;
 					}
+					
 					// If failed, notify client and remove from cache
-					else if (status == "failed") {
+					if (status == "failed") {
 						this.model_failed(model_name);
 						this.loading_status_cache.unset(model_name);
 						// Write to file to remove failed entry
@@ -455,6 +429,52 @@ namespace OLLMchat.Settings
 				
 				// Clean up active flag
 				status_obj.active = false;
+			});
+		}
+		
+		/**
+		 * Schedules a retry for a failed pull operation.
+		 * 
+		 * Schedules the retry on the main thread after RETRY_DELAY_SECONDS.
+		 * 
+		 * @param model_name Model name to retry
+		 * @param progress Current progress percentage
+		 * @param last_chunk_status Last chunk status from API
+		 */
+		private void schedule_retry(string model_name, int progress, string last_chunk_status)
+		{
+			// Schedule retry from main thread (not background thread)
+			// Use Idle.add to schedule on main thread, then use Timeout.add_seconds
+			Idle.add(() => {
+				GLib.Timeout.add_seconds((uint)RETRY_DELAY_SECONDS, () => {
+					// Check if still in pending-retry status (not completed or failed)
+					if (!this.loading_status_cache.has_key(model_name)) {
+						return false;
+					}
+					
+					var check_status = this.loading_status_cache.get(model_name);
+					if (check_status.status != "pending-retry") {
+						return false;
+					}
+					
+					// Use stored connection object
+					if (check_status.connection == null) {
+						// Connection not found - mark as failed
+						check_status.status = "failed";
+						check_status.error = "Connection not found for retry";
+						this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
+						this.progress_updated(model_name, "failed", progress);
+						this.model_failed(model_name);
+						this.loading_status_cache.unset(model_name);
+						this.write_to_file();
+						return false;
+					}
+					
+					// Retry the pull
+					this.start_pull_async(model_name, check_status.connection);
+					return false; // Don't repeat
+				});
+				return false;
 			});
 		}
 		
@@ -556,11 +576,12 @@ namespace OLLMchat.Settings
 			// Write to file if forced or rate limit expired
 			if (force_write) {
 				this.write_to_file();
-			} else {
-				var now = GLib.get_real_time() / 1000000;
-				if ((now - this.last_file_write_time) >= FILE_WRITE_RATE_LIMIT_SECONDS) {
-					this.write_to_file();
-				}
+				return;
+			}
+			
+			var now = GLib.get_real_time() / 1000000;
+			if ((now - this.last_file_write_time) >= FILE_WRITE_RATE_LIMIT_SECONDS) {
+				this.write_to_file();
 			}
 		}
 		
@@ -583,18 +604,22 @@ namespace OLLMchat.Settings
 				
 				var root_obj = root.get_object();
 				root_obj.foreach_member((obj, key, node) => {
-					if (node.get_node_type() == Json.NodeType.OBJECT) {
-						var status_obj = Json.gobject_deserialize(
-							typeof(LoadingStatus),
-							node
-						) as LoadingStatus;
-						if (status_obj != null) {
-							this.loading_status_cache.set(key, status_obj);
-						}
+					if (node.get_node_type() != Json.NodeType.OBJECT) {
+						return;
 					}
+					
+					var status_obj = Json.gobject_deserialize(
+						typeof(LoadingStatus),
+						node
+					) as LoadingStatus;
+					if (status_obj == null) {
+						return;
+					}
+					
+					this.loading_status_cache.set(key, status_obj);
 				});
 			} catch (Error e) {
-				GLib.debug("Failed to load loading.json: %s", e.message);
+				GLib.debug("Failed to load loading.json: " + e.message);
 			}
 		}
 		
@@ -625,7 +650,7 @@ namespace OLLMchat.Settings
 				GLib.FileUtils.set_contents(this.loading_json_path, json_str);
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
 			} catch (Error e) {
-				GLib.warning("Failed to write loading.json: %s", e.message);
+				GLib.warning("Failed to write loading.json: " + e.message);
 			}
 		}
 		
@@ -637,8 +662,11 @@ namespace OLLMchat.Settings
 		 */
 		public bool is_pulling(string model_name)
 		{
-			return this.loading_status_cache.has_key(model_name) && 
-			       this.loading_status_cache.get(model_name).active;
+			if (!this.loading_status_cache.has_key(model_name)) {
+				return false;
+			}
+			
+			return this.loading_status_cache.get(model_name).active;
 		}
 		
 		/**
@@ -659,4 +687,3 @@ namespace OLLMchat.Settings
 		
 	}
 }
-
