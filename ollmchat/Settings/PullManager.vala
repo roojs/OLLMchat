@@ -130,34 +130,33 @@ namespace OLLMchat.Settings
 			foreach (var entry in this.loading_status_cache.entries) {
 				var status = entry.value;
 				
-				// Resume pulls that were in progress or pending retry
-				if (status.status == "pulling" || status.status == "pending-retry") {
-					// Try to find the connection
-					OLLMchat.Settings.Connection? connection = null;
-					if (status.connection != null) {
-						connection = status.connection;
-					} else if (status.connection_url != "") {
-						// Try to find connection from app config
-						if (this.app.config.connections.has_key(status.connection_url)) {
-							connection = this.app.config.connections.get(status.connection_url);
-							status.connection = connection; // Cache it
-						}
-					}
-					
-					if (connection == null) {
-						// Connection not found - mark as failed
-						status.status = "failed";
-						status.error = "Connection not found for resume";
-						status.active = false;
-						this.write_to_file();
-						continue;
-					}
-					
-					// Resume the pull
-					status.active = true;
-					this.pull_thread.ensure_thread();
-					this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
+				// Skip if not in progress or pending retry
+				if (status.status != "pulling" && status.status != "pending-retry") {
+					continue;
 				}
+				
+				// Try to find the connection
+				OLLMchat.Settings.Connection? connection = null;
+				if (status.connection != null) {
+					connection = status.connection;
+				} else if (status.connection_url != "" && this.app.config.connections.has_key(status.connection_url)) {
+					connection = this.app.config.connections.get(status.connection_url);
+					status.connection = connection; // Cache it
+				}
+				
+				// Mark as failed if connection not found
+				if (connection == null) {
+					status.status = "failed";
+					status.error = "Connection not found for resume";
+					status.active = false;
+					this.write_to_file();
+					continue;
+				}
+				
+				// Resume the pull
+				status.active = true;
+				this.pull_thread.ensure_thread();
+				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
 			}
 		}
 		
@@ -193,6 +192,65 @@ namespace OLLMchat.Settings
 			// Consider cloning: var connection_copy = connection.clone();
 			// Start pull operation in background thread (pass only primitive data)
 			this.pull_thread.start_pull(model_name, connection, existing_status.retry_count);
+			
+			return true;
+		}
+		
+		/**
+		 * Fake pull operation for testing - simulates progress from 0-100%.
+		 * 
+		 * @param model_name Full model name (e.g., "llama2" or "llama2:7b")
+		 * @param connection Connection to use for the pull (not actually used)
+		 * @return true if fake pull was started, false if already in progress
+		 */
+		public bool fake_pull(string model_name, OLLMchat.Settings.Connection connection)
+		{
+			GLib.debug("fake_pull called for model: %s", model_name);
+			
+			// Check if already pulling
+			var existing_status = this.get_or_create_status(model_name);
+			if (existing_status.active) {
+				GLib.debug("Pull already in progress for model: " + model_name);
+				return false;
+			}
+			
+			// Configure status for fake pull
+			existing_status.model_name = model_name;
+			existing_status.active = true;
+			existing_status.connection_url = connection.url;
+			existing_status.connection = connection;
+			existing_status.status = "pulling";
+			existing_status.total = 100;
+			existing_status.completed = 0;
+			existing_status.started = (GLib.get_real_time() / 1000000).to_string();
+			
+			// Write initial status to file
+			this.write_to_file();
+			
+			// Simulate progress updates (1-100)
+			uint timeout_id = 0;
+			int progress_count = 0;
+			timeout_id = GLib.Timeout.add(100, () => {
+				progress_count++;
+				existing_status.completed = progress_count;
+				
+				// Emit progress update
+				this.schedule_progress_update(existing_status, existing_status.status);
+				
+				// Continue until 100%
+				if (progress_count < 100) {
+					return true; // Continue timer
+				}
+				
+				// Complete the pull
+				existing_status.status = "complete";
+				existing_status.active = false;
+				this.schedule_progress_update(existing_status, "pulling");
+				this.finish_pull(model_name, "complete");
+				
+				timeout_id = 0;
+				return false; // Stop timer
+			});
 			
 			return true;
 		}
@@ -384,12 +442,15 @@ namespace OLLMchat.Settings
 				return;
 			}
 			
+			// Update timestamp and rate tracking before emitting
+			status_obj.last_update_time = now;
+			status_obj.update_rate_tracking();
+			
 			// Emit update
 			Idle.add(() => {
 				this.progress_updated(status_obj);
 				return false;
 			});
-			status_obj.last_update_time = now;
 		}
 		
 		/**

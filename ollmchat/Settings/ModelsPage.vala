@@ -149,6 +149,11 @@ namespace OLLMchat.Settings
 			// Add preferences group with models list (this will be scrollable)
 			this.append(this.group);
 			
+			// Connect to pull manager to reload models when a pull completes
+			this.settings_dialog.pull_manager.model_complete.connect((model_name) => {
+				this.render_models.begin();
+			});
+			
 			// Action bar will be added to dialog's action_bar_area on activation
 		}
 

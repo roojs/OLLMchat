@@ -191,6 +191,7 @@ namespace OLLMchat.Settings
 				
 				// Start pull operation
 				this.settings_dialog.pull_manager.start_pull(model_name, connection);
+				// this.settings_dialog.pull_manager.start_pull(model_name, connection);
 				
 				// Close dialog
 				this.force_close();
