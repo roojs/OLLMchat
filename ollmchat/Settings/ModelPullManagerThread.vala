@@ -170,11 +170,11 @@ namespace OLLMchat.Settings
 			// This is NOT shared with the main thread - it's local to this execution
 			var local_status = new LoadingStatus();
 			local_status.status = "pulling";
-			local_status.progress = 0;
 			local_status.last_chunk_status = "pulling";
 			local_status.retry_count = initial_retry_count;
 			local_status.completed = 0;
 			local_status.total = 0;
+			// progress is calculated from completed/total, so no need to set it
 			
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
@@ -238,7 +238,14 @@ namespace OLLMchat.Settings
 				// Final status update - only complete if we saw success in chunks
 				if (local_status.status != "error" && local_status.last_chunk_status == "success") {
 					local_status.status = "complete";
-					local_status.progress = 100;
+					// Ensure progress = 100 by setting completed = total
+					if (local_status.total > 0) {
+						local_status.completed = local_status.total;
+					} else {
+						// If total is 0, set both to 1 to represent 100%
+						local_status.completed = 1;
+						local_status.total = 1;
+					}
 				} else if (local_status.status != "error") {
 					// If we didn't see success and no error was set, treat as error
 					local_status.status = "error";
