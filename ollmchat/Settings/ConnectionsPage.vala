@@ -64,10 +64,7 @@ namespace OLLMchat.Settings
 
 			// Create horizontal action bar
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 12,
-				margin_bottom = 12
+				hexpand = true
 			};
 
 			// Create Add Connection button
@@ -86,11 +83,13 @@ namespace OLLMchat.Settings
 			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.group.add(this.boxed_list);
 
-			// Add action bar and preferences group to page
-			var action_group = new Adw.PreferencesGroup();
-			action_group.add(this.action_box);
-			this.append(action_group);
+			// Add preferences group to page (action bar will be added to dialog's action_bar_area)
 			this.append(this.group);
+			
+			// Add action bar to dialog's action bar area (fixed at bottom, outside scrollable content)
+			if (this.dialog.action_bar_area != null) {
+				this.dialog.action_bar_area.append(this.action_box);
+			}
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
@@ -259,6 +258,25 @@ namespace OLLMchat.Settings
 			this.boxed_list.append(row.expander);
 		}
 
+		/**
+		 * Called when this page is activated (becomes visible).
+		 * 
+		 * Shows the action bar area in the settings dialog.
+		 */
+		public override void on_activated()
+		{
+			this.dialog.action_bar_area.visible = true;
+		}
+
+		/**
+		 * Called when this page is deactivated (becomes hidden).
+		 * 
+		 * Hides the action bar area in the settings dialog.
+		 */
+		public override void on_deactivated()
+		{
+			this.dialog.action_bar_area.visible = false;
+		}
 
 	}
 }
