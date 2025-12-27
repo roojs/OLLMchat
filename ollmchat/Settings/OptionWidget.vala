@@ -373,7 +373,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(double));
-			((GLib.Object)options).get_property(this.name, ref val);
+			((GLib.Object)options).get_property(this.pname, ref val);
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
@@ -396,7 +396,7 @@ namespace OLLMchat.Settings
 				// Value is set, save the spin button value
 				value.set_double(this.spin_button.value);
 			}
-			((GLib.Object)options).set_property(this.name, value);
+			((GLib.Object)options).set_property(this.pname, value);
 		}
 	}
 
@@ -471,7 +471,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(int));
-			((GLib.Object)options).get_property(this.name, ref val);
+			((GLib.Object)options).get_property(this.pname, ref val);
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
@@ -494,7 +494,7 @@ namespace OLLMchat.Settings
 				// Value is set, save the spin button value
 				value.set_int((int)this.spin_button.value);
 			}
-			((GLib.Object)options).set_property(this.name, value);
+			((GLib.Object)options).set_property(this.pname, value);
 		}
 	}
 
