@@ -38,14 +38,9 @@ namespace OLLMchat.Settings
 		public signal void progress_updated(string model_name, string status, int progress);
 		
 		/**
-		 * Data directory path for storing loading.json
+		 * Application interface (provides config and data_dir)
 		 */
-		public string data_dir { get; construct; }
-		
-		/**
-		 * Configuration for creating clients
-		 */
-		public OLLMchat.Settings.Config2 config { get; construct; }
+		public OLLMchat.ApplicationInterface app { get; construct; }
 		
 		/**
 		 * Path to loading.json file
@@ -75,25 +70,20 @@ namespace OLLMchat.Settings
 		/**
 		 * Creates a new ModelPullManager.
 		 * 
-		 * @param data_dir Data directory path (for loading.json)
-		 * @param config Configuration for creating clients
+		 * @param app ApplicationInterface instance (provides config and data_dir)
 		 */
-		public ModelPullManager(string data_dir, OLLMchat.Settings.Config2 config)
+		public ModelPullManager(OLLMchat.ApplicationInterface app)
 		{
-			Object(
-				data_dir: data_dir,
-				config: config
-			);
+			Object(app: app);
 			
-			this.loading_json_path = GLib.Path.build_filename(data_dir, "loading.json");
+			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
 			this.active_threads = new Gee.HashMap<string, Thread<bool>?>();
 			this.last_update_time = new Gee.HashMap<string, int64>();
 			this.last_status = new Gee.HashMap<string, string>();
 			
 			// Ensure data directory exists
 			try {
-				var app_interface = new ApplicationInterfaceImpl(data_dir);
-				app_interface.ensure_data_dir();
+				app.ensure_data_dir();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to ensure data directory exists: %s", e.message);
 			}
@@ -118,11 +108,11 @@ namespace OLLMchat.Settings
 			}
 			
 			// Get connection from config
-			if (!this.config.connections.has_key(connection_url)) {
+			if (!this.app.config.connections.has_key(connection_url)) {
 				GLib.warning("Connection not found: %s", connection_url);
 				return false;
 			}
-			var connection = this.config.connections.get(connection_url);
+			var connection = this.app.config.connections.get(connection_url);
 			
 			// Mark thread as starting (null means starting, non-null means running)
 			this.active_threads.set(model_name, null);
@@ -153,7 +143,7 @@ namespace OLLMchat.Settings
 		{
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
-				config = this.config
+				config = this.app.config
 			};
 			
 			// Write initial status to loading.json
@@ -431,19 +421,6 @@ namespace OLLMchat.Settings
 			return result;
 		}
 		
-		/**
-		 * Helper class to implement ApplicationInterface for ensure_data_dir()
-		 */
-		private class ApplicationInterfaceImpl : Object, OLLMchat.ApplicationInterface
-		{
-			public string data_dir { get; set; }
-			public OLLMchat.Settings.Config2 config { get; set; }
-			
-			public ApplicationInterfaceImpl(string data_dir)
-			{
-				this.data_dir = data_dir;
-			}
-		}
 	}
 }
 
