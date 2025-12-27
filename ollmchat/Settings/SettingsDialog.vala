@@ -47,7 +47,7 @@ namespace OLLMchat.Settings
 		public Gtk.Box action_bar_area { get; private set; }
 		
 		// Track previous visible child for activation/deactivation
-		private Gtk.Widget? previous_visible_child = null;
+		private SettingsPage? previous_visible_child = null;
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -128,17 +128,17 @@ namespace OLLMchat.Settings
 		 */
 		private void on_page_changed()
 		{
-			// Get the current visible child
-			var current_child = this.view_stack.get_visible_child();
+			// Get the current visible child (all children are SettingsPage instances)
+			var current_child = this.view_stack.get_visible_child() as SettingsPage;
 
-			// Deactivate previous page (if it's a SettingsPage)
-			if (this.previous_visible_child is SettingsPage) {
+			// Deactivate previous page
+			if (this.previous_visible_child != null) {
 				(this.previous_visible_child as SettingsPage).on_deactivated();
 			}
 
-			// Activate current page (if it's a SettingsPage)
-			if (current_child is SettingsPage) {
-				(current_child as SettingsPage).on_activated();
+			// Activate current page
+			if (current_child != null) {
+				current_child.on_activated();
 			}
 
 			// Update previous visible child for next time

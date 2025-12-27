@@ -135,28 +135,20 @@ namespace OLLMchat.Settings
 		 */
 		public void attach_to_model_row(ModelRow model_row)
 		{
-			// Clear any previously attached rows
-			this.detach_from_expander_row();
-
 			// Set this row as the current owner
 			this.current_model_row = model_row;
 
-			// Defer adding rows until after GTK has fully processed the unparenting
-			// This ensures widgets are in a clean state without old sibling references
-			// Use a priority lower than default to ensure unparenting is fully processed
+			// Defer the entire operation (detach and attach) to an idle callback
+			// This ensures GTK has fully processed any previous operations before
+			// we start manipulating the widget hierarchy
 			Idle.add_full(Priority.LOW, () => {
 				// Verify this is still the current model row (might have changed)
 				if (this.current_model_row != model_row) {
-					return false; // Don't add if model row changed
+					return false; // Don't proceed if model row changed
 				}
 				
-				// Double-check all widgets are unparented before adding
-				foreach (var option_row in this.rows) {
-					var parent = option_row.get_parent();
-					if (parent != null) {
-						option_row.unparent();
-					}
-				}
+				// Clear any previously attached rows (do this in idle too)
+				this.detach_from_expander_row();
 				
 				// Now add each OptionRow to the ExpanderRow
 				// By this point, GTK should have processed all unparenting
