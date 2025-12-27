@@ -324,20 +324,28 @@ namespace OLLMchat.Settings
 		{
 			var now = GLib.get_real_time() / 1000000;
 			
-			// Check if we should emit update
-			bool should_emit = false;
+			// Always emit final status updates
 			if (status_obj.status == "complete" || status_obj.status == "error" || status_obj.status == "failed") {
-				// Always emit final status updates
-				should_emit = true;
-			} else if (status_obj.status != old_status) {
-				// Emit if status changed
-				should_emit = true;
-			} else if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
-				// Emit if enough time has passed
-				should_emit = true;
+				Idle.add(() => {
+					this.progress_updated(model_name, status_obj);
+					return false;
+				});
+				status_obj.last_update_time = now;
+				return;
 			}
 			
-			if (should_emit) {
+			// Emit if status changed
+			if (status_obj.status != old_status) {
+				Idle.add(() => {
+					this.progress_updated(model_name, status_obj);
+					return false;
+				});
+				status_obj.last_update_time = now;
+				return;
+			}
+			
+			// Emit if enough time has passed
+			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
 				Idle.add(() => {
 					this.progress_updated(model_name, status_obj);
 					return false;
