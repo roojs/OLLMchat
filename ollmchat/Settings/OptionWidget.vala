@@ -46,7 +46,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Temperature",
 				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
-				name = "temperature",
+				pname = "temperature",
 				min_value = 0.0,
 				max_value = 2.0,
 				step_value = 0.1,
@@ -57,7 +57,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Top P",
 				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
-				name = "top_p",
+				pname = "top_p",
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -68,7 +68,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Top K",
 				subtitle = "Limits sampling to top K most likely tokens",
-				name = "top_k",
+				pname = "top_k",
 				min_value = 1.0,
 				max_value = 1000.0,
 				default_value = 40.0
@@ -77,7 +77,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Num Ctx",
 				subtitle = "Context window size - number of tokens the model can consider",
-				name = "num_ctx",
+				pname = "num_ctx",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1024.0,
@@ -87,7 +87,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Num Predict",
 				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
-				name = "num_predict",
+				pname = "num_predict",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				default_value = 16384.0
@@ -96,7 +96,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Min P",
 				subtitle = "Minimum probability threshold for token selection",
-				name = "min_p",
+				pname = "min_p",
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -107,7 +107,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Seed",
 				subtitle = "Random seed used for reproducible outputs (-1 = random)",
-				name = "seed",
+				pname = "seed",
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				default_value = 42.0
@@ -308,7 +308,7 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionFloatWidget : OptionRow
 	{
-		public string name { get; set; }
+		public string pname { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; }
@@ -407,7 +407,7 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionIntWidget : OptionRow
 	{
-		public string name { get; set; }
+		public string pname { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; default = 1.0; }
