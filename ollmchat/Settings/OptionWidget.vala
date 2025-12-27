@@ -219,11 +219,11 @@ namespace OLLMchat.Settings
 		protected abstract void set_start_value();
 
 		/**
-		 * Sets the default value from a Value object.
+		 * Sets the model's default value from a Value object.
 		 * 
-		 * @param value The Value object containing the default value
+		 * @param value The Value object containing the model's default value
 		 */
-		public abstract void set_value(Value value);
+		public abstract void set_model_value(Value value);
 
 		protected Gtk.Button auto_button;
 		protected Gtk.Button clear_button;
@@ -327,7 +327,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; }
 		public uint digits { get; set; }
 		public double default_value { get; set; }  // Hardcoded default (never changes)
-		public double model_value { get; set; default = -1.0; }   // Model's default value (set via set_value(), defaults to unset_value if not set)
+		public double model_value { get; set; default = -1.0; }   // Model's default value (set via set_model_value(), defaults to unset_value if not set)
 		public double unset_value { get; set; default = -1.0; }
 
 		private Gtk.SpinButton spin_button;
@@ -367,7 +367,7 @@ namespace OLLMchat.Settings
 		 * Sets the spin button to the default value.
 		 * 
 		 * This is called when user clicks "Auto" button to start setting a custom value.
-		 * Uses model_value if set (via set_value()), otherwise uses hardcoded default_value.
+		 * Uses model_value if set (via set_model_value()), otherwise uses hardcoded default_value.
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
@@ -445,7 +445,7 @@ namespace OLLMchat.Settings
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
-			// Reset model_value - it will be set by set_value() if the model has a default
+			// Reset model_value - it will be set by set_model_value() if the model has a default
 			this.model_value = this.unset_value;
 			
 			this.spin_button.set_range(this.min_value, this.max_value);
@@ -502,7 +502,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; default = 1.0; }
 		public uint digits { get; set; default = 0; }
 		public double default_value { get; set; }  // Hardcoded default (never changes)
-		public int model_value { get; set; default = -1; }   // Model's default value (set via set_value(), defaults to unset_value if not set)
+		public int model_value { get; set; default = -1; }   // Model's default value (set via set_model_value(), defaults to unset_value if not set)
 		public int unset_value { get; set; default = -1; }
 
 		private Gtk.SpinButton spin_button;
@@ -542,7 +542,7 @@ namespace OLLMchat.Settings
 		 * Sets the spin button to the default value.
 		 * 
 		 * This is called when user clicks "Auto" button to start setting a custom value.
-		 * Uses model_value if set (via set_value()), otherwise uses hardcoded default_value.
+		 * Uses model_value if set (via set_model_value()), otherwise uses hardcoded default_value.
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
@@ -589,7 +589,7 @@ namespace OLLMchat.Settings
 		 * - What label is shown on Auto button when value is unset
 		 * - What value appears in spin button when user clicks "Auto" to set custom value
 		 */
-		public override void set_value(Value value)
+		public override void set_model_value(Value value)
 		{
 			var int_val = value.get_int();
 			// Clamp to valid range
@@ -619,7 +619,7 @@ namespace OLLMchat.Settings
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
-			// Reset model_value - it will be set by set_value() if the model has a default
+			// Reset model_value - it will be set by set_model_value() if the model has a default
 			this.model_value = this.unset_value;
 			
 			this.spin_button.set_range(this.min_value, this.max_value);

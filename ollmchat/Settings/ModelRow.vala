@@ -156,7 +156,7 @@ namespace OLLMchat.Settings
 						var int_val = model_value.get_int();
 						GLib.debug("load_defaults: %s = %d", row.pname, int_val);
 						if (int_val != -1) {
-							row.set_value(model_value);
+							row.set_model_value(model_value);
 						}
 						break;
 					
@@ -169,7 +169,7 @@ namespace OLLMchat.Settings
 						var double_val = model_value.get_double();
 						GLib.debug("load_defaults: %s = %f", row.pname, double_val);
 						if (double_val != -1.0) {
-							row.set_value(model_value);
+							row.set_model_value(model_value);
 						}
 						break;
 					
