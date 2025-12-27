@@ -140,7 +140,7 @@ namespace OLLMchat.Settings
 				// Convert underscore to hyphen for GObject property name
 				var property_name = row.name.replace("_", "-");
 				
-				// Use switch case on property name (with hyphens)
+				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
 				switch (property_name) {
 					// Integer properties
 					case "seed":
