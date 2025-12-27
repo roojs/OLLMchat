@@ -83,6 +83,83 @@ namespace OLLMchat.Call
 				|| this.stop != "";
 		}
 
+		/**
+		 * Fills this Options object with values parsed from model parameters string.
+		 * 
+		 * Parses the model's parameters string (format: "temperature 0.7\nnum_ctx 2048")
+		 * and sets the corresponding properties using set_property.
+		 * Uses switch case grouped by type (int, double, string).
+		 * 
+		 * @param model The model object containing the parameters string
+		 */
+		public void fill_from_model(OLLMchat.Response.Model model)
+		{
+			if (model.parameters == null || model.parameters == "") {
+				return;
+			}
+
+			var lines = model.parameters.split("\n");
+			foreach (var line in lines) {
+				line = line.strip();
+				if (line == "") {
+					continue;
+				}
+				
+				// Split on first space to separate parameter name from value
+				var parts = line.split(" ", 2);
+				if (parts.length < 2) {
+					continue;
+				}
+				
+				var param_name = parts[0].strip();
+				var param_value = parts[1].strip();
+				
+				if (param_name == "" || param_value == "") {
+					continue;
+				}
+
+				// Find the property spec for this parameter name
+				var pspec = this.find_property(param_name);
+				if (pspec == null) {
+					continue;
+				}
+
+				// Use switch case grouped by type to set the property
+				switch (pspec.value_type.name()) {
+					case "gint":
+						// Integer properties
+						int int_value;
+						if (int.try_parse(param_value, out int_value)) {
+							var value = Value(typeof(int));
+							value.set_int(int_value);
+							this.set_property(pspec, value);
+						}
+						break;
+					
+					case "gdouble":
+						// Double properties
+						double double_value;
+						if (double.try_parse(param_value, out double_value)) {
+							var value = Value(typeof(double));
+							value.set_double(double_value);
+							this.set_property(pspec, value);
+						}
+						break;
+					
+					case "gchararray":
+						// String properties
+						var value = Value(typeof(string));
+						value.set_string(param_value);
+						this.set_property(pspec, value);
+						break;
+					
+					default:
+						// Unknown type, skip
+						break;
+				}
+			}
+		}
+
 		public unowned ParamSpec? find_property(string name)
 		{
 			return this.get_class().find_property(name);
