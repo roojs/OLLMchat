@@ -132,17 +132,12 @@ namespace OLLMchat.Settings
 		 */
 		private void on_page_changed()
 		{
-			// Get the current visible child (all children are SettingsPage instances)
-			var current_child = this.view_stack.get_visible_child() as SettingsPage;
-
 			// Deactivate previous page (dummy instance on first call, does nothing)
 			this.previous_visible_child.on_deactivated();
 
-			// Activate current page (always exists since pages are added before this is called)
-			current_child.on_activated();
-
-			// Update previous visible child for next time
-			this.previous_visible_child = current_child;
+			// Activate current page (all children are SettingsPage instances)
+			this.previous_visible_child = this.view_stack.get_visible_child() as SettingsPage;
+			this.previous_visible_child.on_activated();
 		}
 
 		/**
