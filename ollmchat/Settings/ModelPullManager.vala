@@ -155,21 +155,15 @@ namespace OLLMchat.Settings
 		 * If a pull is already in progress for this model, does nothing.
 		 * 
 		 * @param model_name Full model name (e.g., "llama2" or "llama2:7b")
-		 * @param connection_url Connection URL to use for the pull
+		 * @param connection Connection to use for the pull
 		 * @return true if pull was started, false if already in progress
 		 */
-		public bool start_pull(string model_name, string connection_url)
+		public bool start_pull(string model_name, OLLMchat.Settings.Connection connection)
 		{
 			// Check if already pulling
 			if (this.loading_status_cache.has_key(model_name) && 
 			    this.loading_status_cache.get(model_name).active) {
 				GLib.debug("Pull already in progress for model: %s", model_name);
-				return false;
-			}
-			
-			// Get connection from config
-			if (!this.app.config.connections.has_key(connection_url)) {
-				GLib.warning("Connection not found: %s", connection_url);
 				return false;
 			}
 			
@@ -188,7 +182,7 @@ namespace OLLMchat.Settings
 			status_obj.active = true;
 			
 			// Start pull operation in background thread
-			this.start_pull_async(model_name, this.app.config.connections.get(connection_url));
+			this.start_pull_async(model_name, connection);
 			
 			return true;
 		}
