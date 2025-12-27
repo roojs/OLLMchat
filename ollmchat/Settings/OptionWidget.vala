@@ -370,16 +370,16 @@ namespace OLLMchat.Settings
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
-		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
-		 * 1. Value in Options is unset (value == unset_value, e.g., -1.0):
+		 * 1. new_value in Options is unset (new_value == unset_value, e.g., -1.0):
 		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
 		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
-		 * 2. Value in Options is set (user has explicitly set a value, value != unset_value):
-		 *    - Display: Spin button visible with the actual saved value from Options
-		 *    - The value shown MUST be the value from Options, NOT default_value
+		 * 2. new_value in Options is set (user has explicitly set a value, new_value != unset_value):
+		 *    - Display: Spin button visible with the actual saved new_value from Options
+		 *    - The value shown MUST be the new_value from Options, NOT default_value
 		 *    - Auto button hidden
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
@@ -390,8 +390,8 @@ namespace OLLMchat.Settings
 		 * 4. User clicks clear button to reset to Auto:
 		 *    - Display: Show Auto button (with model default label if available), hide spin button
 		 * 
-		 * NOTE: In load_options() when value is set, we call set_to_default() which calls
-		 * reset_default(), but then immediately overwrite with the actual saved value.
+		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
+		 * reset_default(), but then immediately overwrite with the actual saved new_value.
 		 * This is inefficient - reset_default() should NOT be called in that scenario.
 		 */
 		protected override void reset_default()
@@ -430,11 +430,11 @@ namespace OLLMchat.Settings
 		/**
 		 * Loads the widget's value from the options object.
 		 * 
-		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * DISPLAY LOGIC:
-		 * - If value in Options is unset (value == unset_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value in Options is set (value != unset_value): Show spin button with the actual saved value from Options (NOT default_value)
+		 * - If new_value in Options is unset (new_value == unset_value): Show Auto button (with model default label if set_value() was called)
+		 * - If new_value in Options is set (new_value != unset_value): Show spin button with the actual saved new_value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
@@ -447,7 +447,7 @@ namespace OLLMchat.Settings
 			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Scenario 1: Value is unset (default/empty)
+				// Scenario 1: new_value is unset (default/empty)
 				// WRONG: This always sets label to "Auto", but should check if set_value() was called
 				// to show model's default value in the label (like OptionIntWidget does)
 				this.auto_button.label = "Auto";
@@ -468,7 +468,7 @@ namespace OLLMchat.Settings
 		{
 			Value value = Value(typeof(double));
 			if (this.auto_button.visible) {
-				// Auto is selected, save auto value (unset)
+				// Auto is selected, save unset_value (unset)
 				value.set_double(this.unset_value);
 			} else {
 				// Value is set, save the spin button value
