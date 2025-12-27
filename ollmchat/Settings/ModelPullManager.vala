@@ -305,10 +305,9 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Current status
-		 * @param completed Bytes completed
-		 * @param total Total bytes
+		 * @param progress Progress percentage (calculated from completed/total)
 		 */
-		private void schedule_progress_update(string model_name, string status, int64 completed, int64 total)
+		private void schedule_progress_update(string model_name, string status, int progress)
 		{
 			// Get or create status
 			LoadingStatus status_obj;
@@ -319,16 +318,12 @@ namespace OLLMchat.Settings
 				this.loading_status_cache.set(model_name, status_obj);
 			}
 			
-			// Update completed/total so progress can be calculated
-			status_obj.completed = completed;
-			status_obj.total = total;
-			
 			var now = GLib.get_real_time() / 1000000;
 			
 			// Always emit final status updates
 			if (status == "complete" || status == "error" || status == "failed") {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, status_obj.progress);
+					this.progress_updated(model_name, status, progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
@@ -339,7 +334,7 @@ namespace OLLMchat.Settings
 			// Emit if status changed
 			if (status != status_obj.status) {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, status_obj.progress);
+					this.progress_updated(model_name, status, progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
@@ -350,7 +345,7 @@ namespace OLLMchat.Settings
 			// Emit if enough time has passed
 			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, status_obj.progress);
+					this.progress_updated(model_name, status, progress);
 					return false;
 				});
 				status_obj.last_update_time = now;
