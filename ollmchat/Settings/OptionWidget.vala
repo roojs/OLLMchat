@@ -565,9 +565,9 @@ namespace OLLMchat.Settings
 		 * set_start_value(), but then immediately overwrite with the actual saved new_value.
 		 * This is inefficient - set_start_value() should NOT be called in that scenario.
 		 */
-		protected override void reset_default()
+		protected override void set_start_value()
 		{
-			// This is called when user clicks "Auto" button (scenario 3)
+			// This is called when user clicks "Auto" button (scenario 3) to start editing
 			// Use model_value if set, otherwise use hardcoded default_value
 			if (this.model_value != this.unset_value) {
 				this.spin_button.value = (double)this.model_value;
