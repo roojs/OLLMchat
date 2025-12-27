@@ -116,7 +116,9 @@ namespace OLLMchat.Settings
 
 		public void load_options(OLLMchat.Call.Options options)
 		{
-			this.load_options_with_model_defaults(options, new OLLMchat.Call.Options());
+			foreach (var row in this.rows) {
+				row.load_options(options);
+			}
 		}
 		
 		/**
