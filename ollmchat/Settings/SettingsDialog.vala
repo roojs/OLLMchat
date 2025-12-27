@@ -48,7 +48,7 @@ namespace OLLMchat.Settings
 		
 		// Track previous visible child for activation/deactivation
 		// Initialized to dummy instance so we never have to check for null
-		private SettingsPage previous_visible_child = new SettingsPage();
+		private SettingsPage previous_visible_child { get; set; default = new SettingsPage(); }
 
 		/**
 		 * Creates a new SettingsDialog.
