@@ -357,6 +357,7 @@ namespace OLLMchat.Settings
 		{
 			// Check if value is the "empty/unset" value (unset_value, e.g., -1.0)
 			// This represents the default/empty state that never changes
+			// Returns true if the value from Options equals unset_value (meaning it's unset)
 			return value.get_double() == this.unset_value;
 		}
 
@@ -522,6 +523,7 @@ namespace OLLMchat.Settings
 		{
 			// Check if value is the "empty/unset" value (unset_value, e.g., -1)
 			// This represents the default/empty state that never changes
+			// Returns true if the value from Options equals unset_value (meaning it's unset)
 			return value.get_int() == this.unset_value;
 		}
 
@@ -595,11 +597,11 @@ namespace OLLMchat.Settings
 		/**
 		 * Loads the widget's value from the options object.
 		 * 
-		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * DISPLAY LOGIC:
-		 * - If value in Options is unset (value == unset_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value in Options is set (value != unset_value): Show spin button with the actual saved value from Options (NOT default_value)
+		 * - If new_value in Options is unset (new_value == unset_value): Show Auto button (with model default label if set_value() was called)
+		 * - If new_value in Options is set (new_value != unset_value): Show spin button with the actual saved new_value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
@@ -612,7 +614,7 @@ namespace OLLMchat.Settings
 			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Scenario 1: Value is unset (default/empty)
+				// Scenario 1: new_value is unset (default/empty)
 				// CORRECT: Check if set_value() was called to show model's default value in label
 				if (this.default_value_set) {
 					// Use the default value that was set via set_value()
@@ -623,9 +625,9 @@ namespace OLLMchat.Settings
 				}
 				this.reset_to_auto();
 			} else {
-				// Scenario 2: Value is set (user has explicitly set a value)
+				// Scenario 2: new_value is set (user has explicitly set a value)
 				// WRONG: set_to_default() calls reset_default() which sets spin button to default_value,
-				// but we immediately overwrite it with the actual saved value. This is inefficient.
+				// but we immediately overwrite it with the actual saved new_value. This is inefficient.
 				// We should directly set the spin button to val.get_int() without calling reset_default()
 				this.set_to_default();
 				this.spin_button.value = (double)val.get_int();
@@ -636,7 +638,7 @@ namespace OLLMchat.Settings
 		{
 			Value value = Value(typeof(int));
 			if (this.auto_button.visible) {
-				// Auto is selected, save auto value (unset)
+				// Auto is selected, save unset_value (unset)
 				value.set_int(this.unset_value);
 			} else {
 				// Value is set, save the spin button value
