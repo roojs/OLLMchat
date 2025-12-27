@@ -476,28 +476,6 @@ namespace OLLMchat.Settings
 			this.set_auto_label(int_val.to_string());
 		}
 		
-		/**
-		 * Sets the default value from a parsed parameter string.
-		 * 
-		 * @param param_value The parameter value as a string
-		 */
-		public void set_from_parameter(string? param_value)
-		{
-			if (param_value == null || param_value == "") {
-				return;
-			}
-			int parsed_value;
-			if (int.try_parse(param_value, out parsed_value)) {
-				// Clamp to valid range
-				if (parsed_value < (int)this.min_value) {
-					parsed_value = (int)this.min_value;
-				} else if (parsed_value > (int)this.max_value) {
-					parsed_value = (int)this.max_value;
-				}
-				this.default_value = (double)parsed_value;
-			}
-		}
-
 		public override void load_options(OLLMchat.Call.Options options)
 		{
 			this.spin_button.set_range(this.min_value, this.max_value);
