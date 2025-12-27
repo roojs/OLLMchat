@@ -144,35 +144,11 @@ namespace OLLMchat.Settings
 				switch (property_name) {
 					// Integer properties
 					case "seed":
-						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property("seed", ref model_value);
-						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", row.name, int_val);
-						if (int_val != -1) {
-							row.set_value(model_value);
-						}
-						break;
 					case "top-k":
-						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property("top-k", ref model_value);
-						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", row.name, int_val);
-						if (int_val != -1) {
-							row.set_value(model_value);
-						}
-						break;
 					case "num-predict":
-						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property("num-predict", ref model_value);
-						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", row.name, int_val);
-						if (int_val != -1) {
-							row.set_value(model_value);
-						}
-						break;
 					case "num-ctx":
 						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property("num-ctx", ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
 						GLib.debug("load_defaults: %s = %d", row.name, int_val);
 						if (int_val != -1) {
@@ -182,26 +158,10 @@ namespace OLLMchat.Settings
 					
 					// Double properties
 					case "temperature":
-						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property("temperature", ref model_value);
-						var double_val = model_value.get_double();
-						GLib.debug("load_defaults: %s = %f", row.name, double_val);
-						if (double_val != -1.0) {
-							row.set_value(model_value);
-						}
-						break;
 					case "top-p":
-						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property("top-p", ref model_value);
-						var double_val = model_value.get_double();
-						GLib.debug("load_defaults: %s = %f", row.name, double_val);
-						if (double_val != -1.0) {
-							row.set_value(model_value);
-						}
-						break;
 					case "min-p":
 						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property("min-p", ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();
 						GLib.debug("load_defaults: %s = %f", row.name, double_val);
 						if (double_val != -1.0) {
