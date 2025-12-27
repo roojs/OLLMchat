@@ -252,21 +252,6 @@ namespace OLLMchat.Settings
 			this.boxed_list.append(row.expander);
 		}
 
-		/**
-		 * Called when this page is activated (becomes visible).
-		 */
-		public override void on_activated()
-		{
-			// Action widget management is handled by SettingsDialog
-		}
-
-		/**
-		 * Called when this page is deactivated (becomes hidden).
-		 */
-		public override void on_deactivated()
-		{
-			// Action widget management is handled by SettingsDialog
-		}
 
 	}
 }

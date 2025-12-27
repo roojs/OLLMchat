@@ -421,22 +421,5 @@ namespace OLLMchat.Settings
 				*/
 		}
 
-		/**
-		 * Called when this page is activated (becomes visible).
-		 * 
-		 * Shows the action bar area and adds the action box to it.
-		 */
-		public override void on_activated()
-		{
-			// Action widget management is handled by SettingsDialog
-		}
-
-		/**
-		 * Called when this page is deactivated (becomes hidden).
-		 */
-		public override void on_deactivated()
-		{
-			// Action widget management is handled by SettingsDialog
-		}
 	}
 }
