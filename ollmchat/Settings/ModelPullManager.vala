@@ -421,7 +421,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Join with commas and wrap in array brackets
-				var json_array = "[\n  " + string.joinv(",\n  ", json_parts) + "\n]";
+				var json_array = "[" + string.joinv(",", json_parts) + "]";
 				
 				GLib.FileUtils.set_contents(this.loading_json_path, json_array);
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
