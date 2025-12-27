@@ -120,28 +120,41 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Loads options with parsed parameters from model.
+		 * Loads options with default values from model.options.
 		 * 
-		 * @param options Options object to read values from
-		 * @param parameters_map HashMap of parameter names to values from model's parameters string
+		 * @param options Options object to read values from (user's custom options)
+		 * @param model_options Optional model's default options (from model.options)
 		 */
-		public void load_options_with_parameters(OLLMchat.Call.Options options, Gee.HashMap<string, string>? parameters_map)
+		public void load_options_with_model_defaults(OLLMchat.Call.Options options, OLLMchat.Call.Options? model_options)
 		{
 			foreach (var row in this.rows) {
-				string? param_value = null;
-				if (parameters_map != null) {
-					// Map property names to parameter names
-					// Some properties use underscores (top_p, top_k, num_ctx) which match parameter names
-					// Others might need mapping (temperature -> temperature)
-					string param_name = row.property_name;
-					if (parameters_map.has_key(param_name)) {
-						param_value = parameters_map.get(param_name);
+				// Get the default value from model.options if available
+				Value? model_value = null;
+				if (model_options != null) {
+					var pspec = model_options.find_property(row.property_name);
+					if (pspec != null) {
+						model_value = Value(pspec.value_type);
+						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
 					}
 				}
 				
 				if (row is OptionFloatWidget) {
+					string? param_value = null;
+					if (model_value != null && model_value.type() == typeof(double)) {
+						var double_val = model_value.get_double();
+						if (double_val != -1.0) {
+							param_value = double_val.to_string();
+						}
+					}
 					(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
 				} else if (row is OptionIntWidget) {
+					string? param_value = null;
+					if (model_value != null && model_value.type() == typeof(int)) {
+						var int_val = model_value.get_int();
+						if (int_val != -1) {
+							param_value = int_val.to_string();
+						}
+					}
 					(row as OptionIntWidget).load_options_with_parameter(options, param_value);
 				} else {
 					row.load_options(options);

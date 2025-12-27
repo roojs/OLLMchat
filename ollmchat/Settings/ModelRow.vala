@@ -127,18 +127,12 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Loads options into the widget, fetching model parameters if needed.
+		 * Loads options into the widget, using model.options for default values.
 		 */
 		private void load_options_with_parameters()
 		{
-			// Parse parameters from model if available
-			Gee.HashMap<string, string>? parameters_map = null;
-			if (this.model.parameters != null && this.model.parameters != "") {
-				parameters_map = this.model.parse_parameters();
-			}
-			
-			// Load options with parsed parameters
-			this.models_page.options_widget.load_options_with_parameters(this.options, parameters_map);
+			// Use model.options for default values (automatically filled from parameters)
+			this.models_page.options_widget.load_options_with_model_defaults(this.options, this.model.options);
 			
 			// If parameters are not available, try to fetch model details asynchronously
 			if ((this.model.parameters == null || this.model.parameters == "") && this.model.client != null) {
@@ -154,11 +148,11 @@ namespace OLLMchat.Settings
 			try {
 				var detailed_model = yield this.model.client.show_model(this.model.name);
 				// Update the model with parameters from the detailed model
+				// This will automatically trigger fill_from_model via the setter
 				if (detailed_model.parameters != null && detailed_model.parameters != "") {
 					this.model.parameters = detailed_model.parameters;
-					// Reload options with the newly fetched parameters
-					var parameters_map = this.model.parse_parameters();
-					this.models_page.options_widget.load_options_with_parameters(this.options, parameters_map);
+					// Reload options with the newly fetched model defaults
+					this.models_page.options_widget.load_options_with_model_defaults(this.options, this.model.options);
 				}
 			} catch (Error e) {
 				// Silently fail - parameters are optional
