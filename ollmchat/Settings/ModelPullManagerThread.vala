@@ -98,11 +98,22 @@ namespace OLLMchat.Settings
 		 * 
 		 * This ensures signal handlers run in the main thread context,
 		 * which is required for UI updates and thread-safe data access.
+		 * 
+		 * Uses MainContext.invoke() to dispatch the signal emission to
+		 * the main thread's event loop.
 		 */
 		private void emit_status_updated(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count)
 		{
+			// Capture parameters for closure
+			string captured_model_name = model_name;
+			string captured_status = status;
+			int64 captured_completed = completed;
+			int64 captured_total = total;
+			string captured_last_chunk_status = last_chunk_status;
+			int captured_retry_count = retry_count;
+			
 			this.main_context.invoke(() => {
-				this.status_updated(model_name, status, completed, total, last_chunk_status, retry_count);
+				this.status_updated(captured_model_name, captured_status, captured_completed, captured_total, captured_last_chunk_status, captured_retry_count);
 				return false;
 			});
 		}
@@ -112,11 +123,20 @@ namespace OLLMchat.Settings
 		 * 
 		 * This ensures signal handlers run in the main thread context,
 		 * which is required for UI updates and thread-safe data access.
+		 * 
+		 * Uses MainContext.invoke() to dispatch the signal emission to
+		 * the main thread's event loop.
 		 */
 		private void emit_progress_updated(string model_name, string status, int64 completed, int64 total)
 		{
+			// Capture parameters for closure
+			string captured_model_name = model_name;
+			string captured_status = status;
+			int64 captured_completed = completed;
+			int64 captured_total = total;
+			
 			this.main_context.invoke(() => {
-				this.progress_updated(model_name, status, completed, total);
+				this.progress_updated(captured_model_name, captured_status, captured_completed, captured_total);
 				return false;
 			});
 		}
@@ -295,8 +315,8 @@ namespace OLLMchat.Settings
 					if (local_status.retry_count <= MAX_RETRIES) {
 						// Schedule retry
 						local_status.status = "pending-retry";
-						this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
-						this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
+						this.emit_status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
+						this.emit_progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 						return;
 					}
 					
@@ -304,11 +324,11 @@ namespace OLLMchat.Settings
 					local_status.status = "failed";
 				}
 				
-				// Notify final status update
-				this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
+				// Notify final status update (dispatch to main thread)
+				this.emit_status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 				
-				// Notify final progress update
-				this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
+				// Notify final progress update (dispatch to main thread)
+				this.emit_progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 			});
 		}
 	}
