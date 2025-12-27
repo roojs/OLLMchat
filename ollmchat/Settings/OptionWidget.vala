@@ -364,21 +364,8 @@ namespace OLLMchat.Settings
 			this.default_value_set = true;
 			// Format the value for display based on digits
 			string formatted = "%.*f".printf((int)this.digits, double_val);
-			
-			// Check if current value matches the model default
-			// If auto button is visible, it means user option is unset, so show model default on auto button
-			// If spin button is visible, check if it matches the model default
-			if (this.auto_button.visible) {
-				// User option is unset, show model default on auto button
-				this.auto_button.label = formatted == "" ? "Auto" : formatted;
-			} else if (this.spin_button.visible) {
-				// User has a value set, check if it matches the model default
-				if (Math.fabs(this.spin_button.value - double_val) < 0.0001) {
-					// Matches model default, switch to auto button with label
-					this.reset_to_auto();
-					this.auto_button.label = formatted == "" ? "Auto" : formatted;
-				}
-			}
+			// Always set the label
+			this.auto_button.label = formatted == "" ? "Auto" : formatted;
 		}
 		
 		public override void load_options(OLLMchat.Call.Options options)
