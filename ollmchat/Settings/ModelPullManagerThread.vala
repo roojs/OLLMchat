@@ -166,50 +166,52 @@ namespace OLLMchat.Settings
 		 */
 		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
+			// Create local LoadingStatus object to track state in this thread
+			// This is NOT shared with the main thread - it's local to this execution
+			var local_status = new LoadingStatus();
+			local_status.status = "pulling";
+			local_status.progress = 0;
+			local_status.last_chunk_status = "pulling";
+			local_status.retry_count = initial_retry_count;
+			
+			// Track additional state not in LoadingStatus
+			int64 completed = 0;
+			int64 total = 0;
+			bool saw_success = false;
+			
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
 				config = this.app.config
 			};
 			
-			// Track retry count locally in this thread
-			int retry_count = initial_retry_count;
-			
 			// Notify start
-			this.status_updated(model_name, "pulling", 0, "pulling", retry_count);
+			this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
 				stream = true
 			};
 			
-			// Track progress
-			int progress = 0;
-			string status = "pulling";
-			string last_chunk_status = "pulling";
-			int64 completed = 0;
-			int64 total = 0;
-			bool saw_success = false;
-			
 			// Connect to progress signal
 			pull_call.progress_chunk.connect((response) => {
 				// Reset retry count if we received data (means retry is working)
-				if (retry_count > 0) {
-					retry_count = 0;
+				if (local_status.retry_count > 0) {
+					local_status.retry_count = 0;
 				}
 				
 				// Get status from response object
-				last_chunk_status = response.status;
+				local_status.last_chunk_status = response.status;
 				
 				// Track if we saw success status
-				if (last_chunk_status == "success") {
+				if (local_status.last_chunk_status == "success") {
 					saw_success = true;
-					status = "complete";
-					progress = 100;
-				} else if (last_chunk_status.has_prefix("error") || last_chunk_status == "failed") {
-					status = "error";
+					local_status.status = "complete";
+					local_status.progress = 100;
+				} else if (local_status.last_chunk_status.has_prefix("error") || local_status.last_chunk_status == "failed") {
+					local_status.status = "error";
 				} else {
 					// Keep pulling status for other statuses
-					status = "pulling";
+					local_status.status = "pulling";
 				}
 				
 				// Get progress from response object
@@ -217,14 +219,14 @@ namespace OLLMchat.Settings
 				total = response.total;
 				
 				if (total > 0) {
-					progress = (int)(((double)completed / (double)total) * 100.0);
+					local_status.progress = (int)(((double)completed / (double)total) * 100.0);
 				}
 				
 				// Notify status update
-				this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
+				this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
 				
 				// Notify progress update (for rate-limited UI updates)
-				this.progress_updated(model_name, status, progress);
+				this.progress_updated(model_name, local_status.status, local_status.progress);
 			});
 			
 			// Execute pull asynchronously
@@ -233,43 +235,43 @@ namespace OLLMchat.Settings
 					pull_call.exec_pull.end(res);
 				} catch (GLib.IOError e) {
 					// Treat all IO errors as errors (including CANCELLED - could be network issue)
-					status = "error";
+					local_status.status = "error";
 					GLib.warning("Pull failed for " + model_name + ": " + e.message);
 				} catch (Error e) {
-					status = "error";
+					local_status.status = "error";
 					GLib.warning("Pull failed for " + model_name + ": " + e.message);
 				}
 				
 				// Final status update - only complete if we saw success in chunks
-				if (status != "error" && saw_success) {
-					status = "complete";
-					progress = 100;
-				} else if (status != "error") {
+				if (local_status.status != "error" && saw_success) {
+					local_status.status = "complete";
+					local_status.progress = 100;
+				} else if (local_status.status != "error") {
 					// If we didn't see success and no error was set, treat as error
-					status = "error";
+					local_status.status = "error";
 				}
 				
 				// Handle errors with retry logic
-				if (status == "error") {
-					retry_count++;
+				if (local_status.status == "error") {
+					local_status.retry_count++;
 					
-					if (retry_count <= MAX_RETRIES) {
+					if (local_status.retry_count <= MAX_RETRIES) {
 						// Schedule retry
-						status = "pending-retry";
-						this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
-						this.progress_updated(model_name, status, progress);
+						local_status.status = "pending-retry";
+						this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
+						this.progress_updated(model_name, local_status.status, local_status.progress);
 						return;
 					}
 					
 					// All retries exhausted - mark as failed
-					status = "failed";
+					local_status.status = "failed";
 				}
 				
 				// Notify final status update
-				this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
+				this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
 				
 				// Notify final progress update
-				this.progress_updated(model_name, status, progress);
+				this.progress_updated(model_name, local_status.status, local_status.progress);
 			});
 		}
 	}
