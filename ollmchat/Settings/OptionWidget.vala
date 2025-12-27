@@ -213,7 +213,8 @@ namespace OLLMchat.Settings
 			// Create Auto button
 			this.auto_button = new Gtk.Button.with_label("Auto") {
 				tooltip_text = "Click to set a custom value",
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.auto_button.clicked.connect(() => {
 				this.set_to_default();
@@ -222,7 +223,8 @@ namespace OLLMchat.Settings
 			// Create clear button with edit-clear icon
 			this.clear_button = new Gtk.Button.from_icon_name("edit-clear-symbolic") {
 				tooltip_text = "Reset to Auto",
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.clear_button.clicked.connect(() => {
 				this.reset_to_auto();
@@ -230,7 +232,8 @@ namespace OLLMchat.Settings
 
 			// Create button box to hold either Auto or (value widget + clear)
 			this.button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.button_box.append(this.auto_button);
 		}
@@ -301,7 +304,8 @@ namespace OLLMchat.Settings
 				digits = 0,
 				visible = false,
 				width_request = 150,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 
 			// Set value widget for base class
@@ -383,7 +387,8 @@ namespace OLLMchat.Settings
 				digits = 0,
 				visible = false,
 				width_request = 150,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 
 			// Set value widget for base class

@@ -95,7 +95,8 @@ namespace OLLMchat.Settings
 			// Create form fields
 			this.nameEntry = new Gtk.Entry() {
 				text = connection.name,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.nameEntry.changed.connect(() => {
 				this.nameEntry.add_css_class("oc-settings-unverified");
@@ -103,7 +104,8 @@ namespace OLLMchat.Settings
 
 			this.urlEntry = new Gtk.Entry() {
 				text = connection.url,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.urlEntry.changed.connect(() => {
 				this.urlEntry.add_css_class("oc-settings-unverified");
@@ -111,7 +113,8 @@ namespace OLLMchat.Settings
 
 			this.apiKeyEntry = new Gtk.PasswordEntry() {
 				text = connection.api_key,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.apiKeyEntry.changed.connect(() => {
 				this.apiKeyEntry.add_css_class("oc-settings-unverified");
@@ -119,7 +122,8 @@ namespace OLLMchat.Settings
 
 			this.defaultSwitch = new Gtk.Switch() {
 				active = connection.is_default,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.defaultSwitch.activate.connect(() => {
 				this.defaultSwitch.add_css_class("oc-settings-unverified");
@@ -156,14 +160,16 @@ namespace OLLMchat.Settings
 				margin_end = 12,
 				margin_top = 6,
 				margin_bottom = 6,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 
 			// Remove button (red, left)
 			this.removeButton = new Gtk.Button.with_label("Remove") {
 				css_classes = {"destructive-action"},
 				visible = canRemove,
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.removeButton.clicked.connect(() => {
 				this.remove_requested();
@@ -173,7 +179,8 @@ namespace OLLMchat.Settings
 			// Verify button (green/blue, right)
 			var verifyButton = new Gtk.Button.with_label("Verify") {
 				css_classes = {"suggested-action"},
-				vexpand = false
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			verifyButton.clicked.connect(() => {
 				this.verify_requested();
