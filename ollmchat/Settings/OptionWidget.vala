@@ -255,6 +255,13 @@ namespace OLLMchat.Settings
 		 */
 		protected abstract void reset_default();
 
+		/**
+		 * Sets the default value from a Value object.
+		 * 
+		 * @param value The Value object containing the default value
+		 */
+		public abstract void set_value(Value value);
+
 		protected Gtk.Button auto_button;
 		protected Gtk.Button clear_button;
 		protected Gtk.Box button_box;
