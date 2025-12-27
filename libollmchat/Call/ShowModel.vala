@@ -52,7 +52,6 @@ namespace OLLMchat.Call
 			var generator = new Json.Generator();
 			generator.set_root(root);
 			var json_str = generator.to_data(null);
-			GLib.debug("show_model response for '%s': %s", this.model, json_str);
 			var model_obj = Json.gobject_from_data(typeof(Response.Model), json_str, -1) as Response.Model;
 			if (model_obj == null) {
 				throw new OllamaError.FAILED("Failed to deserialize model");
@@ -61,7 +60,7 @@ namespace OLLMchat.Call
 			if (model_obj.name == "") {
 				model_obj.name = this.model;
 			}
-			GLib.debug("show_model parsed - parameters: '%s'", model_obj.parameters ?? "(null)");
+			GLib.debug("show_model '%s' - parameters: '%s'", this.model, model_obj.parameters ?? "(null)");
 			model_obj.client = this.client;
 			return model_obj;
 		}
