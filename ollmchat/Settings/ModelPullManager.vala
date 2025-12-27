@@ -373,6 +373,45 @@ namespace OLLMchat.Settings
 					status = "error";
 				}
 				
+				// Handle errors with retry logic
+				if (status == "error") {
+					status_obj.retry_count++;
+					
+					if (status_obj.retry_count <= MAX_RETRIES) {
+						// Schedule retry
+						status = "pending-retry";
+						this.update_loading_status(model_name, status, progress, last_chunk_status, true);
+						
+						// Emit progress update for pending-retry (just progress indicator update)
+						Idle.add(() => {
+							this.progress_updated(model_name, status, progress);
+							return false;
+						});
+						
+						// Schedule retry after delay
+						var timeout_source = new TimeoutSource(RETRY_DELAY_SECONDS * 1000);
+						timeout_source.set_callback(() => {
+							// Check if still active and not completed
+							if (this.loading_status_cache.has_key(model_name)) {
+								var check_status = this.loading_status_cache.get(model_name);
+								if (check_status.active && check_status.status == "pending-retry") {
+									// Retry the pull
+									this.start_pull_async(model_name, connection);
+								}
+							}
+							return false;
+						});
+						timeout_source.attach(this.background_context);
+						
+						// Clean up active flag (will be set again on retry)
+						status_obj.active = false;
+						return;
+					} else {
+						// All retries exhausted - mark as failed
+						status = "failed";
+					}
+				}
+				
 				// Update final status in memory and write to file (finish event)
 				this.update_loading_status(model_name, status, progress, last_chunk_status, true);
 				
@@ -387,14 +426,19 @@ namespace OLLMchat.Settings
 						// Write to file to remove completed entry
 						this.write_to_file();
 					}
+					// If failed, notify client and remove from cache
+					else if (status == "failed") {
+						this.model_failed(model_name);
+						this.loading_status_cache.unset(model_name);
+						// Write to file to remove failed entry
+						this.write_to_file();
+					}
 					
 					return false;
 				});
 				
 				// Clean up active flag
-				if (this.loading_status_cache.has_key(model_name)) {
-					this.loading_status_cache.get(model_name).active = false;
-				}
+				status_obj.active = false;
 			});
 		}
 		
@@ -424,7 +468,7 @@ namespace OLLMchat.Settings
 			var now = GLib.get_real_time() / 1000000;
 			
 			// Always emit final status updates
-			if (status == "complete" || status == "error") {
+			if (status == "complete" || status == "error" || status == "failed") {
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
 					return false;
