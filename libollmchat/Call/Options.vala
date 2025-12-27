@@ -125,6 +125,7 @@ namespace OLLMchat.Call
 				}
 
 				// Use switch case grouped by type to set the property
+				// Cast to Object to use set_property on Json.Serializable
 				switch (pspec.value_type.name()) {
 					case "gint":
 						// Integer properties
@@ -132,7 +133,7 @@ namespace OLLMchat.Call
 						if (int.try_parse(param_value, out int_value)) {
 							var value = Value(typeof(int));
 							value.set_int(int_value);
-							this.set_property(pspec, value);
+							((GLib.Object)this).set_property(pspec, value);
 						}
 						break;
 					
@@ -142,7 +143,7 @@ namespace OLLMchat.Call
 						if (double.try_parse(param_value, out double_value)) {
 							var value = Value(typeof(double));
 							value.set_double(double_value);
-							this.set_property(pspec, value);
+							((GLib.Object)this).set_property(pspec, value);
 						}
 						break;
 					
@@ -150,7 +151,7 @@ namespace OLLMchat.Call
 						// String properties
 						var value = Value(typeof(string));
 						value.set_string(param_value);
-						this.set_property(pspec, value);
+						((GLib.Object)this).set_property(pspec, value);
 						break;
 					
 					default:
