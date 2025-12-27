@@ -133,7 +133,7 @@ namespace OLLMchat.Settings
 
 			// Deactivate previous page
 			if (this.previous_visible_child != null) {
-				(this.previous_visible_child as SettingsPage).on_deactivated();
+				this.previous_visible_child.on_deactivated();
 			}
 
 			// Activate current page
