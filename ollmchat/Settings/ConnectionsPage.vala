@@ -139,49 +139,50 @@ namespace OLLMchat.Settings
 				return;
 			}
 
-			try {
-				// Create Connection object with current values
-				var newName = row.nameEntry.text.strip();
-				var test_connection = new Connection() {
-					name = newName != "" ? newName : newUrl,
-					url = newUrl,
-					api_key = row.apiKeyEntry.text.strip(),
-					is_default = row.defaultSwitch.active
-				};
+			// Create Connection object with current values
+			var newName = row.nameEntry.text.strip();
+			var test_connection = new Connection() {
+				name = newName != "" ? newName : newUrl,
+				url = newUrl,
+				api_key = row.apiKeyEntry.text.strip(),
+				is_default = row.defaultSwitch.active
+			};
 
+			// Validate connection by testing it
+			try {
 				// NOTE: Client doesn't accept Connection yet - this will fail to compile until Client is updated
 				// TODO: Update Client to accept Connection directly
 				var test_client = new OLLMchat.Client(test_connection);
 
 				// Test connection by calling version endpoint
 				GLib.debug("Server version: %s", yield test_client.version());
-
-				// Update connection in config
-				// If URL changed, remove old entry and add new one
-				if (newUrl != url) {
-					this.dialog.config.connections.unset(url);
-					this.dialog.config.connections.set(newUrl, test_connection);
-					// Update tracking map
-					this.rows.set(newUrl, row);
-					this.rows.unset(url);
-				} else {
-					this.dialog.config.connections.set(url, test_connection);
-				}
-
-				// Update expander row title/subtitle
-				row.expander.title = test_connection.name;
-				row.expander.subtitle = newUrl;
-
-				// Remove unverified CSS class from all fields
-				row.clearUnverified();
-
-				// Save config
-				this.dialog.config.save();
-
 			} catch (Error e) {
 				// Show error message
 				GLib.warning("Failed to verify connection: " + e.message);
+				return;
 			}
+
+			// Update connection in config
+			// If URL changed, remove old entry and add new one
+			if (newUrl != url) {
+				this.dialog.config.connections.unset(url);
+				this.dialog.config.connections.set(newUrl, test_connection);
+				// Update tracking map
+				this.rows.set(newUrl, row);
+				this.rows.unset(url);
+			} else {
+				this.dialog.config.connections.set(url, test_connection);
+			}
+
+			// Update expander row title/subtitle
+			row.expander.title = test_connection.name;
+			row.expander.subtitle = newUrl;
+
+			// Remove unverified CSS class from all fields
+			row.clearUnverified();
+
+			// Save config
+			this.dialog.config.save();
 		}
 
 		/**
