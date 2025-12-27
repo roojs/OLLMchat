@@ -209,6 +209,7 @@ namespace OLLMchat.Settings
 			try {
 				// Create a MainContext for this thread
 				var context = new MainContext();
+				context.push_thread_default();
 				var loop = new MainLoop(context);
 				var cancelled = false;
 				
@@ -230,11 +231,9 @@ namespace OLLMchat.Settings
 					loop.quit();
 				});
 				
-				// Process events in this thread's context
-				while (!loop.is_running()) {
-					context.iteration(false);
-				}
+				// Run the loop to process async operations
 				loop.run();
+				context.pop_thread_default();
 				
 				// Final status update
 				if (cancelled) {
