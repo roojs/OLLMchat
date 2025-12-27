@@ -467,7 +467,7 @@ namespace OLLMchat.Settings
 				return false;
 			}
 			
-			return this.get_or_create_status(model_name).active;
+			return this.loading_status_cache.get(model_name).active;
 		}
 		
 		/**
