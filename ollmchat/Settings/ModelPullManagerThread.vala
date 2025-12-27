@@ -72,6 +72,11 @@ namespace OLLMchat.Settings
 		private MainContext? background_context = null;
 		
 		/**
+		 * MainContext for the main thread (for dispatching signals)
+		 */
+		private MainContext main_context;
+		
+		/**
 		 * Maximum number of retries for failed pulls
 		 */
 		private const int MAX_RETRIES = 5;
@@ -84,6 +89,36 @@ namespace OLLMchat.Settings
 		public ModelPullManagerThread(OLLMchat.ApplicationInterface app)
 		{
 			Object(app: app);
+			// Store reference to main thread's MainContext for signal dispatch
+			this.main_context = MainContext.default();
+		}
+		
+		/**
+		 * Emits status_updated signal on the main thread.
+		 * 
+		 * This ensures signal handlers run in the main thread context,
+		 * which is required for UI updates and thread-safe data access.
+		 */
+		private void emit_status_updated(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count)
+		{
+			this.main_context.invoke(() => {
+				this.status_updated(model_name, status, completed, total, last_chunk_status, retry_count);
+				return false;
+			});
+		}
+		
+		/**
+		 * Emits progress_updated signal on the main thread.
+		 * 
+		 * This ensures signal handlers run in the main thread context,
+		 * which is required for UI updates and thread-safe data access.
+		 */
+		private void emit_progress_updated(string model_name, string status, int64 completed, int64 total)
+		{
+			this.main_context.invoke(() => {
+				this.progress_updated(model_name, status, completed, total);
+				return false;
+			});
 		}
 		
 		/**
@@ -183,8 +218,8 @@ namespace OLLMchat.Settings
 				config = this.app.config
 			};
 			
-			// Notify start
-			this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
+			// Notify start (dispatch to main thread)
+			this.emit_status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
@@ -217,11 +252,11 @@ namespace OLLMchat.Settings
 					local_status.status = "pulling";
 				}
 				
-				// Notify status update
-				this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
+				// Notify status update (dispatch to main thread)
+				this.emit_status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 				
-				// Notify progress update (for rate-limited UI updates)
-				this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
+				// Notify progress update (for rate-limited UI updates, dispatch to main thread)
+				this.emit_progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 			});
 			
 			// Execute pull asynchronously
