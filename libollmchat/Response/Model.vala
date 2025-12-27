@@ -54,6 +54,12 @@ namespace OLLMchat.Response
 		public string? model { get; set; } 
 		public string? expires_at { get; set; }
 		public int context_length { get; set; default = 0; }
+		/**
+		 * Model parameters string from show API response.
+		 * 
+		 * Contains default parameter values in format like "temperature 0.7\nnum_ctx 2048"
+		 */
+		public string parameters { get; set; default = ""; }
 
 		/**
 		 * Returns whether the model supports thinking output
@@ -167,6 +173,7 @@ namespace OLLMchat.Response
 		 * - modified_at
 		 * - capabilities
 		 * - context_length (if present in show response)
+		 * - parameters (if present in show response)
 		 * 
 		 * Does NOT update fields from models() API (name, size, digest) or
 		 * runtime fields from ps() API (size_vram, durations, counts).
@@ -196,9 +203,48 @@ namespace OLLMchat.Response
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
+			
+			// Update parameters if present in show response
+			if (source.parameters != null && source.parameters != "") {
+				this.parameters = source.parameters;
+			}
+			
 			this.thaw_notify();
 			// Thaw notifications - all property change signals will be emitted now
  		}
+		
+		/**
+		 * Parses the parameters string and returns a map of parameter names to values.
+		 * 
+		 * Parameters string format: "temperature 0.7\nnum_ctx 2048"
+		 * 
+		 * @return HashMap mapping parameter names to their string values
+		 */
+		public Gee.HashMap<string, string> parse_parameters()
+		{
+			var result = new Gee.HashMap<string, string>();
+			if (this.parameters == null || this.parameters == "") {
+				return result;
+			}
+			
+			var lines = this.parameters.split("\n");
+			foreach (var line in lines) {
+				line = line.strip();
+				if (line == "") {
+					continue;
+				}
+				// Split on first space to separate parameter name from value
+				var parts = line.split(" ", 2);
+				if (parts.length >= 2) {
+					var param_name = parts[0].strip();
+					var param_value = parts[1].strip();
+					if (param_name != "" && param_value != "") {
+						result.set(param_name, param_value);
+					}
+				}
+			}
+			return result;
+		}
 		
 		/**
 		* Gets the cache file path for this model.
