@@ -136,16 +136,9 @@ namespace OLLMchat.Settings
 			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
-				// Get name from the actual widget type (subclasses have name property)
-				string pname = "";
-				if (row is OptionFloatWidget) {
-					pname = ((OptionFloatWidget)row).name;
-				} else if (row is OptionIntWidget) {
-					pname = ((OptionIntWidget)row).name;
-				}
-				GLib.debug("load_defaults: Processing row.name = '%s'", pname);
+				GLib.debug("load_defaults: Processing row.pname = '%s'", row.pname);
 				// Convert underscore to hyphen for GObject property name
-				var property_name = pname.replace("_", "-");
+				var property_name = row.pname.replace("_", "-");
 				
 				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
 				switch (property_name) {
@@ -157,7 +150,7 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", pname, int_val);
+						GLib.debug("load_defaults: %s = %d", row.pname, int_val);
 						if (int_val != -1) {
 							row.set_value(model_value);
 						}
@@ -170,7 +163,7 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();
-						GLib.debug("load_defaults: %s = %f", pname, double_val);
+						GLib.debug("load_defaults: %s = %f", row.pname, double_val);
 						if (double_val != -1.0) {
 							row.set_value(model_value);
 						}
