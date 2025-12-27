@@ -29,6 +29,7 @@ namespace OLLMchat.Settings
 		public int progress { get; set; default = 0; }
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
+		public string last_chunk_status { get; set; default = ""; }
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -51,6 +52,10 @@ namespace OLLMchat.Settings
 		{
 			// Only serialize error if it's not empty
 			if (property_name == "error" && value.get_string() == "") {
+				return null;
+			}
+			// Only serialize last_chunk_status if it's not empty
+			if (property_name == "last_chunk_status" && value.get_string() == "") {
 				return null;
 			}
 			return default_serialize_property(property_name, value, pspec);
