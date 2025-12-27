@@ -280,10 +280,20 @@ namespace OLLMchat.Settings
 		/**
 		 * Called when this page is deactivated (becomes hidden).
 		 * 
-		 * Removes the action box and hides the action bar area.
+		 * Collapses any expanded connection rows to prevent focus issues,
+		 * removes the action box and hides the action bar area.
 		 */
 		public override void on_deactivated()
 		{
+			// Collapse any expanded connection rows to prevent focus issues
+			// when switching tabs (ActionRows inside ExpanderRow can cause
+			// assertion failures if they try to grab focus after being unparented)
+			foreach (var row in this.rows.values) {
+				if (row.expander.expanded) {
+					row.expander.expanded = false;
+				}
+			}
+			
 			// Remove this page's action box
 			if (this.action_box.get_parent() != null) {
 				this.action_box.unparent();
