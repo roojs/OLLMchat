@@ -275,8 +275,8 @@ namespace OLLMchat.Settings
 						// Connection not found - mark as failed
 						check_status.status = "failed";
 						check_status.error = "Connection not found for retry";
-						this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
-						this.progress_updated(model_name, "failed", progress);
+						this.update_loading_status(model_name, "failed", check_status.completed, check_status.total, check_status.last_chunk_status, true);
+						this.progress_updated(model_name, "failed", check_status.progress);
 						this.model_failed(model_name);
 						this.loading_status_cache.unset(model_name);
 						this.write_to_file();
