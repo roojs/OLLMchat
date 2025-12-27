@@ -48,7 +48,7 @@ namespace OLLMchat.Settings
 		
 		// Track previous visible child for activation/deactivation
 		// Initialized to dummy instance so we never have to check for null
-		private SettingsPage previous_visible_child;
+		private SettingsPage previous_visible_child = new SettingsPage();
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -98,9 +98,6 @@ namespace OLLMchat.Settings
 			
 			// Set main box as dialog content
 			this.set_child(main_box);
-
-			// Initialize dummy previous page (so we never have to check for null)
-			this.previous_visible_child = new SettingsPage();
 
 			// Create connections page
 			this.connections_page = new Settings.ConnectionsPage(this);
