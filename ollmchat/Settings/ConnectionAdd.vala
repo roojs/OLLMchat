@@ -77,7 +77,8 @@ namespace OLLMchat.Settings
 			this.host_entry = new Gtk.Entry() {
 				placeholder_text = "http://127.0.0.1:11434/api",
 				text = "http://127.0.0.1:11434/api",
-				width_request = 250
+				width_request = 250,
+				vexpand = false
 			};
 			this.host_row = new Adw.ActionRow() {
 				title = "Host",
@@ -89,7 +90,8 @@ namespace OLLMchat.Settings
 			// API Key entry row
 			this.api_key_entry = new Gtk.Entry() {
 				placeholder_text = "(optional)",
-				width_request = 250
+				width_request = 250,
+				vexpand = false
 			};
 			this.api_key_row = new Adw.ActionRow() {
 				title = "API Key",

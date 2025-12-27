@@ -94,28 +94,32 @@ namespace OLLMchat.Settings
 
 			// Create form fields
 			this.nameEntry = new Gtk.Entry() {
-				text = connection.name
+				text = connection.name,
+				vexpand = false
 			};
 			this.nameEntry.changed.connect(() => {
 				this.nameEntry.add_css_class("oc-settings-unverified");
 			});
 
 			this.urlEntry = new Gtk.Entry() {
-				text = connection.url
+				text = connection.url,
+				vexpand = false
 			};
 			this.urlEntry.changed.connect(() => {
 				this.urlEntry.add_css_class("oc-settings-unverified");
 			});
 
 			this.apiKeyEntry = new Gtk.PasswordEntry() {
-				text = connection.api_key
+				text = connection.api_key,
+				vexpand = false
 			};
 			this.apiKeyEntry.changed.connect(() => {
 				this.apiKeyEntry.add_css_class("oc-settings-unverified");
 			});
 
 			this.defaultSwitch = new Gtk.Switch() {
-				active = connection.is_default
+				active = connection.is_default,
+				vexpand = false
 			};
 			this.defaultSwitch.activate.connect(() => {
 				this.defaultSwitch.add_css_class("oc-settings-unverified");
@@ -151,13 +155,15 @@ namespace OLLMchat.Settings
 				margin_start = 12,
 				margin_end = 12,
 				margin_top = 6,
-				margin_bottom = 6
+				margin_bottom = 6,
+				vexpand = false
 			};
 
 			// Remove button (red, left)
 			this.removeButton = new Gtk.Button.with_label("Remove") {
 				css_classes = {"destructive-action"},
-				visible = canRemove
+				visible = canRemove,
+				vexpand = false
 			};
 			this.removeButton.clicked.connect(() => {
 				this.remove_requested();
@@ -166,7 +172,8 @@ namespace OLLMchat.Settings
 
 			// Verify button (green/blue, right)
 			var verifyButton = new Gtk.Button.with_label("Verify") {
-				css_classes = {"suggested-action"}
+				css_classes = {"suggested-action"},
+				vexpand = false
 			};
 			verifyButton.clicked.connect(() => {
 				this.verify_requested();
