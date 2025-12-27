@@ -235,8 +235,14 @@ namespace OLLMchat.Settings
 		 */
 		private void handle_progress_update(string model_name, string status, int64 completed, int64 total)
 		{
-			// Schedule progress update with rate limiting (progress is calculated from completed/total)
-			this.schedule_progress_update(model_name, status, completed, total);
+			// Calculate progress from completed/total
+			int progress = 0;
+			if (total > 0) {
+				progress = (int)(((double)completed / (double)total) * 100.0);
+			}
+			
+			// Schedule progress update with rate limiting
+			this.schedule_progress_update(model_name, status, progress);
 		}
 		
 		/**
