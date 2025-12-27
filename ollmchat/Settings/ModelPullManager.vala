@@ -34,6 +34,7 @@ namespace OLLMchat.Settings
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
 		public int retry_count { get; set; default = 0; }
+		public string connection_url { get; set; default = ""; }
 		
 		// Runtime fields (not serialized)
 		public bool active = false;
