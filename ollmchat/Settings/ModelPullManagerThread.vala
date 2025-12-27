@@ -123,12 +123,23 @@ namespace OLLMchat.Settings
 		/**
 		 * Starts a pull operation asynchronously in the background thread.
 		 * 
+		 * ⚠️ THREAD SAFETY WARNING: This method passes a Connection object from
+		 * the main thread to the background thread. While Connection objects are
+		 * typically immutable configuration data, this could potentially cause
+		 * thread safety issues if the Connection object is modified on the main
+		 * thread while being used in the background thread. Consider cloning/copying
+		 * the Connection object before passing it to ensure 100% thread safety.
+		 * 
 		 * @param model_name Model name to pull
-		 * @param connection Connection to use
+		 * @param connection Connection to use (⚠️ passed from main thread - see warning above)
 		 * @param initial_retry_count Initial retry count (from main thread status)
 		 */
 		public void start_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
+			// ⚠️ THREAD SAFETY: Connection object is passed from main thread to background thread
+			// This may be a cause of failure if Connection is modified concurrently.
+			// Consider: var connection_copy = connection.clone(); and use connection_copy instead
+			
 			// Schedule the pull operation in the background thread's context
 			var source = new IdleSource();
 			source.set_callback(() => {

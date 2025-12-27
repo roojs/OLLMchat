@@ -154,6 +154,9 @@ namespace OLLMchat.Settings
 			status_obj.connection_url = connection.url;
 			status_obj.connection = connection;
 			
+			// ⚠️ THREAD SAFETY WARNING: Passing Connection object to background thread.
+			// This may be a cause of failure if Connection is modified concurrently.
+			// Consider cloning: var connection_copy = connection.clone();
 			// Start pull operation in background thread (pass only primitive data)
 			this.pull_thread.start_pull(model_name, connection, status_obj.retry_count);
 			
