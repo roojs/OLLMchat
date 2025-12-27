@@ -366,32 +366,28 @@ namespace OLLMchat.Settings
 		 * Sets the spin button to the default value.
 		 * 
 		 * This is called when user clicks "Auto" button to start setting a custom value.
-		 * The default_value may be:
-		 * - The hardcoded default from widget constructor (e.g., 0.7 for temperature)
-		 * - The model's default value if set via set_value() from model.options
+		 * Uses model_value if set (via set_value()), otherwise uses hardcoded default_value.
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
 		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * 1. new_value in Options is unset (new_value == unset_value, e.g., -1.0):
-		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
-		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
+		 *    - If model_value is set (model has default): Show Auto button with model_value as label
+		 *    - If model_value is unset: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
 		 * 2. new_value in Options is set (user has explicitly set a value, new_value != unset_value):
 		 *    - Display: Spin button visible with the actual saved new_value from Options
-		 *    - The value shown MUST be the new_value from Options, NOT default_value
+		 *    - The value shown MUST be the new_value from Options, NOT default_value or model_value
 		 *    - Auto button hidden
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
-		 *    - Display: Show spin button with default_value as starting value
-		 *    - If set_value() was called (model has default): Show model's default value
-		 *    - If set_value() was NOT called: Show hardcoded default value
+		 *    - Display: Show spin button with model_value if set, otherwise default_value
 		 *    - This is the ONLY scenario where reset_default() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
-		 *    - Display: Show Auto button (with model default label if available), hide spin button
+		 *    - Display: Show Auto button (with model_value label if available), hide spin button
 		 * 
 		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
 		 * reset_default(), but then immediately overwrite with the actual saved new_value.
