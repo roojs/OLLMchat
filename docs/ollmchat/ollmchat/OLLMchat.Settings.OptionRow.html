@@ -31,6 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Settings.OptionRow.name.html">name</a></li>
           <li class="property"><a href="OLLMchat.Settings.OptionRow.value_widget.html">value_widget</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.OptionRow.OptionRow.html">OptionRow</a></li>
           <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.is_default.html">is_default</a></li>
@@ -39,6 +40,7 @@
           <li class="method"><a href="OLLMchat.Settings.OptionRow.reset_to_auto.html">reset_to_auto</a></li>
           <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.save_options.html">save_options</a></li>
           <li class="method"><a href="OLLMchat.Settings.OptionRow.set_to_default.html">set_to_default</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Settings.OptionRow.set_value.html">set_value</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.auto_button.html">auto_button</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.button_box.html">button_box</a></li>
           <li class="field"><a href="OLLMchat.Settings.OptionRow.clear_button.html">clear_button</a></li>
@@ -91,6 +93,11 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.OptionRow.name.html" class="property">name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">The property name in Options object (e.g., "temperature", "num_ctx"). 
+                Also used to match parameter names from model's parameters string.</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="abstract_class">Widget</span></span>? <b><a href="OLLMchat.Settings.OptionRow.value_widget.html" class="property">value_widget</a></b> { <span class="main_keyword">public</span> <span class="main_keyword">get</span>; <span class="main_keyword">public</span> <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">The value widget (SpinButton, Entry, etc.) that should be 
@@ -129,6 +136,10 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionRow.set_to_default.html" class="method">set_to_default</a></b> ()
             </span>
             <div class="leaf_brief_description">
+            </div></li>
+          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.OptionRow.set_value.html" class="abstract_method">set_value</a></b> (<span class="main_type"><span class="struct">Value</span></span> value)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Sets the default value from a Value object.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Fields:</h3>

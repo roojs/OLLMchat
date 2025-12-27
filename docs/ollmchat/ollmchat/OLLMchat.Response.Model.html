@@ -44,6 +44,8 @@
           <li class="property"><a href="OLLMchat.Response.Model.modified_at.html">modified_at</a></li>
           <li class="property"><a href="OLLMchat.Response.Model.name.html">name</a></li>
           <li class="property"><a href="OLLMchat.Response.Model.name_with_size.html">name_with_size</a></li>
+          <li class="property"><a href="OLLMchat.Response.Model.options.html">options</a></li>
+          <li class="property"><a href="OLLMchat.Response.Model.parameters.html">parameters</a></li>
           <li class="property"><a href="OLLMchat.Response.Model.prompt_eval_count.html">prompt_eval_count</a></li>
           <li class="property"><a href="OLLMchat.Response.Model.prompt_eval_duration.html">prompt_eval_duration</a></li>
           <li class="property"><a href="OLLMchat.Response.Model.size.html">size</a></li>
@@ -139,6 +141,14 @@
             <div class="leaf_brief_description"><span class="brief_description">Returns model name with size in parentheses (e.g., "llama3.1:70b (4.1 
                 GB)")</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span> <b><a href="OLLMchat.Response.Model.options.html" class="property">options</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Default options parsed from model parameters.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.parameters.html" class="property">parameters</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Model.prompt_eval_count.html" class="property">prompt_eval_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -193,7 +203,8 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Response.Model.updateFrom.html" class="method">updateFrom</a></b> (<span class="main_type"><span class="class">Model</span></span> source)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Updates this model's properties from a show API response. Only updates
-                fields that come from the show API endpoint: - modified_at - capabilities - context_length (if present in show response)</span>
+                fields that come from the show API endpoint: - modified_at - capabilities - context_length (if present in show response) - parameters 
+                (if present in show response)</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
