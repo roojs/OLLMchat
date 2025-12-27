@@ -105,10 +105,8 @@ namespace OLLMchat.Settings
 				this.connections_page.page_name, 
 				this.connections_page.page_title);
 			// Add action widget to action bar area (initially hidden)
-			if (this.connections_page.action_widget != null) {
-				this.action_bar_area.append(this.connections_page.action_widget);
-				this.connections_page.action_widget.visible = false;
-			}
+			this.action_bar_area.append(this.connections_page.action_widget);
+			this.connections_page.action_widget.visible = false;
 
 			// Create models page
 			this.models_page = new Settings.ModelsPage(this);
@@ -116,10 +114,8 @@ namespace OLLMchat.Settings
 				 this.models_page.page_name,
 				  this.models_page.page_title);
 			// Add action widget to action bar area (initially hidden)
-			if (this.models_page.action_widget != null) {
-				this.action_bar_area.append(this.models_page.action_widget);
-				this.models_page.action_widget.visible = false;
-			}
+			this.action_bar_area.append(this.models_page.action_widget);
+			this.models_page.action_widget.visible = false;
 			
 			// Connect to page visibility to show/hide action widgets
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
@@ -146,12 +142,8 @@ namespace OLLMchat.Settings
 			this.previous_visible_child = current_page;
 			
 			// Show current page's action widget
-			if (current_page.action_widget != null) {
-				current_page.action_widget.visible = true;
-				this.action_bar_area.visible = true;
-			} else {
-				this.action_bar_area.visible = false;
-			}
+			current_page.action_widget.visible = true;
+			this.action_bar_area.visible = true;
 		}
 
 		/**
