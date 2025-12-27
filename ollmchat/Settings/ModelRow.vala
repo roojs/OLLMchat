@@ -132,6 +132,7 @@ namespace OLLMchat.Settings
 		private void load_defaults()
 		{
 			// Use model.options for default values (automatically filled from parameters)
+			GLib.debug("load_defaults for model '%s' - parameters: '%s'", this.model.name, this.model.parameters ?? "(null)");
 			foreach (var row in this.models_page.options_widget.rows) {
 				// Use switch case on property name to set default values
 				switch (row.name) {
@@ -143,6 +144,7 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
 						var int_val = model_value.get_int();
+						GLib.debug("load_defaults: %s = %d", row.name, int_val);
 						if (int_val != -1) {
 							row.set_value(model_value);
 						}
@@ -155,6 +157,7 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
 						var double_val = model_value.get_double();
+						GLib.debug("load_defaults: %s = %f", row.name, double_val);
 						if (double_val != -1.0) {
 							row.set_value(model_value);
 						}
