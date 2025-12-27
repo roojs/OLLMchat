@@ -133,31 +133,6 @@ namespace OLLMchat.Settings
 		{
 			// Use model.options for default values (automatically filled from parameters)
 			this.models_page.options_widget.load_options_with_model_defaults(this.options, this.model.options);
-			
-			// If parameters are not available, try to fetch model details asynchronously
-			if ((this.model.parameters == null || this.model.parameters == "") && this.model.client != null) {
-				this.fetch_model_parameters.begin();
-			}
-		}
-		
-		/**
-		 * Fetches model details including parameters asynchronously.
-		 */
-		private async void fetch_model_parameters()
-		{
-			try {
-				var detailed_model = yield this.model.client.show_model(this.model.name);
-				// Update the model with parameters from the detailed model
-				// This will automatically trigger fill_from_model via the setter
-				if (detailed_model.parameters != null && detailed_model.parameters != "") {
-					this.model.parameters = detailed_model.parameters;
-					// Reload options with the newly fetched model defaults
-					this.models_page.options_widget.load_options_with_model_defaults(this.options, this.model.options);
-				}
-			} catch (Error e) {
-				// Silently fail - parameters are optional
-				GLib.debug("Failed to fetch model parameters: %s", e.message);
-			}
 		}
 
 		/**
