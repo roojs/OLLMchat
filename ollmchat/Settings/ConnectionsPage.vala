@@ -83,13 +83,8 @@ namespace OLLMchat.Settings
 			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.group.add(this.boxed_list);
 
-			// Add preferences group to page (action bar will be added to dialog's action_bar_area)
+			// Add preferences group to page (action bar will be added to dialog's action_bar_area on activation)
 			this.append(this.group);
-			
-			// Add action bar to dialog's action bar area (fixed at bottom, outside scrollable content)
-			if (this.dialog.action_bar_area != null) {
-				this.dialog.action_bar_area.append(this.action_box);
-			}
 
 			// Create ConnectionAdd dialog
 			this.add_dialog = new ConnectionAdd();
@@ -261,20 +256,39 @@ namespace OLLMchat.Settings
 		/**
 		 * Called when this page is activated (becomes visible).
 		 * 
-		 * Shows the action bar area in the settings dialog.
+		 * Shows the action bar area and adds the action box to it.
 		 */
 		public override void on_activated()
 		{
+			// Remove any existing action boxes from other pages
+			var children = this.dialog.action_bar_area.observe_children();
+			for (uint i = 0; i < children.get_n_items(); i++) {
+				var child = children.get_item(i) as Gtk.Widget;
+				if (child != null) {
+					child.unparent();
+				}
+			}
+			
+			// Add this page's action box
+			if (this.dialog.action_bar_area != null && this.action_box.get_parent() == null) {
+				this.dialog.action_bar_area.append(this.action_box);
+			}
+			
 			this.dialog.action_bar_area.visible = true;
 		}
 
 		/**
 		 * Called when this page is deactivated (becomes hidden).
 		 * 
-		 * Hides the action bar area in the settings dialog.
+		 * Removes the action box and hides the action bar area.
 		 */
 		public override void on_deactivated()
 		{
+			// Remove this page's action box
+			if (this.action_box.get_parent() != null) {
+				this.action_box.unparent();
+			}
+			
 			this.dialog.action_bar_area.visible = false;
 		}
 
