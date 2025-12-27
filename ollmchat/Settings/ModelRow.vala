@@ -89,7 +89,7 @@ namespace OLLMchat.Settings
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
 			if (this.expanded) {
-				this.models_page.options_widget.load_options(this.options);
+				this.load_options_with_parameters();
 			}
 		}
 
@@ -107,7 +107,7 @@ namespace OLLMchat.Settings
 
 			// If rows are already attached to this row, just update values
 			if (this.models_page.options_widget.current_model_row == this) {
-				this.models_page.options_widget.load_options(this.options);
+				this.load_options_with_parameters();
 				this.is_expanding = false;
 				return;
 			}
@@ -121,9 +121,24 @@ namespace OLLMchat.Settings
 			// Attach option rows to this ExpanderRow (also sets current_model_row)
 			this.models_page.options_widget.attach_to_model_row(this);
 				
-			// Load options into the widget
-			this.models_page.options_widget.load_options(this.options);
+			// Load options into the widget with parameters
+			this.load_options_with_parameters();
 			this.is_expanding = false;
+		}
+		
+		/**
+		 * Loads options into the widget, fetching model parameters if needed.
+		 */
+		private void load_options_with_parameters()
+		{
+			// Parse parameters from model if available
+			Gee.HashMap<string, string>? parameters_map = null;
+			if (this.model.parameters != null && this.model.parameters != "") {
+				parameters_map = this.model.parse_parameters();
+			}
+			
+			// Load options with parsed parameters
+			this.models_page.options_widget.load_options_with_parameters(this.options, parameters_map);
 		}
 
 		/**
