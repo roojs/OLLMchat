@@ -23,7 +23,7 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.3.4
 	 */
-	private class LoadingStatus : Object, Json.Serializable
+	private class LoadingStatus : GLib.Object, Json.Serializable
 	{
 		public string status { get; set; default = ""; }
 		public int progress { get; set; default = 0; }
