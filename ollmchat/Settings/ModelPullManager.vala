@@ -411,16 +411,17 @@ namespace OLLMchat.Settings
 		private void write_to_file()
 		{
 			try {
-				var json_parts = new Gee.ArrayList<string>();
+				var json_parts = new string[this.loading_status_cache.size];
+				int i = 0;
 				
 				// Serialize each status object to JSON string
 				foreach (var entry in this.loading_status_cache.entries) {
-					var json_str = Json.gobject_to_data(entry.value, null);
-					json_parts.add(json_str);
+					json_parts[i] = Json.gobject_to_data(entry.value, null);
+					i++;
 				}
 				
 				// Join with commas and wrap in array brackets
-				var json_array = "[\n  " + string.joinv(",\n  ", json_parts.to_array()) + "\n]";
+				var json_array = "[\n  " + string.joinv(",\n  ", json_parts) + "\n]";
 				
 				GLib.FileUtils.set_contents(this.loading_json_path, json_array);
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
