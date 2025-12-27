@@ -272,6 +272,9 @@ namespace OLLMchat.Settings
 						return false;
 					}
 					
+					// ⚠️ THREAD SAFETY WARNING: Passing Connection object to background thread.
+					// This may be a cause of failure if Connection is modified concurrently.
+					// Consider cloning: var connection_copy = check_status.connection.clone();
 					// Retry the pull (pass only primitive data)
 					check_status.active = true;
 					this.pull_thread.start_pull(model_name, check_status.connection, check_status.retry_count);
