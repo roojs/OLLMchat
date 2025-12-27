@@ -401,7 +401,7 @@ namespace OLLMchat.Settings
 		private void write_to_file()
 		{
 			try {
-				string[] json_parts ={}''
+				string[] json_parts ={};
 				int i = 0;
 				
 				// Serialize each status object to JSON string
