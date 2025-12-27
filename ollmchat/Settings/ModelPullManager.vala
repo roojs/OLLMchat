@@ -327,15 +327,16 @@ namespace OLLMchat.Settings
 			if (status_obj.status == "complete" || status_obj.status == "error" || status_obj.status == "failed") {
 				// Always emit final status updates
 				should_emit = true;
-			} else if (status_obj.status != status_obj.status) {
-				// Emit if status changed (compare with cached status)
+			} else {
+				// Check if status changed or enough time has passed
 				var cached_status = this.get_or_create_status(model_name);
 				if (status_obj.status != cached_status.status) {
+					// Emit if status changed
+					should_emit = true;
+				} else if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
+					// Emit if enough time has passed
 					should_emit = true;
 				}
-			} else if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
-				// Emit if enough time has passed
-				should_emit = true;
 			}
 			
 			if (should_emit) {
