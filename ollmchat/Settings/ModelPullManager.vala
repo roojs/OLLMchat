@@ -30,6 +30,19 @@ namespace OLLMchat.Settings
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
+	}
+	
+	/**
+	 * Information about an active pull operation.
+	 * 
+	 * @since 1.3.4
+	 */
+	private class PullInfo
+	{
+		public bool active = false;
+		public int64 last_update_time = 0;
+		public string last_status = "";
+	}
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -107,24 +120,14 @@ namespace OLLMchat.Settings
 		private MainContext? background_context = null;
 		
 		/**
-		 * Map of model_name -> whether pull is active
+		 * Map of model_name -> pull information
 		 */
-		private Gee.HashMap<string, bool> active_pulls;
+		private Gee.HashMap<string, PullInfo> pull_info;
 		
 		/**
 		 * Map of model_name -> loading status (in-memory cache)
 		 */
 		private Gee.HashMap<string, LoadingStatus> loading_status_cache;
-		
-		/**
-		 * Map of model_name -> last update timestamp (for rate limiting)
-		 */
-		private Gee.HashMap<string, int64> last_update_time;
-		
-		/**
-		 * Map of model_name -> last status (to detect status changes)
-		 */
-		private Gee.HashMap<string, string> last_status;
 		
 		/**
 		 * Timestamp of last file write
@@ -151,10 +154,8 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.active_pulls = new Gee.HashMap<string, bool>();
+			this.pull_info = new Gee.HashMap<string, PullInfo>();
 			this.loading_status_cache = new Gee.HashMap<string, LoadingStatus>();
-			this.last_update_time = new Gee.HashMap<string, int64>();
-			this.last_status = new Gee.HashMap<string, string>();
 			
 			// Ensure data directory exists
 			try {
@@ -179,8 +180,8 @@ namespace OLLMchat.Settings
 		public bool start_pull(string model_name, string connection_url)
 		{
 			// Check if already pulling
-			if (this.active_pulls.has_key(model_name) && 
-			    this.active_pulls.get(model_name)) {
+			if (this.pull_info.has_key(model_name) && 
+			    this.pull_info.get(model_name).active) {
 				GLib.debug("Pull already in progress for model: %s", model_name);
 				return false;
 			}
@@ -194,8 +195,15 @@ namespace OLLMchat.Settings
 			// Ensure background thread is running
 			this.ensure_background_thread();
 			
-			// Mark pull as active
-			this.active_pulls.set(model_name, true);
+			// Get or create pull info
+			PullInfo info;
+			if (this.pull_info.has_key(model_name)) {
+				info = this.pull_info.get(model_name);
+			} else {
+				info = new PullInfo();
+				this.pull_info.set(model_name, info);
+			}
+			info.active = true;
 			
 			// Start pull operation in background thread
 			this.start_pull_async(model_name, this.app.config.connections.get(connection_url));
@@ -353,9 +361,10 @@ namespace OLLMchat.Settings
 				});
 				
 				// Clean up
-				this.active_pulls.unset(model_name);
-				this.last_update_time.unset(model_name);
-				this.last_status.unset(model_name);
+				if (this.pull_info.has_key(model_name)) {
+					var info = this.pull_info.get(model_name);
+					info.active = false;
+				}
 			});
 		}
 		
