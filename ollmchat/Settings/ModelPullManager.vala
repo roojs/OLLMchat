@@ -30,19 +30,6 @@ namespace OLLMchat.Settings
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
-	}
-	
-	/**
-	 * Information about an active pull operation.
-	 * 
-	 * @since 1.3.4
-	 */
-	private class PullInfo
-	{
-		public bool active = false;
-		public int64 last_update_time = 0;
-		public string last_status = "";
-	}
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -73,6 +60,19 @@ namespace OLLMchat.Settings
 			}
 			return default_serialize_property(property_name, value, pspec);
 		}
+	}
+	
+	/**
+	 * Information about an active pull operation.
+	 * 
+	 * @since 1.3.4
+	 */
+	private class PullInfo
+	{
+		public bool active = false;
+		public int64 last_update_time = 0;
+		public string last_status = "";
+	}
 	}
 	
 	/**
