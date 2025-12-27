@@ -319,12 +319,6 @@ namespace OLLMchat.Settings
 							local_status.last_chunk_status,
 							local_status.retry_count
 						);
-						this.emit_progress_updated(
-							model_name,
-							local_status.status,
-							local_status.completed,
-							local_status.total
-						);
 						return;
 					}
 					
@@ -333,6 +327,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify final status update (dispatch to main thread)
+				// This single signal handles both state updates and rate-limited UI updates
 				this.emit_status_updated(
 					model_name,
 					local_status.status,
@@ -340,14 +335,6 @@ namespace OLLMchat.Settings
 					local_status.total,
 					local_status.last_chunk_status,
 					local_status.retry_count
-				);
-				
-				// Notify final progress update (dispatch to main thread)
-				this.emit_progress_updated(
-					model_name,
-					local_status.status,
-					local_status.completed,
-					local_status.total
 				);
 			});
 		}
