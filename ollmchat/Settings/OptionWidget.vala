@@ -142,11 +142,7 @@ namespace OLLMchat.Settings
 						if (int_val != -1) {
 							param_value = int_val.to_string();
 						}
-						if (row is OptionIntWidget) {
-							(row as OptionIntWidget).load_options_with_parameter(options, param_value);
-						} else {
-							row.load_options(options);
-						}
+						(row as OptionIntWidget).load_options_with_parameter(options, param_value);
 						break;
 					
 					// Double properties
@@ -160,11 +156,7 @@ namespace OLLMchat.Settings
 						if (double_val != -1.0) {
 							param_value = double_val.to_string();
 						}
-						if (row is OptionFloatWidget) {
-							(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
-						} else {
-							row.load_options(options);
-						}
+						(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
 						break;
 					
 					default:
