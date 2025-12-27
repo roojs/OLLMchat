@@ -202,7 +202,7 @@ namespace OLLMchat.Settings
 		 * The property name in Options object (e.g., "temperature", "num_ctx").
 		 * Also used to match parameter names from model's parameters string.
 		 */
-		public string name { get; set; default = ""; }
+		public string pname { get; set; default = ""; }
 
 		/**
 		 * Checks if the current value is in default/auto state (unset).

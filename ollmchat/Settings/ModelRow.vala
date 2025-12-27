@@ -138,10 +138,9 @@ namespace OLLMchat.Settings
 			foreach (var row in this.models_page.options_widget.rows) {
 				GLib.debug("load_defaults: Processing row.pname = '%s'", row.pname);
 				// Convert underscore to hyphen for GObject property name
-				var property_name = row.pname.replace("_", "-");
-				
+ 				
 				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
-				switch (property_name) {
+				switch (row.name) {
 					// Integer properties
 					case "seed":
 					case "top-k":
