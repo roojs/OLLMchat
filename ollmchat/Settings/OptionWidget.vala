@@ -476,11 +476,19 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(int));
-			((GLib.Object)options).get_property(this.pname, ref val);
+			var property_name = this.pname.replace("_", "-");
+			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Value is unset, show Auto button
-				this.auto_button.label = "Auto";
+				// Value is unset, show Auto button with default value label if set via set_value()
+				// Check if default_value was changed from initial defaults
+				// If it was set via set_value(), use it for the label
+				if (this.default_value != 40.0 && this.default_value != 16384.0 && this.default_value != 42.0 && this.default_value != 1.0) {
+					string label_text = "%d".printf((int)this.default_value);
+					this.auto_button.label = label_text == "" ? "Auto" : label_text;
+				} else {
+					this.auto_button.label = "Auto";
+				}
 				this.reset_to_auto();
 			} else {
 				// Value is set, show spin button with value
