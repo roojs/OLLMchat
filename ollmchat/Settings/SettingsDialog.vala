@@ -126,15 +126,35 @@ namespace OLLMchat.Settings
 		 * 
 		 * Notifies the previous page that it's been deactivated,
 		 * and the new page that it's been activated.
+		 * Also manages action widgets in the action bar area.
 		 */
 		private void on_page_changed()
 		{
+			// Remove previous page's action widget from action bar area
+			if (this.previous_visible_child.action_widget.get_parent() != null) {
+				this.previous_visible_child.action_widget.unparent();
+			}
+			
 			// Deactivate previous page (dummy instance on first call, does nothing)
 			this.previous_visible_child.on_deactivated();
 
-			// Activate current page (all children are SettingsPage instances)
-			this.previous_visible_child = this.view_stack.get_visible_child();
-			this.previous_visible_child.on_activated();
+			// Get current page
+			var current_page = this.view_stack.get_visible_child() as SettingsPage;
+			this.previous_visible_child = current_page;
+			
+			// Add current page's action widget to action bar area
+			if (current_page.action_widget != null) {
+				if (current_page.action_widget.get_parent() == null) {
+					this.action_bar_area.append(current_page.action_widget);
+				}
+				current_page.action_widget.visible = true;
+				this.action_bar_area.visible = true;
+			} else {
+				this.action_bar_area.visible = false;
+			}
+			
+			// Activate current page
+			current_page.on_activated();
 		}
 
 		/**

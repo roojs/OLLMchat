@@ -39,11 +39,23 @@ namespace OLLMchat.Settings
 		public string page_title { get; construct; default = ""; }
 
 		/**
+		 * Action widget for this page (added to action bar area by SettingsDialog).
+		 * 
+		 * Should be created in constructor. Can be an empty hidden box for pages
+		 * that don't need action widgets.
+		 */
+		public Gtk.Widget action_widget { get; protected set; }
+
+		/**
 		 * Default constructor for creating dummy instances.
 		 */
 		public SettingsPage()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			// Create empty hidden action widget for dummy pages
+			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				visible = false
+			};
 		}
 
 		/**

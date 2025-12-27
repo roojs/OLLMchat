@@ -75,10 +75,11 @@ namespace OLLMchat.Settings
 			this.margin_top = 12;
 			this.margin_bottom = 12;
 
-			// Create horizontal action bar
+			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
 			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
+			this.action_widget = this.action_box;
 
 			// Create search bar (always visible)
 			this.search_bar = new Gtk.SearchBar();
@@ -429,35 +430,15 @@ namespace OLLMchat.Settings
 		 */
 		public override void on_activated()
 		{
-			// Add this page's action box if not already added
-			if (this.settings_dialog.action_bar_area != null && this.action_box.get_parent() == null) {
-				this.settings_dialog.action_bar_area.append(this.action_box);
-			}
-			
-			// Make sure this page's action box is visible
-			this.action_box.visible = true;
-			
-			// Show the action bar area
-			this.settings_dialog.action_bar_area.visible = true;
+			// Action widget management is handled by SettingsDialog
 		}
 
 		/**
 		 * Called when this page is deactivated (becomes hidden).
-		 * 
-		 * Hides this page's action box and hides the action bar area if no other pages need it.
 		 */
 		public override void on_deactivated()
 		{
-			// Hide this page's action box
-			this.action_box.visible = false;
-			
-			// Remove this page's action box from the action bar area
-			if (this.action_box.get_parent() != null) {
-				this.action_box.unparent();
-			}
-			
-			// Hide the action bar area (other pages will show it when activated)
-			this.settings_dialog.action_bar_area.visible = false;
+			// Action widget management is handled by SettingsDialog
 		}
 	}
 }
