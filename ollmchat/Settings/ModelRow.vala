@@ -89,7 +89,7 @@ namespace OLLMchat.Settings
 			this.options = new_options.clone();
 			// Update widget values if currently expanded
 			if (this.expanded) {
-				this.load_options_with_parameters();
+				this.load_defaults();
 			}
 		}
 
@@ -107,7 +107,7 @@ namespace OLLMchat.Settings
 
 			// If rows are already attached to this row, just update values
 			if (this.models_page.options_widget.current_model_row == this) {
-				this.load_options_with_parameters();
+				this.load_defaults();
 				this.is_expanding = false;
 				return;
 			}
@@ -127,9 +127,9 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Loads options into the widget, using model.options for default values.
+		 * Loads default values from model.options and then loads options.
 		 */
-		private void load_options_with_parameters()
+		private void load_defaults()
 		{
 			// Use model.options for default values (automatically filled from parameters)
 			foreach (var row in this.models_page.options_widget.rows) {
