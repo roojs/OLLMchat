@@ -195,13 +195,12 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Background thread function that performs the pull operation.
+		 * Executes a pull operation asynchronously in the background thread.
 		 * 
 		 * @param model_name Model name to pull
 		 * @param connection Connection to use
-		 * @return true on success, false on error
 		 */
-		private bool pull_thread_func(string model_name, OLLMchat.Settings.Connection connection)
+		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection)
 		{
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
@@ -257,35 +256,23 @@ namespace OLLMchat.Settings
 				}
 			});
 			
-			// Execute pull (this blocks until complete)
-			try {
-				// Create a MainContext for this thread
-				var context = new MainContext();
-				context.push_thread_default();
-				var loop = new MainLoop(context);
+			// Execute pull asynchronously
+			pull_call.exec_pull.begin((obj, res) => {
 				var cancelled = false;
 				
-				// Run async operation in thread
-				pull_call.exec_pull.begin((obj, res) => {
-					try {
-						pull_call.exec_pull.end(res);
-					} catch (GLib.IOError e) {
-						if (e.code == GLib.IOError.CANCELLED) {
-							cancelled = true;
-						} else {
-							status = "error";
-							GLib.warning("Pull failed for %s: %s", model_name, e.message);
-						}
-					} catch (Error e) {
+				try {
+					pull_call.exec_pull.end(res);
+				} catch (GLib.IOError e) {
+					if (e.code == GLib.IOError.CANCELLED) {
+						cancelled = true;
+					} else {
 						status = "error";
 						GLib.warning("Pull failed for %s: %s", model_name, e.message);
 					}
-					loop.quit();
-				});
-				
-				// Run the loop to process async operations
-				loop.run();
-				context.pop_thread_default();
+				} catch (Error e) {
+					status = "error";
+					GLib.warning("Pull failed for %s: %s", model_name, e.message);
+				}
 				
 				// Final status update
 				if (cancelled) {
@@ -304,27 +291,11 @@ namespace OLLMchat.Settings
 					return false; // Don't repeat
 				});
 				
-			} catch (Error e) {
-				status = "error";
-				progress = 0;
-				this.write_loading_status(model_name, status, progress);
-				
-				// Emit error update immediately
-				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
-					return false;
-				});
-				
-				GLib.warning("Pull thread error for %s: %s", model_name, e.message);
-				return false;
-			}
-			
-			// Clean up thread reference
-			this.active_threads.unset(model_name);
-			this.last_update_time.unset(model_name);
-			this.last_status.unset(model_name);
-			
-			return status == "complete";
+				// Clean up
+				this.active_pulls.unset(model_name);
+				this.last_update_time.unset(model_name);
+				this.last_status.unset(model_name);
+			});
 		}
 		
 		/**
@@ -463,8 +434,8 @@ namespace OLLMchat.Settings
 		 */
 		public bool is_pulling(string model_name)
 		{
-			return this.active_threads.has_key(model_name) && 
-			       this.active_threads.get(model_name) != null;
+			return this.active_pulls.has_key(model_name) && 
+			       this.active_pulls.get(model_name);
 		}
 		
 		/**
@@ -475,8 +446,8 @@ namespace OLLMchat.Settings
 		public Gee.Set<string> get_active_pulls()
 		{
 			var result = new Gee.HashSet<string>();
-			foreach (var entry in this.active_threads.entries) {
-				if (entry.value != null) {
+			foreach (var entry in this.active_pulls.entries) {
+				if (entry.value) {
 					result.add(entry.key);
 				}
 			}
