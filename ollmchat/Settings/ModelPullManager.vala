@@ -168,16 +168,19 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
-		 * @param progress Progress percentage
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 * @param last_chunk_status Last chunk status from API
 		 * @param retry_count Current retry count (from background thread)
 		 */
-		private void handle_status_update(string model_name, string status, int progress, string last_chunk_status, int retry_count)
+		private void handle_status_update(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count)
 		{
 			// Update status object in main thread (thread-safe)
 			if (this.loading_status_cache.has_key(model_name)) {
 				var status_obj = this.loading_status_cache.get(model_name);
 				status_obj.retry_count = retry_count;
+				status_obj.completed = completed;
+				status_obj.total = total;
 				
 				// Update active flag based on status
 				if (status == "complete" || status == "failed") {
@@ -188,11 +191,12 @@ namespace OLLMchat.Settings
 			}
 			
 			// Update status in memory and optionally write to file
-			bool force_write = (status == "pulling" && progress == 0) || 
+			// progress is calculated from completed/total, so check if total > 0 for initial pull
+			bool force_write = (status == "pulling" && total == 0) || 
 			                   status == "complete" || 
 			                   status == "failed" || 
 			                   status == "pending-retry";
-			this.update_loading_status(model_name, status, progress, last_chunk_status, force_write);
+			this.update_loading_status(model_name, status, completed, total, last_chunk_status, force_write);
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
@@ -226,12 +230,13 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
-		 * @param progress Progress percentage
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 */
-		private void handle_progress_update(string model_name, string status, int progress)
+		private void handle_progress_update(string model_name, string status, int64 completed, int64 total)
 		{
-			// Schedule progress update with rate limiting
-			this.schedule_progress_update(model_name, status, progress);
+			// Schedule progress update with rate limiting (progress is calculated from completed/total)
+			this.schedule_progress_update(model_name, status, completed, total);
 		}
 		
 		/**
@@ -294,9 +299,10 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Current status
-		 * @param progress Progress percentage
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 */
-		private void schedule_progress_update(string model_name, string status, int progress)
+		private void schedule_progress_update(string model_name, string status, int64 completed, int64 total)
 		{
 			// Get or create status
 			LoadingStatus status_obj;
