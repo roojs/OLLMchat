@@ -33,6 +33,7 @@ namespace OLLMchat.Settings
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
+		public int retry_count { get; set; default = 0; }
 		
 		// Runtime fields (not serialized)
 		public bool active = false;
@@ -89,6 +90,13 @@ namespace OLLMchat.Settings
 		public signal void model_complete(string model_name);
 		
 		/**
+		 * Signal emitted when a model pull fails after all retries are exhausted.
+		 * 
+		 * @param model_name The model that failed to pull
+		 */
+		public signal void model_failed(string model_name);
+		
+		/**
 		 * Application interface (provides config and data_dir)
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
@@ -132,6 +140,16 @@ namespace OLLMchat.Settings
 		 * Rate limit: minimum seconds between file writes (except for start/finish)
 		 */
 		private const int64 FILE_WRITE_RATE_LIMIT_SECONDS = 300; // 5 minutes
+		
+		/**
+		 * Maximum number of retries for failed pulls
+		 */
+		private const int MAX_RETRIES = 5;
+		
+		/**
+		 * Delay between retries in seconds
+		 */
+		private const int64 RETRY_DELAY_SECONDS = 60; // 1 minute
 		
 		/**
 		 * Creates a new ModelPullManager.
