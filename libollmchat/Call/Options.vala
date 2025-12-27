@@ -98,6 +98,7 @@ namespace OLLMchat.Call
 				return;
 			}
 
+			GLib.debug("fill_from_model: Parsing parameters for '%s': '%s'", model.name, model.parameters);
 			var lines = model.parameters.split("\n");
 			foreach (var line in lines) {
 				line = line.strip();
@@ -131,6 +132,7 @@ namespace OLLMchat.Call
 							var value = Value(typeof(int));
 							value.set_int(int_value);
 							((GLib.Object)this).set_property(param_name, value);
+							GLib.debug("fill_from_model: Set %s = %d", param_name, int_value);
 						}
 						break;
 					
@@ -143,6 +145,7 @@ namespace OLLMchat.Call
 							var value = Value(typeof(double));
 							value.set_double(double_value);
 							((GLib.Object)this).set_property(param_name, value);
+							GLib.debug("fill_from_model: Set %s = %f", param_name, double_value);
 						}
 						break;
 					
@@ -151,6 +154,7 @@ namespace OLLMchat.Call
 						var value = Value(typeof(string));
 						value.set_string(param_value);
 						((GLib.Object)this).set_property(param_name, value);
+						GLib.debug("fill_from_model: Set %s = '%s'", param_name, param_value);
 						break;
 					
 					default:
