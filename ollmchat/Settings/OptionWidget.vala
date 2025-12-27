@@ -363,7 +363,7 @@ namespace OLLMchat.Settings
 			this.default_value = double_val;
 			// Format the value for display based on digits
 			string formatted = "%.*f".printf((int)this.digits, double_val);
-			this.set_auto_label(formatted);
+			this.auto_button.label = formatted == "" ? "Auto" : formatted;
 		}
 		
 		public override void load_options(OLLMchat.Call.Options options)
@@ -377,7 +377,7 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
-				this.set_auto_label(null);
+				this.auto_button.label = "Auto";
 				this.reset_to_auto();
 			} else {
 				// Value is set, show spin button with value
@@ -460,7 +460,8 @@ namespace OLLMchat.Settings
 				int_val = (int)this.max_value;
 			}
 			this.default_value = (double)int_val;
-			this.set_auto_label(int_val.to_string());
+			string label_text = int_val.to_string();
+			this.auto_button.label = label_text == "" ? "Auto" : label_text;
 		}
 		
 		public override void load_options(OLLMchat.Call.Options options)
@@ -474,7 +475,7 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
-				this.set_auto_label(null);
+				this.auto_button.label = "Auto";
 				this.reset_to_auto();
 			} else {
 				// Value is set, show spin button with value
