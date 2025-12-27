@@ -37,7 +37,7 @@ namespace OLLMchat.Settings
 		private Gtk.Box action_box;
 		private Gtk.Button add_btn;
 		private Adw.PreferencesGroup group;
-		private Gtk.ListBox list;
+		private Gtk.Box boxed_list;
 		private Gee.HashMap<string, ConnectionRow> rows = new Gee.HashMap<string, ConnectionRow>();
 		private ConnectionAdd add_dialog;
 
@@ -82,9 +82,9 @@ namespace OLLMchat.Settings
 				title = this.page_title
 			};
 
-			// Create list box for connections
-			this.list = new Gtk.ListBox();
-			this.group.add(this.list);
+			// Create boxed list for connections (using Box instead of ListBox to avoid hover styles)
+			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
+			this.group.add(this.boxed_list);
 
 			// Add action bar and preferences group to page
 			var action_group = new Adw.PreferencesGroup();
@@ -222,7 +222,7 @@ namespace OLLMchat.Settings
 			}
 
 			foreach (var url in urls_to_remove) {
-				this.list.remove(this.rows.get(url).expander);
+				this.rows.get(url).expander.unparent();
 				this.rows.unset(url);
 			}
 
@@ -256,7 +256,7 @@ namespace OLLMchat.Settings
 			});
 
 			this.rows.set(url, row);
-			this.list.append(row.expander);
+			this.boxed_list.append(row.expander);
 		}
 
 
