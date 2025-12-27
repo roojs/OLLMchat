@@ -218,6 +218,12 @@ namespace OLLMchat.Settings
 		 * The value widget (SpinButton, Entry, etc.) that should be shown/hidden.
 		 */
 		protected Gtk.Widget? value_widget { get; set; }
+		
+		/**
+		 * The property name in Options object (e.g., "temperature", "num_ctx").
+		 * Also used to match parameter names from model's parameters string.
+		 */
+		public string property_name { get; set; default = ""; }
 
 		/**
 		 * Checks if the current value is in default/auto state (unset).
