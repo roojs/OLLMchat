@@ -166,14 +166,6 @@ namespace OLLMchat.Settings
 			this.expander.add_row(buttonRow);
 		}
 
-		/**
-		 * Updates the expander row title and subtitle.
-		 */
-		public void updateTitle(string name, string url)
-		{
-			this.expander.title = name;
-			this.expander.subtitle = url;
-		}
 
 		/**
 		 * Removes the unverified CSS class from all fields.
