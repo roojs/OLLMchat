@@ -21,15 +21,22 @@ namespace OLLMchat.Settings
 	/**
 	 * Loading status information for a model pull operation.
 	 * 
+	 * Combines both runtime tracking and persistence data.
+	 * 
 	 * @since 1.3.4
 	 */
 	private class LoadingStatus : GLib.Object, Json.Serializable
 	{
+		// Persistence fields (saved to JSON)
 		public string status { get; set; default = ""; }
 		public int progress { get; set; default = 0; }
 		public string started { get; set; default = ""; }
 		public string error { get; set; default = ""; }
 		public string last_chunk_status { get; set; default = ""; }
+		
+		// Runtime fields (not serialized)
+		public bool active = false;
+		public int64 last_update_time = 0;
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -50,6 +57,10 @@ namespace OLLMchat.Settings
 		
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Don't serialize runtime-only fields
+			if (property_name == "active" || property_name == "last_update_time") {
+				return null;
+			}
 			// Only serialize error if it's not empty
 			if (property_name == "error" && value.get_string() == "") {
 				return null;
@@ -60,19 +71,6 @@ namespace OLLMchat.Settings
 			}
 			return default_serialize_property(property_name, value, pspec);
 		}
-	}
-	
-	/**
-	 * Information about an active pull operation.
-	 * 
-	 * @since 1.3.4
-	 */
-	private class PullInfo
-	{
-		public bool active = false;
-		public int64 last_update_time = 0;
-		public string last_status = "";
-	}
 	}
 	
 	/**
@@ -120,12 +118,7 @@ namespace OLLMchat.Settings
 		private MainContext? background_context = null;
 		
 		/**
-		 * Map of model_name -> pull information
-		 */
-		private Gee.HashMap<string, PullInfo> pull_info;
-		
-		/**
-		 * Map of model_name -> loading status (in-memory cache)
+		 * Map of model_name -> loading status (runtime tracking and persistence)
 		 */
 		private Gee.HashMap<string, LoadingStatus> loading_status_cache;
 		
@@ -154,7 +147,6 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.pull_info = new Gee.HashMap<string, PullInfo>();
 			this.loading_status_cache = new Gee.HashMap<string, LoadingStatus>();
 			
 			// Ensure data directory exists
@@ -180,8 +172,8 @@ namespace OLLMchat.Settings
 		public bool start_pull(string model_name, string connection_url)
 		{
 			// Check if already pulling
-			if (this.pull_info.has_key(model_name) && 
-			    this.pull_info.get(model_name).active) {
+			if (this.loading_status_cache.has_key(model_name) && 
+			    this.loading_status_cache.get(model_name).active) {
 				GLib.debug("Pull already in progress for model: %s", model_name);
 				return false;
 			}
@@ -195,15 +187,15 @@ namespace OLLMchat.Settings
 			// Ensure background thread is running
 			this.ensure_background_thread();
 			
-			// Get or create pull info
-			PullInfo info;
-			if (this.pull_info.has_key(model_name)) {
-				info = this.pull_info.get(model_name);
+			// Get or create status
+			LoadingStatus status_obj;
+			if (this.loading_status_cache.has_key(model_name)) {
+				status_obj = this.loading_status_cache.get(model_name);
 			} else {
-				info = new PullInfo();
-				this.pull_info.set(model_name, info);
+				status_obj = new LoadingStatus();
+				this.loading_status_cache.set(model_name, status_obj);
 			}
-			info.active = true;
+			status_obj.active = true;
 			
 			// Start pull operation in background thread
 			this.start_pull_async(model_name, this.app.config.connections.get(connection_url));
@@ -361,9 +353,8 @@ namespace OLLMchat.Settings
 				});
 				
 				// Clean up
-				if (this.pull_info.has_key(model_name)) {
-					var info = this.pull_info.get(model_name);
-					info.active = false;
+				if (this.loading_status_cache.has_key(model_name)) {
+					this.loading_status_cache.get(model_name).active = false;
 				}
 			});
 		}
