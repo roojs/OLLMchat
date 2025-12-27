@@ -32,6 +32,9 @@ namespace OLLMchat.Settings
 		/**
 		 * Signal emitted when status updates from pull operations.
 		 * 
+		 * Includes all status information needed for both state management
+		 * and rate-limited UI updates.
+		 * 
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param completed Bytes completed
@@ -39,17 +42,14 @@ namespace OLLMchat.Settings
 		 * @param last_chunk_status Last chunk status from API
 		 * @param retry_count Current retry count (updated by background thread)
 		 */
-		public signal void status_updated(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count);
-		
-		/**
-		 * Signal emitted for progress updates (rate-limited UI updates).
-		 * 
-		 * @param model_name Model name
-		 * @param status Status string
-		 * @param completed Bytes completed
-		 * @param total Total bytes
-		 */
-		public signal void progress_updated(string model_name, string status, int64 completed, int64 total);
+		public signal void status_updated(
+			string model_name,
+			string status,
+			int64 completed,
+			int64 total,
+			string last_chunk_status,
+			int retry_count
+		);
 		
 		/**
 		 * Application interface (provides config)
@@ -124,32 +124,6 @@ namespace OLLMchat.Settings
 			});
 		}
 		
-		/**
-		 * Emits progress_updated signal on the main thread.
-		 * 
-		 * This ensures signal handlers run in the main thread context,
-		 * which is required for UI updates and thread-safe data access.
-		 * 
-		 * Uses MainContext.invoke() to dispatch the signal emission to
-		 * the main thread's event loop.
-		 */
-		private void emit_progress_updated(
-			string model_name,
-			string status,
-			int64 completed,
-			int64 total
-		)
-		{
-			this.main_context.invoke(() => {
-				this.progress_updated(
-					model_name,
-					status,
-					completed,
-					total
-				);
-				return false;
-			});
-		}
 		
 		/**
 		 * Ensures the background thread is running.
@@ -290,6 +264,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify status update (dispatch to main thread)
+				// This single signal handles both state updates and rate-limited UI updates
 				this.emit_status_updated(
 					model_name,
 					local_status.status,
@@ -297,14 +272,6 @@ namespace OLLMchat.Settings
 					local_status.total,
 					local_status.last_chunk_status,
 					local_status.retry_count
-				);
-				
-				// Notify progress update (for rate-limited UI updates, dispatch to main thread)
-				this.emit_progress_updated(
-					model_name,
-					local_status.status,
-					local_status.completed,
-					local_status.total
 				);
 			});
 			
