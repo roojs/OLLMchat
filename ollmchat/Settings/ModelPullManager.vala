@@ -270,7 +270,7 @@ namespace OLLMchat.Settings
 			};
 			
 			// Update status in memory and write to file (start event)
-			this.update_loading_status(model_name, "pulling", 0, true);
+			this.update_loading_status(model_name, "pulling", 0, "pulling", true);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
@@ -315,7 +315,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Update status in memory (rate-limited file write)
-				this.update_loading_status(model_name, status, progress, false);
+				this.update_loading_status(model_name, status, progress, last_chunk_status, false);
 				
 				// Emit progress update (rate-limited via Idle.add)
 				this.schedule_progress_update(model_name, status, progress);
@@ -344,7 +344,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Update final status in memory and write to file (finish event)
-				this.update_loading_status(model_name, status, progress, true);
+				this.update_loading_status(model_name, status, progress, last_chunk_status, true);
 				
 				// Emit final update immediately (not rate-limited)
 				Idle.add(() => {
@@ -416,9 +416,10 @@ namespace OLLMchat.Settings
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param progress Progress percentage (0-100)
+		 * @param last_chunk_status Last chunk status from API
 		 * @param force_write If true, write immediately; if false, rate-limit to 5 minutes
 		 */
-		private void update_loading_status(string model_name, string status, int progress, bool force_write)
+		private void update_loading_status(string model_name, string status, int progress, string last_chunk_status, bool force_write)
 		{
 			// Get or create status object
 			LoadingStatus status_obj;
@@ -432,6 +433,9 @@ namespace OLLMchat.Settings
 			// Update fields
 			status_obj.status = status;
 			status_obj.progress = progress;
+			if (last_chunk_status != "") {
+				status_obj.last_chunk_status = last_chunk_status;
+			}
 			
 			// Set started timestamp if not already set
 			if (status_obj.started == "") {
