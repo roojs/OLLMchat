@@ -225,8 +225,7 @@ namespace OLLMchat.Response
 			// Update parameters if present in show response
 			// This will automatically trigger fill_from_model via the setter
 			if (source.parameters != null && source.parameters != "") {
-				this._parameters = source.parameters;
-				this.options.fill_from_model(this);
+				this.parameters = source.parameters;
 			}
 			
 			this.thaw_notify();
