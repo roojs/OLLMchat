@@ -190,7 +190,7 @@ namespace OLLMchat.Settings
 						this.model_complete(model_name);
 						this.loading_status_cache.unset(model_name);
 						this.write_to_file();
-						return;
+						return false;
 					}
 					
 					if (status == "failed") {
