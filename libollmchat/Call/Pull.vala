@@ -72,49 +72,7 @@ namespace OLLMchat.Call
 					
 					var response = Json.gobject_deserialize(typeof(Response.Pull), chunk_node) as Response.Pull;
 					if (response == null) {
-						GLib.warning("Failed to deserialize pull response chunk");var generator = new Json.Generator();
-						var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-						chunk_node.set_object(chunk);
-						generator.set_root(chunk_node);
-						var json_str = generator.to_data(null);
-						
-						var response = Json.gobject_from_data(typeof(Response.Pull), var generator = new Json.Generator();
-						var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-						chunk_node.set_object(chunk);
-						generator.set_root(chunk_node);
-						var json_str = generator.to_data(null);
-						
-						var response = Json.gobject_from_data(typeof(Response.Pull), var generator = new Json.Generator();
-						var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-						chunk_node.set_object(chunk);
-						generator.set_root(chunk_node);
-						var json_str = generator.to_data(null);
-						
-						var response = Json.gobject_from_data(typeof(Response.Pull), json_str, -1) as Response.Pull;
-						if (response == null) {
-							GLib.warning("Failed to deserialize pull response chunk");
-							return;
-						}
-						
-						response.client = this.client;
-						this.progress_chunk(response);
-					});json_str, -1) as Response.Pull;
-						if (response == null) {
-							GLib.warning("Failed to deserialize pull response chunk");
-							return;
-						}
-						
-						response.client = this.client;
-						this.progress_chunk(response);
-					});json_str, -1) as Response.Pull;
-						if (response == null) {
-							GLib.warning("Failed to deserialize pull response chunk");
-							return;
-						}
-						
-						response.client = this.client;
-						this.progress_chunk(response);
-					});
+						GLib.warning("Failed to deserialize pull response chunk");
 						return;
 					}
 					
