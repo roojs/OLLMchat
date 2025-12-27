@@ -34,20 +34,22 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
-		 * @param progress Progress percentage
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 * @param last_chunk_status Last chunk status from API
 		 * @param retry_count Current retry count (updated by background thread)
 		 */
-		public signal void status_updated(string model_name, string status, int progress, string last_chunk_status, int retry_count);
+		public signal void status_updated(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count);
 		
 		/**
 		 * Signal emitted for progress updates (rate-limited UI updates).
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
-		 * @param progress Progress percentage
+		 * @param completed Bytes completed
+		 * @param total Total bytes
 		 */
-		public signal void progress_updated(string model_name, string status, int progress);
+		public signal void progress_updated(string model_name, string status, int64 completed, int64 total);
 		
 		/**
 		 * Application interface (provides config)
@@ -216,10 +218,10 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify status update
-				this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
+				this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 				
 				// Notify progress update (for rate-limited UI updates)
-				this.progress_updated(model_name, local_status.status, local_status.progress);
+				this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 			});
 			
 			// Execute pull asynchronously
@@ -258,8 +260,8 @@ namespace OLLMchat.Settings
 					if (local_status.retry_count <= MAX_RETRIES) {
 						// Schedule retry
 						local_status.status = "pending-retry";
-						this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
-						this.progress_updated(model_name, local_status.status, local_status.progress);
+						this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
+						this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 						return;
 					}
 					
@@ -268,10 +270,10 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify final status update
-				this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
+				this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 				
 				// Notify final progress update
-				this.progress_updated(model_name, local_status.status, local_status.progress);
+				this.progress_updated(model_name, local_status.status, local_status.completed, local_status.total);
 			});
 		}
 	}
