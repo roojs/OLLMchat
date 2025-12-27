@@ -36,8 +36,9 @@ namespace OLLMchat.Settings
 		 * @param status Status string
 		 * @param progress Progress percentage
 		 * @param last_chunk_status Last chunk status from API
+		 * @param retry_count Current retry count (updated by background thread)
 		 */
-		public signal void status_updated(string model_name, string status, int progress, string last_chunk_status);
+		public signal void status_updated(string model_name, string status, int progress, string last_chunk_status, int retry_count);
 		
 		/**
 		 * Signal emitted for progress updates (rate-limited UI updates).
@@ -124,14 +125,14 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name to pull
 		 * @param connection Connection to use
-		 * @param status_obj LoadingStatus object (for tracking retry count)
+		 * @param initial_retry_count Initial retry count (from main thread status)
 		 */
-		public void start_pull(string model_name, OLLMchat.Settings.Connection connection, LoadingStatus status_obj)
+		public void start_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
 			// Schedule the pull operation in the background thread's context
 			var source = new IdleSource();
 			source.set_callback(() => {
-				this.execute_pull(model_name, connection, status_obj);
+				this.execute_pull(model_name, connection, initial_retry_count);
 				return false;
 			});
 			source.attach(this.background_context);
@@ -142,9 +143,9 @@ namespace OLLMchat.Settings
 		 * 
 		 * @param model_name Model name to pull
 		 * @param connection Connection to use
-		 * @param status_obj LoadingStatus object (for tracking retry count)
+		 * @param initial_retry_count Initial retry count
 		 */
-		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection, LoadingStatus status_obj)
+		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
