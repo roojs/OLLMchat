@@ -137,6 +137,10 @@ namespace OLLMchat.Settings
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
 				GLib.debug("load_defaults: Processing row.name = '%s'", row.name);
+				// Convert underscore to hyphen for GObject property name
+				var property_name = row.name.replace("_", "-");
+				GLib.debug("load_defaults: Using property_name = '%s'", property_name);
+				
 				// Use switch case on property name to set default values
 				switch (row.name) {
 					// Integer properties
@@ -145,7 +149,7 @@ namespace OLLMchat.Settings
 					case "num_predict":
 					case "num_ctx":
 						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
 						GLib.debug("load_defaults: %s = %d", row.name, int_val);
 						if (int_val != -1) {
@@ -158,7 +162,7 @@ namespace OLLMchat.Settings
 					case "top_p":
 					case "min_p":
 						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();
 						GLib.debug("load_defaults: %s = %f", row.name, double_val);
 						if (double_val != -1.0) {
