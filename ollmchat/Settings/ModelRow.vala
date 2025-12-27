@@ -136,6 +136,7 @@ namespace OLLMchat.Settings
 			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
+				GLib.debug("load_defaults: Processing row.name = '%s'", row.name);
 				// Use switch case on property name to set default values
 				switch (row.name) {
 					// Integer properties
