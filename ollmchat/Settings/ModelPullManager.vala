@@ -275,14 +275,28 @@ namespace OLLMchat.Settings
 			// Track progress
 			int progress = 0;
 			string status = "pulling";
+			string last_chunk_status = "pulling";
 			int64 completed = 0;
 			int64 total = 0;
+			bool saw_success = false;
 			
 			// Connect to progress signal
 			pull_call.progress_chunk.connect((chunk) => {
-				// Parse status
+				// Parse status from chunk
 				if (chunk.has_member("status")) {
-					status = chunk.get_string_member("status");
+					last_chunk_status = chunk.get_string_member("status");
+					
+					// Track if we saw success status
+					if (last_chunk_status == "success") {
+						saw_success = true;
+						status = "complete";
+						progress = 100;
+					} else if (last_chunk_status.has_prefix("error") || last_chunk_status == "failed") {
+						status = "error";
+					} else {
+						// Keep pulling status for other statuses
+						status = "pulling";
+					}
 				}
 				
 				// Parse progress (completed/total)
@@ -300,43 +314,28 @@ namespace OLLMchat.Settings
 				
 				// Emit progress update (rate-limited via Idle.add)
 				this.schedule_progress_update(model_name, status, progress);
-				
-				// Check for completion or error
-				if (chunk.has_member("status")) {
-					var chunk_status = chunk.get_string_member("status");
-					if (chunk_status == "success") {
-						status = "complete";
-						progress = 100;
-					} else if (chunk_status.has_prefix("error") || chunk_status == "failed") {
-						status = "error";
-					}
-				}
 			});
 			
 			// Execute pull asynchronously
 			pull_call.exec_pull.begin((obj, res) => {
-				var cancelled = false;
-				
 				try {
 					pull_call.exec_pull.end(res);
 				} catch (GLib.IOError e) {
-					if (e.code == GLib.IOError.CANCELLED) {
-						cancelled = true;
-					} else {
-						status = "error";
-						GLib.warning("Pull failed for %s: %s", model_name, e.message);
-					}
+					// Treat all IO errors as errors (including CANCELLED - could be network issue)
+					status = "error";
+					GLib.warning("Pull failed for %s: %s", model_name, e.message);
 				} catch (Error e) {
 					status = "error";
 					GLib.warning("Pull failed for %s: %s", model_name, e.message);
 				}
 				
-				// Final status update
-				if (cancelled) {
-					status = "cancelled";
-				} else if (status != "error") {
+				// Final status update - only complete if we saw success in chunks
+				if (status != "error" && saw_success) {
 					status = "complete";
 					progress = 100;
+				} else if (status != "error") {
+					// If we didn't see success and no error was set, treat as error
+					status = "error";
 				}
 				
 				// Update final status in memory and write to file (finish event)
@@ -374,7 +373,7 @@ namespace OLLMchat.Settings
 			var last_status_value = this.last_status.get(model_name) ?? "";
 			
 			// Always emit final status updates
-			if (status == "complete" || status == "error" || status == "cancelled") {
+			if (status == "complete" || status == "error") {
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
 					return false;
