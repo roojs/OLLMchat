@@ -130,21 +130,7 @@ namespace OLLMchat.Settings
 		public string dropdown_markup {
 			owned get {
 				if (this.size != "" || this.context != "" || this.input != "") {
-					var parts = new Gee.ArrayList<string>();
-					if (this.size != "") {
-						parts.add(this.size);
-					}
-					if (this.context != "") {
-						parts.add("context " + this.context);
-					}
-					if (this.input != "") {
-						parts.add(this.input);
-					}
-					var details = string.joinv(" • ", parts.to_array());
-					return GLib.Markup.escape_text(this.name, -1) +
-					       " <span size='small' foreground='grey'>" +
-					       GLib.Markup.escape_text(details, -1) +
-					       "</span>";
+just 					       "</span>";
 				}
 				// Just escape the name if no details
 				return GLib.Markup.escape_text(this.name, -1);
