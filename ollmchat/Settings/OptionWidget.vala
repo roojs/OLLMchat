@@ -578,17 +578,21 @@ namespace OLLMchat.Settings
 		 */
 		protected override void reset_default()
 		{
-			// WRONG: This is only correct for scenario 3 (user clicking Auto button)
-			// When loading a saved new_value (scenario 2), we should NOT use default_value,
-			// we should use the actual saved new_value from Options
-			this.spin_button.value = this.default_value;
+			// This is called when user clicks "Auto" button (scenario 3)
+			// Use model_value if set, otherwise use hardcoded default_value
+			if (this.model_value != this.unset_value) {
+				this.spin_button.value = (double)this.model_value;
+			} else {
+				this.spin_button.value = this.default_value;
+			}
 		}
 		
 		/**
 		 * Sets the model's default value (only called by model, not user).
 		 * 
-		 * This updates default_value and the Auto button label to show the model's default.
-		 * This does NOT change the actual saved value in Options - it only affects:
+		 * This sets model_value and updates the Auto button label to show the model's default.
+		 * This does NOT change default_value (hardcoded default) or the actual saved value in Options.
+		 * It only affects:
 		 * - What label is shown on Auto button when value is unset
 		 * - What value appears in spin button when user clicks "Auto" to set custom value
 		 */
@@ -601,9 +605,8 @@ namespace OLLMchat.Settings
 			} else if (int_val > (int)this.max_value) {
 				int_val = (int)this.max_value;
 			}
-			// Update default_value to model's default (used when user clicks Auto button)
-			this.default_value = (double)int_val;
-			this.default_value_set = true;
+			// Set model_value to model's default (used when user clicks Auto button)
+			this.model_value = int_val;
 			string label_text = int_val.to_string();
 			// Update Auto button label to show model's default value
 			this.auto_button.label = label_text == "" ? "Auto" : label_text;
