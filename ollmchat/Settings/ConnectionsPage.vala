@@ -133,10 +133,7 @@ namespace OLLMchat.Settings
 		private async void verify_connection(string url)
 		{
 			var row = this.rows.get(url);
-			var newName = row.nameEntry.text.strip();
 			var newUrl = row.urlEntry.text.strip();
-			var newApiKey = row.apiKeyEntry.text.strip();
-			var newDefault = row.defaultSwitch.active;
 
 			if (newUrl == "") {
 				return;
@@ -144,11 +141,12 @@ namespace OLLMchat.Settings
 
 			try {
 				// Create Connection object with current values
+				var newName = row.nameEntry.text.strip();
 				var test_connection = new Connection() {
 					name = newName != "" ? newName : newUrl,
 					url = newUrl,
-					api_key = newApiKey,
-					is_default = newDefault
+					api_key = row.apiKeyEntry.text.strip(),
+					is_default = row.defaultSwitch.active
 				};
 
 				// NOTE: Client doesn't accept Connection yet - this will fail to compile until Client is updated
