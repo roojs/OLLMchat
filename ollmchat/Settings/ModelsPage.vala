@@ -196,6 +196,8 @@ namespace OLLMchat.Settings
 					config = this.settings_dialog.config
 				};
 				var models_list = yield client.models();
+				// Fetch detailed model info (including parameters) for all models
+				yield client.fetch_all_model_details();
 
 				// Sort models alphabetically by name (case-insensitive)
 				// Split by "/" and sort by the second part (model name) if present,
@@ -234,6 +236,12 @@ namespace OLLMchat.Settings
 					var composite_key = "%s#%s".printf(connection_url, model.name);
 					existing_keys.add(composite_key);
 
+					// Use detailed model from available_models if it exists (has parameters)
+					OLLMchat.Response.Model detailed_model = model;
+					if (client.available_models.has_key(model.name)) {
+						detailed_model = client.available_models.get(model.name);
+					}
+
 					// Get or create options
 					var options = new OLLMchat.Call.Options();
 					if (this.settings_dialog.config.model_options.has_key(model.name)) {
@@ -245,12 +253,14 @@ namespace OLLMchat.Settings
 					ModelRow model_row;
 					if (this.model_rows.has_key(composite_key)) {
 						model_row = this.model_rows.get(composite_key);
+						// Update the model reference in case it was updated with parameters
+						model_row.model = detailed_model;
 					// Update options in case config changed
 						model_row.load_options(options); 
 						model_row.visible = true;
 						continue;
 					} 
-					model_row = new ModelRow(model, connection, options, this);
+					model_row = new ModelRow(detailed_model, connection, options, this);
 					this.model_rows.set(composite_key, model_row);
 					this.boxed_list.append(model_row);
 					
