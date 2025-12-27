@@ -128,9 +128,6 @@ namespace OLLMchat.Settings
 		public void load_options_with_model_defaults(OLLMchat.Call.Options options, OLLMchat.Call.Options model_options)
 		{
 			foreach (var row in this.rows) {
-				// Get the default value from model.options
-				string? param_value = null;
-				
 				// Use switch case on property name
 				switch (row.property_name) {
 					// Integer properties
@@ -141,8 +138,14 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(int));
 						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
 						var int_val = model_value.get_int();
+						string? param_value = null;
 						if (int_val != -1) {
 							param_value = int_val.to_string();
+						}
+						if (row is OptionIntWidget) {
+							(row as OptionIntWidget).load_options_with_parameter(options, param_value);
+						} else {
+							row.load_options(options);
 						}
 						break;
 					
@@ -153,21 +156,20 @@ namespace OLLMchat.Settings
 						Value model_value = Value(typeof(double));
 						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
 						var double_val = model_value.get_double();
+						string? param_value = null;
 						if (double_val != -1.0) {
 							param_value = double_val.to_string();
+						}
+						if (row is OptionFloatWidget) {
+							(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
+						} else {
+							row.load_options(options);
 						}
 						break;
 					
 					default:
+						row.load_options(options);
 						break;
-				}
-				
-				if (row is OptionFloatWidget) {
-					(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
-				} else if (row is OptionIntWidget) {
-					(row as OptionIntWidget).load_options_with_parameter(options, param_value);
-				} else {
-					row.load_options(options);
 				}
 			}
 		}
