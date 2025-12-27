@@ -28,6 +28,21 @@ namespace OLLMchat.Settings
 	public class ConnectionRow : Object
 	{
 		/**
+		 * Emitted when the remove button is clicked.
+		 */
+		public signal void remove_requested();
+
+		/**
+		 * Emitted when the verify button is clicked.
+		 */
+		public signal void verify_requested();
+
+		/**
+		 * The connection URL (used to identify this row)
+		 */
+		public string url { get; construct; }
+
+		/**
 		 * The expander row containing all connection fields
 		 */
 		public Adw.ExpanderRow expander { get; private set; }
