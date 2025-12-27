@@ -107,6 +107,11 @@ namespace OLLMchat.Settings
 		private Gee.HashMap<string, bool> active_pulls;
 		
 		/**
+		 * Map of model_name -> loading status (in-memory cache)
+		 */
+		private Gee.HashMap<string, LoadingStatus> loading_status_cache;
+		
+		/**
 		 * Map of model_name -> last update timestamp (for rate limiting)
 		 */
 		private Gee.HashMap<string, int64> last_update_time;
@@ -117,9 +122,19 @@ namespace OLLMchat.Settings
 		private Gee.HashMap<string, string> last_status;
 		
 		/**
+		 * Timestamp of last file write
+		 */
+		private int64 last_file_write_time = 0;
+		
+		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
 		 */
 		private const int64 UPDATE_RATE_LIMIT_SECONDS = 2;
+		
+		/**
+		 * Rate limit: minimum seconds between file writes (except for start/finish)
+		 */
+		private const int64 FILE_WRITE_RATE_LIMIT_SECONDS = 300; // 5 minutes
 		
 		/**
 		 * Creates a new ModelPullManager.
@@ -132,6 +147,7 @@ namespace OLLMchat.Settings
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
 			this.active_pulls = new Gee.HashMap<string, bool>();
+			this.loading_status_cache = new Gee.HashMap<string, LoadingStatus>();
 			this.last_update_time = new Gee.HashMap<string, int64>();
 			this.last_status = new Gee.HashMap<string, string>();
 			
@@ -141,6 +157,9 @@ namespace OLLMchat.Settings
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to ensure data directory exists: %s", e.message);
 			}
+			
+			// Load existing status from file
+			this.load_from_file();
 		}
 		
 		/**
@@ -245,8 +264,8 @@ namespace OLLMchat.Settings
 				config = this.app.config
 			};
 			
-			// Write initial status to loading.json
-			this.write_loading_status(model_name, "pulling", 0);
+			// Update status in memory and write to file (start event)
+			this.update_loading_status(model_name, "pulling", 0, true);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
@@ -276,8 +295,8 @@ namespace OLLMchat.Settings
 					}
 				}
 				
-				// Update loading.json with progress
-				this.write_loading_status(model_name, status, progress);
+				// Update status in memory (rate-limited file write)
+				this.update_loading_status(model_name, status, progress, false);
 				
 				// Emit progress update (rate-limited via Idle.add)
 				this.schedule_progress_update(model_name, status, progress);
@@ -320,8 +339,8 @@ namespace OLLMchat.Settings
 					progress = 100;
 				}
 				
-				// Write final status
-				this.write_loading_status(model_name, status, progress);
+				// Update final status in memory and write to file (finish event)
+				this.update_loading_status(model_name, status, progress, true);
 				
 				// Emit final update immediately (not rate-limited)
 				Idle.add(() => {
