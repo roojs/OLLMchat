@@ -39,7 +39,7 @@ namespace OLLMchat.Settings
 		/**
 		 * List of all option rows managed by this widget.
 		 */
-		private Gee.ArrayList<OptionRow> rows = new Gee.ArrayList<OptionRow>();
+		public Gee.ArrayList<OptionRow> rows = new Gee.ArrayList<OptionRow>();
 
 		public OptionsWidget()
 		{
@@ -125,44 +125,6 @@ namespace OLLMchat.Settings
 		 * @param options Options object to read values from (user's custom options)
 		 * @param model_options Optional model's default options (from model.options)
 		 */
-		public void load_options_with_model_defaults(OLLMchat.Call.Options options, OLLMchat.Call.Options model_options)
-		{
-			foreach (var row in this.rows) {
-				// Use switch case on property name
-				switch (row.property_name) {
-					// Integer properties
-					case "seed":
-					case "top_k":
-					case "num_predict":
-					case "num_ctx":
-						Value model_value = Value(typeof(int));
-						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-						var int_val = model_value.get_int();
-						if (int_val != -1) {
-							row.set_value(model_value);
-						}
-						row.load_options(options);
-						break;
-					
-					// Double properties
-					case "temperature":
-					case "top_p":
-					case "min_p":
-						Value model_value = Value(typeof(double));
-						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-						var double_val = model_value.get_double();
-						if (double_val != -1.0) {
-							row.set_value(model_value);
-						}
-						row.load_options(options);
-						break;
-					
-					default:
-						row.load_options(options);
-						break;
-				}
-			}
-		}
 
 		public void save_options(OLLMchat.Call.Options options)
 		{
@@ -254,11 +216,11 @@ namespace OLLMchat.Settings
 		protected abstract void reset_default();
 
 		/**
-		 * Sets the default value from a Value object.
+		 * Loads the default value from a Value object.
 		 * 
 		 * @param value The Value object containing the default value
 		 */
-		public abstract void set_value(Value value);
+		public abstract void load_defaults(Value value);
 
 		protected Gtk.Button auto_button;
 		protected Gtk.Button clear_button;
@@ -537,7 +499,7 @@ namespace OLLMchat.Settings
 			this.spin_button.value = this.default_value;
 		}
 		
-		public override void set_value(Value value)
+		public override void load_defaults(Value value)
 		{
 			var int_val = value.get_int();
 			// Clamp to valid range

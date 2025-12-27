@@ -132,7 +132,41 @@ namespace OLLMchat.Settings
 		private void load_options_with_parameters()
 		{
 			// Use model.options for default values (automatically filled from parameters)
-			this.models_page.options_widget.load_options_with_model_defaults(this.options, this.model.options);
+			foreach (var row in this.models_page.options_widget.rows) {
+				// Use switch case on property name
+				switch (row.property_name) {
+					// Integer properties
+					case "seed":
+					case "top_k":
+					case "num_predict":
+					case "num_ctx":
+						Value model_value = Value(typeof(int));
+						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
+						var int_val = model_value.get_int();
+						if (int_val != -1) {
+							row.load_defaults(model_value);
+						}
+						row.load_options(this.options);
+						break;
+					
+					// Double properties
+					case "temperature":
+					case "top_p":
+					case "min_p":
+						Value model_value = Value(typeof(double));
+						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
+						var double_val = model_value.get_double();
+						if (double_val != -1.0) {
+							row.load_defaults(model_value);
+						}
+						row.load_options(this.options);
+						break;
+					
+					default:
+						row.load_options(this.options);
+						break;
+				}
+			}
 		}
 
 		/**
