@@ -406,8 +406,7 @@ namespace OLLMchat.Settings
 				
 				// Serialize each status object to JSON string
 				foreach (var entry in this.loading_status_cache.entries) {
-					json_parts[i] = Json.gobject_to_data(entry.value, null);
-					i++;
+					json_parts += Json.gobject_to_data(entry.value, null);
 				}
 				
 				// Join with commas and wrap in array brackets
