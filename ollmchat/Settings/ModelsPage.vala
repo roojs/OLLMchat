@@ -253,8 +253,8 @@ namespace OLLMchat.Settings
 					ModelRow model_row;
 					if (this.model_rows.has_key(composite_key)) {
 						model_row = this.model_rows.get(composite_key);
-						// Update the model reference in case it was updated with parameters
-						model_row.model = detailed_model;
+						// Note: model property is construct-only, so we can't update it
+						// But the model object itself should be updated via updateFrom() in show_model()
 					// Update options in case config changed
 						model_row.load_options(options); 
 						model_row.visible = true;
