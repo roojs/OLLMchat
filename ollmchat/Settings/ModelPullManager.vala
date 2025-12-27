@@ -345,6 +345,8 @@ namespace OLLMchat.Settings
 					if (status == "complete") {
 						this.model_complete(model_name);
 						this.loading_status_cache.unset(model_name);
+						// Write to file to remove completed entry
+						this.write_to_file();
 					}
 					
 					return false;
