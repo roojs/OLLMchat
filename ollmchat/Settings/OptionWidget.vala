@@ -399,17 +399,21 @@ namespace OLLMchat.Settings
 		 */
 		protected override void reset_default()
 		{
-			// WRONG: This is only correct for scenario 3 (user clicking Auto button)
-			// When loading a saved value (scenario 2), we should NOT use default_value,
-			// we should use the actual saved value from Options
-			this.spin_button.value = this.default_value;
+			// This is called when user clicks "Auto" button (scenario 3)
+			// Use model_value if set, otherwise use hardcoded default_value
+			if (this.model_value != this.unset_value) {
+				this.spin_button.value = this.model_value;
+			} else {
+				this.spin_button.value = this.default_value;
+			}
 		}
 		
 		/**
 		 * Sets the model's default value (only called by model, not user).
 		 * 
-		 * This updates default_value and the Auto button label to show the model's default.
-		 * This does NOT change the actual saved value in Options - it only affects:
+		 * This sets model_value and updates the Auto button label to show the model's default.
+		 * This does NOT change default_value (hardcoded default) or the actual saved value in Options.
+		 * It only affects:
 		 * - What label is shown on Auto button when value is unset
 		 * - What value appears in spin button when user clicks "Auto" to set custom value
 		 */
@@ -422,8 +426,8 @@ namespace OLLMchat.Settings
 			} else if (double_val > this.max_value) {
 				double_val = this.max_value;
 			}
-			// Update default_value to model's default (used when user clicks Auto button)
-			this.default_value = double_val;
+			// Set model_value to model's default (used when user clicks Auto button)
+			this.model_value = double_val;
 			// Format the value for display based on digits
 			string formatted = "%.*f".printf((int)this.digits, double_val);
 			// Update Auto button label to show model's default value
@@ -498,9 +502,9 @@ namespace OLLMchat.Settings
 		public double max_value { get; set; }
 		public double step_value { get; set; default = 1.0; }
 		public uint digits { get; set; default = 0; }
-		public double default_value { get; set; }
+		public double default_value { get; set; }  // Hardcoded default (never changes)
+		public int model_value { get; set; default = -1; }   // Model's default value (set via set_value(), defaults to unset_value if not set)
 		public int unset_value { get; set; default = -1; }
-		private bool default_value_set = false;
 
 		private Gtk.SpinButton spin_button;
 
