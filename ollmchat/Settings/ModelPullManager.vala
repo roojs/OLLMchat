@@ -200,7 +200,7 @@ namespace OLLMchat.Settings
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
-				this.schedule_retry(model_name, progress, last_chunk_status);
+				this.schedule_retry(model_name);
 				return;
 			}
 			
@@ -254,7 +254,7 @@ namespace OLLMchat.Settings
 		 * @param progress Current progress percentage
 		 * @param last_chunk_status Last chunk status from API
 		 */
-		private void schedule_retry(string model_name, int progress, string last_chunk_status)
+		private void schedule_retry(string model_name)
 		{
 			// Schedule retry from main thread (not background thread)
 			// Use Idle.add to schedule on main thread, then use Timeout.add_seconds
