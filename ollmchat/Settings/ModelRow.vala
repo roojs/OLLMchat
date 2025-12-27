@@ -133,7 +133,7 @@ namespace OLLMchat.Settings
 		{
 			// Use model.options for default values (automatically filled from parameters)
 			foreach (var row in this.models_page.options_widget.rows) {
-				// Use switch case on property name
+				// Use switch case on property name to set default values
 				switch (row.name) {
 					// Integer properties
 					case "seed":
@@ -146,7 +146,6 @@ namespace OLLMchat.Settings
 						if (int_val != -1) {
 							row.set_value(model_value);
 						}
-						row.load_options(this.options);
 						break;
 					
 					// Double properties
@@ -159,13 +158,13 @@ namespace OLLMchat.Settings
 						if (double_val != -1.0) {
 							row.set_value(model_value);
 						}
-						row.load_options(this.options);
 						break;
 					
 					default:
-						row.load_options(this.options);
 						break;
 				}
+				// Always load options after potentially setting defaults
+				row.load_options(this.options);
 			}
 		}
 
