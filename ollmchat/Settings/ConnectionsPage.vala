@@ -161,18 +161,16 @@ namespace OLLMchat.Settings
 				if (newUrl != url) {
 					this.dialog.config.connections.unset(url);
 					this.dialog.config.connections.set(newUrl, test_connection);
-					// Update expander row title/subtitle
-					row.expander.title = test_connection.name;
-					row.expander.subtitle = newUrl;
 					// Update tracking map
 					this.rows.set(newUrl, row);
 					this.rows.unset(url);
 				} else {
 					this.dialog.config.connections.set(url, test_connection);
-					// Update expander row title
-					row.expander.title = test_connection.name;
-					row.expander.subtitle = newUrl;
 				}
+
+				// Update expander row title/subtitle
+				row.expander.title = test_connection.name;
+				row.expander.subtitle = newUrl;
 
 				// Remove unverified CSS class from all fields
 				row.clearUnverified();
