@@ -285,19 +285,6 @@ namespace OLLMchat.Settings
 			this.auto_button.visible = true;
 		}
 		
-		/**
-		 * Sets the auto button label to show a parsed parameter value.
-		 * 
-		 * @param label_text The text to display on the auto button (e.g., "0.7" or "2048")
-		 */
-		public void set_auto_label(string? label_text)
-		{
-			if (label_text != null && label_text != "") {
-				this.auto_button.label = label_text;
-			} else {
-				this.auto_button.label = "Auto";
-			}
-		}
 
 		/**
 		 * Loads the widget's value from the options object.
