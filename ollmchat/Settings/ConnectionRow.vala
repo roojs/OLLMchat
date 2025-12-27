@@ -35,22 +35,22 @@ namespace OLLMchat.Settings
 		/**
 		 * Name entry field
 		 */
-		public Gtk.Entry nameEntry { get; private set; }
+		public Gtk.Entry nameEntry { get; set; }
 
 		/**
 		 * URL entry field
 		 */
-		public Gtk.Entry urlEntry { get; private set; }
+		public Gtk.Entry urlEntry { get; set; }
 
 		/**
 		 * API key entry field
 		 */
-		public Gtk.PasswordEntry apiKeyEntry { get; private set; }
+		public Gtk.PasswordEntry apiKeyEntry { get; set; }
 
 		/**
 		 * Default switch
 		 */
-		public Gtk.Switch defaultSwitch { get; private set; }
+		public Gtk.Switch defaultSwitch { get; set; }
 
 		/**
 		 * Remove button
@@ -166,18 +166,6 @@ namespace OLLMchat.Settings
 			this.expander.add_row(buttonRow);
 		}
 
-		/**
-		 * Gets the current values from the widgets.
-		 * 
-		 * @return Tuple of (name, url, api_key, is_default)
-		 */
-		public void getValues(out string name, out string url, out string apiKey, out bool isDefault)
-		{
-			name = this.nameEntry.text.strip();
-			url = this.urlEntry.text.strip();
-			apiKey = this.apiKeyEntry.text.strip();
-			isDefault = this.defaultSwitch.active;
-		}
 
 		/**
 		 * Updates the expander row title and subtitle.

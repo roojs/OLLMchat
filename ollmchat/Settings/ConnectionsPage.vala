@@ -133,9 +133,10 @@ namespace OLLMchat.Settings
 		private async void verify_connection(string url)
 		{
 			var row = this.rows.get(url);
-			string newName, newUrl, newApiKey;
-			bool newDefault;
-			row.getValues(out newName, out newUrl, out newApiKey, out newDefault);
+			var newName = row.nameEntry.text.strip();
+			var newUrl = row.urlEntry.text.strip();
+			var newApiKey = row.apiKeyEntry.text.strip();
+			var newDefault = row.defaultSwitch.active;
 
 			if (newUrl == "") {
 				return;
