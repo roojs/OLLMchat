@@ -437,6 +437,12 @@ namespace OLLMchat.Settings
 		 * DISPLAY LOGIC:
 		 * - If new_value in Options is unset (new_value == unset_value): Show Auto button (with model default label if set_value() was called)
 		 * - If new_value in Options is set (new_value != unset_value): Show spin button with the actual saved new_value from Options (NOT default_value)
+		 * 
+		 * NOTE: We should reset default_value back to the hardcoded default at the start of this method,
+		 * because if a previous model set a default via set_value(), default_value would still have that value.
+		 * If the new model doesn't have a default, we want to use the hardcoded default, not the previous model's default.
+		 * However, we currently don't store the original hardcoded default, so we can't reset it properly.
+		 * This means switching from a model with a default to a model without a default will show the wrong default value.
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
