@@ -55,6 +55,16 @@ namespace OLLMchat.Settings
 		// Track previous visible child for activation/deactivation
 		// Initialized to dummy instance so we never have to check for null
 		private SettingsPage previous_visible_child { get; set; default = new SettingsPage(); }
+		
+		/**
+		 * Pull manager instance (shared across all pages)
+		 */
+		public PullManager pull_manager { get; private set; }
+		
+		/**
+		 * Progress banner for pull operations (displayed above action widgets)
+		 */
+		private PullManagerBanner progress_banner;
 
 		/**
 		 * Creates a new SettingsDialog.
@@ -95,6 +105,12 @@ namespace OLLMchat.Settings
 			this.viewport = this.scrolled_window.get_child() as Gtk.Viewport;
 			main_box.append(this.scrolled_window);
 			
+			// Create PullManager instance (shared across all pages)
+			this.pull_manager = new PullManager(this.app);
+			
+			// Create progress banner for pull operations
+			this.progress_banner = new PullManagerBanner(this.pull_manager);
+			
 			// Create action bar area (fixed at bottom, outside scrollable content)
 			this.action_bar_area = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				visible = false,
@@ -103,6 +119,9 @@ namespace OLLMchat.Settings
 				margin_top = 12,
 				margin_bottom = 12
 			};
+			// Add progress banner above action widgets (always visible when action bar area is visible)
+			this.action_bar_area.prepend(this.progress_banner);
+			this.progress_banner.visible = false;
 			main_box.append(this.action_bar_area);
 			
 			// Set main box as dialog content
@@ -140,6 +159,7 @@ namespace OLLMchat.Settings
 		 * Called when page changes.
 		 * 
 		 * Manages action widgets visibility in the action bar area.
+		 * Progress banner visibility is managed by PullManagerBanner itself.
 		 */
 		private void on_page_changed()
 		{

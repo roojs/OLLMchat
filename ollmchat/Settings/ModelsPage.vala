@@ -38,6 +38,7 @@ namespace OLLMchat.Settings
 		 * Current search filter text
 		 */
 		public string search_filter { get; private set; default = ""; }
+		
 
 		private Gtk.SearchBar search_bar;
 		private Gtk.SearchEntry search_entry;
@@ -482,6 +483,7 @@ namespace OLLMchat.Settings
 				}
 			});
 		}
+		
 
 	}
 }
