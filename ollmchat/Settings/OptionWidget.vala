@@ -385,7 +385,8 @@ namespace OLLMchat.Settings
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
 		 *    - Display: Show spin button with default_value as starting value
-		 *    - default_value may be model's default (if set via set_value()) or hardcoded default
+		 *    - If set_value() was called (model has default): Show model's default value
+		 *    - If set_value() was NOT called: Show hardcoded default value
 		 *    - This is the ONLY scenario where reset_default() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
