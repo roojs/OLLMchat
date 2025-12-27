@@ -55,7 +55,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Remove button
 		 */
-		public Gtk.Button removeButton { get; private set; }
+		public Gtk.Button removeButton { get; set; }
 
 		/**
 		 * Creates a new ConnectionRow with all widgets.
@@ -199,13 +199,6 @@ namespace OLLMchat.Settings
 			this.defaultSwitch.remove_css_class("oc-settings-unverified");
 		}
 
-		/**
-		 * Sets the visibility of the remove button.
-		 */
-		public void setRemoveVisible(bool visible)
-		{
-			this.removeButton.visible = visible;
-		}
 	}
 }
 

@@ -233,7 +233,7 @@ namespace OLLMchat.Settings
 					continue;
 				}
 				// Update Remove button visibility for existing row
-				this.rows.get(entry.key).setRemoveVisible(can_remove);
+				this.rows.get(entry.key).removeButton.visible = can_remove;
 			}
 		}
 
