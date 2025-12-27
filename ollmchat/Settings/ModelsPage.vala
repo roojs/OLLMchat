@@ -78,7 +78,6 @@ namespace OLLMchat.Settings
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
-			var action_box = this.action_widget as Gtk.Box;
 
 			// Create search bar (always visible)
 			this.search_bar = new Gtk.SearchBar();
@@ -95,7 +94,7 @@ namespace OLLMchat.Settings
 			// Make search bar always visible
 			this.search_bar.set_key_capture_widget(this);
 			this.search_bar.set_search_mode(true);
-			action_box.append(this.search_bar);
+			(this.action_widget as Gtk.Box).append(this.search_bar);
 
 			// Create Add Model button (placeholder - not implemented)
 			this.add_model_btn = new Gtk.Button.with_label("Add Model") {
@@ -103,7 +102,7 @@ namespace OLLMchat.Settings
 				sensitive = false,
 				tooltip_text = "Not yet implemented"
 			};
-			action_box.append(this.add_model_btn);
+			(this.action_widget as Gtk.Box).append(this.add_model_btn);
 
 			// Create Refresh button
 			this.refresh_btn = new Gtk.Button.with_label("Refresh") {
@@ -112,7 +111,7 @@ namespace OLLMchat.Settings
 			this.refresh_btn.clicked.connect(() => {
 				this.render_models.begin();
 			});
-			action_box.append(this.refresh_btn);
+			(this.action_widget as Gtk.Box).append(this.refresh_btn);
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {

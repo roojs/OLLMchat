@@ -65,14 +65,13 @@ namespace OLLMchat.Settings
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
-			var action_box = this.action_widget as Gtk.Box;
 
 			// Create Add Connection button
 			this.add_btn = new Gtk.Button.with_label("Add Connection") {
 				css_classes = {"suggested-action"}
 			};
 			this.add_btn.clicked.connect(this.add_connection);
-			action_box.append(this.add_btn);
+			(this.action_widget as Gtk.Box).append(this.add_btn);
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {
