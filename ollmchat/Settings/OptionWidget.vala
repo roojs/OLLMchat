@@ -458,13 +458,9 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Scenario 1: new_value is unset (default/empty)
-				// Show model_value in label if set, otherwise show "Auto"
-				if (this.model_value != this.unset_value) {
-					string formatted = "%.*f".printf((int)this.digits, this.model_value);
-					this.auto_button.label = formatted == "" ? "Auto" : formatted;
-				} else {
-					this.auto_button.label = "Auto";
-				}
+				// At this point, we don't know the model_value yet (set_model_value() is called after load_options())
+				// So just show "Auto" - the label will be updated by set_model_value() if the model has a default
+				this.auto_button.label = "Auto";
 				
 				this.reset_to_auto();
 				return;
@@ -632,13 +628,9 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Scenario 1: new_value is unset (default/empty)
-				// Show model_value in label if set, otherwise show "Auto"
-				if (this.model_value != this.unset_value) {
-					string label_text = "%d".printf(this.model_value);
-					this.auto_button.label = label_text == "" ? "Auto" : label_text;
-				} else {
-					this.auto_button.label = "Auto";
-				}
+				// At this point, we don't know the model_value yet (set_model_value() is called after load_options())
+				// So just show "Auto" - the label will be updated by set_model_value() if the model has a default
+				this.auto_button.label = "Auto";
 				this.reset_to_auto();
 			} else {
 				// Scenario 2: new_value is set (user has explicitly set a value)
