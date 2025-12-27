@@ -127,7 +127,6 @@ namespace OLLMchat.Settings
 				GLib.warning("Connection not found: %s", connection_url);
 				return false;
 			}
-			var connection = this.app.config.connections.get(connection_url);
 			
 			// Ensure background thread is running
 			this.ensure_background_thread();
@@ -136,7 +135,7 @@ namespace OLLMchat.Settings
 			this.active_pulls.set(model_name, true);
 			
 			// Start pull operation in background thread
-			this.start_pull_async(model_name, connection);
+			this.start_pull_async(model_name, this.app.config.connections.get(connection_url));
 			
 			return true;
 		}
@@ -189,7 +188,7 @@ namespace OLLMchat.Settings
 			var source = new IdleSource();
 			source.set_callback(() => {
 				this.execute_pull(model_name, connection);
-				return false; // Don't repeat
+				return false;
 			});
 			source.attach(this.background_context);
 		}
@@ -288,7 +287,7 @@ namespace OLLMchat.Settings
 				// Emit final update immediately (not rate-limited)
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
-					return false; // Don't repeat
+					return false;
 				});
 				
 				// Clean up
@@ -312,34 +311,38 @@ namespace OLLMchat.Settings
 		 */
 		private void schedule_progress_update(string model_name, string status, int progress)
 		{
-			var now = GLib.get_real_time() / 1000000; // Convert to seconds
+			var now = GLib.get_real_time() / 1000000;
 			var last_update = this.last_update_time.get(model_name) ?? 0;
 			var last_status_value = this.last_status.get(model_name) ?? "";
 			
-			// Check if we should emit update
-			bool should_emit = false;
-			
 			// Always emit final status updates
 			if (status == "complete" || status == "error" || status == "cancelled") {
-				should_emit = true;
-			}
-			// Emit if status changed
-			else if (status != last_status_value) {
-				should_emit = true;
-			}
-			// Emit if enough time has passed
-			else if ((now - last_update) >= UPDATE_RATE_LIMIT_SECONDS) {
-				should_emit = true;
-			}
-			
-			if (should_emit) {
-				// Schedule UI update via Idle.add
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
-					return false; // Don't repeat
+					return false;
 				});
-				
-				// Update tracking
+				this.last_update_time.set(model_name, now);
+				this.last_status.set(model_name, status);
+				return;
+			}
+			
+			// Emit if status changed
+			if (status != last_status_value) {
+				Idle.add(() => {
+					this.progress_updated(model_name, status, progress);
+					return false;
+				});
+				this.last_update_time.set(model_name, now);
+				this.last_status.set(model_name, status);
+				return;
+			}
+			
+			// Emit if enough time has passed
+			if ((now - last_update) >= UPDATE_RATE_LIMIT_SECONDS) {
+				Idle.add(() => {
+					this.progress_updated(model_name, status, progress);
+					return false;
+				});
 				this.last_update_time.set(model_name, now);
 				this.last_status.set(model_name, status);
 			}
@@ -359,8 +362,7 @@ namespace OLLMchat.Settings
 				var root = new Json.Node(Json.NodeType.OBJECT);
 				Json.Object? root_obj = null;
 				
-				var file = GLib.File.new_for_path(this.loading_json_path);
-				if (file.query_exists()) {
+				if (GLib.File.new_for_path(this.loading_json_path).query_exists()) {
 					try {
 						var parser = new Json.Parser();
 						parser.load_from_file(this.loading_json_path);
@@ -399,8 +401,7 @@ namespace OLLMchat.Settings
 				
 				// Set started timestamp if not already set
 				if (!model_obj.has_member("started")) {
-					var timestamp = GLib.get_real_time() / 1000000; // Convert to seconds
-					model_obj.set_string_member("started", timestamp.to_string());
+					model_obj.set_string_member("started", (GLib.get_real_time() / 1000000).to_string());
 				}
 				
 				// Add error message if status is error
