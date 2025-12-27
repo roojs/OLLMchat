@@ -314,6 +314,7 @@ namespace OLLMchat.Settings
 		public uint digits { get; set; }
 		public double default_value { get; set; }
 		public double auto_value { get; set; default = -1.0; }
+		private bool default_value_set = false;
 
 		private Gtk.SpinButton spin_button;
 
@@ -360,6 +361,7 @@ namespace OLLMchat.Settings
 				double_val = this.max_value;
 			}
 			this.default_value = double_val;
+			this.default_value_set = true;
 			// Format the value for display based on digits
 			string formatted = "%.*f".printf((int)this.digits, double_val);
 			this.auto_button.label = formatted == "" ? "Auto" : formatted;
@@ -376,8 +378,8 @@ namespace OLLMchat.Settings
 			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Value is unset, show Auto button with default value label if set
-				if (this.default_value != 0.7) { // Not the initial default
+				// Value is unset, show Auto button with default value label if set via set_value()
+				if (this.default_value_set) {
 					// Use the default value that was set via set_value()
 					string formatted = "%.*f".printf((int)this.digits, this.default_value);
 					this.auto_button.label = formatted == "" ? "Auto" : formatted;
@@ -419,6 +421,7 @@ namespace OLLMchat.Settings
 		public uint digits { get; set; default = 0; }
 		public double default_value { get; set; }
 		public int auto_value { get; set; default = -1; }
+		private bool default_value_set = false;
 
 		private Gtk.SpinButton spin_button;
 
@@ -465,6 +468,7 @@ namespace OLLMchat.Settings
 				int_val = (int)this.max_value;
 			}
 			this.default_value = (double)int_val;
+			this.default_value_set = true;
 			string label_text = int_val.to_string();
 			this.auto_button.label = label_text == "" ? "Auto" : label_text;
 		}
@@ -481,9 +485,8 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button with default value label if set via set_value()
-				// Check if default_value was changed from initial defaults
-				// If it was set via set_value(), use it for the label
-				if (this.default_value != 40.0 && this.default_value != 16384.0 && this.default_value != 42.0 && this.default_value != 1.0) {
+				if (this.default_value_set) {
+					// Use the default value that was set via set_value()
 					string label_text = "%d".printf((int)this.default_value);
 					this.auto_button.label = label_text == "" ? "Auto" : label_text;
 				} else {
