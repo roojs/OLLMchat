@@ -280,26 +280,10 @@ namespace OLLMchat.Settings
 		/**
 		 * Called when this page is deactivated (becomes hidden).
 		 * 
-		 * Collapses any expanded connection rows to prevent focus issues,
-		 * removes the action box and hides the action bar area.
+		 * Removes the action box and hides the action bar area.
 		 */
 		public override void on_deactivated()
 		{
-			// Defer collapse operation to idle callback to ensure GTK has finished
-			// processing the page switch before we try to collapse rows
-			// This prevents focus assertion failures when ExpanderRow (ListBoxRow) tries to grab focus
-			Idle.add_full(Priority.LOW, () => {
-				// Collapse any expanded connection rows to prevent focus issues
-				// when switching tabs (ExpanderRow extends ListBoxRow which can cause
-				// assertion failures if it tries to grab focus after being unparented)
-				foreach (var row in this.rows.values) {
-					if (row.expander.expanded) {
-						row.expander.expanded = false;
-					}
-				}
-				return false; // Don't repeat
-			});
-			
 			// Remove this page's action box
 			if (this.action_box.get_parent() != null) {
 				this.action_box.unparent();

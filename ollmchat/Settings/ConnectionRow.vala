@@ -98,8 +98,7 @@ namespace OLLMchat.Settings
 			this.nameEntry = new Gtk.Entry() {
 				text = connection.name,
 				vexpand = false,
-				valign = Gtk.Align.CENTER,
-				hexpand = true
+				valign = Gtk.Align.CENTER
 			};
 			this.nameEntry.changed.connect(() => {
 				this.nameEntry.add_css_class("oc-settings-unverified");
@@ -108,8 +107,7 @@ namespace OLLMchat.Settings
 			this.urlEntry = new Gtk.Entry() {
 				text = connection.url,
 				vexpand = false,
-				valign = Gtk.Align.CENTER,
-				hexpand = true
+				valign = Gtk.Align.CENTER
 			};
 			this.urlEntry.changed.connect(() => {
 				this.urlEntry.add_css_class("oc-settings-unverified");
@@ -118,8 +116,7 @@ namespace OLLMchat.Settings
 			this.apiKeyEntry = new Gtk.PasswordEntry() {
 				text = connection.api_key,
 				vexpand = false,
-				valign = Gtk.Align.CENTER,
-				hexpand = true
+				valign = Gtk.Align.CENTER
 			};
 			this.apiKeyEntry.changed.connect(() => {
 				this.apiKeyEntry.add_css_class("oc-settings-unverified");
@@ -134,63 +131,30 @@ namespace OLLMchat.Settings
 				this.defaultSwitch.add_css_class("oc-settings-unverified");
 			});
 
-			// Add form fields to expander row using Box layout instead of ActionRow
-			// to avoid ListBoxRow focus issues when switching tabs
-			var nameBox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 6,
-				margin_bottom = 6
+			// Add form fields to expander row
+			var nameRow = new Adw.ActionRow() {
+				title = "Name"
 			};
-			var nameLabel = new Gtk.Label("Name") {
-				halign = Gtk.Align.START,
-				width_request = 100
-			};
-			nameBox.append(nameLabel);
-			nameBox.append(this.nameEntry);
-			this.expander.add_row(nameBox);
+			nameRow.add_suffix(this.nameEntry);
+			this.expander.add_row(nameRow);
 
-			var urlBox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 6,
-				margin_bottom = 6
+			var urlRow = new Adw.ActionRow() {
+				title = "URL"
 			};
-			var urlLabel = new Gtk.Label("URL") {
-				halign = Gtk.Align.START,
-				width_request = 100
-			};
-			urlBox.append(urlLabel);
-			urlBox.append(this.urlEntry);
-			this.expander.add_row(urlBox);
+			urlRow.add_suffix(this.urlEntry);
+			this.expander.add_row(urlRow);
 
-			var apiKeyBox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 6,
-				margin_bottom = 6
+			var apiKeyRow = new Adw.ActionRow() {
+				title = "API Key"
 			};
-			var apiKeyLabel = new Gtk.Label("API Key") {
-				halign = Gtk.Align.START,
-				width_request = 100
-			};
-			apiKeyBox.append(apiKeyLabel);
-			apiKeyBox.append(this.apiKeyEntry);
-			this.expander.add_row(apiKeyBox);
+			apiKeyRow.add_suffix(this.apiKeyEntry);
+			this.expander.add_row(apiKeyRow);
 
-			var defaultBox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 12) {
-				margin_start = 12,
-				margin_end = 12,
-				margin_top = 6,
-				margin_bottom = 6
+			var defaultRow = new Adw.ActionRow() {
+				title = "Default"
 			};
-			var defaultLabel = new Gtk.Label("Default") {
-				halign = Gtk.Align.START,
-				width_request = 100
-			};
-			defaultBox.append(defaultLabel);
-			defaultBox.append(this.defaultSwitch);
-			this.expander.add_row(defaultBox);
+			defaultRow.add_suffix(this.defaultSwitch);
+			this.expander.add_row(defaultRow);
 
 			// Create action buttons at bottom
 			var buttonBox = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
@@ -225,8 +189,10 @@ namespace OLLMchat.Settings
 			});
 			buttonBox.append(verifyButton);
 
-			// Add button box as last row (no label needed for buttons)
-			this.expander.add_row(buttonBox);
+			// Add button box as last row
+			var buttonRow = new Adw.ActionRow();
+			buttonRow.add_suffix(buttonBox);
+			this.expander.add_row(buttonRow);
 		}
 
 		/**
