@@ -102,10 +102,24 @@ namespace OLLMchat.Settings
 		 * Uses MainContext.invoke() to dispatch the signal emission to
 		 * the main thread's event loop.
 		 */
-		private void emit_status_updated(string model_name, string status, int64 completed, int64 total, string last_chunk_status, int retry_count)
+		private void emit_status_updated(
+			string model_name,
+			string status,
+			int64 completed,
+			int64 total,
+			string last_chunk_status,
+			int retry_count
+		)
 		{
 			this.main_context.invoke(() => {
-				this.status_updated(model_name, status, completed, total, last_chunk_status, retry_count);
+				this.status_updated(
+					model_name,
+					status,
+					completed,
+					total,
+					last_chunk_status,
+					retry_count
+				);
 				return false;
 			});
 		}
@@ -119,10 +133,20 @@ namespace OLLMchat.Settings
 		 * Uses MainContext.invoke() to dispatch the signal emission to
 		 * the main thread's event loop.
 		 */
-		private void emit_progress_updated(string model_name, string status, int64 completed, int64 total)
+		private void emit_progress_updated(
+			string model_name,
+			string status,
+			int64 completed,
+			int64 total
+		)
 		{
 			this.main_context.invoke(() => {
-				this.progress_updated(model_name, status, completed, total);
+				this.progress_updated(
+					model_name,
+					status,
+					completed,
+					total
+				);
 				return false;
 			});
 		}
