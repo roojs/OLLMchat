@@ -329,37 +329,33 @@ namespace OLLMchat.Settings
 			bool saw_success = false;
 			
 			// Connect to progress signal
-			pull_call.progress_chunk.connect((chunk) => {
+			pull_call.progress_chunk.connect((response) => {
 				// Reset retry count if we received data (means retry is working)
 				if (status_obj.retry_count > 0) {
 					status_obj.retry_count = 0;
 				}
 				
-				// Parse status from chunk
-				if (chunk.has_member("status")) {
-					last_chunk_status = chunk.get_string_member("status");
-					
-					// Track if we saw success status
-					if (last_chunk_status == "success") {
-						saw_success = true;
-						status = "complete";
-						progress = 100;
-					} else if (last_chunk_status.has_prefix("error") || last_chunk_status == "failed") {
-						status = "error";
-					} else {
-						// Keep pulling status for other statuses
-						status = "pulling";
-					}
+				// Get status from response object
+				last_chunk_status = response.status;
+				
+				// Track if we saw success status
+				if (last_chunk_status == "success") {
+					saw_success = true;
+					status = "complete";
+					progress = 100;
+				} else if (last_chunk_status.has_prefix("error") || last_chunk_status == "failed") {
+					status = "error";
+				} else {
+					// Keep pulling status for other statuses
+					status = "pulling";
 				}
 				
-				// Parse progress (completed/total)
-				if (chunk.has_member("completed") && chunk.has_member("total")) {
-					completed = chunk.get_int_member("completed");
-					total = chunk.get_int_member("total");
-					
-					if (total > 0) {
-						progress = (int)(((double)completed / (double)total) * 100.0);
-					}
+				// Get progress from response object
+				completed = response.completed;
+				total = response.total;
+				
+				if (total > 0) {
+					progress = (int)(((double)completed / (double)total) * 100.0);
 				}
 				
 				// Update status in memory (rate-limited file write)
