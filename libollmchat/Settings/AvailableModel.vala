@@ -24,70 +24,119 @@ namespace OLLMchat.Settings
 	 * NOTE: This class is technically Ollama-specific, but is kept generic
 	 * for potential future use with other model providers.
 	 * 
-	 * The details object from the JSON response is flattened into
-	 * details_format and details_family properties.
+	 * Format: { "name": "gemma3", "description": "...", "tags": ["1b", "4b", ...] }
 	 */
 	public class AvailableModel : Object, Json.Serializable
 	{
 		/**
-		 * Model name with tag (e.g., "model-name:tag")
+		 * Model name (e.g., "gemma3", "qwen3")
 		 */
 		public string name { get; set; default = ""; }
 		
 		/**
-		 * Last modified timestamp (ISO 8601 format)
+		 * Model description
 		 */
-		public string last_modified { get; set; default = ""; }
+		public string description { get; set; default = ""; }
 		
 		/**
-		 * Model size in bytes
+		 * Array of model tags (can be strings or ModelTag objects)
 		 */
-		public int64 size { get; set; default = 0; }
+		public Gee.ArrayList<string> tags { get; set; default = new Gee.ArrayList<string>(); }
 		
 		/**
-		 * Model digest (SHA256 hash)
+		 * Array of ModelTag objects parsed from tags array
 		 */
-		public string digest { get; set; default = ""; }
+		public Gee.ArrayList<ModelTag> tag_objects { get; private set; default = new Gee.ArrayList<ModelTag>(); }
 		
 		/**
-		 * Model format (flattened from details.format)
+		 * Array of unique size display strings with context (e.g., ["7b (25GB - context 12K)", "34b (70GB - context 128K)"]).
+		 * Computed when tags are loaded.
 		 */
-		public string details_format { get; set; default = ""; }
+		public Gee.ArrayList<string> unique_sizes { get; private set; default = new Gee.ArrayList<string>(); }
 		
 		/**
-		 * Model family (flattened from details.family)
+		 * Array of model features (e.g., ["embedding", "vision"])
 		 */
-		public string details_family { get; set; default = ""; }
+		public Gee.ArrayList<string> features { get; set; default = new Gee.ArrayList<string>(); }
 		
 		/**
-		 * Formatted display string: "model_name size" (e.g., "llama3:8b 4.7GB" or "tinyllama 637MB").
+		 * Total number of downloads
+		 */
+		public int64 downloads { get; set; default = 0; }
+		
+		/**
+		 * Formatted display string: "name - description" (e.g., "gemma3 - The current, most capable model...").
 		 */
 		public string display {
 			owned get {
-				return this.name + " " + this.format_size(this.size);
+				if (this.description != "") {
+					return this.name + " - " + this.description;
+				}
+				return this.name;
 			}
 		}
 		
 		/**
-		 * Details object (used only for deserialization, flattened into details_format and details_family)
-		 * This property exists so the JSON deserializer recognizes the "details" key.
+		 * Pango markup string for displaying in the model list.
+		 * Includes name, description, sizes, features, and downloads.
 		 */
-		private Object? details { get; set; default = null; }
-		
-		/**
-		 * Formats size in bytes to GB (if >= 1GB) or MB (if < 1GB), showing 1 decimal place.
-		 */
-		private string format_size(int64 bytes)
-		{
-			const int64 GB = 1024 * 1024 * 1024;
-			const int64 MB = 1024 * 1024;
-			
-			if (bytes >= GB) {
-				var gb = (double)bytes / GB;
-				return "%.1fGB".printf(gb);
-			} else {
-				var mb = (double)bytes / MB;
-				return "%.1fMB".printf(mb);
+		public string list_markup {
+			owned get {
+				// Build pango markup: name + line break + small grey description + tags
+				var escaped_name = GLib.Markup.escape_text(this.name, -1);
+				var markup_builder = new StringBuilder();
+				markup_builder.append(escaped_name);
+				
+				// Add description if available
+				if (this.description != "") {
+					var escaped_desc = GLib.Markup.escape_text(this.description, -1);
+					markup_builder.append("\n<span size=\"small\" foreground=\"grey\">%s</span>".printf(escaped_desc));
+				}
+				
+				// Add size tags with styling (light yellow background, spaced)
+				// Show unique sizes (e.g., "7b", "34b") - context is shown in the size dropdown
+				if (this.unique_sizes.size > 0 || this.features.size > 0 || this.downloads > 0) {
+					markup_builder.append("\n");
+					bool first_item = true;
+					
+					// Display sizes with light yellow background
+					foreach (var size in this.unique_sizes) {
+						if (!first_item) {
+							markup_builder.append(" ");  // Space between items
+						}
+						var escaped_size = GLib.Markup.escape_text(size, -1);
+						// Light yellow background (#ffffcc or similar), with padding effect using spaces
+						markup_builder.append("<span background=\"#ffffcc\" size=\"small\"> %s </span>".printf(escaped_size));
+						first_item = false;
+					}
+					
+					// Display features with light cyan background
+					foreach (var feature in this.features) {
+						if (!first_item) {
+							markup_builder.append(" ");  // Space between items
+						}
+						var escaped_feature = GLib.Markup.escape_text(feature, -1);
+						// Light cyan background (#ccffff or similar), with padding effect using spaces
+						markup_builder.append("<span background=\"#ccffff\" size=\"small\"> %s </span>".printf(escaped_feature));
+						first_item = false;
+					}
+					
+					// Display downloads in small grey text
+					if (this.downloads > 0) {
+						string downloads_str;
+						if (this.downloads >= 1000000) {
+							downloads_str = "%.1fM pulls".printf((double)this.downloads / 1000000.0);
+						} else if (this.downloads >= 1000) {
+							downloads_str = "%.1fk pulls".printf((double)this.downloads / 1000.0);
+						} else {
+							downloads_str = "%s pulls".printf(this.downloads.to_string());
+						}
+						var escaped_downloads = GLib.Markup.escape_text(downloads_str, -1);
+						markup_builder.append(" <span size=\"small\" foreground=\"grey\">%s</span>".printf(escaped_downloads));
+					}
+				}
+				
+				return markup_builder.str;
 			}
 		}
 		
@@ -103,31 +152,161 @@ namespace OLLMchat.Settings
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Use default deserialization for properties other than "details"
-			if (property_name != "details") {
-				return default_deserialize_property(property_name, out value, pspec, property_node);
+			switch (property_name) {
+				case "tags":
+					var array = property_node.get_array();
+					for (int i = 0; i < array.get_length(); i++) {
+						var element = array.get_element(i);
+						var tag_obj = Json.gobject_deserialize(typeof(ModelTag), element) as ModelTag;
+						this.tag_objects.add(tag_obj);
+						// Also store name as string for compatibility
+						this.tags.add(tag_obj.name);
+					}
+					
+					// Compute unique sizes from tags
+					this.update_unique_sizes();
+					
+					// Set the value object (required for proper deserialization)
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.tags);
+					return true;
+					
+				case "features":
+					var features_array = property_node.get_array();
+					for (int i = 0; i < features_array.get_length(); i++) {
+						var element = features_array.get_element(i);
+						this.features.add(element.get_string());
+					}
+					
+					// Set the value object (required for proper deserialization)
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.features);
+					return true;
+					
+				default:
+					// Use default deserialization for other properties
+					return default_deserialize_property(property_name, out value, pspec, property_node);
+			}
+		}
+		
+		/**
+		 * Extracts the size part from a tag (before first dash, or whole tag if no dash).
+		 * Examples: "7b-instruct" -> "7b", "34b-chat" -> "34b", "1b" -> "1b"
+		 */
+		private string extract_size_part(string tag)
+		{
+			var dash_pos = tag.index_of_char('-');
+			if (dash_pos > 0) {
+				return tag.substring(0, dash_pos);
+			}
+			return tag;
+		}
+		
+		/**
+		 * Updates the unique_sizes list from the current tags.
+		 * Called automatically when tags are deserialized.
+		 * Stores just the size part (e.g., "7b", "34b") for display in the model list.
+		 * The full format with context is shown in the size dropdown via ModelTag.get_dropdown_display().
+		 */
+		private void update_unique_sizes()
+		{
+			this.unique_sizes.clear();
+			var seen_sizes = new Gee.HashSet<string>();
+			
+			// Process ModelTag objects - just extract unique size parts
+			foreach (var tag_obj in this.tag_objects) {
+				var size_part = this.extract_size_part(tag_obj.name);
+				if (!seen_sizes.contains(size_part)) {
+					seen_sizes.add(size_part);
+					// Store just the size part (e.g., "7b") - context is shown in size dropdown
+					this.unique_sizes.add(size_part);
+				}
+			}
+		}
+		
+		/**
+		 * Parses a tag string to extract the numeric size in billions.
+		 * Returns -1 if the tag cannot be parsed.
+		 * 
+		 * Note: Returns double to handle decimal values like "0.6b" and "1.7b".
+		 * If all tags are integers, this could be simplified to return int.
+		 * 
+		 * Examples:
+		 * - "1b" -> 1.0
+		 * - "4b" -> 4.0
+		 * - "12b" -> 12.0
+		 * - "27b" -> 27.0
+		 * - "235b" -> 235.0
+		 * - "0.6b" -> 0.6
+		 * - "1.7b" -> 1.7
+		 * - "1b-it-qat" -> 1.0 (extracts number before 'b')
+		 * - "1b-it-q4_K_M" -> 1.0 (extracts number before 'b')
+		 * - "12b-it-qat" -> 12.0 (extracts number before 'b')
+		 */
+		public double parse_tag_size(string tag)
+		{
+			// Extract the size part before any dashes or other suffixes
+			var cleaned = tag.strip();
+			
+			// Find the position of 'b' or 'B' (case insensitive)
+			int b_pos = -1;
+			for (int i = 0; i < cleaned.length; i++) {
+				if (cleaned[i] == 'b' || cleaned[i] == 'B') {
+					b_pos = i;
+					break;
+				}
 			}
 			
-			// Handle nested "details" object by flattening it
-			if (property_node.get_node_type() != Json.NodeType.OBJECT) {
-				return false;
+			if (b_pos <= 0) {
+				return -1; // No 'b' found or it's at the start
 			}
 			
-			var details_obj = property_node.get_object();
+			// Extract the number part before 'b'
+			var number_str = cleaned.substring(0, b_pos);
 			
-			// Extract format
-			if (details_obj.has_member("format")) {
-				this.details_format = details_obj.get_string_member("format");
+			// Check if string is empty or contains only whitespace
+			if (number_str.strip() == "") {
+				return -1;
 			}
 			
-			// Extract family
-			if (details_obj.has_member("family")) {
-				this.details_family = details_obj.get_string_member("family");
+			// Try to parse as double
+			double result = double.parse(number_str);
+			
+			// double.parse() returns 0.0 on parse failure, so we need to check
+			// if the string actually represents zero
+			if (result == 0.0) {
+				// Check if the string is actually "0" or starts with "0."
+				var stripped = number_str.strip();
+				if (stripped != "0" && !stripped.has_prefix("0.") && stripped != "0.0") {
+					return -1; // Parse failure
+				}
 			}
 			
-			// Return true to indicate we handled this property
-			value = Value(pspec.value_type);
-			return true;
+			return result;
+		}
+		
+		/**
+		 * Finds the largest tag that is less than the specified size (in billions).
+		 * Returns null if no such tag exists.
+		 * 
+		 * Works with both simple tags (e.g., "4b") and tags with suffixes
+		 * (e.g., "1b-it-qat", "1b-it-q4_K_M") by parsing the numeric size
+		 * from each tag before comparison.
+		 */
+		public string? find_largest_tag_below(double max_size_b)
+		{
+			string? best_tag = null;
+			double best_size = -1;
+			
+			foreach (var tag in this.tags) {
+				var size = this.parse_tag_size(tag);
+				if (size >= 0 && size < max_size_b && size > best_size) {
+					best_size = size;
+					best_tag = tag;
+				}
+			}
+			
+			return best_tag;
 		}
 	}
 }

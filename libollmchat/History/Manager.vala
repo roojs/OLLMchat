@@ -73,17 +73,16 @@ namespace OLLMchat.History
 		/**
 		 * Constructor.
 		 * 
-		 * @param config Config2 instance (required for creating base client and accessing title_model)
-		 * @param directory Directory where history files are stored (will create history subdirectory if needed)
+		 * @param app ApplicationInterface instance (provides config and data_dir)
 		 */
-		public Manager(Settings.Config2 config, string directory)
+		public Manager(OLLMchat.ApplicationInterface app)
 		{
-			if (directory == "") {
-				GLib.error("Manager: directory parameter cannot be empty");
+			if (app.data_dir == "") {
+				GLib.error("Manager: app.data_dir cannot be empty");
 			}
 			
 			// Use provided directory and append "history"
-			this.history_dir = GLib.Path.build_filename(directory, "history");
+			this.history_dir = GLib.Path.build_filename(app.data_dir, "history");
 			
 			// Create directory if it doesn't exist
 			var dir = GLib.File.new_for_path(this.history_dir);
@@ -103,10 +102,10 @@ namespace OLLMchat.History
 			Session.initDB(this.db);
 			
 			// Store config
-			this.config = config;
+			this.config = app.config;
 			
 			// Create base client from default_model usage
-			this.base_client = config.create_client("default_model");
+			this.base_client = app.config.create_client("default_model");
 			if (this.base_client == null) {
 				GLib.error("Manager: failed to create base client from default_model");
 			}

@@ -30,7 +30,7 @@ namespace OLLMchat.Settings
 	public class ModelsPage : SettingsPage
 	{
 		/**
-		 * Reference to parent SettingsDialog (which has the config object)
+		 * Reference to parent SettingsDialog (which has the app object)
 		 */
 		public SettingsDialog settings_dialog { get; construct; }
 
@@ -51,11 +51,12 @@ namespace OLLMchat.Settings
 		public Gee.HashMap<string, ModelRow> model_rows = new Gee.HashMap<string, ModelRow>();
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
+		private AddModelDialog? add_model_dialog = null;
 
 		/**
 		 * Creates a new ModelsPage.
 		 * 
-		 * @param settings_dialog Parent SettingsDialog (which has the config object)
+		 * @param settings_dialog Parent SettingsDialog (which has the app object)
 		 */
 		public ModelsPage(SettingsDialog settings_dialog)
 		{
@@ -95,17 +96,22 @@ namespace OLLMchat.Settings
 			this.search_bar.set_search_mode(true);
 			this.action_widget.append(this.search_bar);
 
-			// Create Add Model button (placeholder - not implemented)
+			// Create Add Model button
 			this.add_model_btn = new Gtk.Button.with_label("Add Model") {
 				css_classes = {"suggested-action"},
-				sensitive = false,
-				tooltip_text = "Not yet implemented"
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
+			this.add_model_btn.clicked.connect(() => {
+				this.show_add_model_dialog();
+			});
 			this.action_widget.append(this.add_model_btn);
 
 			// Create Refresh button
 			this.refresh_btn = new Gtk.Button.with_label("Refresh") {
-				css_classes = {"suggested-action"}
+				css_classes = {"suggested-action"},
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.refresh_btn.clicked.connect(() => {
 				this.render_models.begin();
@@ -162,7 +168,7 @@ namespace OLLMchat.Settings
 			this.show_loading(true);
 
 			// Update models for each connection
-			foreach (var entry in this.settings_dialog.config.connections.entries) {
+			foreach (var entry in this.settings_dialog.app.config.connections.entries) {
 				var connection = entry.value;
 				var connection_url = entry.key;
 				yield this.update_models(connection_url, connection);
@@ -189,7 +195,7 @@ namespace OLLMchat.Settings
 		{
 			try {
 				var client = new OLLMchat.Client(connection) {
-					config = this.settings_dialog.config
+					config = this.settings_dialog.app.config
 				};
 				var models_list = yield client.models();
 				// Fetch detailed model info (including parameters) for all models
@@ -240,8 +246,8 @@ namespace OLLMchat.Settings
 
 					// Get or create options
 					var options = new OLLMchat.Call.Options();
-					if (this.settings_dialog.config.model_options.has_key(model.name)) {
-						var config_options = this.settings_dialog.config.model_options.get(model.name);
+					if (this.settings_dialog.app.config.model_options.has_key(model.name)) {
+						var config_options = this.settings_dialog.app.config.model_options.get(model.name);
 						options = config_options.clone();
 					}
 
@@ -288,7 +294,7 @@ namespace OLLMchat.Settings
 		{
 			var headers_to_remove = new Gee.ArrayList<string>();
 			foreach (var key in this.section_headers.keys) {
-				if (!this.settings_dialog.config.connections.has_key(key)) {
+				if (!this.settings_dialog.app.config.connections.has_key(key)) {
 					headers_to_remove.add(key);
 				}
 			}
@@ -353,10 +359,10 @@ namespace OLLMchat.Settings
 		{
 			if (options.has_values()) {
 				// Save to config using model name only as key
-				this.settings_dialog.config.model_options.set(model_name, options.clone());
+				this.settings_dialog.app.config.model_options.set(model_name, options.clone());
 			} else {
 				// Remove from config if no values are set
-				this.settings_dialog.config.model_options.unset(model_name);
+				this.settings_dialog.app.config.model_options.unset(model_name);
 			}
 		}
 
@@ -455,6 +461,26 @@ namespace OLLMchat.Settings
 				vadjustment.lower,
 				vadjustment.upper - vadjustment.page_size
 			);
+		}
+		
+		/**
+		 * Shows the Add Model dialog.
+		 */
+		private void show_add_model_dialog()
+		{
+			// Create dialog if it doesn't exist
+			if (this.add_model_dialog == null) {
+				this.add_model_dialog = new AddModelDialog(this.settings_dialog);
+			}
+			
+			this.add_model_dialog.load.begin((obj, res) => {
+				try {
+					this.add_model_dialog.load.end(res);
+					this.add_model_dialog.present(this.settings_dialog);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to load AddModelDialog: %s", e.message);
+				}
+			});
 		}
 
 	}

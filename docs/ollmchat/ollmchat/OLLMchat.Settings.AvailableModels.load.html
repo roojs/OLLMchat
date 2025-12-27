@@ -33,10 +33,14 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.AvailableModels.cache_path.html">cache_path</a></li>
           <li class="property"><a href="OLLMchat.Settings.AvailableModels.data_dir.html">data_dir</a></li>
-          <li class="property"><a href="OLLMchat.Settings.AvailableModels.store.html">store</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.AvailableModels.AvailableModels.html">AvailableModels</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModels.append.html">append</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModels.get_item.html">get_item</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModels.get_item_type.html">get_item_type</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModels.get_n_items.html">get_n_items</a></li>
           <li class="method">load</li>
           <li class="method"><a href="OLLMchat.Settings.AvailableModels.refresh.html">refresh</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModels.remove_all.html">remove_all</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -46,13 +50,14 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">load</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Loads models from cache file, or refreshes if cache is missing/stale.</p>
+          <p>Loads models from cache file.</p>
+          <p>First checks for ollama-models.json in data_dir (if it exists), then falls back to cache file, then to resource.</p>
           <h2 class="main_title">Exceptions:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">Error</td>
               <td>
-                <p>if load or refresh fails </p>
+                <p>if load fails </p>
               </td>
             </tr>
           </table>

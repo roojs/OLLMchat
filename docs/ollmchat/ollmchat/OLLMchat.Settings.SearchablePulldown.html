@@ -31,34 +31,27 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Settings.SearchablePulldown.list.html">list</a></li>
           <li class="property"><a href="OLLMchat.Settings.SearchablePulldown.placeholder_text.html">placeholder_text</a></li>
           <li class="property"><a href="OLLMchat.Settings.SearchablePulldown.popup.html">popup</a></li>
           <li class="property"><a href="OLLMchat.Settings.SearchablePulldown.show_arrow.html">show_arrow</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.SearchablePulldown.SearchablePulldown.html">SearchablePulldown</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.create_factory.html">create_factory</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.dispose.html">dispose</a></li>
-          <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.get_item_store.html">get_item_store</a></li>
-          <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.get_selected_item.html">get_selected_item</a></li>
+          <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.get_search_text.html">get_search_text</a></li>
+          <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.get_selected_object.html">get_selected_object</a></li>
           <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.get_text.html">get_text</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.grab_focus.html">grab_focus</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.measure.html">measure</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.on_entry_changed.html">on_entry_changed</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.on_key_pressed.html">on_key_pressed</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.on_selected.html">on_selected</a></li>
           <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.set_popup_visible.html">set_popup_visible</a></li>
           <li class="method"><a href="OLLMchat.Settings.SearchablePulldown.set_text.html">set_text</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.size_allocate.html">size_allocate</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.SearchablePulldown.update_arrow.html">update_arrow</a></li>
           <li class="signal"><a href="OLLMchat.Settings.SearchablePulldown.item_selected.html">item_selected</a></li>
+          <li class="signal"><a href="OLLMchat.Settings.SearchablePulldown.search_changed.html">search_changed</a></li>
           <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.arrow.html">arrow</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.custom_filter.html">custom_filter</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.custom_sorter.html">custom_sorter</a></li>
           <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.entry.html">entry</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.filtered_items.html">filtered_items</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.item_store.html">item_store</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.list.html">list</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.selection.html">selection</a></li>
-          <li class="field"><a href="OLLMchat.Settings.SearchablePulldown.sorted_items.html">sorted_items</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -88,6 +81,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ListView</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.list.html" class="property">list</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.placeholder_text.html" class="property">placeholder_text</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Placeholder text for the entry.</span>
@@ -110,23 +107,17 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_type"><span class="class">ListItemFactory</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.create_factory.html" class="virtual_method">create_factory</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Create the factory for list items.</span>
-            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.dispose.html" class="virtual_method">dispose</a></b> ()
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">StringList</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.get_item_store.html" class="method">get_item_store</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.get_search_text.html" class="method">get_search_text</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Get the item store (allows external access to add/remove items).
-              </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the current entry text.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Settings.SearchablePulldown.get_selected_item.html" class="method">get_selected_item</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Object</span></span>? <b><a href="OLLMchat.Settings.SearchablePulldown.get_selected_object.html" class="method">get_selected_object</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Get the currently selected item string, or null if none selected.
-              </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the selected object from the list's selection model.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.get_text.html" class="method">get_text</a></b> ()
             </span>
@@ -148,12 +139,7 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Handle key press events.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.on_selected.html" class="virtual_method">on_selected</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Handle when an item is selected in dropdown (via click or Enter key).
-              </span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.set_popup_visible.html" class="method">set_popup_visible</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> visible)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.set_popup_visible.html" class="method">set_popup_visible</a></b> (<span class="main_basic_type"><span class="struct">bool</span></span> visible)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Set popover visibility.</span>
             </div></li>
@@ -172,9 +158,14 @@
         </ul>
         <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.item_selected.html" class="signal">item_selected</a></b> (<span class="main_basic_type"><span class="class">string</span></span>? item)
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.item_selected.html" class="signal">item_selected</a></b> (<span class="main_basic_type"><span class="struct">uint</span></span> position)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Signal emitted when an item is selected.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Signal emitted when an item is selected. Passes the row position so 
+                caller can get the item and handle placeholder and other actions.</span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.SearchablePulldown.search_changed.html" class="signal">search_changed</a></b> (<span class="main_basic_type"><span class="class">string</span></span> search_text)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Signal emitted when search text changes.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Fields:</h3>
@@ -183,43 +174,15 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">CustomFilter</span></span>? <b><a href="OLLMchat.Settings.SearchablePulldown.custom_filter.html" class="field">custom_filter</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">CustomSorter</span></span>? <b><a href="OLLMchat.Settings.SearchablePulldown.custom_sorter.html" class="field">custom_sorter</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">Entry</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.entry.html" class="field">entry</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">FilterListModel</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.filtered_items.html" class="field">filtered_items</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">StringList</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.item_store.html" class="field">item_store</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">ListView</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.list.html" class="field">list</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">SingleSelection</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.selection.html" class="field">selection</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_type"><span class="class">SortListModel</span></span> <b><a href="OLLMchat.Settings.SearchablePulldown.sorted_items.html" class="field">sorted_items</a></b>
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-176')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-176">
+          <div class="headline" onclick="toggle_box (this, 'box-content-186')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-186">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -462,8 +425,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-177')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-177">
+          <div class="headline" onclick="toggle_box (this, 'box-content-187')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-187">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -529,8 +492,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-178')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-178">
+          <div class="headline" onclick="toggle_box (this, 'box-content-188')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-188">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -566,8 +529,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-179')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-179">
+          <div class="headline" onclick="toggle_box (this, 'box-content-189')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-189">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>

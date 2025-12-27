@@ -27,10 +27,12 @@ ollmchat_resources = gnome.compile_resources(
 # Source files for OLLMchat namespace (needed by CodeAssistant)
 # Settings files must come first as they are used by other files
 ollmchat_ollama_src = files([
+  'ApplicationInterface.vala',
   'Settings/Connection.vala',
   'Settings/ModelUsage.vala',
   'Settings/Config1.vala',
   'Settings/Config2.vala',
+  'Settings/ModelTag.vala',
   'Settings/AvailableModel.vala',
   'Settings/AvailableModels.vala',
   'Call/Base.vala',

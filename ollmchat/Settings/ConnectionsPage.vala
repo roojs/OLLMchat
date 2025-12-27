@@ -30,7 +30,7 @@ namespace OLLMchat.Settings
 	public class ConnectionsPage : SettingsPage
 	{
 		/**
-		 * Reference to parent SettingsDialog (which has the config object)
+		 * Reference to parent SettingsDialog (which has the app object)
 		 */
 		public SettingsDialog dialog { get; construct; }
 
@@ -43,7 +43,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Creates a new ConnectionsPage.
 		 * 
-		 * @param dialog Parent SettingsDialog (which has the config object)
+		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
 		public ConnectionsPage(SettingsDialog dialog)
 		{
@@ -109,12 +109,12 @@ namespace OLLMchat.Settings
 		private void on_add_closed()
 		{
 			if (this.add_dialog.verified_connection != null) {
-				this.dialog.config.connections.set(
+				this.dialog.app.config.connections.set(
 					this.add_dialog.verified_connection.url,
 					this.add_dialog.verified_connection
 				);
 				this.render_connections();
-				this.dialog.config.save();
+				this.dialog.app.config.save();
 			}
 		}
 
@@ -158,13 +158,13 @@ namespace OLLMchat.Settings
 			// Update connection in config
 			// If URL changed, remove old entry and add new one
 			if (newUrl != url) {
-				this.dialog.config.connections.unset(url);
-				this.dialog.config.connections.set(newUrl, test_connection);
+				this.dialog.app.config.connections.unset(url);
+				this.dialog.app.config.connections.set(newUrl, test_connection);
 				// Update tracking map
 				this.rows.set(newUrl, row);
 				this.rows.unset(url);
 			} else {
-				this.dialog.config.connections.set(url, test_connection);
+				this.dialog.app.config.connections.set(url, test_connection);
 			}
 
 			// Update expander row title/subtitle
@@ -175,7 +175,7 @@ namespace OLLMchat.Settings
 			row.clearUnverified();
 
 			// Save config
-			this.dialog.config.save();
+			this.dialog.app.config.save();
 		}
 
 		/**
@@ -186,13 +186,13 @@ namespace OLLMchat.Settings
 		 */
 		private void remove_connection(string url)
 		{
-			if (this.dialog.config.connections.size <= 1) {
+			if (this.dialog.app.config.connections.size <= 1) {
 				return; // Cannot remove last connection
 			}
 
-			this.dialog.config.connections.unset(url);
+			this.dialog.app.config.connections.unset(url);
 			this.render_connections();
-			this.dialog.config.save();
+			this.dialog.app.config.save();
 		}
 
 		/**
@@ -204,12 +204,12 @@ namespace OLLMchat.Settings
 		 */
 		private void render_connections()
 		{
-			bool can_remove = this.dialog.config.connections.size > 1;
+			bool can_remove = this.dialog.app.config.connections.size > 1;
 
 			// Find and remove connections that no longer exist in config
 			var urls_to_remove = new Gee.ArrayList<string>();
 			foreach (var entry in this.rows.entries) {
-				if (!this.dialog.config.connections.has_key(entry.key)) {
+				if (!this.dialog.app.config.connections.has_key(entry.key)) {
 					urls_to_remove.add(entry.key);
 				}
 			}
@@ -220,7 +220,7 @@ namespace OLLMchat.Settings
 			}
 
 			// Add new connections that don't have rows yet
-			foreach (var entry in this.dialog.config.connections.entries) {
+			foreach (var entry in this.dialog.app.config.connections.entries) {
 				if (!this.rows.has_key(entry.key)) {
 					this.add_connection_row(entry.key, entry.value, can_remove);
 					continue;

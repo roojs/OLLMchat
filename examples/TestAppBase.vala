@@ -22,12 +22,15 @@
  * Handles common functionality like command-line options, config loading,
  * and client setup. Subclasses implement run_test() to perform the actual test.
  */
-public abstract class TestAppBase : Application
+	public abstract class TestAppBase : Application, OLLMchat.ApplicationInterface
 	{
 		protected static bool opt_debug = false;
 		protected static string? opt_url = null;
 		protected static string? opt_api_key = null;
 		protected static string? opt_model = null;
+		
+		public OLLMchat.Settings.Config2 config { get; set; }
+		public string data_dir { get; set; }
 		
 		protected const OptionEntry[] base_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
@@ -43,7 +46,21 @@ public abstract class TestAppBase : Application
 				application_id: application_id,
 				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 			);
+			
+			// Set up data_dir
+			this.data_dir = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
+			);
+			
+			// Load config after any type registrations (subclasses can override load_config)
+			this.config = this.load_config();
 		}
+		
+		public virtual OLLMchat.Settings.Config2 load_config()
+		{
+			return base_load_config();
+		}
+		
 		
 		protected override int command_line(ApplicationCommandLine command_line)
 		{
@@ -142,16 +159,8 @@ public abstract class TestAppBase : Application
 		 */
 		protected async OLLMchat.Client setup_client(ApplicationCommandLine command_line) throws Error
 		{
-			// Load Config2
-			// Create Config2 object before setting path (Vala bug workaround)
-			new OLLMchat.Settings.Config2();
-			
-			var config_dir = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".config", "ollmchat"
-			);
-			OLLMchat.Settings.Config2.config_path = GLib.Path.build_filename(config_dir, "config.2.json");
-			
-			var config = OLLMchat.Settings.Config2.load();
+			// Use config from interface
+			var config = this.config;
 			
 			OLLMchat.Client client;
 			

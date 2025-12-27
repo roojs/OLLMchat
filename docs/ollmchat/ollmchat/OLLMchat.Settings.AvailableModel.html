@@ -31,14 +31,19 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Settings.AvailableModel.details_family.html">details_family</a></li>
-          <li class="property"><a href="OLLMchat.Settings.AvailableModel.details_format.html">details_format</a></li>
-          <li class="property"><a href="OLLMchat.Settings.AvailableModel.digest.html">digest</a></li>
-          <li class="property"><a href="OLLMchat.Settings.AvailableModel.last_modified.html">last_modified</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.description.html">description</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.display.html">display</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.downloads.html">downloads</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.features.html">features</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.list_markup.html">list_markup</a></li>
           <li class="property"><a href="OLLMchat.Settings.AvailableModel.name.html">name</a></li>
-          <li class="property"><a href="OLLMchat.Settings.AvailableModel.size.html">size</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.tag_objects.html">tag_objects</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.tags.html">tags</a></li>
+          <li class="property"><a href="OLLMchat.Settings.AvailableModel.unique_sizes.html">unique_sizes</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.AvailableModel.AvailableModel.html">AvailableModel</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.AvailableModel.deserialize_property.html">deserialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModel.find_largest_tag_below.html">find_largest_tag_below</a></li>
+          <li class="method"><a href="OLLMchat.Settings.AvailableModel.parse_tag_size.html">parse_tag_size</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.AvailableModel.serialize_property.html">serialize_property</a></li>
         </ul>
       </div>
@@ -60,7 +65,7 @@
         <div class="description">
           <p>Represents an available model from the Ollama models cache.</p>
           <p>NOTE: This class is technically Ollama-specific, but is kept generic for potential future use with other model providers.</p>
-          <p>The details object from the JSON response is flattened into details_format and details_family properties.</p>
+          <p>Format: { "name": "gemma3", "description": "...", "tags": ["1b", "4b", ...] }</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Settings.html">OLLMchat.Settings</a>
         </div>
@@ -69,29 +74,44 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.details_family.html" class="property">details_family</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.description.html" class="property">description</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model family (flattened from details.family)</span>
+            <div class="leaf_brief_description"><span class="brief_description">Model description</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.details_format.html" class="property">details_format</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.display.html" class="property">display</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model format (flattened from details.format)</span>
+            <div class="leaf_brief_description"><span class="brief_description">Formatted display string: "name - description" (e.g., "gemma3 - The 
+                current, most capable model...").</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.digest.html" class="property">digest</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Settings.AvailableModel.downloads.html" class="property">downloads</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model digest (SHA256 hash)</span>
+            <div class="leaf_brief_description"><span class="brief_description">Total number of downloads</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.last_modified.html" class="property">last_modified</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Settings.AvailableModel.features.html" class="property">features</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Last modified timestamp (ISO 8601 format)</span>
+            <div class="leaf_brief_description"><span class="brief_description">Array of model features (e.g., ["embedding", "vision"])</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.list_markup.html" class="property">list_markup</a></b> { <span class="main_keyword">owned</span> <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Pango markup string for displaying in the model list. Includes name, 
+                description, sizes, features, and downloads.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.AvailableModel.name.html" class="property">name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model name with tag (e.g., "model-name:tag")</span>
+            <div class="leaf_brief_description"><span class="brief_description">Model name (e.g., "gemma3", "qwen3")</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Settings.AvailableModel.size.html" class="property">size</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Settings.ModelTag.html" class="class">ModelTag</a></span>&gt; <b><a href="OLLMchat.Settings.AvailableModel.tag_objects.html" class="property">tag_objects</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model size in bytes</span>
+            <div class="leaf_brief_description"><span class="brief_description">Array of ModelTag objects parsed from tags array</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Settings.AvailableModel.tags.html" class="property">tags</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Array of model tags (can be strings or ModelTag objects)</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Settings.AvailableModel.unique_sizes.html" class="property">unique_sizes</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Array of unique size display strings with context (e.g., ["7b (25GB - 
+                context 12K)", "34b (70GB - context 128K)"]). Computed when tags are loaded.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -107,6 +127,16 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Settings.AvailableModel.find_largest_tag_below.html" class="method">find_largest_tag_below</a></b> (<span class="main_basic_type"><span class="struct">double</span></span> max_size_b)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Finds the largest tag that is less than the specified size (in 
+                billions). Returns null if no such tag exists.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.AvailableModel.parse_tag_size.html" class="method">parse_tag_size</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tag)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Parses a tag string to extract the numeric size in billions. Returns -
+                1 if the tag cannot be parsed.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Settings.AvailableModel.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>
             <div class="leaf_brief_description">
@@ -114,8 +144,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-108')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-108">
+          <div class="headline" onclick="toggle_box (this, 'box-content-110')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-110">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -181,8 +211,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-109')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-109">
+          <div class="headline" onclick="toggle_box (this, 'box-content-111')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-111">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>

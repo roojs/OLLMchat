@@ -32,9 +32,9 @@ namespace OLLMchat.Settings
 	public class SettingsDialog : Adw.Dialog
 	{
 		/**
-		 * Reference to configuration object (contains connections map)
+		 * Application interface (provides config and data_dir)
 		 */
-		public OLLMchat.Settings.Config2 config { get; construct; }
+		public OLLMchat.ApplicationInterface app { get; construct; }
 		
 		private Settings.ConnectionsPage connections_page;
 		private Settings.ModelsPage models_page;
@@ -59,11 +59,11 @@ namespace OLLMchat.Settings
 		/**
 		 * Creates a new SettingsDialog.
 		 * 
-		 * @param config Configuration object (should be loaded by caller before creating dialog)
+		 * @param app ApplicationInterface instance (provides config and data_dir)
 		 */
-		public SettingsDialog(OLLMchat.Settings.Config2 config)
+		public SettingsDialog(OLLMchat.ApplicationInterface app)
 		{
-			Object(config: config);
+			Object(app: app);
 		
 			this.title = "Settings";
 			this.set_content_width(800);
@@ -108,15 +108,6 @@ namespace OLLMchat.Settings
 			// Set main box as dialog content
 			this.set_child(main_box);
 
-			// Create connections page
-			this.connections_page = new Settings.ConnectionsPage(this);
-			this.view_stack.add_titled(this.connections_page, 
-				this.connections_page.page_name, 
-				this.connections_page.page_title);
-			// Add action widget to action bar area (initially hidden)
-			this.action_bar_area.append(this.connections_page.action_widget);
-			this.connections_page.action_widget.visible = false;
-
 			// Create models page
 			this.models_page = new Settings.ModelsPage(this);
 			this.view_stack.add_titled(this.models_page,
@@ -125,6 +116,15 @@ namespace OLLMchat.Settings
 			// Add action widget to action bar area (initially hidden)
 			this.action_bar_area.append(this.models_page.action_widget);
 			this.models_page.action_widget.visible = false;
+
+			// Create connections page
+			this.connections_page = new Settings.ConnectionsPage(this);
+			this.view_stack.add_titled(this.connections_page, 
+				this.connections_page.page_name, 
+				this.connections_page.page_title);
+			// Add action widget to action bar area (initially hidden)
+			this.action_bar_area.append(this.connections_page.action_widget);
+			this.connections_page.action_widget.visible = false;
 			
 			// Connect to page visibility to show/hide action widgets
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
@@ -181,7 +181,7 @@ namespace OLLMchat.Settings
 			this.models_page.save_all_options();
 			
 			try {
-				this.config.save();
+				this.app.config.save();
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);
 			}

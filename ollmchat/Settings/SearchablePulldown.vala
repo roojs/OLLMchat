@@ -31,19 +31,26 @@ namespace OLLMchat.Settings
 		protected Gtk.Image? arrow;
 		public Gtk.Popover popup { get; private set; }
 		public Gtk.ListView list { get; private set; }
+		private Gtk.ScrolledWindow scrolled_window;
 		
 		// Track last search text
 		private string last_search_text = "";
 		
 		/**
 		 * Signal emitted when an item is selected.
-		 */l
-		public signal void item_selected(string? item);
+		 * Passes the row position so caller can get the item and handle placeholder and other actions.
+		 */
+		public signal void item_selected(uint position);
 		
 		/**
 		 * Placeholder text for the entry.
 		 */
 		public string placeholder_text { get; set; default = ""; }
+		
+		/**
+		 * Original placeholder text (stored to restore after selection).
+		 */
+		private string original_placeholder_text = "";
 		
 		/**
 		 * Whether to show the arrow button.
@@ -69,11 +76,11 @@ namespace OLLMchat.Settings
 		public Object? get_selected_object()
 		{
 			var model = this.list.model;
-			if (model == null || !(model is Gtk.SelectionModel)) {
+			if (model == null || !(model is Gtk.SingleSelection)) {
 				return null;
 			}
 			
-			var selection = model as Gtk.SelectionModel;
+			var selection = model as Gtk.SingleSelection;
 			var selected_pos = selection.selected;
 			if (selected_pos == Gtk.INVALID_LIST_POSITION) {
 				return null;
@@ -107,7 +114,9 @@ namespace OLLMchat.Settings
 			
 			// Create entry (text input)
 			this.entry = new Gtk.Entry() {
-				hexpand = true
+				hexpand = true,
+				vexpand = false,
+				valign = Gtk.Align.CENTER
 			};
 			this.entry.set_parent(this);
 			this.entry.placeholder_text = this.placeholder_text;
@@ -143,35 +152,38 @@ namespace OLLMchat.Settings
 			this.popup.add_css_class("menu");
 			
 			// Create scrolled window for list
-			var sw = new Gtk.ScrolledWindow() {
+			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hscrollbar_policy = Gtk.PolicyType.NEVER,
 				vscrollbar_policy = Gtk.PolicyType.AUTOMATIC,
 				max_content_height = 400,
 				propagate_natural_height = true,
 				propagate_natural_width = false,  // Prevent horizontal expansion
-				can_focus = false  // Don't allow scrolled window to receive focus
+				can_focus = false,  // Don't allow scrolled window to receive focus
+				hexpand = true,
+				vexpand = true
 			};
 			
 			// Create list view (model and factory must be set by caller)
 			// Enable single_click_activate so clicking activates items
-			this.list = new Gtk.ListView() {
+			this.list = new Gtk.ListView(null, null) {
 				single_click_activate = true,  // Click activates item
 				can_focus = false  // Don't allow list view to receive focus - keep focus on entry
 			};
 			// Connect to activate signal - this is called when user clicks an item
 			this.list.activate.connect((position) => {
 				this.set_popup_visible(false);
-				this.on_selected();
+				this.entry.text = "";
+				this.item_selected(position);
 			});
 			
-			sw.child = this.list;
+			this.scrolled_window.child = this.list;
 			
 			// Wrap scrolled window in a box that fills the popup to catch all scroll events
 			var popup_wrapper = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
 				hexpand = true,
 				vexpand = true
 			};
-			popup_wrapper.append(sw);
+			popup_wrapper.append(this.scrolled_window);
 			
 			// Add scroll controller to wrapper to catch scroll events over popup area
 			var wrapper_scroll_controller = new Gtk.EventControllerScroll(
@@ -181,7 +193,7 @@ namespace OLLMchat.Settings
 			);
 			wrapper_scroll_controller.scroll.connect((dx, dy) => {
 				// Forward scroll to scrolled window if it has room to scroll
-				var vadjustment = sw.vadjustment;
+				var vadjustment = this.scrolled_window.vadjustment;
 				if (vadjustment != null && dy != 0) {
 					var current_value = vadjustment.value;
 					var new_value = current_value + dy * vadjustment.step_increment * 3;
@@ -199,11 +211,18 @@ namespace OLLMchat.Settings
 				this.update_arrow();
 			});
 			
+			// Store original placeholder
+			this.original_placeholder_text = this.placeholder_text;
+			
 			// Update placeholder when it changes
 			this.notify["placeholder-text"].connect(() => {
 				// Only update placeholder if entry text is empty (don't override user input)
 				if (this.entry.text == "") {
 					this.entry.placeholder_text = this.placeholder_text;
+				}
+				// Update original if it's being set initially
+				if (this.original_placeholder_text == "" && this.placeholder_text != "") {
+					this.original_placeholder_text = this.placeholder_text;
 				}
 			});
 			
@@ -366,11 +385,28 @@ namespace OLLMchat.Settings
 			this.entry.select_region(-1, -1);
 			this.popup.popup();
 			
-			// Scroll to top after popup is shown
+			// After popup is shown, adjust height to fill available space
 			GLib.Idle.add(() => {
-				var scrolled = this.popup.child as Gtk.ScrolledWindow;
-				if (scrolled != null) {
-					scrolled.vadjustment.value = scrolled.vadjustment.lower;
+				var root_window = root as Gtk.Window;
+				if (root_window != null && this.scrolled_window != null) {
+					// Get available height (window height minus entry position and margins)
+					int window_height = root_window.get_height();
+					Gdk.Rectangle entry_alloc;
+					this.entry.get_allocation(out entry_alloc);
+					
+				// Calculate available space: window height minus entry bottom position, minus some margin
+				int available_height = window_height - entry_alloc.y - entry_alloc.height - 20;
+				
+				// Set minimum height for scrolled window to fill available space
+				// But cap at max_content_height (400px) to prevent assertion failure
+				int max_height = this.scrolled_window.max_content_height;
+				if (max_height == -1) {
+					max_height = 400;  // Use default if not set
+				}
+				int target_height = available_height.clamp(200, max_height);
+				
+				this.scrolled_window.set_min_content_height(target_height);
+					this.scrolled_window.vadjustment.value = this.scrolled_window.vadjustment.lower;
 				}
 				return false;
 			});
@@ -406,12 +442,22 @@ namespace OLLMchat.Settings
 			
 			// Handle Enter key - accept current selection and close popup
 			if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter || keyval == Gdk.Key.ISO_Enter) {
-				if (this.popup.visible) {
-					this.set_popup_visible(false);
-					this.on_selected();
+				if (!this.popup.visible) {
+					return false; // Let default behavior handle it
+				}
+				this.set_popup_visible(false);
+				var model = this.list.model;
+				if (!(model is Gtk.SingleSelection)) {
 					return true; // Consume the event
 				}
-				return false; // Let default behavior handle it
+				var selection = model as Gtk.SingleSelection;
+				var pos = selection.selected;
+				if (pos == Gtk.INVALID_LIST_POSITION) {
+					return true; // Consume the event
+				}
+				this.entry.text = "";
+				this.item_selected(pos);
+				return true; // Consume the event
 			}
 			
 			// Handle Escape key - cancel and close popup
@@ -450,14 +496,6 @@ namespace OLLMchat.Settings
 			return false; // Let default behavior handle other keys
 		}
 		
-		/**
-		 * Handle when an item is selected in dropdown (via click or Enter key).
-		 */
-		protected virtual void on_selected()
-		{
-			// Emit signal - caller handles getting selected item
-			this.item_selected(null);
-		}
 	}
 }
 
