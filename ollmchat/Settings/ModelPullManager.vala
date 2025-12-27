@@ -48,9 +48,24 @@ namespace OLLMchat.Settings
 		private string loading_json_path;
 		
 		/**
-		 * Map of model_name -> active thread
+		 * Single background thread that handles all pull operations
 		 */
-		private Gee.HashMap<string, Thread<bool>?> active_threads;
+		private Thread<bool>? background_thread = null;
+		
+		/**
+		 * MainLoop for the background thread
+		 */
+		private MainLoop? background_loop = null;
+		
+		/**
+		 * MainContext for the background thread
+		 */
+		private MainContext? background_context = null;
+		
+		/**
+		 * Map of model_name -> whether pull is active
+		 */
+		private Gee.HashMap<string, bool> active_pulls;
 		
 		/**
 		 * Map of model_name -> last update timestamp (for rate limiting)
@@ -77,7 +92,7 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.active_threads = new Gee.HashMap<string, Thread<bool>?>();
+			this.active_pulls = new Gee.HashMap<string, bool>();
 			this.last_update_time = new Gee.HashMap<string, int64>();
 			this.last_status = new Gee.HashMap<string, string>();
 			
