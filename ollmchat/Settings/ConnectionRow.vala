@@ -78,17 +78,15 @@ namespace OLLMchat.Settings
 		 * @param connection Connection object to initialize widgets from
 		 * @param url Connection URL
 		 * @param canRemove Whether Remove button should be visible
-		 * @param onRemove Callback when Remove button is clicked
-		 * @param onVerify Callback when Verify button is clicked
 		 */
 		public ConnectionRow(
 			OLLMchat.Settings.Connection connection,
 			string url,
-			bool canRemove,
-			owned GLib.Callback onRemove,
-			owned GLib.Callback onVerify
+			bool canRemove
 		)
 		{
+			Object(url: url);
+
 			this.expander = new Adw.ExpanderRow() {
 				title = connection.name,
 				subtitle = url
@@ -162,7 +160,7 @@ namespace OLLMchat.Settings
 				visible = canRemove
 			};
 			this.removeButton.clicked.connect(() => {
-				onRemove();
+				this.remove_requested();
 			});
 			buttonBox.append(this.removeButton);
 
@@ -171,7 +169,7 @@ namespace OLLMchat.Settings
 				css_classes = {"suggested-action"}
 			};
 			verifyButton.clicked.connect(() => {
-				onVerify();
+				this.verify_requested();
 			});
 			buttonBox.append(verifyButton);
 
