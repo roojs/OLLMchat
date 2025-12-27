@@ -116,8 +116,36 @@ namespace OLLMchat.Settings
 
 		public void load_options(OLLMchat.Call.Options options)
 		{
+			this.load_options_with_parameters(options, null);
+		}
+		
+		/**
+		 * Loads options with parsed parameters from model.
+		 * 
+		 * @param options Options object to read values from
+		 * @param parameters_map HashMap of parameter names to values from model's parameters string
+		 */
+		public void load_options_with_parameters(OLLMchat.Call.Options options, Gee.HashMap<string, string>? parameters_map)
+		{
 			foreach (var row in this.rows) {
-				row.load_options(options);
+				string? param_value = null;
+				if (parameters_map != null) {
+					// Map property names to parameter names
+					// Some properties use underscores (top_p, top_k, num_ctx) which match parameter names
+					// Others might need mapping (temperature -> temperature)
+					string param_name = row.property_name;
+					if (parameters_map.has_key(param_name)) {
+						param_value = parameters_map.get(param_name);
+					}
+				}
+				
+				if (row is OptionFloatWidget) {
+					(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
+				} else if (row is OptionIntWidget) {
+					(row as OptionIntWidget).load_options_with_parameter(options, param_value);
+				} else {
+					row.load_options(options);
+				}
 			}
 		}
 
@@ -480,8 +508,41 @@ namespace OLLMchat.Settings
 		{
 			this.spin_button.value = this.default_value;
 		}
+		
+		/**
+		 * Sets the default value from a parsed parameter string.
+		 * 
+		 * @param param_value The parameter value as a string
+		 */
+		public void set_from_parameter(string? param_value)
+		{
+			if (param_value == null || param_value == "") {
+				return;
+			}
+			int parsed_value;
+			if (int.try_parse(param_value, out parsed_value)) {
+				// Clamp to valid range
+				if (parsed_value < (int)this.min_value) {
+					parsed_value = (int)this.min_value;
+				} else if (parsed_value > (int)this.max_value) {
+					parsed_value = (int)this.max_value;
+				}
+				this.default_value = (double)parsed_value;
+			}
+		}
 
 		public override void load_options(OLLMchat.Call.Options options)
+		{
+			this.load_options_with_parameter(options, null);
+		}
+		
+		/**
+		 * Loads options with an optional parameter value from model.
+		 * 
+		 * @param options Options object to read value from
+		 * @param param_value Optional parameter value from model's parameters string
+		 */
+		public void load_options_with_parameter(OLLMchat.Call.Options options, string? param_value)
 		{
 			this.spin_button.set_range(this.min_value, this.max_value);
 			this.spin_button.set_increments(this.step_value, this.step_value * 10);
@@ -492,6 +553,25 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
+				// If we have a parameter value, use it as the default and show it on the button
+				if (param_value != null && param_value != "") {
+					this.set_from_parameter(param_value);
+					// Format the value for display
+					int parsed_value;
+					if (int.try_parse(param_value, out parsed_value)) {
+						// Clamp to valid range
+						if (parsed_value < (int)this.min_value) {
+							parsed_value = (int)this.min_value;
+						} else if (parsed_value > (int)this.max_value) {
+							parsed_value = (int)this.max_value;
+						}
+						this.set_auto_label(parsed_value.to_string());
+					} else {
+						this.set_auto_label(null);
+					}
+				} else {
+					this.set_auto_label(null);
+				}
 				this.reset_to_auto();
 			} else {
 				// Value is set, show spin button with value
