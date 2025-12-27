@@ -432,9 +432,7 @@ namespace OLLMchat.Settings
 		 */
 		public virtual void on_activated()
 		{
-			if (this.settings_dialog.action_bar_area != null) {
-				this.settings_dialog.action_bar_area.visible = true;
-			}
+			this.settings_dialog.action_bar_area.visible = true;
 		}
 
 		/**
@@ -444,9 +442,7 @@ namespace OLLMchat.Settings
 		 */
 		public virtual void on_deactivated()
 		{
-			if (this.settings_dialog.action_bar_area != null) {
-				this.settings_dialog.action_bar_area.visible = false;
-			}
+			this.settings_dialog.action_bar_area.visible = false;
 		}
 	}
 }
