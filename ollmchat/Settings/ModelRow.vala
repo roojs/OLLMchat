@@ -136,20 +136,28 @@ namespace OLLMchat.Settings
 			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
-				GLib.debug("load_defaults: Processing row.name = '%s'", row.name);
+				// Get name from the actual widget type (subclasses have name property)
+				string row_name = "";
+				if (row is OptionFloatWidget) {
+					row_name = ((OptionFloatWidget)row).name;
+				} else if (row is OptionIntWidget) {
+					row_name = ((OptionIntWidget)row).name;
+				}
+				GLib.debug("load_defaults: Processing row.name = '%s'", row_name);
 				// Convert underscore to hyphen for GObject property name
- 				
+				var property_name = row_name.replace("_", "-");
+				
 				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
-				switch (row.name) {
+				switch (property_name) {
 					// Integer properties
 					case "seed":
 					case "top-k":
 					case "num-predict":
 					case "num-ctx":
 						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", row.name, int_val);
+						GLib.debug("load_defaults: %s = %d", row_name, int_val);
 						if (int_val != -1) {
 							row.set_value(model_value);
 						}
@@ -160,9 +168,9 @@ namespace OLLMchat.Settings
 					case "top-p":
 					case "min-p":
 						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
+						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();
-						GLib.debug("load_defaults: %s = %f", row.name, double_val);
+						GLib.debug("load_defaults: %s = %f", row_name, double_val);
 						if (double_val != -1.0) {
 							row.set_value(model_value);
 						}
