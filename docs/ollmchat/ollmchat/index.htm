@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package">ollmchat</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="Markdown.html">Markdown</a></li>
+          <li class="namespace"><a href="MarkdownGtk.html">MarkdownGtk</a></li>
+          <li class="namespace"><a href="OLLMagent.html">OLLMagent</a></li>
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <li class="namespace"><a href="OLLMchat.Call.html">OLLMchat.Call</a></li>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">OLLMchat.ChatPermission</a></li>
+          <li class="namespace"><a href="OLLMchat.History.html">OLLMchat.History</a></li>
+          <li class="namespace"><a href="OLLMchat.Response.html">OLLMchat.Response</a></li>
+          <li class="namespace"><a href="OLLMchat.Settings.html">OLLMchat.Settings</a></li>
+          <li class="namespace"><a href="OLLMchat.Tool.html">OLLMchat.Tool</a></li>
+          <li class="namespace"><a href="OLLMchat.Tools.html">OLLMchat.Tools</a></li>
+          <li class="namespace"><a href="OLLMchatGtk.html">OLLMchatGtk</a></li>
+          <li class="namespace"><a href="OLLMchatGtk.Tools.html">OLLMchatGtk.Tools</a></li>
+          <li class="namespace"><a href="OLLMcoder.html">OLLMcoder</a></li>
+          <li class="namespace"><a href="OLLMcoder.Prompt.html">OLLMcoder.Prompt</a></li>
+          <li class="namespace"><a href="OLLMfiles.html">OLLMfiles</a></li>
+          <li class="namespace"><a href="OLLMfiles.Diff.html">OLLMfiles.Diff</a></li>
+          <li class="namespace"><a href="OLLMvector.html">OLLMvector</a></li>
+          <li class="namespace"><a href="OLLMvector.Indexing.html">OLLMvector.Indexing</a></li>
+          <li class="namespace"><a href="SQ.html">SQ</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title" id="ollmchat">ollmchat</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Namespaces:</h3>
+        <ul class="navi_inline">
+          <li class="namespace"><a href="Markdown.html">Markdown</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="Markdown.DummyRenderer.html">DummyRenderer</a> - <span class="brief_description">Dummy renderer for testing the
+                Parser. Extends RenderBase and overrides methods to print callbacks instead of rendering.</span></li>
+            <li class="class"><a href="Markdown.HtmlParser.html">HtmlParser</a> - <span class="brief_description">Converts HTML to Markdown format.
+              </span></li>
+            <li class="class"><a href="Markdown.HtmlRender.html">HtmlRender</a> - <span class="brief_description">Simple renderer that converts 
+                markdown to HTML strings.</span></li>
+            <li class="class"><a href="Markdown.PangoRender.html">PangoRender</a> - <span class="brief_description">Simple renderer that converts 
+                markdown and HTML tags to Pango markup strings.</span></li>
+            <li class="class"><a href="Markdown.Parser.html">Parser</a> - <span class="brief_description">Parser for markdown text that calls specific
+                callbacks on Render.</span></li>
+            <li class="abstract_class"><a href="Markdown.RenderBase.html">RenderBase</a> - <span class="brief_description">Base abstract class for 
+                renderers that use the Parser.</span></li>
+            <li class="class"><a href="Markdown.TagAnchor.html">TagAnchor</a> - <span class="brief_description">Handler for anchor tags.</span></li>
+            <li class="class"><a href="Markdown.TagBlockquote.html">TagBlockquote</a> - <span class="brief_description">Handler for blockquote tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagBreak.html">TagBreak</a> - <span class="brief_description">Handler for break tags.</span></li>
+            <li class="class"><a href="Markdown.TagCode.html">TagCode</a> - <span class="brief_description">Handler for code tags.</span></li>
+            <li class="class"><a href="Markdown.TagDiv.html">TagDiv</a> - <span class="brief_description">Handler for div tags.</span></li>
+            <li class="class"><a href="Markdown.TagIgnored.html">TagIgnored</a> - <span class="brief_description">Base class for tag handlers. Default
+                implementations do nothing (ignore behavior).</span></li>
+            <li class="class"><a href="Markdown.TagImage.html">TagImage</a> - <span class="brief_description">Handler for image tags.</span></li>
+            <li class="class"><a href="Markdown.TagListItem.html">TagListItem</a> - <span class="brief_description">Handler for list item tags.</span>
+            </li>
+            <li class="class"><a href="Markdown.TagOption.html">TagOption</a> - <span class="brief_description">Handler for option tags.</span></li>
+            <li class="class"><a href="Markdown.TagOrderedList.html">TagOrderedList</a> - <span class="brief_description">Handler for ordered list 
+                tags.</span></li>
+            <li class="class"><a href="Markdown.TagParagraph.html">TagParagraph</a> - <span class="brief_description">Handler for paragraph tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagPre.html">TagPre</a> - <span class="brief_description">Handler for pre tags.</span></li>
+            <li class="class"><a href="Markdown.TagSeperator.html">TagSeperator</a> - <span class="brief_description">Handler for separator tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagSimple.html">TagSimple</a> - <span class="brief_description">Generic handler for simple tags that 
+                add the same string at opening and closing.</span></li>
+            <li class="class"><a href="Markdown.TagSimpleWithBreak.html">TagSimpleWithBreak</a> - <span class="brief_description">Generic handler for 
+                tags that add start on open, and check previous char before adding end on close.</span></li>
+            <li class="class"><a href="Markdown.TagTable.html">TagTable</a> - <span class="brief_description">Handler for table tags.</span></li>
+            <li class="class"><a href="Markdown.TagTableData.html">TagTableData</a> - <span class="brief_description">Handler for table data tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagTableHeader.html">TagTableHeader</a> - <span class="brief_description">Handler for table header 
+                tags.</span></li>
+            <li class="class"><a href="Markdown.TagTableRow.html">TagTableRow</a> - <span class="brief_description">Handler for table row tags.</span>
+            </li>
+            <li class="class"><a href="Markdown.TagTitle.html">TagTitle</a> - <span class="brief_description">Handler for title tags.</span></li>
+            <li class="class"><a href="Markdown.TagUnderline.html">TagUnderline</a> - <span class="brief_description">Handler for underline tags.
+              </span></li>
+            <li class="class"><a href="Markdown.TagUnorderedList.html">TagUnorderedList</a> - <span class="brief_description">Handler for unordered 
+                list tags.</span></li>
+            <li class="class"><a href="Markdown.Writer.html">Writer</a> - <span class="brief_description">Handles markdown output writing.</span></li>
+          </ul>
+          <h3 class="main_title">Methods:</h3>
+          <ul class="navi_inline">
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_end_document.html" class="method">sax_end_document</a></b> (<span class="main_keyword">void</span>* ctx)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: End of document.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_end_element.html" class="method">sax_end_element</a></b> (<span class="main_keyword">void</span>* ctx, <span class="main_basic_type"><span class="class">string</span></span> name)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: End element.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_start_document.html" class="method">sax_start_document</a></b> (<span class="main_keyword">void</span>* ctx)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: Start of document.</span>
+              </div></li>
+            <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.sax_start_element.html" class="method">sax_start_element</a></b> (<span class="main_keyword">void</span>* ctx, <span class="main_basic_type"><span class="class">string</span></span> name, <span class="main_basic_type"><span class="class">string</span></span>[] attrs)
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">SAX callback: Start element.</span>
+              </div></li>
+          </ul>
+          <li class="namespace"><a href="MarkdownGtk.html">MarkdownGtk</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="MarkdownGtk.Render.html">Render</a> - <span class="brief_description">Renders markdown content to a 
+                Gtk.TextBuffer using a state-based renderer.</span></li>
+            <li class="class"><a href="MarkdownGtk.RenderSourceView.html">RenderSourceView</a> - <span class="brief_description">Handles SourceView 
+                widget creation and management for code blocks.</span></li>
+            <li class="class"><a href="MarkdownGtk.State.html">State</a> - <span class="brief_description">Represents a single piece of styling in the
+                markdown renderer.</span></li>
+            <li class="class"><a href="MarkdownGtk.TopState.html">TopState</a> - <span class="brief_description">Extends State to handle special root 
+                state behavior.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMagent.html">OLLMagent</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMagent.BaseAgent.html">BaseAgent</a> - <span class="brief_description">Base class for agent prompt 
+                generators.</span></li>
+            <li class="class"><a href="OLLMagent.JustAsk.html">JustAsk</a> - <span class="brief_description">Just Ask agent - a simple pass-through 
+                agent.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+          <h3 class="main_title">Interfaces:</h3>
+          <ul class="navi_inline">
+            <li class="interface"><a href="OLLMchat.ChatContentInterface.html">ChatContentInterface</a> - <span class="brief_description">Interface 
+                for objects that provide chat content.</span></li>
+          </ul>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Client.html">Client</a> - <span class="brief_description">Main client class for interacting with 
+                Ollama API and OpenAI-compatible REST interfaces.</span></li>
+            <li class="class"><a href="OLLMchat.Message.html">Message</a> - <span class="brief_description">Simple message class for chat 
+                conversations. Implements Json.Serializable for use in chat calls.</span></li>
+            <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API objects 
+                that need JSON serialization.</span></li>
+          </ul>
+          <h3 class="main_title">Error domains:</h3>
+          <ul class="navi_inline">
+            <li class="errordomain"><a href="OLLMchat.OllamaError.html">OllamaError</a></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Call.html">Call</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="abstract_class"><a href="OLLMchat.Call.Base.html">Base</a> - <span class="brief_description">Abstract base class for all Ollama
+                API calls.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Chat.html">Chat</a> - <span class="brief_description">Chat API call implementation for sending 
+                messages and receiving responses.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Embed.html">Embed</a> - <span class="brief_description">API call to generate embeddings for input
+                text.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Generate.html">Generate</a> - <span class="brief_description">API call to generate a response for
+                a prompt.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Models.html">Models</a> - <span class="brief_description">API call to list available models on 
+                the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Options.html">Options</a> - <span class="brief_description">Options object for Ollama API calls.
+              </span></li>
+            <li class="class"><a href="OLLMchat.Call.Ps.html">Ps</a> - <span class="brief_description">API call to list currently running models on 
+                the Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Call.ShowModel.html">ShowModel</a> - <span class="brief_description">API call to get detailed 
+                information about a specific model.</span></li>
+            <li class="class"><a href="OLLMchat.Call.Version.html">Version</a> - <span class="brief_description">API call to get the version of the 
+                Ollama server.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.ChatPermission.Dummy.html">Dummy</a> - <span class="brief_description">Dummy implementation of 
+                Provider for testing.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.ChatPermission.Provider.html">Provider</a> - <span class="brief_description">Abstract base 
+                class for requesting permission to execute tool operations.</span></li>
+          </ul>
+          <h3 class="main_title">Enums:</h3>
+          <ul class="navi_inline">
+            <li class="enum"><a href="OLLMchat.ChatPermission.Operation.html">Operation</a> - <span class="brief_description">Operation types for 
+                permission requests. Can be combined using bitwise OR (e.g., READ | WRITE).</span></li>
+            <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResponse.html">PermissionResponse</a> - <span class="brief_description">
+                Permission response from user. Combines allow/deny decision with storage type.</span></li>
+            <li class="enum"><a href="OLLMchat.ChatPermission.PermissionResult.html">PermissionResult</a> - <span class="brief_description">Permission
+                check result.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.History.html">History</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.History.EmptySession.html">EmptySession</a> - <span class="brief_description">EmptySession represents 
+                a session that hasn't started yet (no messages sent).</span></li>
+            <li class="class"><a href="OLLMchat.History.Manager.html">Manager</a> - <span class="brief_description">Manager for chat history 
+                persistence.</span></li>
+            <li class="class"><a href="OLLMchat.History.Session.html">Session</a> - <span class="brief_description">Session is a wrapper around 
+                Call.Chat that provides history persistence.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.History.SessionBase.html">SessionBase</a> - <span class="brief_description">Base class for 
+                Session implementations.</span></li>
+            <li class="class"><a href="OLLMchat.History.SessionJson.html">SessionJson</a> - <span class="brief_description">SessionJson is used only 
+                for loading messages from JSON files.</span></li>
+            <li class="class"><a href="OLLMchat.History.SessionPlaceholder.html">SessionPlaceholder</a> - <span class="brief_description">
+                SessionPlaceholder represents a chat session loaded from the database but without the chat connected or messages loaded.</span></li>
+            <li class="class"><a href="OLLMchat.History.TitleGenerator.html">TitleGenerator</a> - <span class="brief_description">Generates concise 
+                titles for chat conversations using LLM.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Response.html">Response</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="abstract_class"><a href="OLLMchat.Response.Base.html">Base</a> - <span class="brief_description">Abstract base class for Ollama
+                API responses.</span></li>
+            <li class="class"><a href="OLLMchat.Response.CallFunction.html">CallFunction</a> - <span class="brief_description">Represents a function 
+                call with name and arguments. Used within ToolCall to represent the function being called.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Chat.html">Chat</a> - <span class="brief_description">Response from a chat API call.</span>
+            </li>
+            <li class="class"><a href="OLLMchat.Response.Embed.html">Embed</a> - <span class="brief_description">Represents the response from the 
+                embeddings API.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Generate.html">Generate</a> - <span class="brief_description">Represents the response from 
+                the generate API.</span></li>
+            <li class="class"><a href="OLLMchat.Response.Model.html">Model</a> - <span class="brief_description">Represents model information from the
+                Ollama server.</span></li>
+            <li class="class"><a href="OLLMchat.Response.ToolCall.html">ToolCall</a> - <span class="brief_description">Represents a tool call from the
+                assistant. Used in assistant messages with tool_calls array.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Settings.html">Settings</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Settings.Config1.html">Config1</a> - <span class="brief_description">Configuration management for 
+                OLLMchat client settings (Version 1).</span></li>
+            <li class="class"><a href="OLLMchat.Settings.Config2.html">Config2</a> - <span class="brief_description">Main serializable configuration 
+                holder for version 2 format (multiple clients, extended structure).</span></li>
+            <li class="class"><a href="OLLMchat.Settings.Connection.html">Connection</a> - <span class="brief_description">Represents a single server 
+                connection configuration.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ConnectionAdd.html">ConnectionAdd</a> - <span class="brief_description">Dialog for adding 
+                connections.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ConnectionRow.html">ConnectionRow</a> - <span class="brief_description">Widget group for a 
+                single connection row in the connections page.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ConnectionsPage.html">ConnectionsPage</a> - <span class="brief_description">Connections tab 
+                content for settings dialog.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ModelRow.html">ModelRow</a> - <span class="brief_description">Model row widget that extends 
+                Adw.ExpanderRow.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ModelUsage.html">ModelUsage</a> - <span class="brief_description">Represents model usage 
+                configuration (connection, model, and optional options).</span></li>
+            <li class="class"><a href="OLLMchat.Settings.ModelsPage.html">ModelsPage</a> - <span class="brief_description">Models tab content for 
+                settings dialog.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.OptionFloatWidget.html">OptionFloatWidget</a> - <span class="brief_description">Generic float
+                option widget that extends Adw.ActionRow.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.OptionIntWidget.html">OptionIntWidget</a> - <span class="brief_description">Generic int 
+                option widget that extends Adw.ActionRow.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Settings.OptionRow.html">OptionRow</a> - <span class="brief_description">Base class for 
+                option rows that can update their values from Options objects.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.OptionsWidget.html">OptionsWidget</a> - <span class="brief_description">Widget that contains 
+                all option rows for model configuration.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.SettingsDialog.html">SettingsDialog</a> - <span class="brief_description">Main settings 
+                dialog for displaying and changing configuration.</span></li>
+            <li class="class"><a href="OLLMchat.Settings.SettingsPage.html">SettingsPage</a> - <span class="brief_description">Base class for settings
+                dialog pages.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Tool.html">Tool</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Tool.Function.html">Function</a> - <span class="brief_description">Concrete class representing a 
+                function within a Tool.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Tool.Interface.html">Interface</a> - <span class="brief_description">Abstract base class for 
+                tools that can be used with Ollama function calling.</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Tool.Param.html">Param</a> - <span class="brief_description">Abstract base class for 
+                parameter definitions.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamArray.html">ParamArray</a> - <span class="brief_description">Represents an array parameter 
+                with items definition.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamObject.html">ParamObject</a> - <span class="brief_description">Represents an object 
+                parameter with nested properties.</span></li>
+            <li class="class"><a href="OLLMchat.Tool.ParamSimple.html">ParamSimple</a> - <span class="brief_description">Represents a simple parameter
+                type (string, integer, boolean).</span></li>
+            <li class="abstract_class"><a href="OLLMchat.Tool.RequestBase.html">RequestBase</a> - <span class="brief_description">Abstract base class 
+                for tool request execution.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchat.Tools.html">Tools</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchat.Tools.EditMode.html">EditMode</a> - <span class="brief_description">Tool for editing files by 
+                activating "edit mode" for a file.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.EditModeChange.html">EditModeChange</a> - <span class="brief_description">Represents a single 
+                edit operation with range and replacement.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.ReadFile.html">ReadFile</a> - <span class="brief_description">Tool for reading file contents 
+                with optional line range support.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.RequestEditMode.html">RequestEditMode</a> - <span class="brief_description">Request handler for 
+                editing files by activating "edit mode" for a file.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.RequestReadFile.html">RequestReadFile</a> - <span class="brief_description">Request handler for 
+                reading file contents with optional line range support.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.RequestRunCommand.html">RequestRunCommand</a> - <span class="brief_description">Request handler 
+                for executing terminal commands in the project root directory.</span></li>
+            <li class="class"><a href="OLLMchat.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">Tool for executing terminal 
+                commands in the project root directory.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchatGtk.html">OLLMchatGtk</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchatGtk.ChatInput.html">ChatInput</a> - <span class="brief_description">Chat input widget with multiline 
+                text input and send/stop button.</span></li>
+            <li class="class"><a href="OLLMchatGtk.ChatPermission.html">ChatPermission</a> - <span class="brief_description">Permission widget that 
+                displays permission requests with buttons.</span></li>
+            <li class="class"><a href="OLLMchatGtk.ChatView.html">ChatView</a> - <span class="brief_description">Chat view widget for displaying chat 
+                messages with markdown rendering.</span></li>
+            <li class="class"><a href="OLLMchatGtk.ChatWidget.html">ChatWidget</a> - <span class="brief_description">Reusable chat widget that can be 
+                embedded anywhere in the project.</span></li>
+            <li class="class"><a href="OLLMchatGtk.HistoryBrowser.html">HistoryBrowser</a> - <span class="brief_description">History browser widget 
+                that displays a list of past chat sessions.</span></li>
+            <li class="class"><a href="OLLMchatGtk.Message.html">Message</a> - <span class="brief_description">GTK-specific extension of Message that 
+                adds widget support.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMchatGtk.Tools.html">Tools</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMchatGtk.Tools.Permission.html">Permission</a> - <span class="brief_description">Permission provider that 
+                displays permission requests using ChatWidget's permission widget.</span></li>
+            <li class="class"><a href="OLLMchatGtk.Tools.RequestRunCommand.html">RequestRunCommand</a> - <span class="brief_description">GTK-specific 
+                version of RequestRunCommand that creates SourceView widgets for displaying terminal output.</span></li>
+            <li class="class"><a href="OLLMchatGtk.Tools.RunCommand.html">RunCommand</a> - <span class="brief_description">GTK-specific version of 
+                RunCommand that creates SourceView widgets for displaying terminal output.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMcoder.html">OLLMcoder</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMcoder.BufferProvider.html">BufferProvider</a> - <span class="brief_description">GTK implementation of 
+                buffer provider for File operations.</span></li>
+            <li class="class"><a href="OLLMcoder.FileDropdown.html">FileDropdown</a> - <span class="brief_description">Searchable dropdown widget for 
+                selecting files.</span></li>
+            <li class="class"><a href="OLLMcoder.GitProvider.html">GitProvider</a> - <span class="brief_description">Git implementation of git 
+                provider for Folder and ProjectManager operations.</span></li>
+            <li class="class"><a href="OLLMcoder.ProjectDropdown.html">ProjectDropdown</a> - <span class="brief_description">Searchable dropdown 
+                widget for selecting projects.</span></li>
+            <li class="abstract_class"><a href="OLLMcoder.SearchableDropdown.html">SearchableDropdown</a> - <span class="brief_description">Base class
+                for searchable dropdown widgets.</span></li>
+            <li class="class"><a href="OLLMcoder.SourceView.html">SourceView</a> - <span class="brief_description">Source view component with code 
+                editor.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMcoder.Prompt.html">Prompt</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMcoder.Prompt.CodeAssistant.html">CodeAssistant</a> - <span class="brief_description">Code Assistant prompt 
+                generator.</span></li>
+            <li class="class"><a href="OLLMcoder.Prompt.CodeAssistantProvider.html">CodeAssistantProvider</a> - <span class="brief_description">
+                Provides context data for CodeAssistant prompts.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMfiles.html">OLLMfiles</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMfiles.BufferProviderBase.html">BufferProviderBase</a> - <span class="brief_description">Base class for 
+                buffer operations with default no-op implementations.</span></li>
+            <li class="class"><a href="OLLMfiles.File.html">File</a> - <span class="brief_description">Represents a file in the project.</span></li>
+            <li class="class"><a href="OLLMfiles.FileAlias.html">FileAlias</a> - <span class="brief_description">Wrapper class for File objects that 
+                are aliases/symlinks.</span></li>
+            <li class="abstract_class"><a href="OLLMfiles.FileBase.html">FileBase</a> - <span class="brief_description">Base class for File and Folder
+                objects.</span></li>
+            <li class="class"><a href="OLLMfiles.Folder.html">Folder</a> - <span class="brief_description">Represents a folder/directory in the 
+                project.</span></li>
+            <li class="class"><a href="OLLMfiles.FolderFiles.html">FolderFiles</a> - <span class="brief_description">Manages folder files with tree 
+                structure and hashmap.</span></li>
+            <li class="class"><a href="OLLMfiles.GitProviderBase.html">GitProviderBase</a> - <span class="brief_description">Base class for git 
+                operations with default no-op implementations.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectFile.html">ProjectFile</a> - <span class="brief_description">Wrapper around a File object for 
+                use in project file lists.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectFiles.html">ProjectFiles</a> - <span class="brief_description">Manages project files with tree
+                structure and hashmap.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectList.html">ProjectList</a> - <span class="brief_description">Manages project list with 
+                deduplication.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectManager.html">ProjectManager</a> - <span class="brief_description">Manages projects, files, 
+                and folders.</span></li>
+            <li class="class"><a href="OLLMfiles.ProjectMigrate.html">ProjectMigrate</a> - <span class="brief_description">Migrates project data from 
+                existing sources (Cursor, roobuilder, VS Code).</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMfiles.Diff.html">Diff</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMfiles.Diff.Differ.html">Differ</a> - <span class="brief_description">Simple line-based diff implementation 
+                using Myers algorithm.</span></li>
+            <li class="class"><a href="OLLMfiles.Diff.Patch.html">Patch</a> - <span class="brief_description">Represents a patch operation with line 
+                numbers.</span></li>
+            <li class="class"><a href="OLLMfiles.Diff.PatchApplier.html">PatchApplier</a> - <span class="brief_description">Applies patches to text.
+              </span></li>
+          </ul>
+          <h3 class="main_title">Enums:</h3>
+          <ul class="navi_inline">
+            <li class="enum"><a href="OLLMfiles.Diff.PatchOperation.html">PatchOperation</a> - <span class="brief_description">Patch operation types.
+              </span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMvector.html">OLLMvector</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMvector.Database.html">Database</a></li>
+            <li class="class"><a href="OLLMvector.Index.html">Index</a></li>
+            <li class="class"><a href="OLLMvector.VectorMetadata.html">VectorMetadata</a> - <span class="brief_description">Represents vector metadata
+                stored in SQL database.</span></li>
+          </ul>
+          <h3 class="main_title">Structs:</h3>
+          <ul class="navi_inline">
+            <li class="struct"><a href="OLLMvector.FloatArray.html">FloatArray</a></li>
+            <li class="struct"><a href="OLLMvector.SearchResult.html">SearchResult</a></li>
+            <li class="struct"><a href="OLLMvector.SearchResultWithDocument.html">SearchResultWithDocument</a></li>
+          </ul>
+          <li class="namespace"><a href="OLLMvector.Indexing.html">Indexing</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMvector.Indexing.Analysis.html">Analysis</a> - <span class="brief_description">Analysis layer for code file 
+                processing.</span></li>
+            <li class="class"><a href="OLLMvector.Indexing.Indexer.html">Indexer</a> - <span class="brief_description">Main indexing orchestrator.
+              </span></li>
+            <li class="class"><a href="OLLMvector.Indexing.Tree.html">Tree</a> - <span class="brief_description">Tree-sitter AST parsing and 
+                VectorMetadata creation.</span></li>
+            <li class="class"><a href="OLLMvector.Indexing.VectorBuilder.html">VectorBuilder</a> - <span class="brief_description">Vector building 
+                layer for code file processing.</span></li>
+          </ul>
+          <li class="namespace"><a href="SQ.html">SQ</a> - <span class="brief_description">Simple SQL builder for GObject values.</span></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="SQ.Database.html">Database</a> - <span class="brief_description">Manages SQLite database connections with in-
+                memory storage and file backup.</span></li>
+            <li class="class"><a href="SQ.Query.html">Query</a> - <span class="brief_description">A generic SQL query builder for GObject-based types.
+              </span></li>
+            <li class="class"><a href="SQ.Schema.html">Schema</a> - <span class="brief_description">Represents the schema information for a database 
+                table column.</span></li>
+          </ul>
+        </ul>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

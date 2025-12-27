@@ -133,7 +133,7 @@ namespace OLLMchat.Settings
 			this.previous_visible_child.on_deactivated();
 
 			// Activate current page (all children are SettingsPage instances)
-			this.previous_visible_child = this.view_stack.get_visible_child();
+			this.previous_visible_child = this.view_stack.get_visible_child() as SettingsPage;
 			this.previous_visible_child.on_activated();
 		}
 

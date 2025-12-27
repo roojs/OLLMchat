@@ -430,7 +430,7 @@ namespace OLLMchat.Settings
 		 * 
 		 * Shows the action bar area in the settings dialog.
 		 */
-		public virtual void on_activated()
+		public override void on_activated()
 		{
 			this.settings_dialog.action_bar_area.visible = true;
 		}
@@ -440,7 +440,7 @@ namespace OLLMchat.Settings
 		 * 
 		 * Hides the action bar area in the settings dialog.
 		 */
-		public virtual void on_deactivated()
+		public override void on_deactivated()
 		{
 			this.settings_dialog.action_bar_area.visible = false;
 		}
