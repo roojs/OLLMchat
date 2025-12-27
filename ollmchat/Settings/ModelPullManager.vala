@@ -324,34 +324,22 @@ namespace OLLMchat.Settings
 		{
 			var now = GLib.get_real_time() / 1000000;
 			
-			// Always emit final status updates
-			if (status_obj.status == "complete" || status_obj.status == "error" || status_obj.status == "failed") {
-				Idle.add(() => {
-					this.progress_updated(model_name, status_obj);
-					return false;
-				});
-				status_obj.last_update_time = now;
+			// Check if we should NOT emit (negative test)
+			bool is_final = status_obj.status == "complete" || status_obj.status == "error" || status_obj.status == "failed";
+			bool status_changed = status_obj.status != old_status;
+			bool time_passed = (now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS;
+			
+			// Don't emit if not final, status unchanged, and not enough time passed
+			if (!is_final && !status_changed && !time_passed) {
 				return;
 			}
 			
-			// Emit if status changed
-			if (status_obj.status != old_status) {
-				Idle.add(() => {
-					this.progress_updated(model_name, status_obj);
-					return false;
-				});
-				status_obj.last_update_time = now;
-				return;
-			}
-			
-			// Emit if enough time has passed
-			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
-				Idle.add(() => {
-					this.progress_updated(model_name, status_obj);
-					return false;
-				});
-				status_obj.last_update_time = now;
-			}
+			// Emit update
+			Idle.add(() => {
+				this.progress_updated(model_name, status_obj);
+				return false;
+			});
+			status_obj.last_update_time = now;
 		}
 		
 		/**
