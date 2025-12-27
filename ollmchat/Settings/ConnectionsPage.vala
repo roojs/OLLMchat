@@ -246,13 +246,14 @@ namespace OLLMchat.Settings
 		 */
 		private void add_connection_row(string url, OLLMchat.Settings.Connection connection, bool can_remove)
 		{
-			var row = new ConnectionRow(
-				connection,
-				url,
-				can_remove,
-				() => { this.remove_connection(url); },
-				() => { this.verify_connection.begin(url); }
-			);
+			var row = new ConnectionRow(connection, url, can_remove);
+
+			row.remove_requested.connect(() => {
+				this.remove_connection(row.url);
+			});
+			row.verify_requested.connect(() => {
+				this.verify_connection.begin(row.url);
+			});
 
 			this.rows.set(url, row);
 			this.list.append(row.expander);
