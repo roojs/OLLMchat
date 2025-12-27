@@ -314,7 +314,6 @@ namespace OLLMchat.Settings
 		public uint digits { get; set; }
 		public double default_value { get; set; }
 		public double auto_value { get; set; default = -1.0; }
-		private bool default_value_set = false;
 
 		private Gtk.SpinButton spin_button;
 
@@ -361,7 +360,6 @@ namespace OLLMchat.Settings
 				double_val = this.max_value;
 			}
 			this.default_value = double_val;
-			this.default_value_set = true;
 			// Format the value for display based on digits
 			string formatted = "%.*f".printf((int)this.digits, double_val);
 			// Always set the label
@@ -379,20 +377,15 @@ namespace OLLMchat.Settings
 			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Value is unset, show Auto button with default value label if set via set_value()
-				if (this.default_value_set) {
-					// Use the default value that was set via set_value()
-					string formatted = "%.*f".printf((int)this.digits, this.default_value);
-					this.auto_button.label = formatted == "" ? "Auto" : formatted;
-				} else {
-					this.auto_button.label = "Auto";
-				}
+				this.auto_button.label = "Auto";
+				
 				this.reset_to_auto();
-			} else {
-				// Value is set, show spin button with value
-				this.set_to_default();
-				this.spin_button.value = val.get_double();
+				return;
 			}
+			// Value is set, show spin button with value
+			this.set_to_default();
+			this.spin_button.value = val.get_double();
+			
 		}
 
 		public override void save_options(OLLMchat.Call.Options options)
