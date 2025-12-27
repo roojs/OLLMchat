@@ -379,26 +379,27 @@ namespace OLLMchat.Settings
 				var parser = new Json.Parser();
 				parser.load_from_file(this.loading_json_path);
 				var root = parser.get_root();
-				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+				if (root == null || root.get_node_type() != Json.NodeType.ARRAY) {
 					return;
 				}
 				
-				var root_obj = root.get_object();
-				root_obj.foreach_member((obj, key, node) => {
+				var root_array = root.get_array();
+				for (uint i = 0; i < root_array.get_length(); i++) {
+					var node = root_array.get_element(i);
 					if (node.get_node_type() != Json.NodeType.OBJECT) {
-						return;
+						continue;
 					}
 					
 					var status_obj = Json.gobject_deserialize(
 						typeof(LoadingStatus),
 						node
 					) as LoadingStatus;
-					if (status_obj == null) {
-						return;
+					if (status_obj == null || status_obj.model_name == "") {
+						continue;
 					}
 					
-					this.loading_status_cache.set(key, status_obj);
-				});
+					this.loading_status_cache.set(status_obj.model_name, status_obj);
+				}
 			} catch (Error e) {
 				GLib.debug("Failed to load loading.json: " + e.message);
 			}
@@ -410,23 +411,18 @@ namespace OLLMchat.Settings
 		private void write_to_file()
 		{
 			try {
-				var root_obj = new Json.Object();
+				var json_parts = new Gee.ArrayList<string>();
 				
-				// Serialize all status objects
+				// Serialize each status object to JSON string
 				foreach (var entry in this.loading_status_cache.entries) {
-					var status_node = Json.gobject_serialize(entry.value);
-					root_obj.set_member(entry.key, status_node);
+					var json_str = Json.gobject_to_data(entry.value, null);
+					json_parts.add(json_str);
 				}
 				
-				// Create root node
-				var root = new Json.Node(Json.NodeType.OBJECT);
-				root.set_object(root_obj);
+				// Join with commas and wrap in array brackets
+				var json_array = "[\n  " + string.joinv(",\n  ", json_parts.to_array()) + "\n]";
 				
-			// Write to file
-			var generator = new Json.Generator();
-			generator.set_root(root);
-			generator.set_pretty(true);
-			generator.to_file(this.loading_json_path);
+				GLib.FileUtils.set_contents(this.loading_json_path, json_array);
 				this.last_file_write_time = GLib.get_real_time() / 1000000;
 			} catch (Error e) {
 				GLib.warning("Failed to write loading.json: " + e.message);
