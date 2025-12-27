@@ -258,6 +258,18 @@ namespace OLLMchat.Settings
 			this.button_box.append(this.auto_button);
 		}
 
+		/**
+		 * Shows the value widget (hides Auto button) and sets it to default value.
+		 * 
+		 * This is called when:
+		 * - User clicks "Auto" button to set a custom value (scenario 3)
+		 *   In this case, reset_default() is correct - we want to show default_value
+		 * 
+		 * NOTE: This is also incorrectly called from load_options() when loading a saved value.
+		 * In that case, we should NOT use reset_default() because we want to show the saved value,
+		 * not the default_value. The current code works because it overwrites the value immediately
+		 * after, but it's inefficient and confusing.
+		 */
 		protected void set_to_default()
 		{
 			if (this.value_widget == null) {
@@ -270,6 +282,7 @@ namespace OLLMchat.Settings
 			this.clear_button.visible = true;
 			
 			// Set value widget to default value
+			// WRONG when called from load_options() with a saved value - should use saved value instead
 			this.reset_default();
 		}
 
@@ -503,14 +516,59 @@ namespace OLLMchat.Settings
 
 		protected override bool is_default(Value value)
 		{
+			// Check if value is the "empty/unset" value (auto_value, e.g., -1)
+			// This represents the default/empty state that never changes
 			return value.get_int() == this.auto_value;
 		}
 
+		/**
+		 * Sets the spin button to the default value.
+		 * 
+		 * This is called when user clicks "Auto" button to start setting a custom value.
+		 * The default_value may be:
+		 * - The hardcoded default from widget constructor (e.g., 40 for top_k)
+		 * - The model's default value if set via set_value() from model.options
+		 * 
+		 * DISPLAY LOGIC SCENARIOS:
+		 * 
+		 * 1. Value is unset (default/empty = auto_value):
+		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
+		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
+		 *    - Display: Auto button visible, spin button hidden
+		 * 
+		 * 2. Value is set (user has explicitly set a value, NOT auto_value):
+		 *    - Display: Spin button visible with the actual saved value from Options
+		 *    - The value shown MUST be the value from Options, NOT default_value
+		 *    - Auto button hidden
+		 * 
+		 * 3. User clicks "Auto" button to set a custom value:
+		 *    - Display: Show spin button with default_value as starting value
+		 *    - default_value may be model's default (if set via set_value()) or hardcoded default
+		 *    - This is the ONLY scenario where reset_default() should set the spin button value
+		 * 
+		 * 4. User clicks clear button to reset to Auto:
+		 *    - Display: Show Auto button (with model default label if available), hide spin button
+		 * 
+		 * NOTE: In load_options() when value is set, we call set_to_default() which calls
+		 * reset_default(), but then immediately overwrite with the actual saved value.
+		 * This is inefficient - reset_default() should NOT be called in that scenario.
+		 */
 		protected override void reset_default()
 		{
+			// WRONG: This is only correct for scenario 3 (user clicking Auto button)
+			// When loading a saved value (scenario 2), we should NOT use default_value,
+			// we should use the actual saved value from Options
 			this.spin_button.value = this.default_value;
 		}
 		
+		/**
+		 * Sets the model's default value (only called by model, not user).
+		 * 
+		 * This updates default_value and the Auto button label to show the model's default.
+		 * This does NOT change the actual saved value in Options - it only affects:
+		 * - What label is shown on Auto button when value is unset
+		 * - What value appears in spin button when user clicks "Auto" to set custom value
+		 */
 		public override void set_value(Value value)
 		{
 			var int_val = value.get_int();
@@ -520,13 +578,21 @@ namespace OLLMchat.Settings
 			} else if (int_val > (int)this.max_value) {
 				int_val = (int)this.max_value;
 			}
+			// Update default_value to model's default (used when user clicks Auto button)
 			this.default_value = (double)int_val;
 			this.default_value_set = true;
 			string label_text = int_val.to_string();
-			// Always set the label
+			// Update Auto button label to show model's default value
 			this.auto_button.label = label_text == "" ? "Auto" : label_text;
 		}
 		
+		/**
+		 * Loads the widget's value from the options object.
+		 * 
+		 * DISPLAY LOGIC:
+		 * - If value is unset (auto_value): Show Auto button (with model default label if set_value() was called)
+		 * - If value is set: Show spin button with the actual saved value (NOT default_value)
+		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
 			this.spin_button.set_range(this.min_value, this.max_value);
@@ -538,7 +604,8 @@ namespace OLLMchat.Settings
 			((GLib.Object)options).get_property(property_name, ref val);
 			
 			if (this.is_default(val)) {
-				// Value is unset, show Auto button with default value label if set via set_value()
+				// Scenario 1: Value is unset (default/empty)
+				// CORRECT: Check if set_value() was called to show model's default value in label
 				if (this.default_value_set) {
 					// Use the default value that was set via set_value()
 					string label_text = "%d".printf((int)this.default_value);
@@ -548,7 +615,10 @@ namespace OLLMchat.Settings
 				}
 				this.reset_to_auto();
 			} else {
-				// Value is set, show spin button with value
+				// Scenario 2: Value is set (user has explicitly set a value)
+				// WRONG: set_to_default() calls reset_default() which sets spin button to default_value,
+				// but we immediately overwrite it with the actual saved value. This is inefficient.
+				// We should directly set the spin button to val.get_int() without calling reset_default()
 				this.set_to_default();
 				this.spin_button.value = (double)val.get_int();
 			}
