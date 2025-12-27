@@ -294,6 +294,17 @@ namespace OLLMchat.Settings
 		 */
 		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection)
 		{
+			// Get status object and ensure active flag is set
+			LoadingStatus status_obj;
+			if (this.loading_status_cache.has_key(model_name)) {
+				status_obj = this.loading_status_cache.get(model_name);
+			} else {
+				status_obj = new LoadingStatus();
+				this.loading_status_cache.set(model_name, status_obj);
+			}
+			status_obj.active = true;
+			status_obj.connection_url = connection.url;
+			
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
 				config = this.app.config
@@ -307,14 +318,7 @@ namespace OLLMchat.Settings
 				stream = true
 			};
 			
-			// Get status object to track retry count
-			LoadingStatus status_obj;
-			if (this.loading_status_cache.has_key(model_name)) {
-				status_obj = this.loading_status_cache.get(model_name);
-			} else {
-				status_obj = new LoadingStatus();
-				this.loading_status_cache.set(model_name, status_obj);
-			}
+			// Status object already retrieved above
 			
 			// Track progress
 			int progress = 0;
