@@ -373,13 +373,13 @@ namespace OLLMchat.Settings
 		 */
 		private void schedule_progress_update(string model_name, string status, int progress)
 		{
-			// Get or create pull info
-			PullInfo info;
-			if (this.pull_info.has_key(model_name)) {
-				info = this.pull_info.get(model_name);
+			// Get or create status
+			LoadingStatus status_obj;
+			if (this.loading_status_cache.has_key(model_name)) {
+				status_obj = this.loading_status_cache.get(model_name);
 			} else {
-				info = new PullInfo();
-				this.pull_info.set(model_name, info);
+				status_obj = new LoadingStatus();
+				this.loading_status_cache.set(model_name, status_obj);
 			}
 			
 			var now = GLib.get_real_time() / 1000000;
@@ -390,30 +390,30 @@ namespace OLLMchat.Settings
 					this.progress_updated(model_name, status, progress);
 					return false;
 				});
-				info.last_update_time = now;
-				info.last_status = status;
+				status_obj.last_update_time = now;
+				status_obj.status = status;
 				return;
 			}
 			
 			// Emit if status changed
-			if (status != info.last_status) {
+			if (status != status_obj.status) {
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
 					return false;
 				});
-				info.last_update_time = now;
-				info.last_status = status;
+				status_obj.last_update_time = now;
+				status_obj.status = status;
 				return;
 			}
 			
 			// Emit if enough time has passed
-			if ((now - info.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
+			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
 					return false;
 				});
-				info.last_update_time = now;
-				info.last_status = status;
+				status_obj.last_update_time = now;
+				status_obj.status = status;
 			}
 		}
 		
@@ -538,8 +538,8 @@ namespace OLLMchat.Settings
 		 */
 		public bool is_pulling(string model_name)
 		{
-			return this.pull_info.has_key(model_name) && 
-			       this.pull_info.get(model_name).active;
+			return this.loading_status_cache.has_key(model_name) && 
+			       this.loading_status_cache.get(model_name).active;
 		}
 		
 		/**
@@ -550,7 +550,7 @@ namespace OLLMchat.Settings
 		public Gee.Set<string> get_active_pulls()
 		{
 			var result = new Gee.HashSet<string>();
-			foreach (var entry in this.pull_info.entries) {
+			foreach (var entry in this.loading_status_cache.entries) {
 				if (entry.value.active) {
 					result.add(entry.key);
 				}
