@@ -118,44 +118,52 @@ namespace OLLMchat.Call
 					continue;
 				}
 
-				// Find the property spec for this parameter name
-				var pspec = this.find_property(param_name);
-				if (pspec == null) {
-					continue;
-				}
-
-				// Use switch case grouped by type to set the property
+				// Use switch case on parameter name to set the property
 				// Cast to Object to use set_property on Json.Serializable
-				switch (pspec.value_type.name()) {
-					case "gint":
-						// Integer properties
+				switch (param_name) {
+					// Integer properties
+					case "seed":
+					case "top_k":
+					case "num_predict":
+					case "num_ctx":
 						int int_value;
 						if (int.try_parse(param_value, out int_value)) {
-							var value = Value(typeof(int));
-							value.set_int(int_value);
-							((GLib.Object)this).set_property(pspec, value);
+							var pspec = this.find_property(param_name);
+							if (pspec != null) {
+								var value = Value(typeof(int));
+								value.set_int(int_value);
+								((GLib.Object)this).set_property(pspec, value);
+							}
 						}
 						break;
 					
-					case "gdouble":
-						// Double properties
+					// Double properties
+					case "temperature":
+					case "top_p":
+					case "min_p":
 						double double_value;
 						if (double.try_parse(param_value, out double_value)) {
-							var value = Value(typeof(double));
-							value.set_double(double_value);
-							((GLib.Object)this).set_property(pspec, value);
+							var pspec = this.find_property(param_name);
+							if (pspec != null) {
+								var value = Value(typeof(double));
+								value.set_double(double_value);
+								((GLib.Object)this).set_property(pspec, value);
+							}
 						}
 						break;
 					
-					case "gchararray":
-						// String properties
-						var value = Value(typeof(string));
-						value.set_string(param_value);
-						((GLib.Object)this).set_property(pspec, value);
+					// String properties
+					case "stop":
+						var pspec = this.find_property(param_name);
+						if (pspec != null) {
+							var value = Value(typeof(string));
+							value.set_string(param_value);
+							((GLib.Object)this).set_property(pspec, value);
+						}
 						break;
 					
 					default:
-						// Unknown type, skip
+						// Unknown parameter name, skip
 						break;
 				}
 			}
