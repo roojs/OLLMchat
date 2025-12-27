@@ -80,6 +80,48 @@
     "downloads": 56100
   },
   {
+    "name": "aliafshar/gemma3-it-qat-tools",
+    "slug": "aliafshar/gemma3-it-qat-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "1b",
+        "size": "1.0GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b",
+        "size": "4.0GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 11100
+  },
+  {
     "name": "all-minilm",
     "slug": "all-minilm",
     "description": "Embedding models on very large sentence level datasets.",
@@ -8486,6 +8528,24 @@
     "downloads": 59800
   },
   {
+    "name": "ebdm/gemma3-enhanced",
+    "slug": "ebdm/gemma3-enhanced",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "8K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 2636
+  },
+  {
     "name": "elyor/nomic-embed-text-long",
     "slug": "elyor/nomic-embed-text-long",
     "description": "",
@@ -14040,6 +14100,30 @@
     "downloads": 389600
   },
   {
+    "name": "Hituzip/gemma3-tools",
+    "slug": "Hituzip/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "4b-rus",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 6518
+  },
+  {
     "name": "huihui_ai/deepseek-r1-abliterated",
     "slug": "huihui_ai/deepseek-r1-abliterated",
     "description": "",
@@ -14379,6 +14463,134 @@
       }
     ],
     "downloads": 613000
+  },
+  {
+    "name": "huihui_ai/gemma3-abliterated",
+    "slug": "huihui_ai/gemma3-abliterated",
+    "description": "",
+    "features": [
+      "vision"
+    ],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "8.6GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "270m",
+        "size": "543MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "1b",
+        "size": "806MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b",
+        "size": "8.6GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "24GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "27b",
+        "size": "55GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "270m-fp16",
+        "size": "543MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "1b-q4_K_M",
+        "size": "806MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "1b-q8_0",
+        "size": "1.1GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "1b-fp16",
+        "size": "2.0GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b-q8_0",
+        "size": "5.0GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "4b-fp16",
+        "size": "7.8GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "12b-q8_0",
+        "size": "13GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "12b-fp16",
+        "size": "24GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "27b-q8_0",
+        "size": "30GB",
+        "context": "128K",
+        "input": "Text"
+      },
+      {
+        "name": "27b-fp16",
+        "size": "55GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 51200
+  },
+  {
+    "name": "huihui_ai/gemma3n-abliterated",
+    "slug": "huihui_ai/gemma3n-abliterated",
+    "description": "",
+    "features": [],
+    "tags": [
+      {
+        "name": "e2b-fp16",
+        "size": "8.9GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "e4b-fp16",
+        "size": "14GB",
+        "context": "32K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 15300
   },
   {
     "name": "huihui_ai/llama3.2-abliterate",
@@ -19441,6 +19653,42 @@
     "downloads": 160300
   },
   {
+    "name": "lukaspetrik/gemma3-tools",
+    "slug": "lukaspetrik/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "1b",
+        "size": "815MB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 983
+  },
+  {
     "name": "magicoder",
     "slug": "magicoder",
     "description": "🎩 Magicoder is a family of 7B parameter models trained on 75K synthetic instruction data using OSS-Instruct, a novel approach to enlightening LLMs with open-source code snippets.",
@@ -22418,6 +22666,36 @@
     "downloads": 79500
   },
   {
+    "name": "mix_77/gemma3-qat-tools",
+    "slug": "mix_77/gemma3-qat-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "4.0GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 1690
+  },
+  {
     "name": "mixtral",
     "slug": "mixtral",
     "description": "A set of Mixture of Experts (MoE) model with open weights by Mistral AI in 8x7b and 8x22b parameter sizes.",
@@ -22968,6 +23246,68 @@
     "downloads": 469400
   },
   {
+    "name": "MrScarySpaceCat/gemma3-tools",
+    "slug": "MrScarySpaceCat/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 965
+  },
+  {
+    "name": "mshojaei77/gemma3persian",
+    "slug": "mshojaei77/gemma3persian",
+    "description": "",
+    "features": [],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "4.1GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 1944
+  },
+  {
+    "name": "mtaylor91/llama3.2-uncensored",
+    "slug": "mtaylor91/llama3.2-uncensored",
+    "description": "",
+    "features": [
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "3b",
+        "size": "3.8GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 912
+  },
+  {
     "name": "mxbai-embed-large",
     "slug": "mxbai-embed-large",
     "description": "State-of-the-art large embedding model from mixedbread.ai",
@@ -23001,6 +23341,30 @@
       }
     ],
     "downloads": 6000000
+  },
+  {
+    "name": "mychen76/gemma3_cline_roocode_qat",
+    "slug": "mychen76/gemma3_cline_roocode_qat",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 1956
   },
   {
     "name": "nemotron",
@@ -26853,6 +27217,66 @@
     "downloads": 120400
   },
   {
+    "name": "orieg/gemma3-tools",
+    "slug": "orieg/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "1b",
+        "size": "1.0GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b",
+        "size": "4.0GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "1b-it-qat",
+        "size": "1.0GB",
+        "context": "32K",
+        "input": "Text"
+      },
+      {
+        "name": "4b-it-qat",
+        "size": "4.0GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b-it-qat",
+        "size": "8.9GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b-it-qat",
+        "size": "18GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 6761
+  },
+  {
     "name": "paraphrase-multilingual",
     "slug": "paraphrase-multilingual",
     "description": "Sentence-transformers model that can be used for tasks like clustering or semantic search.",
@@ -26897,6 +27321,36 @@
       }
     ],
     "downloads": 20
+  },
+  {
+    "name": "PetrosStav/gemma3-tools",
+    "slug": "PetrosStav/gemma3-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "4b",
+        "size": "3.3GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "12b",
+        "size": "8.1GB",
+        "context": "128K",
+        "input": "Text, Image"
+      },
+      {
+        "name": "27b",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 17600
   },
   {
     "name": "phi",
@@ -28051,6 +28505,23 @@
       }
     ],
     "downloads": 143100
+  },
+  {
+    "name": "pidrilkin/gemma3_27b_abliterated",
+    "slug": "pidrilkin/gemma3_27b_abliterated",
+    "description": "",
+    "features": [
+      "vision"
+    ],
+    "tags": [
+      {
+        "name": "Q4_K_M",
+        "size": "17GB",
+        "context": "128K",
+        "input": "Text, Image"
+      }
+    ],
+    "downloads": 7079
   },
   {
     "name": "qwen",
@@ -35394,6 +35865,23 @@
       }
     ],
     "downloads": 156500
+  },
+  {
+    "name": "scb10x/typhoon2.1-gemma3-4b",
+    "slug": "scb10x/typhoon2.1-gemma3-4b",
+    "description": "",
+    "features": [
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "2.6GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 18100
   },
   {
     "name": "secfa/DeepSeek-R1-UD-IQ1_M",
@@ -43414,6 +43902,24 @@
       }
     ],
     "downloads": 136300
+  },
+  {
+    "name": "unitythemaker/llama3.2-vision-tools",
+    "slug": "unitythemaker/llama3.2-vision-tools",
+    "description": "",
+    "features": [
+      "vision",
+      "tools"
+    ],
+    "tags": [
+      {
+        "name": "latest",
+        "size": "7.9GB",
+        "context": "128K",
+        "input": "Text"
+      }
+    ],
+    "downloads": 894
   },
   {
     "name": "vicuna",

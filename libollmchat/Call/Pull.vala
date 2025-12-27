@@ -32,9 +32,9 @@ namespace OLLMchat.Call
 		/**
 		 * Signal emitted when a progress chunk is received during pull.
 		 * 
-		 * @param chunk The JSON object containing progress information
+		 * @param response The pull progress response object
 		 */
-		public signal void progress_chunk(Json.Object chunk);
+		public signal void progress_chunk(Response.Pull response);
 
 		public Pull(Client client, string model_name)
 		{
@@ -66,7 +66,18 @@ namespace OLLMchat.Call
 
 			try {
 				yield this.handle_streaming_response(message, (chunk) => {
-					this.progress_chunk(chunk);
+					// Convert Json.Object to Response.Pull
+					var chunk_node = new Json.Node(Json.NodeType.OBJECT);
+					chunk_node.set_object(chunk);
+					
+					var response = Json.gobject_deserialize(typeof(Response.Pull), chunk_node) as Response.Pull;
+					if (response == null) {
+						GLib.warning("Failed to deserialize pull response chunk");
+						return;
+					}
+					
+					response.client = this.client;
+					this.progress_chunk(response);
 				});
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {

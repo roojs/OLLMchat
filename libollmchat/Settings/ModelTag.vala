@@ -64,12 +64,13 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Parses the size string to extract the numeric size in billions.
+		 * Parses the size string to extract the numeric size in GB.
 		 * Returns -1 if the size cannot be parsed.
 		 * 
 		 * Handles formats like "14GB", "1.5GB", etc.
+		 * If the size is in bytes (suffix "B"), converts to GB.
 		 */
-		public double parse_size_b()
+		public double parse_size_gb()
 		{
 			if (this.size == "") {
 				return -1;
@@ -89,17 +90,6 @@ namespace OLLMchat.Settings
 			}
 			
 			return -1;
-		}
-		
-		/**
-		 * Parses the size string to extract the numeric size in GB.
-		 * Returns -1 if the size cannot be parsed.
-		 * 
-		 * Handles formats like "14GB", "1.5GB", etc.
-		 */
-		public double parse_size_gb()
-		{
-			return this.parse_size_b();
 		}
 		
 		/**
@@ -127,7 +117,7 @@ namespace OLLMchat.Settings
 		public string dropdown_display {
 			owned get {
 				if (this.size != "" && this.context != "") {
-					return "%s (%s - context %s)".printf(this.name, this.size, this.context);
+					return this.name + " (" + this.size + " - context " + this.context + ")";
 				}
 				return this.name;
 			}
@@ -139,25 +129,31 @@ namespace OLLMchat.Settings
 		 */
 		public string dropdown_markup {
 			owned get {
-				if (this.size != "" || this.context != "" || this.input != "") {
-					var parts = new Gee.ArrayList<string>();
-					if (this.size != "") {
-						parts.add(this.size);
-					}
-					if (this.context != "") {
-						parts.add("context %s".printf(this.context));
-					}
-					if (this.input != "") {
-						parts.add(this.input);
-					}
-					var details = string.joinv(" • ", parts.to_array());
-					// Escape markup in name and details
-					var escaped_name = GLib.Markup.escape_text(this.name, -1);
-					var escaped_details = GLib.Markup.escape_text(details, -1);
-					return "%s <span size='small' foreground='grey'>%s</span>".printf(escaped_name, escaped_details);
+				if (this.size == "" && this.context == "" && this.input == "") {
+					return GLib.Markup.escape_text(this.name, -1);
 				}
-				// Just escape the name if no details
-				return GLib.Markup.escape_text(this.name, -1);
+				
+				var details = "";
+				if (this.size != "") {
+					details = this.size;
+				}
+				if (this.context != "") {
+					if (details != "") {
+						details += " • ";
+					}
+					details += "context " + this.context;
+				}
+				if (this.input != "") {
+					if (details != "") {
+						details += " • ";
+					}
+					details += this.input;
+				}
+				
+				return GLib.Markup.escape_text(this.name, -1) +
+				       " <span size='small' foreground='grey'>" +
+				       GLib.Markup.escape_text(details, -1) +
+				       "</span>";
 			}
 		}
 	}

@@ -62,48 +62,21 @@ Examples:
 		};
 		
 		// Connect to progress signal to display chunks
-		pull_call.progress_chunk.connect((chunk) => {
-			// Parse and display progress information
-			var generator = new Json.Generator();
-			var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-			chunk_node.set_object(chunk);
-			generator.set_root(chunk_node);
-			var json_str = generator.to_data(null);
-			
-			// Extract key fields for display
-			string status = "";
-			if (chunk.has_member("status")) {
-				status = chunk.get_string_member("status");
-			}
-			
-			string digest = "";
-			if (chunk.has_member("digest")) {
-				digest = chunk.get_string_member("digest");
-			}
-			
-			int64 completed = -1;
-			if (chunk.has_member("completed")) {
-				completed = chunk.get_int_member("completed");
-			}
-			
-			int64 total = -1;
-			if (chunk.has_member("total")) {
-				total = chunk.get_int_member("total");
-			}
-			
+		pull_call.progress_chunk.connect((response) => {
 			// Display progress information
-			stdout.printf("Status: %s", status);
-			if (digest != "") {
-				stdout.printf(" | Digest: %s", digest);
+			stdout.printf("Status: %s", response.status);
+			if (response.digest != "") {
+				stdout.printf(" | Digest: %s", response.digest);
 			}
-			if (completed >= 0 && total >= 0) {
-				double percent = ((double)completed / (double)total) * 100.0;
-				stdout.printf(" | Progress: %lld/%lld (%.1f%%)", completed, total, percent);
+			if (response.total > 0) {
+				double percent = ((double)response.completed / (double)response.total) * 100.0;
+				stdout.printf(" | Progress: %lld/%lld (%.1f%%)", response.completed, response.total, percent);
 			}
 			stdout.printf("\n");
 			
 			// Also print full JSON for debugging
 			if (opt_debug) {
+				var json_str = Json.gobject_to_data(response, null);
 				stdout.printf("  Full JSON: %s\n", json_str);
 			}
 		});
