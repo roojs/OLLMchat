@@ -179,7 +179,6 @@ namespace OLLMchat.Settings
 			this.expander.add_row(buttonRow);
 		}
 
-
 		/**
 		 * Removes the unverified CSS class from all fields.
 		 */
