@@ -440,17 +440,17 @@ namespace OLLMchat.Settings
 		 * new_value = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * DISPLAY LOGIC:
-		 * - If new_value in Options is unset (new_value == unset_value): Show Auto button (with model default label if set_value() was called)
-		 * - If new_value in Options is set (new_value != unset_value): Show spin button with the actual saved new_value from Options (NOT default_value)
+		 * - If new_value in Options is unset (new_value == unset_value): Show Auto button (with model default label if model_value is set)
+		 * - If new_value in Options is set (new_value != unset_value): Show spin button with the actual saved new_value from Options
 		 * 
-		 * NOTE: We should reset default_value back to the hardcoded default at the start of this method,
-		 * because if a previous model set a default via set_value(), default_value would still have that value.
-		 * If the new model doesn't have a default, we want to use the hardcoded default, not the previous model's default.
-		 * However, we currently don't store the original hardcoded default, so we can't reset it properly.
-		 * This means switching from a model with a default to a model without a default will show the wrong default value.
+		 * NOTE: We reset model_value to unset_value at the start, so if the new model doesn't have a default,
+		 * model_value will remain unset_value and we'll use the hardcoded default_value instead.
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
+			// Reset model_value - it will be set by set_value() if the model has a default
+			this.model_value = this.unset_value;
+			
 			this.spin_button.set_range(this.min_value, this.max_value);
 			this.spin_button.set_increments(this.step_value, this.step_value * 10);
 			this.spin_button.digits = this.digits;
@@ -461,17 +461,19 @@ namespace OLLMchat.Settings
 			
 			if (this.is_default(val)) {
 				// Scenario 1: new_value is unset (default/empty)
-				// WRONG: This always sets label to "Auto", but should check if set_value() was called
-				// to show model's default value in the label (like OptionIntWidget does)
-				this.auto_button.label = "Auto";
+				// Show model_value in label if set, otherwise show "Auto"
+				if (this.model_value != this.unset_value) {
+					string formatted = "%.*f".printf((int)this.digits, this.model_value);
+					this.auto_button.label = formatted == "" ? "Auto" : formatted;
+				} else {
+					this.auto_button.label = "Auto";
+				}
 				
 				this.reset_to_auto();
 				return;
 			}
-			// Scenario 2: Value is set (user has explicitly set a value)
-			// WRONG: set_to_default() calls reset_default() which sets spin button to default_value,
-			// but we immediately overwrite it with the actual saved value. This is inefficient.
-			// We should directly set the spin button to val.get_double() without calling reset_default()
+			// Scenario 2: new_value is set (user has explicitly set a value)
+			// Show spin button with the actual saved new_value from Options
 			this.set_to_default();
 			this.spin_button.value = val.get_double();
 			
