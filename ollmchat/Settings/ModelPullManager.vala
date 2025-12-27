@@ -390,8 +390,29 @@ namespace OLLMchat.Settings
 							if (this.loading_status_cache.has_key(model_name)) {
 								var check_status = this.loading_status_cache.get(model_name);
 								if (check_status.status == "pending-retry") {
-									// Retry the pull
-									this.start_pull_async(model_name, connection);
+									// Look up connection from config
+									OLLMchat.Settings.Connection? retry_connection = null;
+									if (check_status.connection_url != "" && 
+									    this.app.config.connections.has_key(check_status.connection_url)) {
+										retry_connection = this.app.config.connections.get(check_status.connection_url);
+									}
+									
+									if (retry_connection != null) {
+										// Retry the pull
+										this.start_pull_async(model_name, retry_connection);
+									} else {
+										// Connection not found - mark as failed
+										check_status.status = "failed";
+										check_status.error = "Connection not found for retry";
+										this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
+										Idle.add(() => {
+											this.progress_updated(model_name, "failed", progress);
+											this.model_failed(model_name);
+											this.loading_status_cache.unset(model_name);
+											this.write_to_file();
+											return false;
+										});
+									}
 								}
 							}
 							return false;
