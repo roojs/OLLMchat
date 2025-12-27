@@ -121,8 +121,8 @@ namespace OLLMchat.Settings
 			// Attach option rows to this ExpanderRow (also sets current_model_row)
 			this.models_page.options_widget.attach_to_model_row(this);
 				
-			// Load options into the widget with parameters
-			this.load_options_with_parameters();
+			// Load default values from model.options and then load options
+			this.load_defaults();
 			this.is_expanding = false;
 		}
 		
