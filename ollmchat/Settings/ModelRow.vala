@@ -137,9 +137,11 @@ namespace OLLMchat.Settings
 				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
 				GLib.debug("load_defaults: Processing row.name = '%s'", row.name);
+				// Convert underscore to hyphen for GObject property name
+				var property_name = row.name.replace("_", "-");
 				
-				// Use switch case on row.name (with underscores) to determine property name (with hyphens)
-				switch (row.name) {
+				// Use switch case on property name (with hyphens)
+				switch (property_name) {
 					// Integer properties
 					case "seed":
 						Value model_value = Value(typeof(int));
@@ -150,7 +152,7 @@ namespace OLLMchat.Settings
 							row.set_value(model_value);
 						}
 						break;
-					case "top_k":
+					case "top-k":
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property("top-k", ref model_value);
 						var int_val = model_value.get_int();
@@ -159,7 +161,7 @@ namespace OLLMchat.Settings
 							row.set_value(model_value);
 						}
 						break;
-					case "num_predict":
+					case "num-predict":
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property("num-predict", ref model_value);
 						var int_val = model_value.get_int();
@@ -168,7 +170,7 @@ namespace OLLMchat.Settings
 							row.set_value(model_value);
 						}
 						break;
-					case "num_ctx":
+					case "num-ctx":
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property("num-ctx", ref model_value);
 						var int_val = model_value.get_int();
@@ -188,7 +190,7 @@ namespace OLLMchat.Settings
 							row.set_value(model_value);
 						}
 						break;
-					case "top_p":
+					case "top-p":
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property("top-p", ref model_value);
 						var double_val = model_value.get_double();
@@ -197,7 +199,7 @@ namespace OLLMchat.Settings
 							row.set_value(model_value);
 						}
 						break;
-					case "min_p":
+					case "min-p":
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property("min-p", ref model_value);
 						var double_val = model_value.get_double();
