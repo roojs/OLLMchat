@@ -306,6 +306,7 @@ namespace OLLMchat.Settings
 			}
 			status_obj.active = true;
 			status_obj.connection_url = connection.url;
+			status_obj.connection = connection;
 			
 			// Create client for this connection
 			var client = new OLLMchat.Client(connection) {
