@@ -59,7 +59,26 @@ namespace OLLMchat.Settings
 		
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			
+			// Don't serialize runtime-only fields
+			if (property_name == "active" || property_name == "last_update_time") {
+				return null;
+			}
+			// Only serialize error if it's not empty
+			if (property_name == "error" && value.get_string() == "") {
+				return null;
+			}
+			// Only serialize last_chunk_status if it's not empty
+			if (property_name == "last_chunk_status" && value.get_string() == "") {
+				return null;
+			}
+			// Only serialize connection_url if it's not empty
+			if (property_name == "connection_url" && value.get_string() == "") {
+				return null;
+			}
+			// Only serialize retry_count if it's greater than 0
+			if (property_name == "retry_count" && value.get_int() == 0) {
+				return null;
+			}
 			return default_serialize_property(property_name, value, pspec);
 		}
 	}
