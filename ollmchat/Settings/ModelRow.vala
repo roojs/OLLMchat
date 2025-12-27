@@ -140,6 +140,10 @@ namespace OLLMchat.Settings
 				// Convert underscore to hyphen for GObject property name
 				var property_name = row.pname.replace("_", "-");
 				
+				// Load user's options first
+				row.load_options(this.options);
+				
+				// Then check if model has a default value and set it if user option is unset
 				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
 				switch (property_name) {
 					// Integer properties
@@ -152,7 +156,12 @@ namespace OLLMchat.Settings
 						var int_val = model_value.get_int();
 						GLib.debug("load_defaults: %s = %d", row.pname, int_val);
 						if (int_val != -1) {
-							row.set_value(model_value);
+							// Check if user option is unset (default)
+							Value user_value = Value(typeof(int));
+							((GLib.Object)this.options).get_property(property_name, ref user_value);
+							if (user_value.get_int() == -1) {
+								row.set_value(model_value);
+							}
 						}
 						break;
 					
@@ -165,15 +174,18 @@ namespace OLLMchat.Settings
 						var double_val = model_value.get_double();
 						GLib.debug("load_defaults: %s = %f", row.pname, double_val);
 						if (double_val != -1.0) {
-							row.set_value(model_value);
+							// Check if user option is unset (default)
+							Value user_value = Value(typeof(double));
+							((GLib.Object)this.options).get_property(property_name, ref user_value);
+							if (user_value.get_double() == -1.0) {
+								row.set_value(model_value);
+							}
 						}
 						break;
 					
 					default:
 						break;
 				}
-				// Always load options after potentially setting defaults
-				row.load_options(this.options);
 			}
 		}
 
