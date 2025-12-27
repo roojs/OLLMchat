@@ -95,9 +95,11 @@ namespace OLLMchat.Call
 		public void fill_from_model(OLLMchat.Response.Model model)
 		{
 			if (model.parameters == null || model.parameters == "") {
+				GLib.debug("fill_from_model: model '%s' has no parameters", model.name);
 				return;
 			}
 
+			GLib.debug("fill_from_model: parsing parameters for model '%s': '%s'", model.name, model.parameters);
 			var lines = model.parameters.split("\n");
 			foreach (var line in lines) {
 				line = line.strip();
@@ -118,6 +120,8 @@ namespace OLLMchat.Call
 					continue;
 				}
 
+				GLib.debug("fill_from_model: found parameter '%s' = '%s'", param_name, param_value);
+
 				// Use switch case on parameter name to set the property
 				// Cast to Object to use set_property on Json.Serializable
 				switch (param_name) {
@@ -131,6 +135,9 @@ namespace OLLMchat.Call
 							var value = Value(typeof(int));
 							value.set_int(int_value);
 							((GLib.Object)this).set_property(param_name, value);
+							GLib.debug("fill_from_model: set %s = %d", param_name, int_value);
+						} else {
+							GLib.debug("fill_from_model: failed to parse int value '%s' for %s", param_value, param_name);
 						}
 						break;
 					
@@ -143,6 +150,9 @@ namespace OLLMchat.Call
 							var value = Value(typeof(double));
 							value.set_double(double_value);
 							((GLib.Object)this).set_property(param_name, value);
+							GLib.debug("fill_from_model: set %s = %.2f", param_name, double_value);
+						} else {
+							GLib.debug("fill_from_model: failed to parse double value '%s' for %s", param_value, param_name);
 						}
 						break;
 					
@@ -156,7 +166,7 @@ namespace OLLMchat.Call
 					default:
 						// Unknown parameter name, skip
 						break;
-				}
+				}m
 			}
 		}
 

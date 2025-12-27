@@ -65,6 +65,7 @@ namespace OLLMchat.Response
 			get { return this._parameters; }
 			set {
 				this._parameters = value;
+				GLib.debug("Model.parameters set for '%s': '%s'", this.name, value ?? "(null)");
 				// Automatically fill options from parameters when set
 				if (value != null && value != "") {
 					this.options.fill_from_model(this);
