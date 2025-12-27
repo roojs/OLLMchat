@@ -71,7 +71,7 @@ namespace OLLMchat.Settings
 				css_classes = {"suggested-action"}
 			};
 			this.add_btn.clicked.connect(this.add_connection);
-			(this.action_widget as Gtk.Box).append(this.add_btn);
+			this.action_widget.append(this.add_btn);
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {

@@ -44,7 +44,7 @@ namespace OLLMchat.Settings
 		 * Should be created in constructor. Can be an empty hidden box for pages
 		 * that don't need action widgets.
 		 */
-		public Gtk.Widget action_widget { get; protected set; }
+		public Gtk.Box action_widget { get; protected set; }
 
 		/**
 		 * Default constructor for creating dummy instances.
