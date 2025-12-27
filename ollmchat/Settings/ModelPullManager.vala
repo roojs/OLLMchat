@@ -177,11 +177,11 @@ namespace OLLMchat.Settings
 			this.ensure_background_thread();
 			
 			// Get or create status
-			LoadingStatus status_obj;
+			LoadingStatus status_obj = new LoadingStatus();
 			if (this.loading_status_cache.has_key(model_name)) {
 				status_obj = this.loading_status_cache.get(model_name);
 			} else {
-				status_obj = new LoadingStatus();
+				
 				this.loading_status_cache.set(model_name, status_obj);
 			}
 			status_obj.active = true;
