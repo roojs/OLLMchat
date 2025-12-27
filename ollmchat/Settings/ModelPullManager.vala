@@ -384,10 +384,10 @@ namespace OLLMchat.Settings
 						// Schedule retry after delay
 						var timeout_source = new TimeoutSource(RETRY_DELAY_SECONDS * 1000);
 						timeout_source.set_callback(() => {
-							// Check if still active and not completed
+							// Check if still in pending-retry status (not completed or failed)
 							if (this.loading_status_cache.has_key(model_name)) {
 								var check_status = this.loading_status_cache.get(model_name);
-								if (check_status.active && check_status.status == "pending-retry") {
+								if (check_status.status == "pending-retry") {
 									// Retry the pull
 									this.start_pull_async(model_name, connection);
 								}
