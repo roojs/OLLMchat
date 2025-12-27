@@ -308,7 +308,6 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionFloatWidget : OptionRow
 	{
-		public string pname { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; }
@@ -407,7 +406,6 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionIntWidget : OptionRow
 	{
-		public string pname { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; default = 1.0; }
