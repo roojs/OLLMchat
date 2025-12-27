@@ -26,17 +26,25 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public abstract class SettingsPage : Gtk.Box
+	public class SettingsPage : Gtk.Box
 	{
 		/**
 		 * Page name (used as ViewStack page name)
 		 */
-		public string page_name { get; construct; }
+		public string page_name { get; construct; default = ""; }
 
 		/**
 		 * Page title (used as ViewStack page title and preferences group title)
 		 */
-		public string page_title { get; construct; }
+		public string page_title { get; construct; default = ""; }
+
+		/**
+		 * Default constructor for creating dummy instances.
+		 */
+		public SettingsPage()
+		{
+			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+		}
 
 		/**
 		 * Called when this page is activated (becomes visible).
