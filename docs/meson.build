@@ -152,6 +152,8 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/Tools/Permission.vala',
     # ollmchat application sources (Settings UI)
     '../ollmchat/Settings/ConnectionAdd.vala',
+    '../ollmchat/Settings/ConnectionRow.vala',
+    '../ollmchat/Settings/SettingsPage.vala',
     '../ollmchat/Settings/ConnectionsPage.vala',
     '../ollmchat/Settings/ModelRow.vala',
     '../ollmchat/Settings/ModelsPage.vala',
