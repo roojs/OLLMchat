@@ -154,8 +154,8 @@ namespace OLLMchat.Settings
 			status_obj.connection_url = connection.url;
 			status_obj.connection = connection;
 			
-			// Start pull operation in background thread
-			this.pull_thread.start_pull(model_name, connection, status_obj);
+			// Start pull operation in background thread (pass only primitive data)
+			this.pull_thread.start_pull(model_name, connection, status_obj.retry_count);
 			
 			return true;
 		}
@@ -167,9 +167,23 @@ namespace OLLMchat.Settings
 		 * @param status Status string
 		 * @param progress Progress percentage
 		 * @param last_chunk_status Last chunk status from API
+		 * @param retry_count Current retry count (from background thread)
 		 */
-		private void handle_status_update(string model_name, string status, int progress, string last_chunk_status)
+		private void handle_status_update(string model_name, string status, int progress, string last_chunk_status, int retry_count)
 		{
+			// Update status object in main thread (thread-safe)
+			if (this.loading_status_cache.has_key(model_name)) {
+				var status_obj = this.loading_status_cache.get(model_name);
+				status_obj.retry_count = retry_count;
+				
+				// Update active flag based on status
+				if (status == "complete" || status == "failed") {
+					status_obj.active = false;
+				} else if (status == "pending-retry") {
+					status_obj.active = false;
+				}
+			}
+			
 			// Update status in memory and optionally write to file
 			bool force_write = (status == "pulling" && progress == 0) || 
 			                   status == "complete" || 
@@ -255,9 +269,9 @@ namespace OLLMchat.Settings
 						return false;
 					}
 					
-					// Retry the pull
+					// Retry the pull (pass only primitive data)
 					check_status.active = true;
-					this.pull_thread.start_pull(model_name, check_status.connection, check_status);
+					this.pull_thread.start_pull(model_name, check_status.connection, check_status.retry_count);
 					return false; // Don't repeat
 				});
 				return false;

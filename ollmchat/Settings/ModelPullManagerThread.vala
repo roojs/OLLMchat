@@ -152,8 +152,11 @@ namespace OLLMchat.Settings
 				config = this.app.config
 			};
 			
+			// Track retry count locally in this thread
+			int retry_count = initial_retry_count;
+			
 			// Notify start
-			this.status_updated(model_name, "pulling", 0, "pulling");
+			this.status_updated(model_name, "pulling", 0, "pulling", retry_count);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
@@ -171,8 +174,8 @@ namespace OLLMchat.Settings
 			// Connect to progress signal
 			pull_call.progress_chunk.connect((response) => {
 				// Reset retry count if we received data (means retry is working)
-				if (status_obj.retry_count > 0) {
-					status_obj.retry_count = 0;
+				if (retry_count > 0) {
+					retry_count = 0;
 				}
 				
 				// Get status from response object
@@ -199,7 +202,7 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify status update
-				this.status_updated(model_name, status, progress, last_chunk_status);
+				this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
 				
 				// Notify progress update (for rate-limited UI updates)
 				this.progress_updated(model_name, status, progress);
@@ -229,16 +232,13 @@ namespace OLLMchat.Settings
 				
 				// Handle errors with retry logic
 				if (status == "error") {
-					status_obj.retry_count++;
+					retry_count++;
 					
-					if (status_obj.retry_count <= MAX_RETRIES) {
+					if (retry_count <= MAX_RETRIES) {
 						// Schedule retry
 						status = "pending-retry";
-						this.status_updated(model_name, status, progress, last_chunk_status);
+						this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
 						this.progress_updated(model_name, status, progress);
-						
-						// Clean up active flag (will be set again on retry)
-						status_obj.active = false;
 						return;
 					}
 					
@@ -247,13 +247,10 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify final status update
-				this.status_updated(model_name, status, progress, last_chunk_status);
+				this.status_updated(model_name, status, progress, last_chunk_status, retry_count);
 				
 				// Notify final progress update
 				this.progress_updated(model_name, status, progress);
-				
-				// Clean up active flag
-				status_obj.active = false;
 			});
 		}
 	}
