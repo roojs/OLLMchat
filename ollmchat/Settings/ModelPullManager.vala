@@ -19,6 +19,45 @@
 namespace OLLMchat.Settings
 {
 	/**
+	 * Loading status information for a model pull operation.
+	 * 
+	 * @since 1.3.4
+	 */
+	private class LoadingStatus : Object, Json.Serializable
+	{
+		public string status { get; set; default = ""; }
+		public int progress { get; set; default = 0; }
+		public string started { get; set; default = ""; }
+		public string error { get; set; default = ""; }
+		
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+		
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+		
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+		
+		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			// Only serialize error if it's not empty
+			if (property_name == "error" && value.get_string() == "") {
+				return null;
+			}
+			return default_serialize_property(property_name, value, pspec);
+		}
+	}
+	
+	/**
 	 * Manages background pull operations for models.
 	 * 
 	 * Handles concurrent model pulls with progress tracking, rate-limited
