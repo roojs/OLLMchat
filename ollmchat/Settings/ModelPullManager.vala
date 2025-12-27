@@ -193,31 +193,38 @@ namespace OLLMchat.Settings
 		{
 			// Update status object in main thread (thread-safe)
 			var status_obj = this.get_or_create_status(model_name);
+			status_obj.status = status;
 			status_obj.retry_count = retry_count;
 			status_obj.completed = completed;
 			status_obj.total = total;
+			if (last_chunk_status != "") {
+				status_obj.last_chunk_status = last_chunk_status;
+			}
 			
 			// Update active flag based on status
 			if (status == "complete" || status == "failed" || status == "pending-retry") {
 				status_obj.active = false;
 			}
 			
-			// Update status in memory and optionally write to file
-			// progress is calculated from completed/total, so check if total > 0 for initial pull
+			// Set started timestamp if not already set
+			if (status_obj.started == "") {
+				status_obj.started = (GLib.get_real_time() / 1000000).to_string();
+			}
+			
+			// Add error message if status is error
+			if (status == "error" && status_obj.error == "") {
+				status_obj.error = "Pull operation failed";
+			}
+			
+			// Write to file if needed
 			bool force_write = (status == "pulling" && total == 0) || 
 			                   status == "complete" || 
 			                   status == "failed" || 
 			                   status == "pending-retry";
-			this.update_loading_status(model_name, status, completed, total, last_chunk_status, force_write);
-			
-			// Calculate progress for rate-limited UI updates
-			int progress = 0;
-			if (total > 0) {
-				progress = (int)(((double)completed / (double)total) * 100.0);
-			}
+			this.write_to_file_rate_limited(force_write);
 			
 			// Schedule progress update with rate limiting (for UI)
-			this.schedule_progress_update(model_name, status, progress);
+			this.schedule_progress_update(model_name, status_obj);
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
@@ -282,8 +289,8 @@ namespace OLLMchat.Settings
 						// Connection not found - mark as failed
 						check_status.status = "failed";
 						check_status.error = "Connection not found for retry";
-						this.update_loading_status(model_name, "failed", check_status.completed, check_status.total, check_status.last_chunk_status, true);
-						this.progress_updated(model_name, "failed", check_status.progress);
+						this.write_to_file();
+						this.progress_updated(model_name, check_status);
 						this.finish_pull(model_name, "failed");
 						return false;
 					}
@@ -309,22 +316,23 @@ namespace OLLMchat.Settings
 		 * - This is a final update (complete/error)
 		 * 
 		 * @param model_name Model name
-		 * @param status Current status
-		 * @param progress Progress percentage (calculated from completed/total)
+		 * @param status_obj LoadingStatus object with current status
 		 */
-		private void schedule_progress_update(string model_name, string status, int progress)
+		private void schedule_progress_update(string model_name, LoadingStatus status_obj)
 		{
-			var status_obj = this.get_or_create_status(model_name);
 			var now = GLib.get_real_time() / 1000000;
 			
 			// Check if we should emit update
 			bool should_emit = false;
-			if (status == "complete" || status == "error" || status == "failed") {
+			if (status_obj.status == "complete" || status_obj.status == "error" || status_obj.status == "failed") {
 				// Always emit final status updates
 				should_emit = true;
-			} else if (status != status_obj.status) {
-				// Emit if status changed
-				should_emit = true;
+			} else if (status_obj.status != status_obj.status) {
+				// Emit if status changed (compare with cached status)
+				var cached_status = this.get_or_create_status(model_name);
+				if (status_obj.status != cached_status.status) {
+					should_emit = true;
+				}
 			} else if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
 				// Emit if enough time has passed
 				should_emit = true;
@@ -332,48 +340,20 @@ namespace OLLMchat.Settings
 			
 			if (should_emit) {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
+					this.progress_updated(model_name, status_obj);
 					return false;
 				});
 				status_obj.last_update_time = now;
-				status_obj.status = status;
 			}
 		}
 		
 		/**
-		 * Updates loading status in memory and optionally writes to file.
+		 * Writes to file with rate limiting.
 		 * 
-		 * @param model_name Model name
-		 * @param status Status string
-		 * @param completed Bytes completed
-		 * @param total Total bytes
-		 * @param last_chunk_status Last chunk status from API
 		 * @param force_write If true, write immediately; if false, rate-limit to 5 minutes
 		 */
-		private void update_loading_status(string model_name, string status, int64 completed, int64 total, string last_chunk_status, bool force_write)
+		private void write_to_file_rate_limited(bool force_write)
 		{
-			var status_obj = this.get_or_create_status(model_name);
-			
-			// Update fields
-			status_obj.status = status;
-			status_obj.completed = completed;
-			status_obj.total = total;
-			// progress is calculated from completed/total, so no need to set it
-			if (last_chunk_status != "") {
-				status_obj.last_chunk_status = last_chunk_status;
-			}
-			
-			// Set started timestamp if not already set
-			if (status_obj.started == "") {
-				status_obj.started = (GLib.get_real_time() / 1000000).to_string();
-			}
-			
-			// Add error message if status is error
-			if (status == "error" && status_obj.error == "") {
-				status_obj.error = "Pull operation failed";
-			}
-			
-			// Write to file if forced or rate limit expired
 			if (force_write) {
 				this.write_to_file();
 				return;
