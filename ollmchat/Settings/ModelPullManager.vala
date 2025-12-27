@@ -401,7 +401,7 @@ namespace OLLMchat.Settings
 		private void write_to_file()
 		{
 			try {
-				var json_parts = new string[this.loading_status_cache.size];
+				string[] json_parts ={}''
 				int i = 0;
 				
 				// Serialize each status object to JSON string
