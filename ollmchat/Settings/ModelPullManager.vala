@@ -286,6 +286,20 @@ namespace OLLMchat.Settings
 				stream = true
 			};
 			
+			// Get status object to track retry count
+			LoadingStatus status_obj;
+			if (this.loading_status_cache.has_key(model_name)) {
+				status_obj = this.loading_status_cache.get(model_name);
+			} else {
+				status_obj = new LoadingStatus();
+				this.loading_status_cache.set(model_name, status_obj);
+			}
+			
+			// Reset retry count if we're getting data (means retry is working)
+			if (status_obj.retry_count > 0) {
+				status_obj.retry_count = 0;
+			}
+			
 			// Track progress
 			int progress = 0;
 			string status = "pulling";
@@ -293,9 +307,16 @@ namespace OLLMchat.Settings
 			int64 completed = 0;
 			int64 total = 0;
 			bool saw_success = false;
+			bool received_data = false;
 			
 			// Connect to progress signal
 			pull_call.progress_chunk.connect((chunk) => {
+				// Mark that we received data (reset retry count)
+				received_data = true;
+				if (status_obj.retry_count > 0) {
+					status_obj.retry_count = 0;
+				}
+				
 				// Parse status from chunk
 				if (chunk.has_member("status")) {
 					last_chunk_status = chunk.get_string_member("status");
