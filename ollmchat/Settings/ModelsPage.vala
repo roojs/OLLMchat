@@ -39,7 +39,6 @@ namespace OLLMchat.Settings
 		 */
 		public string search_filter { get; private set; default = ""; }
 
-		private Gtk.Box action_box;
 		private Gtk.SearchBar search_bar;
 		private Gtk.SearchEntry search_entry;
 		private Gtk.Button add_model_btn;
@@ -76,10 +75,10 @@ namespace OLLMchat.Settings
 			this.margin_bottom = 12;
 
 			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
-			this.action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
-			this.action_widget = this.action_box;
+			var action_box = this.action_widget as Gtk.Box;
 
 			// Create search bar (always visible)
 			this.search_bar = new Gtk.SearchBar();
@@ -96,7 +95,7 @@ namespace OLLMchat.Settings
 			// Make search bar always visible
 			this.search_bar.set_key_capture_widget(this);
 			this.search_bar.set_search_mode(true);
-			this.action_box.append(this.search_bar);
+			action_box.append(this.search_bar);
 
 			// Create Add Model button (placeholder - not implemented)
 			this.add_model_btn = new Gtk.Button.with_label("Add Model") {
@@ -104,7 +103,7 @@ namespace OLLMchat.Settings
 				sensitive = false,
 				tooltip_text = "Not yet implemented"
 			};
-			this.action_box.append(this.add_model_btn);
+			action_box.append(this.add_model_btn);
 
 			// Create Refresh button
 			this.refresh_btn = new Gtk.Button.with_label("Refresh") {
@@ -113,7 +112,7 @@ namespace OLLMchat.Settings
 			this.refresh_btn.clicked.connect(() => {
 				this.render_models.begin();
 			});
-			this.action_box.append(this.refresh_btn);
+			action_box.append(this.refresh_btn);
 
 			// Create preferences group
 			this.group = new Adw.PreferencesGroup() {
