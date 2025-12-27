@@ -129,33 +129,26 @@ namespace OLLMchat.Settings
 		{
 			foreach (var row in this.rows) {
 				// Get the default value from model.options if available
-				Value? model_value = null;
+				string? param_value = null;
 				if (model_options != null) {
-					var pspec = model_options.find_property(row.property_name);
-					if (pspec != null) {
-						model_value = Value(pspec.value_type);
-						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-					}
-				}
-				
-				if (row is OptionFloatWidget) {
-					string? param_value = null;
-					if (model_value != null && model_value.type() == typeof(double)) {
+					Value model_value = Value(typeof(void));
+					((GLib.Object)model_options).get_property(row.property_name, ref model_value);
+					
+					if (row is OptionFloatWidget) {
 						var double_val = model_value.get_double();
 						if (double_val != -1.0) {
 							param_value = double_val.to_string();
 						}
-					}
-					(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
-				} else if (row is OptionIntWidget) {
-					string? param_value = null;
-					if (model_value != null && model_value.type() == typeof(int)) {
+						(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
+					} else if (row is OptionIntWidget) {
 						var int_val = model_value.get_int();
 						if (int_val != -1) {
 							param_value = int_val.to_string();
 						}
+						(row as OptionIntWidget).load_options_with_parameter(options, param_value);
+					} else {
+						row.load_options(options);
 					}
-					(row as OptionIntWidget).load_options_with_parameter(options, param_value);
 				} else {
 					row.load_options(options);
 				}
