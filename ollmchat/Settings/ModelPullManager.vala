@@ -353,14 +353,7 @@ namespace OLLMchat.Settings
 		 */
 		private void update_loading_status(string model_name, string status, int64 completed, int64 total, string last_chunk_status, bool force_write)
 		{
-			// Get or create status object
-			LoadingStatus status_obj;
-			if (this.loading_status_cache.has_key(model_name)) {
-				status_obj = this.loading_status_cache.get(model_name);
-			} else {
-				status_obj = new LoadingStatus();
-				this.loading_status_cache.set(model_name, status_obj);
-			}
+			var status_obj = this.get_or_create_status(model_name);
 			
 			// Update fields
 			status_obj.status = status;
@@ -474,7 +467,7 @@ namespace OLLMchat.Settings
 				return false;
 			}
 			
-			return this.loading_status_cache.get(model_name).active;
+			return this.get_or_create_status(model_name).active;
 		}
 		
 		/**
