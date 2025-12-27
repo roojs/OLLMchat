@@ -260,15 +260,15 @@ namespace OLLMchat.Settings
 		}
 
 		/**
-		 * Shows the value widget (hides Auto button) and sets it to default value.
+		 * Shows the value widget (hides Auto button) and sets it to starting value.
 		 * 
 		 * This is called when:
 		 * - User clicks "Auto" button to set a custom value (scenario 3)
 		 *   In this case, set_start_value() is correct - we want to show the starting value
 		 * 
 		 * NOTE: This is also incorrectly called from load_options() when loading a saved value.
-		 * In that case, we should NOT use reset_default() because we want to show the saved value,
-		 * not the default_value. The current code works because it overwrites the value immediately
+		 * In that case, we should NOT use set_start_value() because we want to show the saved value,
+		 * not the starting value. The current code works because it overwrites the value immediately
 		 * after, but it's inefficient and confusing.
 		 */
 		protected void set_to_default()
