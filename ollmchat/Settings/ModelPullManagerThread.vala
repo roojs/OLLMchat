@@ -30,38 +30,28 @@ namespace OLLMchat.Settings
 	internal class ModelPullManagerThread : Object
 	{
 		/**
-		 * Callback for status updates from pull operations.
+		 * Signal emitted when status updates from pull operations.
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param progress Progress percentage
 		 * @param last_chunk_status Last chunk status from API
 		 */
-		public delegate void StatusUpdateCallback(string model_name, string status, int progress, string last_chunk_status);
+		public signal void status_updated(string model_name, string status, int progress, string last_chunk_status);
 		
 		/**
-		 * Callback for progress updates (rate-limited UI updates).
+		 * Signal emitted for progress updates (rate-limited UI updates).
 		 * 
 		 * @param model_name Model name
 		 * @param status Status string
 		 * @param progress Progress percentage
 		 */
-		public delegate void ProgressUpdateCallback(string model_name, string status, int progress);
+		public signal void progress_updated(string model_name, string status, int progress);
 		
 		/**
 		 * Application interface (provides config)
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
-		
-		/**
-		 * Status update callback
-		 */
-		public StatusUpdateCallback? on_status_update { get; set; default = null; }
-		
-		/**
-		 * Progress update callback
-		 */
-		public ProgressUpdateCallback? on_progress_update { get; set; default = null; }
 		
 		/**
 		 * Background thread
@@ -162,9 +152,7 @@ namespace OLLMchat.Settings
 			};
 			
 			// Notify start
-			if (this.on_status_update != null) {
-				this.on_status_update(model_name, "pulling", 0, "pulling");
-			}
+			this.status_updated(model_name, "pulling", 0, "pulling");
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
@@ -210,14 +198,10 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify status update
-				if (this.on_status_update != null) {
-					this.on_status_update(model_name, status, progress, last_chunk_status);
-				}
+				this.status_updated(model_name, status, progress, last_chunk_status);
 				
 				// Notify progress update (for rate-limited UI updates)
-				if (this.on_progress_update != null) {
-					this.on_progress_update(model_name, status, progress);
-				}
+				this.progress_updated(model_name, status, progress);
 			});
 			
 			// Execute pull asynchronously
@@ -249,12 +233,8 @@ namespace OLLMchat.Settings
 					if (status_obj.retry_count <= MAX_RETRIES) {
 						// Schedule retry
 						status = "pending-retry";
-						if (this.on_status_update != null) {
-							this.on_status_update(model_name, status, progress, last_chunk_status);
-						}
-						if (this.on_progress_update != null) {
-							this.on_progress_update(model_name, status, progress);
-						}
+						this.status_updated(model_name, status, progress, last_chunk_status);
+						this.progress_updated(model_name, status, progress);
 						
 						// Clean up active flag (will be set again on retry)
 						status_obj.active = false;
@@ -266,14 +246,10 @@ namespace OLLMchat.Settings
 				}
 				
 				// Notify final status update
-				if (this.on_status_update != null) {
-					this.on_status_update(model_name, status, progress, last_chunk_status);
-				}
+				this.status_updated(model_name, status, progress, last_chunk_status);
 				
 				// Notify final progress update
-				if (this.on_progress_update != null) {
-					this.on_progress_update(model_name, status, progress);
-				}
+				this.progress_updated(model_name, status, progress);
 				
 				// Clean up active flag
 				status_obj.active = false;

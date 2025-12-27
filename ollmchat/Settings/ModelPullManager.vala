@@ -106,8 +106,8 @@ namespace OLLMchat.Settings
 			
 			// Create background thread manager
 			this.pull_thread = new ModelPullManagerThread(app);
-			this.pull_thread.on_status_update = this.handle_status_update;
-			this.pull_thread.on_progress_update = this.handle_progress_update;
+			this.pull_thread.status_updated.connect(this.handle_status_update);
+			this.pull_thread.progress_updated.connect(this.handle_progress_update);
 			
 			// Ensure data directory exists
 			try {
