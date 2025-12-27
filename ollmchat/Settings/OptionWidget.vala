@@ -537,6 +537,19 @@ namespace OLLMchat.Settings
 			this.spin_button.value = this.default_value;
 		}
 		
+		public override void set_value(Value value)
+		{
+			var int_val = value.get_int();
+			// Clamp to valid range
+			if (int_val < (int)this.min_value) {
+				int_val = (int)this.min_value;
+			} else if (int_val > (int)this.max_value) {
+				int_val = (int)this.max_value;
+			}
+			this.default_value = (double)int_val;
+			this.set_auto_label(int_val.to_string());
+		}
+		
 		/**
 		 * Sets the default value from a parsed parameter string.
 		 * 
