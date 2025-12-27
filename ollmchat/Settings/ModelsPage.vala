@@ -27,22 +27,12 @@ namespace OLLMchat.Settings
 	 * 
 	 * @since 1.0
 	 */
-	public class ModelsPage : Gtk.Box
+	public class ModelsPage : SettingsPage
 	{
 		/**
 		 * Reference to parent SettingsDialog (which has the config object)
 		 */
 		public SettingsDialog settings_dialog { get; construct; }
-
-		/**
-		 * Page name (used as ViewStack page name)
-		 */
-		public string page_name { get; construct; default = "models"; }
-
-		/**
-		 * Page title (used as ViewStack page title and preferences group title)
-		 */
-		public string page_title { get; construct; default = "Models"; }
 
 		/**
 		 * Current search filter text
@@ -71,7 +61,13 @@ namespace OLLMchat.Settings
 		 */
 		public ModelsPage(SettingsDialog settings_dialog)
 		{
-			Object(settings_dialog: settings_dialog, orientation: Gtk.Orientation.VERTICAL, spacing: 0);
+			Object(
+				settings_dialog: settings_dialog,
+				page_name: "models",
+				page_title: "Models",
+				orientation: Gtk.Orientation.VERTICAL,
+				spacing: 0
+			);
 			
 			// Add proper margins to the page
 			this.margin_start = 12;

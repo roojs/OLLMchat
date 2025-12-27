@@ -128,23 +128,21 @@ namespace OLLMchat.Settings
 		 */
 		private void on_page_changed()
 		{
-			// Get the previous and current visible children
-			var previous_child = this.view_stack.get_visible_child();
+			// Get the current visible child
 			var current_child = this.view_stack.get_visible_child();
 
-			// Deactivate previous page (if it's a page that supports activation)
-			if (previous_child is ConnectionsPage) {
-				(previous_child as ConnectionsPage).on_deactivated();
-			} else if (previous_child is ModelsPage) {
-				(previous_child as ModelsPage).on_deactivated();
+			// Deactivate previous page (if it's a SettingsPage)
+			if (this.previous_visible_child is SettingsPage) {
+				(this.previous_visible_child as SettingsPage).on_deactivated();
 			}
 
-			// Activate current page (if it's a page that supports activation)
-			if (current_child is ConnectionsPage) {
-				(current_child as ConnectionsPage).on_activated();
-			} else if (current_child is ModelsPage) {
-				(current_child as ModelsPage).on_activated();
+			// Activate current page (if it's a SettingsPage)
+			if (current_child is SettingsPage) {
+				(current_child as SettingsPage).on_activated();
 			}
+
+			// Update previous visible child for next time
+			this.previous_visible_child = current_child;
 		}
 
 		/**
