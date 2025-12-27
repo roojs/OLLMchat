@@ -19,61 +19,11 @@
 namespace OLLMchat.Settings
 {
 	/**
-	 * Loading status information for a model pull operation.
-	 * 
-	 * Combines both runtime tracking and persistence data.
-	 * 
-	 * @since 1.3.4
-	 */
-	private class LoadingStatus : GLib.Object, Json.Serializable
-	{
-		// Persistence fields (saved to JSON)
-		public string status { get; set; default = ""; }
-		public int progress { get; set; default = 0; }
-		public string started { get; set; default = ""; }
-		public string error { get; set; default = ""; }
-		public string last_chunk_status { get; set; default = ""; }
-		public int retry_count { get; set; default = 0; }
-		public string connection_url { get; set; default = ""; }
-		
-		// Runtime fields (not serialized)
-		public bool active = false;
-		public int64 last_update_time = 0;
-		public OLLMchat.Settings.Connection? connection = null;
-		
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-		
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-		
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-		
-		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
-		{
-			// Don't serialize runtime-only fields
-			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection") {
-				return null;
-			}
-			// Serialize all other fields (defaults will handle empty/zero values)
-			return default_serialize_property(property_name, value, pspec);
-		}
-	}
-	
-	/**
 	 * Manages background pull operations for models.
 	 * 
-	 * Handles concurrent model pulls with progress tracking, rate-limited
-	 * UI updates, and persistence to loading.json file.
+	 * Handles status tracking, persistence, rate-limited UI updates,
+	 * and retry scheduling. Delegates actual pull execution to
+	 * ModelPullManagerThread.
 	 * 
 	 * @since 1.3.4
 	 */
@@ -113,19 +63,9 @@ namespace OLLMchat.Settings
 		private string loading_json_path;
 		
 		/**
-		 * Single background thread that handles all pull operations
+		 * Background thread manager
 		 */
-		private Thread<bool>? background_thread = null;
-		
-		/**
-		 * MainLoop for the background thread
-		 */
-		private MainLoop? background_loop = null;
-		
-		/**
-		 * MainContext for the background thread
-		 */
-		private MainContext? background_context = null;
+		private ModelPullManagerThread pull_thread;
 		
 		/**
 		 * Map of model_name -> loading status (runtime tracking and persistence)
@@ -148,11 +88,6 @@ namespace OLLMchat.Settings
 		private const int64 FILE_WRITE_RATE_LIMIT_SECONDS = 300; // 5 minutes
 		
 		/**
-		 * Maximum number of retries for failed pulls
-		 */
-		private const int MAX_RETRIES = 5;
-		
-		/**
 		 * Delay between retries in seconds
 		 */
 		private const int64 RETRY_DELAY_SECONDS = 60; // 1 minute
@@ -168,6 +103,11 @@ namespace OLLMchat.Settings
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
 			this.loading_status_cache = new Gee.HashMap<string, LoadingStatus>();
+			
+			// Create background thread manager
+			this.pull_thread = new ModelPullManagerThread(app);
+			this.pull_thread.on_status_update = this.handle_status_update;
+			this.pull_thread.on_progress_update = this.handle_progress_update;
 			
 			// Ensure data directory exists
 			try {
@@ -199,7 +139,7 @@ namespace OLLMchat.Settings
 			}
 			
 			// Ensure background thread is running
-			this.ensure_background_thread();
+			this.pull_thread.ensure_thread();
 			
 			// Get or create status
 			LoadingStatus status_obj;
@@ -215,221 +155,66 @@ namespace OLLMchat.Settings
 			status_obj.connection = connection;
 			
 			// Start pull operation in background thread
-			this.start_pull_async(model_name, connection);
+			this.pull_thread.start_pull(model_name, connection, status_obj);
 			
 			return true;
 		}
 		
 		/**
-		 * Ensures the background thread is running.
-		 */
-		private void ensure_background_thread()
-		{
-			if (this.background_thread != null) {
-				return; // Already running
-			}
-			
-			// Create MainContext for background thread
-			this.background_context = new MainContext();
-			
-			// Start background thread
-			try {
-				this.background_thread = new Thread<bool>.try("model-pull-manager", () => {
-					// Set this context as thread default
-					this.background_context.push_thread_default();
-					
-					// Create and run MainLoop
-					this.background_loop = new MainLoop(this.background_context);
-					this.background_loop.run();
-					
-					// Clean up
-					this.background_context.pop_thread_default();
-					this.background_loop = null;
-					this.background_context = null;
-					
-					return true;
-				});
-			} catch (Error e) {
-				GLib.warning("Failed to start background thread: " + e.message);
-				this.background_thread = null;
-				this.background_context = null;
-			}
-		}
-		
-		/**
-		 * Starts a pull operation asynchronously in the background thread.
+		 * Handles status updates from the background thread.
 		 * 
-		 * @param model_name Model name to pull
-		 * @param connection Connection to use
+		 * @param model_name Model name
+		 * @param status Status string
+		 * @param progress Progress percentage
+		 * @param last_chunk_status Last chunk status from API
 		 */
-		private void start_pull_async(string model_name, OLLMchat.Settings.Connection connection)
+		private void handle_status_update(string model_name, string status, int progress, string last_chunk_status)
 		{
-			// Schedule the pull operation in the background thread's context
-			var source = new IdleSource();
-			source.set_callback(() => {
-				this.execute_pull(model_name, connection);
-				return false;
-			});
-			source.attach(this.background_context);
-		}
-		
-		/**
-		 * Executes a pull operation asynchronously in the background thread.
-		 * 
-		 * @param model_name Model name to pull
-		 * @param connection Connection to use
-		 */
-		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection)
-		{
-			// Get status object and ensure active flag is set
-			LoadingStatus status_obj;
-			if (this.loading_status_cache.has_key(model_name)) {
-				status_obj = this.loading_status_cache.get(model_name);
-			} else {
-				status_obj = new LoadingStatus();
-				this.loading_status_cache.set(model_name, status_obj);
+			// Update status in memory and optionally write to file
+			bool force_write = (status == "pulling" && progress == 0) || 
+			                   status == "complete" || 
+			                   status == "failed" || 
+			                   status == "pending-retry";
+			this.update_loading_status(model_name, status, progress, last_chunk_status, force_write);
+			
+			// Handle retry scheduling for pending-retry status
+			if (status == "pending-retry") {
+				this.schedule_retry(model_name, progress, last_chunk_status);
+				return;
 			}
-			status_obj.active = true;
-			status_obj.connection_url = connection.url;
-			status_obj.connection = connection;
 			
-			// Create client for this connection
-			var client = new OLLMchat.Client(connection) {
-				config = this.app.config
-			};
-			
-			// Update status in memory and write to file (start event)
-			this.update_loading_status(model_name, "pulling", 0, "pulling", true);
-			
-			// Create Pull call
-			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
-				stream = true
-			};
-			
-			// Track progress
-			int progress = 0;
-			string status = "pulling";
-			string last_chunk_status = "pulling";
-			int64 completed = 0;
-			int64 total = 0;
-			bool saw_success = false;
-			
-			// Connect to progress signal
-			pull_call.progress_chunk.connect((response) => {
-				// Reset retry count if we received data (means retry is working)
-				if (status_obj.retry_count > 0) {
-					status_obj.retry_count = 0;
-				}
-				
-				// Get status from response object
-				last_chunk_status = response.status;
-				
-				// Track if we saw success status
-				if (last_chunk_status == "success") {
-					saw_success = true;
-					status = "complete";
-					progress = 100;
-				} else if (last_chunk_status.has_prefix("error") || last_chunk_status == "failed") {
-					status = "error";
-				} else {
-					// Keep pulling status for other statuses
-					status = "pulling";
-				}
-				
-				// Get progress from response object
-				completed = response.completed;
-				total = response.total;
-				
-				if (total > 0) {
-					progress = (int)(((double)completed / (double)total) * 100.0);
-				}
-				
-				// Update status in memory (rate-limited file write)
-				this.update_loading_status(model_name, status, progress, last_chunk_status, false);
-				
-				// Emit progress update (rate-limited via Idle.add)
-				this.schedule_progress_update(model_name, status, progress);
-			});
-			
-			// Execute pull asynchronously
-			pull_call.exec_pull.begin((obj, res) => {
-				try {
-					pull_call.exec_pull.end(res);
-				} catch (GLib.IOError e) {
-					// Treat all IO errors as errors (including CANCELLED - could be network issue)
-					status = "error";
-					GLib.warning("Pull failed for " + model_name + ": " + e.message);
-				} catch (Error e) {
-					status = "error";
-					GLib.warning("Pull failed for " + model_name + ": " + e.message);
-				}
-				
-				// Final status update - only complete if we saw success in chunks
-				if (status != "error" && saw_success) {
-					status = "complete";
-					progress = 100;
-				} else if (status != "error") {
-					// If we didn't see success and no error was set, treat as error
-					status = "error";
-				}
-				
-				// Handle errors with retry logic
-				if (status == "error") {
-					status_obj.retry_count++;
-					
-					if (status_obj.retry_count <= MAX_RETRIES) {
-						// Schedule retry
-						status = "pending-retry";
-						this.update_loading_status(model_name, status, progress, last_chunk_status, true);
-						
-						// Emit progress update for pending-retry (just progress indicator update)
-						Idle.add(() => {
-							this.progress_updated(model_name, status, progress);
-							return false;
-						});
-						
-						// Schedule retry from main thread
-						this.schedule_retry(model_name, progress, last_chunk_status);
-						
-						// Clean up active flag (will be set again on retry)
-						status_obj.active = false;
-						return;
-					}
-					
-					// All retries exhausted - mark as failed
-					status = "failed";
-				}
-				
-				// Update final status in memory and write to file (finish event)
-				this.update_loading_status(model_name, status, progress, last_chunk_status, true);
-				
-				// Emit final update immediately (not rate-limited)
+			// Handle completion/failure
+			if (status == "complete" || status == "failed") {
 				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
-					
-					// If complete, notify client and remove from cache
 					if (status == "complete") {
 						this.model_complete(model_name);
 						this.loading_status_cache.unset(model_name);
-						// Write to file to remove completed entry
 						this.write_to_file();
 						return;
 					}
 					
-					// If failed, notify client and remove from cache
 					if (status == "failed") {
 						this.model_failed(model_name);
 						this.loading_status_cache.unset(model_name);
-						// Write to file to remove failed entry
 						this.write_to_file();
 					}
 					
 					return false;
 				});
-				
-				// Clean up active flag
-				status_obj.active = false;
-			});
+			}
+		}
+		
+		/**
+		 * Handles progress updates from the background thread.
+		 * 
+		 * @param model_name Model name
+		 * @param status Status string
+		 * @param progress Progress percentage
+		 */
+		private void handle_progress_update(string model_name, string status, int progress)
+		{
+			// Schedule progress update with rate limiting
+			this.schedule_progress_update(model_name, status, progress);
 		}
 		
 		/**
@@ -471,7 +256,8 @@ namespace OLLMchat.Settings
 					}
 					
 					// Retry the pull
-					this.start_pull_async(model_name, check_status.connection);
+					check_status.active = true;
+					this.pull_thread.start_pull(model_name, check_status.connection, check_status);
 					return false; // Don't repeat
 				});
 				return false;
