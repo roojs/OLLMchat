@@ -131,8 +131,8 @@ namespace OLLMchat.Settings
 		public bool start_pull(string model_name, OLLMchat.Settings.Connection connection)
 		{
 			// Check if already pulling
-			if (this.loading_status_cache.has_key(model_name) && 
-			    this.loading_status_cache.get(model_name).active) {
+			var existing_status = this.get_or_create_status(model_name);
+			if (existing_status.active) {
 				GLib.debug("Pull already in progress for model: " + model_name);
 				return false;
 			}
@@ -140,26 +140,35 @@ namespace OLLMchat.Settings
 			// Ensure background thread is running
 			this.pull_thread.ensure_thread();
 			
-			// Get or create status
-			LoadingStatus status_obj;
-			if (this.loading_status_cache.has_key(model_name)) {
-				status_obj = this.loading_status_cache.get(model_name);
-			} else {
-				status_obj = new LoadingStatus();
-				this.loading_status_cache.set(model_name, status_obj);
-			}
-			
-			status_obj.active = true;
-			status_obj.connection_url = connection.url;
-			status_obj.connection = connection;
+			// Configure status for new pull
+			existing_status.active = true;
+			existing_status.connection_url = connection.url;
+			existing_status.connection = connection;
 			
 			// ⚠️ THREAD SAFETY WARNING: Passing Connection object to background thread.
 			// This may be a cause of failure if Connection is modified concurrently.
 			// Consider cloning: var connection_copy = connection.clone();
 			// Start pull operation in background thread (pass only primitive data)
-			this.pull_thread.start_pull(model_name, connection, status_obj.retry_count);
+			this.pull_thread.start_pull(model_name, connection, existing_status.retry_count);
 			
 			return true;
+		}
+		
+		/**
+		 * Gets or creates a LoadingStatus object for a model.
+		 * 
+		 * @param model_name Model name
+		 * @return LoadingStatus object (always non-null)
+		 */
+		private LoadingStatus get_or_create_status(string model_name)
+		{
+			if (this.loading_status_cache.has_key(model_name)) {
+				return this.loading_status_cache.get(model_name);
+			}
+			
+			var status_obj = new LoadingStatus();
+			this.loading_status_cache.set(model_name, status_obj);
+			return status_obj;
 		}
 		
 		/**
@@ -184,18 +193,14 @@ namespace OLLMchat.Settings
 		)
 		{
 			// Update status object in main thread (thread-safe)
-			if (this.loading_status_cache.has_key(model_name)) {
-				var status_obj = this.loading_status_cache.get(model_name);
-				status_obj.retry_count = retry_count;
-				status_obj.completed = completed;
-				status_obj.total = total;
-				
-				// Update active flag based on status
-				if (status == "complete" || status == "failed") {
-					status_obj.active = false;
-				} else if (status == "pending-retry") {
-					status_obj.active = false;
-				}
+			var status_obj = this.get_or_create_status(model_name);
+			status_obj.retry_count = retry_count;
+			status_obj.completed = completed;
+			status_obj.total = total;
+			
+			// Update active flag based on status
+			if (status == "complete" || status == "failed" || status == "pending-retry") {
+				status_obj.active = false;
 			}
 			
 			// Update status in memory and optionally write to file
@@ -223,23 +228,29 @@ namespace OLLMchat.Settings
 			
 			// Handle completion/failure
 			if (status == "complete" || status == "failed") {
-				Idle.add(() => {
-					if (status == "complete") {
-						this.model_complete(model_name);
-						this.loading_status_cache.unset(model_name);
-						this.write_to_file();
-						return false;
-					}
-					
-					if (status == "failed") {
-						this.model_failed(model_name);
-						this.loading_status_cache.unset(model_name);
-						this.write_to_file();
-					}
-					
-					return false;
-				});
+				this.finish_pull(model_name, status);
 			}
+		}
+		
+		/**
+		 * Finalizes a pull operation (complete or failed).
+		 * 
+		 * @param model_name Model name
+		 * @param status Final status ("complete" or "failed")
+		 */
+		private void finish_pull(string model_name, string status)
+		{
+			Idle.add(() => {
+				if (status == "complete") {
+					this.model_complete(model_name);
+				} else {
+					this.model_failed(model_name);
+				}
+				
+				this.loading_status_cache.unset(model_name);
+				this.write_to_file();
+				return false;
+			});
 		}
 		
 		/**
@@ -274,9 +285,7 @@ namespace OLLMchat.Settings
 						check_status.error = "Connection not found for retry";
 						this.update_loading_status(model_name, "failed", check_status.completed, check_status.total, check_status.last_chunk_status, true);
 						this.progress_updated(model_name, "failed", check_status.progress);
-						this.model_failed(model_name);
-						this.loading_status_cache.unset(model_name);
-						this.write_to_file();
+						this.finish_pull(model_name, "failed");
 						return false;
 					}
 					
@@ -306,41 +315,23 @@ namespace OLLMchat.Settings
 		 */
 		private void schedule_progress_update(string model_name, string status, int progress)
 		{
-			// Get or create status
-			LoadingStatus status_obj;
-			if (this.loading_status_cache.has_key(model_name)) {
-				status_obj = this.loading_status_cache.get(model_name);
-			} else {
-				status_obj = new LoadingStatus();
-				this.loading_status_cache.set(model_name, status_obj);
-			}
-			
+			var status_obj = this.get_or_create_status(model_name);
 			var now = GLib.get_real_time() / 1000000;
 			
-			// Always emit final status updates
+			// Check if we should emit update
+			bool should_emit = false;
 			if (status == "complete" || status == "error" || status == "failed") {
-				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
-					return false;
-				});
-				status_obj.last_update_time = now;
-				status_obj.status = status;
-				return;
+				// Always emit final status updates
+				should_emit = true;
+			} else if (status != status_obj.status) {
+				// Emit if status changed
+				should_emit = true;
+			} else if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
+				// Emit if enough time has passed
+				should_emit = true;
 			}
 			
-			// Emit if status changed
-			if (status != status_obj.status) {
-				Idle.add(() => {
-					this.progress_updated(model_name, status, progress);
-					return false;
-				});
-				status_obj.last_update_time = now;
-				status_obj.status = status;
-				return;
-			}
-			
-			// Emit if enough time has passed
-			if ((now - status_obj.last_update_time) >= UPDATE_RATE_LIMIT_SECONDS) {
+			if (should_emit) {
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
 					return false;
