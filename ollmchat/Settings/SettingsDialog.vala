@@ -136,10 +136,8 @@ namespace OLLMchat.Settings
 				this.previous_visible_child.on_deactivated();
 			}
 
-			// Activate current page
-			if (current_child != null) {
-				current_child.on_activated();
-			}
+			// Activate current page (always exists since pages are added before this is called)
+			current_child.on_activated();
 
 			// Update previous visible child for next time
 			this.previous_visible_child = current_child;
