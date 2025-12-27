@@ -207,7 +207,9 @@ namespace OLLMchat.Settings
 			
 			// Execute pull (this blocks until complete)
 			try {
-				var loop = new MainLoop();
+				// Create a MainContext for this thread
+				var context = new MainContext();
+				var loop = new MainLoop(context);
 				var cancelled = false;
 				
 				// Run async operation in thread
@@ -228,6 +230,10 @@ namespace OLLMchat.Settings
 					loop.quit();
 				});
 				
+				// Process events in this thread's context
+				while (!loop.is_running()) {
+					context.iteration(false);
+				}
 				loop.run();
 				
 				// Final status update
