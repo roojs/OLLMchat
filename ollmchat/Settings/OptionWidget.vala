@@ -116,7 +116,7 @@ namespace OLLMchat.Settings
 
 		public void load_options(OLLMchat.Call.Options options)
 		{
-			this.load_options_with_model_defaults(options, null);
+			this.load_options_with_model_defaults(options, new OLLMchat.Call.Options());
 		}
 		
 		/**
@@ -125,50 +125,47 @@ namespace OLLMchat.Settings
 		 * @param options Options object to read values from (user's custom options)
 		 * @param model_options Optional model's default options (from model.options)
 		 */
-		public void load_options_with_model_defaults(OLLMchat.Call.Options options, OLLMchat.Call.Options? model_options)
+		public void load_options_with_model_defaults(OLLMchat.Call.Options options, OLLMchat.Call.Options model_options)
 		{
 			foreach (var row in this.rows) {
-				// Get the default value from model.options if available
+				// Get the default value from model.options
 				string? param_value = null;
-				if (model_options != null) {
-					// Use switch case on property name
-					switch (row.property_name) {
-						// Integer properties
-						case "seed":
-						case "top_k":
-						case "num_predict":
-						case "num_ctx":
-							Value model_value = Value(typeof(int));
-							((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-							var int_val = model_value.get_int();
-							if (int_val != -1) {
-								param_value = int_val.to_string();
-							}
-							break;
-						
-						// Double properties
-						case "temperature":
-						case "top_p":
-						case "min_p":
-							Value model_value = Value(typeof(double));
-							((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-							var double_val = model_value.get_double();
-							if (double_val != -1.0) {
-								param_value = double_val.to_string();
-							}
-							break;
-						
-						default:
-							break;
-					}
+				
+				// Use switch case on property name
+				switch (row.property_name) {
+					// Integer properties
+					case "seed":
+					case "top_k":
+					case "num_predict":
+					case "num_ctx":
+						Value model_value = Value(typeof(int));
+						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
+						var int_val = model_value.get_int();
+						if (int_val != -1) {
+							param_value = int_val.to_string();
+						}
+						break;
 					
-					if (row is OptionFloatWidget) {
-						(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
-					} else if (row is OptionIntWidget) {
-						(row as OptionIntWidget).load_options_with_parameter(options, param_value);
-					} else {
-						row.load_options(options);
-					}
+					// Double properties
+					case "temperature":
+					case "top_p":
+					case "min_p":
+						Value model_value = Value(typeof(double));
+						((GLib.Object)model_options).get_property(row.property_name, ref model_value);
+						var double_val = model_value.get_double();
+						if (double_val != -1.0) {
+							param_value = double_val.to_string();
+						}
+						break;
+					
+					default:
+						break;
+				}
+				
+				if (row is OptionFloatWidget) {
+					(row as OptionFloatWidget).load_options_with_parameter(options, param_value);
+				} else if (row is OptionIntWidget) {
+					(row as OptionIntWidget).load_options_with_parameter(options, param_value);
 				} else {
 					row.load_options(options);
 				}
