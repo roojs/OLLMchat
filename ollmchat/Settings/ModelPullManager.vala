@@ -82,6 +82,13 @@ namespace OLLMchat.Settings
 		public signal void progress_updated(string model_name, string status, int progress);
 		
 		/**
+		 * Signal emitted when a model pull completes successfully.
+		 * 
+		 * @param model_name The model that was pulled
+		 */
+		public signal void model_complete(string model_name);
+		
+		/**
 		 * Application interface (provides config and data_dir)
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
@@ -333,10 +340,17 @@ namespace OLLMchat.Settings
 				// Emit final update immediately (not rate-limited)
 				Idle.add(() => {
 					this.progress_updated(model_name, status, progress);
+					
+					// If complete, notify client and remove from cache
+					if (status == "complete") {
+						this.model_complete(model_name);
+						this.loading_status_cache.unset(model_name);
+					}
+					
 					return false;
 				});
 				
-				// Clean up
+				// Clean up active flag
 				if (this.loading_status_cache.has_key(model_name)) {
 					this.loading_status_cache.get(model_name).active = false;
 				}
