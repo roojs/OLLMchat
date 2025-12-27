@@ -133,6 +133,8 @@ namespace OLLMchat.Settings
 		{
 			// Use model.options for default values (automatically filled from parameters)
 			GLib.debug("load_defaults for model '%s' - parameters: '%s'", this.model.name, this.model.parameters ?? "(null)");
+			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
+				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.models_page.options_widget.rows) {
 				// Use switch case on property name to set default values
 				switch (row.name) {
