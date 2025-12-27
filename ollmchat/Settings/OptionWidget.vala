@@ -213,9 +213,10 @@ namespace OLLMchat.Settings
 		protected abstract bool is_default(Value value);
 
 		/**
-		 * Sets the value widget to its default value.
+		 * Sets the value widget to its starting value when user begins editing.
+		 * Uses model_value if set, otherwise uses hardcoded default_value.
 		 */
-		protected abstract void reset_default();
+		protected abstract void set_start_value();
 
 		/**
 		 * Sets the default value from a Value object.
@@ -263,7 +264,7 @@ namespace OLLMchat.Settings
 		 * 
 		 * This is called when:
 		 * - User clicks "Auto" button to set a custom value (scenario 3)
-		 *   In this case, reset_default() is correct - we want to show default_value
+		 *   In this case, set_start_value() is correct - we want to show the starting value
 		 * 
 		 * NOTE: This is also incorrectly called from load_options() when loading a saved value.
 		 * In that case, we should NOT use reset_default() because we want to show the saved value,
@@ -281,9 +282,9 @@ namespace OLLMchat.Settings
 			this.value_widget.visible = true;
 			this.clear_button.visible = true;
 			
-			// Set value widget to default value
+			// Set value widget to starting value
 			// WRONG when called from load_options() with a saved value - should use saved value instead
-			this.reset_default();
+			this.set_start_value();
 		}
 
 		protected void reset_to_auto()
@@ -384,18 +385,18 @@ namespace OLLMchat.Settings
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
 		 *    - Display: Show spin button with model_value if set, otherwise default_value
-		 *    - This is the ONLY scenario where reset_default() should set the spin button value
+		 *    - This is the ONLY scenario where set_start_value() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
 		 *    - Display: Show Auto button (with model_value label if available), hide spin button
 		 * 
 		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
-		 * reset_default(), but then immediately overwrite with the actual saved new_value.
-		 * This is inefficient - reset_default() should NOT be called in that scenario.
+		 * set_start_value(), but then immediately overwrite with the actual saved new_value.
+		 * This is inefficient - set_start_value() should NOT be called in that scenario.
 		 */
-		protected override void reset_default()
+		protected override void set_start_value()
 		{
-			// This is called when user clicks "Auto" button (scenario 3)
+			// This is called when user clicks "Auto" button (scenario 3) to start editing
 			// Use model_value if set, otherwise use hardcoded default_value
 			if (this.model_value != this.unset_value) {
 				this.spin_button.value = this.model_value;
@@ -559,14 +560,14 @@ namespace OLLMchat.Settings
 		 * 
 		 * 3. User clicks "Auto" button to set a custom value:
 		 *    - Display: Show spin button with model_value if set, otherwise default_value
-		 *    - This is the ONLY scenario where reset_default() should set the spin button value
+		 *    - This is the ONLY scenario where set_start_value() should set the spin button value
 		 * 
 		 * 4. User clicks clear button to reset to Auto:
 		 *    - Display: Show Auto button (with model_value label if available), hide spin button
 		 * 
 		 * NOTE: In load_options() when new_value is set, we call set_to_default() which calls
-		 * reset_default(), but then immediately overwrite with the actual saved new_value.
-		 * This is inefficient - reset_default() should NOT be called in that scenario.
+		 * set_start_value(), but then immediately overwrite with the actual saved new_value.
+		 * This is inefficient - set_start_value() should NOT be called in that scenario.
 		 */
 		protected override void reset_default()
 		{
