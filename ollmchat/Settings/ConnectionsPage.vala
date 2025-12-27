@@ -287,11 +287,11 @@ namespace OLLMchat.Settings
 		{
 			// Defer collapse operation to idle callback to ensure GTK has finished
 			// processing the page switch before we try to collapse rows
-			// This prevents focus assertion failures when ActionRows try to grab focus
+			// This prevents focus assertion failures when ExpanderRow (ListBoxRow) tries to grab focus
 			Idle.add_full(Priority.LOW, () => {
 				// Collapse any expanded connection rows to prevent focus issues
-				// when switching tabs (ActionRows inside ExpanderRow can cause
-				// assertion failures if they try to grab focus after being unparented)
+				// when switching tabs (ExpanderRow extends ListBoxRow which can cause
+				// assertion failures if it tries to grab focus after being unparented)
 				foreach (var row in this.rows.values) {
 					if (row.expander.expanded) {
 						row.expander.expanded = false;

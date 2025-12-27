@@ -89,7 +89,9 @@ namespace OLLMchat.Settings
 
 			this.expander = new Adw.ExpanderRow() {
 				title = connection.name,
-				subtitle = url
+				subtitle = url,
+				can_focus = false,
+				focus_on_click = false
 			};
 
 			// Create form fields
