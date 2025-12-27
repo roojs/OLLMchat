@@ -326,7 +326,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; }
 		public uint digits { get; set; }
 		public double default_value { get; set; }
-		public double auto_value { get; set; default = -1.0; }
+		public double unset_value { get; set; default = -1.0; }
 
 		private Gtk.SpinButton spin_button;
 
@@ -355,9 +355,9 @@ namespace OLLMchat.Settings
 
 		protected override bool is_default(Value value)
 		{
-			// Check if value is the "empty/unset" value (auto_value, e.g., -1.0)
+			// Check if value is the "empty/unset" value (unset_value, e.g., -1.0)
 			// This represents the default/empty state that never changes
-			return value.get_double() == this.auto_value;
+			return value.get_double() == this.unset_value;
 		}
 
 		/**
@@ -372,12 +372,12 @@ namespace OLLMchat.Settings
 		 * 
 		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
-		 * 1. Value in Options is unset (value == auto_value, e.g., -1.0):
+		 * 1. Value in Options is unset (value == unset_value, e.g., -1.0):
 		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
 		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
-		 * 2. Value in Options is set (user has explicitly set a value, value != auto_value):
+		 * 2. Value in Options is set (user has explicitly set a value, value != unset_value):
 		 *    - Display: Spin button visible with the actual saved value from Options
 		 *    - The value shown MUST be the value from Options, NOT default_value
 		 *    - Auto button hidden
@@ -433,8 +433,8 @@ namespace OLLMchat.Settings
 		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * DISPLAY LOGIC:
-		 * - If value in Options is unset (value == auto_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value in Options is set (value != auto_value): Show spin button with the actual saved value from Options (NOT default_value)
+		 * - If value in Options is unset (value == unset_value): Show Auto button (with model default label if set_value() was called)
+		 * - If value in Options is set (value != unset_value): Show spin button with the actual saved value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
@@ -469,7 +469,7 @@ namespace OLLMchat.Settings
 			Value value = Value(typeof(double));
 			if (this.auto_button.visible) {
 				// Auto is selected, save auto value (unset)
-				value.set_double(this.auto_value);
+				value.set_double(this.unset_value);
 			} else {
 				// Value is set, save the spin button value
 				value.set_double(this.spin_button.value);
@@ -490,7 +490,7 @@ namespace OLLMchat.Settings
 		public double step_value { get; set; default = 1.0; }
 		public uint digits { get; set; default = 0; }
 		public double default_value { get; set; }
-		public int auto_value { get; set; default = -1; }
+		public int unset_value { get; set; default = -1; }
 		private bool default_value_set = false;
 
 		private Gtk.SpinButton spin_button;
@@ -520,9 +520,9 @@ namespace OLLMchat.Settings
 
 		protected override bool is_default(Value value)
 		{
-			// Check if value is the "empty/unset" value (auto_value, e.g., -1)
+			// Check if value is the "empty/unset" value (unset_value, e.g., -1)
 			// This represents the default/empty state that never changes
-			return value.get_int() == this.auto_value;
+			return value.get_int() == this.unset_value;
 		}
 
 		/**
@@ -537,12 +537,12 @@ namespace OLLMchat.Settings
 		 * 
 		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
-		 * 1. Value in Options is unset (value == auto_value, e.g., -1):
+		 * 1. Value in Options is unset (value == unset_value, e.g., -1):
 		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
 		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
-		 * 2. Value in Options is set (user has explicitly set a value, value != auto_value):
+		 * 2. Value in Options is set (user has explicitly set a value, value != unset_value):
 		 *    - Display: Spin button visible with the actual saved value from Options
 		 *    - The value shown MUST be the value from Options, NOT default_value
 		 *    - Auto button hidden
@@ -598,8 +598,8 @@ namespace OLLMchat.Settings
 		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
 		 * 
 		 * DISPLAY LOGIC:
-		 * - If value in Options is unset (value == auto_value): Show Auto button (with model default label if set_value() was called)
-		 * - If value in Options is set (value != auto_value): Show spin button with the actual saved value from Options (NOT default_value)
+		 * - If value in Options is unset (value == unset_value): Show Auto button (with model default label if set_value() was called)
+		 * - If value in Options is set (value != unset_value): Show spin button with the actual saved value from Options (NOT default_value)
 		 */
 		public override void load_options(OLLMchat.Call.Options options)
 		{
@@ -637,7 +637,7 @@ namespace OLLMchat.Settings
 			Value value = Value(typeof(int));
 			if (this.auto_button.visible) {
 				// Auto is selected, save auto value (unset)
-				value.set_int(this.auto_value);
+				value.set_int(this.unset_value);
 			} else {
 				// Value is set, save the spin button value
 				value.set_int((int)this.spin_button.value);
