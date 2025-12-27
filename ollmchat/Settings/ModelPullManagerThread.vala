@@ -184,7 +184,7 @@ namespace OLLMchat.Settings
 			};
 			
 			// Notify start
-			this.status_updated(model_name, local_status.status, local_status.progress, local_status.last_chunk_status, local_status.retry_count);
+			this.status_updated(model_name, local_status.status, local_status.completed, local_status.total, local_status.last_chunk_status, local_status.retry_count);
 			
 			// Create Pull call
 			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
