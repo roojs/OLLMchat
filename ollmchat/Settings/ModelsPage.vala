@@ -75,10 +75,10 @@ namespace OLLMchat.Settings
 			this.margin_bottom = 12;
 
 			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
-			var action_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
+			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
-			this.action_widget = action_box;
+			var action_box = this.action_widget as Gtk.Box;
 
 			// Create search bar (always visible)
 			this.search_bar = new Gtk.SearchBar();
