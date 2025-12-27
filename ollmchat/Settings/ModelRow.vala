@@ -134,14 +134,14 @@ namespace OLLMchat.Settings
 			// Use model.options for default values (automatically filled from parameters)
 			foreach (var row in this.models_page.options_widget.rows) {
 				// Use switch case on property name
-				switch (row.property_name) {
+				switch (row.name) {
 					// Integer properties
 					case "seed":
 					case "top_k":
 					case "num_predict":
 					case "num_ctx":
 						Value model_value = Value(typeof(int));
-						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
+						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
 						var int_val = model_value.get_int();
 						if (int_val != -1) {
 							row.set_value(model_value);
@@ -154,7 +154,7 @@ namespace OLLMchat.Settings
 					case "top_p":
 					case "min_p":
 						Value model_value = Value(typeof(double));
-						((GLib.Object)this.model.options).get_property(row.property_name, ref model_value);
+						((GLib.Object)this.model.options).get_property(row.name, ref model_value);
 						var double_val = model_value.get_double();
 						if (double_val != -1.0) {
 							row.set_value(model_value);

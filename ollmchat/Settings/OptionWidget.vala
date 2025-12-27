@@ -46,7 +46,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Temperature",
 				subtitle = "Controls randomness in output (0.0 = deterministic, 2.0 = very random)",
-				property_name = "temperature",
+				name = "temperature",
 				min_value = 0.0,
 				max_value = 2.0,
 				step_value = 0.1,
@@ -57,7 +57,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Top P",
 				subtitle = "Nucleus sampling - considers tokens with cumulative probability up to this value",
-				property_name = "top_p",
+				name = "top_p",
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -68,7 +68,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Top K",
 				subtitle = "Limits sampling to top K most likely tokens",
-				property_name = "top_k",
+				name = "top_k",
 				min_value = 1.0,
 				max_value = 1000.0,
 				default_value = 40.0
@@ -77,7 +77,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Num Ctx",
 				subtitle = "Context window size - number of tokens the model can consider",
-				property_name = "num_ctx",
+				name = "num_ctx",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1024.0,
@@ -87,7 +87,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Num Predict",
 				subtitle = "Maximum number of tokens to generate (-1 = no limit)",
-				property_name = "num_predict",
+				name = "num_predict",
 				min_value = 1.0,
 				max_value = 1000000.0,
 				default_value = 16384.0
@@ -96,7 +96,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionFloatWidget() {
 				title = "Min P",
 				subtitle = "Minimum probability threshold for token selection",
-				property_name = "min_p",
+				name = "min_p",
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -107,7 +107,7 @@ namespace OLLMchat.Settings
 			this.rows.add(new OptionIntWidget() {
 				title = "Seed",
 				subtitle = "Random seed used for reproducible outputs (-1 = random)",
-				property_name = "seed",
+				name = "seed",
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				default_value = 42.0
@@ -202,7 +202,7 @@ namespace OLLMchat.Settings
 		 * The property name in Options object (e.g., "temperature", "num_ctx").
 		 * Also used to match parameter names from model's parameters string.
 		 */
-		public string property_name { get; set; default = ""; }
+		public string name { get; set; default = ""; }
 
 		/**
 		 * Checks if the current value is in default/auto state (unset).
@@ -321,7 +321,7 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionFloatWidget : OptionRow
 	{
-		public string property_name { get; set; }
+		public string name { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; }
@@ -419,7 +419,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(double));
-			((GLib.Object)options).get_property(this.property_name, ref val);
+			((GLib.Object)options).get_property(this.name, ref val);
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
@@ -462,7 +462,7 @@ namespace OLLMchat.Settings
 				// Value is set, save the spin button value
 				value.set_double(this.spin_button.value);
 			}
-			((GLib.Object)options).set_property(this.property_name, value);
+			((GLib.Object)options).set_property(this.name, value);
 		}
 	}
 
@@ -473,7 +473,7 @@ namespace OLLMchat.Settings
 	 */
 	public class OptionIntWidget : OptionRow
 	{
-		public string property_name { get; set; }
+		public string name { get; set; }
 		public double min_value { get; set; }
 		public double max_value { get; set; }
 		public double step_value { get; set; default = 1.0; }
@@ -569,7 +569,7 @@ namespace OLLMchat.Settings
 			this.spin_button.digits = this.digits;
 
 			Value val = Value(typeof(int));
-			((GLib.Object)options).get_property(this.property_name, ref val);
+			((GLib.Object)options).get_property(this.name, ref val);
 			
 			if (this.is_default(val)) {
 				// Value is unset, show Auto button
@@ -610,7 +610,7 @@ namespace OLLMchat.Settings
 				// Value is set, save the spin button value
 				value.set_int((int)this.spin_button.value);
 			}
-			((GLib.Object)options).set_property(this.property_name, value);
+			((GLib.Object)options).set_property(this.name, value);
 		}
 	}
 
