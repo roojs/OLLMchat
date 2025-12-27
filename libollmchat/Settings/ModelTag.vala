@@ -64,12 +64,13 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Parses the size string to extract the numeric size in billions.
+		 * Parses the size string to extract the numeric size in GB.
 		 * Returns -1 if the size cannot be parsed.
 		 * 
 		 * Handles formats like "14GB", "1.5GB", etc.
+		 * If the size is in bytes (suffix "B"), converts to GB.
 		 */
-		public double parse_size_b()
+		public double parse_size_gb()
 		{
 			if (this.size == "") {
 				return -1;
@@ -89,17 +90,6 @@ namespace OLLMchat.Settings
 			}
 			
 			return -1;
-		}
-		
-		/**
-		 * Parses the size string to extract the numeric size in GB.
-		 * Returns -1 if the size cannot be parsed.
-		 * 
-		 * Handles formats like "14GB", "1.5GB", etc.
-		 */
-		public double parse_size_gb()
-		{
-			return this.parse_size_b();
 		}
 		
 		/**

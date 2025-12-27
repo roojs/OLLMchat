@@ -481,8 +481,8 @@ namespace OLLMchat.Settings
 				}
 				
 				// Neither is cloud - sort by size
-				var a_size = a.parse_size_b();
-				var b_size = b.parse_size_b();
+				var a_size = a.parse_size_gb();
+				var b_size = b.parse_size_gb();
 				
 				// If sizes are equal, sort by name
 				if (a_size == b_size) {
