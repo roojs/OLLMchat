@@ -260,35 +260,34 @@ namespace OLLMchat.Settings
 		 */
 		public override void on_activated()
 		{
-			// Remove any existing action boxes from other pages
-			var children = this.dialog.action_bar_area.observe_children();
-			for (uint i = 0; i < children.get_n_items(); i++) {
-				var child = children.get_item(i) as Gtk.Widget;
-				if (child != null) {
-					child.unparent();
-				}
-			}
-			
-			// Add this page's action box
+			// Add this page's action box if not already added
 			if (this.dialog.action_bar_area != null && this.action_box.get_parent() == null) {
 				this.dialog.action_bar_area.append(this.action_box);
 			}
 			
+			// Make sure this page's action box is visible
+			this.action_box.visible = true;
+			
+			// Show the action bar area
 			this.dialog.action_bar_area.visible = true;
 		}
 
 		/**
 		 * Called when this page is deactivated (becomes hidden).
 		 * 
-		 * Removes the action box and hides the action bar area.
+		 * Hides this page's action box and hides the action bar area if no other pages need it.
 		 */
 		public override void on_deactivated()
 		{
-			// Remove this page's action box
+			// Hide this page's action box
+			this.action_box.visible = false;
+			
+			// Remove this page's action box from the action bar area
 			if (this.action_box.get_parent() != null) {
 				this.action_box.unparent();
 			}
 			
+			// Hide the action bar area (other pages will show it when activated)
 			this.dialog.action_bar_area.visible = false;
 		}
 
