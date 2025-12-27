@@ -248,7 +248,7 @@ namespace OLLMchat.Settings
 				valign = Gtk.Align.CENTER
 			};
 			this.clear_button.clicked.connect(() => {
-				this.reset_to_auto();
+				this.set_to_auto();
 			});
 
 			// Create button box to hold either Auto or (value widget + clear)
@@ -287,7 +287,7 @@ namespace OLLMchat.Settings
 			this.set_start_value();
 		}
 
-		protected void reset_to_auto()
+		protected void set_to_auto()
 		{
 			if (this.value_widget == null) {
 				return;
@@ -462,7 +462,7 @@ namespace OLLMchat.Settings
 				// So just show "Auto" - the label will be updated by set_model_value() if the model has a default
 				this.auto_button.label = "Auto";
 				
-				this.reset_to_auto();
+				this.set_to_auto();
 				return;
 			}
 			// Scenario 2: new_value is set (user has explicitly set a value)
@@ -631,7 +631,7 @@ namespace OLLMchat.Settings
 				// At this point, we don't know the model_value yet (set_model_value() is called after load_options())
 				// So just show "Auto" - the label will be updated by set_model_value() if the model has a default
 				this.auto_button.label = "Auto";
-				this.reset_to_auto();
+				this.set_to_auto();
 			} else {
 				// Scenario 2: new_value is set (user has explicitly set a value)
 				// Show spin button with the actual saved new_value from Options
