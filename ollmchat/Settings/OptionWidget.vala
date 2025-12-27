@@ -131,9 +131,6 @@ namespace OLLMchat.Settings
 				// Get the default value from model.options if available
 				string? param_value = null;
 				if (model_options != null) {
-					Value model_value = Value(typeof(void));
-					((GLib.Object)model_options).get_property(row.property_name, ref model_value);
-					
 					// Use switch case on property name
 					switch (row.property_name) {
 						// Integer properties
@@ -141,6 +138,8 @@ namespace OLLMchat.Settings
 						case "top_k":
 						case "num_predict":
 						case "num_ctx":
+							Value model_value = Value(typeof(int));
+							((GLib.Object)model_options).get_property(row.property_name, ref model_value);
 							var int_val = model_value.get_int();
 							if (int_val != -1) {
 								param_value = int_val.to_string();
@@ -151,6 +150,8 @@ namespace OLLMchat.Settings
 						case "temperature":
 						case "top_p":
 						case "min_p":
+							Value model_value = Value(typeof(double));
+							((GLib.Object)model_options).get_property(row.property_name, ref model_value);
 							var double_val = model_value.get_double();
 							if (double_val != -1.0) {
 								param_value = double_val.to_string();
