@@ -193,6 +193,7 @@ namespace OLLMchat.Settings
 		{
 			// Update status object in main thread (thread-safe)
 			var status_obj = this.get_or_create_status(model_name);
+			var old_status = status_obj.status;
 			status_obj.status = status;
 			status_obj.retry_count = retry_count;
 			status_obj.completed = completed;
@@ -224,7 +225,7 @@ namespace OLLMchat.Settings
 			this.write_to_file_rate_limited(force_write);
 			
 			// Schedule progress update with rate limiting (for UI)
-			this.schedule_progress_update(model_name, status_obj);
+			this.schedule_progress_update(model_name, status_obj, old_status);
 			
 			// Handle retry scheduling for pending-retry status
 			if (status == "pending-retry") {
