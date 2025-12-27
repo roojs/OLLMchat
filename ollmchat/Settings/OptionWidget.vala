@@ -484,7 +484,21 @@ namespace OLLMchat.Settings
 			this.default_value = (double)int_val;
 			this.default_value_set = true;
 			string label_text = int_val.to_string();
-			this.auto_button.label = label_text == "" ? "Auto" : label_text;
+			
+			// Check if current value matches the model default
+			// If auto button is visible, it means user option is unset, so show model default on auto button
+			// If spin button is visible, check if it matches the model default
+			if (this.auto_button.visible) {
+				// User option is unset, show model default on auto button
+				this.auto_button.label = label_text == "" ? "Auto" : label_text;
+			} else if (this.spin_button.visible) {
+				// User has a value set, check if it matches the model default
+				if ((int)this.spin_button.value == int_val) {
+					// Matches model default, switch to auto button with label
+					this.reset_to_auto();
+					this.auto_button.label = label_text == "" ? "Auto" : label_text;
+				}
+			}
 		}
 		
 		public override void load_options(OLLMchat.Call.Options options)
