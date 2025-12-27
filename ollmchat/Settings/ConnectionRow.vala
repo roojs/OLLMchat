@@ -166,7 +166,6 @@ namespace OLLMchat.Settings
 			this.expander.add_row(buttonRow);
 		}
 
-
 		/**
 		 * Updates the expander row title and subtitle.
 		 */
