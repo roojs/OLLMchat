@@ -533,12 +533,14 @@ namespace OLLMchat.Settings
 		 * 
 		 * DISPLAY LOGIC SCENARIOS:
 		 * 
-		 * 1. Value is unset (default/empty = auto_value):
+		 * "value" = the value stored in Options object (user's saved setting, read via options.get_property())
+		 * 
+		 * 1. Value in Options is unset (value == auto_value, e.g., -1):
 		 *    - If set_value() was called (model has default): Show Auto button with model's default as label
 		 *    - If set_value() was NOT called: Show Auto button with "Auto" label
 		 *    - Display: Auto button visible, spin button hidden
 		 * 
-		 * 2. Value is set (user has explicitly set a value, NOT auto_value):
+		 * 2. Value in Options is set (user has explicitly set a value, value != auto_value):
 		 *    - Display: Spin button visible with the actual saved value from Options
 		 *    - The value shown MUST be the value from Options, NOT default_value
 		 *    - Auto button hidden
