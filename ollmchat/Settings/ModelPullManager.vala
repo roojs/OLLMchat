@@ -39,6 +39,7 @@ namespace OLLMchat.Settings
 		// Runtime fields (not serialized)
 		public bool active = false;
 		public int64 last_update_time = 0;
+		public OLLMchat.Settings.Connection? connection = null;
 		
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -60,7 +61,7 @@ namespace OLLMchat.Settings
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			// Don't serialize runtime-only fields
-			if (property_name == "active" || property_name == "last_update_time") {
+			if (property_name == "active" || property_name == "last_update_time" || property_name == "connection") {
 				return null;
 			}
 			// Only serialize error if it's not empty
@@ -226,6 +227,7 @@ namespace OLLMchat.Settings
 			
 			status_obj.active = true;
 			status_obj.connection_url = connection.url;
+			status_obj.connection = connection;
 			
 			// Start pull operation in background thread
 			this.start_pull_async(model_name, connection);
@@ -402,41 +404,34 @@ namespace OLLMchat.Settings
 							return false;
 						});
 						
-						// Schedule retry after delay
-						var timeout_source = new TimeoutSource(RETRY_DELAY_SECONDS * 1000);
-						timeout_source.set_callback(() => {
-							// Check if still in pending-retry status (not completed or failed)
-							if (this.loading_status_cache.has_key(model_name)) {
-								var check_status = this.loading_status_cache.get(model_name);
-								if (check_status.status == "pending-retry") {
-									// Look up connection from config
-									OLLMchat.Settings.Connection? retry_connection = null;
-									if (check_status.connection_url != "" && 
-									    this.app.config.connections.has_key(check_status.connection_url)) {
-										retry_connection = this.app.config.connections.get(check_status.connection_url);
-									}
-									
-									if (retry_connection != null) {
-										// Retry the pull
-										this.start_pull_async(model_name, retry_connection);
-									} else {
-										// Connection not found - mark as failed
-										check_status.status = "failed";
-										check_status.error = "Connection not found for retry";
-										this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
-										Idle.add(() => {
+						// Schedule retry from main thread (not background thread)
+						// Use Idle.add to schedule on main thread, then use Timeout.add_seconds
+						Idle.add(() => {
+							GLib.Timeout.add_seconds((uint)RETRY_DELAY_SECONDS, () => {
+								// Check if still in pending-retry status (not completed or failed)
+								if (this.loading_status_cache.has_key(model_name)) {
+									var check_status = this.loading_status_cache.get(model_name);
+									if (check_status.status == "pending-retry") {
+										// Use stored connection object
+										if (check_status.connection != null) {
+											// Retry the pull
+											this.start_pull_async(model_name, check_status.connection);
+										} else {
+											// Connection not found - mark as failed
+											check_status.status = "failed";
+											check_status.error = "Connection not found for retry";
+											this.update_loading_status(model_name, "failed", progress, last_chunk_status, true);
 											this.progress_updated(model_name, "failed", progress);
 											this.model_failed(model_name);
 											this.loading_status_cache.unset(model_name);
 											this.write_to_file();
-											return false;
-										});
+										}
 									}
 								}
-							}
+								return false; // Don't repeat
+							});
 							return false;
 						});
-						timeout_source.attach(this.background_context);
 						
 						// Clean up active flag (will be set again on retry)
 						status_obj.active = false;
