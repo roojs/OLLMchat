@@ -104,14 +104,24 @@ namespace OLLMchat.Settings
 			this.view_stack.add_titled(this.connections_page, 
 				this.connections_page.page_name, 
 				this.connections_page.page_title);
+			// Add action widget to action bar area (initially hidden)
+			if (this.connections_page.action_widget != null) {
+				this.action_bar_area.append(this.connections_page.action_widget);
+				this.connections_page.action_widget.visible = false;
+			}
 
-			// Create models page (will add its action bar to action_bar_area)
+			// Create models page
 			this.models_page = new Settings.ModelsPage(this);
 			this.view_stack.add_titled(this.models_page,
 				 this.models_page.page_name,
 				  this.models_page.page_title);
+			// Add action widget to action bar area (initially hidden)
+			if (this.models_page.action_widget != null) {
+				this.action_bar_area.append(this.models_page.action_widget);
+				this.models_page.action_widget.visible = false;
+			}
 			
-			// Connect to page visibility to show/hide action bar area
+			// Connect to page visibility to show/hide action widgets
 			this.view_stack.notify["visible-child"].connect(this.on_page_changed);
 			
 			// Initial activation of the default visible page
@@ -126,14 +136,12 @@ namespace OLLMchat.Settings
 		 * 
 		 * Notifies the previous page that it's been deactivated,
 		 * and the new page that it's been activated.
-		 * Also manages action widgets in the action bar area.
+		 * Also manages action widgets visibility in the action bar area.
 		 */
 		private void on_page_changed()
 		{
-			// Remove previous page's action widget from action bar area
-			if (this.previous_visible_child.action_widget.get_parent() != null) {
-				this.previous_visible_child.action_widget.unparent();
-			}
+			// Hide previous page's action widget
+			this.previous_visible_child.action_widget.visible = false;
 			
 			// Deactivate previous page (dummy instance on first call, does nothing)
 			this.previous_visible_child.on_deactivated();
@@ -142,11 +150,8 @@ namespace OLLMchat.Settings
 			var current_page = this.view_stack.get_visible_child() as SettingsPage;
 			this.previous_visible_child = current_page;
 			
-			// Add current page's action widget to action bar area
+			// Show current page's action widget
 			if (current_page.action_widget != null) {
-				if (current_page.action_widget.get_parent() == null) {
-					this.action_bar_area.append(current_page.action_widget);
-				}
 				current_page.action_widget.visible = true;
 				this.action_bar_area.visible = true;
 			} else {
