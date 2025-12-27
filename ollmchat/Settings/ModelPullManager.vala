@@ -33,10 +33,9 @@ namespace OLLMchat.Settings
 		 * Signal emitted when pull progress updates.
 		 * 
 		 * @param model_name The model being pulled
-		 * @param status Current status (e.g., "pulling", "complete", "error")
-		 * @param progress Progress percentage (0-100)
+		 * @param status LoadingStatus object with all status information
 		 */
-		public signal void progress_updated(string model_name, string status, int progress);
+		public signal void progress_updated(string model_name, LoadingStatus status);
 		
 		/**
 		 * Signal emitted when a model pull completes successfully.
