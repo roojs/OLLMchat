@@ -75,6 +75,9 @@ namespace MarkdownGtk
 		// Signal emitted when code block ends (delegates to source_view_handler)
 		public signal void code_block_ended(string content, string language);
 		
+		// Signal emitted when code block content is updated (for scrolling)
+		public signal void code_block_content_updated();
+		
 		/**
 		 * Creates a new Render instance with a Gtk.Box.
 		 * 
