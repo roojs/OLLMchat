@@ -336,12 +336,16 @@ namespace OLLMchat.Call
 							tool_call.function.name, result.length, result_summary);
 					}
 					
-					this.messages.add(
-						new Message.tool_reply(
-							this, tool_call.id, 
-							tool_call.function.name,
-							result
-						));
+					// Create tool reply message
+					var tool_reply = new Message.tool_reply(
+						this, tool_call.id, 
+						tool_call.function.name,
+						result
+					);
+					GLib.debug("Chat.toolsReply: Created tool reply message: role='%s', tool_call_id='%s', name='%s', content length=%zu, content='%s'",
+						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length,
+						tool_reply.content.length > 200 ? tool_reply.content.substring(0, 200) + "..." : tool_reply.content);
+					this.messages.add(tool_reply);
 				} catch (Error e) {
 					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
@@ -353,6 +357,16 @@ namespace OLLMchat.Call
 			
 			// Automatically continue the conversation by sending tool results back to the server
 			GLib.debug("Chat.toolsReply: Tools executed, automatically continuing conversation");
+			GLib.debug("Chat.toolsReply: Message count: %zu", this.messages.size);
+			for (int i = 0; i < this.messages.size; i++) {
+				var msg = this.messages[i];
+				GLib.debug("Chat.toolsReply: Message %d: role='%s', tool_call_id='%s', name='%s', content length=%zu",
+					i + 1, msg.role, msg.tool_call_id, msg.name, msg.content.length);
+				if (msg.role == "tool" && msg.content.length > 0) {
+					var content_preview = msg.content.length > 200 ? msg.content.substring(0, 200) + "..." : msg.content;
+					GLib.debug("Chat.toolsReply: Message %d content preview: '%s'", i + 1, content_preview);
+				}
+			}
 			
 			// Reset streaming_response for the continuation so we get a fresh response
 			this.streaming_response = null;

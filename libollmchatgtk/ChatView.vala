@@ -752,28 +752,28 @@ namespace OLLMchatGtk
 				return;
 			}
 			
-			// Get end position for insertion
-			var buffer = this.get_current_buffer();
-			if (buffer == null) {
-				return;
+		// Use the existing renderer to properly handle code blocks with SourceView widgets
+		// Track the last widget before we start so we can style only the new widgets
+		var last_widget_before = this.text_view_box.get_last_child();
+		
+		// Render the content (this will create SourceView widgets for code blocks)
+		GLib.debug("ChatView.append_tool_message: Input message: %s", message.content);
+		this.renderer.start();
+		this.renderer.add(message.content);
+		this.renderer.end();
+		
+		// Apply grey/small styling to TextViews created by this tool message
+		// (SourceViews keep their own styling)
+		var child = last_widget_before != null ? last_widget_before.get_next_sibling() : this.text_view_box.get_first_child();
+		while (child != null) {
+			// Apply styling to TextViews only (not SourceViews or other widgets)
+			if (child is Gtk.TextView) {
+				child.add_css_class("oc-tool-text");
 			}
-			
-			Gtk.TextIter end_iter;
-			buffer.get_end_iter(out end_iter);
-			
-			// Create PangoRender instance and convert to Pango markup
-			GLib.debug("ChatView.append_tool_message: Input message: %s", message.content);
-			var renderer = new Markdown.PangoRender();
-			var pango_result = renderer.toPango(message.content);
-			GLib.debug("ChatView.append_tool_message: Pango result: %s", pango_result);
-			buffer.insert_markup(
-				ref end_iter,
-				"<span size=\"small\" color=\"#1a1a1a\">"
-					 + pango_result + "</span>\n",
-				-1
-			);
-			
-			this.scroll_to_bottom();
+			child = child.get_next_sibling();
+		}
+		
+		this.scroll_to_bottom();
 		}
 
 		public void append_error(string error)
