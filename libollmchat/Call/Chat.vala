@@ -361,6 +361,9 @@ namespace OLLMchat.Call
 			// Reset streaming_response for the continuation so we get a fresh response
 			this.streaming_response = null;
 			
+			// Debug: show tool responses being sent to LLM
+			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %d tool reply message(s) in conversation", this.messages.size);
+			
 			// Execute the chat call with tool results in the conversation history
 			Response.Chat next_response;
 			if (this.stream) {
