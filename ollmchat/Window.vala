@@ -312,19 +312,19 @@ namespace OLLMchat
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
 			
-		// Create ChatView permission provider and set it on the base client
-		var permission_provider = new OLLMchatGtk.Tools.Permission(
-			this.chat_widget,
-			GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".config", "ollmchat"
-			)) {
-			application = this.app as GLib.Application,
-		};
-		this.history_manager.base_client.permission_provider = permission_provider;
-		// Also set on session's client (session was created before permission provider was set)
-		if (this.history_manager.session != null && this.history_manager.session.client != null) {
-			this.history_manager.session.client.permission_provider = permission_provider;
-		}
+			// Create ChatView permission provider and set it on the base client
+			var permission_provider = new OLLMchatGtk.Tools.Permission(
+				this.chat_widget,
+				GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(), ".config", "ollmchat"
+				)) {
+				application = this.app as GLib.Application,
+			};
+			this.history_manager.base_client.permission_provider = permission_provider;
+			// Also set on session's client (session was created before permission provider was set)
+			if (this.history_manager.session != null && this.history_manager.session.client != null) {
+				this.history_manager.session.client.permission_provider = permission_provider;
+			}
 			
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
