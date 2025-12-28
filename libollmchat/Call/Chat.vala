@@ -294,11 +294,11 @@ namespace OLLMchat.Call
 				return response;
 			}
 			
-		// Add the assistant message with tool_calls to the conversation
-		this.messages.add(response.message);
-		
-		// Execute each tool call and add tool reply messages directly
-		foreach (var tool_call in response.message.tool_calls) {
+			// Add the assistant message with tool_calls to the conversation
+			this.messages.add(response.message);
+			
+			// Execute each tool call and add tool reply messages directly
+			foreach (var tool_call in response.message.tool_calls) {
 				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
@@ -357,16 +357,6 @@ namespace OLLMchat.Call
 			
 			// Automatically continue the conversation by sending tool results back to the server
 			GLib.debug("Chat.toolsReply: Tools executed, automatically continuing conversation");
-			GLib.debug("Chat.toolsReply: Message count: %zu", this.messages.size);
-			for (int i = 0; i < this.messages.size; i++) {
-				var msg = this.messages[i];
-				GLib.debug("Chat.toolsReply: Message %d: role='%s', tool_call_id='%s', name='%s', content length=%zu",
-					i + 1, msg.role, msg.tool_call_id, msg.name, msg.content.length);
-				if (msg.role == "tool" && msg.content.length > 0) {
-					var content_preview = msg.content.length > 200 ? msg.content.substring(0, 200) + "..." : msg.content;
-					GLib.debug("Chat.toolsReply: Message %d content preview: '%s'", i + 1, content_preview);
-				}
-			}
 			
 			// Reset streaming_response for the continuation so we get a fresh response
 			this.streaming_response = null;
