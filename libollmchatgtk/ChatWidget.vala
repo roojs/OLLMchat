@@ -198,6 +198,11 @@ namespace OLLMchatGtk
 			// Manager signals are already connected in constructor
 			// Model dropdown is updated via session_activated signal
 			this.chat_view.scroll_enabled = false;
+			// Scroll to top when loading history
+			var vadjustment = this.chat_view.scrolled_window.vadjustment;
+			if (vadjustment != null) {
+				vadjustment.value = 0.0;
+			}
 
 			// Lock input while loading
 			try {
@@ -286,16 +291,8 @@ namespace OLLMchatGtk
 			
 			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
 			
-			// Scroll to top after loading history (similar to HistoryBrowser)
-			GLib.Idle.add(() => {
-				var vadjustment = this.chat_view.scrolled_window.vadjustment;
-				if (vadjustment != null) {
-					vadjustment.value = 0.0;
-				}
-				// Re-enable scrolling after scrolling to top
-				this.chat_view.scroll_enabled = true;
-				return false;
-			});
+			// Don't re-enable scrolling here - keep it disabled after loading history
+			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
 		}
 		
 		/**
