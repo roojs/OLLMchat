@@ -296,6 +296,7 @@ namespace OLLMchat.Call
 			
 			// Add the assistant message with tool_calls to the conversation
 			this.messages.add(response.message);
+			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %d tool reply message(s)", response.message.tool_calls.size);
 			
 			// Execute each tool call and add tool reply messages directly
 			foreach (var tool_call in response.message.tool_calls) {
@@ -360,8 +361,6 @@ namespace OLLMchat.Call
 			
 			// Reset streaming_response for the continuation so we get a fresh response
 			this.streaming_response = null;
-			
-			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %d tool reply message(s)", response.message.tool_calls.size);
 			
 			// Execute the chat call with tool results in the conversation history
 			Response.Chat next_response;
