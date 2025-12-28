@@ -357,6 +357,7 @@ namespace OLLMchat.Call
 					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.client.message_created(error_msg, this);
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
+					tool_responses.add(@"$(tool_call.function.name)(ERROR:$(e.message))");
 				}
 			}
 			
