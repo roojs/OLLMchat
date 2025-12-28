@@ -309,8 +309,13 @@ namespace OLLMchat.Tools
 				output_content += stderr_output;
 			}
 			
-			// Add exit code and close txt block
-			output_content += "\nExit code: " + exit_status.to_string() + "\n";
+			// Add exit code only if non-zero (success doesn't need to be shown)
+			if (exit_status != 0) {
+				if (stdout_output != "" || stderr_output != "") {
+					output_content += "\n";
+				}
+				output_content += "Exit code: " + exit_status.to_string() + "\n";
+			}
 			output_content += "```";
 			
 		// Send output as second message via message_created
