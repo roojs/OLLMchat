@@ -269,12 +269,12 @@ namespace OLLMchat
 					}
 					return array_node;
 				
-			case "tool-call-id":
-				// Only serialize tool_call_id if not empty (for tool role messages)
-				if (this.tool_call_id == "") {
-					return null;
-				}
-				return default_serialize_property(property_name, value, pspec);
+				case "tool-call-id":
+					// Only serialize tool_call_id if not empty (for tool role messages)
+					if (this.tool_call_id == "") {
+						return null;
+					}
+					return default_serialize_property(property_name, value, pspec);
 				
 				case "name":
 					// Only serialize name if not empty (for tool role messages)
