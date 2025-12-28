@@ -288,11 +288,7 @@ namespace OLLMchatGtk
 			
 			// Scroll to top after loading history and re-enable scrolling
 			GLib.Idle.add(() => {
-				// Scroll to top (similar to HistoryBrowser)
-				var vadjustment = this.chat_view.scrolled_window.vadjustment;
-				if (vadjustment != null) {
-					vadjustment.value = 0.0;
-				}
+				this.chat_view.scroll_to_top();
 				// Re-enable scrolling after scrolling to top
 				this.chat_view.scroll_enabled = true;
 				return false;
