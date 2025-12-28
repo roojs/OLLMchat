@@ -102,6 +102,11 @@ namespace OLLMchatGtk
 			this.renderer = new MarkdownGtk.Render(this.text_view_box) {
 				scroll_to_end = this.scroll_enabled
 			};
+			
+			// Connect to code block content updates to scroll when sourceviews receive content
+			this.renderer.code_block_content_updated.connect(() => {
+				this.scroll_to_bottom();
+			});
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
@@ -1173,8 +1178,21 @@ namespace OLLMchatGtk
 			
 			frame.set_visible(true);
 			
-			// Scroll to bottom to show new content
+			// Scroll to bottom immediately (for widgets that are already ready)
 			this.scroll_to_bottom();
+			
+			// Also schedule delayed scrolls to catch when widget content is loaded
+			// This is especially important for SourceViews that receive content asynchronously
+			GLib.Idle.add(() => {
+				this.scroll_to_bottom();
+				return false;
+			});
+			
+			// Additional delayed scroll after a short timeout to catch late content updates
+			GLib.Timeout.add(100, () => {
+				this.scroll_to_bottom();
+				return false; // Don't repeat
+			});
 		}
 		
 		/**

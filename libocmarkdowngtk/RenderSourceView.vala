@@ -352,6 +352,9 @@ namespace MarkdownGtk
 				this.source_buffer.insert(ref end_iter, text, -1);
 			}
 			
+			// Emit signal to notify that content was updated (for scrolling)
+			this.renderer.code_block_content_updated();
+			
 			// Check if text contains a line break - if so, check if we need to clamp height
 			if (text.contains("\n")) {
 				GLib.Idle.add(() => {
@@ -378,6 +381,13 @@ namespace MarkdownGtk
 					return this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
 				});
 			}
+			
+			// Emit signal to notify that code block ended (for scrolling after final resize)
+			// Use Idle to delay until after resize callback completes
+			GLib.Idle.add(() => {
+				this.renderer.code_block_content_updated();
+				return false;
+			});
 			
 			// Clean up
 		
