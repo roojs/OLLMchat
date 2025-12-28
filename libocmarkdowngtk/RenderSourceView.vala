@@ -385,7 +385,10 @@ namespace MarkdownGtk
 			// Finalize the sourceview - resize based on content rules
 			if (this.source_view != null) {
 				GLib.Idle.add(() => {
-					return this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
+					var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
+					// Scroll to bottom after resize completes
+					this.scroll_sourceview_to_bottom();
+					return result;
 				});
 			}
 			
@@ -400,6 +403,34 @@ namespace MarkdownGtk
 		
 			this.code_language = "";
 			this.code_content = new StringBuilder();
+		}
+		
+		/**
+		 * Scrolls the sourceview's scrolled window to the bottom.
+		 */
+		private void scroll_sourceview_to_bottom()
+		{
+			if (this.scrolled_window == null) {
+				return;
+			}
+			
+			var vadjustment = this.scrolled_window.vadjustment;
+			if (vadjustment == null) {
+				return;
+			}
+			
+			// Check if layout is ready by verifying upper bound is reasonable
+			if (vadjustment.upper < 10.0) {
+				// Layout not ready yet, try again on next idle
+				GLib.Idle.add(() => {
+					this.scroll_sourceview_to_bottom();
+					return false;
+				});
+				return;
+			}
+			
+			// Scroll to bottom by setting value to maximum
+			vadjustment.value = vadjustment.upper;
 		}
 		
 		/**
