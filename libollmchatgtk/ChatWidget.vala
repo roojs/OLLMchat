@@ -239,11 +239,6 @@ namespace OLLMchatGtk
 			
 			GLib.debug("ChatWidget.load_messages: Starting to load %d messages from session", total_messages);
 			
-			// Add reload indicator at the top (before loading messages)
-			var reload_msg = new OLLMchat.Message(this.manager.session.chat, "ui", 
-				"<span color=\"gray\" size=\"small\">📜 Chat history loaded</span>");
-			this.chat_view.append_tool_message(reload_msg);
-			
 			foreach (var msg in this.manager.session.messages) {
 				message_index++;
 				// Use is_ui_visible to filter messages
@@ -293,7 +288,11 @@ namespace OLLMchatGtk
 			
 			// Scroll to top after loading history and re-enable scrolling
 			GLib.Idle.add(() => {
-				this.chat_view.scroll_to_top();
+				// Scroll to top (similar to HistoryBrowser)
+				var vadjustment = this.chat_view.scrolled_window.vadjustment;
+				if (vadjustment != null) {
+					vadjustment.value = 0.0;
+				}
 				// Re-enable scrolling after scrolling to top
 				this.chat_view.scroll_enabled = true;
 				return false;
