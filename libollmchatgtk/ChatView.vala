@@ -1017,31 +1017,6 @@ namespace OLLMchatGtk
 		}
 		
 		/**
-		 * Scrolls to top when loading history.
-		 * This is called when scroll_enabled is false to position at the start of loaded history.
-		 */
-		public void scroll_to_top()
-		{
-			// Use Idle to scroll after layout is updated
-			GLib.Idle.add(() => {
-				var vadjustment = this.scrolled_window.vadjustment;
-				if (vadjustment == null) {
-					return false;
-				}
-				
-				// Check if layout is ready
-				if (vadjustment.upper < 100.0) {
-					return true; // Try again
-				}
-				
-				// Scroll to top
-				vadjustment.value = 0.0;
-				this.last_scroll_pos = 0.0;
-				return false;
-			});
-		}
-		
-		/**
 		* Copies text to the clipboard.
 		* 
 		* @param text The text to copy

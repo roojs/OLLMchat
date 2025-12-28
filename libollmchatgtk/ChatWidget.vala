@@ -213,8 +213,6 @@ namespace OLLMchatGtk
 
 			// Load and render messages from session
 			this.load_messages();
-			// Scroll to top after loading history (scroll_enabled is false, so scroll_to_bottom won't run)
-			this.chat_view.scroll_to_top();
 			GLib.Idle.add(() => {
 				// Unlock input after loading
 				// since scrolling happesn in scroll_tobottom in idle we need this
