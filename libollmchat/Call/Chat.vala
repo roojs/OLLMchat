@@ -296,9 +296,9 @@ namespace OLLMchat.Call
 			
 			// Add the assistant message with tool_calls to the conversation
 			this.messages.add(response.message);
-			var tool_names = new GLib.GenericArray<string>();
-			foreach (var tc in response.message.tool_calls) tool_names.add(tc.function.name);
-			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", string.joinv(", ", tool_names.data));
+			var generator = new Json.Generator();
+			generator.set_root(Json.gobject_serialize(response.message));
+			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", generator.to_data(null));
 			
 			// Execute each tool call and add tool reply messages directly
 			foreach (var tool_call in response.message.tool_calls) {
