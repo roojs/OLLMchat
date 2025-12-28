@@ -271,7 +271,7 @@ namespace OLLMchat
 				
 				case "tool-call-id":
 					// Only serialize tool_call_id if not empty (for tool role messages)
-					if (this.tool_calls.size == 0) {
+					if (this.tool_call_id == "") {
 						return null;
 					}
 					return default_serialize_property(property_name, value, pspec);

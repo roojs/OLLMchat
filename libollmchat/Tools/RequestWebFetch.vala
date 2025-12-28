@@ -75,9 +75,10 @@ namespace OLLMchat.Tools
 			}
 				
 			// Send request message to UI
-			this.chat_call.client.tool_message(
+			this.chat_call.client.message_created(
 				new OLLMchat.Message(this.chat_call, "ui",
-					"```" + this.tool.name + " - request\n" + this.url + "\n```")
+					"```" + this.tool.name + " - request\n" + this.url + "\n```"),
+				this.chat_call
 			);
 			
 			// Fetch URL with redirects disabled (redirects require approval)
@@ -113,9 +114,10 @@ namespace OLLMchat.Tools
 				var result = this.convert_content(content, content_type);
 				
 				// Send response message to UI
-				this.chat_call.client.tool_message(
+				this.chat_call.client.message_created(
 					new OLLMchat.Message(this.chat_call, "ui",
-						"```" + this.tool.name + " - response (" + this.format + ")\n" + result + "\n```")
+						"```" + this.tool.name + " - response (" + this.format + ")\n" + result + "\n```"),
+					this.chat_call
 				);
 				
 				return result;

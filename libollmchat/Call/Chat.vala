@@ -294,11 +294,12 @@ namespace OLLMchat.Call
 				return response;
 			}
 			
-		// Add the assistant message with tool_calls to the conversation
-		this.messages.add(response.message);
-		
-		// Execute each tool call and add tool reply messages directly
-		foreach (var tool_call in response.message.tool_calls) {
+			// Add the assistant message with tool_calls to the conversation
+			this.messages.add(response.message);
+			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
+			
+			// Execute each tool call and add tool reply messages directly
+			foreach (var tool_call in response.message.tool_calls) {
 				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
@@ -336,12 +337,16 @@ namespace OLLMchat.Call
 							tool_call.function.name, result.length, result_summary);
 					}
 					
-					this.messages.add(
-						new Message.tool_reply(
-							this, tool_call.id, 
-							tool_call.function.name,
-							result
-						));
+					// Create tool reply message
+					var tool_reply = new Message.tool_reply(
+						this, tool_call.id, 
+						tool_call.function.name,
+						result
+					);
+					GLib.debug("Chat.toolsReply: Created tool reply message: role='%s', tool_call_id='%s', name='%s', content length=%zu, content='%s'",
+						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length,
+						tool_reply.content.length > 200 ? tool_reply.content.substring(0, 200) + "..." : tool_reply.content);
+					this.messages.add(tool_reply);
 				} catch (Error e) {
 					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);

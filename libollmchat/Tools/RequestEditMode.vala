@@ -102,8 +102,9 @@ namespace OLLMchat.Tools
 			}
 			
 			// Emit to UI
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui", message)
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui", message),
+				this.chat_call
 			);
 			
 			// Keep this request alive so signal handlers can be called
@@ -445,7 +446,7 @@ namespace OLLMchat.Tools
 				}
 				
 				// Build and emit UI message
-				this.chat_call.client.tool_message(
+				this.chat_call.client.message_created(
 					new OLLMchat.Message(
 						this.chat_call,
 						"ui",
@@ -454,7 +455,8 @@ namespace OLLMchat.Tools
 								"' has been updated. It now has " + 
 								line_count.to_string() + " lines."
 							: "File '" + this.normalized_path + "' has been updated."
-					)
+					),
+					this.chat_call
 				);
 				
 				// Send tool reply to LLM
@@ -535,9 +537,10 @@ namespace OLLMchat.Tools
 			
 			// Log and notify that we're starting to write
 			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
-			this.chat_call.client.tool_message(
+			this.chat_call.client.message_created(
 				new OLLMchat.Message(this.chat_call, "ui",
-				"Applying changes to file " + this.normalized_path + "...")
+				"Applying changes to file " + this.normalized_path + "..."),
+				this.chat_call
 			);
 		
 			
@@ -576,8 +579,8 @@ namespace OLLMchat.Tools
 				"Applied changes to file " + this.normalized_path);
 			GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
 				message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
-			this.chat_call.client.tool_message(message);
-			GLib.debug("RequestEditMode.apply_all_changes: Emitted tool_message signal");
+			this.chat_call.client.message_created(message, this.chat_call);
+			GLib.debug("RequestEditMode.apply_all_changes: Emitted message_created signal");
 			
 			// Emit change_done signal for each change
 			var edit_tool = (EditMode) this.tool;

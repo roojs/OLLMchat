@@ -210,37 +210,53 @@ namespace OLLMvector.Search
 				return new Gee.ArrayList<SearchResult>();
 			}
 			
-			// Step 5: Extract vector IDs from results and verify they're in filtered set
-			var result_vector_ids = new int64[faiss_results.length];
+			// Step 5: Filter valid vector IDs from FAISS results
+			// FAISS returns -1 as a sentinel value when it can't find enough results
+			// We need to filter out -1 values and IDs not in the filtered set
+			var valid_vector_ids = new Gee.ArrayList<int64>();
 			var invalid_count = 0;
+			var sentinel_count = 0;
+			
 			for (int i = 0; i < faiss_results.length; i++) {
-				result_vector_ids[i] = faiss_results[i].document_id;
-				// Verify document_id is in filtered set
-				if (!filtered_set.contains((int)faiss_results[i].document_id)) {
+				var vector_id = faiss_results[i].document_id;
+				
+				// Skip -1 sentinel values (invalid results from FAISS)
+				if (vector_id == -1) {
+					sentinel_count++;
+					continue;
+				}
+				
+				// If filtering is active, verify document_id is in filtered set
+				if (this.filtered_vector_ids.size > 0 && !filtered_set.contains((int)vector_id)) {
 					invalid_count++;
 					GLib.debug("Search.execute: WARNING - FAISS returned vector_id=%lld which is NOT in filtered list", 
-						faiss_results[i].document_id);
+						vector_id);
+					continue;
 				}
+				
+				// This is a valid vector ID
+				valid_vector_ids.add(vector_id);
 			}
 			
 			// Debug: Log FAISS results
-			GLib.debug("Search.execute: FAISS returned %d results, %d valid (in filtered list), %d invalid",
+			GLib.debug("Search.execute: FAISS returned %d results: %d valid, %d invalid (not in filter), %d sentinel (-1)",
 				faiss_results.length,
-				faiss_results.length - invalid_count,
-				invalid_count
+				valid_vector_ids.size,
+				invalid_count,
+				sentinel_count
 			);
 			
-			if (invalid_count > 0) {
-				var result_ids_str = new string[result_vector_ids.length];
-				for (int i = 0; i < result_vector_ids.length; i++) {
-					result_ids_str[i] = result_vector_ids[i].to_string();
-				}
-				GLib.debug("Search.execute: FAISS returned vector_ids: %s",
-					string.joinv(",", result_ids_str)
-				);
+			// If no valid results, return empty list
+			if (valid_vector_ids.size == 0) {
+				return new Gee.ArrayList<SearchResult>();
 			}
 			
-			// Step 6: Lookup metadata for result vector_ids
+			// Step 6: Lookup metadata for valid vector_ids only
+			var result_vector_ids = new int64[valid_vector_ids.size];
+			for (int i = 0; i < valid_vector_ids.size; i++) {
+				result_vector_ids[i] = valid_vector_ids[i];
+			}
+			
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
 			

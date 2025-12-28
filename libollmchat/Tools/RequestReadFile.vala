@@ -93,8 +93,9 @@ namespace OLLMchat.Tools
 					this.end_line
 				);
 			} 
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui", message)
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui", message),
+				this.chat_call
 			);
 			
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {

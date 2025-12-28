@@ -352,6 +352,16 @@ namespace MarkdownGtk
 				this.source_buffer.insert(ref end_iter, text, -1);
 			}
 			
+			// Scroll sourceview to bottom after content is added
+			// Use Idle to ensure layout is updated first
+			GLib.Idle.add(() => {
+				this.scroll_sourceview_to_bottom();
+				return false;
+			});
+			
+			// Emit signal to notify that content was updated (for scrolling outer container)
+			this.renderer.code_block_content_updated();
+			
 			// Check if text contains a line break - if so, check if we need to clamp height
 			if (text.contains("\n")) {
 				GLib.Idle.add(() => {
@@ -375,14 +385,52 @@ namespace MarkdownGtk
 			// Finalize the sourceview - resize based on content rules
 			if (this.source_view != null) {
 				GLib.Idle.add(() => {
-					return this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
+					var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
+					// Scroll to bottom after resize completes
+					this.scroll_sourceview_to_bottom();
+					return result;
 				});
 			}
+			
+			// Emit signal to notify that code block ended (for scrolling after final resize)
+			// Use Idle to delay until after resize callback completes
+			GLib.Idle.add(() => {
+				this.renderer.code_block_content_updated();
+				return false;
+			});
 			
 			// Clean up
 		
 			this.code_language = "";
 			this.code_content = new StringBuilder();
+		}
+		
+		/**
+		 * Scrolls the sourceview's scrolled window to the bottom.
+		 */
+		private void scroll_sourceview_to_bottom()
+		{
+			if (this.scrolled_window == null) {
+				return;
+			}
+			
+			var vadjustment = this.scrolled_window.vadjustment;
+			if (vadjustment == null) {
+				return;
+			}
+			
+			// Check if layout is ready by verifying upper bound is reasonable
+			if (vadjustment.upper < 10.0) {
+				// Layout not ready yet, try again on next idle
+				GLib.Idle.add(() => {
+					this.scroll_sourceview_to_bottom();
+					return false;
+				});
+				return;
+			}
+			
+			// Scroll to bottom by setting value to maximum
+			vadjustment.value = vadjustment.upper;
 		}
 		
 		/**

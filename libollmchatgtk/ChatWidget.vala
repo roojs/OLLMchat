@@ -316,7 +316,10 @@ namespace OLLMchatGtk
 					this.is_streaming_active = true;
 					break;
 				case "ui":
-					this.chat_view.append_tool_message(m);
+					// Render UI messages using the general renderer (same as assistant messages)
+					// This ensures code blocks are properly rendered as SourceView widgets
+					var ui_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(ui_msg);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text

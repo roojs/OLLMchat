@@ -115,6 +115,8 @@ namespace OLLMchat.Settings
 				valign = Gtk.Align.CENTER
 			};
 			this.refresh_btn.clicked.connect(() => {
+				// Save expanded model options before refreshing
+				this.save_all_options();
 				this.render_models.begin();
 			});
 			this.action_widget.append(this.refresh_btn);

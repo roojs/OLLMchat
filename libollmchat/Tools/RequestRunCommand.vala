@@ -157,45 +157,35 @@ namespace OLLMchat.Tools
 				return true;
 			}
 			
-		// Simple pattern: extract command and resolve realpath
-		var cmd_to_resolve = this.extract_command_for_resolution(this.command);
-		var exec_name = this.extract_executable_name(cmd_to_resolve);
-		
-		if (exec_name == "") {
-			// Can't resolve - treat as complex
-			this.is_complex_command = true;
-			this.permission_target_path = this.command;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Run command: " + this.command + "?";
-			return true;
-		}
-		
-		var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
-		if (realpath == "") {
-			// Can't resolve - treat as complex
-			this.is_complex_command = true;
-			this.permission_target_path = this.command;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-			this.permission_question = "Run command: " + this.command + "?";
-			return true;
-		}
-		
-		// Check if command has arguments (more than just the executable name)
-		var trimmed_cmd = cmd_to_resolve.strip();
-		bool has_arguments = trimmed_cmd.length > exec_name.length;
-		
-		// Simple pattern with resolved path
-		this.is_complex_command = false;
-		// If command has arguments, use full command as permission target
-		// Otherwise, use just the executable path
-		if (has_arguments) {
-			this.permission_target_path = this.command;
-		} else {
+			// Simple pattern: extract command and resolve realpath
+			var cmd_to_resolve = this.extract_command_for_resolution(this.command);
+			var exec_name = this.extract_executable_name(cmd_to_resolve);
+			
+			if (exec_name == "") {
+				// Can't resolve - treat as complex
+				this.is_complex_command = true;
+				this.permission_target_path = this.command;
+				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+				this.permission_question = "Run command: " + this.command + "?";
+				return true;
+			}
+			
+			var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
+			if (realpath == "") {
+				// Can't resolve - treat as complex
+				this.is_complex_command = true;
+				this.permission_target_path = this.command;
+				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+				this.permission_question = "Run command: " + this.command + "?";
+				return true;
+			}
+			
+			// Simple pattern with resolved path
+			this.is_complex_command = false;
 			this.permission_target_path = realpath;
-		}
-		this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-		this.permission_question = "Run command: " + this.command + "?";
-		return true;
+			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+			this.permission_question = "Run command: " + this.command + "?";
+			return true;
 		}
 		
 		/**
@@ -217,6 +207,13 @@ namespace OLLMchat.Tools
 				var unique_path = this.permission_target_path + "#" + GLib.get_real_time().to_string();
 				this.permission_target_path = unique_path;
 			}
+			
+			// Send command to UI before requesting permission
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```bash\n$ " + this.command + "\n```"),
+				this.chat_call
+			);
 			
 			// Request permission (will always ask for complex commands due to unique path)
 			if (!(yield this.chat_call.client.permission_provider.request(this))) {
@@ -240,9 +237,18 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
 			}
 			
-			// Get working directory from tool's base_directory
+			// Get working directory - try agent first, fall back to tool's base_directory
 			var run_command_tool = (OLLMchat.Tools.RunCommand) this.tool;
 			var work_dir = run_command_tool.base_directory;
+			
+			// Check if active agent provides a working directory
+			var prompt_assistant = this.chat_call.client.prompt_assistant;
+			if (prompt_assistant != null) {
+				var agent_work_dir = prompt_assistant.get_working_directory();
+				if (agent_work_dir != "") {
+					work_dir = agent_work_dir;
+				}
+			}
 			
 			// Execute command using shell with working directory
 			// Build command with cd if needed
@@ -253,12 +259,6 @@ namespace OLLMchat.Tools
 			}
 			
 			string[] argv = { "/bin/sh", "-c", shell_cmd };
-			
-			// Send command as first message (bash code block) before execution
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```bash\n$ " + this.command + "\n```")
-			);
 			
 			GLib.Subprocess subprocess;
 			try {
@@ -309,15 +309,21 @@ namespace OLLMchat.Tools
 				output_content += stderr_output;
 			}
 			
-			// Add exit code and close txt block
-			output_content += "\nExit code: " + exit_status.to_string() + "\n";
+			// Add exit code only if non-zero (success doesn't need to be shown)
+			if (exit_status != 0) {
+				if (stdout_output != "" || stderr_output != "") {
+					output_content += "\n";
+				}
+				output_content += "Exit code: " + exit_status.to_string() + "\n";
+			}
 			output_content += "```";
 			
-			// Send output as second message via tool_message
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui", output_content)
+		// Send output as second message via message_created
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui", output_content),
+				this.chat_call
 			);
-			
+				
 			// FUTURE: Streaming support - clear current message when done
 			// this.current_tool_message = null;
 			

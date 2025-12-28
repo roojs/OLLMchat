@@ -321,6 +321,10 @@ namespace OLLMchat
 				application = this.app as GLib.Application,
 			};
 			this.history_manager.base_client.permission_provider = permission_provider;
+			// Also set on session's client (session was created before permission provider was set)
+			if (this.history_manager.session != null && this.history_manager.session.client != null) {
+				this.history_manager.session.client.permission_provider = permission_provider;
+			}
 			
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
