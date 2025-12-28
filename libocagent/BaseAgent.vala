@@ -74,15 +74,15 @@ namespace OLLMagent
 		}
 		
 	/**
-	* Gets the working directory for command execution, if the agent provides one.
+	* Gets the working directory for command execution.
 	* 
 	* Agents that have a context-specific working directory (e.g., a selected project)
 	* should override this method to return that directory path.
 	* Default implementation returns the user's home directory.
 	* 
-	* @return Working directory path, or null to use tool's default base_directory
+	* @return Working directory path
 	*/
-	public virtual string? get_working_directory()
+	public virtual string get_working_directory()
 	{
 		return GLib.Environment.get_home_dir();
 	}

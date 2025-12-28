@@ -56,13 +56,14 @@ namespace OLLMcoder.Prompt
 		
 		/**
 		 * Returns the active project's path as the working directory for commands.
+		 * Falls back to home directory if no project is selected.
 		 */
-		public override string? get_working_directory()
+		public override string get_working_directory()
 		{
 			if (this.project_manager.active_project != null) {
 				return this.project_manager.active_project.path;
 			}
-			return null;
+			return GLib.Environment.get_home_dir();
 		}
 		
 		/**
