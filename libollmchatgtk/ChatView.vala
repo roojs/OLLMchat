@@ -45,7 +45,7 @@ namespace OLLMchatGtk
 		}
 
 		private ChatWidget? chat_widget = null;
-		public Gtk.ScrolledWindow scrolled_window;
+		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Box text_view_box;
 		private MarkdownGtk.Render renderer;
 		private string last_line = "";
