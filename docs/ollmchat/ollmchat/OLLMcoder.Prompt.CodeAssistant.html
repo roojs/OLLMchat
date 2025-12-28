@@ -37,6 +37,7 @@
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_info_section.html">generate_user_info_section</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.generate_user_prompt.html">generate_user_prompt</a></li>
           <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.get_widget.html">get_widget</a></li>
+          <li class="virtual_method"><a href="OLLMcoder.Prompt.CodeAssistant.get_working_directory.html">get_working_directory</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -97,6 +98,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Gets the UI widget for this agent.</span>
             </div></li>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.Prompt.CodeAssistant.get_working_directory.html" class="virtual_method">get_working_directory</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Returns the active project's path as the working directory for 
+                commands. Falls back to home directory if no project is selected.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
@@ -114,12 +120,13 @@
               <ul class="navi_inline">
                 <li class="method"><a href="OLLMagent.BaseAgent.get_os_version.html">get_os_version</a></li>
                 <li class="virtual_method"><a href="OLLMagent.BaseAgent.get_widget.html">get_widget</a></li>
+                <li class="virtual_method"><a href="OLLMagent.BaseAgent.get_working_directory.html">get_working_directory</a></li>
                 <li class="signal"><a href="OLLMagent.BaseAgent.get_workspace_path.html">get_workspace_path</a></li>
-                <li class="method"><a href="OLLMagent.BaseAgent.load_section.html">load_section</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="method"><a href="OLLMagent.BaseAgent.load_section.html">load_section</a></li>
                 <li class="property"><a href="OLLMagent.BaseAgent.name.html">name</a></li>
                 <li class="property"><a href="OLLMagent.BaseAgent.shell.html">shell</a></li>
                 <li class="property"><a href="OLLMagent.BaseAgent.title.html">title</a></li>
