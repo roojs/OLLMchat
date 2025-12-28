@@ -97,13 +97,11 @@ namespace OLLMvector.Tool
 				this.max_results
 			);
 			
-			// Emit execution message
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(
-					this.chat_call,
-					"ui",
-					"Executing codebase search for: " + this.query
-				)
+			// Send search query to UI (same format as commands)
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```txt\n" + this.query + "\n```"),
+				this.chat_call
 			);
 			
 			// Step 1: Get active project from ProjectManager
@@ -190,6 +188,13 @@ namespace OLLMvector.Tool
 			
 			// Step 5: Format results for LLM consumption (this will cache files)
 			var formatted = yield this.format_results(results, this.query);
+			
+			 
+			// Send output as second message via message_created (same as commands)
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",  "```txt\n" + formatted + "\n```"),
+				this.chat_call
+			);
 			
 			// Clear file cache at end of query
 			var cache_size = this.file_cache.size;

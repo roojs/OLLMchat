@@ -304,12 +304,17 @@ namespace OLLMchat.Call
 					tool_call.function.name, tool_call.id);
 				
 				if (!this.client.tools.has_key(tool_call.function.name)) {
-					GLib.debug("Chat.toolsReply: Tool '%s' not found in client tools (available tools: %s)", 
-						tool_call.function.name, 
-						string.joinv(", ", this.client.tools.keys.to_array()));
-					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
+					var available_tools_str = string.joinv("', '", this.client.tools.keys.to_array());
+					if (available_tools_str != "") {
+						available_tools_str = "'" + available_tools_str + "'";
+					}
+					
+					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
+						"', however we only have these tools: " + available_tools_str;
+				
+					var error_msg = new Message(this, "ui", err_message);
 					this.client.message_created(error_msg, this);
-					this.messages.add(new Message.tool_call_invalid(this, tool_call));
+					this.messages.add(new Message.tool_call_invalid(this, tool_call, err_message));
 					continue;
 				}
 				

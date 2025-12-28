@@ -206,16 +206,15 @@ namespace OLLMchat.Settings
 			}
 			this.is_expanding = true;
 
-			// Only collapse if actually expanded
-			if (!this.expanded) {
+			// Only save if widget exists (meaning row was expanded and has options to save)
+			// Note: When user manually collapses, expanded is already false, so we check widget instead
+			if (this.options_widget == null) {
 				this.is_expanding = false;
 				return;
 			}
 
 			// Save options from widget
-			if (this.options_widget != null) {
-				this.options_widget.save_options(this.options);
-			}
+			this.options_widget.save_options(this.options);
 
 			// Set expanded property to false to keep UI in sync
 			// (This will trigger the signal handler, but the early return prevents recursion)

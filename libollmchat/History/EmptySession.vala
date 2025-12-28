@@ -78,6 +78,10 @@ namespace OLLMchat.History
 			// Copy agent_name from EmptySession
 			real_session.agent_name = this.agent_name;
 			
+			// Set timestamp immediately so the session appears at the top of the sorted history list
+			var now = new DateTime.now_local();
+			real_session.updated_at_timestamp = now.to_unix();
+			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
 			

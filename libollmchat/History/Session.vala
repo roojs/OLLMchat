@@ -348,6 +348,7 @@ namespace OLLMchat.History
 				case "updated_at_timestamp":
 				case "title":
 				case "model":
+				case "agent_name":
 				case "total_messages":
 				case "total_tokens":
 				case "duration_seconds":

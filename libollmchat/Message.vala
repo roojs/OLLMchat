@@ -164,14 +164,15 @@ namespace OLLMchat
 		 * 
 		 * @param message_interface The message interface
 		 * @param tool_call The tool call that is invalid
+		 * @param err_message The error message to send to the LLM
 		 */
-		public Message.tool_call_invalid(ChatContentInterface message_interface, Response.ToolCall tool_call)
+		public Message.tool_call_invalid(ChatContentInterface message_interface, Response.ToolCall tool_call, string err_message)
 		{
 			this.message_interface = message_interface;
 			this.role = "tool";
 			this.tool_call_id = tool_call.id;
 			this.name = tool_call.function.name;
-			this.content = "ERROR: Tool '" + tool_call.function.name + "' is not available";
+			this.content = err_message;
 			
 			// Emit message_created signal (message_interface is always a Chat for tool-related messages)
 			// Note: UI message is already emitted in toolsReply(), so this is just for the tool message itself

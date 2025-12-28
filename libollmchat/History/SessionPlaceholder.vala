@@ -88,6 +88,7 @@ namespace OLLMchat.History
 			real_session.updated_at_timestamp = this.updated_at_timestamp;
 			real_session.title = this.title;
 			real_session.model = this.model;
+			real_session.agent_name = this.agent_name;
 			real_session.total_messages = this.total_messages;
 			real_session.total_tokens = this.total_tokens;
 			real_session.duration_seconds = this.duration_seconds;
@@ -132,6 +133,16 @@ namespace OLLMchat.History
 			//real_session.title = json_session.title;
 			//real_session.model = json_session.model;
 			//real_session.child_chats = json_session.child_chats;
+			// Copy agent_name from JSON (it may not be in DB for older sessions)
+			if (json_session.agent_name != "" && json_session.agent_name != "just-ask") {
+				real_session.agent_name = json_session.agent_name;
+			}
+			
+			// Set the agent on the client based on the session's agent_name
+			var agent = this.manager.agents.get(real_session.agent_name);
+			if (agent != null) {
+				real_session.client.prompt_assistant = agent;
+			}
 			
 			// c) Copy messages from SessionJson into Session
 			// First, restore all messages to session.messages (including special types)

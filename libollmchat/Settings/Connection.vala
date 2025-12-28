@@ -153,6 +153,7 @@ namespace OLLMchat.Settings
 			}
 
 			if (body != null) {
+				GLib.debug("SEND: %s", body);
 				message.set_request_body_from_bytes("application/json", new Bytes(body.data));
 			}
 

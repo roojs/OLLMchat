@@ -61,7 +61,7 @@
         <h1 class="main_title">Message.tool_call_invalid</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Message.tool_call_invalid</span></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span> message_interface, <span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Message.tool_call_invalid</span></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span> message_interface, <span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_basic_type"><span class="class">string</span></span> err_message)
         </div>
         <div class="description">
           <p>Constructor for invalid tool call messages. Used when a tool is not found or not available.</p>
@@ -77,6 +77,12 @@
               <td class="main_parameter_table_name">tool_call</td>
               <td>
                 <p>The tool call that is invalid </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">err_message</td>
+              <td>
+                <p>The error message to send to the LLM </p>
               </td>
             </tr>
           </table>

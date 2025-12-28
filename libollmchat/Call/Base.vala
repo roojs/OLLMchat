@@ -228,6 +228,7 @@ namespace OLLMchat.Call
 	private void process_json_chunk(string chunk_str, StreamingChunkCallback on_chunk)
 	{
 		var trimmed = chunk_str.strip();
+		//GLib.debug("GOT: %s", trimmed);
 		if (trimmed == "" || !trimmed.has_suffix("}")) {
 			return;
 		}

@@ -213,7 +213,7 @@ namespace OLLMvector.Search
 			// Step 5: Filter valid vector IDs from FAISS results
 			// FAISS returns -1 as a sentinel value when it can't find enough results
 			// We need to filter out -1 values and IDs not in the filtered set
-			var valid_vector_ids = new Gee.ArrayList<int64>();
+			var valid_vector_ids = new Gee.ArrayList<int>();
 			var invalid_count = 0;
 			var sentinel_count = 0;
 			
@@ -235,7 +235,7 @@ namespace OLLMvector.Search
 				}
 				
 				// This is a valid vector ID
-				valid_vector_ids.add(vector_id);
+				valid_vector_ids.add((int)vector_id);
 			}
 			
 			// Debug: Log FAISS results
@@ -254,7 +254,7 @@ namespace OLLMvector.Search
 			// Step 6: Lookup metadata for valid vector_ids only
 			var result_vector_ids = new int64[valid_vector_ids.size];
 			for (int i = 0; i < valid_vector_ids.size; i++) {
-				result_vector_ids[i] = valid_vector_ids[i];
+				result_vector_ids[i] = (int64)valid_vector_ids[i];
 			}
 			
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(

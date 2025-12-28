@@ -293,6 +293,10 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 			}
 			
+			// Truncate outputs if they exceed max lines (50)
+			stdout_output = this.truncate_output(stdout_output, 50);
+			//stderr_output = this.truncate_output(stderr_output, 50);
+			
 			// Build output message (txt code block)
 			string output_content = "```txt\n";
 			
@@ -300,7 +304,7 @@ namespace OLLMchat.Tools
 			if (stdout_output != "") {
 				output_content += stdout_output;
 			}
-			
+			/*
 			// Add stderr output (if any)
 			if (stderr_output != "") {
 				if (stdout_output != "") {
@@ -308,7 +312,7 @@ namespace OLLMchat.Tools
 				}
 				output_content += stderr_output;
 			}
-			
+			 */
 			// Add exit code only if non-zero (success doesn't need to be shown)
 			if (exit_status != 0) {
 				if (stdout_output != "" || stderr_output != "") {
@@ -316,7 +320,7 @@ namespace OLLMchat.Tools
 				}
 				output_content += "Exit code: " + exit_status.to_string() + "\n";
 			}
-			output_content += "```";
+			output_content += "\n```";
 			
 		// Send output as second message via message_created
 			this.chat_call.client.message_created(
@@ -328,6 +332,8 @@ namespace OLLMchat.Tools
 			// this.current_tool_message = null;
 			
 			// Merge outputs: stdout first, then stderr (for LLM return value)
+			// Note: stdout_output and stderr_output are already truncated above
+			/*
 			string merged_output = "";
 			if (stdout_output != "") {
 				merged_output = stdout_output;
@@ -338,9 +344,37 @@ namespace OLLMchat.Tools
 				}
 				merged_output += stderr_output;
 			}
+			 */
+			// Return merged raw output to LLM (already truncated)
+			return stdout_output;
+		}
+		
+		/**
+		 * Truncates output to a maximum number of lines, adding a truncation message.
+		 * 
+		 * @param output The output string to truncate
+		 * @param max_lines Maximum number of lines to keep (default: 50)
+		 * @return Truncated output with truncation message if needed
+		 */
+		private string truncate_output(string output, int max_lines = 50)
+		{
+			if (output == "") {
+				return output;
+			}
 			
-			// Return merged raw output to LLM
-			return merged_output;
+			var lines = output.split("\n");
+			var total_lines = lines.length;
+			
+			if (total_lines <= max_lines) {
+				return output;
+			}
+			
+			// Truncate to max_lines
+			var truncated_lines = lines[0:max_lines];
+			var truncated = string.joinv("\n", truncated_lines);
+			
+			// Add truncation message (similar to codesearch tool format)
+			return truncated + "\n\n// ... (output truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines, output too long) ...";
 		}
 		
 		/**

@@ -29,6 +29,7 @@ namespace OLLMchat.History
 		public int64 updated_at_timestamp { get; set; default = 0; }
 		public string title { get; set; default = ""; }
 		public string model { get; set; default = ""; }
+		public string agent_name { get; set; default = "just-ask"; }
 		public string fid { get; set; default = ""; }
 		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
