@@ -84,11 +84,15 @@ namespace OLLMchat.Call
 			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
 			
 			// Load model options from config if options not provided
-			this.options = options != null
-				? options
-				: (this.client.config.model_options.has_key(model)
-					? this.client.config.model_options.get(model)
-					: new Call.Options());
+			if (options != null) {
+				this.options = options;
+			} else {
+				if (this.client.config.model_options.has_key(model)) {
+					this.options = this.client.config.model_options.get(model);
+				} else {
+					this.options = new Call.Options();
+				}
+			}
 		}
 		// this is only called by response - not by the user
 		  

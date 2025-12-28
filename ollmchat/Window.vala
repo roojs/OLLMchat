@@ -268,6 +268,12 @@ namespace OLLMchat
 						GLib.Environment.get_home_dir()));
 			this.history_manager.base_client.addTool(
 					new OLLMchat.Tools.WebFetchTool(this.history_manager.base_client));
+			
+			// Also add tools to current session's client (EmptySession was created before tools were added)
+			// Reuse the same tool instances from base_client to preserve state (like active property)
+			foreach (var tool in this.history_manager.base_client.tools.values) {
+				this.history_manager.session.client.addTool(tool);
+			}
 
 			
 			// Register CodeAssistant agent
@@ -405,6 +411,15 @@ namespace OLLMchat
 					vector_db,
 					embed_client
 				));
+				
+				// Also add to current session's client if it exists
+				if (this.history_manager.session != null && this.history_manager.session.client != null) {
+					// Find the tool we just added to base_client and add it to session's client
+					var tool_name = "codebase_search";
+					if (client.tools.has_key(tool_name)) {
+						this.history_manager.session.client.addTool(client.tools.get(tool_name));
+					}
+				}
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to initialize codebase search tool: %s", e.message);
 			}

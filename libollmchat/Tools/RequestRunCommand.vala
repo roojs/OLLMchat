@@ -157,35 +157,45 @@ namespace OLLMchat.Tools
 				return true;
 			}
 			
-			// Simple pattern: extract command and resolve realpath
-			var cmd_to_resolve = this.extract_command_for_resolution(this.command);
-			var exec_name = this.extract_executable_name(cmd_to_resolve);
-			
-			if (exec_name == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
-				return true;
-			}
-			
-			var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
-			if (realpath == "") {
-				// Can't resolve - treat as complex
-				this.is_complex_command = true;
-				this.permission_target_path = this.command;
-				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
-				this.permission_question = "Run command: " + this.command + "?";
-				return true;
-			}
-			
-			// Simple pattern with resolved path
-			this.is_complex_command = false;
-			this.permission_target_path = realpath;
+		// Simple pattern: extract command and resolve realpath
+		var cmd_to_resolve = this.extract_command_for_resolution(this.command);
+		var exec_name = this.extract_executable_name(cmd_to_resolve);
+		
+		if (exec_name == "") {
+			// Can't resolve - treat as complex
+			this.is_complex_command = true;
+			this.permission_target_path = this.command;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
 			this.permission_question = "Run command: " + this.command + "?";
 			return true;
+		}
+		
+		var realpath = GLib.Environment.find_program_in_path(exec_name) ?? "";
+		if (realpath == "") {
+			// Can't resolve - treat as complex
+			this.is_complex_command = true;
+			this.permission_target_path = this.command;
+			this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+			this.permission_question = "Run command: " + this.command + "?";
+			return true;
+		}
+		
+		// Check if command has arguments (more than just the executable name)
+		var trimmed_cmd = cmd_to_resolve.strip();
+		bool has_arguments = trimmed_cmd.length > exec_name.length;
+		
+		// Simple pattern with resolved path
+		this.is_complex_command = false;
+		// If command has arguments, use full command as permission target
+		// Otherwise, use just the executable path
+		if (has_arguments) {
+			this.permission_target_path = this.command;
+		} else {
+			this.permission_target_path = realpath;
+		}
+		this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+		this.permission_question = "Run command: " + this.command + "?";
+		return true;
 		}
 		
 		/**
