@@ -1017,49 +1017,6 @@ namespace OLLMchatGtk
 		}
 		
 		/**
-		 * Scrolls the chat view to the top.
-		 * 
-		 * Used when loading chat history to show the beginning of the conversation.
-		 * 
-		 * @since 1.0
-		 */
-		public void scroll_to_top()
-		{
-			// Use Idle to scroll after layout is updated, with retry logic
-			GLib.Idle.add(() => {
-				var vadjustment = this.scrolled_window.vadjustment;
-				
-				if (vadjustment == null) {
-					GLib.debug("ChatView: scroll_to_top: vadjustment is null");
-					return false;
-				}
-				
-				// Check if layout is ready by verifying upper bound is reasonable
-				// If upper is 0 or very small, layout might not be complete yet
-				if (vadjustment.upper < 100.0) {
-					// Layout not ready yet, try again on next idle
-					return true;
-				}
-				
-				// Scroll to top by setting value to 0
-				vadjustment.value = 0.0;
-				this.last_scroll_pos = 0.0;
-				
-				// Also use a timeout as backup in case Idle doesn't catch all layout updates
-				GLib.Timeout.add(100, () => {
-					if (vadjustment != null && vadjustment.upper > 100.0) {
-						vadjustment.value = 0.0;
-						this.last_scroll_pos = 0.0;
-					}
-					return false;
-				});
-				
-				return false;
-			});
-		}
-
-
-		/**
 		* Copies text to the clipboard.
 		* 
 		* @param text The text to copy

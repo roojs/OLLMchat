@@ -286,9 +286,12 @@ namespace OLLMchatGtk
 			
 			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
 			
-			// Scroll to top after loading history and re-enable scrolling
+			// Scroll to top after loading history (similar to HistoryBrowser)
 			GLib.Idle.add(() => {
-				this.chat_view.scroll_to_top();
+				var vadjustment = this.chat_view.scrolled_window.vadjustment;
+				if (vadjustment != null) {
+					vadjustment.value = 0.0;
+				}
 				// Re-enable scrolling after scrolling to top
 				this.chat_view.scroll_enabled = true;
 				return false;
