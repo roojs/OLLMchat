@@ -198,11 +198,6 @@ namespace OLLMchatGtk
 			// Manager signals are already connected in constructor
 			// Model dropdown is updated via session_activated signal
 			this.chat_view.scroll_enabled = false;
-			// Scroll to top when loading history
-			var vadjustment = this.chat_view.scrolled_window.vadjustment;
-			if (vadjustment != null) {
-				vadjustment.value = 0.0;
-			}
 
 			// Lock input while loading
 			try {
@@ -218,6 +213,8 @@ namespace OLLMchatGtk
 
 			// Load and render messages from session
 			this.load_messages();
+			// Scroll to top after loading history (scroll_enabled is false, so scroll_to_bottom won't run)
+			this.chat_view.scroll_to_top();
 			GLib.Idle.add(() => {
 				// Unlock input after loading
 				// since scrolling happesn in scroll_tobottom in idle we need this
