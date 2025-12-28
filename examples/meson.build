@@ -142,6 +142,26 @@ test_markdown_parser = executable('oc-markdown-test',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-test-fetch executable (WebFetchTool test)
+test_web_fetch = executable('oc-test-fetch',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-fetch.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: include_directories('../libollmchat'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ocagent',
+    '--pkg=ocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build vmd2html executable (Markdown to HTML converter)
 # Use declare_dependency to avoid meson auto-including ocmarkdown-meson.vapi
 vmd2html = executable('oc-md2html',

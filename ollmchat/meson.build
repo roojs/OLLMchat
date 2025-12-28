@@ -12,6 +12,7 @@ build_rpath = ':'.join([
 
 # Dependencies for ollmchat executable
 valac = meson.get_compiler('vala')
+cc = meson.get_compiler('c')
 ollmchat_deps = [
   dependency('gtk4'),
   dependency('libadwaita-1'),
@@ -25,6 +26,7 @@ ollmchat_deps = [
   dependency('libgit2-glib-1.0'),
 
   valac.find_library('posix'),
+  cc.find_library('m', required: false),
 ]
 
 # Build ollmchat executable (primary application)
@@ -40,9 +42,10 @@ ollmchat = executable('ollmchat',
     'Settings/ConnectionRow.vala',
     'Settings/SettingsPage.vala',
     'Settings/ConnectionsPage.vala',
-    'Settings/LoadingStatus.vala',
-    'Settings/ModelPullManager.vala',
-    'Settings/ModelPullManagerThread.vala',
+    'Settings/PullStatus.vala',
+    'Settings/PullManager.vala',
+    'Settings/PullManagerThread.vala',
+    'Settings/PullManagerBanner.vala',
     'Settings/ModelRow.vala',
     'Settings/ModelsPage.vala',
     'Settings/OptionWidget.vala',

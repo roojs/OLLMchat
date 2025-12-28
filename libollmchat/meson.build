@@ -88,6 +88,8 @@ ollmchat_tools_src = files([
   'Tools/EditModeChange.vala',
   'Tools/RunCommand.vala',
   'Tools/RequestRunCommand.vala',
+  'Tools/WebFetchTool.vala',
+  'Tools/RequestWebFetch.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -100,7 +102,7 @@ lib_build_rpath = ':'.join([
 ])
 
 ollmchat_base_lib = library('ollmchat',
-  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
+  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep],
   sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
@@ -108,7 +110,7 @@ ollmchat_base_lib = library('ollmchat',
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocagent', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocagent'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocagent', '--pkg=ocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocagent', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'],
   install: true
 )
 

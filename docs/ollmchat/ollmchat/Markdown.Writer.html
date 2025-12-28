@@ -39,6 +39,7 @@
           <li class="method"><a href="Markdown.Writer.update_prev_ch.html">update_prev_ch</a></li>
           <li class="field"><a href="Markdown.Writer.chars_in_curr_line.html">chars_in_curr_line</a></li>
           <li class="field"><a href="Markdown.Writer.html_symbol_conversions.html">html_symbol_conversions</a></li>
+          <li class="field"><a href="Markdown.Writer.is_in_code_block.html">is_in_code_block</a></li>
           <li class="field"><a href="Markdown.Writer.md.html">md</a></li>
           <li class="field"><a href="Markdown.Writer.prev_ch_in_md.html">prev_ch_in_md</a></li>
           <li class="field"><a href="Markdown.Writer.prev_prev_ch_in_md.html">prev_prev_ch_in_md</a></li>
@@ -78,7 +79,8 @@
         <ul class="navi_inline">
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.Writer.append.html" class="method">append</a></b> (<span class="main_basic_type"><span class="class">string</span></span> str)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Append string to markdown.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Append string to markdown. Splits on newlines if needed and calls 
+                append_chars.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.Writer.append_repeat.html" class="method">append_repeat</a></b> (<span class="main_basic_type"><span class="class">string</span></span> str, <span class="main_basic_type"><span class="struct">int</span></span> amount)
             </span>
@@ -86,7 +88,8 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="Markdown.Writer.clean_up_markdown.html" class="method">clean_up_markdown</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Post-process markdown to clean it up.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Post-process markdown to clean it up. Note: Newline filtering is now 
+                handled during append, so this only does HTML entity conversion and text replacements.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="Markdown.Writer.replace_previous_space_in_line_by_newline.html" class="method">replace_previous_space_in_line_by_newline</a></b> ()
             </span>
@@ -116,6 +119,10 @@
             <div class="leaf_brief_description">
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="Markdown.Writer.html_symbol_conversions.html" class="field">html_symbol_conversions</a></b>
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="Markdown.Writer.is_in_code_block.html" class="field">is_in_code_block</a></b>
             </span>
             <div class="leaf_brief_description">
             </div></li>

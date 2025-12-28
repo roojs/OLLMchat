@@ -156,33 +156,42 @@ namespace OLLMchat.Settings
 				css_classes = {"suggested-action"}
 			};
 			
-			// For now: just closes the dialog (background pull not implemented yet)
+			// Start download button handler
 			this.start_download_button.clicked.connect(() => {
 				// Get selected connection URL
 				var selected_index = this.connection_dropdown.selected;
-				if (selected_index != Gtk.INVALID_LIST_POSITION && 
-				    (int)selected_index < this.connection_urls.size) {
-					this.selected_connection_url = this.connection_urls.get((int)selected_index);
+				if (selected_index == Gtk.INVALID_LIST_POSITION || 
+				    (int)selected_index >= this.connection_urls.size) {
+					return; // No connection selected
 				}
+				var connection_url = this.connection_urls.get((int)selected_index);
+				
+				// Get connection object from config
+				if (!this.settings_dialog.app.config.connections.has_key(connection_url)) {
+					GLib.warning("Connection not found: %s", connection_url);
+					return;
+				}
+				var connection = this.settings_dialog.app.config.connections.get(connection_url);
 				
 				// Get selected model and size
-				if (this.selected_model != null) {
-					var model_name = this.selected_model.name;
-					
-					// Append size tag if one is selected
-					var size_index = this.size_dropdown.selected;
-					if (size_index != Gtk.INVALID_LIST_POSITION && 
-					    (int)size_index < this.size_list_store.get_n_items()) {
-						var tag = this.size_list_store.get_item((uint)size_index) as ModelTag;
-						if (tag != null) {
-							this.selected_model_name = model_name + ":" + tag.name;
-						} else {
-							this.selected_model_name = model_name;
-						}
-					} else {
-						this.selected_model_name = model_name;
+				if (this.selected_model == null) {
+					return; // No model selected
+				}
+				var model_name = this.selected_model.name;
+				
+				// Append size tag if one is selected
+				var size_index = this.size_dropdown.selected;
+				if (size_index != Gtk.INVALID_LIST_POSITION && 
+				    (int)size_index < this.size_list_store.get_n_items()) {
+					var tag = this.size_list_store.get_item((uint)size_index) as ModelTag;
+					if (tag != null) {
+						model_name = model_name + ":" + tag.name;
 					}
 				}
+				
+				// Start pull operation
+				this.settings_dialog.pull_manager.start_pull(model_name, connection);
+				// this.settings_dialog.pull_manager.start_pull(model_name, connection);
 				
 				// Close dialog
 				this.force_close();
