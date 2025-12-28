@@ -32,22 +32,58 @@ namespace Markdown
 		public Gee.HashMap<string, string> html_symbol_conversions;
 		public int table_start = 0;
 		public StringBuilder table_line = new StringBuilder();
+		public bool is_in_code_block = false; // Track if we're currently inside a code block
+		private int consecutive_newlines = 0; // Track consecutive newlines for filtering
 
 		public Writer()
 		{
 			this.md = new StringBuilder();
 			this.html_symbol_conversions = new Gee.HashMap<string, string>();
 			this.initialize_html_symbol_conversions();
+			this.consecutive_newlines = 0;
 		}
 
 	
 		/**
-		 * Append string to markdown.
+		 * Appends characters to markdown output with newline filtering.
+		 * Receives either a string without "\n" or just "\n".
+		 * Limits consecutive newlines to a maximum of 2, except in code blocks.
+		 * 
+		 * @param chars Either a string without "\n" or "\n"
 		 */
-		public void append(string str)
+		private void append_chars(string chars)
 		{
-			this.md.append(str);
-
+			// If we're in a code block, bypass filtering and append directly
+			if (this.is_in_code_block) {
+				this.md.append(chars);
+				this.update_chars_in_line(chars);
+				return;
+			}
+			
+			// Handle newline character
+			if (chars == "\n") {
+				this.consecutive_newlines++;
+				// Only append if we haven't exceeded the limit of 2
+				if (this.consecutive_newlines <= 2) {
+					this.md.append(chars);
+					this.chars_in_curr_line = 0;
+				}
+				return;
+			}
+			
+			// String without newline - reset counter and append
+			if (chars.length > 0) {
+				this.consecutive_newlines = 0;
+			}
+			this.md.append(chars);
+			this.update_chars_in_line(chars);
+		}
+		
+		/**
+		 * Update chars_in_curr_line based on appended string.
+		 */
+		private void update_chars_in_line(string str)
+		{
 			if (str.length == 1) {
 				if (str == "\n") {
 					this.chars_in_curr_line = 0;
@@ -59,7 +95,7 @@ namespace Markdown
 
 			if (!str.contains("\n")) {
 				this.chars_in_curr_line += str.length;
-				return ;
+				return;
 			}
 
 			unowned uint8[] data = str.data;
@@ -71,8 +107,40 @@ namespace Markdown
 					this.chars_in_curr_line++;
 				}
 			}
-
-			return ;
+		}
+		
+		/**
+		 * Append string to markdown.
+		 * Splits on newlines if needed and calls append_chars.
+		 */
+		public void append(string str)
+		{
+			// If we're in a code block, bypass filtering and append directly
+			if (this.is_in_code_block) {
+				this.md.append(str);
+				this.update_chars_in_line(str);
+				return;
+			}
+			
+			// No newlines - append directly via append_chars
+			if (!str.contains("\n")) {
+				this.append_chars(str);
+				return;
+			}
+			
+			// String contains newlines - split and process
+			string[] segments = str.split("\n");
+			bool has_trailing_newline = str.has_suffix("\n");
+			
+			for (int i = 0; i < segments.length; i++) {
+				// Append the text segment (without newline)
+				this.append_chars(segments[i]);
+				
+				// Handle newlines between segments (or trailing newline)
+				if (i < segments.length - 1 || has_trailing_newline) {
+					this.append_chars("\n");
+				}
+			}
 		}
 
 
@@ -140,6 +208,8 @@ namespace Markdown
 			this.chars_in_curr_line = 0;
 			this.table_start = 0;
 			this.table_line = new StringBuilder();
+			this.consecutive_newlines = 0;
+			this.is_in_code_block = false;
 		}
 
 		/**
@@ -152,78 +222,46 @@ namespace Markdown
 
 		/**
 		 * Post-process markdown to clean it up.
+		 * Note: Newline filtering is now handled during append, so this only does
+		 * HTML entity conversion and text replacements.
 		 */
-		public void clean_up_markdown()
-		{
-			var tidied = this.tidy_all_lines(this.to_string());
-			var buffer = new StringBuilder();
+		 public void clean_up_markdown()
+		 {
+			 var current = this.to_string();
+			 var buffer = new StringBuilder();
+ 
+			 // Replace HTML symbols during the initial pass
+			 for (size_t i = 0; i < current.length;) {
+				 bool replaced = false;
+ 
+				 foreach (var entry in this.html_symbol_conversions.entries) {
+					 if (i + entry.key.length <= current.length &&
+						 current.substring((int)i, (int)entry.key.length) == entry.key) {
+						 buffer.append(entry.value);
+						 i += entry.key.length;
+						 replaced = true;
+						 break;
+					 }
+				 }
+ 
+				 if (!replaced) {
+					 buffer.append_c(current[(int)i]);
+					 i++;
+				 }
+			 }
+ 
+			 // Optimized replacement sequence
+			 this.replace_all(buffer, " , ", ", ");
+			 this.replace_all(buffer, "\n.\n", ".\n");
+			 this.replace_all(buffer, "\n↵\n", " ↵\n");
+			 this.replace_all(buffer, "\n*\n", "\n");
+			 this.replace_all(buffer, "\n. ", ".\n");
+			 this.replace_all(buffer, "\t\t  ", "\t\t");
+			  
+			 this.reset();
+			 this.append(buffer.str);
+		 }
 
-			// Replace HTML symbols during the initial pass
-			for (size_t i = 0; i < tidied.length;) {
-				bool replaced = false;
-
-				foreach (var entry in this.html_symbol_conversions.entries) {
-					if (i + entry.key.length <= tidied.length &&
-						tidied.substring((int)i, (int)entry.key.length) == entry.key) {
-						buffer.append(entry.value);
-						i += entry.key.length;
-						replaced = true;
-						break;
-					}
-				}
-
-				if (!replaced) {
-					buffer.append_c(tidied[(int)i]);
-					i++;
-				}
-			}
-
-			// Optimized replacement sequence
-			this.replace_all(buffer, " , ", ", ");
-			this.replace_all(buffer, "\n.\n", ".\n");
-			this.replace_all(buffer, "\n↵\n", " ↵\n");
-			this.replace_all(buffer, "\n*\n", "\n");
-			this.replace_all(buffer, "\n. ", ".\n");
-			this.replace_all(buffer, "\t\t  ", "\t\t");
-			 
-			this.reset();
-			this.append(buffer.str);
-		}
-
-		/**
-		 * Clean up all lines.
-		 */
-		private string tidy_all_lines(string str)
-		{
-			var res = new StringBuilder();
-
-			uint8 amount_newlines = 0;
-			bool in_code_block = false;
-
-			foreach (var line in str.split("\n")) {
-				if (line.has_prefix("```") || line.has_prefix("~~~")) {
-					in_code_block = !in_code_block;
-				}
-				if (in_code_block) {
-					res.append(line);
-					res.append_c('\n');
-					continue;
-				}
-
-				if (line.strip() == "") {
-					if (amount_newlines < 2 && res.len > 0) {
-						res.append_c('\n');
-						amount_newlines++;
-					}
-				} else {
-					amount_newlines = 0;
-					res.append(line.strip());
-					res.append_c('\n');
-				}
-			}
-
-			return res.str;
-		}
 
 
 		

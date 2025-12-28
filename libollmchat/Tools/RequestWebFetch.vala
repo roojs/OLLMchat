@@ -63,8 +63,7 @@ namespace OLLMchat.Tools
 			}
 			
 			// Validate that we can extract domain (URL must be valid)
-			var domain = this.extract_domain(this.url);
-			if (domain == "") {
+			if (this.extract_domain(this.url) == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT(
 					"Invalid URL: unable to extract domain from '" + this.url + "'"
 				);
@@ -77,48 +76,82 @@ namespace OLLMchat.Tools
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
-			Soup.Message message;
+			Soup.Message? message = null;
 			try {
+				// Note: libsoup 3.0 handles redirects automatically, but we check status codes
+				// and handle redirects manually below to require approval
 				var session = new Soup.Session();
-				// Disable automatic redirect following - redirects must go through approval
-				session.set_property("max-redirects", 0);
 				message = new Soup.Message("GET", this.url);
 				content = yield session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to fetch URL: " + e.message);
 			}
 			
-			// Check for redirect status codes (3xx range)
-			if (message.status_code > 299 && message.status_code < 400) {
-				var location = message.response_headers.get_one("Location");
-				if (location != null && location != "") {
-					// Resolve relative redirect URLs
-					var redirect_url = GLib.Uri.resolve(
-						GLib.UriFlags.NONE,
-						this.url,
-						location
-					);
-					throw new GLib.IOError.FAILED(
-						"Redirect detected: " + this.url + " redirects to " + redirect_url + 
-						". Please fetch the redirected URL directly if you want to access it."
-					);
-				}
+			// Ensure message is valid before accessing properties
+			if (message == null) {
+				throw new GLib.IOError.FAILED("Failed to create HTTP message");
+			}
+			
+			// Handle non-redirect cases (redirects are handled below)
+			// Check HTTP status for errors
+			if (message.status_code < 200 || message.status_code >= 400) {
+				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
+			}
+			
+			// Success case (200-299) - convert and return
+			if (message.status_code < 300) {
+				// Convert content based on content type and format
+				return this.convert_content(
+					content, 
+					this.detect_content_type(message.response_headers), 
+					this.format
+				);
+			}
+			
+			// Handle redirect status codes (3xx range)
+		
+			var location = message.response_headers.get_one("Location");
+			if (location == null || location == "") {
 				throw new GLib.IOError.FAILED(
 					"Redirect detected (status " + message.status_code.to_string() + 
 					") but no Location header found"
 				);
 			}
-			
-			// Check HTTP status for other errors
-			if (message.status_code < 200 || message.status_code >= 300) {
-				throw new GLib.IOError.FAILED("HTTP error: " + message.status_code.to_string());
+
+			// Resolve relative redirect URLs to absolute URLs
+			if (location.has_prefix("http://") || location.has_prefix("https://")) {
+				throw new GLib.IOError.FAILED(
+					"Redirect detected: " + this.url + " redirects to " + location + 
+					". Please fetch the redirected URL directly if you want to access it."
+				);
 			}
-			
-			// Detect content type
-			var content_type = this.detect_content_type(message.response_headers);
-			
-			// Convert content based on content type and format
-			return this.convert_content(content, content_type, this.format);
+
+			// Relative URL - resolve against base URL
+			var base_uri = GLib.Uri.parse(this.url, GLib.UriFlags.NONE);
+			if (base_uri == null) {
+				throw new GLib.IOError.FAILED(
+					"Redirect detected: " + this.url + " redirects to " + location + 
+					" (unable to resolve relative URL)"
+				);
+			}
+
+			var scheme = base_uri.get_scheme();
+			var host = base_uri.get_host();
+			var path = base_uri.get_path();
+			if (path == null || path == "") {
+				path = "/";
+			}
+
+			var redirect_url = scheme + "://" + host + location;
+			if (!location.has_prefix("/")) {
+				var base_dir = GLib.Path.get_dirname(path);
+				redirect_url = scheme + "://" + host + 
+					((base_dir == "." || base_dir == "") ? "/" : base_dir) + "/" + location;
+			}
+			throw new GLib.IOError.FAILED(
+				"Redirect detected: " + this.url + " redirects to " + redirect_url + 
+				". Please fetch the redirected URL directly if you want to access it."
+			);
 		}
 		
 		/**
@@ -175,7 +208,8 @@ namespace OLLMchat.Tools
 		 */
 		protected string detect_content_type(Soup.MessageHeaders headers)
 		{
-			var content_type = headers.get_content_type();
+			GLib.HashTable<string, string>? params = null;
+			var content_type = headers.get_content_type(out params);
 			if (content_type != null) {
 				return content_type;
 			}
@@ -261,9 +295,7 @@ namespace OLLMchat.Tools
 		 */
 		protected string convert_html_to_markdown(Bytes html)
 		{
-			var html_string = (string)html.get_data();
-			var parser = new Markdown.HtmlParser(html_string);
-			return parser.convert();
+			return new Markdown.HtmlParser((string)html.get_data()).convert();
 		}
 	}
 }

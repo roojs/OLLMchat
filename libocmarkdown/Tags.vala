@@ -341,6 +341,8 @@ namespace Markdown
 		public override void close(HtmlParser c)
 		{
 			c.is_in_pre = false;
+			// Code block ends when pre closes
+			this.writer.is_in_code_block = false;
 
 			if (c.is_in_list) {
 				return;
@@ -366,6 +368,8 @@ namespace Markdown
 			c.is_in_code = true;
 
 			if (c.is_in_pre) {
+				// Code block - set flag
+				this.writer.is_in_code_block = true;
 				if (c.is_in_list) {
 					return;
 				}
@@ -388,6 +392,7 @@ namespace Markdown
 			c.is_in_code = false;
 
 			if (c.is_in_pre) {
+				// Code block continues - only ends when pre closes
 				return;
 			}
 
