@@ -297,6 +297,9 @@ namespace OLLMchat.Call
 			// Add the assistant message with tool_calls to the conversation
 			this.messages.add(response.message);
 			
+			// Track tool responses for debug output
+			var tool_responses = new GLib.GenericArray<string>();
+			
 			// Execute each tool call and add tool reply messages directly
 			foreach (var tool_call in response.message.tool_calls) {
 				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
@@ -309,6 +312,7 @@ namespace OLLMchat.Call
 					var error_msg = new Message(this, "ui", "Error: Tool '" + tool_call.function.name + "' not found");
 					this.client.message_created(error_msg, this);
 					this.messages.add(new Message.tool_call_invalid(this, tool_call));
+					tool_responses.add(@"$(tool_call.function.name)(ERROR:not_found)");
 					continue;
 				}
 				
@@ -346,6 +350,7 @@ namespace OLLMchat.Call
 						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length,
 						tool_reply.content.length > 200 ? tool_reply.content.substring(0, 200) + "..." : tool_reply.content);
 					this.messages.add(tool_reply);
+					tool_responses.add(@"$(tool_call.function.name)(len=$(result.length))");
 				} catch (Error e) {
 					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
@@ -362,7 +367,7 @@ namespace OLLMchat.Call
 			this.streaming_response = null;
 			
 			// Debug: show tool responses being sent to LLM
-			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %d tool reply message(s) in conversation", this.messages.size);
+			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", string.joinv(", ", tool_responses.data));
 			
 			// Execute the chat call with tool results in the conversation history
 			Response.Chat next_response;
