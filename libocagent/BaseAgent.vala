@@ -73,19 +73,19 @@ namespace OLLMagent
 			return null;
 		}
 		
-	/**
-	* Gets the working directory for command execution.
-	* 
-	* Agents that have a context-specific working directory (e.g., a selected project)
-	* should override this method to return that directory path.
-	* Default implementation returns the user's home directory.
-	* 
-	* @return Working directory path
-	*/
-	public virtual string get_working_directory()
-	{
-		return GLib.Environment.get_home_dir();
-	}
+		/**
+		* Gets the working directory for command execution.
+		* 
+		* Agents that have a context-specific working directory (e.g., a selected project)
+		* should override this method to return that directory path.
+		* Default implementation returns the user's home directory.
+		* 
+		* @return Working directory path
+		*/
+		public virtual string get_working_directory()
+		{
+			return GLib.Environment.get_home_dir();
+		}
 		
 		/**
 		* Gets OS version directly (implemented here, not a signal).

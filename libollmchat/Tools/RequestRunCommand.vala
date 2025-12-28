@@ -245,7 +245,7 @@ namespace OLLMchat.Tools
 			var prompt_assistant = this.chat_call.client.prompt_assistant;
 			if (prompt_assistant != null) {
 				var agent_work_dir = prompt_assistant.get_working_directory();
-				if (agent_work_dir != null && agent_work_dir != "") {
+				if (agent_work_dir != "") {
 					work_dir = agent_work_dir;
 				}
 			}
