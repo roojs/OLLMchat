@@ -101,11 +101,11 @@ namespace OLLMchat.Tools
 				message += "You set overwrite=true, so we will overwrite the existing file when you complete your message.";
 			}
 			
-		// Emit to UI
-		this.chat_call.client.message_created(
-			new OLLMchat.Message(this.chat_call, "ui", message),
-			this.chat_call
-		);
+			// Emit to UI
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui", message),
+				this.chat_call
+			);
 			
 			// Keep this request alive so signal handlers can be called
 			active_requests.add(this);
@@ -445,19 +445,19 @@ namespace OLLMchat.Tools
 					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
 				}
 				
-			// Build and emit UI message
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(
-					this.chat_call,
-					"ui",
-					(line_count > 0)
-						? "File '" + this.normalized_path + 
-							"' has been updated. It now has " + 
-							line_count.to_string() + " lines."
-						: "File '" + this.normalized_path + "' has been updated."
-				),
-				this.chat_call
-			);
+				// Build and emit UI message
+				this.chat_call.client.message_created(
+					new OLLMchat.Message(
+						this.chat_call,
+						"ui",
+						(line_count > 0)
+							? "File '" + this.normalized_path + 
+								"' has been updated. It now has " + 
+								line_count.to_string() + " lines."
+							: "File '" + this.normalized_path + "' has been updated."
+					),
+					this.chat_call
+				);
 				
 				// Send tool reply to LLM
 				this.reply_with_errors(
@@ -535,13 +535,13 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
 			
-		// Log and notify that we're starting to write
-		GLib.debug("Starting to apply changes to file %s", this.normalized_path);
-		this.chat_call.client.message_created(
-			new OLLMchat.Message(this.chat_call, "ui",
-			"Applying changes to file " + this.normalized_path + "..."),
-			this.chat_call
-		);
+			// Log and notify that we're starting to write
+			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",
+				"Applying changes to file " + this.normalized_path + "..."),
+				this.chat_call
+			);
 		
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
@@ -577,10 +577,10 @@ namespace OLLMchat.Tools
 			GLib.debug("RequestEditMode.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
 			var message = new OLLMchat.Message(this.chat_call, "ui",
 				"Applied changes to file " + this.normalized_path);
-		GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
-			message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
-		this.chat_call.client.message_created(message, this.chat_call);
-		GLib.debug("RequestEditMode.apply_all_changes: Emitted message_created signal");
+			GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
+				message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
+			this.chat_call.client.message_created(message, this.chat_call);
+			GLib.debug("RequestEditMode.apply_all_changes: Emitted message_created signal");
 			
 			// Emit change_done signal for each change
 			var edit_tool = (EditMode) this.tool;
