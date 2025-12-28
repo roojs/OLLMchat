@@ -55,6 +55,17 @@ namespace OLLMcoder.Prompt
 		}
 		
 		/**
+		 * Returns the active project's path as the working directory for commands.
+		 */
+		public override string? get_working_directory()
+		{
+			if (this.project_manager.active_project != null) {
+				return this.project_manager.active_project.path;
+			}
+			return null;
+		}
+		
+		/**
 		 * Generates the complete system prompt for a code-assistant agent.
 		 * 
 		 * @return Complete system prompt string

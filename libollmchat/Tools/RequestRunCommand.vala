@@ -237,9 +237,18 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
 			}
 			
-			// Get working directory from tool's base_directory
+			// Get working directory - try agent first, fall back to tool's base_directory
 			var run_command_tool = (OLLMchat.Tools.RunCommand) this.tool;
 			var work_dir = run_command_tool.base_directory;
+			
+			// Check if active agent provides a working directory
+			var prompt_assistant = this.chat_call.client.prompt_assistant;
+			if (prompt_assistant != null) {
+				var agent_work_dir = prompt_assistant.get_working_directory();
+				if (agent_work_dir != null && agent_work_dir != "") {
+					work_dir = agent_work_dir;
+				}
+			}
 			
 			// Execute command using shell with working directory
 			// Build command with cd if needed
