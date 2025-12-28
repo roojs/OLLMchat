@@ -21,8 +21,6 @@ ollmchatgtk_deps = [
 
 # Source files for Tools namespace (GTK-dependent)
 ollmchat_tools_gtk_src = files([
-  'Tools/RunCommand.vala',
-  'Tools/RequestRunCommand.vala',
   'Tools/Permission.vala',
 ])
 
