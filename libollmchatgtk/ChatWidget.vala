@@ -286,8 +286,24 @@ namespace OLLMchatGtk
 			
 			GLib.debug("ChatWidget.load_messages: Finished loading %d visible messages out of %d total", visible_count, total_messages);
 			
-			// Don't re-enable scrolling here - keep it disabled after loading history
-			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
+			// Add reload indicator at the top and scroll to top
+			if (visible_count > 0) {
+				// Add a reload indicator message at the beginning
+				var reload_msg = new OLLMchat.Message(this.manager.session.chat, "ui", 
+					"<span color=\"gray\" size=\"small\">📜 Chat history loaded</span>");
+				this.chat_view.append_tool_message(reload_msg);
+				
+				// Scroll to top after a short delay to ensure layout is complete
+				GLib.Idle.add(() => {
+					this.chat_view.scroll_to_top();
+					// Re-enable scrolling after scrolling to top
+					this.chat_view.scroll_enabled = true;
+					return false;
+				});
+			} else {
+				// No messages to show, just re-enable scrolling
+				this.chat_view.scroll_enabled = true;
+			}
 		}
 		
 		/**
