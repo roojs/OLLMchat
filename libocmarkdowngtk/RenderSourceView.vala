@@ -352,7 +352,14 @@ namespace MarkdownGtk
 				this.source_buffer.insert(ref end_iter, text, -1);
 			}
 			
-			// Emit signal to notify that content was updated (for scrolling)
+			// Scroll sourceview to bottom after content is added
+			// Use Idle to ensure layout is updated first
+			GLib.Idle.add(() => {
+				this.scroll_sourceview_to_bottom();
+				return false;
+			});
+			
+			// Emit signal to notify that content was updated (for scrolling outer container)
 			this.renderer.code_block_content_updated();
 			
 			// Check if text contains a line break - if so, check if we need to clamp height
