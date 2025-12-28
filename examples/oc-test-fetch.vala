@@ -71,20 +71,21 @@ int main(string[] args)
 	request.chat_call = dummy_chat_call;
 	
 	// Execute the request (Dummy provider will auto-approve)
-	try {
-		var result = request.execute.begin();
-		
-		// Wait for async operation to complete
-		var main_loop = new GLib.MainLoop();
-		request.execute.end(result);
-		var output = request.execute.end(result);
-		
-		// Output result
-		stdout.printf("%s", output);
-		return 0;
-	} catch (GLib.Error e) {
-		stderr.printf("Error: %s\n", e.message);
-		return 1;
-	}
+	var main_loop = new GLib.MainLoop();
+	int exit_code = 0;
+	
+	request.execute.begin((obj, res) => {
+		try {
+			var output = request.execute.end(res);
+			stdout.printf("%s", output);
+		} catch (GLib.Error e) {
+			stderr.printf("Error: %s\n", e.message);
+			exit_code = 1;
+		}
+		main_loop.quit();
+	});
+	
+	main_loop.run();
+	return exit_code;
 }
 
