@@ -244,6 +244,12 @@ namespace OLLMchat.Tools
 			
 			string[] argv = { "/bin/sh", "-c", shell_cmd };
 			
+			// Send command as first message (bash code block) before execution
+			this.chat_call.client.tool_message(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```bash\n$ " + this.command + "\n```")
+			);
+			
 			GLib.Subprocess subprocess;
 			try {
 				subprocess = new GLib.Subprocess.newv(
@@ -256,14 +262,11 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.FAILED("Failed to create subprocess: " + e.message);
 			}
 			
-			// Send command start message (GTK version will override to add widget)
-			this.send_initial_tool_message("$ " + this.command);
-			
 			// Read from both streams concurrently using async I/O
 			var stdout_stream = subprocess.get_stdout_pipe();
 			var stderr_stream = subprocess.get_stderr_pipe();
 			
-			// Read from both streams concurrently
+			// Read from both streams concurrently (accumulate output)
 			var stdout_output = yield this.read_stream_async(stdout_stream);
 			var stderr_output = yield this.read_stream_async(stderr_stream);
 			
@@ -280,10 +283,35 @@ namespace OLLMchat.Tools
 				throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 			}
 			
-			// Append exit code to widget or send as message
-			this.send_or_append_message("\nExit code: " + exit_status.to_string());
+			// Build output message (txt code block)
+			string output_content = "```txt\n";
 			
-			// Merge outputs: stdout first, then stderr
+			// Add stdout output
+			if (stdout_output != "") {
+				output_content += stdout_output;
+			}
+			
+			// Add stderr output (if any)
+			if (stderr_output != "") {
+				if (stdout_output != "") {
+					output_content += "\n";
+				}
+				output_content += stderr_output;
+			}
+			
+			// Add exit code and close txt block
+			output_content += "\nExit code: " + exit_status.to_string() + "\n";
+			output_content += "```";
+			
+			// Send output as second message via tool_message
+			this.chat_call.client.tool_message(
+				new OLLMchat.Message(this.chat_call, "ui", output_content)
+			);
+			
+			// FUTURE: Streaming support - clear current message when done
+			// this.current_tool_message = null;
+			
+			// Merge outputs: stdout first, then stderr (for LLM return value)
 			string merged_output = "";
 			if (stdout_output != "") {
 				merged_output = stdout_output;
@@ -300,7 +328,7 @@ namespace OLLMchat.Tools
 		}
 		
 		/**
-		 * Async method to read from a stream line by line and stream to chat.
+		 * Async method to read from a stream and accumulate output.
 		 */
 		private async string read_stream_async(InputStream? stream)
 		{
@@ -319,14 +347,17 @@ namespace OLLMchat.Tools
 						break;
 					}
 					
-					// Add to output
+					// Add to output (accumulate for final message)
 					if (output != "") {
 						output += "\n";
 					}
 					output += line;
 					
-					// Append to widget (GTK version) or send as message (base version)
-					this.send_or_append_message(line);
+					// FUTURE: Streaming support - uncomment to enable real-time output
+					// if (this.current_tool_message != null) {
+					//     this.current_tool_message.content += line + "\n";
+					//     this.chat_call.client.tool_message(this.current_tool_message);
+					// }
 				}
 			} catch (GLib.Error e) {
 				// Stream closed or error - return what we have
@@ -336,34 +367,39 @@ namespace OLLMchat.Tools
 			return output;
 		}
 		
-		/**
-		 * Sends the initial tool message with optional widget.
-		 * GTK version can override to create GTK Message with widget support.
-		 * 
-		 * @param content The message content
-		 */
-		protected virtual void send_initial_tool_message(string content)
-		{
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui",
-				content)
-			);
-		}
-		
-		/**
-		 * Sends or appends a message to the output.
-		 * Base class sends via tool_message, GTK version appends to widget.
-		 * 
-		 * @param text The text to send or append
-		 */
-		protected virtual void send_or_append_message(string text)
-		{
-			// Base class sends as tool message
-			this.chat_call.client.tool_message(
-				new OLLMchat.Message(this.chat_call, "ui",
-				text)
-			);
-		}
+		// FUTURE: Streaming support - uncomment these methods and fields to enable real-time output
+		// private OLLMchat.Message? current_tool_message = null;
+		// 
+		// /**
+		//  * Sends the initial tool message with opening code blocks for streaming.
+		//  * 
+		//  * @param content The message content
+		//  */
+		// protected virtual void send_initial_tool_message(string content)
+		// {
+		//     // Create initial message with opening code blocks
+		//     var initial_content = new StringBuilder();
+		//     initial_content.append("```bash\n");
+		//     initial_content.append("$ ").append(this.command).append("\n");
+		//     initial_content.append("```\n\n");
+		//     initial_content.append("```txt\n");
+		//     
+		//     this.current_tool_message = new OLLMchat.Message(this.chat_call, "ui", initial_content.str);
+		//     this.chat_call.client.tool_message(this.current_tool_message);
+		// }
+		// 
+		// /**
+		//  * Appends a line to the streaming tool message.
+		//  * 
+		//  * @param text The text to append
+		//  */
+		// protected virtual void send_or_append_message(string text)
+		// {
+		//     if (this.current_tool_message != null) {
+		//         this.current_tool_message.content += text + "\n";
+		//         this.chat_call.client.tool_message(this.current_tool_message);
+		//     }
+		// }
 		
 		/**
 		 * Required by base class, but we handle everything in execute().

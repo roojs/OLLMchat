@@ -73,6 +73,12 @@ namespace OLLMchat.Tools
 			if (this.format != "markdown" && this.format != "raw" && this.format != "base64") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Format must be 'markdown', 'raw', or 'base64'");
 			}
+				
+			// Send request message to UI
+			this.chat_call.client.tool_message(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```" + this.tool.name + " - request\n" + this.url + "\n```")
+			);
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -100,12 +106,19 @@ namespace OLLMchat.Tools
 			
 			// Success case (200-299) - convert and return
 			if (message.status_code < 300) {
-				// Convert content based on content type and format
-				return this.convert_content(
-					content, 
-					this.detect_content_type(message.response_headers), 
-					this.format
+				// Detect content type
+				var content_type = this.detect_content_type(message.response_headers);
+				
+				// Convert content based on content type and format (updates this.format to actual format used)
+				var result = this.convert_content(content, content_type);
+				
+				// Send response message to UI
+				this.chat_call.client.tool_message(
+					new OLLMchat.Message(this.chat_call, "ui",
+						"```" + this.tool.name + " - response (" + this.format + ")\n" + result + "\n```")
 				);
+				
+				return result;
 			}
 			
 			// Handle redirect status codes (3xx range)
@@ -228,51 +241,55 @@ namespace OLLMchat.Tools
 		}
 		
 		/**
-		 * Convert content based on Content-Type and format parameter.
+		 * Convert content based on Content-Type and format property.
 		 * Uses structured if/else for Content-Type matching (Vala doesn't support string switches).
+		 * Updates this.format to reflect the actual format used.
 		 * 
 		 * @param content The content bytes
 		 * @param content_type The detected Content-Type
-		 * @param format The requested format ("markdown", "raw", or "base64")
 		 * @return Converted content as string
 		 */
-		protected string convert_content(Bytes content, string content_type, string format)
+		protected string convert_content(Bytes content, string content_type)
 		{
 			// Normalize content type to lowercase for comparison
 			var normalized_type = content_type.down();
 			
 			// Content-Type starts with "image/" → always base64 (regardless of format parameter)
 			if (normalized_type.has_prefix("image/")) {
+				this.format = "base64";
 				return this.convert_to_base64(content);
 			}
 			
 			// Content-Type is "text/html" → handle based on format parameter
 			// Note: base64 format is not supported for HTML (always convert to markdown or raw)
 			if (normalized_type == "text/html") {
-				switch (format) {
-					case "markdown":
-						return this.convert_html_to_markdown(content);
+				switch (this.format) {
 					case "raw":
+						this.format = "raw";
 						return (string)content.get_data();
 					case "base64":
-						// Base64 not supported for HTML - convert to markdown instead
-						return this.convert_html_to_markdown(content);
+					case "markdown":
+						 
 					default:
+						this.format = "markdown";
 						return this.convert_html_to_markdown(content);
 				}
 			}
 			
 			// Content-Type starts with "text/" (non-HTML) → return raw text
 			if (normalized_type.has_prefix("text/")) {
+				this.format = "raw";
 				return (string)content.get_data();
 			}
 			
 			// Content-Type is "application/json" → return raw JSON
 			if (normalized_type == "application/json") {
+				this.format = "raw";
 				return (string)content.get_data();
 			}
 			
 			// Content-Type is anything else → base64
+			this.format = "base64";
 			return this.convert_to_base64(content);
 		}
 		

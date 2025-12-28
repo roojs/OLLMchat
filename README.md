@@ -12,7 +12,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
   - Code assistant agent with semantic codebase search capabilities
   - Chat history management with session browser
-  - Tool integration: ReadFile, EditMode, RunCommand, and CodebaseSearch (semantic search)
+  - Tool integration: ReadFile, EditMode, RunCommand, WebFetch, and CodebaseSearch (semantic search)
   - Project management and file tracking
   - Bootstrap dialog for initial server configuration
   - Permission system for secure tool access
@@ -36,6 +36,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `oc-vector-index` - Codebase indexing tool for semantic search (indexes files/folders using tree-sitter and vector embeddings)
   - `oc-vector-search` - Command-line semantic code search tool (searches indexed codebase by semantic meaning)
   - `oc-migrate-editors` - Project migration tool (migrates projects from Cursor editor configuration)
+  - `oc-test-fetch` - Web fetch test tool (fetches web content from URLs with format conversion support)
 - **Technology Stack** - Written in pure Vala, focusing on Vala and GTK4
 - **Tool Dependencies** - Some tools will rely on third-party applications
 - **Tool Calling** - Supports tool calling functionality
@@ -104,6 +105,7 @@ This will build:
 - `oc-vector-index` - Vector indexing tool for codebase search (indexes files/folders for semantic search)
 - `oc-vector-search` - Command-line semantic code search tool
 - `oc-migrate-editors` - Project migration tool
+- `oc-test-fetch` - Web fetch test tool (fetches web content from URLs)
 - Valadoc documentation (in `docs/ollmchat/`)
 
 ### 3. Running executables without installing
@@ -121,6 +123,7 @@ The executables are configured with `build_rpath` so they can find the libraries
 ./build/oc-diff file1.txt file2.txt
 ./build/oc-vector-index --help
 ./build/oc-vector-search --help
+./build/oc-test-fetch https://example.com
 ```
 
 The wrapper scripts are automatically generated during the build process and set up the library paths correctly. Note that only `ollmchat` has a `.bin` wrapper; the other executables can be run directly from the build directory.
@@ -183,7 +186,7 @@ The project is organized into component directories, each with its own `meson.bu
   - `Call/` - API call implementations (Chat, Embed, Generate, etc.)
   - `Response/` - Response handling classes
   - `Tool/` - Tool interface and base classes (namespace: `OLLMchat.Tool`)
-  - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, etc., namespace: `OLLMchat.Tools`)
+  - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, WebFetch, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
   - `Prompt/` - Prompt generation system for different agent types with agent management (namespace: `OLLMchat.Prompt`)
   - `History/` - Chat history management (namespace: `OLLMchat.History`)
