@@ -208,6 +208,13 @@ namespace OLLMchat.Tools
 				this.permission_target_path = unique_path;
 			}
 			
+			// Send command to UI before requesting permission
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```bash\n$ " + this.command + "\n```"),
+				this.chat_call
+			);
+			
 			// Request permission (will always ask for complex commands due to unique path)
 			if (!(yield this.chat_call.client.permission_provider.request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
@@ -243,13 +250,6 @@ namespace OLLMchat.Tools
 			}
 			
 			string[] argv = { "/bin/sh", "-c", shell_cmd };
-			
-			// Send command as first message (bash code block) before execution
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```bash\n$ " + this.command + "\n```"),
-				this.chat_call
-			);
 			
 			GLib.Subprocess subprocess;
 			try {
