@@ -47,8 +47,8 @@ namespace OLLMchat.Settings
 		public uint completion_timer_id = 0;
 		
 		// Start tracking for overall rate calculation
-		private int64 start_time = 0;
-		private int64 start_completed = 0;
+		public int64 start_time = 0;
+		public int64 start_completed = 0;
 		
 		/**
 		 * Progress percentage (0-100), calculated from completed/total.
@@ -106,21 +106,6 @@ namespace OLLMchat.Settings
 				}
 			}
 			return 0.0;
-		}
-		
-		/**
-		 * Initializes start tracking when download begins.
-		 * Should be called when status changes to "pulling".
-		 * Only initializes if not already initialized.
-		 * 
-		 * @param current_time Current timestamp in seconds (from get_real_time() / 1000000)
-		 */
-		public void initialize_start_tracking(int64 current_time)
-		{
-			if (this.start_time == 0) {
-				this.start_time = current_time;
-				this.start_completed = this.completed;
-			}
 		}
 		
 		/**
