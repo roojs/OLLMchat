@@ -117,19 +117,15 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Formats size text (e.g., "444 MB of 3000 MB" or "2.5 GB of 3.0 GB").
+		 * Formats size text in KB only (e.g., "100,000k of 300,000k").
 		 */
 		public string get_formatted_size_text()
 		{
-			var completed_mb = this.completed / (1024.0 * 1024.0);
-			var total_mb = this.total / (1024.0 * 1024.0);
-			var completed_gb = completed_mb / 1024.0;
-			var total_gb = total_mb / 1024.0;
+			var completed_kb = this.completed / 1024.0;
+			var total_kb = this.total / 1024.0;
 			
-			if (total_gb >= 1.0) {
-				return "%.2f GB of %.2f GB".printf(completed_gb, total_gb);
-			}
-			return "%.0f MB of %.0f MB".printf(completed_mb, total_mb);
+			// Format with comma separators
+			return "%.0fk of %.0fk".printf(completed_kb, total_kb);
 		}
 		
 		/**
@@ -152,27 +148,27 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Formats time estimate text (e.g., "~5 min" or "~1h 30m").
+		 * Formats time estimate text (e.g., "est. time left: 5m" or "est. time left: 2h").
 		 * 
-		 * @return Formatted time estimate, or empty string if cannot be calculated
+		 * @return Formatted time estimate with "est. time left:" prefix, or "est. time left: unknown" if cannot be calculated
 		 */
 		public string get_formatted_time_estimate()
 		{
 			var remaining_seconds = this.get_time_estimate_seconds();
 			if (remaining_seconds <= 0) {
-				return "";
+				return "est. time left: unknown";
 			}
 			
-			if (remaining_seconds < 60) {
-				return "~%d sec".printf((int)remaining_seconds);
+			var remaining_minutes = (int)(remaining_seconds / 60);
+			
+			// Up to 90 minutes, show in minutes
+			if (remaining_minutes <= 90) {
+				return "est. time left: %dm".printf(remaining_minutes);
 			}
-			if (remaining_seconds < 3600) {
-				return "~%d min".printf((int)(remaining_seconds / 60));
-			}
-			return "~%dh %dm".printf(
-				(int)(remaining_seconds / 3600),
-				(int)((remaining_seconds % 3600) / 60)
-			);
+			
+			// Over 90 minutes, show in hours
+			var hours = remaining_minutes / 60;
+			return "est. time left: %dh".printf(hours);
 		}
 		
 		/**
