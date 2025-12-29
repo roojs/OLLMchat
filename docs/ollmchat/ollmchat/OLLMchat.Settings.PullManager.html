@@ -32,11 +32,9 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.PullManager.app.html">app</a></li>
+          <li class="property"><a href="OLLMchat.Settings.PullManager.models.html">models</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.PullManager.PullManager.html">PullManager</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.fake_pull.html">fake_pull</a></li>
-          <li class="method"><a href="OLLMchat.Settings.PullManager.get_active_pulls.html">get_active_pulls</a></li>
-          <li class="method"><a href="OLLMchat.Settings.PullManager.get_status.html">get_status</a></li>
-          <li class="method"><a href="OLLMchat.Settings.PullManager.is_pulling.html">is_pulling</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.restart.html">restart</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.start_pull.html">start_pull</a></li>
           <li class="signal"><a href="OLLMchat.Settings.PullManager.model_complete.html">model_complete</a></li>
@@ -78,6 +76,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Application interface (provides config and data_dir)</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Settings.PullStatus.html" class="class">PullStatus</a></span>&gt; <b><a href="OLLMchat.Settings.PullManager.models.html" class="property">models</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Map of model_name -&gt; pull status (runtime tracking and persistence)
+              </span>
+            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -92,18 +95,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Fake pull operation for testing - simulates progress from 0-100%.
               </span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="interface">Set</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Settings.PullManager.get_active_pulls.html" class="method">get_active_pulls</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets all models that are currently being pulled.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.PullStatus.html" class="class">PullStatus</a></span>? <b><a href="OLLMchat.Settings.PullManager.get_status.html" class="method">get_status</a></b> (<span class="main_basic_type"><span class="class">string</span></span> model_name)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the PullStatus for a model, or null if not found.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Settings.PullManager.is_pulling.html" class="method">is_pulling</a></b> (<span class="main_basic_type"><span class="class">string</span></span> model_name)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Checks if a pull is currently in progress for a model.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.PullManager.restart.html" class="method">restart</a></b> ()
             </span>

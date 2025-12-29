@@ -73,7 +73,8 @@ namespace OLLMchat.Settings
 		/**
 		 * Map of model_name -> pull status (runtime tracking and persistence)
 		 */
-		public Gee.HashMap<string, PullStatus> models;
+		public Gee.HashMap<string, PullStatus> models { get; set; 
+			default = new Gee.HashMap<string, PullStatus>(); }
 		
 		/**
 		 * Timestamp of last file write
@@ -105,7 +106,6 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.models = new Gee.HashMap<string, PullStatus>();
 			
 			// Create background thread manager
 			this.pull_thread = new PullManagerThread(app);
