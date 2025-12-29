@@ -51,14 +51,9 @@ namespace OLLMchat.Settings
 		public signal void model_failed(string model_name);
 		
 		/**
-		 * Signal emitted when the first pull starts (queue goes from 0 to 1).
+		 * Signal emitted when the active pull count changes (items added or removed from pull map).
 		 */
-		public signal void pulls_started();
-		
-		/**
-		 * Signal emitted when all pulls complete (queue goes from >0 to 0).
-		 */
-		public signal void all_pulls_complete();
+		public signal void pulls_changed();
 		
 		/**
 		 * Application interface (provides config and data_dir)

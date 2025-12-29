@@ -62,8 +62,7 @@ namespace OLLMchat
 			this.settings_dialog = new OLLMchat.Settings.SettingsDialog(this.app);
 			
 			// Connect to PullManager signals to update settings button icon
-			this.settings_dialog.pull_manager.pulls_started.connect(this.on_pulls_started);
-			this.settings_dialog.pull_manager.all_pulls_complete.connect(this.on_all_pulls_complete);
+			this.settings_dialog.pull_manager.pulls_changed.connect(this.on_pulls_changed);
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();
