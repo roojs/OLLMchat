@@ -496,6 +496,8 @@ namespace OLLMchat.Settings
 					) as PullStatus;
 					this.loading_status_cache.set(status_obj.model_name, status_obj);
 				}
+				// Emit signal once after loading all items
+				this.pulls_changed();
 			} catch (Error e) {
 				GLib.debug("Failed to load loading.json: " + e.message);
 			}
