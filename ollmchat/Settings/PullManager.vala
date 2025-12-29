@@ -81,11 +81,6 @@ namespace OLLMchat.Settings
 		private int64 last_file_write_time = 0;
 		
 		/**
-		 * Previous count of active pulls (for detecting queue transitions)
-		 */
-		private int previous_active_count = 0;
-		
-		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
 		 */
 		private const int64 UPDATE_RATE_LIMIT_SECONDS = 2;
@@ -169,8 +164,6 @@ namespace OLLMchat.Settings
 				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
 			}
 			
-			// Check for queue transitions after restarting pulls
-			this.check_queue_transitions();
 		}
 		
 		/**
@@ -205,9 +198,6 @@ namespace OLLMchat.Settings
 			// Consider cloning: var connection_copy = connection.clone();
 			// Start pull operation in background thread (pass only primitive data)
 			this.pull_thread.start_pull(model_name, connection, existing_status.retry_count);
-			
-			// Check for queue transitions (pull just started)
-			this.check_queue_transitions();
 			
 			return true;
 		}
@@ -291,6 +281,7 @@ namespace OLLMchat.Settings
 			var status_obj = new PullStatus();
 			status_obj.model_name = model_name;
 			this.loading_status_cache.set(model_name, status_obj);
+			this.pulls_changed();
 			return status_obj;
 		}
 		
@@ -362,24 +353,6 @@ namespace OLLMchat.Settings
 			if (status == "complete" || status == "failed") {
 				this.finish_pull(model_name, status);
 			}
-			
-			// Check for queue transitions and emit signals
-			this.check_queue_transitions();
-		}
-		
-		/**
-		 * Checks for changes in active pull count and emits pulls_changed signal.
-		 */
-		private void check_queue_transitions()
-		{
-			var current_active_count = this.get_active_pulls().size;
-			
-			// Emit signal whenever the count changes
-			if (this.previous_active_count != current_active_count) {
-				this.pulls_changed();
-			}
-			
-			this.previous_active_count = current_active_count;
 		}
 		
 		/**
@@ -398,6 +371,7 @@ namespace OLLMchat.Settings
 				}
 				
 				this.loading_status_cache.unset(model_name);
+				this.pulls_changed();
 				this.write_to_file();
 				return false;
 			});
