@@ -84,7 +84,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
 		 */
-		private const int64 UPDATE_RATE_LIMIT_SECONDS = 2;
+		private const int64 UPDATE_RATE_LIMIT_SECONDS = 1;
 		
 		/**
 		 * Rate limit: minimum seconds between file writes (except for start/finish)
@@ -129,17 +129,11 @@ namespace OLLMchat.Settings
 			// Load existing status from file
 			this.load_from_file();
 			
-			GLib.debug("restart() called, models.size = %d", this.models.size);
-			
-			int restarted_count = 0;
 			foreach (var entry in this.models.entries) {
 				var status = entry.value;
 				
-				GLib.debug("Checking model: %s, status: '%s', active: %s", status.model_name, status.status, status.active.to_string());
-				
 				// Skip if not in progress or pending retry
 				if (status.status != "pulling" && status.status != "pending-retry") {
-					GLib.debug("Skipping model %s: status is '%s' (not 'pulling' or 'pending-retry')", status.model_name, status.status);
 					continue;
 				}
 				
@@ -162,15 +156,9 @@ namespace OLLMchat.Settings
 				}
 				
 				// Resume the pull
-				GLib.debug("Restarting pull for model: %s (completed: %lld/%lld)", status.model_name, status.completed, status.total);
 				status.active = true;
 				this.pull_thread.ensure_thread();
 				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
-				restarted_count++;
-			}
-			
-			if (restarted_count > 0) {
-				GLib.debug("Restarted %d pull(s)", restarted_count);
 			}
 		}
 		
@@ -317,6 +305,7 @@ namespace OLLMchat.Settings
 			// Update status object in main thread (thread-safe)
 			var status_obj = this.get_or_create_status(model_name);
 			var old_status = status_obj.status;
+			var old_total = status_obj.total;
 			status_obj.model_name = model_name;
 			status_obj.status = status;
 			status_obj.retry_count = retry_count;
@@ -329,12 +318,16 @@ namespace OLLMchat.Settings
 			// Initialize start tracking when download begins (new or resumed)
 			var now = GLib.get_real_time() / 1000000;
 			if (status == "pulling") {
-				status_obj.last_update_time = now;
 				// Initialize start tracking if not already initialized
 				if (status_obj.start_time == 0) {
 					status_obj.start_time = now;
 					status_obj.start_completed = status_obj.completed;
+				} else if (status_obj.start_completed == 0 && status_obj.completed > 0) {
+					// Resume scenario: start_time was set on restore, but start_completed might be 0
+					// Set it to current completed value to calculate rate from resume point
+					status_obj.start_completed = status_obj.completed;
 				}
+				// Don't update last_update_time here - let schedule_progress_update handle it
 			}
 			
 			// Update active flag based on status
@@ -353,7 +346,9 @@ namespace OLLMchat.Settings
 			}
 			
 			// Write to file if needed
-			bool force_write = (status == "pulling" && total == 0) || 
+			// Force write when: initial state (total == 0), first progress update (old_total == 0 && total > 0), or final states
+			bool is_first_progress = (old_total == 0 && total > 0);
+			bool force_write = (status == "pulling" && (total == 0 || is_first_progress)) || 
 			                   status == "complete" || 
 			                   status == "failed" || 
 			                   status == "pending-retry";
@@ -503,7 +498,6 @@ namespace OLLMchat.Settings
 		private void load_from_file()
 		{
 			if (!GLib.File.new_for_path(this.loading_json_path).query_exists()) {
-				GLib.debug("load_from_file(): loading.json does not exist at %s", this.loading_json_path);
 				return;
 			}
 			
@@ -511,13 +505,22 @@ namespace OLLMchat.Settings
 				var parser = new Json.Parser();
 				parser.load_from_file(this.loading_json_path);
 				var root_array = parser.get_root().get_array();
-				GLib.debug("load_from_file(): Found %u entries in loading.json", root_array.get_length());
+				var now = GLib.get_real_time() / 1000000;
 				for (uint i = 0; i < root_array.get_length(); i++) {
 					var status_obj = Json.gobject_deserialize(
 						typeof(PullStatus),
 						root_array.get_element(i)
 					) as PullStatus;
-					GLib.debug("load_from_file(): Loaded model '%s' with status '%s'", status_obj.model_name, status_obj.status);
+					
+					// Initialize start tracking for restored "pulling" status
+					// This ensures rate calculations have a proper baseline
+					if (status_obj.status == "pulling" && status_obj.start_time == 0) {
+						status_obj.start_time = now;
+						// Don't set start_completed here - let handle_status_update set it
+						// Set last_update_time to past so first update after restore will always emit
+						status_obj.last_update_time = now - UPDATE_RATE_LIMIT_SECONDS;
+					}
+					
 					this.models.set(status_obj.model_name, status_obj);
 				}
 				// Emit signal once after loading all items

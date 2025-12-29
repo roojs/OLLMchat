@@ -132,6 +132,9 @@ namespace OLLMchat.Settings
 					fraction = 0.0
 				};
 				
+				// Set ellipsize to prevent text overflow
+				progress_bar.set_ellipsize(Pango.EllipsizeMode.END);
+				
 				container.append(progress_bar);
 				this.progress_widgets.set(model_name, container);
 				this.append(container);
