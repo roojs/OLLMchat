@@ -73,7 +73,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Map of model_name -> pull status (runtime tracking and persistence)
 		 */
-		private Gee.HashMap<string, PullStatus> loading_status_cache;
+		public Gee.HashMap<string, PullStatus> models;
 		
 		/**
 		 * Timestamp of last file write
@@ -105,7 +105,7 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.loading_status_cache = new Gee.HashMap<string, PullStatus>();
+			this.models = new Gee.HashMap<string, PullStatus>();
 			
 			// Create background thread manager
 			this.pull_thread = new PullManagerThread(app);
@@ -129,7 +129,7 @@ namespace OLLMchat.Settings
 			// Load existing status from file
 			this.load_from_file();
 			
-			foreach (var entry in this.loading_status_cache.entries) {
+			foreach (var entry in this.models.entries) {
 				var status = entry.value;
 				
 				// Skip if not in progress or pending retry
@@ -266,8 +266,8 @@ namespace OLLMchat.Settings
 		 */
 		private PullStatus get_or_create_status(string model_name)
 		{
-			if (this.loading_status_cache.has_key(model_name)) {
-				var status_obj = this.loading_status_cache.get(model_name);
+			if (this.models.has_key(model_name)) {
+				var status_obj = this.models.get(model_name);
 				// Ensure model_name is set (for backwards compatibility with loaded data)
 				if (status_obj.model_name == "") {
 					status_obj.model_name = model_name;
@@ -277,7 +277,7 @@ namespace OLLMchat.Settings
 			
 			var status_obj = new PullStatus();
 			status_obj.model_name = model_name;
-			this.loading_status_cache.set(model_name, status_obj);
+			this.models.set(model_name, status_obj);
 			this.pulls_changed();
 			return status_obj;
 		}
@@ -378,7 +378,7 @@ namespace OLLMchat.Settings
 					this.model_failed(model_name);
 				}
 				
-				this.loading_status_cache.unset(model_name);
+				this.models.unset(model_name);
 				this.pulls_changed();
 				this.write_to_file();
 				return false;
@@ -401,11 +401,11 @@ namespace OLLMchat.Settings
 			Idle.add(() => {
 				GLib.Timeout.add_seconds((uint)RETRY_DELAY_SECONDS, () => {
 					// Check if still in pending-retry status (not completed or failed)
-					if (!this.loading_status_cache.has_key(model_name)) {
+					if (!this.models.has_key(model_name)) {
 						return false;
 					}
 					
-					var check_status = this.loading_status_cache.get(model_name);
+					var check_status = this.models.get(model_name);
 					if (check_status.status != "pending-retry") {
 						return false;
 					}
@@ -522,7 +522,7 @@ namespace OLLMchat.Settings
 				string[] json_parts ={};
 				
 				// Serialize each status object to JSON string
-				foreach (var entry in this.loading_status_cache.entries) {
+				foreach (var entry in this.models.entries) {
 					json_parts += Json.gobject_to_data(entry.value, null);
 				}
 				
@@ -559,7 +559,7 @@ namespace OLLMchat.Settings
 		public Gee.Set<string> get_active_pulls()
 		{
 			var result = new Gee.HashSet<string>();
-			foreach (var entry in this.loading_status_cache.entries) {
+			foreach (var entry in this.models.entries) {
 				if (entry.value.active) {
 					result.add(entry.key);
 				}
