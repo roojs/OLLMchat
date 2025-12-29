@@ -62,7 +62,7 @@ namespace OLLMchat
 			this.settings_dialog = new OLLMchat.Settings.SettingsDialog(this.app);
 			
 			// Connect to PullManager signals to update settings button icon
-			this.settings_dialog.pull_manager.pulls_changed.connect(this.on_pulls_changed);
+			this.settings_dialog.pull_manager.pulls_changed.connect(this.update_settings_button);
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();
@@ -642,14 +642,6 @@ namespace OLLMchat
 			this.settings_spinner.visible = false;
 			this.settings_icon.visible = true;
 			this.settings_button.tooltip_text = "Settings";
-		}
-		
-		/**
-		 * Called when the active pull count changes.
-		 */
-		private void on_pulls_changed()
-		{
-			this.update_settings_button();
 		}
 		
 		/**
