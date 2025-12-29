@@ -315,10 +315,11 @@ namespace OLLMchat.Settings
 				status_obj.last_chunk_status = last_chunk_status;
 			}
 			
-			// Initialize start tracking when download begins
+			// Initialize start tracking when download begins (new or resumed)
 			// Need to set last_update_time first so initialize_start_tracking has a timestamp
 			var now = GLib.get_real_time() / 1000000;
-			if (status == "pulling" && old_status != "pulling") {
+			if (status == "pulling" && !status_obj.is_start_tracking_initialized()) {
+				// Initialize start tracking for new downloads or resumed downloads
 				status_obj.last_update_time = now;
 				status_obj.initialize_start_tracking(now);
 			}

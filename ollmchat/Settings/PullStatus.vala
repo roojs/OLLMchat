@@ -109,6 +109,16 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
+		 * Checks if start tracking has been initialized.
+		 * 
+		 * @return true if start tracking is initialized, false otherwise
+		 */
+		public bool is_start_tracking_initialized()
+		{
+			return this.start_time > 0;
+		}
+		
+		/**
 		 * Initializes start tracking when download begins.
 		 * Should be called when status changes to "pulling".
 		 * 
