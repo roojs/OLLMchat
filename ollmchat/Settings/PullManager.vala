@@ -368,20 +368,15 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Checks for queue transitions (0->1 or >0->0) and emits appropriate signals.
+		 * Checks for changes in active pull count and emits pulls_changed signal.
 		 */
 		private void check_queue_transitions()
 		{
 			var current_active_count = this.get_active_pulls().size;
 			
-			// Queue went from 0 to 1 (first pull started)
-			if (this.previous_active_count == 0 && current_active_count > 0) {
-				this.pulls_started();
-			}
-			
-			// Queue went from >0 to 0 (all pulls complete)
-			if (this.previous_active_count > 0 && current_active_count == 0) {
-				this.all_pulls_complete();
+			// Emit signal whenever the count changes
+			if (this.previous_active_count != current_active_count) {
+				this.pulls_changed();
 			}
 			
 			this.previous_active_count = current_active_count;
