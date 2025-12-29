@@ -121,11 +121,11 @@ namespace OLLMchat.Settings
 		 */
 		public string get_formatted_size_text()
 		{
-			var completed_kb = this.completed / 1024.0;
-			var total_kb = this.total / 1024.0;
+			var completed_kb = (int64)(this.completed / 1024);
+			var total_kb = (int64)(this.total / 1024);
 			
-			// Format with comma separators
-			return "%.0fk of %.0fk".printf(completed_kb, total_kb);
+			// Format with comma separators using locale-aware formatting
+			return "%'dk of %'dk".printf(completed_kb, total_kb);
 		}
 		
 		/**
