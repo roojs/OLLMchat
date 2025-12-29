@@ -83,7 +83,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
 		 */
-		private const int64 UPDATE_RATE_LIMIT_SECONDS = 5;
+		private const int64 UPDATE_RATE_LIMIT_SECONDS = 2;
 		
 		/**
 		 * Rate limit: minimum seconds between file writes (except for start/finish)
