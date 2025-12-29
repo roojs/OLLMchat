@@ -61,15 +61,13 @@ namespace OLLMchat.Settings
 			// Connect to pull manager signals
 			this.pull_manager.progress_updated.connect(this.on_progress_updated);
 			this.pull_manager.model_failed.connect(this.on_model_failed);
-			
-			// Initialize progress bars for any existing active pulls
-			this.initialize_existing_pulls();
 		}
 		
 		/**
 		 * Initializes progress bars for any existing active pulls.
+		 * Should be called when the dialog is shown.
 		 */
-		private void initialize_existing_pulls()
+		public void initialize_existing_pulls()
 		{
 			var active_pulls = this.pull_manager.get_active_pulls();
 			foreach (var model_name in active_pulls) {

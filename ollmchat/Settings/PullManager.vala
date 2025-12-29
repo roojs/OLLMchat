@@ -567,5 +567,19 @@ namespace OLLMchat.Settings
 			return result;
 		}
 		
+		/**
+		 * Gets the PullStatus for a model, or null if not found.
+		 * 
+		 * @param model_name Model name
+		 * @return PullStatus object, or null if not found
+		 */
+		public PullStatus? get_status(string model_name)
+		{
+			if (this.loading_status_cache.has_key(model_name)) {
+				return this.loading_status_cache.get(model_name);
+			}
+			return null;
+		}
+		
 	}
 }

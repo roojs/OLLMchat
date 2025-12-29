@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.Settings.PullManager.is_pulling &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.Settings.PullManager.get_status &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.Settings.PullManager.is_pulling &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.Settings.PullManager.get_status &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -35,8 +35,8 @@
           <li class="creation_method"><a href="OLLMchat.Settings.PullManager.PullManager.html">PullManager</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.fake_pull.html">fake_pull</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.get_active_pulls.html">get_active_pulls</a></li>
-          <li class="method"><a href="OLLMchat.Settings.PullManager.get_status.html">get_status</a></li>
-          <li class="method">is_pulling</li>
+          <li class="method">get_status</li>
+          <li class="method"><a href="OLLMchat.Settings.PullManager.is_pulling.html">is_pulling</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.restart.html">restart</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullManager.start_pull.html">start_pull</a></li>
           <li class="signal"><a href="OLLMchat.Settings.PullManager.model_complete.html">model_complete</a></li>
@@ -46,19 +46,19 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">is_pulling</h1>
+        <h1 class="main_title">get_status</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="method">is_pulling</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model_name)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.PullStatus.html" class="class">PullStatus</a></span>? <b><span class="method">get_status</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model_name)
         </div>
         <div class="description">
-          <p>Checks if a pull is currently in progress for a model.</p>
+          <p>Gets the PullStatus for a model, or null if not found.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">model_name</td>
               <td>
-                <p>Model name to check </p>
+                <p>Model name </p>
               </td>
             </tr>
           </table>
@@ -66,7 +66,7 @@
           <table class="main_parameter_table">
             <tr>
               <td>
-                <p>true if pull is in progress, false otherwise </p>
+                <p>PullStatus object, or null if not found </p>
               </td>
             </tr>
           </table>
