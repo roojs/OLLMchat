@@ -69,12 +69,10 @@ namespace OLLMchat.Settings
 		 */
 		public void initialize_existing_pulls()
 		{
-			var active_pulls = this.pull_manager.get_active_pulls();
-			foreach (var model_name in active_pulls) {
-				var status = this.pull_manager.get_status(model_name);
-				if (status != null) {
-					this.status_tracking.set(model_name, status);
-					this.update_progress_bar(status);
+			foreach (var entry in this.pull_manager.models.entries) {
+				if (entry.value.active) {
+					this.status_tracking.set(entry.key, entry.value);
+					this.update_progress_bar(entry.value);
 				}
 			}
 		}

@@ -628,7 +628,15 @@ namespace OLLMchat
 		 */
 		private void update_settings_button()
 		{
-			if (this.settings_dialog.pull_manager.get_active_pulls().size > 0) {
+			// Count active pulls
+			int active_count = 0;
+			foreach (var entry in this.settings_dialog.pull_manager.models.entries) {
+				if (entry.value.active) {
+					active_count++;
+				}
+			}
+			
+			if (active_count > 0) {
 				// Show spinner and hide icon when downloading
 				this.settings_spinner.spinning = true;
 				this.settings_spinner.visible = true;

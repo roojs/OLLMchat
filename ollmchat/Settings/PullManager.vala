@@ -504,7 +504,7 @@ namespace OLLMchat.Settings
 						typeof(PullStatus),
 						root_array.get_element(i)
 					) as PullStatus;
-					this.loading_status_cache.set(status_obj.model_name, status_obj);
+					this.models.set(status_obj.model_name, status_obj);
 				}
 				// Emit signal once after loading all items
 				this.pulls_changed();
@@ -535,51 +535,5 @@ namespace OLLMchat.Settings
 				GLib.warning("Failed to write loading.json: " + e.message);
 			}
 		}
-		
-		/**
-		 * Checks if a pull is currently in progress for a model.
-		 * 
-		 * @param model_name Model name to check
-		 * @return true if pull is in progress, false otherwise
-		 */
-		public bool is_pulling(string model_name)
-		{
-			if (!this.loading_status_cache.has_key(model_name)) {
-				return false;
-			}
-			
-			return this.loading_status_cache.get(model_name).active;
-		}
-		
-		/**
-		 * Gets all models that are currently being pulled.
-		 * 
-		 * @return Set of model names that are being pulled
-		 */
-		public Gee.Set<string> get_active_pulls()
-		{
-			var result = new Gee.HashSet<string>();
-			foreach (var entry in this.models.entries) {
-				if (entry.value.active) {
-					result.add(entry.key);
-				}
-			}
-			return result;
-		}
-		
-		/**
-		 * Gets the PullStatus for a model, or null if not found.
-		 * 
-		 * @param model_name Model name
-		 * @return PullStatus object, or null if not found
-		 */
-		public PullStatus? get_status(string model_name)
-		{
-			if (this.loading_status_cache.has_key(model_name)) {
-				return this.loading_status_cache.get(model_name);
-			}
-			return null;
-		}
-		
 	}
 }
