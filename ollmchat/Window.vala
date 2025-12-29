@@ -37,6 +37,10 @@ namespace OLLMchat
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
 		private OLLMchat.Settings.ConnectionAdd? bootstrap_dialog = null;
+		private OLLMchat.Settings.SettingsDialog? settings_dialog = null;
+		private Gtk.Button settings_button;
+		private Gtk.Spinner settings_spinner;
+		private Gtk.Image settings_icon;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -53,6 +57,13 @@ namespace OLLMchat
 			
 			// Ensure data directory exists (using interface)
 			app.ensure_data_dir();
+
+			// Create settings dialog (creates PullManager which loads status from file)
+			this.settings_dialog = new OLLMchat.Settings.SettingsDialog(this.app);
+			
+			// Connect to PullManager signals to update settings button icon
+			this.settings_dialog.pull_manager.pulls_started.connect(this.on_pulls_started);
+			this.settings_dialog.pull_manager.all_pulls_complete.connect(this.on_all_pulls_complete);
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();
@@ -84,15 +95,25 @@ namespace OLLMchat
 			};
 			this.header_bar.pack_start(this.agent_dropdown);
 			
-			// Create settings button
-			var settings_button = new Gtk.Button() {
-				icon_name = "applications-system-symbolic",
+			// Create settings button with spinner
+			var settings_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0);
+			this.settings_icon = new Gtk.Image() {
+				icon_name = "applications-system-symbolic"
+			};
+			this.settings_spinner = new Gtk.Spinner() {
+				spinning = false,
+				visible = false
+			};
+			settings_box.append(this.settings_spinner);
+			settings_box.append(this.settings_icon);
+			this.settings_button = new Gtk.Button() {
+				child = settings_box,
 				tooltip_text = "Settings"
 			};
-			settings_button.clicked.connect(() => {
+			this.settings_button.clicked.connect(() => {
 				this.show_settings_dialog();
 			});
-			this.header_bar.pack_start(settings_button);
+			this.header_bar.pack_start(this.settings_button);
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
@@ -114,6 +135,13 @@ namespace OLLMchat
 			
 			// Set toolbar view as window content
 			this.set_content(toolbar_view);
+
+			// Connect to realize signal to restart incomplete pulls when window is shown
+			this.realize.connect(() => {
+				this.settings_dialog.pull_manager.restart();
+				// Update button state after restart (in case there are active pulls)
+				this.update_settings_button();
+			});
 
 			// Load configuration and initialize
 			this.load_config_and_initialize.begin();
@@ -597,6 +625,43 @@ namespace OLLMchat
 		}
 		
 		/**
+		 * Updates the settings button icon and tooltip based on active pulls.
+		 */
+		private void update_settings_button()
+		{
+			if (this.settings_dialog.pull_manager.get_active_pulls().size > 0) {
+				// Show spinner and hide icon when downloading
+				this.settings_spinner.spinning = true;
+				this.settings_spinner.visible = true;
+				this.settings_icon.visible = false;
+				this.settings_button.tooltip_text = "Settings - Downloading model";
+				return;
+			}
+			
+			// Hide spinner and show icon when not downloading
+			this.settings_spinner.spinning = false;
+			this.settings_spinner.visible = false;
+			this.settings_icon.visible = true;
+			this.settings_button.tooltip_text = "Settings";
+		}
+		
+		/**
+		 * Called when the first pull starts (queue goes from 0 to 1).
+		 */
+		private void on_pulls_started()
+		{
+			this.update_settings_button();
+		}
+		
+		/**
+		 * Called when all pulls complete (queue goes from >0 to 0).
+		 */
+		private void on_all_pulls_complete()
+		{
+			this.update_settings_button();
+		}
+		
+		/**
 		 * Shows the settings dialog.
 		 * 
 		 * @since 1.0
@@ -607,9 +672,8 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Create and show settings dialog
-			var dialog = new OLLMchat.Settings.SettingsDialog(this.app);
-			dialog.show_dialog(this);
+			// Show settings dialog (already created in constructor)
+			this.settings_dialog.show_dialog(this);
 		}
 		
 	}

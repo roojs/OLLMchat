@@ -51,6 +51,16 @@ namespace OLLMchat.Settings
 		public signal void model_failed(string model_name);
 		
 		/**
+		 * Signal emitted when the first pull starts (queue goes from 0 to 1).
+		 */
+		public signal void pulls_started();
+		
+		/**
+		 * Signal emitted when all pulls complete (queue goes from >0 to 0).
+		 */
+		public signal void all_pulls_complete();
+		
+		/**
 		 * Application interface (provides config and data_dir)
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
@@ -74,6 +84,11 @@ namespace OLLMchat.Settings
 		 * Timestamp of last file write
 		 */
 		private int64 last_file_write_time = 0;
+		
+		/**
+		 * Previous count of active pulls (for detecting queue transitions)
+		 */
+		private int previous_active_count = 0;
 		
 		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
@@ -112,21 +127,21 @@ namespace OLLMchat.Settings
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to ensure data directory exists: " + e.message);
 			}
-			
-			// Load existing status from file
-			this.load_from_file();
-			
-			// Resume any incomplete pulls
-			this.resume_incomplete_pulls();
 		}
 		
 		/**
-		 * Resumes any incomplete pulls that were in progress when the application was closed.
+		 * Restarts any incomplete pulls that were in progress when the application was closed.
 		 * 
-		 * Called after loading status from file. Resumes pulls with status "pulling" or "pending-retry".
+		 * Loads status from file and resumes pulls with status "pulling" or "pending-retry".
 		 */
-		private void resume_incomplete_pulls()
+		public void restart()
 		{
+			// Load existing status from file
+			this.load_from_file();
+			
+			// Initialize previous_active_count before processing
+			this.previous_active_count = this.get_active_pulls().size;
+			
 			foreach (var entry in this.loading_status_cache.entries) {
 				var status = entry.value;
 				
@@ -158,6 +173,9 @@ namespace OLLMchat.Settings
 				this.pull_thread.ensure_thread();
 				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
 			}
+			
+			// Check for queue transitions after restarting pulls
+			this.check_queue_transitions();
 		}
 		
 		/**
@@ -192,6 +210,9 @@ namespace OLLMchat.Settings
 			// Consider cloning: var connection_copy = connection.clone();
 			// Start pull operation in background thread (pass only primitive data)
 			this.pull_thread.start_pull(model_name, connection, existing_status.retry_count);
+			
+			// Check for queue transitions (pull just started)
+			this.check_queue_transitions();
 			
 			return true;
 		}
@@ -346,6 +367,29 @@ namespace OLLMchat.Settings
 			if (status == "complete" || status == "failed") {
 				this.finish_pull(model_name, status);
 			}
+			
+			// Check for queue transitions and emit signals
+			this.check_queue_transitions();
+		}
+		
+		/**
+		 * Checks for queue transitions (0->1 or >0->0) and emits appropriate signals.
+		 */
+		private void check_queue_transitions()
+		{
+			var current_active_count = this.get_active_pulls().size;
+			
+			// Queue went from 0 to 1 (first pull started)
+			if (this.previous_active_count == 0 && current_active_count > 0) {
+				this.pulls_started();
+			}
+			
+			// Queue went from >0 to 0 (all pulls complete)
+			if (this.previous_active_count > 0 && current_active_count == 0) {
+				this.all_pulls_complete();
+			}
+			
+			this.previous_active_count = current_active_count;
 		}
 		
 		/**
