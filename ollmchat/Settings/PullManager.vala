@@ -129,12 +129,17 @@ namespace OLLMchat.Settings
 			// Load existing status from file
 			this.load_from_file();
 			
+			GLib.debug("restart() called, models.size = %d", this.models.size);
+			
 			int restarted_count = 0;
 			foreach (var entry in this.models.entries) {
 				var status = entry.value;
 				
+				GLib.debug("Checking model: %s, status: '%s', active: %s", status.model_name, status.status, status.active.to_string());
+				
 				// Skip if not in progress or pending retry
 				if (status.status != "pulling" && status.status != "pending-retry") {
+					GLib.debug("Skipping model %s: status is '%s' (not 'pulling' or 'pending-retry')", status.model_name, status.status);
 					continue;
 				}
 				
@@ -498,6 +503,7 @@ namespace OLLMchat.Settings
 		private void load_from_file()
 		{
 			if (!GLib.File.new_for_path(this.loading_json_path).query_exists()) {
+				GLib.debug("load_from_file(): loading.json does not exist at %s", this.loading_json_path);
 				return;
 			}
 			
@@ -505,11 +511,13 @@ namespace OLLMchat.Settings
 				var parser = new Json.Parser();
 				parser.load_from_file(this.loading_json_path);
 				var root_array = parser.get_root().get_array();
+				GLib.debug("load_from_file(): Found %u entries in loading.json", root_array.get_length());
 				for (uint i = 0; i < root_array.get_length(); i++) {
 					var status_obj = Json.gobject_deserialize(
 						typeof(PullStatus),
 						root_array.get_element(i)
 					) as PullStatus;
+					GLib.debug("load_from_file(): Loaded model '%s' with status '%s'", status_obj.model_name, status_obj.status);
 					this.models.set(status_obj.model_name, status_obj);
 				}
 				// Emit signal once after loading all items
