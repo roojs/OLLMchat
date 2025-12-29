@@ -111,11 +111,13 @@ namespace OLLMchat.Settings
 		/**
 		 * Initializes start tracking when download begins.
 		 * Should be called when status changes to "pulling".
+		 * 
+		 * @param current_time Current timestamp in seconds (from get_real_time() / 1000000)
 		 */
-		public void initialize_start_tracking()
+		public void initialize_start_tracking(int64 current_time)
 		{
 			if (this.start_time == 0) {
-				this.start_time = this.last_update_time > 0 ? this.last_update_time : GLib.get_real_time() / 1000000;
+				this.start_time = current_time;
 				this.start_completed = this.completed;
 			}
 		}
