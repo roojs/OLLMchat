@@ -645,17 +645,9 @@ namespace OLLMchat
 		}
 		
 		/**
-		 * Called when the first pull starts (queue goes from 0 to 1).
+		 * Called when the active pull count changes.
 		 */
-		private void on_pulls_started()
-		{
-			this.update_settings_button();
-		}
-		
-		/**
-		 * Called when all pulls complete (queue goes from >0 to 0).
-		 */
-		private void on_all_pulls_complete()
+		private void on_pulls_changed()
 		{
 			this.update_settings_button();
 		}
