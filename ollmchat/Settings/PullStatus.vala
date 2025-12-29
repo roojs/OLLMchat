@@ -189,16 +189,14 @@ namespace OLLMchat.Settings
 						parts += this.get_formatted_size_text();
 						parts += "%d%%".printf(this.progress);
 						
-						// Show rate and time if available
+						// Show rate if available
 						var rate_text = this.get_formatted_rate_text();
 						if (rate_text != "") {
 							parts += rate_text;
-							
-							var time_text = this.get_formatted_time_estimate();
-							if (time_text != "") {
-								parts += time_text;
-							}
 						}
+						
+						// Always show time estimate (includes "est. time left:" prefix)
+						parts += this.get_formatted_time_estimate();
 					}
 					break;
 				case "pending-retry":
