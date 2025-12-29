@@ -447,9 +447,11 @@ namespace OLLMchat.Settings
 				return;
 			}
 			
-			// Update timestamp and rate tracking before emitting
-			status_obj.last_update_time = now;
+			// Update rate tracking BEFORE updating timestamp (save old values)
 			status_obj.update_rate_tracking();
+			
+			// Update timestamp after saving previous values
+			status_obj.last_update_time = now;
 			
 			// Emit update
 			Idle.add(() => {
