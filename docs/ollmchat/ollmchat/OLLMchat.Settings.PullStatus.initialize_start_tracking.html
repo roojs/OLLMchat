@@ -52,7 +52,6 @@
           <li class="method"><a href="OLLMchat.Settings.PullStatus.get_property.html">get_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullStatus.get_time_estimate_seconds.html">get_time_estimate_seconds</a></li>
           <li class="method">initialize_start_tracking</li>
-          <li class="method"><a href="OLLMchat.Settings.PullStatus.is_start_tracking_initialized.html">is_start_tracking_initialized</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.PullStatus.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullStatus.set_property.html">set_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.PullStatus.update_rate_tracking.html">update_rate_tracking</a></li>
@@ -69,7 +68,8 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">initialize_start_tracking</span></b> (<span class="main_basic_type"><span class="struct">int64</span></span> current_time)
         </div>
         <div class="description">
-          <p>Initializes start tracking when download begins. Should be called when status changes to "pulling".</p>
+          <p>Initializes start tracking when download begins. Should be called when status changes to "pulling". Only initializes if not already 
+            initialized.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

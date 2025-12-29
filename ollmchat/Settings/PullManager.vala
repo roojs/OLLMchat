@@ -318,8 +318,9 @@ namespace OLLMchat.Settings
 			// Initialize start tracking when download begins (new or resumed)
 			// Need to set last_update_time first so initialize_start_tracking has a timestamp
 			var now = GLib.get_real_time() / 1000000;
-			if (status == "pulling" && !status_obj.is_start_tracking_initialized()) {
+			if (status == "pulling") {
 				// Initialize start tracking for new downloads or resumed downloads
+				// Method checks internally if already initialized
 				status_obj.last_update_time = now;
 				status_obj.initialize_start_tracking(now);
 			}
