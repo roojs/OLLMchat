@@ -135,11 +135,12 @@ namespace OLLMchat
 			// Set toolbar view as window content
 			this.set_content(toolbar_view);
 
-			// Connect to realize signal to restart incomplete pulls when window is shown
-			this.realize.connect(() => {
+			// Restart incomplete pulls when window is shown (using idle callback)
+			GLib.Idle.add(() => {
 				this.settings_dialog.pull_manager.restart();
 				// Update button state after restart (in case there are active pulls)
 				this.update_settings_button();
+				return false; // Remove from idle queue
 			});
 
 			// Load configuration and initialize
