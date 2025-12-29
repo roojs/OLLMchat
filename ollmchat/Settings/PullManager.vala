@@ -315,6 +315,11 @@ namespace OLLMchat.Settings
 				status_obj.last_chunk_status = last_chunk_status;
 			}
 			
+			// Initialize start tracking when download begins
+			if (status == "pulling" && old_status != "pulling") {
+				status_obj.initialize_start_tracking();
+			}
+			
 			// Update active flag based on status
 			if (status == "complete" || status == "failed" || status == "pending-retry") {
 				status_obj.active = false;
@@ -447,10 +452,7 @@ namespace OLLMchat.Settings
 				return;
 			}
 			
-			// Update rate tracking BEFORE updating timestamp (save old values)
-			status_obj.update_rate_tracking();
-			
-			// Update timestamp after saving previous values
+			// Update timestamp (start tracking is initialized when status becomes "pulling")
 			status_obj.last_update_time = now;
 			
 			// Emit update

@@ -46,6 +46,10 @@ namespace OLLMchat.Settings
 		private int64 previous_update_time = 0;
 		public uint completion_timer_id = 0;
 		
+		// Start tracking for overall rate calculation
+		private int64 start_time = 0;
+		private int64 start_completed = 0;
+		
 		/**
 		 * Progress percentage (0-100), calculated from completed/total.
 		 * 
@@ -88,18 +92,32 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Download rate in bytes per second.
+		 * Uses overall average rate since download started.
 		 * 
 		 * @return Download rate in bytes/sec, or 0 if cannot be calculated
 		 */
 		public double get_download_rate_bytes_per_sec()
 		{
-			if (this.previous_update_time > 0 && this.last_update_time > this.previous_update_time) {
-				var time_diff = this.last_update_time - this.previous_update_time;
-				if (time_diff > 0 && this.completed > this.previous_completed) {
-					return (double)(this.completed - this.previous_completed) / (double)time_diff;
+			// Use overall rate since download started
+			if (this.start_time > 0 && this.last_update_time > this.start_time) {
+				var time_diff = this.last_update_time - this.start_time;
+				if (time_diff > 0 && this.completed > this.start_completed) {
+					return (double)(this.completed - this.start_completed) / (double)time_diff;
 				}
 			}
 			return 0.0;
+		}
+		
+		/**
+		 * Initializes start tracking when download begins.
+		 * Should be called when status changes to "pulling".
+		 */
+		public void initialize_start_tracking()
+		{
+			if (this.start_time == 0) {
+				this.start_time = this.last_update_time > 0 ? this.last_update_time : GLib.get_real_time() / 1000000;
+				this.start_completed = this.completed;
+			}
 		}
 		
 		/**
