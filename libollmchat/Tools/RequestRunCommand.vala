@@ -297,14 +297,12 @@ namespace OLLMchat.Tools
 			stdout_output = this.truncate_output(stdout_output, 50);
 			//stderr_output = this.truncate_output(stderr_output, 50);
 			
+			// Escape code blocks in stdout output
+ 			
 			// Build output message (txt code block)
-			string output_content = "```txt\n";
 			
-			// Add stdout output
-			if (stdout_output != "") {
-				output_content += stdout_output;
-			}
-			/*
+			var	output_content  = stdout_output;
+			 
 			// Add stderr output (if any)
 			if (stderr_output != "") {
 				if (stdout_output != "") {
@@ -312,7 +310,7 @@ namespace OLLMchat.Tools
 				}
 				output_content += stderr_output;
 			}
-			 */
+			 
 			// Add exit code only if non-zero (success doesn't need to be shown)
 			if (exit_status != 0) {
 				if (stdout_output != "" || stderr_output != "") {
@@ -320,11 +318,13 @@ namespace OLLMchat.Tools
 				}
 				output_content += "Exit code: " + exit_status.to_string() + "\n";
 			}
-			output_content += "\n```";
+			 
 			
 		// Send output as second message via message_created
 			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", output_content),
+				new OLLMchat.Message(this.chat_call, "ui", 
+					"```txt\n" + output_content.replace("\n```", "\n\\`\\`\\`") + "\n```"
+				),
 				this.chat_call
 			);
 				

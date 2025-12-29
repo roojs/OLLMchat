@@ -79,7 +79,13 @@ namespace OLLMchat.History
 		{
 			// a) Create a new Session with chat
 			var client = this.manager.new_client();
-			var real_session = new Session(this.manager, new Call.Chat(client, client.model));
+			// Use the placeholder's model (stored from database) instead of client.model
+			// which might be empty. Set it on the client first.
+			if (this.model == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
+			}
+			client.model = this.model;
+			var real_session = new Session(this.manager, new Call.Chat(client, this.model));
 			
 			// copy the tools
 			// Copy properties from placeholder to real session

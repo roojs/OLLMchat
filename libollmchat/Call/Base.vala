@@ -272,7 +272,9 @@ namespace OLLMchat.Call
 
 		protected Gee.ArrayList<Response.Model> parse_models_array(Json.Array array)
 		{
-			var items = new Gee.ArrayList<Response.Model>();
+			var items = new Gee.ArrayList<Response.Model>((a, b) => {
+				return a.name == b.name;
+			});
 
 			for (int i = 0; i < array.get_length(); i++) {
 				var element_node = array.get_element(i);

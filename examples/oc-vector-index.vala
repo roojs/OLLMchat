@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class VectorIndexerApp : TestAppBase
+class VectorIndexerApp : VectorAppBase
 {
 	protected static bool opt_recurse = false;
 	protected static bool opt_reset_database = false;
@@ -179,101 +179,22 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
-		// Shortest if first - config loaded
 		if (this.config.loaded) {
-			embed_client = this.config.create_client("ocvector.embed");
-			if (embed_client == null) {
-				throw new GLib.IOError.NOT_FOUND("ocvector.embed not configured in config.2.json");
-			}
-			
-			analysis_client = this.config.create_client("ocvector.analysis");
-			if (analysis_client == null) {
-				throw new GLib.IOError.NOT_FOUND("ocvector.analysis not configured in config.2.json");
-			}
+			yield this.ensure_config();
+			embed_client = yield this.usage_client("ocvector.embed");
+			analysis_client = yield this.usage_client("ocvector.analysis");
 		} else {
-			// Config not loaded - check if URL provided
-			if (opt_url == null || opt_url == "") {
-				stderr.printf("Error: Config not found and --url not provided.\n");
-				stderr.printf("Please set up the server first or provide --url option.\n");
-				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
-			}
-		 
-			// Create connection from command line args
-			var connection = new OLLMchat.Settings.Connection() {
-				name = "CLI",
-				url = opt_url,
-				api_key = opt_api_key ?? "",
-				is_default = true
-			};
+			// Get clients and verify models (usage_client will check model availability and apply CLI overrides)
+			embed_client = yield this.usage_client("ocvector.embed", opt_url, opt_api_key, opt_embed_model);
+			analysis_client = yield this.usage_client("ocvector.analysis", opt_url, opt_api_key, opt_analyze_model);
 			
-			// Add connection to config (needed for setup methods)
-			this.config.connections.set(opt_url, connection);
-			
-			// Test connection
-			stdout.printf("Testing connection to %s...\n", opt_url);
-			var test_client = new OLLMchat.Client(connection);
-			try {
-				yield test_client.version();
-				stdout.printf("Connection successful.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
-			}
-			
-			// Setup embed and analysis usage in config (creates entries with defaults)
-			OLLMvector.Database.setup_embed_usage(this.config);
-			OLLMvector.Indexing.Analysis.setup_analysis_usage(this.config);
-			
-			// Get usage objects and apply command-line overrides if provided
-			var embed_usage = this.config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
-			var analyze_usage = this.config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
-			
-			if (opt_embed_model != null) {
-				embed_usage.model = opt_embed_model;
-			}
-			if (opt_analyze_model != null) {
-				analyze_usage.model = opt_analyze_model;
-			}
-			
-			// Verify embed model exists
-			stdout.printf("Verifying embed model '%s'...\n", embed_usage.model);
-			try {
-				yield test_client.show_model(embed_usage.model);
-				stdout.printf("Embed model found.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Embed model '%s' not found: %s", embed_usage.model, e.message);
-			}
-			
-			// Verify analyze model exists
-			stdout.printf("Verifying analyze model '%s'...\n", analyze_usage.model);
-			try {
-				yield test_client.show_model(analyze_usage.model);
-				stdout.printf("Analyze model found.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Analyze model '%s' not found: %s", analyze_usage.model, e.message);
-			}
-		 
-			// Create clients from usage
-			embed_client = this.config.create_client("ocvector.embed");
-			if (embed_client == null) {
-				throw new GLib.IOError.FAILED("Failed to create embed client");
-			}
-			
-			analysis_client = this.config.create_client("ocvector.analysis");
-			if (analysis_client == null) {
-				throw new GLib.IOError.FAILED("Failed to create analysis client");
-			}
-			
-			// Save config since we created it
-			try {
-				this.config.save();
-				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to save config: %s", e.message);
-			}
+			// Save config after all checks are complete
+			this.save_config();
 		}
 		
-		stdout.printf("Analysis Model: %s\n", analysis_client.model);
-		stdout.printf("Embed Model: %s\n\n", embed_client.model);
+		stdout.printf("Analysis Model: %s\n" +
+		              "Embed Model: %s\n\n",
+		              analysis_client.model, embed_client.model);
 		
 		// Get dimension first, then create Database with it
 		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
@@ -324,8 +245,9 @@ Examples:
 		}
 		
 		var folder_obj = (OLLMfiles.Folder)filebase;
-		stdout.printf("Starting indexing process...\n");
-		stdout.printf("Indexing folder: %s (recurse=%s)\n", folder_obj.path, opt_recurse.to_string());
+		stdout.printf("Starting indexing process...\n" +
+		              "Indexing folder: %s (recurse=%s)\n",
+		              folder_obj.path, opt_recurse.to_string());
 		
 		// Set up folder for indexing: scan files and update project_files
 		// Disable background_recurse to ensure file scan completes before indexing
@@ -353,12 +275,13 @@ Examples:
 		try {
 			stdout.printf("Calling indexer.index_filebase...\n");
 			int files_indexed = yield indexer.index_filebase(folder_obj, opt_recurse, false);
-			stdout.printf("\n");
-			stdout.printf("index_filebase returned: %d files indexed\n", files_indexed);
-			stdout.printf("✓ Indexing completed\n");
-			stdout.printf("  Files indexed: %d\n", files_indexed);
-			stdout.printf("  Total vectors: %llu\n", vector_db.vector_count);
-			stdout.printf("  Vector dimension: %llu\n\n", vector_db.dimension);
+			stdout.printf("\n" +
+			              "index_filebase returned: %d files indexed\n" +
+			              "✓ Indexing completed\n" +
+			              "  Files indexed: %d\n" +
+			              "  Total vectors: %llu\n" +
+			              "  Vector dimension: %llu\n\n",
+			              files_indexed, files_indexed, vector_db.vector_count, vector_db.dimension);
 		} catch (GLib.Error e) {
 			stdout.printf("Error during indexing: %s\n", e.message);
 			throw e;
@@ -371,9 +294,10 @@ Examples:
 			GLib.warning("Failed to save vector database: %s", e.message);
 		}
 		
-		stdout.printf("=== Indexing Complete ===\n");
-		stdout.printf("Database: %s\n", this.db_path);
-		stdout.printf("Vector database: %s\n", this.vector_db_path);
+		stdout.printf("=== Indexing Complete ===\n" +
+		              "Database: %s\n" +
+		              "Vector database: %s\n",
+		              this.db_path, this.vector_db_path);
 	}
 }
 

@@ -109,8 +109,8 @@ namespace OLLMchat.Settings
 			this.action_widget.append(this.add_model_btn);
 
 			// Create Refresh button
-			this.refresh_btn = new Gtk.Button.with_label("Refresh") {
-				css_classes = {"suggested-action"},
+			this.refresh_btn = new Gtk.Button.from_icon_name("view-refresh") {
+				tooltip_text = "Reload downloaded model list from ollama/openapi server",
 				vexpand = false,
 				valign = Gtk.Align.CENTER
 			};

@@ -416,6 +416,28 @@ namespace OLLMchat
 				GLib.warning("Failed to save config after setting up embed usage: %s", e.message);
 			}
 			
+			// Get usage objects and validate they exist
+			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
+			if (embed_usage == null) {
+				GLib.warning("Codebase search tool disabled: ocvector.embed usage not found in config");
+				return;
+			}
+			
+			var analysis_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
+			if (analysis_usage == null) {
+				GLib.warning("Codebase search tool disabled: ocvector.analysis usage not found in config");
+				return;
+			}
+			
+			// Check if required models are available on the server
+			bool models_available = yield OLLMvector.Database.check_required_models_available(config);
+			if (!models_available) {
+				GLib.warning("Codebase search tool disabled: required models not available on server. " +
+				             "Embed model '%s' and/or analysis model '%s' not found. " +
+				             "Please ensure these models are available on your Ollama server.",
+				             embed_usage.model, analysis_usage.model);
+				return;
+			}
 			// Try to get embed client from config
 			var embed_client = config.create_client("ocvector.embed");
 			if (embed_client == null) {

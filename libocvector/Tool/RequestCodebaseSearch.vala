@@ -191,8 +191,10 @@ namespace OLLMvector.Tool
 			
 			 
 			// Send output as second message via message_created (same as commands)
+			// Escape code blocks in formatted output for UI display
 			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",  "```txt\n" + formatted + "\n```"),
+				new OLLMchat.Message(this.chat_call, "ui",  "```txt\n" + 
+					formatted.replace("\n```", "\n\\`\\`\\`") + "\n```"),
 				this.chat_call
 			);
 			

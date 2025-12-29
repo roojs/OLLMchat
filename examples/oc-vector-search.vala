@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-class VectorSearchApp : TestAppBase
+class VectorSearchApp : VectorAppBase
 {
 	protected static bool opt_json = false;
 	protected static string? opt_language = null;
@@ -156,73 +156,15 @@ Examples:
 		
 		OLLMchat.Client embed_client;
 		
-		// Shortest if first - config loaded
 		if (this.config.loaded) {
-			embed_client = this.config.create_client("ocvector.embed");
-			if (embed_client == null) {
-				throw new GLib.IOError.NOT_FOUND("ocvector.embed not configured in config.2.json");
-			}
+			yield this.ensure_config();
+			embed_client = yield this.usage_client("ocvector.embed");
 		} else {
-			// Config not loaded - check if URL provided
-			if (opt_url == null || opt_url == "") {
-				stderr.printf("Error: Config not found and --url not provided.\n");
-				stderr.printf("Please set up the server first or provide --url option.\n");
-				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
-			}
+			// Get client and verify model (usage_client will check model availability and apply CLI override)
+			embed_client = yield this.usage_client("ocvector.embed", opt_url, opt_api_key, opt_embed_model);
 			
-			// Create connection from command line args
-			var connection = new OLLMchat.Settings.Connection() {
-				name = "CLI",
-				url = opt_url,
-				api_key = opt_api_key ?? "",
-				is_default = true
-			};
-			
-			// Add connection to config (needed for setup methods)
-			this.config.connections.set(opt_url, connection);
-			
-			// Test connection
-			stdout.printf("Testing connection to %s...\n", opt_url);
-			var test_client = new OLLMchat.Client(connection);
-			try {
-				yield test_client.version();
-				stdout.printf("Connection successful.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
-			}
-			
-			// Setup embed usage in config (creates entry with default)
-			OLLMvector.Database.setup_embed_usage(this.config);
-			
-			// Get usage object and apply command-line override if provided
-			var embed_usage = this.config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
-			
-			if (opt_embed_model != null) {
-				embed_usage.model = opt_embed_model;
-			}
-			
-			// Verify embed model exists
-			stdout.printf("Verifying embed model '%s'...\n", embed_usage.model);
-			try {
-				yield test_client.show_model(embed_usage.model);
-				stdout.printf("Embed model found.\n");
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Embed model '%s' not found: %s", embed_usage.model, e.message);
-			}
-			
-			// Create embed client from usage
-			embed_client = this.config.create_client("ocvector.embed");
-			if (embed_client == null) {
-				throw new GLib.IOError.FAILED("Failed to create embed client");
-			}
-			
-			// Save config since we created it
-			try {
-				this.config.save();
-				GLib.debug("Saved config to %s", OLLMchat.Settings.Config2.config_path);
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to save config: %s", e.message);
-			}
+			// Save config after all checks are complete
+			this.save_config();
 		}
 		
 		// Get dimension and create vector database
