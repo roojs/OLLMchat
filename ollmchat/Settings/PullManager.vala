@@ -129,6 +129,7 @@ namespace OLLMchat.Settings
 			// Load existing status from file
 			this.load_from_file();
 			
+			int restarted_count = 0;
 			foreach (var entry in this.models.entries) {
 				var status = entry.value;
 				
@@ -156,11 +157,16 @@ namespace OLLMchat.Settings
 				}
 				
 				// Resume the pull
+				GLib.debug("Restarting pull for model: %s (completed: %lld/%lld)", status.model_name, status.completed, status.total);
 				status.active = true;
 				this.pull_thread.ensure_thread();
 				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
+				restarted_count++;
 			}
 			
+			if (restarted_count > 0) {
+				GLib.debug("Restarted %d pull(s)", restarted_count);
+			}
 		}
 		
 		/**
