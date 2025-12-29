@@ -207,6 +207,7 @@ namespace OLLMchat.Settings
 		 */
 		private void execute_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
+			GLib.debug("PullManagerThread.execute_pull() starting for model: %s", model_name);
 			// Create local PullStatus object to track state in this thread
 			// This is NOT shared with the main thread - it's local to this execution
 			var local_status = new PullStatus();
