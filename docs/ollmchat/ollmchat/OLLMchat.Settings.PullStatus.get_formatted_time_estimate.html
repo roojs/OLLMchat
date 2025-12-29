@@ -58,6 +58,8 @@
           <li class="field"><a href="OLLMchat.Settings.PullStatus.completion_timer_id.html">completion_timer_id</a></li>
           <li class="field"><a href="OLLMchat.Settings.PullStatus.connection.html">connection</a></li>
           <li class="field"><a href="OLLMchat.Settings.PullStatus.last_update_time.html">last_update_time</a></li>
+          <li class="field"><a href="OLLMchat.Settings.PullStatus.start_completed.html">start_completed</a></li>
+          <li class="field"><a href="OLLMchat.Settings.PullStatus.start_time.html">start_time</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -67,12 +69,12 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="method">get_formatted_time_estimate</span></b> ()
         </div>
         <div class="description">
-          <p>Formats time estimate text (e.g., "~5 min" or "~1h 30m").</p>
+          <p>Formats time estimate text (e.g., "est. time left: 5m" or "est. time left: 2h").</p>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>
               <td>
-                <p>Formatted time estimate, or empty string if cannot be calculated </p>
+                <p>Formatted time estimate with "est. time left:" prefix, or "est. time left: unknown" if cannot be calculated </p>
               </td>
             </tr>
           </table>

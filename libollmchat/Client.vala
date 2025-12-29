@@ -361,7 +361,7 @@ namespace OLLMchat
 			
 			// Try to load from cache first
 			if (model.load_from_cache()) {
-				GLib.debug("show_model: Loaded model '%s' from cache, parameters: '%s'", model_name, model.parameters ?? "(null)");
+				//GLib.debug("show_model: Loaded model '%s' from cache, parameters: '%s'", model_name, model.parameters ?? "(null)");
 				return model;
 			}
 			

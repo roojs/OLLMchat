@@ -58,6 +58,8 @@
           <li class="field"><a href="OLLMchat.Settings.PullStatus.completion_timer_id.html">completion_timer_id</a></li>
           <li class="field"><a href="OLLMchat.Settings.PullStatus.connection.html">connection</a></li>
           <li class="field"><a href="OLLMchat.Settings.PullStatus.last_update_time.html">last_update_time</a></li>
+          <li class="field"><a href="OLLMchat.Settings.PullStatus.start_completed.html">start_completed</a></li>
+          <li class="field"><a href="OLLMchat.Settings.PullStatus.start_time.html">start_time</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -144,7 +146,8 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.PullStatus.get_download_rate_bytes_per_sec.html" class="method">get_download_rate_bytes_per_sec</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Download rate in bytes per second.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Download rate in bytes per second. Uses overall average rate since 
+                download started.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.PullStatus.get_formatted_rate_text.html" class="method">get_formatted_rate_text</a></b> ()
             </span>
@@ -152,12 +155,12 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.PullStatus.get_formatted_size_text.html" class="method">get_formatted_size_text</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Formats size text (e.g., "444 MB of 3000 MB" or "2.5 GB of 3.0 GB").
-              </span>
+            <div class="leaf_brief_description"><span class="brief_description">Formats size text in MB (e.g., "100 MB of 300 MB").</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.PullStatus.get_formatted_time_estimate.html" class="method">get_formatted_time_estimate</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Formats time estimate text (e.g., "~5 min" or "~1h 30m").</span>
+            <div class="leaf_brief_description"><span class="brief_description">Formats time estimate text (e.g., "est. time left: 5m" or "est. time 
+                left: 2h").</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">double</span></span> <b><a href="OLLMchat.Settings.PullStatus.get_fraction.html" class="method">get_fraction</a></b> ()
             </span>
@@ -204,6 +207,14 @@
             <div class="leaf_brief_description">
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Settings.PullStatus.last_update_time.html" class="field">last_update_time</a></b>
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Settings.PullStatus.start_completed.html" class="field">start_completed</a></b>
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Settings.PullStatus.start_time.html" class="field">start_time</a></b>
             </span>
             <div class="leaf_brief_description">
             </div></li>

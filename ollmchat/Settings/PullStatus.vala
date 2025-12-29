@@ -46,6 +46,10 @@ namespace OLLMchat.Settings
 		private int64 previous_update_time = 0;
 		public uint completion_timer_id = 0;
 		
+		// Start tracking for overall rate calculation
+		public int64 start_time = 0;
+		public int64 start_completed = 0;
+		
 		/**
 		 * Progress percentage (0-100), calculated from completed/total.
 		 * 
@@ -88,15 +92,20 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Download rate in bytes per second.
+		 * Uses overall average rate since download started.
 		 * 
 		 * @return Download rate in bytes/sec, or 0 if cannot be calculated
 		 */
 		public double get_download_rate_bytes_per_sec()
 		{
-			if (this.previous_update_time > 0 && this.last_update_time > this.previous_update_time) {
-				var time_diff = this.last_update_time - this.previous_update_time;
-				if (time_diff > 0 && this.completed > this.previous_completed) {
-					return (double)(this.completed - this.previous_completed) / (double)time_diff;
+			// Use overall rate since download started
+			if (this.start_time > 0 && this.last_update_time > this.start_time) {
+				var time_diff = this.last_update_time - this.start_time;
+				// Require minimum 2 seconds to avoid silly rates from tiny time differences
+				// Allow calculation when completed >= start_completed (handles start_completed = 0 case)
+				// and ensure we have some actual progress (completed > 0) to calculate a meaningful rate
+				if (time_diff >= 2.0 && this.completed >= this.start_completed && this.completed > 0) {
+					return (double)(this.completed - this.start_completed) / (double)time_diff;
 				}
 			}
 			return 0.0;
@@ -117,19 +126,15 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Formats size text (e.g., "444 MB of 3000 MB" or "2.5 GB of 3.0 GB").
+		 * Formats size text in MB (e.g., "100 MB of 300 MB").
 		 */
 		public string get_formatted_size_text()
 		{
-			var completed_mb = this.completed / (1024.0 * 1024.0);
-			var total_mb = this.total / (1024.0 * 1024.0);
-			var completed_gb = completed_mb / 1024.0;
-			var total_gb = total_mb / 1024.0;
+			var completed_mb = (int64)(this.completed / (1024 * 1024));
+			var total_mb = (int64)(this.total / (1024 * 1024));
 			
-			if (total_gb >= 1.0) {
-				return "%.2f GB of %.2f GB".printf(completed_gb, total_gb);
-			}
-			return "%.0f MB of %.0f MB".printf(completed_mb, total_mb);
+			// Format with comma separators using locale-aware formatting
+			return "%'d MB of %'d MB".printf(completed_mb, total_mb);
 		}
 		
 		/**
@@ -152,27 +157,27 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Formats time estimate text (e.g., "~5 min" or "~1h 30m").
+		 * Formats time estimate text (e.g., "est. time left: 5m" or "est. time left: 2h").
 		 * 
-		 * @return Formatted time estimate, or empty string if cannot be calculated
+		 * @return Formatted time estimate with "est. time left:" prefix, or "est. time left: unknown" if cannot be calculated
 		 */
 		public string get_formatted_time_estimate()
 		{
 			var remaining_seconds = this.get_time_estimate_seconds();
 			if (remaining_seconds <= 0) {
-				return "";
+				return "est. time left: unknown";
 			}
 			
-			if (remaining_seconds < 60) {
-				return "~%d sec".printf((int)remaining_seconds);
+			var remaining_minutes = (int)(remaining_seconds / 60);
+			
+			// Up to 90 minutes, show in minutes
+			if (remaining_minutes <= 90) {
+				return "est. time left: %dm".printf(remaining_minutes);
 			}
-			if (remaining_seconds < 3600) {
-				return "~%d min".printf((int)(remaining_seconds / 60));
-			}
-			return "~%dh %dm".printf(
-				(int)(remaining_seconds / 3600),
-				(int)((remaining_seconds % 3600) / 60)
-			);
+			
+			// Over 90 minutes, show in hours
+			var hours = remaining_minutes / 60;
+			return "est. time left: %dh".printf(hours);
 		}
 		
 		/**
@@ -189,19 +194,22 @@ namespace OLLMchat.Settings
 			
 			switch (this.status) {
 				case "pulling":
+					// Show size text (total should be saved and restored, so it should have a value)
+					parts += this.get_formatted_size_text();
 					if (this.total > 0) {
-						parts += this.get_formatted_size_text();
 						parts += "%d%%".printf(this.progress);
 						
-						// Show rate and time if available
-						var rate_text = this.get_formatted_rate_text();
-						if (rate_text != "") {
-							parts += rate_text;
-							
-							var time_text = this.get_formatted_time_estimate();
-							if (time_text != "") {
-								parts += time_text;
+						// Check if time estimate can be calculated (rate is also invalid if time estimate is unknown)
+						var time_estimate = this.get_formatted_time_estimate();
+						if (time_estimate != "est. time left: unknown") {
+							// Show rate if available and time estimate is valid
+							var rate_text = this.get_formatted_rate_text();
+							if (rate_text != "") {
+								parts += rate_text;
 							}
+							
+							// Show time estimate
+							parts += time_estimate;
 						}
 					}
 					break;
@@ -246,6 +254,13 @@ namespace OLLMchat.Settings
 				case "completion_timer_id":
 				case "progress":
 					return null;
+				case "completed":
+				case "total":
+					// Always serialize completed and total, even if 0, so we can restore progress
+					// Explicitly create JSON node to ensure zero values are included
+					var node = new Json.Node(Json.NodeType.VALUE);
+					node.set_int(value.get_int64());
+					return node;
 				default:
 					// Serialize all other fields (defaults will handle empty/zero values)
 					return default_serialize_property(property_name, value, pspec);

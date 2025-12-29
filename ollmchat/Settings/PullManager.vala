@@ -51,6 +51,11 @@ namespace OLLMchat.Settings
 		public signal void model_failed(string model_name);
 		
 		/**
+		 * Signal emitted when the active pull count changes (items added or removed from pull map).
+		 */
+		public signal void pulls_changed();
+		
+		/**
 		 * Application interface (provides config and data_dir)
 		 */
 		public OLLMchat.ApplicationInterface app { get; construct; }
@@ -68,7 +73,8 @@ namespace OLLMchat.Settings
 		/**
 		 * Map of model_name -> pull status (runtime tracking and persistence)
 		 */
-		private Gee.HashMap<string, PullStatus> loading_status_cache;
+		public Gee.HashMap<string, PullStatus> models { get; set; 
+			default = new Gee.HashMap<string, PullStatus>(); }
 		
 		/**
 		 * Timestamp of last file write
@@ -78,7 +84,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Rate limit: minimum seconds between UI updates (except for status changes and final updates)
 		 */
-		private const int64 UPDATE_RATE_LIMIT_SECONDS = 2;
+		private const int64 UPDATE_RATE_LIMIT_SECONDS = 1;
 		
 		/**
 		 * Rate limit: minimum seconds between file writes (except for start/finish)
@@ -100,7 +106,6 @@ namespace OLLMchat.Settings
 			Object(app: app);
 			
 			this.loading_json_path = GLib.Path.build_filename(app.data_dir, "loading.json");
-			this.loading_status_cache = new Gee.HashMap<string, PullStatus>();
 			
 			// Create background thread manager
 			this.pull_thread = new PullManagerThread(app);
@@ -112,22 +117,19 @@ namespace OLLMchat.Settings
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to ensure data directory exists: " + e.message);
 			}
-			
-			// Load existing status from file
-			this.load_from_file();
-			
-			// Resume any incomplete pulls
-			this.resume_incomplete_pulls();
 		}
 		
 		/**
-		 * Resumes any incomplete pulls that were in progress when the application was closed.
+		 * Restarts any incomplete pulls that were in progress when the application was closed.
 		 * 
-		 * Called after loading status from file. Resumes pulls with status "pulling" or "pending-retry".
+		 * Loads status from file and resumes pulls with status "pulling" or "pending-retry".
 		 */
-		private void resume_incomplete_pulls()
+		public void restart()
 		{
-			foreach (var entry in this.loading_status_cache.entries) {
+			// Load existing status from file
+			this.load_from_file();
+			
+			foreach (var entry in this.models.entries) {
 				var status = entry.value;
 				
 				// Skip if not in progress or pending retry
@@ -263,8 +265,8 @@ namespace OLLMchat.Settings
 		 */
 		private PullStatus get_or_create_status(string model_name)
 		{
-			if (this.loading_status_cache.has_key(model_name)) {
-				var status_obj = this.loading_status_cache.get(model_name);
+			if (this.models.has_key(model_name)) {
+				var status_obj = this.models.get(model_name);
 				// Ensure model_name is set (for backwards compatibility with loaded data)
 				if (status_obj.model_name == "") {
 					status_obj.model_name = model_name;
@@ -274,7 +276,8 @@ namespace OLLMchat.Settings
 			
 			var status_obj = new PullStatus();
 			status_obj.model_name = model_name;
-			this.loading_status_cache.set(model_name, status_obj);
+			this.models.set(model_name, status_obj);
+			this.pulls_changed();
 			return status_obj;
 		}
 		
@@ -302,6 +305,7 @@ namespace OLLMchat.Settings
 			// Update status object in main thread (thread-safe)
 			var status_obj = this.get_or_create_status(model_name);
 			var old_status = status_obj.status;
+			var old_total = status_obj.total;
 			status_obj.model_name = model_name;
 			status_obj.status = status;
 			status_obj.retry_count = retry_count;
@@ -309,6 +313,21 @@ namespace OLLMchat.Settings
 			status_obj.total = total;
 			if (last_chunk_status != "") {
 				status_obj.last_chunk_status = last_chunk_status;
+			}
+			
+			// Initialize start tracking when download begins (new or resumed)
+			var now = GLib.get_real_time() / 1000000;
+			if (status == "pulling") {
+				// Initialize start tracking if not already initialized
+				if (status_obj.start_time == 0) {
+					status_obj.start_time = now;
+					status_obj.start_completed = status_obj.completed;
+				} else if (status_obj.start_completed == 0 && status_obj.completed > 0) {
+					// Resume scenario: start_time was set on restore, but start_completed might be 0
+					// Set it to current completed value to calculate rate from resume point
+					status_obj.start_completed = status_obj.completed;
+				}
+				// Don't update last_update_time here - let schedule_progress_update handle it
 			}
 			
 			// Update active flag based on status
@@ -327,7 +346,9 @@ namespace OLLMchat.Settings
 			}
 			
 			// Write to file if needed
-			bool force_write = (status == "pulling" && total == 0) || 
+			// Force write when: initial state (total == 0), first progress update (old_total == 0 && total > 0), or final states
+			bool is_first_progress = (old_total == 0 && total > 0);
+			bool force_write = (status == "pulling" && (total == 0 || is_first_progress)) || 
 			                   status == "complete" || 
 			                   status == "failed" || 
 			                   status == "pending-retry";
@@ -363,7 +384,8 @@ namespace OLLMchat.Settings
 					this.model_failed(model_name);
 				}
 				
-				this.loading_status_cache.unset(model_name);
+				this.models.unset(model_name);
+				this.pulls_changed();
 				this.write_to_file();
 				return false;
 			});
@@ -385,11 +407,11 @@ namespace OLLMchat.Settings
 			Idle.add(() => {
 				GLib.Timeout.add_seconds((uint)RETRY_DELAY_SECONDS, () => {
 					// Check if still in pending-retry status (not completed or failed)
-					if (!this.loading_status_cache.has_key(model_name)) {
+					if (!this.models.has_key(model_name)) {
 						return false;
 					}
 					
-					var check_status = this.loading_status_cache.get(model_name);
+					var check_status = this.models.get(model_name);
 					if (check_status.status != "pending-retry") {
 						return false;
 					}
@@ -442,9 +464,8 @@ namespace OLLMchat.Settings
 				return;
 			}
 			
-			// Update timestamp and rate tracking before emitting
+			// Update timestamp (start tracking is initialized when status becomes "pulling")
 			status_obj.last_update_time = now;
-			status_obj.update_rate_tracking();
 			
 			// Emit update
 			Idle.add(() => {
@@ -484,13 +505,26 @@ namespace OLLMchat.Settings
 				var parser = new Json.Parser();
 				parser.load_from_file(this.loading_json_path);
 				var root_array = parser.get_root().get_array();
+				var now = GLib.get_real_time() / 1000000;
 				for (uint i = 0; i < root_array.get_length(); i++) {
 					var status_obj = Json.gobject_deserialize(
 						typeof(PullStatus),
 						root_array.get_element(i)
 					) as PullStatus;
-					this.loading_status_cache.set(status_obj.model_name, status_obj);
+					
+					// Initialize start tracking for restored "pulling" status
+					// This ensures rate calculations have a proper baseline
+					if (status_obj.status == "pulling" && status_obj.start_time == 0) {
+						status_obj.start_time = now;
+						// Don't set start_completed here - let handle_status_update set it
+						// Set last_update_time to past so first update after restore will always emit
+						status_obj.last_update_time = now - UPDATE_RATE_LIMIT_SECONDS;
+					}
+					
+					this.models.set(status_obj.model_name, status_obj);
 				}
+				// Emit signal once after loading all items
+				this.pulls_changed();
 			} catch (Error e) {
 				GLib.debug("Failed to load loading.json: " + e.message);
 			}
@@ -505,7 +539,7 @@ namespace OLLMchat.Settings
 				string[] json_parts ={};
 				
 				// Serialize each status object to JSON string
-				foreach (var entry in this.loading_status_cache.entries) {
+				foreach (var entry in this.models.entries) {
 					json_parts += Json.gobject_to_data(entry.value, null);
 				}
 				
@@ -518,37 +552,5 @@ namespace OLLMchat.Settings
 				GLib.warning("Failed to write loading.json: " + e.message);
 			}
 		}
-		
-		/**
-		 * Checks if a pull is currently in progress for a model.
-		 * 
-		 * @param model_name Model name to check
-		 * @return true if pull is in progress, false otherwise
-		 */
-		public bool is_pulling(string model_name)
-		{
-			if (!this.loading_status_cache.has_key(model_name)) {
-				return false;
-			}
-			
-			return this.loading_status_cache.get(model_name).active;
-		}
-		
-		/**
-		 * Gets all models that are currently being pulled.
-		 * 
-		 * @return Set of model names that are being pulled
-		 */
-		public Gee.Set<string> get_active_pulls()
-		{
-			var result = new Gee.HashSet<string>();
-			foreach (var entry in this.loading_status_cache.entries) {
-				if (entry.value.active) {
-					result.add(entry.key);
-				}
-			}
-			return result;
-		}
-		
 	}
 }

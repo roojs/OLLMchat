@@ -64,6 +64,20 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
+		 * Initializes progress bars for any existing active pulls.
+		 * Should be called when the dialog is shown.
+		 */
+		public void initialize_existing_pulls()
+		{
+			foreach (var entry in this.pull_manager.models.entries) {
+				if (entry.value.active) {
+					this.status_tracking.set(entry.key, entry.value);
+					this.update_progress_bar(entry.value);
+				}
+			}
+		}
+		
+		/**
 		 * Handles progress updates from PullManager.
 		 */
 		private void on_progress_updated(PullStatus status)
@@ -117,6 +131,9 @@ namespace OLLMchat.Settings
 					show_text = true,
 					fraction = 0.0
 				};
+				
+				// Set ellipsize to prevent text overflow
+				progress_bar.set_ellipsize(Pango.EllipsizeMode.END);
 				
 				container.append(progress_bar);
 				this.progress_widgets.set(model_name, container);
