@@ -129,9 +129,6 @@ namespace OLLMchat.Settings
 			// Load existing status from file
 			this.load_from_file();
 			
-			// Initialize previous_active_count before processing
-			this.previous_active_count = this.get_active_pulls().size;
-			
 			foreach (var entry in this.loading_status_cache.entries) {
 				var status = entry.value;
 				
