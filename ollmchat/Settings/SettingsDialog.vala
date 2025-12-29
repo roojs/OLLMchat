@@ -188,6 +188,9 @@ namespace OLLMchat.Settings
 			// Refresh models when dialog is shown (every time)
 			this.models_page.render_models.begin();
 			
+			// Initialize progress bars for any existing active pulls
+			this.progress_banner.initialize_existing_pulls();
+			
 			// Present the dialog
 			this.present(parent);
 		}
