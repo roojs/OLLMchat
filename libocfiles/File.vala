@@ -75,6 +75,49 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Named constructor: Create a fake File object for files not in database.
+		 * 
+		 * Fake files are used for accessing files outside the project scope.
+		 * They have id = -1 and skip database operations.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 * @param path The full path to the file
+		 */
+		public File.new_fake(ProjectManager manager, string path)
+		{
+			base(manager);
+			this.base_type = "f";
+			this.path = path;
+			this.id = -1; // Indicates not in database (fake file)
+			
+			// Detect language from filename
+			this.detect_language();
+			
+			// Set is_text from content type if available
+			try {
+				var file = GLib.File.new_for_path(path);
+				if (file.query_exists()) {
+					var file_info = file.query_info(
+						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					var content_type = file_info.get_content_type();
+					this.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
+					
+					// Set last_modified from FileInfo
+					var mod_time = file_info.get_modification_date_time();
+					if (mod_time != null) {
+						this.last_modified = mod_time.to_unix();
+					}
+				}
+			} catch (GLib.Error e) {
+				// File might not exist yet, that's okay for fake files
+				GLib.debug("File.new_fake: Could not query file info for %s: %s", path, e.message);
+			}
+		}
+		
+		/**
 		 * Detect programming language from file extension using buffer provider.
 		 * Sets the language property if a match is found.
 		 */

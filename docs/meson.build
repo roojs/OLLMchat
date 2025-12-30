@@ -3,7 +3,7 @@
 #
 # IMPORTANT: When adding/removing/changing source files in any library directory,
 # you MUST update the input files list below to match. This includes:
-# - libocagent, libocsqlite, libocfiles, liboccoder, libollmchat, etc.
+# - libocagent, libocsqlite, libocfiles, liboccoder, libollmchat, liboctools, etc.
 # Check the corresponding meson.build file in each library directory for the
 # current list of source files.
 #
@@ -118,13 +118,16 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/History/TitleGenerator.vala',
     '../libollmchat/Call/Generate.vala',
     '../libollmchat/Response/Generate.vala',
-    '../libollmchat/Tools/ReadFile.vala',
-    '../libollmchat/Tools/RequestReadFile.vala',
-    '../libollmchat/Tools/EditMode.vala',
-    '../libollmchat/Tools/RequestEditMode.vala',
-    '../libollmchat/Tools/EditModeChange.vala',
-    '../libollmchat/Tools/RunCommand.vala',
-    '../libollmchat/Tools/RequestRunCommand.vala',
+    # liboctools sources (depends on libollmchat and libocfiles)
+    '../liboctools/ReadFile.vala',
+    '../liboctools/RequestReadFile.vala',
+    '../liboctools/EditMode.vala',
+    '../liboctools/RequestEditMode.vala',
+    '../liboctools/EditModeChange.vala',
+    '../liboctools/RunCommand.vala',
+    '../liboctools/RequestRunCommand.vala',
+    '../liboctools/WebFetchTool.vala',
+    '../liboctools/RequestWebFetch.vala',
     # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
     '../liboccoder/BufferProvider.vala',
     '../liboccoder/GitProvider.vala',

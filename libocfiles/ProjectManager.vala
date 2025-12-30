@@ -247,6 +247,23 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Check if a file path is in the active project.
+		 * 
+		 * @param file_path The normalized file path to check
+		 * @return The File object if found in active project, null otherwise
+		 */
+		public File? get_file_from_active_project(string file_path)
+		{
+			if (this.active_project == null) {
+				return null;
+			}
+			
+			var project_file = this.active_project.project_files.child_map.get(file_path);
+			return (project_file == null) ? null : project_file.file;
+			
+		}
+		
+		/**
 		 * Restore active project and file from in-memory data structures.
 		 * Note: Projects are Folders with is_project = true.
 		 * This will set this.active_project and this.active_file, deactivate previous items,

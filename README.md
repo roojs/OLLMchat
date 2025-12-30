@@ -25,6 +25,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
   - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies)
   - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
+  - `liboctools.so` - Tools library for file operations and utilities (depends on libollmchat, libocfiles, no GTK dependencies)
   - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
@@ -95,6 +96,7 @@ This will build:
 - `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
 - `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
+- `liboctools.so` - Tools library for file operations and utilities (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmchat` - Main application executable
 - `oc-test-cli` - Command-line test executable
@@ -186,11 +188,19 @@ The project is organized into component directories, each with its own `meson.bu
   - `Call/` - API call implementations (Chat, Embed, Generate, etc.)
   - `Response/` - Response handling classes
   - `Tool/` - Tool interface and base classes (namespace: `OLLMchat.Tool`)
-  - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, WebFetch, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
   - `Prompt/` - Prompt generation system for different agent types with agent management (namespace: `OLLMchat.Prompt`)
   - `History/` - Chat history management (namespace: `OLLMchat.History`)
   - `Message.vala`, `ChatContentInterface.vala`, `OllamaBase.vala` - Core message and base classes
+
+**Tools Library (`liboctools.so`):**
+- `liboctools/` - Tools for file operations and utilities (namespace: `OLLMtools`)
+  - `ReadFile.vala`, `RequestReadFile.vala` - File reading tool with line range support
+  - `EditMode.vala`, `RequestEditMode.vala`, `EditModeChange.vala` - File editing tool
+  - `RunCommand.vala`, `RequestRunCommand.vala` - Terminal command execution tool
+  - `WebFetchTool.vala`, `RequestWebFetch.vala` - Web content fetching tool
+  - Tools have access to `ProjectManager` for project context awareness
+  - Files in active project automatically skip permission prompts
 
 **OLLMchat GTK Library (`libollmchatgtk.so`):**
 - `libollmchatgtk/` - GTK UI components (namespace: `OLLMchatGtk`)
@@ -263,6 +273,13 @@ The project is organized into component directories, each with its own `meson.bu
 - json-glib
 - libsoup-3.0
 - libocsqlite (depends on libocsqlite.so)
+
+**Tools library (`liboctools.so`)**:
+- Gee
+- GLib/GIO
+- json-glib
+- libollmchat (depends on libollmchat.so)
+- libocfiles (depends on libocfiles.so)
 
 **OLLMchat GTK library (`libollmchatgtk.so`)**:
 - All OLLMchat base library dependencies

@@ -199,6 +199,17 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Sync buffer contents to file on disk.
+		 * 
+		 * Not supported for DummyFileBuffer - this method is only for GTK SourceView.
+		 * Use write() instead to update buffer and write to file.
+		 */
+		public async void sync_to_file() throws Error
+		{
+			throw new GLib.IOError.NOT_SUPPORTED("sync_to_file() is only supported for GtkSourceFileBuffer, not DummyFileBuffer. Use write() instead.");
+		}
+		
+		/**
 		 * Write contents to buffer and file.
 		 * 
 		 * Updates buffer contents and writes to file on disk.
@@ -207,19 +218,13 @@ namespace OLLMfiles
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
-		public void write(string contents) throws Error
+		public async void write(string contents) throws Error
 		{
-			// Create backup if needed
-			create_backup_if_needed();
-			
 			// Update cache
 			this.lines = contents.split("\n");
 			
-			// Write to file
-			write_to_disk(contents);
-			
-			// Update file metadata
-			update_file_metadata_after_write();
+			// Write to file (backup, write, update metadata)
+			yield this.write_real(contents);
 		}
 	}
 }

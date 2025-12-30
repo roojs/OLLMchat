@@ -366,6 +366,14 @@ namespace OLLMfiles
 		 */
 		public void saveToDB(SQ.Database db, FileBase? new_values = null, bool sync = true)
 		{
+			// Skip DB operations for fake files (id < 0 indicates not in database)
+			// id = -1: fake file (ignore), id = 0: new file (insert), id > 0: existing file (update)
+			if (this.id < 0) {
+				GLib.debug("FileBase.saveToDB: Skipping DB operation for fake file (id=%lld, path='%s')", 
+					this.id, this.path);
+				return;
+			}
+			
 			saveToDB_call_count++;
 			var call_id = saveToDB_call_count;
 			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
@@ -375,7 +383,10 @@ namespace OLLMfiles
 				new_values != null ? "set" : "null", sync.to_string(), this.get_type().name());
 			
 			var sq = new SQ.Query<FileBase>(db, "filebase");
-			if (this.id <= 0) {
+			// At this point, id >= 0 (fake files with id < 0 already returned above)
+			// id = 0: new file (insert), id > 0: existing file (update)
+			if (this.id == 0) {
+				// New file - insert into database
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
 				GLib.debug("FileBase.saveToDB[%lld]: Inserted new record, id=%lld", call_id, this.id);

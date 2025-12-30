@@ -208,6 +208,33 @@ namespace OLLMcoder
 		
 		
 		/**
+		 * Sync buffer contents to file on disk.
+		 * 
+		 * Gets the current buffer contents and writes them to the file.
+		 * Also marks the buffer as not modified.
+		 */
+		public async void sync_to_file() throws Error
+		{
+			// Get buffer content
+			Gtk.TextIter start, end;
+			this.get_bounds(out start, out end);
+			var contents = this.get_text(start, end, true);
+			
+			// Write to file (backup, write, update metadata)
+			yield this.write_real(contents);
+			
+			// Mark buffer as not modified
+			this.set_modified(false);
+			
+			// Update last_read_timestamp to match file modification time
+			this.last_read_timestamp = GLib.File.new_for_path(this.file.path).query_info(
+				GLib.FileAttribute.TIME_MODIFIED,
+				GLib.FileQueryInfoFlags.NONE,
+				null
+			).get_modification_date_time().to_unix();
+		}
+		
+		/**
 		 * Write contents to buffer and file.
 		 * 
 		 * Updates buffer contents and writes to file on disk.
@@ -216,16 +243,13 @@ namespace OLLMcoder
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
-		public void write(string contents) throws Error
+		public async void write(string contents) throws Error
 		{
-			// Create backup if needed
-			create_backup_if_needed();
-			
 			// Update buffer
 			this.text = contents;
 			
-			// Write to file
-			write_to_disk(contents);
+			// Write to file (backup, write, update metadata)
+			yield this.write_real(contents);
 			
 			// Update last_read_timestamp to match file modification time
 			this.last_read_timestamp = GLib.File.new_for_path(this.file.path).query_info(
@@ -233,9 +257,6 @@ namespace OLLMcoder
 				GLib.FileQueryInfoFlags.NONE,
 				null
 			).get_modification_date_time().to_unix();
-			
-			// Update file metadata
-			update_file_metadata_after_write();
 		}
 	}
 }

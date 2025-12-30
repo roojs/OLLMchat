@@ -75,22 +75,6 @@ ollmchat_ollama_src = files([
   'Response/Generate.vala',
 ])
 
-# Source files for prompt system (moved to libocagent and liboccoder)
-ollmchat_prompt_src = files([
-])
-
-# Source files for Tools namespace (base, no GTK)
-ollmchat_tools_src = files([
-  'Tools/ReadFile.vala',
-  'Tools/RequestReadFile.vala',
-  'Tools/EditMode.vala',
-  'Tools/RequestEditMode.vala',
-  'Tools/EditModeChange.vala',
-  'Tools/RunCommand.vala',
-  'Tools/RequestRunCommand.vala',
-  'Tools/WebFetchTool.vala',
-  'Tools/RequestWebFetch.vala',
-])
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -103,7 +87,7 @@ lib_build_rpath = ':'.join([
 
 ollmchat_base_lib = library('ollmchat',
   dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep],
-  sources: [ollmchat_ollama_src, ollmchat_prompt_src, ollmchat_tools_src, ollmchat_resources],
+  sources: [ollmchat_ollama_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
   # Don't use link_with for ocsqlite_base_lib to prevent determine_dep_vapis() from finding

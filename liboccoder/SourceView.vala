@@ -128,7 +128,7 @@ namespace OLLMcoder
 				sensitive = false  // Disabled until file is open
 			};
 			this.save_button.clicked.connect(() => {
-				this.save_file();
+				this.save_file.begin();
 			});
 			header_bar.append(this.save_button);
 			
@@ -207,7 +207,7 @@ namespace OLLMcoder
 				var shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
 				
 				if (ctrl && keyval == Gdk.Key.s) {
-					this.save_file();
+					this.save_file.begin();
 					return true;
 				}
 				
@@ -893,26 +893,15 @@ namespace OLLMcoder
 		/**
 		 * Save current file to disk.
 		 */
-		public void save_file()
+		public async void save_file()
 		{
 			if (this.current_file == null || this.current_file.buffer == null) {
 				return;
 			}
 			
-			var buffer = this.current_file.buffer as GtkSourceFileBuffer;
-			if (buffer == null) {
-				return;
-			}
-			
-			// Get buffer content
-			Gtk.TextIter start, end;
-			buffer.get_bounds(out start, out end);
-			string contents = buffer.get_text(start, end, true);
-			
-			// Write to file using buffer's write method
+			// Sync buffer to file
 			try {
-				this.current_file.buffer.write(contents);
-				buffer.set_modified(false);
+				yield this.current_file.buffer.sync_to_file();
 				this.current_file.is_unsaved = false;
 				
 				// Save state to database and force immediate save to disk

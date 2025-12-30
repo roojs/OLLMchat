@@ -285,16 +285,23 @@ namespace OLLMchat
 			// Create history manager (it will create base_client from config)
 			this.history_manager = new OLLMchat.History.Manager(this.app);
 			
+			// Create ProjectManager first to share with tools
+			var project_manager = new OLLMfiles.ProjectManager(
+				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
+			);
+			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			project_manager.git_provider = new OLLMcoder.GitProvider();
+			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.ReadFile(this.history_manager.base_client));
+					new OLLMtools.ReadFile(this.history_manager.base_client, project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.EditMode(this.history_manager.base_client));
+					new OLLMtools.EditMode(this.history_manager.base_client, project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.RunCommand(this.history_manager.base_client, 
-						GLib.Environment.get_home_dir()));
+					new OLLMtools.RunCommand(this.history_manager.base_client, 
+						GLib.Environment.get_home_dir(), project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.WebFetchTool(this.history_manager.base_client));
+					new OLLMtools.WebFetchTool(this.history_manager.base_client, project_manager));
 			
 			// Also add tools to current session's client (EmptySession was created before tools were added)
 			// Reuse the same tool instances from base_client to preserve state (like active property)
@@ -304,13 +311,6 @@ namespace OLLMchat
 
 			
 			// Register CodeAssistant agent
-			// Create ProjectManager first to share with tools
-			var project_manager = new OLLMfiles.ProjectManager(
-				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
-			);
-			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.GitProvider();
-			
 			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(project_manager) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
 			};

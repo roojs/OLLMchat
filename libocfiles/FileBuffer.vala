@@ -125,7 +125,41 @@ namespace OLLMfiles
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
-		public abstract void write(string contents) throws Error;
+		public abstract async void write(string contents) throws Error;
+		
+		/**
+		 * Sync buffer contents to file on disk asynchronously.
+		 * 
+		 * Gets the current buffer contents and writes them to the file.
+		 * For GTK buffers: Also marks the buffer as not modified.
+		 * For dummy buffers: Not supported - use write() instead.
+		 * Creates backup if needed, writes to disk, and updates file metadata.
+		 * 
+		 * @throws Error if file cannot be written or method is not supported
+		 */
+		public abstract async void sync_to_file() throws Error;
+		
+		/**
+		 * Write contents to file on disk (sync buffer to file).
+		 * 
+		 * Creates backup if needed, writes to disk, and updates file metadata.
+		 * This is used when the buffer already has the contents and we just need
+		 * to sync it to the file. Unlike write(), this does not update the buffer contents.
+		 * 
+		 * @param contents Contents to write
+		 * @throws Error if file cannot be written
+		 */
+		public async void write_real(string contents) throws Error
+		{
+			// Create backup if needed
+			yield this.create_backup_if_needed();
+			
+			// Write to file
+			yield this.write_to_disk(contents);
+			
+			// Update file metadata
+			this.update_file_metadata_after_write();
+		}
 		
 		/**
 		 * Internal method: Create backup if file is in database.
@@ -133,7 +167,7 @@ namespace OLLMfiles
 		 * Backup path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}
 		 * Only creates backup if doesn't exist for today.
 		 */
-		protected void create_backup_if_needed()
+		protected async void create_backup_if_needed()
 		{
 			// Only create backup if file is in database (id > 0)
 			if (this.file.id <= 0) {
@@ -172,13 +206,30 @@ namespace OLLMfiles
 					return;
 				}
 				
-				// Copy current file to backup location
+				// Copy current file to backup location asynchronously
 				var source_file = GLib.File.new_for_path(this.file.path);
 				if (!source_file.query_exists()) {
 					return;
 				}
 				
-				source_file.copy(backup_file, GLib.FileCopyFlags.OVERWRITE, null, null);
+				// Open source file for reading asynchronously
+				var input_stream = yield source_file.read_async(GLib.Priority.DEFAULT, null);
+				
+				// Open destination file for writing asynchronously (replace existing)
+				var output_stream = yield backup_file.replace_async(
+					GLib.Priority.DEFAULT,
+					null,
+					false,
+					GLib.FileCreateFlags.NONE
+				);
+				
+				// Copy data from input to output stream asynchronously
+				yield output_stream.splice_async(
+					input_stream,
+					GLib.OutputStreamSpliceFlags.CLOSE_SOURCE | GLib.OutputStreamSpliceFlags.CLOSE_TARGET,
+					GLib.Priority.DEFAULT,
+					null
+				);
 				
 				// Update file's last_approved_copy_path
 				this.file.last_approved_copy_path = backup_path;
@@ -199,7 +250,7 @@ namespace OLLMfiles
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
 		 */
-		protected void write_to_disk(string contents) throws Error
+		protected async void write_to_disk(string contents) throws Error
 		{
 			var dirname = GLib.Path.get_dirname(this.file.path);
 			var dir_file = GLib.File.new_for_path(dirname);
@@ -208,10 +259,20 @@ namespace OLLMfiles
 			}
 			
 			var file_obj = GLib.File.new_for_path(this.file.path);
-			var output_stream = file_obj.replace(null, false, GLib.FileCreateFlags.NONE, null);
-			var data_stream = new GLib.DataOutputStream(output_stream);
-			data_stream.put_string(contents, null);
-			data_stream.close(null);
+			var output_stream = yield file_obj.replace_async(
+				GLib.Priority.DEFAULT,
+				null,
+				false,
+				GLib.FileCreateFlags.NONE
+			);
+			
+			// Write contents asynchronously
+			uint8[] data = contents.data;
+			size_t bytes_written;
+			yield output_stream.write_all_async(data, GLib.Priority.DEFAULT, null, out bytes_written);
+			
+			// Close stream asynchronously
+			yield output_stream.close_async(GLib.Priority.DEFAULT, null);
 		}
 		
 		/**

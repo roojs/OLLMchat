@@ -7,7 +7,8 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocmarkdown',
   meson.current_build_dir() / '..' / 'libocmarkdowngtk',
   meson.current_build_dir() / '..' / 'libollmchat',
-  meson.current_build_dir() / '..' / 'libollmchatgtk'
+  meson.current_build_dir() / '..' / 'libollmchatgtk',
+  meson.current_build_dir() / '..' / 'liboctools'
 ])
 
 # Dependencies for ollmchat executable
@@ -32,7 +33,16 @@ ollmchat_deps = [
 # Build ollmchat executable (primary application)
 # Include resources directly in the executable to ensure they're registered
 ollmchat = executable('ollmchat',
-  dependencies: [ollmchat_deps, ocmarkdowngtk_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, occoder_vapi_dep, ocvector_vapi_dep, ocfiles_vapi_dep],
+  dependencies: [
+      ollmchat_deps, 
+      ocmarkdowngtk_vapi_dep, 
+      ocsqlite_vapi_dep, 
+      ocagent_vapi_dep, 
+      occoder_vapi_dep, 
+      ocvector_vapi_dep, 
+      ocfiles_vapi_dep, 
+      octools_vapi_dep
+  ],
   sources: [
     'Application.vala',
     'Window.vala',
@@ -75,6 +85,7 @@ ollmchat = executable('ollmchat',
     '--pkg=occoder',
     '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
     '--pkg=ocvector',  # Use manually generated ocvector.vapi (via ocvector_vapi_dep)
+    '--pkg=octools',  # Tools library
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=libgit2-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
@@ -83,7 +94,8 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocvector'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
   ],
   install: true,
   install_dir: get_option('bindir')
