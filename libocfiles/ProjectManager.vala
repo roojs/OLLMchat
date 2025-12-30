@@ -322,9 +322,8 @@ namespace OLLMfiles
 		public static async void cleanup_old_backups()
 		{
 			var now = new GLib.DateTime.now_local().to_unix();
-			var one_day_ago = now - (24 * 60 * 60);
 			
-			if (last_cleanup_timestamp > one_day_ago) {
+			if (last_cleanup_timestamp > now - (24 * 60 * 60)) {
 				return;
 			}
 			
