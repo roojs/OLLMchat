@@ -358,10 +358,7 @@ namespace OLLMcoder
 			
 			// Get GtkSourceFileBuffer (should not be null after create_buffer)
 			var gtk_buffer = file.buffer as GtkSourceFileBuffer;
-			if (gtk_buffer == null) {
-				GLib.warning("SourceView.open_file: Failed to create GtkSourceFileBuffer for file %s", file.path);
-				return;
-			}
+			 
 			
 			// Load file content asynchronously if buffer hasn't been loaded
 			if (!gtk_buffer.is_loaded) {
