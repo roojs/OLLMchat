@@ -19,36 +19,6 @@
 namespace OLLMfiles
 {
 	/**
-	 * Represents a single edit operation with line range and replacement text.
-	 * 
-	 * Line numbers are 1-based (inclusive start, exclusive end).
-	 */
-	public class Edit : Object
-	{
-		/**
-		 * Starting line number (1-based, inclusive).
-		 */
-		public int start { get; set; }
-		
-		/**
-		 * Ending line number (1-based, exclusive).
-		 */
-		public int end { get; set; }
-		
-		/**
-		 * Replacement text to insert at the specified range.
-		 */
-		public string replacement { get; set; default = ""; }
-		
-		public Edit(int start, int end, string replacement)
-		{
-			this.start = start;
-			this.end = end;
-			this.replacement = replacement;
-		}
-	}
-	
-	/**
 	 * Interface for file buffer operations.
 	 * 
 	 * Provides a unified interface for accessing file contents, whether
@@ -168,6 +138,21 @@ namespace OLLMfiles
 		 * @throws Error if file cannot be written or method is not supported
 		 */
 		public abstract async void sync_to_file() throws Error;
+		
+		/**
+		 * Apply multiple edits to the buffer efficiently.
+		 * 
+		 * Applies edits in reverse order (from end to start) to preserve line numbers.
+		 * For GTK buffers: Uses buffer text manipulation for efficient chunk editing.
+		 * For dummy buffers: Works with in-memory lines array.
+		 * 
+		 * Changes should be sorted by start line (descending) before calling.
+		 * Line numbers in FileChange are 1-based (inclusive start, exclusive end).
+		 * 
+		 * @param changes List of FileChange objects to apply
+		 * @throws Error if edits cannot be applied
+		 */
+		public abstract async void apply_edits(Gee.ArrayList<FileChange> changes) throws Error;
 		
 		/**
 		 * Write contents to file on disk (sync buffer to file).
