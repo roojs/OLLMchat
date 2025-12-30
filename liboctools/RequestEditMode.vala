@@ -683,52 +683,10 @@ namespace OLLMtools
 		/**
 		 * Creates a new file with all changes applied.
 		 */
-		private void create_new_file_with_changes() throws Error
+		private async void create_new_file_with_changes(OLLMfiles.File file) throws Error
 		{
-			// Ensure parent directory exists
-			var parent_dir = GLib.Path.get_dirname(this.normalized_path);
-			var dir = GLib.File.new_for_path(parent_dir);
-			if (!dir.query_exists()) {
-				try {
-					dir.make_directory_with_parents(null);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to create parent directory: " + e.message);
-				}
-			}
-			
-			 
-			
-			// Create new file and write all changes (overwrite if exists)
-			// If overwrite is true and file exists, delete it first
-			var output_file = GLib.File.new_for_path(this.normalized_path);
-			if (this.overwrite && output_file.query_exists()) {
-				try {
-					output_file.delete(null);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to delete existing file: " + e.message);
-				}
-			}
-			var output_stream = new GLib.DataOutputStream(
-				output_file.create(GLib.FileCreateFlags.NONE, null)
-			);
-			
-			try {
-				// Write replacement lines
-				foreach (var new_line in this.changes[0].replacement.split("\n")) {
-					output_stream.put_string(new_line);
-					output_stream.put_byte('\n');
-				}
-				
-				// Emit change_done signal
-				var edit_tool = (EditMode) this.tool;
-				edit_tool.change_done(this.normalized_path, this.changes[0]);
-			} finally {
-				try {
-					output_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
+			// Write replacement content using buffer (handles backup and directory creation automatically)
+			yield file.buffer.write(this.changes[0].replacement);
 		}
 		
 		/**
