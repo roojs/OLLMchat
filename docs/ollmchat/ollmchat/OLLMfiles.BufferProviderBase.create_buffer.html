@@ -41,8 +41,20 @@
         </div>
         <div class="description">
           <p>Create a buffer for the file.</p>
-          <p>Creates a DummyFileBuffer instance and stores it in file.buffer. If file.buffer already exists and is a DummyFileBuffer, returns early. 
-            Performs buffer cleanup before creating new buffer (keeps top 10 most recent).</p>
+          <p>Creates a DummyFileBuffer instance and stores it in file.buffer. If file.buffer already exists and is a DummyFileBuffer, returns early.
+          </p>
+          <h2>Buffer Cleanup </h2>
+          <p>Before creating new buffer, performs cleanup of old buffers. Keeps buffers for:</p>
+          <ul>
+            <li>Open files (is_open == true)</li>
+            <li>Top 10 most recently used files (by last_viewed)</li>
+          </ul>
+          <p>Sets file.buffer = null for all other files to free memory.</p>
+          <h2>Buffer Lifecycle </h2>
+          <p>Buffers are created lazily when first accessed. The buffer is stored in file.buffer property. Each File object has at most one buffer 
+            instance.</p>
+          <p>Usage: <pre class="main_source"><code>file.manager.buffer_provider.create_buffer(file);<br/><span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();</code></pre>
+          </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

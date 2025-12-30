@@ -19,10 +19,15 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages projects, files, and folders.
+	 * Central coordinator for all file system operations.
 	 * 
-	 * Provides project discovery, indexing, and file management capabilities.
-	 * Database persistence and sync will be added in Phase 2B.
+	 * ProjectManager is the entry point for all file system operations. It manages
+	 * file cache, tracks active project and active file, provides buffer and git
+	 * providers, handles database persistence, and emits signals for state changes.
+	 * 
+	 * The file_cache provides O(1) lookup by path. Projects are folders with
+	 * is_project = true (no separate Project class). Database operations are optional
+	 * (can work without database).
 	 */
 	public class ProjectManager : Object
 	{

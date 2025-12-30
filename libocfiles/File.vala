@@ -23,6 +23,20 @@ namespace OLLMfiles
 	 * 
 	 * Files can be in multiple projects (due to softlinks/symlinks).
 	 * All alias references are tracked in ProjectManager's alias_map.
+	 * 
+	 * Constructors include File(manager) for basic construction, File.new_from_info()
+	 * for creating from FileInfo during directory scan, and File.new_fake() for files
+	 * not in database (id = -1).
+	 * 
+	 * == Content Access ==
+	 * 
+	 * All content access methods delegate to file.buffer. Ensure buffer is created before use:
+	 * {{{
+	 * if (file.buffer == null) {
+	 *     file.manager.buffer_provider.create_buffer(file);
+	 * }
+	 * var contents = yield file.buffer.read_async();
+	 * }}}
 	 */
 	public class File : FileBase
 	{
@@ -266,8 +280,27 @@ namespace OLLMfiles
 		/**
 		 * File buffer instance (nullable).
 		 * 
-		 * Created by buffer provider when needed. Use file.buffer.read_async()
-		 * and file.buffer.write() for file operations.
+		 * Created by buffer provider when needed. Each File object has at most one
+		 * buffer instance. Buffer is created lazily when first accessed. Buffer can
+		 * be null if not yet created or after cleanup. Buffer type depends on
+		 * BufferProvider implementation (GTK vs non-GTK).
+		 * 
+		 * == Key Points ==
+		 * 
+		 *  * Each File object has at most one buffer instance
+		 *  * Buffer is created lazily when needed
+		 *  * Buffer can be null if not yet created or after cleanup
+		 *  * Buffer type depends on BufferProvider implementation (GTK vs non-GTK)
+		 * 
+		 * == Usage ==
+		 * 
+		 * Always check for null before using buffer methods:
+		 * {{{
+		 * if (file.buffer == null) {
+		 *     file.manager.buffer_provider.create_buffer(file);
+		 * }
+		 * var contents = yield file.buffer.read_async();
+		 * }}}
 		 */
 		public FileBuffer? buffer { get; set; default = null; }
 		
@@ -278,6 +311,22 @@ namespace OLLMfiles
 		
 		/**
 		 * Gets file contents, optionally limited to first N lines.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_text(). Requires
+		 * file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
+		 * == Important ==
+		 * 
+		 * This method requires file.buffer to be non-null. Ensure buffer is created
+		 * before use:
+		 * {{{
+		 * if (file.buffer == null) {
+		 *     file.manager.buffer_provider.create_buffer(file);
+		 * }
+		 * var contents = file.get_contents();
+		 * }}}
+		 * 
+		 * Buffer must be loaded first (via read_async() or automatic loading).
 		 * 
 		 * @param max_lines Maximum number of lines to return (0 = all lines)
 		 * @return File contents, or empty string if not available
@@ -293,6 +342,9 @@ namespace OLLMfiles
 		/**
 		 * Gets the total number of lines in the file.
 		 * 
+		 * Convenience method that delegates to file.buffer.get_line_count().
+		 * Requires file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
 		 * @return Line count, or 0 if not available
 		 */
 		public int get_line_count()
@@ -305,7 +357,16 @@ namespace OLLMfiles
 		
 		/**
 		 * Gets the currently selected text (only valid for active file).
-		 * Updates cursor position and saves to database.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_selection().
+		 * Updates cursor position and saves to database. Requires file.buffer to be
+		 * non-null. Only works with GTK buffers (DummyFileBuffer returns empty string).
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Gets selection from buffer (updates cursor position)
+		 *  2. Updates cursor_line and cursor_offset properties
+		 *  3. Saves to database (if manager.db is available)
 		 * 
 		 * @return Selected text, or empty string if nothing is selected
 		 */
@@ -334,6 +395,14 @@ namespace OLLMfiles
 		/**
 		 * Gets the content of a specific line.
 		 * 
+		 * Convenience method that delegates to file.buffer.get_line(). Requires
+		 * file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
+		 * == Line Numbering ==
+		 * 
+		 * Uses 0-based line numbers (internal format). For user-facing APIs,
+		 * convert from 1-based to 0-based.
+		 * 
 		 * @param line Line number (0-based)
 		 * @return Line content, or empty string if not available
 		 */
@@ -347,7 +416,17 @@ namespace OLLMfiles
 		
 		/**
 		 * Gets the current cursor position (line number).
-		 * Updates cursor_line and cursor_offset properties and saves to database.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_cursor(). Updates
+		 * cursor_line and cursor_offset properties and saves to database. Requires
+		 * file.buffer to be non-null. Only works with GTK buffers (DummyFileBuffer
+		 * returns 0,0).
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Gets cursor position from buffer
+		 *  2. Updates cursor_line and cursor_offset properties
+		 *  3. Saves to database (if manager.db is available)
 		 * 
 		 * @return Line number (0-based), or -1 if not available
 		 */

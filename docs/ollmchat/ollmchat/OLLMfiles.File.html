@@ -67,10 +67,15 @@
         <div class="description">
           <p>Represents a file in the project.</p>
           <p>Files can be in multiple projects (due to softlinks/symlinks). All alias references are tracked in ProjectManager's alias_map.</p>
+          <p>Constructors include File(manager) for basic construction, File.new_from_info() for creating from FileInfo during directory scan, and 
+            File.new_fake() for files not in database (id = -1).</p>
+          <h2>Content Access </h2>
+          <p>All content access methods delegate to file.buffer. Ensure buffer is created before use: <pre class="main_source"><code><span class="main_keyword">if</span> (file.buffer == <span class="main_literal">null</span>) {<br/>    file.manager.buffer_provider.create_buffer(file);<br/>}<br/><span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();</code></pre>
+          </p>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-23')">All known sub-classes:</div>
-          <div class="content" id="box-content-23">
+          <div class="headline" onclick="toggle_box (this, 'box-content-24')">All known sub-classes:</div>
+          <div class="content" id="box-content-24">
             <div class="column">
               <ul class="navi_inline">
                 <li class="class"><a href="OLLMfiles.FileAlias.html">FileAlias</a></li>
@@ -172,8 +177,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMfiles.File.get_cursor_position.html" class="method">get_cursor_position</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the current cursor position (line number). Updates cursor_line 
-                and cursor_offset properties and saves to database.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the current cursor position (line number).</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.File.get_line_content.html" class="method">get_line_content</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> line)
             </span>
@@ -185,8 +189,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.File.get_selected_code.html" class="method">get_selected_code</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the currently selected text (only valid for active file). Updates
-                cursor position and saves to database.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the currently selected text (only valid for active file).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
@@ -198,8 +201,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-24')">All known members inherited from class OLLMfiles.FileBase</div>
-          <div class="content" id="box-content-24">
+          <div class="headline" onclick="toggle_box (this, 'box-content-25')">All known members inherited from class OLLMfiles.FileBase</div>
+          <div class="content" id="box-content-25">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.FileBase.base_type.html">base_type</a></li>
@@ -253,8 +256,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-25')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-25">
+          <div class="headline" onclick="toggle_box (this, 'box-content-26')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-26">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

@@ -49,7 +49,7 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">BufferProviderBase</span></b> : <span class="main_type"><span class="class">Object</span></span>
         </div>
         <div class="description">
-          <p>Base class for buffer operations with default no-op implementations.</p>
+          <p>Base implementation for non-GTK contexts.</p>
           <p>Provides a default implementation that creates DummyFileBuffer instances, allowing libocfiles to work without GTK dependencies. Concrete 
             implementations (e.g., in liboccoder) can override create_buffer() to provide GTK buffers.</p>
         </div>

@@ -19,7 +19,6 @@ octools_src = files([
   'RequestReadFile.vala',
   'EditMode.vala',
   'RequestEditMode.vala',
-  'EditModeChange.vala',
   'RunCommand.vala',
   'RequestRunCommand.vala',
   'WebFetchTool.vala',

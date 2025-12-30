@@ -40,6 +40,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocsqlite/Query.vala',
     '../libocsqlite/Schema.vala',
     # libocfiles sources (must come before liboccoder and liboctools which use it)
+    '../libocfiles/namespace.vala',  # Namespace documentation
     '../libocfiles/BufferProviderBase.vala',
     '../libocfiles/FileBuffer.vala',  # Must come before File.vala (File uses FileBuffer)
     '../libocfiles/FileChange.vala',  # Must come after FileBuffer (FileBuffer uses FileChange)
@@ -129,12 +130,12 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/RequestReadFile.vala',
     '../liboctools/EditMode.vala',
     '../liboctools/RequestEditMode.vala',
-    '../liboctools/EditModeChange.vala',
     '../liboctools/RunCommand.vala',
     '../liboctools/RequestRunCommand.vala',
     '../liboctools/WebFetchTool.vala',
     '../liboctools/RequestWebFetch.vala',
     # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
+    '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
     '../liboccoder/GitProvider.vala',
     '../liboccoder/GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)

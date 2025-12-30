@@ -19,9 +19,21 @@
 namespace OLLMfiles
 {
 	/**
-	 * Dummy file buffer implementation for non-GTK contexts.
+	 * In-memory buffer implementation for non-GTK contexts (tools, CLI).
 	 * 
-	 * Uses in-memory lines array cache. No GTK dependencies.
+	 * Uses in-memory string[] array for line cache. No GTK dependencies.
+	 * Always reads from disk (no timestamp checking). No cursor/selection support
+	 * (returns defaults). sync_to_file() is not supported (throws IOError.NOT_SUPPORTED).
+	 * 
+	 * == When to Use ==
+	 * 
+	 * Use DummyFileBuffer when:
+	 * 
+	 *  * Working in non-GUI context (CLI tools, background processing)
+	 *  * No GTK dependencies available
+	 *  * Simple file read/write operations
+	 *  * Line range extraction
+	 *  * Batch file processing
 	 */
 	public class DummyFileBuffer : Object, FileBuffer
 	{
@@ -48,7 +60,15 @@ namespace OLLMfiles
 		/**
 		 * Read file contents asynchronously.
 		 * 
-		 * Always reads from disk and updates cache.
+		 * Always reads from disk and updates cache. Unlike GtkSourceFileBuffer,
+		 * does not check file modification time - always reads fresh from disk.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Reads file from disk using read_async_real()
+		 *  2. Splits contents into lines array cache
+		 *  3. Sets is_loaded = true
+		 *  4. Returns file contents
 		 * 
 		 * @return File contents as string
 		 * @throws Error if file cannot be read
@@ -197,8 +217,12 @@ namespace OLLMfiles
 		/**
 		 * Sync buffer contents to file on disk.
 		 * 
-		 * Not supported for DummyFileBuffer - this method is only for GTK SourceView.
-		 * Use write() instead to update buffer and write to file.
+		 * Not supported for DummyFileBuffer - this method is only for GTK SourceView
+		 * buffers where the buffer contents may have been modified via GTK operations.
+		 * 
+		 * For DummyFileBuffer, use write() instead to update buffer and write to file.
+		 * 
+		 * @throws Error Always throws IOError.NOT_SUPPORTED
 		 */
 		public async void sync_to_file() throws Error
 		{
@@ -227,8 +251,30 @@ namespace OLLMfiles
 		 * Apply multiple edits to the buffer efficiently using in-memory lines array.
 		 * 
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.
+		 * Works with in-memory lines array for efficient manipulation.
 		 * 
-		 * @param changes List of FileChange objects to apply (should be sorted descending by start)
+		 * == Process ==
+		 * 
+		 *  1. Ensure buffer is loaded (calls read_async() if needed)
+		 *  2. Apply changes in reverse order (from end to start) to preserve line numbers
+		 *  3. For each change:
+		 *     * Convert 1-based (inclusive start, exclusive end) to 0-based array indices
+		 *     * Validate range (insertion vs edit)
+		 *     * Build new lines array using array slicing
+		 *  4. Join lines back into content string
+		 *  5. Write to file (creates backup, writes, updates metadata)
+		 * 
+		 * == FileChange Format ==
+		 * 
+		 *  * Line numbers are 1-based (inclusive start, exclusive end)
+		 *  * start == end indicates insertion
+		 *  * start != end indicates replacement
+		 * 
+		 * == Important ==
+		 * 
+		 * Changes must be sorted descending by start line before calling.
+		 * 
+		 * @param changes List of FileChange objects to apply (must be sorted descending by start)
 		 * @throws Error if edits cannot be applied
 		 */
 		public async void apply_edits(Gee.ArrayList<FileChange> changes) throws Error

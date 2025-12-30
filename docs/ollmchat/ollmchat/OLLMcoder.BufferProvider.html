@@ -49,7 +49,10 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">BufferProvider</span></b> : <span class="main_type"><a href="OLLMfiles.BufferProviderBase.html" class="class">BufferProviderBase</a></span>
         </div>
         <div class="description">
-          <p>GTK implementation of buffer provider for File operations.</p>
+          <p>GTK implementation for GUI contexts.</p>
+          <p>GTK implementation of buffer provider for File operations. Extends BufferProviderBase and overrides methods to provide GTK-specific 
+            functionality. Uses GtkSource.LanguageManager for language detection and creates GtkSourceFileBuffer instances with syntax highlighting 
+            support.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.html">OLLMcoder</a>
         </div>
@@ -67,7 +70,7 @@
         <ul class="navi_inline">
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.BufferProvider.create_buffer.html" class="virtual_method">create_buffer</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Create a GTK buffer for the file.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMcoder.BufferProvider.detect_language.html" class="virtual_method">detect_language</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
             </span>

@@ -19,11 +19,13 @@
 namespace OLLMfiles
 {
 	/**
-	 * Base class for buffer operations with default no-op implementations.
+	 * Base implementation for non-GTK contexts.
 	 * 
 	 * Provides a default implementation that creates DummyFileBuffer instances,
 	 * allowing libocfiles to work without GTK dependencies. Concrete implementations
 	 * (e.g., in liboccoder) can override create_buffer() to provide GTK buffers.
+	 * 
+	
 	 */
 	public class BufferProviderBase : Object
 	{
@@ -212,7 +214,26 @@ namespace OLLMfiles
 		 * 
 		 * Creates a DummyFileBuffer instance and stores it in file.buffer.
 		 * If file.buffer already exists and is a DummyFileBuffer, returns early.
-		 * Performs buffer cleanup before creating new buffer (keeps top 10 most recent).
+		 * 
+		 * == Buffer Cleanup ==
+		 * 
+		 * Before creating new buffer, performs cleanup of old buffers. Keeps buffers for:
+		 * 
+		 *  * Open files (is_open == true)
+		 *  * Top 10 most recently used files (by last_viewed)
+		 * 
+		 * Sets file.buffer = null for all other files to free memory.
+		 * 
+		 * == Buffer Lifecycle ==
+		 * 
+		 * Buffers are created lazily when first accessed. The buffer is stored in
+		 * file.buffer property. Each File object has at most one buffer instance.
+		 * 
+		 * Usage:
+		 * {{{
+		 * file.manager.buffer_provider.create_buffer(file);
+		 * var contents = yield file.buffer.read_async();
+		 * }}}
 		 * 
 		 * @param file The file to create a buffer for
 		 */
@@ -234,10 +255,21 @@ namespace OLLMfiles
 		 * Cleanup old buffers to free memory.
 		 * 
 		 * Keeps buffers for:
-		 * - Open files (is_open == true)
-		 * - Top 10 most recently used files (by last_viewed)
 		 * 
-		 * Sets file.buffer = null for all other files.
+		 *  * Open files (is_open == true)
+		 *  * Top 10 most recently used files (by last_viewed)
+		 *  * The current_file being accessed (always keeps its buffer)
+		 * 
+		 * Sets file.buffer = null for all other files to free memory.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Collect all files with buffers that are not open
+		 *  2. Sort by last_viewed (most recent first)
+		 *  3. Keep top 10, clear buffers for the rest
+		 * 
+		 * This is called automatically before creating new buffers to prevent
+		 * unbounded memory growth.
 		 * 
 		 * @param current_file The file currently being accessed (always keeps its buffer)
 		 */

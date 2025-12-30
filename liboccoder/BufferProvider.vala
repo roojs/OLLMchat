@@ -19,7 +19,12 @@
 namespace OLLMcoder
 {
 	/**
-	 * GTK implementation of buffer provider for File operations.
+	 * GTK implementation for GUI contexts.
+	 * 
+	 * GTK implementation of buffer provider for File operations. Extends
+	 * BufferProviderBase and overrides methods to provide GTK-specific functionality.
+	 * Uses GtkSource.LanguageManager for language detection and creates
+	 * GtkSourceFileBuffer instances with syntax highlighting support.
 	 */
 	public class BufferProvider : OLLMfiles.BufferProviderBase
 	{
@@ -30,6 +35,23 @@ namespace OLLMcoder
 			return language?.get_id();
 		}
 		
+		/**
+		 * Create a GTK buffer for the file.
+		 * 
+		 * Creates a GtkSourceFileBuffer instance and stores it in file.buffer.
+		 * If file.buffer already exists and is a GtkSourceFileBuffer, returns early.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Cleanup old buffers before creating new one
+		 *  2. Get language object if available (from file.language)
+		 *  3. Create GtkSourceFileBuffer (extends GtkSource.Buffer directly)
+		 *  4. Store in file.buffer property
+		 * 
+		 * The buffer will have syntax highlighting if language is available.
+		 * 
+		 * @param file The file to create a buffer for
+		 */
 		public override void create_buffer(OLLMfiles.File file)
 		{
 			if (file.buffer is GtkSourceFileBuffer) {

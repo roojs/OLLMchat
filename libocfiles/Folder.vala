@@ -19,10 +19,21 @@
 namespace OLLMfiles
 {
 	/**
-	 * Represents a folder/directory in the project.
+	 * Represents a directory/folder in the project.
 	 * 
-	 * Folders maintain a list of their children and a hashmap for quick lookup by filename.
-	 * Emits signals when children are added/removed.
+	 * Can also represent a project when is_project = true. Projects are folders with
+	 * is_project = true (no separate Project class).
+	 * 
+	 * == Project Management ==
+	 * 
+	 * The project_files property provides a flat list of all files in the project (for
+	 * dropdowns/search), while the children property provides the hierarchical tree
+	 * structure (for tree views).
+	 * 
+	 * == Git Integration ==
+	 * 
+	 * Automatically discovers git repositories and checks if paths are ignored by git.
+	 * Uses manager.git_provider for git operations.
 	 */
 	public class Folder : FileBase
 	{

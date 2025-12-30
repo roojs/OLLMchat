@@ -30,6 +30,7 @@
           <li class="property"><a href="OLLMcoder.GtkSourceFileBuffer.file.html">file</a></li>
           <li class="property"><a href="OLLMcoder.GtkSourceFileBuffer.is_loaded.html">is_loaded</a></li>
           <li class="creation_method"><a href="OLLMcoder.GtkSourceFileBuffer.GtkSourceFileBuffer.html">GtkSourceFileBuffer</a></li>
+          <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_line.html">get_line</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_line_count.html">get_line_count</a></li>
@@ -48,7 +49,16 @@
         </div>
         <div class="description">
           <p>Sync buffer contents to file on disk.</p>
-          <p>Gets the current buffer contents and writes them to the file. Also marks the buffer as not modified.</p>
+          <p>Gets the current buffer contents and writes them to the file. Used when buffer contents have been modified via GTK operations (user 
+            typing, etc.) and need to be saved to disk.</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Get buffer content from GTK TextBuffer
+              <p>2. Write to file (creates backup, writes, updates metadata)</p>
+              <p>3. Mark buffer as not modified</p>
+              <p>4. Update last_read_timestamp to match file modification time</p></li>
+          </ol>
+          <p>This method is only supported for GTK buffers. For dummy buffers, use write() instead.</p>
         </div>
       </div>
     </div><br/>

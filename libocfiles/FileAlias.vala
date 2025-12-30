@@ -19,11 +19,26 @@
 namespace OLLMfiles
 {
 	/**
-	 * Wrapper class for File objects that are aliases/symlinks.
+	 * Represents a symlink/alias to a file or folder.
 	 * 
-	 * Note: Alias files are not used in the editor. Properties return null/empty/default values
-	 * and methods throw errors. The alias maintains its own path and parent (where the alias exists)
-	 * for filesystem tracking purposes only.
+	 * Many properties delegate to the target file (language, last_viewed, needs_approval,
+	 * is_unsaved, last_approved_copy_path). The points_to property references the target
+	 * file/folder, while points_to_id and target_path store the database ID and resolved
+	 * path respectively.
+	 * 
+	 * == Restrictions ==
+	 * 
+	 * Security: Aliases are restricted to user's home directory. Aliases outside home
+	 * directory are rejected.
+	 * 
+	 * Editor Restrictions: write() and read_async() throw IOError.NOT_SUPPORTED. Aliases
+	 * are not used in the editor (for display only).
+	 * 
+	 * == Notes ==
+	 * 
+	 * Aliases resolve symlinks completely using realpath(). Target must exist and be
+	 * within home directory. Aliases maintain their own path (where the symlink exists)
+	 * for filesystem tracking.
 	 */
 	public class FileAlias : File
 	{

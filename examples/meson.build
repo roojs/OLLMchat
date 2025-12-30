@@ -182,19 +182,28 @@ vmd2html = executable('oc-md2html',
 )
 
 # Build oc-test-files executable (project file scanning test)
-# Only depends on liboccoder (which already includes libocsqlite)
-# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+# Now extends TestAppBase and supports multiple file operations
+# Supports both dummy and sourceview backends (sourceview requires GTK)
 test_files = executable('oc-test-files',
-  dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
-  sources: ['oc-test-files.vala'],
-  include_directories: include_directories('../libocfiles'),
+  dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-files.vala'],
+  link_with: [ollmchat_base_lib, occoder_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboccoder')
+  ],
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    # Don't use --pkg=occoder when linking with occoder_base_lib - meson includes occoder-meson.vapi automatically
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'

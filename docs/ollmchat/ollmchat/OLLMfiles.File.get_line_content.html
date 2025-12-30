@@ -58,6 +58,10 @@
         </div>
         <div class="description">
           <p>Gets the content of a specific line.</p>
+          <p>Convenience method that delegates to file.buffer.get_line(). Requires file.buffer to be non-null. Ensure buffer is created before use.
+          </p>
+          <h2>Line Numbering </h2>
+          <p>Uses 0-based line numbers (internal format). For user-facing APIs, convert from 1-based to 0-based.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

@@ -29,6 +29,7 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.FileBuffer.create_backup_if_needed.html">create_backup_if_needed</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_line.html">get_line</a></li>
@@ -51,8 +52,26 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="abstract_method">write</span></b> (<span class="main_basic_type"><span class="class">string</span></span> contents) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Write contents to buffer and file.</p>
+          <p>Write contents to buffer and file on disk.</p>
           <p>Updates buffer contents and writes to file on disk. For files in database, creates backup before writing.</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Update buffer contents (GTK buffer text or lines array)
+              <p>2. Create backup if file is in database (id &gt; 0)</p>
+              <p>3. Write to file on disk asynchronously</p>
+              <p>4. Update file metadata (last_modified, last_viewed)</p>
+              <p>5. Save to database</p>
+              <p>6. Emit file.changed() signal</p></li>
+          </ol>
+          <h2>Backup Creation </h2>
+          <ul>
+            <li>Path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}</li>
+            <li>Only creates backup if file has id &gt; 0 (in database)</li>
+            <li>Only creates one backup per day (skips if backup exists for today)</li>
+            <li>Updates file.last_approved_copy_path with backup path</li>
+          </ul>
+          <p>Usage: <pre class="main_source"><code><span class="main_keyword">try</span> {<br/>    <span class="main_keyword">yield</span> file.buffer.write(new_contents);<br/>    <span class="main_comment">// File written and backup created (if needed)</span><br/>} <span class="main_keyword">catch</span> (Error e) {<br/>    <span class="main_comment">// Handle error</span><br/>}</code></pre>
+          </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

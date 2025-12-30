@@ -19,14 +19,30 @@
 namespace OLLMfiles
 {
 	/**
-	 * Base class for File and Folder objects.
+	 * Abstract base class providing common properties and methods for files and folders.
 	 * 
-	 * Provides common properties and methods shared by both files and folders.
+	 * FileBase is the foundation of the file system hierarchy:
+	 * 
+	 *  * File: Represents individual files
+	 *  * Folder: Represents directories (can also be projects when is_project = true)
+	 *  * FileAlias: Represents symlinks/aliases to files or folders
+	 * 
+	 * == ID Semantics ==
+	 * 
+	 *  * id = 0: New file (will be inserted into database)
+	 *  * id > 0: Existing file (will be updated in database)
+	 *  * id < 0: Fake file (not in database, skips DB operations)
+	 * 
+	 * Fake files are used for accessing files outside the project scope.
+	 * They skip database operations in saveToDB().
 	 */
 	public abstract class FileBase : Object
 	{
 		/**
 		 * Database ID.
+		 * 
+		 * Semantics: 0 = new file (will be inserted), >0 = existing file (will be updated),
+		 * <0 = fake file (not in database, skips DB operations).
 		 */
 		public int64 id { get; set; default = 0; }
 		
@@ -148,10 +164,11 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Base type identifier for serialization.
+		 * Base type identifier for serialization and database storage.
 		 * 
-		 * Returns "f" for File, "d" for Folder/Directory, "fa" for FileAlias.
-		 * Projects are folders with is_project = true (no separate "p" type).
+		 * Type identifiers: "f" = File, "d" = Folder/Directory, "fa" = FileAlias (file alias),
+		 * "da" = FileAlias (folder alias). Projects are folders with is_project = true
+		 * (no separate "p" type).
 		 */
 		public string base_type { get; set; default = ""; }
 		
@@ -324,8 +341,18 @@ namespace OLLMfiles
 		
 		/**
 		 * Copy database-preserved fields from this object to another.
+		 * 
 		 * Used when updating from filesystem: preserves DB fields like id, is_active,
 		 * cursor positions, etc. that shouldn't be overwritten by filesystem scan.
+		 * 
+		 * == Copied Fields ==
+		 * 
+		 * Copies all database-preserved fields (excluding filesystem-derived fields):
+		 * id, is_active, last_viewed, last_modified, language, last_approved_copy_path,
+		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
+		 * is_repo, last_scan.
+		 * 
+		 * Note: base_type is not copied as it's determined by object type and should match.
 		 * 
 		 * @param target The target object to copy fields to (typically the new filesystem item)
 		 */
@@ -356,6 +383,23 @@ namespace OLLMfiles
 		
 		/**
 		 * Save filebase object to SQLite database.
+		 * 
+		 * == ID Semantics ==
+		 * 
+		 *  * id = 0: New file (inserts into database, sets this.id to new ID)
+		 *  * id > 0: Existing file (updates database record)
+		 *  * id < 0: Fake file (skips database operations, returns early)
+		 * 
+		 * == Update Modes ==
+		 * 
+		 *  * If new_values is provided and this.id > 0: Uses updateOld to only update changed fields
+		 *  * Otherwise: Performs insert (id = 0) or full update (id > 0)
+		 * 
+		 * == Best Practices ==
+		 * 
+		 *  * Set sync = false when saving multiple items to avoid frequent disk writes
+		 *  * Fake files (id < 0) automatically skip database operations
+		 *  * New files (id = 0) are automatically inserted and assigned an ID
 		 * 
 		 * @param db The database instance to save to
 		 * @param new_values Optional new values object. If provided and this.id > 0,

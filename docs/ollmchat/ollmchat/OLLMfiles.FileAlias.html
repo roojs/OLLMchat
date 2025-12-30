@@ -54,13 +54,15 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">FileAlias</span></b> : <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span>
         </div>
         <div class="description">
-          <p>Wrapper class for File objects that are aliases/symlinks.</p>
-          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
-            <div class="main_block_content">
-              <p>Alias files are not used in the editor. Properties return null/empty/default values and methods throw errors. The alias maintains its
-                own path and parent (where the alias exists) for filesystem tracking purposes only. </p>
-            </div>
-          </div>
+          <p>Represents a symlink/alias to a file or folder.</p>
+          <p>Many properties delegate to the target file (language, last_viewed, needs_approval, is_unsaved, last_approved_copy_path). The points_to 
+            property references the target file/folder, while points_to_id and target_path store the database ID and resolved path respectively.</p>
+          <h2>Restrictions </h2>
+          <p>Security: Aliases are restricted to user's home directory. Aliases outside home directory are rejected.</p>
+          <p>Editor Restrictions: write() and read_async() throw IOError.NOT_SUPPORTED. Aliases are not used in the editor (for display only).</p>
+          <h2>Notes </h2>
+          <p>Aliases resolve symlinks completely using realpath(). Target must exist and be within home directory. Aliases maintain their own path 
+            (where the symlink exists) for filesystem tracking.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMfiles.html">OLLMfiles</a>
         </div>
@@ -116,8 +118,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-26')">All known members inherited from class OLLMfiles.File</div>
-          <div class="content" id="box-content-26">
+          <div class="headline" onclick="toggle_box (this, 'box-content-27')">All known members inherited from class OLLMfiles.File</div>
+          <div class="content" id="box-content-27">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.File.buffer.html">buffer</a></li>
@@ -151,8 +153,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-27')">All known members inherited from class OLLMfiles.FileBase</div>
-          <div class="content" id="box-content-27">
+          <div class="headline" onclick="toggle_box (this, 'box-content-28')">All known members inherited from class OLLMfiles.FileBase</div>
+          <div class="content" id="box-content-28">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.FileBase.base_type.html">base_type</a></li>
@@ -206,8 +208,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-28')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-28">
+          <div class="headline" onclick="toggle_box (this, 'box-content-29')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-29">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

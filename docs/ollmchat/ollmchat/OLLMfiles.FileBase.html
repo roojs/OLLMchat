@@ -82,12 +82,24 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">class</span> <b><span class="abstract_class">FileBase</span></b> : <span class="main_type"><span class="class">Object</span></span>
         </div>
         <div class="description">
-          <p>Base class for File and Folder objects.</p>
-          <p>Provides common properties and methods shared by both files and folders.</p>
+          <p>Abstract base class providing common properties and methods for files and folders.</p>
+          <p>FileBase is the foundation of the file system hierarchy:</p>
+          <ul>
+            <li>File: Represents individual files</li>
+            <li>Folder: Represents directories (can also be projects when is_project = true)</li>
+            <li>FileAlias: Represents symlinks/aliases to files or folders</li>
+          </ul>
+          <h2>ID Semantics </h2>
+          <ul>
+            <li>id = 0: New file (will be inserted into database)</li>
+            <li>id &gt; 0: Existing file (will be updated in database)</li>
+            <li>id &lt; 0: Fake file (not in database, skips DB operations)</li>
+          </ul>
+          <p>Fake files are used for accessing files outside the project scope. They skip database operations in saveToDB().</p>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-21')">All known sub-classes:</div>
-          <div class="content" id="box-content-21">
+          <div class="headline" onclick="toggle_box (this, 'box-content-22')">All known sub-classes:</div>
+          <div class="content" id="box-content-22">
             <div class="column">
               <ul class="navi_inline">
                 <li class="class"><a href="OLLMfiles.File.html">File</a></li>
@@ -115,7 +127,7 @@
         <ul class="navi_inline">
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.FileBase.base_type.html" class="property">base_type</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Base type identifier for serialization.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Base type identifier for serialization and database storage.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMfiles.FileBase.cursor_line.html" class="property">cursor_line</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -278,9 +290,7 @@
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.FileBase.copy_db_fields_to.html" class="virtual_method">copy_db_fields_to</a></b> (<span class="main_type"><span class="abstract_class">FileBase</span></span> target)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Copy database-preserved fields from this object to another. Used when 
-                updating from filesystem: preserves DB fields like id, is_active, cursor positions, etc. that shouldn't be overwritten by filesystem 
-                scan.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Copy database-preserved fields from this object to another.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">FileInfo</span></span>? <b><a href="OLLMfiles.FileBase.get_target_info.html" class="method">get_target_info</a></b> (<span class="main_basic_type"><span class="class">string</span></span> target_path)
             </span>
@@ -302,8 +312,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-22')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-22">
+          <div class="headline" onclick="toggle_box (this, 'box-content-23')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-23">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

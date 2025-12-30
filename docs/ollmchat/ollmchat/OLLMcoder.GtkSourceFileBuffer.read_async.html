@@ -30,6 +30,7 @@
           <li class="property"><a href="OLLMcoder.GtkSourceFileBuffer.file.html">file</a></li>
           <li class="property"><a href="OLLMcoder.GtkSourceFileBuffer.is_loaded.html">is_loaded</a></li>
           <li class="creation_method"><a href="OLLMcoder.GtkSourceFileBuffer.GtkSourceFileBuffer.html">GtkSourceFileBuffer</a></li>
+          <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_line.html">get_line</a></li>
           <li class="method"><a href="OLLMcoder.GtkSourceFileBuffer.get_line_count.html">get_line_count</a></li>
@@ -49,6 +50,15 @@
         <div class="description">
           <p>Read file contents asynchronously.</p>
           <p>Checks file modification time and reloads buffer if file was modified since last read. Updates buffer text and last_read_timestamp.</p>
+          <h2>Behavior </h2>
+          <ul>
+            <li>Gets file modification time from filesystem</li>
+            <li>Compares with last_read_timestamp</li>
+            <li>If file was modified (or first read), reloads from disk using read_async_real()</li>
+            <li>Updates buffer text and last_read_timestamp</li>
+            <li>Sets is_loaded = true</li>
+            <li>Returns current buffer contents</li>
+          </ul>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

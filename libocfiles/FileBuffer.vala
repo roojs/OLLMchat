@@ -21,8 +21,39 @@ namespace OLLMfiles
 	/**
 	 * Interface for file buffer operations.
 	 * 
-	 * Provides a unified interface for accessing file contents, whether
-	 * using GTK buffers (for GUI contexts) or in-memory buffers (for tools/CLI).
+	 * Provides a unified interface for accessing file contents in OLLMchat, whether
+	 * in GUI contexts (using GTK SourceView buffers) or non-GUI contexts (using
+	 * in-memory buffers). This architecture ensures consistent file access patterns
+	 * across the application while maintaining separation between GUI and non-GUI code.
+	 * 
+	 * The buffer system provides:
+	 * 
+	 *  * Unified Interface: Same API for GTK and non-GTK contexts
+	 *  * Type Safety: No set_data/get_data - buffers are properly typed
+	 *  * Separation of Concerns: GUI code in liboccoder, non-GUI code in libocfiles
+	 *  * Memory Management: Automatic cleanup of old buffers
+	 *  * File Tracking: Automatic last_viewed timestamp updates
+	 *  * Backup System: Automatic backups for database files
+	 *  * Modtime Checking: GTK buffers auto-reload when files change on disk
+	 * 
+	 * Buffers are stored directly on File objects via the buffer property. Each
+	 * File object has at most one buffer instance, created lazily when needed.
+	 * Buffer type depends on BufferProvider implementation (GTK vs non-GTK).
+	 * 
+	 * == Line Numbering ==
+	 * 
+	 * All buffer methods use 0-based line numbers internally. External APIs and
+	 * user-facing operations use 1-based line numbers. Tools must convert between
+	 * 1-based (user input) and 0-based (buffer API).
+	 * 
+	 * Example:
+	 * {{{
+	 * // User provides: start_line=6, end_line=15 (1-based)
+	 * // Convert to 0-based for buffer API
+	 * int start = start_line - 1;  // 5
+	 * int end = end_line - 1;      // 14
+	 * var snippet = file.buffer.get_text(start, end);
+	 * }}}
 	 */
 	public interface FileBuffer : Object
 	{
@@ -32,10 +63,35 @@ namespace OLLMfiles
 		public abstract File file { get; set; }
 		
 		/**
-		 * Read file contents asynchronously.
+		 * Read file contents asynchronously and update buffer.
 		 * 
-		 * For GTK buffers: Checks file modification time and reloads if needed.
-		 * For dummy buffers: Always reads from disk.
+		 * Reads file contents asynchronously and updates buffer. For GTK buffers,
+		 * checks file modification time and reloads from disk if file was modified
+		 * since last read. For dummy buffers, always reads from disk.
+		 * 
+		 * == GtkSourceFileBuffer Behavior ==
+		 * 
+		 *  * Tracks last_read_timestamp (Unix timestamp)
+		 *  * On read_async(), compares file modification time vs last_read_timestamp
+		 *  * If file was modified since last read, reloads buffer from disk
+		 *  * Updates last_read_timestamp after successful read
+		 *  * Returns current buffer contents
+		 * 
+		 * == DummyFileBuffer Behavior ==
+		 * 
+		 *  * Always reads from disk
+		 *  * Updates lines array cache
+		 *  * Returns file contents
+		 * 
+		 * Usage:
+		 * {{{
+		 * try {
+		 *     var contents = yield file.buffer.read_async();
+		 *     // Use contents...
+		 * } catch (Error e) {
+		 *     // Handle error (file not found, permission denied, etc.)
+		 * }
+		 * }}}
 		 * 
 		 * @return File contents as string
 		 * @throws Error if file cannot be read
@@ -69,6 +125,34 @@ namespace OLLMfiles
 		
 		/**
 		 * Get text from buffer, optionally limited to a line range.
+		 * 
+		 * Access buffer contents without reading from disk. Buffer must be loaded
+		 * first (via read_async() or automatic loading).
+		 * 
+		 * == Important ==
+		 * 
+		 * Buffer must be loaded first. For GTK buffers, uses GTK buffer contents
+		 * (may be stale if file changed on disk). For dummy buffers, uses cached
+		 * lines array (may be stale if file changed on disk).
+		 * 
+		 * == Line Numbering ==
+		 * 
+		 * All parameters use 0-based line numbers (internal format).
+		 * 
+		 * Examples:
+		 * {{{
+		 * // Get entire file
+		 * var all = buffer.get_text();
+		 * 
+		 * // Get lines 0-9 (first 10 lines)
+		 * var first10 = buffer.get_text(0, 9);
+		 * 
+		 * // Get lines 5-14 (convert from 1-based: lines 6-15)
+		 * var range = buffer.get_text(5, 14);
+		 * 
+		 * // Get single line (line 5, 0-based)
+		 * var line5 = buffer.get_line(5);
+		 * }}}
 		 * 
 		 * @param start_line Starting line number (0-based, inclusive)
 		 * @param end_line Ending line number (0-based, inclusive), or -1 for all lines
@@ -117,10 +201,36 @@ namespace OLLMfiles
 		public abstract bool is_loaded { get; set; }
 		
 		/**
-		 * Write contents to buffer and file.
+		 * Write contents to buffer and file on disk.
 		 * 
-		 * Updates buffer contents and writes to file on disk.
-		 * For files in database, creates backup before writing.
+		 * Updates buffer contents and writes to file on disk. For files in database,
+		 * creates backup before writing.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Update buffer contents (GTK buffer text or lines array)
+		 *  2. Create backup if file is in database (id > 0)
+		 *  3. Write to file on disk asynchronously
+		 *  4. Update file metadata (last_modified, last_viewed)
+		 *  5. Save to database
+		 *  6. Emit file.changed() signal
+		 * 
+		 * == Backup Creation ==
+		 * 
+		 *  * Path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}
+		 *  * Only creates backup if file has id > 0 (in database)
+		 *  * Only creates one backup per day (skips if backup exists for today)
+		 *  * Updates file.last_approved_copy_path with backup path
+		 * 
+		 * Usage:
+		 * {{{
+		 * try {
+		 *     yield file.buffer.write(new_contents);
+		 *     // File written and backup created (if needed)
+		 * } catch (Error e) {
+		 *     // Handle error
+		 * }
+		 * }}}
 		 * 
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
@@ -128,28 +238,83 @@ namespace OLLMfiles
 		public abstract async void write(string contents) throws Error;
 		
 		/**
-		 * Sync buffer contents to file on disk asynchronously.
+		 * Sync current buffer contents to file (GTK buffers only).
 		 * 
-		 * Gets the current buffer contents and writes them to the file.
-		 * For GTK buffers: Also marks the buffer as not modified.
-		 * For dummy buffers: Not supported - use write() instead.
-		 * Creates backup if needed, writes to disk, and updates file metadata.
+		 * Gets the current buffer contents and writes them to the file. Used when
+		 * buffer contents have been modified via GTK operations (user typing, etc.)
+		 * and need to be saved to disk.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Get current buffer contents
+		 *  2. Create backup if needed
+		 *  3. Write to file on disk
+		 *  4. Mark buffer as not modified
+		 *  5. Update file metadata
+		 * 
+		 * == Support ==
+		 * 
+		 *  * GTK buffers: Fully supported
+		 *  * Dummy buffers: Not supported - throws IOError.NOT_SUPPORTED
+		 * 
+		 * Usage:
+		 * {{{
+		 * // For GTK buffers only
+		 * if (file.buffer is GtkSourceFileBuffer) {
+		 *     yield file.buffer.sync_to_file();
+		 * }
+		 * }}}
 		 * 
 		 * @throws Error if file cannot be written or method is not supported
 		 */
 		public abstract async void sync_to_file() throws Error;
 		
 		/**
-		 * Apply multiple edits to the buffer efficiently.
+		 * Efficiently apply multiple edits to the buffer.
 		 * 
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.
-		 * For GTK buffers: Uses buffer text manipulation for efficient chunk editing.
-		 * For dummy buffers: Works with in-memory lines array.
+		 * For GTK buffers: Uses GTK TextBuffer operations for efficient chunk editing.
+		 * For dummy buffers: Works with in-memory lines array manipulation.
 		 * 
-		 * Changes should be sorted by start line (descending) before calling.
-		 * Line numbers in FileChange are 1-based (inclusive start, exclusive end).
+		 * == Process ==
 		 * 
-		 * @param changes List of FileChange objects to apply
+		 *  1. Ensure buffer is loaded
+		 *  2. Apply edits in reverse order (from end to start) to preserve line numbers
+		 *  3. For GTK buffers: Uses GTK TextBuffer operations
+		 *  4. For dummy buffers: Uses array manipulation
+		 *  5. Syncs to file (creates backup, writes, updates metadata)
+		 * 
+		 * == FileChange Format ==
+		 * 
+		 *  * Line numbers are 1-based (inclusive start, exclusive end)
+		 *  * start == end indicates insertion
+		 *  * start != end indicates replacement
+		 * 
+		 * == Important ==
+		 * 
+		 * Changes must be sorted descending by start line before calling.
+		 * 
+		 * Usage:
+		 * {{{
+		 * var changes = new Gee.ArrayList<FileChange>();
+		 * changes.add(new FileChange(10, 12, "new line 10\nnew line 11\n"));
+		 * changes.add(new FileChange(5, 6, "replacement for line 5\n"));
+		 * 
+		 * // Sort descending by start line (required)
+		 * changes.sort((a, b) => {
+		 *     if (a.start > b.start) return -1;
+		 *     if (a.start < b.start) return 1;
+		 *     return 0;
+		 * });
+		 * 
+		 * try {
+		 *     yield file.buffer.apply_edits(changes);
+		 * } catch (Error e) {
+		 *     // Handle error
+		 * }
+		 * }}}
+		 * 
+		 * @param changes List of FileChange objects to apply (must be sorted descending by start)
 		 * @throws Error if edits cannot be applied
 		 */
 		public abstract async void apply_edits(Gee.ArrayList<FileChange> changes) throws Error;
@@ -179,8 +344,32 @@ namespace OLLMfiles
 		/**
 		 * Internal method: Create backup if file is in database.
 		 * 
-		 * Backup path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}
-		 * Only creates backup if doesn't exist for today.
+		 * Creates a backup of the file before writing if the file is in the database.
+		 * 
+		 * == Backup Location ==
+		 * 
+		 * Backups are stored in: ~/.cache/ollmchat/edited/
+		 * 
+		 * == Backup Naming ==
+		 * 
+		 * Format: {id}-{date YY-MM-DD}-{basename}
+		 * 
+		 * Example: 123-25-01-15-MainWindow.vala
+		 * 
+		 * == Backup Rules ==
+		 * 
+		 *  1. Only for Database Files: Backups are only created for files with id > 0 (in database)
+		 *  2. One Per Day: Only one backup is created per file per day
+		 *  3. Automatic: Backups are created automatically before writing
+		 *  4. Metadata: Backup path is stored in file.last_approved_copy_path
+		 * 
+		 * == Backup Cleanup ==
+		 * 
+		 * Old backups (more than 3 days) are automatically cleaned up:
+		 * 
+		 *  * Triggered after backup creation (runs at most once per day)
+		 *  * Static method: ProjectManager.cleanup_old_backups()
+		 *  * Can also be called manually
 		 */
 		protected async void create_backup_if_needed()
 		{

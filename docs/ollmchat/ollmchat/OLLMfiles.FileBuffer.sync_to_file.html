@@ -29,6 +29,7 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.FileBuffer.create_backup_if_needed.html">create_backup_if_needed</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_line.html">get_line</a></li>
@@ -51,9 +52,24 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="abstract_method">sync_to_file</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Sync buffer contents to file on disk asynchronously.</p>
-          <p>Gets the current buffer contents and writes them to the file. For GTK buffers: Also marks the buffer as not modified. For dummy buffers: 
-            Not supported - use write() instead. Creates backup if needed, writes to disk, and updates file metadata.</p>
+          <p>Sync current buffer contents to file (GTK buffers only).</p>
+          <p>Gets the current buffer contents and writes them to the file. Used when buffer contents have been modified via GTK operations (user 
+            typing, etc.) and need to be saved to disk.</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Get current buffer contents
+              <p>2. Create backup if needed</p>
+              <p>3. Write to file on disk</p>
+              <p>4. Mark buffer as not modified</p>
+              <p>5. Update file metadata</p></li>
+          </ol>
+          <h2>Support </h2>
+          <ul>
+            <li>GTK buffers: Fully supported</li>
+            <li>Dummy buffers: Not supported - throws IOError.NOT_SUPPORTED</li>
+          </ul>
+          <p>Usage: <pre class="main_source"><code><span class="main_comment">// For GTK buffers only</span><br/><span class="main_keyword">if</span> (file.buffer <span class="main_keyword">is</span> GtkSourceFileBuffer) {<br/>    <span class="main_keyword">yield</span> file.buffer.sync_to_file();<br/>}</code></pre>
+          </p>
           <h2 class="main_title">Exceptions:</h2>
           <table class="main_parameter_table">
             <tr>

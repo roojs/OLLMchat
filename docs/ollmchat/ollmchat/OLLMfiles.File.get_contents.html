@@ -58,6 +58,12 @@
         </div>
         <div class="description">
           <p>Gets file contents, optionally limited to first N lines.</p>
+          <p>Convenience method that delegates to file.buffer.get_text(). Requires file.buffer to be non-null. Ensure buffer is created before use.
+          </p>
+          <h2>Important </h2>
+          <p>This method requires file.buffer to be non-null. Ensure buffer is created before use: <pre class="main_source"><code><span class="main_keyword">if</span> (file.buffer == <span class="main_literal">null</span>) {<br/>    file.manager.buffer_provider.create_buffer(file);<br/>}<br/><span class="main_keyword">var</span> contents = file.get_contents();</code></pre>
+          </p>
+          <p>Buffer must be loaded first (via read_async() or automatic loading).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

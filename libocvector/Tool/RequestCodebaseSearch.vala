@@ -19,19 +19,6 @@
 namespace OLLMvector.Tool
 {
 	/**
-	 * Cached file contents with lines array (same as BufferProviderBase).
-	 */
-	private class FileCacheEntry : Object
-	{
-		public string[] lines { get; set; }
-		
-		public FileCacheEntry(string[] lines)
-		{
-			this.lines = lines;
-		}
-	}
-	
-	/**
 	 * Request handler for codebase search operations.
 	 */
 	public class RequestCodebaseSearch : OLLMchat.Tool.RequestBase
@@ -41,12 +28,6 @@ namespace OLLMvector.Tool
 		public string? language { get; set; default = null; }
 		public string? element_type { get; set; default = null; }
 		public int max_results { get; set; default = 10; }
-		
-		/**
-		 * File cache for this query (same structure as BufferProviderBase).
-		 * Maps file path => FileCacheEntry with lines array.
-		 */
-		private Gee.HashMap<string, FileCacheEntry> file_cache = new Gee.HashMap<string, FileCacheEntry>();
 		
 		/**
 		 * Default constructor.
@@ -186,7 +167,7 @@ namespace OLLMvector.Tool
 				this.query
 			);
 			
-			// Step 5: Format results for LLM consumption (this will cache files)
+			// Step 5: Format results for LLM consumption
 			var formatted = yield this.format_results(results, this.query);
 			
 			 
@@ -198,44 +179,11 @@ namespace OLLMvector.Tool
 				this.chat_call
 			);
 			
-			// Clear file cache at end of query
-			var cache_size = this.file_cache.size;
-			this.file_cache.clear();
-			GLib.debug("codebase_search: cleared file cache (%d entries)", cache_size);
-			
 			return formatted;
 		}
 		
 		/**
-		 * Get lines array from cache or file.
-		 * 
-		 * @param file The file to load
-		 * @return Lines array, or empty array if file cannot be read
-		 */
-		private async string[] get_lines(OLLMfiles.File file)
-		{
-			// Check cache first
-			if (this.file_cache.has_key(file.path)) {
-				return this.file_cache.get(file.path).lines;
-			}
-			string[] ret = {}; 
-			// Load from file
-			try {
-				file.manager.buffer_provider.create_buffer(file);
-				var contents = yield file.buffer.read_async();
-				
-				var lines_array = contents.split("\n");
-				var cache_entry = new FileCacheEntry(lines_array);
-				this.file_cache.set(file.path, cache_entry);
-				return lines_array;
-			} catch (GLib.Error e) {
-				GLib.debug("codebase_search.get_lines: Failed to read file %s: %s", file.path, e.message);
-				return ret;
-			}
-		}
-		
-		/**
-		 * Get code snippet from file using cached lines array.
+		 * Get code snippet from file using buffer system.
 		 * 
 		 * @param file The file to get snippet from
 		 * @param start_line Starting line number (1-based, inclusive)
@@ -245,27 +193,32 @@ namespace OLLMvector.Tool
 		 */
 		private async string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
 		{
-			var lines = yield this.get_lines(file);
-			
-			if (lines.length == 0) {
+			try {
+				// Ensure buffer exists
+				if (file.buffer == null) {
+					file.manager.buffer_provider.create_buffer(file);
+				}
+				
+				// Ensure buffer is loaded
+				if (!file.buffer.is_loaded) {
+					yield file.buffer.read_async();
+				}
+				
+				// Convert from 1-based (metadata) to 0-based (buffer API)
+				var start_idx = start_line - 1;
+				var end_idx = end_line - 1;
+				
+				// Apply max_lines truncation if specified
+				if (max_lines != -1 && (end_idx - start_idx + 1) > max_lines) {
+					end_idx = start_idx + max_lines - 1;
+				}
+				
+				// Get text from buffer (0-based, inclusive)
+				return file.buffer.get_text(start_idx, end_idx);
+			} catch (GLib.Error e) {
+				GLib.debug("codebase_search.get_code_snippet: Failed to read file %s: %s", file.path, e.message);
 				return "";
 			}
-			
-			// Convert from 1-indexed (metadata) to 0-based (array)
-			var start_idx = (start_line - 1).clamp(0, lines.length - 1);
-			var end_idx = (end_line - 1).clamp(0, lines.length - 1);
-			
-			if (start_idx > end_idx) {
-				return "";
-			}
-			
-			// Apply max_lines truncation if specified
-			if (max_lines != -1 && (end_idx - start_idx + 1) > max_lines) {
-				end_idx = start_idx + max_lines - 1;
-			}
-			
-			// Extract lines and join
-			return string.joinv("\n", lines[start_idx:end_idx+1]);
 		}
 		
 		/**
@@ -309,7 +262,7 @@ namespace OLLMvector.Tool
 				}
 				
 				// Code citation block (citation format: startLine:endLine:filepath in language tag position)
-				// Use our own get_code_snippet method that uses file cache and File.read_async()
+				// Use buffer system to get code snippet
 				var snippet = yield this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
 				
 				// Debug: Log snippet details

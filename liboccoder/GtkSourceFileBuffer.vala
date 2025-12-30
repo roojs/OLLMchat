@@ -19,10 +19,23 @@
 namespace OLLMcoder
 {
 	/**
-	 * GTK SourceView buffer implementation.
+	 * GTK SourceView buffer implementation for GUI contexts.
 	 * 
-	 * Extends GtkSource.Buffer and provides FileBuffer interface.
-	 * Tracks file modification time and reloads buffer if file changed on disk.
+	 * Extends GtkSource.Buffer directly and provides FileBuffer interface.
+	 * Provides syntax highlighting via GtkSource.Language, tracks file modification
+	 * time and auto-reloads if file changed on disk, and supports cursor position
+	 * and text selection. Integrates with GTK SourceView widgets.
+	 * 
+	 * == When to Use ==
+	 * 
+	 * Use GtkSourceFileBuffer when:
+	 * 
+	 *  * Working in GUI context (GTK application)
+	 *  * Need syntax highlighting
+	 *  * Need cursor position tracking
+	 *  * Need text selection support
+	 *  * Working with SourceView widgets
+	 *  * Need auto-reload when file changes on disk
 	 */
 	public class GtkSourceFileBuffer : GtkSource.Buffer, OLLMfiles.FileBuffer
 	{
@@ -64,6 +77,15 @@ namespace OLLMcoder
 		 * 
 		 * Checks file modification time and reloads buffer if file was modified
 		 * since last read. Updates buffer text and last_read_timestamp.
+		 * 
+		 * == Behavior ==
+		 * 
+		 *  * Gets file modification time from filesystem
+		 *  * Compares with last_read_timestamp
+		 *  * If file was modified (or first read), reloads from disk using read_async_real()
+		 *  * Updates buffer text and last_read_timestamp
+		 *  * Sets is_loaded = true
+		 *  * Returns current buffer contents
 		 * 
 		 * @return File contents as string
 		 * @throws Error if file cannot be read
@@ -211,7 +233,18 @@ namespace OLLMcoder
 		 * Sync buffer contents to file on disk.
 		 * 
 		 * Gets the current buffer contents and writes them to the file.
-		 * Also marks the buffer as not modified.
+		 * Used when buffer contents have been modified via GTK operations
+		 * (user typing, etc.) and need to be saved to disk.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Get buffer content from GTK TextBuffer
+		 *  2. Write to file (creates backup, writes, updates metadata)
+		 *  3. Mark buffer as not modified
+		 *  4. Update last_read_timestamp to match file modification time
+		 * 
+		 * This method is only supported for GTK buffers. For dummy buffers,
+		 * use write() instead.
 		 */
 		public async void sync_to_file() throws Error
 		{
@@ -237,8 +270,14 @@ namespace OLLMcoder
 		/**
 		 * Write contents to buffer and file.
 		 * 
-		 * Updates buffer contents and writes to file on disk.
+		 * Updates GtkSource.Buffer.text with new contents and writes to file on disk.
 		 * For files in database, creates backup before writing.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Update buffer text property
+		 *  2. Write to file (creates backup, writes, updates metadata)
+		 *  3. Update last_read_timestamp to match file modification time
 		 * 
 		 * @param contents Contents to write
 		 * @throws Error if file cannot be written
@@ -265,7 +304,26 @@ namespace OLLMcoder
 		 * Uses GTK TextBuffer's text manipulation for efficient chunk editing.
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.
 		 * 
-		 * @param changes List of FileChange objects to apply (should be sorted descending by start)
+		 * == Process ==
+		 * 
+		 *  1. Ensure buffer is loaded (calls read_async() if needed)
+		 *  2. Apply changes in reverse order (from end to start) to preserve line numbers
+		 *  3. For each change:
+		 *     * Handle insertion case (start == end): Insert at existing line or end of file
+		 *     * Handle edit case (start != end): Delete range and insert replacement
+		 *  4. Sync buffer to file (creates backup, writes, updates metadata)
+		 * 
+		 * == FileChange Format ==
+		 * 
+		 *  * Line numbers are 1-based (inclusive start, exclusive end)
+		 *  * start == end indicates insertion
+		 *  * start != end indicates replacement
+		 * 
+		 * == Important ==
+		 * 
+		 * Changes must be sorted descending by start line before calling.
+		 * 
+		 * @param changes List of FileChange objects to apply (must be sorted descending by start)
 		 * @throws Error if edits cannot be applied
 		 */
 		public async void apply_edits(Gee.ArrayList<OLLMfiles.FileChange> changes) throws Error
@@ -278,10 +336,12 @@ namespace OLLMcoder
 			// Apply changes in reverse order (from end to start) to preserve line numbers
 			foreach (var change in changes) {
 				// Get iterators for the range
-				Gtk.TextIter start_iter, end_iter;
+				Gtk.TextIter start_iter;
+				Gtk.TextIter end_iter;
 				
 				// Handle insertion case (start == end) - normal insertion at existing line
-				if (change.start == change.end && this.get_iter_at_line(out start_iter, change.start - 1)) {
+				var has_start = this.get_iter_at_line(out start_iter, change.start - 1);
+				if (change.start == change.end && has_start) {
 					end_iter = start_iter;
 					this.delete(ref start_iter, ref end_iter);
 					this.insert(ref start_iter, change.replacement, -1);

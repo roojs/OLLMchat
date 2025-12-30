@@ -30,6 +30,7 @@
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.file.html">file</a></li>
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.is_loaded.html">is_loaded</a></li>
           <li class="creation_method"><a href="OLLMfiles.DummyFileBuffer.DummyFileBuffer.html">DummyFileBuffer</a></li>
+          <li class="method"><a href="OLLMfiles.DummyFileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_line.html">get_line</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_line_count.html">get_line_count</a></li>
@@ -48,7 +49,15 @@
         </div>
         <div class="description">
           <p>Read file contents asynchronously.</p>
-          <p>Always reads from disk and updates cache.</p>
+          <p>Always reads from disk and updates cache. Unlike GtkSourceFileBuffer, does not check file modification time - always reads fresh from 
+            disk.</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Reads file from disk using read_async_real()
+              <p>2. Splits contents into lines array cache</p>
+              <p>3. Sets is_loaded = true</p>
+              <p>4. Returns file contents</p></li>
+          </ol>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

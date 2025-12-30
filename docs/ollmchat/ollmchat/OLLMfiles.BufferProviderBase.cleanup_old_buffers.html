@@ -41,8 +41,20 @@
         </div>
         <div class="description">
           <p>Cleanup old buffers to free memory.</p>
-          <p>Keeps buffers for: - Open files (is_open == true) - Top 10 most recently used files (by last_viewed)</p>
-          <p>Sets file.buffer = null for all other files.</p>
+          <p>Keeps buffers for:</p>
+          <ul>
+            <li>Open files (is_open == true)</li>
+            <li>Top 10 most recently used files (by last_viewed)</li>
+            <li>The current_file being accessed (always keeps its buffer)</li>
+          </ul>
+          <p>Sets file.buffer = null for all other files to free memory.</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Collect all files with buffers that are not open
+              <p>2. Sort by last_viewed (most recent first)</p>
+              <p>3. Keep top 10, clear buffers for the rest</p></li>
+          </ol>
+          <p>This is called automatically before creating new buffers to prevent unbounded memory growth.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

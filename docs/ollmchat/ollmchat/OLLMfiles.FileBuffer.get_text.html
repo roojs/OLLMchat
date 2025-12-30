@@ -29,6 +29,7 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.FileBuffer.create_backup_if_needed.html">create_backup_if_needed</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_line.html">get_line</a></li>
@@ -52,6 +53,14 @@
         </div>
         <div class="description">
           <p>Get text from buffer, optionally limited to a line range.</p>
+          <p>Access buffer contents without reading from disk. Buffer must be loaded first (via read_async() or automatic loading).</p>
+          <h2>Important </h2>
+          <p>Buffer must be loaded first. For GTK buffers, uses GTK buffer contents (may be stale if file changed on disk). For dummy buffers, uses 
+            cached lines array (may be stale if file changed on disk).</p>
+          <h2>Line Numbering </h2>
+          <p>All parameters use 0-based line numbers (internal format).</p>
+          <p>Examples: <pre class="main_source"><code><span class="main_comment">// Get entire file</span><br/><span class="main_keyword">var</span> all = buffer.get_text();<br/><br/><span class="main_comment">// Get lines 0-9 (first 10 lines)</span><br/><span class="main_keyword">var</span> first<span class="main_literal">10</span> = buffer.get_text(<span class="main_literal">0</span>, <span class="main_literal">9</span>);<br/><br/><span class="main_comment">// Get lines 5-14 (convert from 1-based: lines 6-15)</span><br/><span class="main_keyword">var</span> range = buffer.get_text(<span class="main_literal">5</span>, <span class="main_literal">14</span>);<br/><br/><span class="main_comment">// Get single line (line 5, 0-based)</span><br/><span class="main_keyword">var</span> line<span class="main_literal">5</span> = buffer.get_line(<span class="main_literal">5</span>);</code></pre>
+          </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

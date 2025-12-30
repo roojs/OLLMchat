@@ -57,7 +57,15 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><span class="method">get_cursor_position</span></b> ()
         </div>
         <div class="description">
-          <p>Gets the current cursor position (line number). Updates cursor_line and cursor_offset properties and saves to database.</p>
+          <p>Gets the current cursor position (line number).</p>
+          <p>Convenience method that delegates to file.buffer.get_cursor(). Updates cursor_line and cursor_offset properties and saves to database. 
+            Requires file.buffer to be non-null. Only works with GTK buffers (DummyFileBuffer returns 0,0).</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Gets cursor position from buffer
+              <p>2. Updates cursor_line and cursor_offset properties</p>
+              <p>3. Saves to database (if manager.db is available)</p></li>
+          </ol>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

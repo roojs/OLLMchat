@@ -29,6 +29,7 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.FileBuffer.create_backup_if_needed.html">create_backup_if_needed</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_line.html">get_line</a></li>
@@ -51,8 +52,25 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="abstract_method">read_async</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Read file contents asynchronously.</p>
-          <p>For GTK buffers: Checks file modification time and reloads if needed. For dummy buffers: Always reads from disk.</p>
+          <p>Read file contents asynchronously and update buffer.</p>
+          <p>Reads file contents asynchronously and updates buffer. For GTK buffers, checks file modification time and reloads from disk if file was 
+            modified since last read. For dummy buffers, always reads from disk.</p>
+          <h2>GtkSourceFileBuffer Behavior </h2>
+          <ul>
+            <li>Tracks last_read_timestamp (Unix timestamp)</li>
+            <li>On read_async(), compares file modification time vs last_read_timestamp</li>
+            <li>If file was modified since last read, reloads buffer from disk</li>
+            <li>Updates last_read_timestamp after successful read</li>
+            <li>Returns current buffer contents</li>
+          </ul>
+          <h2>DummyFileBuffer Behavior </h2>
+          <ul>
+            <li>Always reads from disk</li>
+            <li>Updates lines array cache</li>
+            <li>Returns file contents</li>
+          </ul>
+          <p>Usage: <pre class="main_source"><code><span class="main_keyword">try</span> {<br/>    <span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();<br/>    <span class="main_comment">// Use contents...</span><br/>} <span class="main_keyword">catch</span> (Error e) {<br/>    <span class="main_comment">// Handle error (file not found, permission denied, etc.)</span><br/>}</code></pre>
+          </p>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

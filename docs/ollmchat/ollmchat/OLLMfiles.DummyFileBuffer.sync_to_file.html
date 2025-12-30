@@ -30,6 +30,7 @@
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.file.html">file</a></li>
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.is_loaded.html">is_loaded</a></li>
           <li class="creation_method"><a href="OLLMfiles.DummyFileBuffer.DummyFileBuffer.html">DummyFileBuffer</a></li>
+          <li class="method"><a href="OLLMfiles.DummyFileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_line.html">get_line</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_line_count.html">get_line_count</a></li>
@@ -48,7 +49,18 @@
         </div>
         <div class="description">
           <p>Sync buffer contents to file on disk.</p>
-          <p>Not supported for DummyFileBuffer - this method is only for GTK SourceView. Use write() instead to update buffer and write to file.</p>
+          <p>Not supported for DummyFileBuffer - this method is only for GTK SourceView buffers where the buffer contents may have been modified via 
+            GTK operations.</p>
+          <p>For DummyFileBuffer, use write() instead to update buffer and write to file.</p>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">Error</td>
+              <td>
+                <p>Always throws IOError.NOT_SUPPORTED </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

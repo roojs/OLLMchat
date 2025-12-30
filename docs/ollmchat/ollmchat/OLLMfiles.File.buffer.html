@@ -58,7 +58,18 @@
         </div>
         <div class="description">
           <p>File buffer instance (nullable).</p>
-          <p>Created by buffer provider when needed. Use file.buffer.read_async() and file.buffer.write() for file operations.</p>
+          <p>Created by buffer provider when needed. Each File object has at most one buffer instance. Buffer is created lazily when first accessed. 
+            Buffer can be null if not yet created or after cleanup. Buffer type depends on BufferProvider implementation (GTK vs non-GTK).</p>
+          <h2>Key Points </h2>
+          <ul>
+            <li>Each File object has at most one buffer instance</li>
+            <li>Buffer is created lazily when needed</li>
+            <li>Buffer can be null if not yet created or after cleanup</li>
+            <li>Buffer type depends on BufferProvider implementation (GTK vs non-GTK)</li>
+          </ul>
+          <h2>Usage </h2>
+          <p>Always check for null before using buffer methods: <pre class="main_source"><code><span class="main_keyword">if</span> (file.buffer == <span class="main_literal">null</span>) {<br/>    file.manager.buffer_provider.create_buffer(file);<br/>}<br/><span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();</code></pre>
+          </p>
         </div>
       </div>
     </div><br/>

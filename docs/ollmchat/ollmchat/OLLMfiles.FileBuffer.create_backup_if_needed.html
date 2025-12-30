@@ -29,6 +29,7 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method">create_backup_if_needed</li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_line.html">get_line</a></li>
@@ -52,7 +53,26 @@
         </div>
         <div class="description">
           <p>Internal method: Create backup if file is in database.</p>
-          <p>Backup path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename} Only creates backup if doesn't exist for today.</p>
+          <p>Creates a backup of the file before writing if the file is in the database.</p>
+          <h2>Backup Location </h2>
+          <p>Backups are stored in: ~/.cache/ollmchat/edited/</p>
+          <h2>Backup Naming </h2>
+          <p>Format: {id}-{date YY-MM-DD}-{basename}</p>
+          <p>Example: 123-25-01-15-MainWindow.vala</p>
+          <h2>Backup Rules </h2>
+          <ol type="1">
+            <li>Only for Database Files: Backups are only created for files with id &gt; 0 (in database)
+              <p>2. One Per Day: Only one backup is created per file per day</p>
+              <p>3. Automatic: Backups are created automatically before writing</p>
+              <p>4. Metadata: Backup path is stored in file.last_approved_copy_path</p></li>
+          </ol>
+          <h2>Backup Cleanup </h2>
+          <p>Old backups (more than 3 days) are automatically cleaned up:</p>
+          <ul>
+            <li>Triggered after backup creation (runs at most once per day)</li>
+            <li>Static method: ProjectManager.cleanup_old_backups()</li>
+            <li>Can also be called manually</li>
+          </ul>
         </div>
       </div>
     </div><br/>
