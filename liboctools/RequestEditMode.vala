@@ -534,7 +534,7 @@ namespace OLLMtools
 		/**
 		 * Applies all captured changes to a file.
 		 */
-		private void apply_all_changes() throws Error
+		private async void apply_all_changes() throws Error
 		{
 			if (this.changes.size == 0) {
 				return;
@@ -553,6 +553,21 @@ namespace OLLMtools
 				this.chat_call
 			);
 		
+			// Get or create File object from path
+			var project_manager = ((EditMode) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
+			
+			// First, try to get from active project
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			file.manager.buffer_provider.create_buffer(file);
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
@@ -573,14 +588,14 @@ namespace OLLMtools
 					throw new GLib.IOError.EXISTS("File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
 				}
 				// Create new file or overwrite existing file
-				this.create_new_file_with_changes();
+				yield this.create_new_file_with_changes(file);
 			} else {
 				// Normal mode: file must exist
 				if (!file_exists) {
 					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
 				}
 				// Apply edits to existing file
-				this.apply_edits();
+				yield this.apply_edits(file);
 			}
 			
 			// Log and send status message after successful write
