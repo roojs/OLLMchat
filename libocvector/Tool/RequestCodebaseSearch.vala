@@ -221,9 +221,7 @@ namespace OLLMvector.Tool
 			string[] ret = {}; 
 			// Load from file
 			try {
-				if (file.buffer == null) {
-					return ret;
-				}
+				file.manager.buffer_provider.create_buffer(file);
 				var contents = yield file.buffer.read_async();
 				
 				var lines_array = contents.split("\n");

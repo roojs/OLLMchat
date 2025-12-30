@@ -96,9 +96,7 @@ namespace OLLMvector.Indexing
 		{
 			// Load file content lazily (only when needed for parsing)
 			// Use buffer.read_async() to read from disk since buffer may not be loaded
-			if (this.file.buffer == null) {
-				throw new GLib.IOError.FAILED("File buffer not initialized: " + this.file.path);
-			}
+			this.file.manager.buffer_provider.create_buffer(this.file);
 			var code_content = yield this.file.buffer.read_async();
 			if (code_content == null || code_content == "") {
 				throw new GLib.IOError.NOT_FOUND("File is empty or cannot be read: " + this.file.path);

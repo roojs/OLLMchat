@@ -351,9 +351,9 @@ namespace OLLMcoder
 			this.manager.activate_file(file);
 			
 			// Ensure buffer exists and is a GtkSource.Buffer (GtkSourceFileBuffer extends it)
-			if (file.buffer == null || !(file.buffer is GtkSource.Buffer)) {
-				// Create buffer using provider (handles language)
-				this.manager.buffer_provider.create_buffer(file);
+			this.manager.buffer_provider.create_buffer(file);
+			if (!(file.buffer is GtkSource.Buffer)) {
+				throw new GLib.IOError.FAILED("Buffer is not a GtkSource.Buffer");
 			}
 			
 			// Get GtkSource.Buffer (GtkSourceFileBuffer extends it)
