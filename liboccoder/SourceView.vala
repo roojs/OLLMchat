@@ -372,8 +372,7 @@ namespace OLLMcoder
 			// Load file content asynchronously if buffer hasn't been loaded
 			if (!gtk_buffer.is_loaded) {
 				try {
-					var contents = yield gtk_buffer.read_async();
-					gtk_buffer.text = contents;
+					yield gtk_buffer.read_async();
 				} catch (Error e) {
 					GLib.warning("Failed to read file %s: %s", file.path, e.message);
 					gtk_buffer.text = "";
