@@ -710,17 +710,7 @@ namespace OLLMtools
 			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
 			
-			// Read file if not loaded
-			if (!file.buffer.is_loaded) {
-				try {
-					file.buffer.read_async.begin((obj, res) => {});
-				} catch (Error e) {
-					// If read fails, return 0
-					return 0;
-				}
-			}
-			
-			// Use buffer-based line counting
+			// Use buffer-based line counting (will load file synchronously if needed)
 			return file.buffer.get_line_count();
 		}
 	}
