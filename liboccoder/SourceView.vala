@@ -351,17 +351,11 @@ namespace OLLMcoder
 			this.manager.activate_file(file);
 			
 			// Ensure buffer exists and is a GtkSourceFileBuffer
-			if (file.buffer == null) {
-				// Create buffer using provider (handles language)
-				this.manager.buffer_provider.create_buffer(file);
-			}
-			
-			// Convert to GtkSourceFileBuffer if needed
 			var gtk_buffer = file.buffer as GtkSourceFileBuffer;
 			if (gtk_buffer == null) {
 				// Get content from existing buffer if loaded
 				string? existing_content = null;
-				if (file.buffer.is_loaded) {
+				if (file.buffer != null && file.buffer.is_loaded) {
 					existing_content = file.buffer.get_text();
 				}
 				
