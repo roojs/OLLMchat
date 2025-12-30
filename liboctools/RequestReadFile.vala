@@ -114,6 +114,7 @@ namespace OLLMtools
 				this.chat_call
 			);
 			
+			// Validate that file exists
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");
 			}
@@ -129,52 +130,47 @@ namespace OLLMtools
 				}
 			}
 			
+			// Get or create File object from path
+			var project_manager = ((ReadFile) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
+			
+			OLLMfiles.File? file = null;
+			
+			// First, try to get from active project
+			file = project_manager.get_file_from_active_project(file_path);
+			
+			// If not found, check file_cache
+			if (file == null) {
+				var file_base = project_manager.file_cache.get(file_path);
+				if (file_base is OLLMfiles.File) {
+					file = (OLLMfiles.File) file_base;
+				}
+			}
+			
+			// If still not found, create fake file
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, file_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			if (file.buffer == null) {
+				file.manager.buffer_provider.create_buffer(file);
+			}
+			
 			// Read entire file if requested or no line range specified
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				string content;
-				GLib.FileUtils.get_contents(file_path, out content);
-				return content;
+				// Use buffer.read_async() for entire file
+				return yield file.buffer.read_async();
 			}
 			
-			// Read line range (1-based, inclusive start, exclusive end)
-			string content = "";
-			var file = GLib.File.new_for_path(file_path);
-			var file_stream = file.read(null);
-			var data_stream = new GLib.DataInputStream(file_stream);
+			// Read line range using buffer.get_text() (convert 1-based to 0-based)
+			// Note: get_text() uses 0-based inclusive start and end
+			int start_line_0 = (int)(this.start_line - 1);
+			int end_line_0 = (int)(this.end_line - 1);
 			
-			try {
-				int current_line = 0;
-				string? line;
-				size_t length;
-				
-				while ((line = data_stream.read_line(out length, null)) != null) {
-					current_line++;
-					
-					// Skip lines before start_line
-					if (current_line < this.start_line) {
-						continue;
-					}
-					
-					// Stop at end_line (exclusive)
-					if (current_line >= this.end_line) {
-						break;
-					}
-					
-					// Add line to content
-					if (content != "") {
-						content += "\n";
-					}
-					content += line;
-				}
-			} finally {
-				try {
-					data_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
-			
-			return content;
+			return file.buffer.get_text(start_line_0, end_line_0);
 		}
 	}
 }
