@@ -165,6 +165,12 @@ namespace OLLMtools
 				return yield file.buffer.read_async();
 			}
 			
+			// For line ranges, ensure buffer is loaded first
+			// (DummyFileBuffer.get_text() will load if needed, but GtkSourceFileBuffer needs explicit load)
+			if (!file.buffer.is_loaded) {
+				yield file.buffer.read_async();
+			}
+			
 			// Read line range using buffer.get_text() (convert 1-based to 0-based)
 			// Original: 1-based, inclusive start, exclusive end
 			// Buffer: 0-based, inclusive start and end
