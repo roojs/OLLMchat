@@ -267,29 +267,19 @@ namespace OLLMfiles
 						" (file has " + this.lines.length.to_string() + " lines)");
 				}
 				
-				// Split replacement into lines
-				var replacement_lines = change.replacement.split("\n");
+				// Get array slices using array slicing syntax
+				string[] lines_before = this.lines[0:start_idx];
+				string[] replacement_lines = change.replacement.split("\n");
+				string[] lines_after = this.lines[end_idx:this.lines.length];
 				
-				// Build new lines array: before + replacement + after
-				var new_lines = new Gee.ArrayList<string>();
+				// Build new lines array efficiently using GLib.Array
+				var array = new GLib.Array<string>(false, true, sizeof(string));
+				array.append_vals(lines_before, lines_before.length);
+				array.append_vals(replacement_lines, replacement_lines.length);
+				array.append_vals(lines_after, lines_after.length);
 				
-				// Add lines before the change
-				for (int i = 0; i < start_idx; i++) {
-					new_lines.add(this.lines[i]);
-				}
-				
-				// Add replacement lines
-				foreach (var replacement_line in replacement_lines) {
-					new_lines.add(replacement_line);
-				}
-				
-				// Add lines after the change
-				for (int i = end_idx; i < this.lines.length; i++) {
-					new_lines.add(this.lines[i]);
-				}
-				
-				// Update lines array for next change
-				this.lines = new_lines.to_array();
+				// Take ownership to avoid array copying
+				this.lines = (owned) array.data;
 			}
 			
 			// Join lines back into content string
