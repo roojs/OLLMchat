@@ -303,15 +303,12 @@ namespace OLLMcoder
 						end_iter = start_iter;
 					} else {
 						// Edit - get end iterator
+						// end_line is exclusive, so we want the start of that line
 						if (!this.get_iter_at_line(out end_iter, end_line)) {
 							// End line doesn't exist - use end of buffer
 							this.get_end_iter(out end_iter);
-						} else {
-							// Move to end of end_line (exclusive)
-							if (!end_iter.ends_line()) {
-								end_iter.forward_to_line_end();
-							}
 						}
+						// end_iter now points to start of end_line (exclusive), which is correct
 					}
 				}
 				
