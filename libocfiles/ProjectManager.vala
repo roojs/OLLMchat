@@ -305,14 +305,31 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Timestamp of last backup cleanup run (Unix timestamp).
+		 * Used to ensure cleanup only runs once per day.
+		 */
+		private static int64 last_cleanup_timestamp = 0;
+		
+		/**
 		 * Cleanup old backup files from the backup directory.
 		 * 
 		 * Removes backup files older than 3 days from ~/.cache/ollmchat/edited/.
 		 * This should be called on startup or periodically to prevent backup directory
 		 * from growing indefinitely.
+		 * 
+		 * Only runs once per day to avoid excessive file system operations.
 		 */
 		public static async void cleanup_old_backups()
 		{
+			var now = new GLib.DateTime.now_local().to_unix();
+			var one_day_ago = now - (24 * 60 * 60);
+			
+			if (last_cleanup_timestamp > one_day_ago) {
+				return;
+			}
+			
+			last_cleanup_timestamp = now;
+			
 			try {
 				var cache_dir = GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(),
