@@ -19,6 +19,36 @@
 namespace OLLMfiles
 {
 	/**
+	 * Represents a single edit operation with line range and replacement text.
+	 * 
+	 * Line numbers are 1-based (inclusive start, exclusive end).
+	 */
+	public class Edit : Object
+	{
+		/**
+		 * Starting line number (1-based, inclusive).
+		 */
+		public int start { get; set; }
+		
+		/**
+		 * Ending line number (1-based, exclusive).
+		 */
+		public int end { get; set; }
+		
+		/**
+		 * Replacement text to insert at the specified range.
+		 */
+		public string replacement { get; set; default = ""; }
+		
+		public Edit(int start, int end, string replacement)
+		{
+			this.start = start;
+			this.end = end;
+			this.replacement = replacement;
+		}
+	}
+	
+	/**
 	 * Interface for file buffer operations.
 	 * 
 	 * Provides a unified interface for accessing file contents, whether
