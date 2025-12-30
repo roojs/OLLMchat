@@ -304,5 +304,84 @@ namespace OLLMfiles
 			}
 		}
 		
+		/**
+		 * Cleanup old backup files from the backup directory.
+		 * 
+		 * Removes backup files older than 3 days from ~/.cache/ollmchat/edited/.
+		 * This should be called on startup or periodically to prevent backup directory
+		 * from growing indefinitely.
+		 */
+		public static void cleanup_old_backups()
+		{
+			try {
+				var cache_dir = GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(),
+					".cache",
+					"ollmchat",
+					"edited"
+				);
+				
+				var cache_dir_file = GLib.File.new_for_path(cache_dir);
+				if (!cache_dir_file.query_exists()) {
+					// Backup directory doesn't exist yet, nothing to clean
+					return;
+				}
+				
+				// Calculate cutoff time (3 days ago)
+				var now = new GLib.DateTime.now_local();
+				var cutoff_time = now.add_days(-3);
+				var cutoff_timestamp = cutoff_time.to_unix();
+				
+				// Enumerate files in backup directory
+				var enumerator = cache_dir_file.enumerate_children(
+					GLib.FileAttribute.STANDARD_NAME + "," + GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+				
+				var files_to_delete = new Gee.ArrayList<string>();
+				
+				GLib.FileInfo? info;
+				while ((info = enumerator.next_file(null)) != null) {
+					var name = info.get_name();
+					var file_path = GLib.Path.build_filename(cache_dir, name);
+					var file = GLib.File.new_for_path(file_path);
+					
+					// Get file modification time
+					var file_info = file.query_info(
+						GLib.FileAttribute.TIME_MODIFIED,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					var mod_time = file_info.get_modification_date_time();
+					var mod_timestamp = mod_time.to_unix();
+					
+					// Check if file is older than 3 days
+					if (mod_timestamp < cutoff_timestamp) {
+						files_to_delete.add(file_path);
+					}
+				}
+				
+				// Delete old backup files
+				int deleted_count = 0;
+				foreach (var file_path in files_to_delete) {
+					try {
+						var file = GLib.File.new_for_path(file_path);
+						file.delete(null);
+						deleted_count++;
+					} catch (GLib.Error e) {
+						GLib.warning("ProjectManager.cleanup_old_backups: Failed to delete backup file %s: %s", 
+							file_path, e.message);
+					}
+				}
+				
+				if (deleted_count > 0) {
+					GLib.debug("ProjectManager.cleanup_old_backups: Deleted %d old backup file(s)", deleted_count);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("ProjectManager.cleanup_old_backups: Failed to cleanup old backups: %s", e.message);
+			}
+		}
+		
 	}
 }
