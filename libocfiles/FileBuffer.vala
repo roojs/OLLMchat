@@ -109,11 +109,12 @@ namespace OLLMfiles
 		public abstract string get_selection(out int cursor_line, out int cursor_offset);
 		
 		/**
-		 * Check if the buffer has content.
+		 * Whether the buffer has been loaded with file content.
 		 * 
-		 * @return true if buffer has content, false otherwise
+		 * Returns true if the buffer has been loaded from the file,
+		 * false if it needs to be loaded.
 		 */
-		public abstract bool has_content();
+		public abstract bool is_loaded { get; }
 		
 		/**
 		 * Write contents to buffer and file.

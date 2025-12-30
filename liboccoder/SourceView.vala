@@ -369,8 +369,8 @@ namespace OLLMcoder
 				return;
 			}
 			
-			// Load file content asynchronously if buffer is empty
-			if (!gtk_buffer.has_content()) {
+			// Load file content asynchronously if buffer hasn't been loaded
+			if (!gtk_buffer.is_loaded) {
 				try {
 					var contents = yield gtk_buffer.read_async();
 					gtk_buffer.text = contents;

@@ -187,13 +187,15 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Check if the buffer has content.
+		 * Whether the buffer has been loaded with file content.
 		 * 
-		 * @return true if buffer has content, false otherwise
+		 * Returns true if the buffer has been loaded from the file,
+		 * false if it needs to be loaded.
 		 */
-		public bool has_content()
-		{
-			return this.lines != null && this.lines.length > 0;
+		public bool is_loaded {
+			get {
+				return this.lines != null;
+			}
 		}
 		
 		/**

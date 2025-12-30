@@ -198,15 +198,16 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Check if the buffer has content.
+		 * Whether the buffer has been loaded with file content.
 		 * 
-		 * @return true if buffer has content, false otherwise
+		 * Returns true if the buffer has been loaded from the file,
+		 * false if it needs to be loaded.
 		 */
-		public bool has_content()
-		{
-			Gtk.TextIter start, end;
-			this.get_bounds(out start, out end);
-			return !start.equal(end);
+		public bool is_loaded {
+			get {
+				// Buffer is loaded if last_read_timestamp has been set
+				return this.last_read_timestamp > 0;
+			}
 		}
 		
 		/**
