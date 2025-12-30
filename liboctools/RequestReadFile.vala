@@ -120,9 +120,7 @@ namespace OLLMtools
 			}
 			
 			// Validate line range if provided
-			if (this.start_line <= 0 || this.end_line <= 0) {
-				// No validation needed if line range not provided
-			} else {
+			if (this.start_line > 0 && this.end_line > 0) {
 				if (this.start_line > this.end_line) {
 					throw new GLib.IOError.INVALID_ARGUMENT(
 						"Invalid line range: start_line (" + this.start_line.to_string() + 
