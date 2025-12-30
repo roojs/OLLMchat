@@ -127,10 +127,6 @@ namespace OLLMtools
 				);
 			}
 			
-			if (this.start_line > 0 && this.start_line < 1) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
-			}
-			
 			// Get or create File object from path
 			var project_manager = ((ReadFile) this.tool).project_manager;
 			if (project_manager == null) {
