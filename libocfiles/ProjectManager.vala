@@ -311,7 +311,7 @@ namespace OLLMfiles
 		 * This should be called on startup or periodically to prevent backup directory
 		 * from growing indefinitely.
 		 */
-		public static void cleanup_old_backups()
+		public static async void cleanup_old_backups()
 		{
 			try {
 				var cache_dir = GLib.Path.build_filename(
@@ -332,12 +332,13 @@ namespace OLLMfiles
 				var cutoff_time = now.add_days(-3);
 				var cutoff_timestamp = cutoff_time.to_unix();
 				
-				// Enumerate files in backup directory
-				var enumerator = cache_dir_file.enumerate_children(
+				// Enumerate files in backup directory asynchronously
+				var enumerator = yield cache_dir_file.enumerate_children_async(
 					GLib.FileAttribute.STANDARD_NAME + "," + 
 					GLib.FileAttribute.TIME_MODIFIED + "," +
 					GLib.FileAttribute.STANDARD_TYPE,
 					GLib.FileQueryInfoFlags.NONE,
+					GLib.Priority.DEFAULT,
 					null
 				);
 				
@@ -363,12 +364,15 @@ namespace OLLMfiles
 					}
 				}
 				
-				// Delete old backup files
+				// Close enumerator
+				enumerator.close(null);
+				
+				// Delete old backup files asynchronously
 				int deleted_count = 0;
 				foreach (var file_path in files_to_delete) {
 					try {
 						var file = GLib.File.new_for_path(file_path);
-						file.delete(null);
+						yield file.delete_async(GLib.Priority.DEFAULT, null);
 						deleted_count++;
 					} catch (GLib.Error e) {
 						GLib.warning("ProjectManager.cleanup_old_backups: Failed to delete backup file %s: %s", 
