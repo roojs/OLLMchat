@@ -105,7 +105,14 @@ namespace MarkdownGtk
 			header_box.add_css_class("oc-frame-header");
 			
 			// Add title label on the left (language name)
+			// Hide "txt\s+" from the beginning if present
 			string language_label_text = (this.code_language != null && this.code_language != "") ? this.code_language : "code";
+			// Check if language starts with "txt" followed by whitespace
+			if (language_label_text.has_prefix("txt") && language_label_text.length > 3 && language_label_text[3].isspace()) {
+				// Remove "txt" and following whitespace(s)
+				var stripped = language_label_text.substring(3).strip();
+				language_label_text = (stripped != "") ? stripped : "txt";
+			}
 			var title_label = new Gtk.Label(language_label_text) {
 				hexpand = false,
 				halign = Gtk.Align.START,

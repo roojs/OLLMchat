@@ -39,6 +39,43 @@ class TestFiles : TestAppBase
 	private static string? opt_info = null;
 	private static string? opt_ls_path = null;
 
+	protected const string help = """
+Usage: {ARG} [OPTIONS] <action>
+
+Test tool for file operations using libocfiles.
+
+Actions (specify one):
+  --ls [--ls-path=PATH]              List files in directory
+  --read=PATH [--start-line=N] [--end-line=M] [--output=FILE]
+                                      Read file with optional line ranges
+  --write=PATH [--content=TEXT] [--content-file=FILE]
+                                      Write file with backups
+  --create-fake=PATH                  Create fake file (not in database)
+  --check-project=PATH                Check if file is in active project
+  --cleanup-backups                   Cleanup old backup files
+  --list-buffers [--max-buffers=N]    List current file buffers
+  --create-project=PATH               Create test project from directory
+  --info=PATH                         Show file information
+
+Options:
+  --test-db=PATH                      Use test database instead of main database
+  --backend=BACKEND                   Buffer backend: sourceview or dummy (default: dummy)
+  --start-line=N                      Start line number for reading (1-based)
+  --end-line=M                        End line number for reading (1-based)
+  --output=FILE                       Output file path (default: stdout)
+  --content=TEXT                      Content to write to file
+  --content-file=FILE                 File containing content to write
+  --age-days=N                        Age threshold in days for backup cleanup (default: 7)
+  --max-buffers=N                     Maximum number of buffers to list
+
+Examples:
+  {ARG} --read=/path/to/file.txt --start-line=10 --end-line=20
+  {ARG} --write=/path/to/file.txt --content="new content" --test-db=/tmp/test.db
+  {ARG} --create-fake=/tmp/fake.txt --test-db=/tmp/test.db
+  {ARG} --check-project=/path/to/file.txt --test-db=/tmp/test.db
+  {ARG} --create-project=/path/to/project --test-db=/tmp/test.db
+""";
+
 	public TestFiles()
 	{
 		base("com.roojs.ollmchat.test-files");
@@ -74,17 +111,14 @@ class TestFiles : TestAppBase
 
 	protected override OptionEntry[] get_options()
 	{
-		var options = new OptionEntry[base_options.length + local_options.length];
-		int i = 0;
+		// Only include debug from base_options, skip url/api-key/model since we don't need LLM connection
+		// debug + all local options (which includes null)
+		var options = new OptionEntry[1 + local_options.length];
+		options[0] = base_options[0];  // debug option
 		
-		// Copy base options
-		foreach (var opt in base_options) {
-			options[i++] = opt;
-		}
-		
-		// Copy local options
-		foreach (var opt in local_options) {
-			options[i++] = opt;
+		// Copy all local options (includes null terminator)
+		for (int j = 0; j < local_options.length; j++) {
+			options[1 + j] = local_options[j];
 		}
 		
 		return options;
@@ -123,7 +157,7 @@ class TestFiles : TestAppBase
 		}
 		
 		if (action_count == 0) {
-			return "Error: No action specified. Use --help to see available options.\n";
+			return help.replace("{ARG}", args[0]);
 		}
 		if (action_count > 1) {
 			return "Error: Multiple actions specified. Only one action is allowed at a time.\n";
@@ -160,9 +194,10 @@ class TestFiles : TestAppBase
 		// Load projects from database
 		yield manager.load_projects_from_db();
 		
-		// Set active project if available
+		// Set active project if available (activate the most recently created one)
+		// Projects are loaded in order, so the last one is likely the most recent
 		if (manager.projects.get_n_items() > 0) {
-			var project = manager.projects.get_item(0) as OLLMfiles.Folder;
+			var project = manager.projects.get_item(manager.projects.get_n_items() - 1) as OLLMfiles.Folder;
 			if (project != null) {
 				yield manager.activate_project(project);
 			}
@@ -445,6 +480,9 @@ Cleanup completed (check logs for deleted files)
 		
 		// Scan directory and populate project files
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Activate the project so it becomes the active project
+		yield manager.activate_project(project);
 		
 		// Count files
 		int file_count = 0;

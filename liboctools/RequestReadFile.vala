@@ -36,6 +36,34 @@ namespace OLLMtools
 		{
 		}
 		
+		/**
+		 * Get first N lines from content string.
+		 * 
+		 * @param content The full content string
+		 * @param max_lines Maximum number of lines to return
+		 * @return First N lines of content
+		 */
+		private string get_first_lines(string content, int max_lines)
+		{
+			if (content == null || content == "") {
+				return "";
+			}
+			
+			var lines = content.split("\n");
+			if (lines.length <= max_lines) {
+				return content;
+			}
+			
+			var result = new StringBuilder();
+			for (int i = 0; i < max_lines; i++) {
+				if (i > 0) {
+					result.append("\n");
+				}
+				result.append(lines[i]);
+			}
+			return result.str;
+		}
+		
 		protected override bool build_perm_question()
 		{
 			// Validate required parameter
@@ -155,21 +183,34 @@ namespace OLLMtools
 				ret = yield file.buffer.read_async();
 			}
 
+			// Get full content
+			string full_content;
 			// Read entire file if requested or no line range specified
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
 				// Use buffer.read_async() for entire file
-				return ret;
+				full_content = ret;
+			} else {
+				// Read line range using buffer.get_text() (convert 1-based to 0-based)
+				// Original: 1-based, inclusive start, exclusive end
+				// Buffer: 0-based, inclusive start and end
+				// Conversion: start_line_0 = start_line - 1, end_line_0 = end_line - 2
+				full_content = file.buffer.get_text(
+					(int)(this.start_line - 1),
+					(int)(this.end_line - 2)
+				);
 			}
 			
-			
-			// Read line range using buffer.get_text() (convert 1-based to 0-based)
-			// Original: 1-based, inclusive start, exclusive end
-			// Buffer: 0-based, inclusive start and end
-			// Conversion: start_line_0 = start_line - 1, end_line_0 = end_line - 2
-			return file.buffer.get_text(
-				(int)(this.start_line - 1),
-				(int)(this.end_line - 2)
+			// Send first 10 lines to UI
+			var preview_content = this.get_first_lines(full_content, 10);
+			var file_basename = GLib.Path.get_basename(file.path);
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui",
+					"```txt Reading file: " + file_basename + "\n" + preview_content.replace("\n```", "\n\\`\\`\\`") + "\n```"),
+				this.chat_call
 			);
+			
+			// Return full content to LLM
+			return full_content;
 		}
 	}
 }

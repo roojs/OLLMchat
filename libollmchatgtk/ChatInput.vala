@@ -576,34 +576,46 @@ namespace OLLMchatGtk
 
 		/**
 		 * Sets up the tools menu button with popover containing checkboxes for each tool.
+		 * Builds the menu dynamically when the popover is shown.
 		 * 
 		 * @since 1.0
 		 */
-		private void setup_tools_menu_button()
+		public void setup_tools_menu_button()
 		{
 			// Create popover for tools menu
-			var popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
-				margin_start = 10,
-				margin_end = 10,
-				margin_top = 10,
-				margin_bottom = 10
-			};
+			var popover = new Gtk.Popover();
+			
+			// Build menu content when popover is shown
+			popover.show.connect(() => {
+				// Clear existing children
+				var existing_child = popover.get_child();
+				if (existing_child != null) {
+					existing_child.unparent();
+				}
+				
+				// Create popover box
+				var popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
+					margin_start = 10,
+					margin_end = 10,
+					margin_top = 10,
+					margin_bottom = 10
+				};
 
-			// Create checkboxes for each tool
-			foreach (var tool in this.manager.session.client.tools.values) {
-				 
-				var check_button = new Gtk.CheckButton.with_label(
-					tool.description.strip().split("\n")[0]
-				);
-				// Bind checkbox active state to tool active property
-				tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
-				popover_box.append(check_button);
-			}
+				// Create checkboxes for each tool (build dynamically from current tools)
+				foreach (var tool in this.manager.session.client.tools.values) {
+					var check_button = new Gtk.CheckButton.with_label(
+						tool.description.strip().split("\n")[0]
+					);
+					// Bind checkbox active state to tool active property
+					tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
+					popover_box.append(check_button);
+				}
+				
+				popover.set_child(popover_box);
+			});
 
 			// Configure the existing menu button (created in constructor) with popover
-			this.tools_menu_button.popover = new Gtk.Popover() {
-				child = popover_box
-			};
+			this.tools_menu_button.popover = popover;
 		}
 
 		/**

@@ -41,6 +41,7 @@ namespace OLLMchat
 		private Gtk.Button settings_button;
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
+		private Adw.Banner tool_error_banner;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -113,9 +114,21 @@ namespace OLLMchat
 				this.show_settings_dialog();
 			});
 			this.header_bar.pack_start(this.settings_button);
+			
+			// Create tool error banner
+			this.tool_error_banner = new Adw.Banner("") {
+				button_label = "Dismiss",
+				revealed = false
+			};
+			this.tool_error_banner.button_clicked.connect(() => {
+				this.tool_error_banner.revealed = false;
+			});
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
+			
+			// Add tool error banner below header bar
+			toolbar_view.add_top_bar(this.tool_error_banner);
 
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
@@ -400,7 +413,10 @@ namespace OLLMchat
 			
 			// Ensure config is loaded before proceeding
 			if (config == null || !config.loaded) {
-				GLib.warning("Config not loaded, skipping codebase search tool initialization");
+				string error_msg = "Config not loaded, skipping codebase search tool initialization";
+				GLib.warning("%s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
@@ -419,35 +435,49 @@ namespace OLLMchat
 			// Get usage objects and validate they exist
 			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
 			if (embed_usage == null) {
-				GLib.warning("Codebase search tool disabled: ocvector.embed usage not found in config");
+				string error_msg = "ocvector.embed usage not found in config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			var analysis_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
 			if (analysis_usage == null) {
-				GLib.warning("Codebase search tool disabled: ocvector.analysis usage not found in config");
+				string error_msg = "ocvector.analysis usage not found in config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			// Check if required models are available on the server
 			bool models_available = yield OLLMvector.Database.check_required_models_available(config);
 			if (!models_available) {
-				GLib.warning("Codebase search tool disabled: required models not available on server. " +
-				             "Embed model '%s' and/or analysis model '%s' not found. " +
-				             "Please ensure these models are available on your Ollama server.",
-				             embed_usage.model, analysis_usage.model);
+				string error_msg = "Required models not available on server. Embed model '" +
+					embed_usage.model + "' and/or analysis model '" + analysis_usage.model +
+					"' not found. Please ensure these models are available on your Ollama server.";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			// Try to get embed client from config
 			var embed_client = config.create_client("ocvector.embed");
 			if (embed_client == null) {
-				// No embed configuration - tool won't be available
+				string error_msg = "No embed configuration available";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			// Ensure embed_client has config set (should be set by create_client, but verify)
 			if (embed_client.config == null) {
-				GLib.warning("Embed client created without config, skipping codebase search tool initialization");
+				string error_msg = "Embed client created without config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
@@ -458,12 +488,16 @@ namespace OLLMchat
 				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
 				
 				// Register the tool
-				client.addTool(new OLLMvector.Tool.CodebaseSearchTool(
+				var tool = new OLLMvector.Tool.CodebaseSearchTool(
 					client,
 					project_manager,
 					vector_db,
 					embed_client
-				));
+				);
+				client.addTool(tool);
+				
+				GLib.debug("Codebase search tool registered successfully (name: %s, active: %s)", 
+					tool.name, tool.active.to_string());
 				
 				// Also add to current session's client if it exists
 				if (this.history_manager.session != null && this.history_manager.session.client != null) {
@@ -471,10 +505,17 @@ namespace OLLMchat
 					var tool_name = "codebase_search";
 					if (client.tools.has_key(tool_name)) {
 						this.history_manager.session.client.addTool(client.tools.get(tool_name));
+						GLib.debug("Codebase search tool added to current session (total tools: %d)", 
+							this.history_manager.session.client.tools.size);
+					} else {
+						GLib.warning("Codebase search tool not found in base_client.tools after registration");
 					}
 				}
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to initialize codebase search tool: %s", e.message);
+				string error_msg = "Failed to initialize: " + e.message;
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 			}
 		}
 		

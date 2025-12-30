@@ -32,6 +32,7 @@ subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles, lib
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
+subdir('tests')             # Test suite - depends on examples
 
 # Create wrapper scripts in top-level build directory for easier access
 # These wrappers set up LD_LIBRARY_PATH and execute the real binaries from examples/
