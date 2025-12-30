@@ -221,59 +221,17 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * File buffer instance (nullable).
+		 * 
+		 * Created by buffer provider when needed. Use file.buffer.read_async()
+		 * and file.buffer.write() for file operations.
+		 */
+		public FileBuffer? buffer { get; set; default = null; }
+		
+		/**
 		 * Emitted when file content changes.
 		 */
 		public signal void changed();
-		
-		/**
-		 * Read file contents asynchronously.
-		 * 
-		 * @return File contents as string
-		 * @throws Error if file cannot be read
-		 */
-		public async string read_async() throws Error
-		{
-			var file = GLib.File.new_for_path(this.path);
-			if (!file.query_exists()) {
-				throw new GLib.FileError.NOENT("File not found: " + this.path);
-			}
-			
-			uint8[] data;
-			string etag;
-			yield file.load_contents_async(null, out data, out etag);
-			
-			return (string)data;
-		}
-		
-		/**
-		 * Write file contents.
-		 * 
-		 * @param contents Contents to write
-		 * @throws Error if file cannot be written
-		 */
-		public void write(string contents) throws Error
-		{
-			var file = GLib.File.new_for_path(this.path);
-			var parent = file.get_parent();
-			if (parent != null && !parent.query_exists()) {
-				parent.make_directory_with_parents(null);
-			}
-			
-			var output_stream = file.replace(null, false, GLib.FileCreateFlags.NONE, null);
-			var data_stream = new GLib.DataOutputStream(output_stream);
-			data_stream.put_string(contents, null);
-			data_stream.close(null);
-			
-			// Update last_modified from filesystem after writing
-			this.last_modified = this.mtime_on_disk();
-			
-			// Save to database with sync to disk
-			if (this.manager.db != null) {
-				this.saveToDB(this.manager.db, null, true);
-			}
-			
-			this.changed();
-		}
 		
 		/**
 		 * Gets file contents, optionally limited to first N lines.
@@ -283,7 +241,10 @@ namespace OLLMfiles
 		 */
 		public string get_contents(int max_lines = 0)
 		{
-			return this.manager.buffer_provider.get_buffer_text(this, 0, max_lines > 0 ? max_lines - 1 : -1);
+			if (this.buffer == null) {
+				return "";
+			}
+			return this.buffer.get_text(0, max_lines > 0 ? max_lines - 1 : -1);
 		}
 		
 		/**
@@ -293,7 +254,10 @@ namespace OLLMfiles
 		 */
 		public int get_line_count()
 		{
-			return this.manager.buffer_provider.get_buffer_line_count(this);
+			if (this.buffer == null) {
+				return 0;
+			}
+			return this.buffer.get_line_count();
 		}
 		
 		/**
@@ -304,10 +268,14 @@ namespace OLLMfiles
 		 */
 		public string get_selected_code()
 		{
-			int cursor_line, cursor_offset;
-			var selected = this.manager.buffer_provider.get_buffer_selection(this, out cursor_line, out cursor_offset);
+			if (this.buffer == null) {
+				return "";
+			}
 			
-			// Update cursor position from provider
+			int cursor_line, cursor_offset;
+			var selected = this.buffer.get_selection(out cursor_line, out cursor_offset);
+			
+			// Update cursor position from buffer
 			this.cursor_line = cursor_line;
 			this.cursor_offset = cursor_offset;
 			
@@ -328,7 +296,10 @@ namespace OLLMfiles
 		 */
 		public string get_line_content(int line)
 		{
-			return this.manager.buffer_provider.get_buffer_line(this, line);
+			if (this.buffer == null) {
+				return "";
+			}
+			return this.buffer.get_line(line);
 		}
 		
 		/**
@@ -339,8 +310,12 @@ namespace OLLMfiles
 		 */
 		public int get_cursor_position()
 		{
+			if (this.buffer == null) {
+				return -1;
+			}
+			
 			int line, offset;
-			this.manager.buffer_provider.get_buffer_cursor(this, out line, out offset);
+			this.buffer.get_cursor(out line, out offset);
 			
 			this.cursor_line = line;
 			this.cursor_offset = offset;
