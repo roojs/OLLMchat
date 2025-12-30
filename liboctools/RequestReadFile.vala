@@ -127,7 +127,7 @@ namespace OLLMtools
 				);
 			}
 			
-			if (this.start_line > 0 && this.end_line > 0 && this.start_line < 1) {
+			if (this.start_line > 0 && this.start_line < 1) {
 				throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
 			}
 			
