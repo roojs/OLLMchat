@@ -116,17 +116,22 @@ namespace OLLMtools
 			
 			// Validate that file exists
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
-				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");
+				throw new GLib.IOError.FAILED("File not found or is not a regular file: " + file_path);
 			}
 			
 			// Validate line range if provided
-			if (this.start_line > 0 && this.end_line > 0) {
+			if (this.start_line <= 0 || this.end_line <= 0) {
+				// No validation needed if line range not provided
+			} else {
 				if (this.start_line > this.end_line) {
-					throw new GLib.IOError.INVALID_ARGUMENT(@"Invalid line range: start_line ($(this.start_line)) must be <= end_line ($(this.end_line))");
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start_line (" + this.start_line.to_string() + 
+						") must be <= end_line (" + this.end_line.to_string() + ")"
+					);
 				}
 				
 				if (this.start_line < 1) {
-					throw new GLib.IOError.INVALID_ARGUMENT(@"Invalid line range: start_line must be >= 1");
+					throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
 				}
 			}
 			
