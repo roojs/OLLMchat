@@ -110,9 +110,7 @@ namespace OLLMvector.Search
 			end_line = (max_lines != -1 && (end_line - start_line + 1) > max_lines) ?
 					 start_line + max_lines - 1 : end_line;
 			
-			if (file.buffer == null) {
-				return "";
-			}
+			file.manager.buffer_provider.create_buffer(file);
 			
 			return file.buffer.get_text(start_line, end_line);
 		}
