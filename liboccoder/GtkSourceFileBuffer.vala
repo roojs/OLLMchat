@@ -38,6 +38,14 @@ namespace OLLMcoder
 		private int64 last_read_timestamp = 0;
 		
 		/**
+		 * Whether the buffer has been loaded with file content.
+		 * 
+		 * Returns true if the buffer has been loaded from the file,
+		 * false if it needs to be loaded.
+		 */
+		public bool is_loaded { get; private set; default = false; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param file The file this buffer represents
@@ -82,6 +90,7 @@ namespace OLLMcoder
 				var contents = yield read_async_real();
 				this.text = contents;
 				this.last_read_timestamp = mod_timestamp;
+				this.is_loaded = true;
 			}
 			
 			// Return buffer contents
@@ -197,18 +206,6 @@ namespace OLLMcoder
 			return this.get_text(start, end, true);
 		}
 		
-		/**
-		 * Whether the buffer has been loaded with file content.
-		 * 
-		 * Returns true if the buffer has been loaded from the file,
-		 * false if it needs to be loaded.
-		 */
-		public bool is_loaded {
-			get {
-				// Buffer is loaded if last_read_timestamp has been set
-				return this.last_read_timestamp > 0;
-			}
-		}
 		
 		/**
 		 * Write contents to buffer and file.
