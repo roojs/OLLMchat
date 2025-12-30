@@ -334,7 +334,9 @@ namespace OLLMfiles
 				
 				// Enumerate files in backup directory
 				var enumerator = cache_dir_file.enumerate_children(
-					GLib.FileAttribute.STANDARD_NAME + "," + GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileAttribute.STANDARD_NAME + "," + 
+					GLib.FileAttribute.TIME_MODIFIED + "," +
+					GLib.FileAttribute.STANDARD_TYPE,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
@@ -343,6 +345,11 @@ namespace OLLMfiles
 				
 				GLib.FileInfo? info;
 				while ((info = enumerator.next_file(null)) != null) {
+					// Skip directories (only process files)
+					if (info.get_file_type() == GLib.FileType.DIRECTORY) {
+						continue;
+					}
+					
 					var name = info.get_name();
 					var file_path = GLib.Path.build_filename(cache_dir, name);
 					
