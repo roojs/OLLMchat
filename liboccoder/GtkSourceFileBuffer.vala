@@ -258,6 +258,71 @@ namespace OLLMcoder
 				null
 			).get_modification_date_time().to_unix();
 		}
+		
+		/**
+		 * Apply multiple edits to the buffer efficiently using GTK buffer operations.
+		 * 
+		 * Uses GTK TextBuffer's text manipulation for efficient chunk editing.
+		 * Applies edits in reverse order (from end to start) to preserve line numbers.
+		 * 
+		 * @param changes List of FileChange objects to apply (should be sorted descending by start)
+		 * @throws Error if edits cannot be applied
+		 */
+		public async void apply_edits(Gee.ArrayList<OLLMfiles.FileChange> changes) throws Error
+		{
+			// Ensure buffer is loaded
+			if (!this.is_loaded) {
+				yield this.read_async();
+			}
+			
+			// Apply changes in reverse order (from end to start) to preserve line numbers
+			foreach (var change in changes) {
+				// Convert 1-based (inclusive start, exclusive end) to 0-based line numbers
+				int start_line = change.start - 1;
+				int end_line = change.end - 1;
+				
+				// Get iterators for the range
+				Gtk.TextIter start_iter, end_iter;
+				
+				// Get start iterator
+				if (!this.get_iter_at_line(out start_iter, start_line)) {
+					// Line doesn't exist - check if this is an insertion at end
+					if (start_line == this.get_line_count()) {
+						// Insertion at end - get end iterator
+						this.get_end_iter(out start_iter);
+						end_iter = start_iter;
+					} else {
+						throw new GLib.IOError.INVALID_ARGUMENT(
+							"Invalid line range: start=" + change.start.to_string() + 
+							" (file has " + this.get_line_count().to_string() + " lines)");
+					}
+				} else {
+					// Get end iterator
+					if (change.start == change.end) {
+						// Insertion - end_iter is same as start_iter
+						end_iter = start_iter;
+					} else {
+						// Edit - get end iterator
+						if (!this.get_iter_at_line(out end_iter, end_line)) {
+							// End line doesn't exist - use end of buffer
+							this.get_end_iter(out end_iter);
+						} else {
+							// Move to end of end_line (exclusive)
+							if (!end_iter.ends_line()) {
+								end_iter.forward_to_line_end();
+							}
+						}
+					}
+				}
+				
+				// Apply the edit using GTK buffer's delete and insert
+				this.delete(ref start_iter, ref end_iter);
+				this.insert(ref start_iter, change.replacement, -1);
+			}
+			
+			// Sync buffer to file (creates backup, writes, updates metadata)
+			yield this.sync_to_file();
+		}
 	}
 }
 

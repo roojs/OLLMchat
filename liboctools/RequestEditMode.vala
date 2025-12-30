@@ -42,7 +42,7 @@ namespace OLLMtools
 		private int current_end_line = -1;
 		
 		// Captured changes
-		private Gee.ArrayList<EditModeChange> changes = new Gee.ArrayList<EditModeChange>();
+		private Gee.ArrayList<OLLMfiles.FileChange> changes = new Gee.ArrayList<OLLMfiles.FileChange>();
 		
 		// Stored error messages to send when message is done
 		private Gee.ArrayList<string> error_messages = new Gee.ArrayList<string>();

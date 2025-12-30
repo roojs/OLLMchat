@@ -222,6 +222,82 @@ namespace OLLMfiles
 			// Write to file (backup, write, update metadata)
 			yield this.write_real(contents);
 		}
+		
+		/**
+		 * Apply multiple edits to the buffer efficiently using in-memory lines array.
+		 * 
+		 * Applies edits in reverse order (from end to start) to preserve line numbers.
+		 * 
+		 * @param changes List of FileChange objects to apply (should be sorted descending by start)
+		 * @throws Error if edits cannot be applied
+		 */
+		public async void apply_edits(Gee.ArrayList<FileChange> changes) throws Error
+		{
+			// Ensure buffer is loaded
+			if (this.lines == null) {
+				yield this.read_async();
+			}
+			
+			// Apply changes in reverse order (from end to start) to preserve line numbers
+			foreach (var change in changes) {
+				// Convert 1-based (inclusive start, exclusive end) to 0-based array indices
+				int start_idx = change.start - 1;
+				int end_idx = change.end - 1;
+				
+				// Validate range
+				bool is_insertion = (change.start == change.end);
+				if (start_idx < 0 || end_idx < start_idx) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						", end=" + change.end.to_string() + 
+						" (file has " + this.lines.length.to_string() + " lines)");
+				}
+				// For insertions, allow start_idx == lines.length (insert at end)
+				// For edits, start_idx must be < lines.length
+				if (!is_insertion && start_idx >= this.lines.length) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						", end=" + change.end.to_string() + 
+						" (file has " + this.lines.length.to_string() + " lines)");
+				}
+				if (is_insertion && start_idx > this.lines.length) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						", end=" + change.end.to_string() + 
+						" (file has " + this.lines.length.to_string() + " lines)");
+				}
+				
+				// Split replacement into lines
+				var replacement_lines = change.replacement.split("\n");
+				
+				// Build new lines array: before + replacement + after
+				var new_lines = new Gee.ArrayList<string>();
+				
+				// Add lines before the change
+				for (int i = 0; i < start_idx; i++) {
+					new_lines.add(this.lines[i]);
+				}
+				
+				// Add replacement lines
+				foreach (var replacement_line in replacement_lines) {
+					new_lines.add(replacement_line);
+				}
+				
+				// Add lines after the change
+				for (int i = end_idx; i < this.lines.length; i++) {
+					new_lines.add(this.lines[i]);
+				}
+				
+				// Update lines array for next change
+				this.lines = new_lines.to_array();
+			}
+			
+			// Join lines back into content string
+			var new_content = string.joinv("\n", this.lines);
+			
+			// Write to file (backup, write, update metadata)
+			yield this.write_real(new_content);
+		}
 	}
 }
 
