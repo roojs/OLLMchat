@@ -284,32 +284,41 @@ namespace OLLMcoder
 				// Get iterators for the range
 				Gtk.TextIter start_iter, end_iter;
 				
+				// Handle insertion case (start == end) first
+				if (change.start == change.end) {
+					// Get start iterator
+					if (!this.get_iter_at_line(out start_iter, start_line)) {
+						// Line doesn't exist - check if this is an insertion at end
+						if (start_line != this.get_line_count()) {
+							throw new GLib.IOError.INVALID_ARGUMENT(
+								"Invalid line range: start=" + change.start.to_string() + 
+								" (file has " + this.get_line_count().to_string() + " lines)");
+						}
+						// Insertion at end - get end iterator
+						this.get_end_iter(out start_iter);
+					}
+					end_iter = start_iter;
+					// Apply the edit using GTK buffer's delete and insert
+					this.delete(ref start_iter, ref end_iter);
+					this.insert(ref start_iter, change.replacement, -1);
+					continue;
+				}
+				
+				// Handle edit case (start != end)
 				// Get start iterator
 				if (!this.get_iter_at_line(out start_iter, start_line)) {
-					// Line doesn't exist - check if this is an insertion at end
-					if (start_line != this.get_line_count()) {
-						throw new GLib.IOError.INVALID_ARGUMENT(
-							"Invalid line range: start=" + change.start.to_string() + 
-							" (file has " + this.get_line_count().to_string() + " lines)");
-					}
-					// Insertion at end - get end iterator
-					this.get_end_iter(out start_iter);
-					end_iter = start_iter;
-				} else {
-					// Get end iterator
-					if (change.start == change.end) {
-						// Insertion - end_iter is same as start_iter
-						end_iter = start_iter;
-					} else {
-						// Edit - get end iterator
-						// end_line is exclusive, so we want the start of that line
-						if (!this.get_iter_at_line(out end_iter, end_line)) {
-							// End line doesn't exist - use end of buffer
-							this.get_end_iter(out end_iter);
-						}
-						// end_iter now points to start of end_line (exclusive), which is correct
-					}
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						" (file has " + this.get_line_count().to_string() + " lines)");
 				}
+				
+				// Get end iterator
+				// end_line is exclusive, so we want the start of that line
+				if (!this.get_iter_at_line(out end_iter, end_line)) {
+					// End line doesn't exist - use end of buffer
+					this.get_end_iter(out end_iter);
+				}
+				// end_iter now points to start of end_line (exclusive), which is correct
 				
 				// Apply the edit using GTK buffer's delete and insert
 				this.delete(ref start_iter, ref end_iter);
