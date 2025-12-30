@@ -313,7 +313,7 @@ namespace OLLMfiles
 		/**
 		 * Cleanup old backup files from the backup directory.
 		 * 
-		 * Removes backup files older than 3 days from ~/.cache/ollmchat/edited/.
+		 * Removes backup files older than 7 days from ~/.cache/ollmchat/edited/.
 		 * This should be called on startup or periodically to prevent backup directory
 		 * from growing indefinitely.
 		 * 
@@ -342,7 +342,7 @@ namespace OLLMfiles
 					return;
 				}
 				
-				var cutoff_timestamp = new GLib.DateTime.now_local().add_days(-3).to_unix();
+				var cutoff_timestamp = new GLib.DateTime.now_local().add_days(-7).to_unix();
 				
 				var enumerator = yield cache_dir_file.enumerate_children_async(
 					GLib.FileAttribute.STANDARD_NAME + "," + 
