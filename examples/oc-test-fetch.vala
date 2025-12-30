@@ -141,10 +141,10 @@ Examples:
 		client.permission_provider = new OLLMchat.ChatPermission.Dummy();
 		
 		// Create WebFetchTool
-		var tool = new OLLMchat.Tools.WebFetchTool(client);
+		var tool = new OLLMtools.WebFetchTool(client);
 		
 		// Create RequestWebFetch manually
-		var request = new OLLMchat.Tools.RequestWebFetch();
+		var request = new OLLMtools.RequestWebFetch();
 		request.tool = tool;
 		request.url = url;
 		request.format = format;

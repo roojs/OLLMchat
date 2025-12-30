@@ -218,7 +218,7 @@ namespace OLLMcoder
 			// Get buffer content
 			Gtk.TextIter start, end;
 			this.get_bounds(out start, out end);
-			var contents = this.get_text(start, end, true);
+			var contents = ((Gtk.TextBuffer) this).get_text(start, end, true);
 			
 			// Write to file (backup, write, update metadata)
 			yield this.write_real(contents);

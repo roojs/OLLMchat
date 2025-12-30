@@ -15,11 +15,11 @@ ocfiles_deps = [
 
 ocfiles_src = files([
   'BufferProviderBase.vala',
+  'FileBuffer.vala',  # Must come before File.vala (File uses FileBuffer)
   'DummyFileBuffer.vala',
   'FileBase.vala',
   'File.vala',
   'FileAlias.vala',
-  'FileBuffer.vala',
   'Folder.vala',
   'FolderFiles.vala',
   'GitProviderBase.vala',

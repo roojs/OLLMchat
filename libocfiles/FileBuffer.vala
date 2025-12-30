@@ -29,7 +29,7 @@ namespace OLLMfiles
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public abstract File file { get; }
+		public abstract File file { get; construct; }
 		
 		/**
 		 * Read file contents asynchronously.
@@ -217,10 +217,11 @@ namespace OLLMfiles
 				
 				// Open destination file for writing asynchronously (replace existing)
 				var output_stream = yield backup_file.replace_async(
-					GLib.Priority.DEFAULT,
 					null,
 					false,
-					GLib.FileCreateFlags.NONE
+					GLib.FileCreateFlags.NONE,
+					GLib.Priority.DEFAULT,
+					null
 				);
 				
 				// Copy data from input to output stream asynchronously
@@ -260,10 +261,11 @@ namespace OLLMfiles
 			
 			var file_obj = GLib.File.new_for_path(this.file.path);
 			var output_stream = yield file_obj.replace_async(
-				GLib.Priority.DEFAULT,
 				null,
 				false,
-				GLib.FileCreateFlags.NONE
+				GLib.FileCreateFlags.NONE,
+				GLib.Priority.DEFAULT,
+				null
 			);
 			
 			// Write contents asynchronously

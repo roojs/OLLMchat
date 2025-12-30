@@ -28,7 +28,8 @@ namespace OLLMfiles
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public File file { get; construct; }
+		private File _file;
+		public File file { get { return this._file; } }
 		
 		/**
 		 * Cached lines array.
@@ -42,7 +43,7 @@ namespace OLLMfiles
 		 */
 		public DummyFileBuffer(File file)
 		{
-			Object(file: file);
+			this._file = file;
 		}
 		
 		/**

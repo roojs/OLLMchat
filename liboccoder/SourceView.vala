@@ -467,7 +467,7 @@ namespace OLLMcoder
 				return;
 			}
 			
-			var buffer = this.current_file.buffer as GtkSourceFileBuffer;
+			var buffer = this.current_file.buffer as OLLMcoder.GtkSourceFileBuffer;
 			if (buffer == null) {
 				return;
 			}
