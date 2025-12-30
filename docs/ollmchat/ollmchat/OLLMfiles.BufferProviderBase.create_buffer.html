@@ -41,8 +41,8 @@
         </div>
         <div class="description">
           <p>Create a buffer for the file.</p>
-          <p>Creates a DummyFileBuffer instance and stores it in file.buffer. Performs buffer cleanup before creating new buffer (keeps top 10 most 
-            recent).</p>
+          <p>Creates a DummyFileBuffer instance and stores it in file.buffer. If file.buffer already exists and is a DummyFileBuffer, returns early. 
+            Performs buffer cleanup before creating new buffer (keeps top 10 most recent).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
