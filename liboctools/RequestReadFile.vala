@@ -114,23 +114,20 @@ namespace OLLMtools
 				this.chat_call
 			);
 			
-			// Validate that file exists
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 				throw new GLib.IOError.FAILED("File not found or is not a regular file: " + file_path);
 			}
 			
 			// Validate line range if provided
-			if (this.start_line > 0 && this.end_line > 0) {
-				if (this.start_line < 1) {
-					throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
-				}
-				
-				if (this.start_line > this.end_line) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start_line (" + this.start_line.to_string() + 
-						") must be <= end_line (" + this.end_line.to_string() + ")"
-					);
-				}
+			if (this.start_line > 0 && this.end_line > 0 && this.start_line > this.end_line) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start_line (" + this.start_line.to_string() + 
+					") must be <= end_line (" + this.end_line.to_string() + ")"
+				);
+			}
+			
+			if (this.start_line > 0 && this.end_line > 0 && this.start_line < 1) {
+				throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
 			}
 			
 			// Get or create File object from path
