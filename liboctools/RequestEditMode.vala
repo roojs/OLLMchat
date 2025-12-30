@@ -446,7 +446,7 @@ namespace OLLMtools
 			// Apply changes
 			int line_count = 0;
 			try {
-				this.apply_all_changes();
+				yield this.apply_all_changes();
 				
 				// Calculate line count for success message
 				try {
