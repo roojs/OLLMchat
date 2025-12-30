@@ -292,9 +292,6 @@ namespace OLLMchat
 			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			project_manager.git_provider = new OLLMcoder.GitProvider();
 			
-			// Cleanup old backup files (runs at most once per day)
-			OLLMfiles.ProjectManager.cleanup_old_backups.begin();
-			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
 					new OLLMtools.ReadFile(this.history_manager.base_client, project_manager));
