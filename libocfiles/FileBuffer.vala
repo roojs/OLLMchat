@@ -239,6 +239,9 @@ namespace OLLMfiles
 				if (this.file.manager.db != null) {
 					this.file.saveToDB(this.file.manager.db, null, false);
 				}
+				
+				// Cleanup old backup files (runs at most once per day)
+				OLLMfiles.ProjectManager.cleanup_old_backups.begin();
 			} catch (GLib.Error e) {
 				GLib.warning("FileBuffer.create_backup_if_needed: Failed to create backup for %s: %s", 
 					this.file.path, e.message);
