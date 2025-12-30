@@ -239,24 +239,20 @@ namespace OLLMfiles
 		protected void cleanup_old_buffers(File current_file)
 		{
 			var manager = current_file.manager;
-			var files_with_buffers = new Gee.ArrayList<File>();
-			
-			// Collect all files with buffers
-			foreach (var file_base in manager.file_cache.values) {
-				if (file_base is File) {
-					var file = (File) file_base;
-					if (file.buffer != null && file != current_file) {
-						files_with_buffers.add(file);
-					}
-				}
-			}
-			
-			// Filter out open files (keep their buffers)
 			var not_open_files = new Gee.ArrayList<File>();
-			foreach (var file in files_with_buffers) {
-				if (!file.is_open) {
-					not_open_files.add(file);
+			
+			// Collect all files with buffers that are not open
+			foreach (var file_base in manager.file_cache.values) {
+				if (!(file_base is File)) {
+					continue;
 				}
+				
+				var file = (File) file_base;
+				if (file.buffer == null || file == current_file || file.is_open) {
+					continue;
+				}
+				
+				not_open_files.add(file);
 			}
 			
 			// Sort by last_viewed (most recent first)
@@ -268,7 +264,7 @@ namespace OLLMfiles
 			
 			// Keep top 10, clear buffers for the rest
 			for (int i = 10; i < not_open_files.size; i++) {
-				not_open_files[i].buffer = null;
+				not_open_files.get(i).buffer = null;
 			}
 		}
 	}
