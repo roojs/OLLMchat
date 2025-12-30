@@ -29,7 +29,7 @@ namespace OLLMfiles
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public abstract File file { get; construct; }
+		public abstract File file { get; }
 		
 		/**
 		 * Read file contents asynchronously.

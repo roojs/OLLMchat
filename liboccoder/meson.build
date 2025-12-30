@@ -22,7 +22,7 @@ occoder_src = files([
   # TODO: Clipboard feature needs proper design - see TODO.md
   # 'ClipboardMetadata.vala',
   'GitProvider.vala',
-  'GtkSourceFileBuffer.vala',
+  'GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
   'FileDropdown.vala',
