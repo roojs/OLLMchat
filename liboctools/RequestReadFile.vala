@@ -148,11 +148,15 @@ namespace OLLMtools
 			
 			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
-			
+			var ret = "";
+			if (!file.buffer.is_loaded) {
+				ret = yield file.buffer.read_async();
+			}
+
 			// Read entire file if requested or no line range specified
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
 				// Use buffer.read_async() for entire file
-				return yield file.buffer.read_async();
+				return ret;
 			}
 			
 			
