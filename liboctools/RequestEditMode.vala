@@ -641,7 +641,22 @@ namespace OLLMtools
 				int end_idx = change.end - 1; // 1-based to 0-based (exclusive end)
 				
 				// Validate range
-				if (start_idx < 0 || end_idx < start_idx || start_idx > lines.length) {
+				bool is_insertion = (change.start == change.end);
+				if (start_idx < 0 || end_idx < start_idx) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						", end=" + change.end.to_string() + 
+						" (file has " + lines.length.to_string() + " lines)");
+				}
+				// For insertions, allow start_idx == lines.length (insert at end)
+				// For edits, start_idx must be < lines.length
+				if (!is_insertion && start_idx >= lines.length) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range: start=" + change.start.to_string() + 
+						", end=" + change.end.to_string() + 
+						" (file has " + lines.length.to_string() + " lines)");
+				}
+				if (is_insertion && start_idx > lines.length) {
 					throw new GLib.IOError.INVALID_ARGUMENT(
 						"Invalid line range: start=" + change.start.to_string() + 
 						", end=" + change.end.to_string() + 
