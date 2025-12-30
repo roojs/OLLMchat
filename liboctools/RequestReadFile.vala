@@ -150,12 +150,10 @@ namespace OLLMtools
 			
 			// Read entire file if requested or no line range specified
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				// Use buffer.read_async() for entire file
 				return yield file.buffer.read_async();
 			}
 			
 			// For line ranges, ensure buffer is loaded first
-			// (DummyFileBuffer.get_text() will load if needed, but GtkSourceFileBuffer needs explicit load)
 			if (!file.buffer.is_loaded) {
 				yield file.buffer.read_async();
 			}
