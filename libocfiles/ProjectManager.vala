@@ -345,15 +345,9 @@ namespace OLLMfiles
 				while ((info = enumerator.next_file(null)) != null) {
 					var name = info.get_name();
 					var file_path = GLib.Path.build_filename(cache_dir, name);
-					var file = GLib.File.new_for_path(file_path);
 					
-					// Get file modification time
-					var file_info = file.query_info(
-						GLib.FileAttribute.TIME_MODIFIED,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-					var mod_time = file_info.get_modification_date_time();
+					// Get file modification time from the info we already have
+					var mod_time = info.get_modification_date_time();
 					var mod_timestamp = mod_time.to_unix();
 					
 					// Check if file is older than 3 days
