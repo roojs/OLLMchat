@@ -166,9 +166,11 @@ namespace OLLMtools
 			}
 			
 			// Read line range using buffer.get_text() (convert 1-based to 0-based)
-			// Note: get_text() uses 0-based inclusive start and end
+			// Original: 1-based, inclusive start, exclusive end
+			// Buffer: 0-based, inclusive start and end
+			// Conversion: start_line_0 = start_line - 1, end_line_0 = end_line - 2
 			int start_line_0 = (int)(this.start_line - 1);
-			int end_line_0 = (int)(this.end_line - 1);
+			int end_line_0 = (int)(this.end_line - 2);
 			
 			return file.buffer.get_text(start_line_0, end_line_0);
 		}
