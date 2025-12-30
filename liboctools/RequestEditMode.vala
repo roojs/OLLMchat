@@ -620,12 +620,10 @@ namespace OLLMtools
 		 */
 		private async void apply_edits(OLLMfiles.File file) throws Error
 		{
-			// Read current content using buffer
+			// Ensure buffer is loaded
 			if (!file.buffer.is_loaded) {
 				yield file.buffer.read_async();
 			}
-			var current_content = file.buffer.get_text();
-			var lines = current_content.split("\n");
 			
 			// Sort changes by start line (descending) so we can apply them in reverse order
 			this.changes.sort((a, b) => {
@@ -634,65 +632,10 @@ namespace OLLMtools
 				return 0;
 			});
 			
-			// Apply changes in reverse order (from end to start) to preserve line numbers
-			foreach (var change in this.changes) {
-				// Convert 1-based (inclusive start, exclusive end) to 0-based array indices
-				int start_idx = change.start - 1; // 1-based to 0-based
-				int end_idx = change.end - 1; // 1-based to 0-based (exclusive end)
-				
-				// Validate range
-				bool is_insertion = (change.start == change.end);
-				if (start_idx < 0 || end_idx < start_idx) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + lines.length.to_string() + " lines)");
-				}
-				// For insertions, allow start_idx == lines.length (insert at end)
-				// For edits, start_idx must be < lines.length
-				if (!is_insertion && start_idx >= lines.length) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + lines.length.to_string() + " lines)");
-				}
-				if (is_insertion && start_idx > lines.length) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + lines.length.to_string() + " lines)");
-				}
-				
-				// Split replacement into lines
-				var replacement_lines = change.replacement.split("\n");
-				
-				// Build new lines array: before + replacement + after
-				var new_lines = new Gee.ArrayList<string>();
-				
-				// Add lines before the change
-				for (int i = 0; i < start_idx; i++) {
-					new_lines.add(lines[i]);
-				}
-				
-				// Add replacement lines
-				foreach (var replacement_line in replacement_lines) {
-					new_lines.add(replacement_line);
-				}
-				
-				// Add lines after the change
-				for (int i = end_idx; i < lines.length; i++) {
-					new_lines.add(lines[i]);
-				}
-				
-				// Update lines array for next change
-				lines = new_lines.to_array();
-			}
-			
-			// Join lines back into content string
-			var new_content = string.joinv("\n", lines);
-			
-			// Write using buffer (handles backup automatically)
-			yield file.buffer.write(new_content);
+			// Apply edits using buffer's efficient apply_edits method
+			// This will use GTK buffer operations for GtkSourceFileBuffer
+			// or in-memory lines array for DummyFileBuffer
+			yield file.buffer.apply_edits(this.changes);
 		}
 		
 		/**
