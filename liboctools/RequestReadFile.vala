@@ -150,10 +150,10 @@ namespace OLLMtools
 			
 			// Load buffer if needed (not loaded, or reading entire file)
 			if (!file.buffer.is_loaded || this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				var contents = yield file.buffer.read_async();
 				if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-					return contents;
+					return yield file.buffer.read_async();
 				}
+				yield file.buffer.read_async();
 			}
 			
 			// Read line range using buffer.get_text() (convert 1-based to 0-based)
