@@ -229,13 +229,11 @@ namespace OLLMcoder
 			
 			// Update last_read_timestamp to match file modification time
 			var file_obj = GLib.File.new_for_path(this.file.path);
-			var file_info = file_obj.query_info(
+			this.last_read_timestamp = file_obj.query_info(
 				GLib.FileAttribute.TIME_MODIFIED,
 				GLib.FileQueryInfoFlags.NONE,
 				null
-			);
-			var mod_time = file_info.get_modification_date_time();
-			this.last_read_timestamp = mod_time.to_unix();
+			).get_modification_date_time().to_unix();
 			
 			// Update file metadata
 			update_file_metadata_after_write();
