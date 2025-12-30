@@ -350,20 +350,20 @@ namespace OLLMcoder
 			// Notify manager to activate file
 			this.manager.activate_file(file);
 			
-			// Ensure buffer exists and is a GtkSourceFileBuffer
-			if (file.buffer == null || !(file.buffer is GtkSourceFileBuffer)) {
+			// Ensure buffer exists and is a GtkSource.Buffer (GtkSourceFileBuffer extends it)
+			if (file.buffer == null || !(file.buffer is GtkSource.Buffer)) {
 				// Create buffer using provider (handles language)
 				this.manager.buffer_provider.create_buffer(file);
 			}
 			
-			// Get GtkSourceFileBuffer (should not be null after create_buffer)
-			var gtk_buffer = file.buffer as GtkSourceFileBuffer;
+			// Get GtkSource.Buffer (GtkSourceFileBuffer extends it)
+			var gtk_buffer = file.buffer as GtkSource.Buffer;
 			 
 			
 			// Load file content asynchronously if buffer hasn't been loaded
-			if (!gtk_buffer.is_loaded) {
+			if (!file.buffer.is_loaded) {
 				try {
-					yield gtk_buffer.read_async();
+					yield file.buffer.read_async();
 				} catch (Error e) {
 					GLib.warning("Failed to read file %s: %s", file.path, e.message);
 					gtk_buffer.text = "";
@@ -467,7 +467,7 @@ namespace OLLMcoder
 				return;
 			}
 			
-			var buffer = this.current_file.buffer as OLLMcoder.GtkSourceFileBuffer;
+			var buffer = this.current_file.buffer as GtkSource.Buffer;
 			if (buffer == null) {
 				return;
 			}

@@ -28,7 +28,7 @@ namespace OLLMfiles
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public File file { get; construct; }
+		public File file { get; set; }
 		
 		/**
 		 * Cached lines array.
@@ -42,7 +42,7 @@ namespace OLLMfiles
 		 */
 		public DummyFileBuffer(File file)
 		{
-			Object(file: file);
+			this.file = file;
 		}
 		
 		/**
@@ -192,11 +192,7 @@ namespace OLLMfiles
 		 * Returns true if the buffer has been loaded from the file,
 		 * false if it needs to be loaded.
 		 */
-		public bool is_loaded {
-			get {
-				return this.lines != null;
-			}
-		}
+		public bool is_loaded { get; set; default = false; }
 		
 		/**
 		 * Sync buffer contents to file on disk.

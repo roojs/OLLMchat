@@ -24,7 +24,7 @@ namespace OLLMcoder.Prompt
 	 * Combines static sections from resources with dynamic context
 	 * to create complete system prompts for code-assistant agents.
 	 */
-	public class CodeAssistant : OLLMagent.BaseAgent
+	public class CodeAssistant : OLLMchat.Prompt.BaseAgent
 	{
 		/**
 		 * The provider for context data.

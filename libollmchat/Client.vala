@@ -129,7 +129,7 @@ namespace OLLMchat
 		 * 
 		 * @since 1.0
 		 */
-		public OLLMagent.BaseAgent prompt_assistant { get; set; default = new OLLMagent.BaseAgent(); }
+		public Prompt.BaseAgent prompt_assistant { get; set; default = new Prompt.BaseAgent(); }
 		
 		/**
 		 * Permission provider for tool execution.
@@ -269,11 +269,7 @@ namespace OLLMchat
 			this.message_created(user_sent_msg, call);
 			
 			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
-			string system_content;
-			string chat_content;
-			this.prompt_assistant.fill(text, out system_content, out chat_content);
-			call.system_content = system_content;
-			call.chat_content = chat_content;
+			this.prompt_assistant.fill(call, text);
 			
 			// If system_content is set, create system Message and emit message_created
 			if (call.system_content != "") {

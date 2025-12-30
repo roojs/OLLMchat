@@ -29,7 +29,7 @@ namespace OLLMfiles
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public abstract File file { get; }
+		public abstract File file { get; set; }
 		
 		/**
 		 * Read file contents asynchronously.
@@ -114,7 +114,7 @@ namespace OLLMfiles
 		 * Returns true if the buffer has been loaded from the file,
 		 * false if it needs to be loaded.
 		 */
-		public abstract bool is_loaded { get; }
+		public abstract bool is_loaded { get; set; }
 		
 		/**
 		 * Write contents to buffer and file.

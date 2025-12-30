@@ -487,7 +487,7 @@ namespace OLLMchat
 		 * - Adds widget to tab_view if not already present
 		 * - Shows widget and updates WindowPane visibility
 		 */
-		private void on_agent_activated(OLLMagent.BaseAgent agent)
+		private void on_agent_activated(OLLMchat.Prompt.BaseAgent agent)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -512,7 +512,7 @@ namespace OLLMchat
 		 * @param agent The agent that provided the widget
 		 * @param widget_obj The widget object (may be null)
 		 */
-		private void handle_agent_widget(OLLMagent.BaseAgent agent, Object? widget_obj)
+		private void handle_agent_widget(Prompt.BaseAgent agent, Object? widget_obj)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -563,7 +563,7 @@ namespace OLLMchat
 			}
 			
 			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMagent.BaseAgent));
+			var agent_store = new GLib.ListStore(typeof(Prompt.BaseAgent));
 			
 			// Add all registered agents to the store and set selection during load
 			uint selected_index = 0;
@@ -597,7 +597,7 @@ namespace OLLMchat
 					return;
 				}
 				
-				var agent = list_item.item as OLLMagent.BaseAgent;
+				var agent = list_item.item as Prompt.BaseAgent;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
 				if (label != null && agent != null) {
@@ -617,7 +617,7 @@ namespace OLLMchat
 					return;
 				}
 				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMagent.BaseAgent;
+				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as Prompt.BaseAgent;
 				  
 				this.history_manager.session.agent_name = agent.name;
 				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
@@ -636,7 +636,7 @@ namespace OLLMchat
 				}
 				
 				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMagent.BaseAgent)store.get_item(j)).name != session.agent_name) {
+					if (((Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
 						continue;
 					}
 					this.agent_dropdown.selected = j;

@@ -29,7 +29,7 @@ namespace OLLMcoder
 		/**
 		 * Reference to the file this buffer represents.
 		 */
-		public OLLMfiles.File file { get; construct; }
+		public OLLMfiles.File file { get; set; }
 		
 		/**
 		 * Last read timestamp (Unix timestamp).
@@ -43,7 +43,7 @@ namespace OLLMcoder
 		 * Returns true if the buffer has been loaded from the file,
 		 * false if it needs to be loaded.
 		 */
-		public bool is_loaded { get; internal set; default = false; }
+		public bool is_loaded { get; set; default = false; }
 		
 		/**
 		 * Constructor.
@@ -54,9 +54,9 @@ namespace OLLMcoder
 		public GtkSourceFileBuffer(OLLMfiles.File file, GtkSource.Language? language = null)
 		{
 			if (language != null) {
-				base.with_language(language);
+				this.language = language;
 			}
-			Object(file: file);
+			this.file = file;
 		}
 		
 		/**
@@ -96,7 +96,7 @@ namespace OLLMcoder
 			// Return buffer contents
 			Gtk.TextIter start, end;
 			this.get_bounds(out start, out end);
-			return this.get_text(start, end, true);
+			return ((Gtk.TextBuffer) this).get_text(start, end, true);
 		}
 		
 		/**
@@ -124,10 +124,10 @@ namespace OLLMcoder
 				if (!line_end.ends_line()) {
 					line_end.forward_to_line_end();
 				}
-				return this.get_text(line_start, line_end, true);
+				return ((Gtk.TextBuffer) this).get_text(line_start, line_end, true);
 			}
 			
-			return this.get_text(start, end, true);
+			return ((Gtk.TextBuffer) this).get_text(start, end, true);
 		}
 		
 		/**
@@ -160,7 +160,7 @@ namespace OLLMcoder
 				line_end.forward_to_line_end();
 			}
 			
-			return this.get_text(iter, line_end, true);
+			return ((Gtk.TextBuffer) this).get_text(iter, line_end, true);
 		}
 		
 		/**
@@ -203,7 +203,7 @@ namespace OLLMcoder
 				return "";
 			}
 			
-			return this.get_text(start, end, true);
+			return ((Gtk.TextBuffer) this).get_text(start, end, true);
 		}
 		
 		

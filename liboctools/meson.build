@@ -9,6 +9,7 @@ octools_deps = [
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
   valac.find_library('posix'),
 ]
 
@@ -34,19 +35,24 @@ lib_build_rpath = ':'.join([
 ])
 
 octools_base_lib = library('octools',
-  dependencies: [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep],
+  dependencies: [octools_deps, ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep],
   sources: octools_src,
   vala_header: 'octools.h',
   vala_vapi: 'octools-meson.vapi',  # Use different name so our custom_target can use 'octools.vapi'
   build_rpath: lib_build_rpath,
+  include_directories: [
+    include_directories('..' / 'libollmchat'),  # For ollmchat.h header
+  ],
   vala_args: [
     '--pkg=ollmchat',
     '--pkg=ocfiles',
     '--pkg=ocsqlite',
+    '--pkg=ocmarkdown',
     '--pkg=json-glib-1.0',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
   ],
@@ -64,13 +70,17 @@ octools_vapi = custom_target('octools-vapi',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'json-glib-1.0',
+    '--pkg', 'libsoup-3.0',
+    '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
     '--pkg', 'ollmchat',
     '--pkg', 'ocfiles',
+    '--pkg', 'ocmarkdown',
     '--pkg', 'ocsqlite',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
@@ -92,7 +102,7 @@ octools_vapi = custom_target('octools-vapi',
 octools_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-loctools'],
   sources: [octools_vapi[0]],  # Include VAPI file to ensure it's built first
-  dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep]
+  dependencies: [ollmchat_vapi_dep, ocfiles_vapi_dep, ocmarkdown_vapi_dep]
 )
 
 # GObject Introspection for octools library

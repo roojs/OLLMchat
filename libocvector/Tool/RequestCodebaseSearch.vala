@@ -221,7 +221,10 @@ namespace OLLMvector.Tool
 			string[] ret = {}; 
 			// Load from file
 			try {
-				var contents = yield file.read_async();
+				if (file.buffer == null) {
+					return ret;
+				}
+				var contents = yield file.buffer.read_async();
 				
 				var lines_array = contents.split("\n");
 				var cache_entry = new FileCacheEntry(lines_array);

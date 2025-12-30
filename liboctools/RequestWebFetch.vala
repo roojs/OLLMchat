@@ -190,10 +190,10 @@ namespace OLLMtools
 		}
 		
 		/**
-		 * Extract domain from URL and normalize to https://{domain}/ format.
-		 * 
+		 * Extract domain from URL and normalize to [[https://domain/]] format.
+		 *
 		 * @param url The URL to extract domain from
-		 * @return Normalized domain string (e.g., "https://example.com/") or empty string on error
+		 * @return Normalized domain string (e.g., "[[https://example.com/]]") or empty string on error
 		 */
 		protected string extract_domain(string url)
 		{
