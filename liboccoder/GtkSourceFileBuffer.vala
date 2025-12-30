@@ -43,7 +43,7 @@ namespace OLLMcoder
 		 * Returns true if the buffer has been loaded from the file,
 		 * false if it needs to be loaded.
 		 */
-		public bool is_loaded { get; private set; default = false; }
+		public bool is_loaded { get; internal set; default = false; }
 		
 		/**
 		 * Constructor.
