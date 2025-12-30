@@ -350,23 +350,36 @@ namespace OLLMcoder
 			// Notify manager to activate file
 			this.manager.activate_file(file);
 			
-			// Ensure buffer exists
+			// Ensure buffer exists and is a GtkSourceFileBuffer
 			if (file.buffer == null) {
 				// Create buffer using provider (handles language)
 				this.manager.buffer_provider.create_buffer(file);
 			}
 			
-			// Get buffer from file
-			if (file.buffer == null) {
-				GLib.warning("SourceView.open_file: Failed to get buffer for file %s", file.path);
-				return;
-			}
-			
-			// Cast to GtkSourceFileBuffer (which extends GtkSource.Buffer)
+			// Convert to GtkSourceFileBuffer if needed
 			var gtk_buffer = file.buffer as GtkSourceFileBuffer;
 			if (gtk_buffer == null) {
-				GLib.warning("SourceView.open_file: Buffer is not a GtkSourceFileBuffer for file %s", file.path);
-				return;
+				// Get content from existing buffer if loaded
+				string? existing_content = null;
+				if (file.buffer.is_loaded) {
+					existing_content = file.buffer.get_text();
+				}
+				
+				// Create new GtkSourceFileBuffer
+				GtkSource.Language? language = null;
+				if (file.language != null && file.language != "") {
+					language = GtkSource.LanguageManager.get_default().get_language(file.language);
+				}
+				gtk_buffer = new GtkSourceFileBuffer(file, language);
+				
+				// Load existing content if available
+				if (existing_content != null) {
+					gtk_buffer.text = existing_content;
+					gtk_buffer.is_loaded = true;
+				}
+				
+				// Replace buffer
+				file.buffer = gtk_buffer;
 			}
 			
 			// Load file content asynchronously if buffer hasn't been loaded
