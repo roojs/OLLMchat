@@ -140,23 +140,13 @@ namespace OLLMtools
 			// First, try to get from active project
 			var file = project_manager.get_file_from_active_project(file_path);
 			
-			// If not found, check file_cache
-			if (file == null) {
-				var file_base = project_manager.file_cache.get(file_path);
-				if (file_base is OLLMfiles.File) {
-					file = (OLLMfiles.File) file_base;
-				}
-			}
 			
-			// If still not found, create fake file
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake(project_manager, file_path);
 			}
 			
 			// Ensure buffer exists (create if needed)
-			if (file.buffer == null) {
-				file.manager.buffer_provider.create_buffer(file);
-			}
+			file.manager.buffer_provider.create_buffer(file);
 			
 			// Read entire file if requested or no line range specified
 			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {

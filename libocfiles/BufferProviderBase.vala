@@ -211,12 +211,17 @@ namespace OLLMfiles
 		 * Create a buffer for the file.
 		 * 
 		 * Creates a DummyFileBuffer instance and stores it in file.buffer.
+		 * If file.buffer already exists and is a DummyFileBuffer, returns early.
 		 * Performs buffer cleanup before creating new buffer (keeps top 10 most recent).
 		 * 
 		 * @param file The file to create a buffer for
 		 */
 		public virtual void create_buffer(File file) 
 		{
+			if (file.buffer is DummyFileBuffer) {
+				return;
+			}
+			
 			// Cleanup old buffers before creating new one
 			this.cleanup_old_buffers(file);
 			

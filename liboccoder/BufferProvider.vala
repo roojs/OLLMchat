@@ -32,6 +32,10 @@ namespace OLLMcoder
 		
 		public override void create_buffer(OLLMfiles.File file)
 		{
+			if (file.buffer is GtkSourceFileBuffer) {
+				return;
+			}
+			
 			// Cleanup old buffers before creating new one
 			this.cleanup_old_buffers(file);
 			
