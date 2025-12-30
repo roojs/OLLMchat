@@ -136,10 +136,9 @@ namespace OLLMtools
 				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			
-			OLLMfiles.File? file = null;
 			
 			// First, try to get from active project
-			file = project_manager.get_file_from_active_project(file_path);
+			var file = project_manager.get_file_from_active_project(file_path);
 			
 			// If not found, check file_cache
 			if (file == null) {
