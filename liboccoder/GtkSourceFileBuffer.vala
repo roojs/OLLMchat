@@ -287,15 +287,14 @@ namespace OLLMcoder
 				// Get start iterator
 				if (!this.get_iter_at_line(out start_iter, start_line)) {
 					// Line doesn't exist - check if this is an insertion at end
-					if (start_line == this.get_line_count()) {
-						// Insertion at end - get end iterator
-						this.get_end_iter(out start_iter);
-						end_iter = start_iter;
-					} else {
+					if (start_line != this.get_line_count()) {
 						throw new GLib.IOError.INVALID_ARGUMENT(
 							"Invalid line range: start=" + change.start.to_string() + 
 							" (file has " + this.get_line_count().to_string() + " lines)");
 					}
+					// Insertion at end - get end iterator
+					this.get_end_iter(out start_iter);
+					end_iter = start_iter;
 				} else {
 					// Get end iterator
 					if (change.start == change.end) {
