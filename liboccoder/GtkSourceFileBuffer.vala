@@ -228,8 +228,7 @@ namespace OLLMcoder
 			write_to_disk(contents);
 			
 			// Update last_read_timestamp to match file modification time
-			var file_obj = GLib.File.new_for_path(this.file.path);
-			this.last_read_timestamp = file_obj.query_info(
+			this.last_read_timestamp = GLib.File.new_for_path(this.file.path).query_info(
 				GLib.FileAttribute.TIME_MODIFIED,
 				GLib.FileQueryInfoFlags.NONE,
 				null
