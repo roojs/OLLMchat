@@ -690,86 +690,38 @@ namespace OLLMtools
 		}
 		
 		/**
-		 * Processes the file line by line, applying all edits.
-		 */
-		private void process_edits(
-			GLib.DataInputStream input_data,
-			GLib.DataOutputStream temp_output) throws Error
-		{
-			int current_line = 0;
-			string? line;
-			size_t length;
-			int change_index = 0;
-			var edit_tool = (EditMode) this.tool;
-			
-			while ((line = input_data.read_line(out length, null)) != null) {
-				current_line++;
-				
-				// Check if we need to apply a change at this line
-				if (change_index < this.changes.size) {
-					var change = this.changes[change_index];
-					
-					// If we're at the start of the edit, write replacement and skip old lines
-					if (current_line == change.start) {
-						// Skip old lines in input stream until end of edit range (exclusive)
-						current_line = change.apply_changes(temp_output, input_data, current_line);
-						
-						// Emit change_done signal
-						edit_tool.change_done(this.normalized_path, change);
-						
-						change_index++;
-						continue;
-					}
-					
-					// If we're in the edit range (being replaced), skip it
-					if (current_line >= change.start && current_line < change.end) {
-						continue;
-					}
-				}
-				
-				// Write line as-is (not part of any edit)
-				temp_output.put_string(line);
-				temp_output.put_byte('\n');
-			}
-			
-			// Handle insertions at end of file for remaining changes
-			while (change_index < this.changes.size) {
-				var change = this.changes[change_index];
-				change.write_changes(temp_output, current_line);
-				if (change.start == change.end && change.start > current_line) {
-					// Emit change_done signal
-					edit_tool.change_done(this.normalized_path, change);
-				}
-				change_index++;
-			}
-		}
-		
-		/**
-		 * Counts the total number of lines in a file.
+		 * Counts the total number of lines in a file using buffer.
 		 */
 		private int count_file_lines() throws Error
 		{
-			var file = GLib.File.new_for_path(this.normalized_path);
-			var file_stream = file.read(null);
-			var data_stream = new GLib.DataInputStream(file_stream);
+			// Get or create File object from path
+			var project_manager = ((EditMode) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
 			
-			int line_count = 0;
-			string? line;
-			size_t length;
+			// First, try to get from active project
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
 			
-			try {
-				while ((line = data_stream.read_line(out length, null)) != null) {
-					line_count++;
-				}
-			} finally {
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			file.manager.buffer_provider.create_buffer(file);
+			
+			// Read file if not loaded
+			if (!file.buffer.is_loaded) {
 				try {
-					data_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
+					file.buffer.read_async.begin((obj, res) => {});
+				} catch (Error e) {
+					// If read fails, return 0
+					return 0;
 				}
 			}
 			
-			return line_count;
+			// Use buffer-based line counting
+			return file.buffer.get_line_count();
 		}
 	}
 }
