@@ -488,8 +488,7 @@ namespace OLLMcoder
 			}
 			
 			try {
-				var contents = yield this.current_file.buffer.read_async();
-				buffer.text = contents;
+				yield this.current_file.buffer.read_async();
 			} catch (Error e) {
 				// FIXME: Show error dialog to user
 				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
