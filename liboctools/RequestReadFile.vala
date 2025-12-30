@@ -145,16 +145,16 @@ namespace OLLMtools
 				file = new OLLMfiles.File.new_fake(project_manager, file_path);
 			}
 			
+			
 			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
 			
-			// Load buffer if needed (not loaded, or reading entire file)
-			if (!file.buffer.is_loaded || this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-					return yield file.buffer.read_async();
-				}
-				yield file.buffer.read_async();
+			// Read entire file if requested or no line range specified
+			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
+				// Use buffer.read_async() for entire file
+				return yield file.buffer.read_async();
 			}
+			
 			
 			// Read line range using buffer.get_text() (convert 1-based to 0-based)
 			// Original: 1-based, inclusive start, exclusive end
