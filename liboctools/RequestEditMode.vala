@@ -343,7 +343,7 @@ namespace OLLMtools
 					return;
 				}
 				
-				// Exiting code block: create EditModeChange
+				// Exiting code block: create FileChange
 				// Remove the marker text from current_block if it was accidentally added
 				if (this.current_block.has_suffix("```\n")) {
 					this.current_block = this.current_block.substring(0, this.current_block.length - 4);
@@ -351,10 +351,10 @@ namespace OLLMtools
 					this.current_block = this.current_block.substring(0, this.current_block.length - 3);
 				}
 				
-				// Create EditModeChange
+				// Create FileChange
 				GLib.debug("RequestEditMode.add_linebreak: Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
 					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
-				this.changes.add(new EditModeChange() {
+				this.changes.add(new OLLMfiles.FileChange() {
 					start = this.current_start_line,
 					end = this.current_end_line,
 					replacement = this.current_block
