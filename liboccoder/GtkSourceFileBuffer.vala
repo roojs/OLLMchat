@@ -277,15 +277,11 @@ namespace OLLMcoder
 			
 			// Apply changes in reverse order (from end to start) to preserve line numbers
 			foreach (var change in changes) {
-				// Convert 1-based (inclusive start, exclusive end) to 0-based line numbers
-				int start_line = change.start - 1;
-				int end_line = change.end - 1;
-				
 				// Get iterators for the range
 				Gtk.TextIter start_iter, end_iter;
 				
 				// Handle insertion case (start == end) - normal insertion at existing line
-				if (change.start == change.end && this.get_iter_at_line(out start_iter, start_line)) {
+				if (change.start == change.end && this.get_iter_at_line(out start_iter, change.start - 1)) {
 					end_iter = start_iter;
 					this.delete(ref start_iter, ref end_iter);
 					this.insert(ref start_iter, change.replacement, -1);
@@ -293,7 +289,7 @@ namespace OLLMcoder
 				}
 				
 				// Handle insertion case (start == end) - insertion at end of file
-				if (change.start == change.end && start_line == this.get_line_count()) {
+				if (change.start == change.end && (change.start - 1) == this.get_line_count()) {
 					this.get_end_iter(out start_iter);
 					end_iter = start_iter;
 					this.delete(ref start_iter, ref end_iter);
@@ -309,14 +305,14 @@ namespace OLLMcoder
 				}
 				
 				// Handle edit case (start != end) - get start iterator
-				if (!this.get_iter_at_line(out start_iter, start_line)) {
+				if (!this.get_iter_at_line(out start_iter, change.start - 1)) {
 					throw new GLib.IOError.INVALID_ARGUMENT(
 						"Invalid line range: start=" + change.start.to_string() + 
 						" (file has " + this.get_line_count().to_string() + " lines)");
 				}
 				
 				// Handle edit case - get end iterator (end line exists)
-				if (this.get_iter_at_line(out end_iter, end_line)) {
+				if (this.get_iter_at_line(out end_iter, change.end - 1)) {
 					this.delete(ref start_iter, ref end_iter);
 					this.insert(ref start_iter, change.replacement, -1);
 					continue;
