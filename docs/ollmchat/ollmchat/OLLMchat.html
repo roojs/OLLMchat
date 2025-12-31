@@ -33,9 +33,15 @@
           <li class="interface"><a href="OLLMchat.ApplicationInterface.html">ApplicationInterface</a></li>
           <li class="interface"><a href="OLLMchat.ChatContentInterface.html">ChatContentInterface</a></li>
           <li class="class"><a href="OLLMchat.Client.html">Client</a></li>
+          <li class="class"><a href="OLLMchat.FileChangeBanner.html">FileChangeBanner</a></li>
           <li class="class"><a href="OLLMchat.Message.html">Message</a></li>
           <li class="class"><a href="OLLMchat.NamespaceDoc.html">NamespaceDoc</a></li>
           <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a></li>
+          <li class="class"><a href="OLLMchat.OllmchatApplication.html">OllmchatApplication</a></li>
+          <li class="class"><a href="OLLMchat.OllmchatWindow.html">OllmchatWindow</a></li>
+          <li class="class"><a href="OLLMchat.WindowPane.html">WindowPane</a></li>
+          <li class="field"><a href="OLLMchat.debug_critical_enabled.html">debug_critical_enabled</a></li>
+          <li class="field"><a href="OLLMchat.debug_on.html">debug_on</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -106,16 +112,36 @@
         <ul class="navi_inline">
           <li class="class"><a href="OLLMchat.Client.html">Client</a> - <span class="brief_description">Main client class for interacting with Ollama 
               API and OpenAI-compatible REST interfaces.</span></li>
+          <li class="class"><a href="OLLMchat.FileChangeBanner.html">FileChangeBanner</a> - <span class="brief_description">Banner widget that 
+              displays file change warnings with action buttons.</span></li>
           <li class="class"><a href="OLLMchat.Message.html">Message</a> - <span class="brief_description">Message class for chat conversations with 
               role-based behavior.</span></li>
           <li class="class"><a href="OLLMchat.NamespaceDoc.html">NamespaceDoc</a> - <span class="brief_description">Namespace documentation marker. 
               This file contains namespace-level documentation for OLLMchat.</span></li>
           <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API objects that
               need JSON serialization.</span></li>
+          <li class="class"><a href="OLLMchat.OllmchatApplication.html">OllmchatApplication</a> - <span class="brief_description">Main application 
+              class implementing OLLMchat.ApplicationInterface interface.</span></li>
+          <li class="class"><a href="OLLMchat.OllmchatWindow.html">OllmchatWindow</a></li>
+          <li class="class"><a href="OLLMchat.WindowPane.html">WindowPane</a> - <span class="brief_description">Window pane utility class that manages
+              a split view with special resizing behavior.</span></li>
         </ul>
         <h3 class="main_title">Error domains:</h3>
         <ul class="navi_inline">
           <li class="errordomain"><a href="OLLMchat.OllamaError.html">OllamaError</a></li>
+        </ul>
+        <h3 class="main_title">Fields:</h3>
+        <ul class="navi_inline">
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_critical_enabled.html" class="field">debug_critical_enabled</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Enable treating critical warnings as errors (abort on critical 
+                warnings). Set to true to cause the program to abort on critical warnings.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_on.html" class="field">debug_on</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Enable debug output (show all log messages). Set to true to see all 
+                log messages, false to only see critical warnings.</span>
+            </div></li>
         </ul>
       </div>
     </div><br/>

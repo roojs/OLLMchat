@@ -39,6 +39,8 @@
           <li class="namespace"><a href="OLLMtools.html">OLLMtools</a></li>
           <li class="namespace"><a href="OLLMvector.html">OLLMvector</a></li>
           <li class="namespace"><a href="OLLMvector.Indexing.html">OLLMvector.Indexing</a></li>
+          <li class="namespace"><a href="OLLMvector.Search.html">OLLMvector.Search</a></li>
+          <li class="namespace"><a href="OLLMvector.Tool.html">OLLMvector.Tool</a></li>
           <li class="namespace"><a href="SQ.html">SQ</a></li>
           <li class="abstract_class"><a href="TestAppBase.html">TestAppBase</a></li>
           <li class="abstract_class"><a href="VectorAppBase.html">VectorAppBase</a></li>
@@ -154,16 +156,36 @@
           <ul class="navi_inline">
             <li class="class"><a href="OLLMchat.Client.html">Client</a> - <span class="brief_description">Main client class for interacting with 
                 Ollama API and OpenAI-compatible REST interfaces.</span></li>
+            <li class="class"><a href="OLLMchat.FileChangeBanner.html">FileChangeBanner</a> - <span class="brief_description">Banner widget that 
+                displays file change warnings with action buttons.</span></li>
             <li class="class"><a href="OLLMchat.Message.html">Message</a> - <span class="brief_description">Message class for chat conversations with 
                 role-based behavior.</span></li>
             <li class="class"><a href="OLLMchat.NamespaceDoc.html">NamespaceDoc</a> - <span class="brief_description">Namespace documentation marker. 
                 This file contains namespace-level documentation for OLLMchat.</span></li>
             <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API objects 
                 that need JSON serialization.</span></li>
+            <li class="class"><a href="OLLMchat.OllmchatApplication.html">OllmchatApplication</a> - <span class="brief_description">Main application 
+                class implementing OLLMchat.ApplicationInterface interface.</span></li>
+            <li class="class"><a href="OLLMchat.OllmchatWindow.html">OllmchatWindow</a></li>
+            <li class="class"><a href="OLLMchat.WindowPane.html">WindowPane</a> - <span class="brief_description">Window pane utility class that 
+                manages a split view with special resizing behavior.</span></li>
           </ul>
           <h3 class="main_title">Error domains:</h3>
           <ul class="navi_inline">
             <li class="errordomain"><a href="OLLMchat.OllamaError.html">OllamaError</a></li>
+          </ul>
+          <h3 class="main_title">Fields:</h3>
+          <ul class="navi_inline">
+            <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_critical_enabled.html" class="field">debug_critical_enabled</a></b>
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">Enable treating critical warnings as errors (abort on critical 
+                  warnings). Set to true to cause the program to abort on critical warnings.</span>
+              </div></li>
+            <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_on.html" class="field">debug_on</a></b>
+              </span>
+              <div class="leaf_brief_description"><span class="brief_description">Enable debug output (show all log messages). Set to true to see all 
+                  log messages, false to only see critical warnings.</span>
+              </div></li>
           </ul>
           <li class="namespace"><a href="OLLMchat.Call.html">Call</a> - <span class="brief_description">API call implementations namespace.</span>
           </li>
@@ -430,6 +452,13 @@
                 file system operations.</span></li>
             <li class="class"><a href="OLLMfiles.ProjectMigrate.html">ProjectMigrate</a> - <span class="brief_description">Migrates project data from 
                 existing sources (Cursor, roobuilder, VS Code).</span></li>
+            <li class="abstract_class"><a href="OLLMfiles.TreeBase.html">TreeBase</a> - <span class="brief_description">Base class for tree-sitter AST
+                parsing.</span></li>
+          </ul>
+          <h3 class="main_title">Enums:</h3>
+          <ul class="navi_inline">
+            <li class="enum"><a href="OLLMfiles.FileUpdateStatus.html">FileUpdateStatus</a> - <span class="brief_description">Result of checking if a 
+                file has been updated on disk.</span></li>
           </ul>
           <li class="namespace"><a href="OLLMfiles.Diff.html">Diff</a></li>
           <h3 class="main_title">Classes:</h3>
@@ -451,8 +480,16 @@
           <ul class="navi_inline">
             <li class="class"><a href="OLLMtools.EditMode.html">EditMode</a> - <span class="brief_description">Tool for editing files by activating 
                 "edit mode" for a file.</span></li>
+            <li class="class"><a href="OLLMtools.GoogleSearchConfig.html">GoogleSearchConfig</a> - <span class="brief_description">Configuration for 
+                Google Custom Search API credentials.</span></li>
+            <li class="class"><a href="OLLMtools.GoogleSearchRequest.html">GoogleSearchRequest</a> - <span class="brief_description">Request handler 
+                for performing Google web searches.</span></li>
+            <li class="class"><a href="OLLMtools.GoogleSearchTool.html">GoogleSearchTool</a> - <span class="brief_description">Tool for performing web
+                searches using Google Custom Search API.</span></li>
             <li class="class"><a href="OLLMtools.ReadFile.html">ReadFile</a> - <span class="brief_description">Tool for reading file contents with 
                 optional line range support.</span></li>
+            <li class="class"><a href="OLLMtools.ReadFileSummarize.html">ReadFileSummarize</a> - <span class="brief_description">Tree-sitter based 
+                file structure summarizer.</span></li>
             <li class="class"><a href="OLLMtools.RequestEditMode.html">RequestEditMode</a> - <span class="brief_description">Request handler for 
                 editing files by activating "edit mode" for a file.</span></li>
             <li class="class"><a href="OLLMtools.RequestReadFile.html">RequestReadFile</a> - <span class="brief_description">Request handler for 
@@ -461,6 +498,10 @@
                 executing terminal commands in the project root directory.</span></li>
             <li class="class"><a href="OLLMtools.RequestWebFetch.html">RequestWebFetch</a> - <span class="brief_description">Request handler for 
                 fetching web content with automatic format detection and conversion.</span></li>
+            <li class="class"><a href="OLLMtools.Result.html">Result</a> - <span class="brief_description">Search results container from Google Custom
+                Search API.</span></li>
+            <li class="class"><a href="OLLMtools.ResultItem.html">ResultItem</a> - <span class="brief_description">Result item from Google Custom 
+                Search API.</span></li>
             <li class="class"><a href="OLLMtools.RunCommand.html">RunCommand</a> - <span class="brief_description">Tool for executing terminal 
                 commands in the project root directory.</span></li>
             <li class="class"><a href="OLLMtools.WebFetchTool.html">WebFetchTool</a> - <span class="brief_description">Tool for fetching web content 
@@ -491,6 +532,22 @@
                 VectorMetadata creation.</span></li>
             <li class="class"><a href="OLLMvector.Indexing.VectorBuilder.html">VectorBuilder</a> - <span class="brief_description">Vector building 
                 layer for code file processing.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMvector.Search.html">Search</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMvector.Search.Search.html">Search</a> - <span class="brief_description">Executes vector search operations.
+              </span></li>
+            <li class="class"><a href="OLLMvector.Search.SearchResult.html">SearchResult</a> - <span class="brief_description">Represents a single 
+                search result from vector search.</span></li>
+          </ul>
+          <li class="namespace"><a href="OLLMvector.Tool.html">Tool</a></li>
+          <h3 class="main_title">Classes:</h3>
+          <ul class="navi_inline">
+            <li class="class"><a href="OLLMvector.Tool.CodebaseSearchTool.html">CodebaseSearchTool</a> - <span class="brief_description">Tool for 
+                semantic codebase search using vector embeddings.</span></li>
+            <li class="class"><a href="OLLMvector.Tool.RequestCodebaseSearch.html">RequestCodebaseSearch</a> - <span class="brief_description">Request
+                handler for codebase search operations.</span></li>
           </ul>
           <li class="namespace"><a href="SQ.html">SQ</a> - <span class="brief_description">Simple SQL builder for GObject values.</span></li>
           <h3 class="main_title">Classes:</h3>

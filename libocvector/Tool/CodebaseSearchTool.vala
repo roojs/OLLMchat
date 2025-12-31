@@ -37,6 +37,10 @@ This tool performs semantic search across indexed code elements in the active pr
 It can find classes, methods, functions, and other code elements based on their
 semantic meaning, not just exact text matches.
 
+IMPORTANT: This tool only searches source code files (e.g., .vala, .py, .js, .ts, .java, .cpp, etc.).
+It does NOT search documentation files, markdown files (.md), HTML files, CSS files, or plain text files.
+For searching documentation, use a different tool.
+
 Use this tool when you need to:
 - Find code that implements a specific functionality
 - Locate classes or methods by their purpose or behavior
@@ -52,7 +56,7 @@ making it more effective than simple text search for finding relevant code.
 			return """
 @param query {string} [required] The search query text describing what code to find.
 @param language {string} [optional] Filter results by programming language (e.g., "vala", "python", "javascript").
-@param element_type {string} [optional] Filter results by element type (e.g., "class", "method", "function", "property", "struct", "interface", "enum", "constructor", "field", "delegate", "signal", "constant"). Note: "namespace" is not searchable as namespace declarations are not indexed.
+@param element_type {string} [optional] Filter results by element type. Supported types: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant". Note: "namespace" is not searchable as namespace declarations are not indexed.
 @param max_results {integer} [optional] Maximum number of results to return (default: 10).
 """;
 		} }

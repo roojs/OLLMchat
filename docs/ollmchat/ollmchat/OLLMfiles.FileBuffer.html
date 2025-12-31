@@ -29,6 +29,8 @@
         <ul class="navi_main">
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.file.html">file</a></li>
           <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_modified.html">is_modified</a></li>
+          <li class="abstract_property"><a href="OLLMfiles.FileBuffer.last_read_timestamp.html">last_read_timestamp</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.FileBuffer.create_backup_if_needed.html">create_backup_if_needed</a></li>
           <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_cursor.html">get_cursor</a></li>
@@ -82,8 +84,8 @@
           </p>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-49')">All known implementing classes:</div>
-          <div class="content" id="box-content-49">
+          <div class="headline" onclick="toggle_box (this, 'box-content-51')">All known implementing classes:</div>
+          <div class="content" id="box-content-51">
             <div class="column">
               <ul class="navi_inline">
                 <li class="class"><a href="OLLMfiles.DummyFileBuffer.html">DummyFileBuffer</a></li>
@@ -114,6 +116,14 @@
           <li class="abstract_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.FileBuffer.is_loaded.html" class="abstract_property">is_loaded</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether the buffer has been loaded with file content.</span>
+            </div></li>
+          <li class="abstract_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.FileBuffer.is_modified.html" class="abstract_property">is_modified</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether the buffer has unsaved modifications.</span>
+            </div></li>
+          <li class="abstract_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMfiles.FileBuffer.last_read_timestamp.html" class="abstract_property">last_read_timestamp</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the timestamp when the buffer was last read from disk.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
@@ -178,8 +188,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-50')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-50">
+          <div class="headline" onclick="toggle_box (this, 'box-content-52')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-52">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

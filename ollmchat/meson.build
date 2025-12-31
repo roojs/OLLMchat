@@ -47,6 +47,7 @@ ollmchat = executable('ollmchat',
     'Application.vala',
     'Window.vala',
     'WindowPane.vala',
+    'FileChangeBanner.vala',
     'Settings/AddModelDialog.vala',
     'Settings/ConnectionAdd.vala',
     'Settings/ConnectionRow.vala',
@@ -81,6 +82,8 @@ ollmchat = executable('ollmchat',
     '--pkg=ocmarkdowngtk',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocagent',
     '--pkg=occoder',
     '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
@@ -95,7 +98,8 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('bindir')

@@ -42,6 +42,8 @@ namespace OLLMchat
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
 		private Adw.Banner tool_error_banner;
+		private FileChangeBanner file_change_banner;
+		private OLLMfiles.ProjectManager project_manager;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -123,12 +125,18 @@ namespace OLLMchat
 			this.tool_error_banner.button_clicked.connect(() => {
 				this.tool_error_banner.revealed = false;
 			});
+			
+			// Create file change banner (creates revealer internally)
+			this.file_change_banner = new FileChangeBanner(this);
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
 			
 			// Add tool error banner below header bar
 			toolbar_view.add_top_bar(this.tool_error_banner);
+			
+			// Add file change banner below tool error banner
+			toolbar_view.add_top_bar(this.file_change_banner.revealer);
 
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
@@ -299,24 +307,55 @@ namespace OLLMchat
 			this.history_manager = new OLLMchat.History.Manager(this.app);
 			
 			// Create ProjectManager first to share with tools
-			var project_manager = new OLLMfiles.ProjectManager(
+			this.project_manager = new OLLMfiles.ProjectManager(
 				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
 			);
-			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.GitProvider();
+			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			this.project_manager.git_provider = new OLLMcoder.GitProvider();
+			
+			// Bind file change banner button signals to project manager methods
+			this.file_change_banner.overwrite_button.clicked.connect(() => {
+				this.file_change_banner.hide();
+				this.project_manager.write_buffer_to_disk.begin();
+			});
+			
+			this.file_change_banner.refresh_button.clicked.connect(() => {
+				this.file_change_banner.hide();
+				this.project_manager.reload_file_from_disk.begin();
+			});
+			
+			// Connect window focus notification to check for file changes
+			this.notify["is-active"].connect(() => {
+				if (!this.is_active) {
+					return;
+				}
+				
+				// Window gained focus - check if active file has changed on disk
+				this.project_manager.check_active_file_changed.begin((obj, res) => {
+					var status = this.project_manager.check_active_file_changed.end(res);
+					
+					if (status == OLLMfiles.FileUpdateStatus.CHANGED_HAS_UNSAVED) {
+						// File changed on disk but buffer has unsaved changes - show warning banner
+						var filename = this.project_manager.active_file != null 
+							? GLib.Path.get_basename(this.project_manager.active_file.path) 
+							: "file";
+						this.file_change_banner.show(filename);
+					}
+				});
+			});
 			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
-					new OLLMtools.ReadFile(this.history_manager.base_client, project_manager));
+					new OLLMtools.ReadFile(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMtools.EditMode(this.history_manager.base_client, project_manager));
+					new OLLMtools.EditMode(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
 					new OLLMtools.RunCommand(this.history_manager.base_client, 
-						GLib.Environment.get_home_dir(), project_manager));
+						GLib.Environment.get_home_dir(), this.project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMtools.WebFetchTool(this.history_manager.base_client, project_manager));
+					new OLLMtools.WebFetchTool(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMtools.GoogleSearchTool(this.history_manager.base_client, project_manager));
+					new OLLMtools.GoogleSearchTool(this.history_manager.base_client, this.project_manager));
 			
 			// Also add tools to current session's client (EmptySession was created before tools were added)
 			// Reuse the same tool instances from base_client to preserve state (like active property)
@@ -326,7 +365,7 @@ namespace OLLMchat
 
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(project_manager) {
+			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(this.project_manager) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
 			};
 			this.history_manager.agents.set(code_assistant.name, code_assistant);
@@ -393,7 +432,7 @@ namespace OLLMchat
 			GLib.Idle.add(() => {
 				this.initialize_codebase_search_tool.begin(
 					this.history_manager.base_client,
-					project_manager
+					this.project_manager
 				);
 				return false; // Don't repeat
 			});

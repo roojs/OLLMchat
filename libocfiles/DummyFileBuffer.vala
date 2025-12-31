@@ -215,6 +215,20 @@ namespace OLLMfiles
 		public bool is_loaded { get; set; default = false; }
 		
 		/**
+		 * Whether the buffer has unsaved modifications.
+		 * 
+		 * Dummy buffers don't track modification state, so always returns false.
+		 */
+		public bool is_modified { get; set; default = false; }
+		
+		/**
+		 * Get the timestamp when the buffer was last read from disk.
+		 * 
+		 * Dummy buffers don't track this, so always returns 0.
+		 */
+		public int64 last_read_timestamp { get; set; default = 0; }
+		
+		/**
 		 * Sync buffer contents to file on disk.
 		 * 
 		 * Not supported for DummyFileBuffer - this method is only for GTK SourceView

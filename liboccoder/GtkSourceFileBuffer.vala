@@ -48,7 +48,24 @@ namespace OLLMcoder
 		 * Last read timestamp (Unix timestamp).
 		 * Used to detect if file was modified on disk since last read.
 		 */
-		private int64 last_read_timestamp = 0;
+		public int64 last_read_timestamp { get; set; default = 0; }
+		
+		/**
+		 * Whether the buffer has unsaved modifications.
+		 * 
+		 * Returns true if the buffer content has been modified since it was last
+		 * loaded or saved, false otherwise.
+		 */
+		public bool is_modified { 
+			get {
+				var source_buffer = (GtkSource.Buffer) this;
+				return source_buffer.get_modified();
+			}
+			set {
+				var source_buffer = (GtkSource.Buffer) this;
+				source_buffer.set_modified(value);
+			}
+		}
 		
 		/**
 		 * Whether the buffer has been loaded with file content.

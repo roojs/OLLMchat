@@ -30,6 +30,72 @@ namespace OLLMvector.Tool
 		public int max_results { get; set; default = 10; }
 		
 		/**
+		 * Valid element types that can be searched.
+		 * Note: "namespace" is not included as namespace declarations are not indexed.
+		 */
+		private static string[] VALID_ELEMENT_TYPES = {
+			"class",
+			"struct",
+			"interface",
+			"enum_type",
+			"enum",
+			"function",
+			"method",
+			"constructor",
+			"property",
+			"field",
+			"delegate",
+			"signal",
+			"constant"
+		};
+		
+		/**
+		 * Get formatted list of valid element types for error messages.
+		 * 
+		 * @return Formatted string listing all valid element types
+		 */
+		private static string get_valid_element_types_list()
+		{
+			var list = new StringBuilder();
+			for (int i = 0; i < VALID_ELEMENT_TYPES.length; i++) {
+				if (i > 0) {
+					list.append(", ");
+				}
+				list.append("\"" + VALID_ELEMENT_TYPES[i] + "\"");
+			}
+			return list.str;
+		}
+		
+		/**
+		 * Validate element type parameter.
+		 * 
+		 * @param element_type Element type to validate
+		 * @throws GLib.IOError.INVALID_ARGUMENT if element type is invalid
+		 */
+		private static void validate_element_type(string element_type) throws GLib.IOError
+		{
+			if (element_type == null || element_type.strip() == "") {
+				return; // Empty is valid (no filter)
+			}
+			
+			var normalized = element_type.strip().down();
+			foreach (var valid_type in VALID_ELEMENT_TYPES) {
+				if (normalized == valid_type) {
+					return; // Found valid type
+				}
+			}
+			
+			// Invalid type - throw error with list of supported types
+			var valid_types_list = get_valid_element_types_list();
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"You requested element type \"%s\", however we only support these types: %s".printf(
+					element_type,
+					valid_types_list
+				)
+			);
+		}
+		
+		/**
 		 * Default constructor.
 		 */
 		public RequestCodebaseSearch()
@@ -70,6 +136,9 @@ namespace OLLMvector.Tool
 				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required");
 			}
 			
+			// Validate element type if provided
+			validate_element_type(this.element_type);
+			
 			// Debug: Log input parameters
 			GLib.debug("codebase_search input: query='%s', language='%s', element_type='%s', max_results=%d",
 				this.query,
@@ -89,11 +158,7 @@ namespace OLLMvector.Tool
 			request_message += "\nMax Results: " + this.max_results.to_string();
 			
 			// Send search query to UI (same format as commands)
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```txt Code Search requested\n" + request_message + "\n```"),
-				this.chat_call
-			);
+			this.send_ui("txt", "Code Search requested", request_message);
 			
 			// Step 1: Get active project from ProjectManager
 			var active_project = this.project_manager.active_project;
@@ -181,12 +246,8 @@ namespace OLLMvector.Tool
 			
 			 
 			// Send output as second message via message_created (same as commands)
-			// Escape code blocks in formatted output for UI display
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",  "```txt Code Search Return %d results\n".printf(results.size) + 
-					formatted.replace("\n```", "\n\\`\\`\\`") + "\n```"),
-				this.chat_call
-			);
+			var result_title = "Code Search Return %d results".printf(results.size);
+			this.send_ui("txt", result_title, formatted);
 			
 			return formatted;
 		}

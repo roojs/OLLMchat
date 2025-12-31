@@ -28,6 +28,8 @@ namespace OLLMtools
 		public int64 start_line { get; set; default = -1; }
 		public int64 end_line { get; set; default = -1; }
 		public bool read_entire_file { get; set; default = false; }
+		public bool with_lines { get; set; default = false; }
+		public string find_words { get; set; default = ""; }
 		
 		/**
 		 * Default constructor.
@@ -55,6 +57,63 @@ namespace OLLMtools
 			}
 			
 			return string.joinv("\n", lines[0:max_lines]);
+		}
+		
+		/**
+		 * Format content with line numbers.
+		 * 
+		 * @param content The content string
+		 * @param start_line_number The starting line number (1-based)
+		 * @return Content with line numbers prefixed
+		 */
+		private string format_with_line_numbers(string content, int start_line_number)
+		{
+			if (content == null || content == "") {
+				return "";
+			}
+			
+			var lines = content.split("\n");
+			var result = new string[lines.length];
+			
+			for (int i = 0; i < lines.length; i++) {
+				var line_num = start_line_number + i;
+				result[i] = "%d: %s".printf(line_num, lines[i]);
+			}
+			
+			return string.joinv("\n", result);
+		}
+		
+		/**
+		 * Find lines containing search words and return with line numbers.
+		 * 
+		 * @param content The full content string
+		 * @param search_words The words to search for
+		 * @param start_line_number The starting line number (1-based) for the content
+		 * @return Matching lines with line numbers, or empty string if no matches
+		 */
+		private string find_matching_lines(string content, string search_words, int start_line_number)
+		{
+			if (content == null || content == "" || search_words == null || search_words.strip() == "") {
+				return "";
+			}
+			
+			var lines = content.split("\n");
+			var matching_lines = new Gee.ArrayList<string>();
+			var search_lower = search_words.strip().down();
+			
+			for (int i = 0; i < lines.length; i++) {
+				var line_lower = lines[i].down();
+				if (line_lower.contains(search_lower)) {
+					var line_num = start_line_number + i;
+					matching_lines.add("%d: %s".printf(line_num, lines[i]));
+				}
+			}
+			
+			if (matching_lines.size == 0) {
+				return "";
+			}
+			
+			return string.joinv("\n", matching_lines.to_array());
 		}
 		
 		protected override bool build_perm_question()
@@ -100,57 +159,70 @@ namespace OLLMtools
 		
 		protected override async string execute_request() throws Error
 		{
-			// Normalize and validate file path
+			// Normalize file path
 			var file_path = this.normalize_file_path(this.file_path);
+			
+			// Build standardized file read request message and send to UI (before any validation)
+			// Use original file_path if normalized is empty, otherwise use normalized
+			var display_path = (file_path != null && file_path != "") ? file_path : this.file_path;
+			var request_message = "File: " + display_path + "\n";
+			
+			// Add lines if specified
+			if (!this.read_entire_file && this.start_line > 0 && this.end_line > 0) {
+				request_message += "Lines: %lld-%lld\n".printf(this.start_line, this.end_line);
+			}
+			
+			// Add full file status
+			request_message += this.read_entire_file ? "Full file: yes\n" : "Full file: no\n";
+			
+			// Add with_lines option
+			if (this.with_lines) {
+				request_message += "With line numbers: yes\n";
+			}
+			
+			// Add find_words option
+			if (this.find_words != null && this.find_words.strip() != "") {
+				request_message += "Find words: " + this.find_words + "\n";
+			}
+			
+			// Send request message to UI in standardized codeblock format
+			this.send_ui("txt", "File Read Requested", request_message);
 			
 			// Validate that file_path was provided
 			if (file_path == null || file_path == "") {
+				string error_msg;
 				if (this.file_path == null || this.file_path == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT("File path parameter is required but was not provided or is empty");
+					error_msg = "File path parameter is required but was not provided or is empty";
 				} else {
-					throw new GLib.IOError.INVALID_ARGUMENT("File path parameter is empty after normalization");
+					error_msg = "File path parameter is empty after normalization";
 				}
+				this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+				throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
 			}
-			
-			// Emit execution message with human-friendly tool name and file path
-			var message = "Executing %s on file: %s".printf(
-					this.tool.description.strip().split("\n")[0],
-					file_path
-				);
-			if (this.read_entire_file) {
-				message = "Executing %s on file: %s".printf(
-					this.tool.description.strip().split("\n")[0],
-					file_path
-				);
-			} else if (this.start_line > 0 && this.end_line > 0) {
-				message = "Executing %s on file: %s (lines %lld-%lld)".printf(
-					this.tool.description.strip().split("\n")[0],
-					file_path,
-					this.start_line,
-					this.end_line
-				);
-			} 
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", message),
-				this.chat_call
-			);
 			
 			// Validate that file exists
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
-				throw new GLib.IOError.FAILED("File not found or is not a regular file: " + file_path);
+				var error_msg = "File not found or is not a regular file: " + file_path;
+				this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+				throw new GLib.IOError.FAILED(error_msg);
 			}
 			
-			// Validate line range if not reading entire file
-			if (!this.read_entire_file && this.start_line < 1) {
-				throw new GLib.IOError.INVALID_ARGUMENT("Invalid line range: start_line must be >= 1");
-			}
-			
-			// Validate line range if provided
-			if (this.start_line > 0 && this.end_line > 0 && this.start_line > this.end_line) {
-				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Invalid line range: start_line (" + this.start_line.to_string() + 
-					") must be <= end_line (" + this.end_line.to_string() + ")"
-				);
+			// Validate line range if not reading entire file and not using find_words
+			// (find_words can work without explicit line range)
+			if (!this.read_entire_file && (this.find_words == null || this.find_words.strip() == "")) {
+				if (this.start_line < 1) {
+					var error_msg = "Invalid line range: start_line must be >= 1";
+					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
+				}
+				
+				// Validate line range if provided
+				if (this.start_line > 0 && this.end_line > 0 && this.start_line > this.end_line) {
+					var error_msg = "Invalid line range: start_line (" + this.start_line.to_string() + 
+						") must be <= end_line (" + this.end_line.to_string() + ")";
+					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
+				}
 			}
 			
 			// Get or create File object from path
@@ -171,13 +243,16 @@ namespace OLLMtools
 			
 			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
-			var ret = "";
+			
+			// Ensure buffer is loaded
 			if (!file.buffer.is_loaded) {
-				ret = yield file.buffer.read_async();
+				yield file.buffer.read_async();
 			}
 
 			// Get full content (default to entire file)
-			var full_content = ret;
+			var  full_content = file.buffer.get_text();
+			var content_start_line = 1; // Track starting line number for line number formatting
+			
 			// Read line range if specified and not reading entire file
 			if (!this.read_entire_file && (this.start_line > 0 || this.end_line > 0)) {
 				// Read line range using buffer.get_text() (convert 1-based to 0-based)
@@ -188,16 +263,41 @@ namespace OLLMtools
 					(int)(this.start_line - 1),
 					(int)(this.end_line - 2)
 				);
+				content_start_line = (int)this.start_line;
+			}  
+			
+			// Handle find_words option - search for matching lines
+			if (this.find_words != null && this.find_words.strip() != "") {
+				var matching_lines = this.find_matching_lines(full_content, this.find_words, content_start_line);
+				
+				if (matching_lines == "") {
+					this.send_ui("txt", "Read file Reply", "Result: No lines found");
+					return "No lines found containing: " + this.find_words;
+				}
+				
+				// Send matching lines to UI
+				var preview_matching = this.get_first_lines(matching_lines, 20);
+				this.send_ui("txt", "Read file Reply", preview_matching);
+				
+				return matching_lines;
+			}
+			
+			// Handle with_lines option - format with line numbers
+			if (this.with_lines) {
+				full_content = this.format_with_line_numbers(full_content, content_start_line);
 			}
 			
 			// Send first 10 lines to UI
 			var preview_content = this.get_first_lines(full_content, 10);
 			var file_basename = GLib.Path.get_basename(file.path);
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```txt Reading file: " + file_basename + "\n" + preview_content.replace("\n```", "\n\\`\\`\\`") + "\n```"),
-				this.chat_call
-			);
+			
+			// Build line range suffix if specified
+			string line_range_suffix = "";
+			if (!this.read_entire_file && this.start_line > 0 && this.end_line > 0) {
+				line_range_suffix = " (lines %lld-%lld)".printf(this.start_line, this.end_line);
+			}
+			
+			this.send_ui("txt", "Reading file: " + file_basename + line_range_suffix, preview_content);
 			
 			// Return full content to LLM
 			return full_content;

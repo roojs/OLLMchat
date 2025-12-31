@@ -23,6 +23,18 @@ namespace OLLMchat
 	private static bool debug_log_in_progress = false;
 	
 	/**
+	 * Enable debug output (show all log messages).
+	 * Set to true to see all log messages, false to only see critical warnings.
+	 */
+	public static bool debug_on = false;
+	
+	/**
+	 * Enable treating critical warnings as errors (abort on critical warnings).
+	 * Set to true to cause the program to abort on critical warnings.
+	 */
+	public static bool debug_critical_enabled = false;
+	
+	/**
 	 * Interface for OLLMchat applications that provides standardized
 	 * configuration and data directory management.
 	 *
@@ -164,17 +176,24 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Always write to stderr for immediate console output
+			// Generate timestamp for logging
 			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
-			GLib.stderr.printf(
-				timestamp + ": " + level.to_string() + " : " + (in_domain == null ? "" : in_domain) + " : " + message + "\n"
-			);
-
-			// Handle critical errors
-			if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0) {
-				GLib.error("critical");
+			
+			// Only output if debug is enabled, or if it's a critical warning
+			bool should_output = debug_on || (level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0;
+			
+			if (should_output) {
+				// Write to stderr for immediate console output
+				GLib.stderr.printf(
+					timestamp + ": " + level.to_string() + " : " + (in_domain == null ? "" : in_domain) + " : " + message + "\n"
+				);
 			}
 
+			// Handle critical errors if debug_critical is enabled
+			if ((level & GLib.LogLevelFlags.LEVEL_CRITICAL) != 0 && debug_critical_enabled) {
+				GLib.error("Critical warning: [" + (in_domain ?? "") + "] " + message);
+			}
+			// we carry on even if debug is off (so we can log the debug stuff)
 			debug_log_in_progress = true;
 
 			// Open log file lazily on first use (using FileStream to avoid GIO initialization deadlock)

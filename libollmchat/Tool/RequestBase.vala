@@ -117,6 +117,24 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
+		 * Send a UI message in standardized codeblock format.
+		 *
+		 * @param type The codeblock type (e.g., "txt", "markdown")
+		 * @param title The title/header for the message (e.g., "Read file Response")
+		 * @param body The message body content
+		 */
+		protected void send_ui(string type, string title, string body)
+		{
+			// Escape code blocks in body to prevent breaking the outer codeblock
+			var escaped_body = body.replace("\n```", "\n\\`\\`\\`");
+			var message = "```" + type + " " + title + "\n" + escaped_body + "\n```";
+			this.chat_call.client.message_created(
+				new OLLMchat.Message(this.chat_call, "ui", message),
+				this.chat_call
+			);
+		}
+		
+		/**
 		 * Abstract method for requests to build permission information.
 		 *
 		 * Requests implement this method to build permission information

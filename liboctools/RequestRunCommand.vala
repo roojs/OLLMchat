@@ -209,11 +209,7 @@ namespace OLLMtools
 			}
 			
 			// Send command to UI before requesting permission
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```bash\n$ " + this.command + "\n```"),
-				this.chat_call
-			);
+			this.send_ui("bash", "", "$ " + this.command);
 			
 			// Request permission (will always ask for complex commands due to unique path)
 			if (!(yield this.chat_call.client.permission_provider.request(this))) {
@@ -321,12 +317,7 @@ namespace OLLMtools
 			 
 			
 		// Send output as second message via message_created
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", 
-					"```txt\n" + output_content.replace("\n```", "\n\\`\\`\\`") + "\n```"
-				),
-				this.chat_call
-			);
+			this.send_ui("txt", "", output_content);
 				
 			// FUTURE: Streaming support - clear current message when done
 			// this.current_tool_message = null;

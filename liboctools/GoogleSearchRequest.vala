@@ -204,11 +204,7 @@ namespace OLLMtools
 			);
 			
 			// Send request message to UI
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```txt Google Search request for " + this.query + "\n```"),
-				this.chat_call
-			);
+			this.send_ui("txt", "Google Search request for " + this.query, "");
 			
 			// Fetch search results
 			GLib.Bytes content;
@@ -277,17 +273,8 @@ namespace OLLMtools
 			// Convert to markdown
 			var markdown_result = result.to_markdown();
 			
-			// Send response message to UI (escape code blocks in result)
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(
-					this.chat_call,
-					"ui",
-					"```markdown Google Search reply\n" +
-						markdown_result.replace("\n```", "\n\\`\\`\\`") +
-						"\n```"
-				),
-				this.chat_call
-			);
+			// Send response message to UI
+			this.send_ui("markdown", "Google Search reply", markdown_result);
 			
 			return markdown_result;
 		}

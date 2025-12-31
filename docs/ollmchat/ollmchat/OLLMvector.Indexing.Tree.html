@@ -32,10 +32,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMvector.Indexing.Tree.elements.html">elements</a></li>
-          <li class="property"><a href="OLLMvector.Indexing.Tree.file.html">file</a></li>
-          <li class="property"><a href="OLLMvector.Indexing.Tree.lines.html">lines</a></li>
           <li class="creation_method"><a href="OLLMvector.Indexing.Tree.Tree.html">Tree</a></li>
-          <li class="method"><a href="OLLMvector.Indexing.Tree.lines_to_string.html">lines_to_string</a></li>
           <li class="method"><a href="OLLMvector.Indexing.Tree.parse.html">parse</a></li>
         </ul>
       </div>
@@ -46,11 +43,12 @@
         <img class="main_diagram" usemap="#OLLMvector.Indexing.Tree" alt="Object hierarchy for Tree" src="img/OLLMvector.Indexing.Tree.png"/>
 
       <map id="OLLMvector.Indexing.Tree" name="OLLMvector.Indexing.Tree">
-<area shape="rect" id="node1" href="OLLMvector.Indexing.Tree.html" title="OLLMvector.Indexing.Tree" alt="" coords="5,101,229,149"/>
+<area shape="rect" id="node1" href="OLLMvector.Indexing.Tree.html" title="OLLMvector.Indexing.Tree" alt="" coords="5,197,229,245"/>
+<area shape="rect" id="node2" href="OLLMfiles.TreeBase.html" title="OLLMfiles.TreeBase" alt="" coords="29,101,205,149"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Tree</span></b> : <span class="main_type"><span class="class">Object</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Tree</span></b> : <span class="main_type"><a href="OLLMfiles.TreeBase.html" class="abstract_class">TreeBase</a></span>
         </div>
         <div class="description">
           <p>Tree-sitter AST parsing and VectorMetadata creation.</p>
@@ -68,14 +66,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Array of VectorMetadata objects extracted from the AST.</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> <b><a href="OLLMvector.Indexing.Tree.file.html" class="property">file</a></b> { <span class="main_keyword">get</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">The file being parsed.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>[] <b><a href="OLLMvector.Indexing.Tree.lines.html" class="property">lines</a></b> { <span class="main_keyword">get</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">File content split into lines (0-indexed array).</span>
-            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -86,10 +76,6 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMvector.Indexing.Tree.lines_to_string.html" class="method">lines_to_string</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> start_line, <span class="main_basic_type"><span class="struct">int</span></span> end_line, <span class="main_basic_type"><span class="struct">int</span></span> max_lines = <span class="main_literal">0</span>)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Extract string from lines array using Vala string range syntax.</span>
-            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Indexing.Tree.parse.html" class="method">parse</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Main entry point: parse file and populate elements array.</span>
@@ -97,8 +83,39 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-397')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-397">
+          <div class="headline" onclick="toggle_box (this, 'box-content-441')">All known members inherited from class OLLMfiles.TreeBase</div>
+          <div class="content" id="box-content-441">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="field"><a href="OLLMfiles.TreeBase.element_type_map.html">element_type_map</a></li>
+                <li class="property"><a href="OLLMfiles.TreeBase.file.html">file</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.get_element_name.html">get_element_name</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.get_element_type.html">get_element_type</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.init_parser.html">init_parser</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method"><a href="OLLMfiles.TreeBase.is_unsupported_language.html">is_unsupported_language</a></li>
+                <li class="field"><a href="OLLMfiles.TreeBase.language.html">language</a></li>
+                <li class="property"><a href="OLLMfiles.TreeBase.lines.html">lines</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.lines_to_string.html">lines_to_string</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.load_file_content.html">load_file_content</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method"><a href="OLLMfiles.TreeBase.load_tree_sitter_language.html">load_tree_sitter_language</a></li>
+                <li class="field"><a href="OLLMfiles.TreeBase.loaded_module.html">loaded_module</a></li>
+                <li class="method"><a href="OLLMfiles.TreeBase.parse_content.html">parse_content</a></li>
+                <li class="field"><a href="OLLMfiles.TreeBase.parser.html">parser</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-442')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-442">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

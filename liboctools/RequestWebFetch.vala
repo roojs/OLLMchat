@@ -75,11 +75,7 @@ namespace OLLMtools
 			}
 				
 			// Send request message to UI
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```" + this.tool.name + " - request\n" + this.url + "\n```"),
-				this.chat_call
-			);
+			this.send_ui(this.tool.name, "request", this.url);
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -113,13 +109,9 @@ namespace OLLMtools
 				// Convert content based on content type and format (updates this.format to actual format used)
 				var result = this.convert_content(content, content_type);
 				
-				// Send response message to UI (escape code blocks in result)
-				this.chat_call.client.message_created(
-					new OLLMchat.Message(this.chat_call, "ui",
-						"```" + this.tool.name + " - response (" + this.format + ")\n" + 
-							result.replace("\n```", "\n\\`\\`\\`") + "\n```"),
-					this.chat_call
-				);
+				// Send response message to UI
+				var response_title = this.tool.name + " - response (" + this.format + ")";
+				this.send_ui(this.tool.name, response_title, result);
 				
 				return result;
 			}

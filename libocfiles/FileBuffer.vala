@@ -201,6 +201,29 @@ namespace OLLMfiles
 		public abstract bool is_loaded { get; set; }
 		
 		/**
+		 * Whether the buffer has unsaved modifications.
+		 * 
+		 * Returns true if the buffer content has been modified since it was last
+		 * loaded or saved, false otherwise.
+		 * 
+		 * For GTK buffers, this tracks user edits. For dummy buffers, this always
+		 * returns false (dummy buffers don't track modification state).
+		 */
+		public abstract bool is_modified { get; set; }
+		
+		/**
+		 * Get the timestamp when the buffer was last read from disk.
+		 * 
+		 * Returns the Unix timestamp of when the buffer was last successfully
+		 * read from the file on disk. This is used to detect if the file has
+		 * been modified externally since the buffer was loaded.
+		 * 
+		 * Returns 0 if the buffer has never been read or if the timestamp
+		 * is not available.
+		 */
+		public abstract int64 last_read_timestamp { get; set; }
+		
+		/**
 		 * Write contents to buffer and file on disk.
 		 * 
 		 * Updates buffer contents and writes to file on disk. For files in database,

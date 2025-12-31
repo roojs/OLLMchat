@@ -236,19 +236,19 @@ namespace OLLMfiles
 			var projects_list = new Gee.ArrayList<Folder>();
 			yield query.select_async("WHERE is_project = 1", projects_list);
 			
-			GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
+			//GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
 			
 			// Add to manager.projects list (ProjectList handles deduplication)
 			foreach (var project in projects_list) {
 				// Projects use property binding: path_basename for label, path for tooltip
 				// No need to manually set display_name or tooltip - they're bound directly
-				GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
-					project.path, project.path_basename);
+				//GLib.debug("ProjectManager.load_projects_from_db: Adding project path='%s' (path_basename='%s')", 
+				//	project.path, project.path_basename);
 				this.projects.append(project);
 			}
 			
-			GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
-				this.projects.get_n_items());
+			//GLib.debug("ProjectManager.load_projects_from_db: After append, projects.get_n_items() = %u", 
+			//	this.projects.get_n_items());
 		}
 		
 		/**
@@ -314,6 +314,57 @@ namespace OLLMfiles
 		 * Used to ensure cleanup only runs once per day.
 		 */
 		private static int64 last_cleanup_timestamp = 0;
+		
+		/**
+		 * Check if the active file has been modified on disk and differs from the buffer.
+		 * 
+		 * Delegates to the active file's check_updated() method.
+		 * This should be called when the window gains focus to detect external file changes.
+		 * 
+		 * @return FileUpdateStatus indicating what action should be taken
+		 */
+		public async FileUpdateStatus check_active_file_changed()
+		{
+			if (this.active_file == null) {
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			
+			return yield this.active_file.check_updated();
+		}
+		
+		/**
+		 * Writes current buffer contents of active file to disk.
+		 */
+		public async void write_buffer_to_disk()
+		{
+			if (this.active_file == null || this.active_file.buffer == null) {
+				return;
+			}
+			
+			try {
+				yield this.active_file.buffer.sync_to_file();
+				GLib.debug("Wrote buffer to disk: %s", this.active_file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to write buffer to disk %s: %s", this.active_file.path, e.message);
+			}
+		}
+		
+		/**
+		 * Reloads active file from disk into buffer, discarding unsaved changes.
+		 */
+		public async void reload_file_from_disk()
+		{
+			if (this.active_file == null || this.active_file.buffer == null) {
+				return;
+			}
+			
+			try {
+				yield this.active_file.buffer.read_async();
+				GLib.debug("Reloaded file from disk: %s", this.active_file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to reload file from disk %s: %s", this.active_file.path, e.message);
+			}
+		}
 		
 		/**
 		 * Cleanup old backup files from the backup directory.

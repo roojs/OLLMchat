@@ -3,14 +3,19 @@
 
 # Dependencies for ocfiles library
 valac = meson.get_compiler('vala')
+cc = meson.get_compiler('c')
+# Find tree-sitter library (C library for parsing)
+tree_sitter_lib = dependency('tree-sitter', required: true)
 ocfiles_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
+  dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),  # Required for ProjectMigrate (JSON parsing)
   dependency('sqlite3'),
   valac.find_library('posix'),
+  tree_sitter_lib,  # Tree-sitter C library (required - TreeBase uses TreeSitter API)
 ]
 
 ocfiles_src = files([
@@ -29,6 +34,7 @@ ocfiles_src = files([
   'ProjectList.vala',
   'ProjectManager.vala',
   'ProjectMigrate.vala',
+  'Tree.vala',  # Tree-sitter base class
   'Diff/Patch.vala',
   'Diff/PatchApplier.vala',
   'Diff/Differ.vala',
@@ -49,9 +55,12 @@ ocfiles_base_lib = library('ocfiles',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',  # Required for ProjectMigrate (JSON parsing)
+    '--pkg=gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
+    '--pkg=tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
     '--pkg=ocsqlite',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
   ],
   install: true
@@ -68,12 +77,14 @@ ocfiles_vapi = custom_target('ocfiles-vapi',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir(),
-    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'json-glib-1.0',  # Required for ProjectMigrate (JSON parsing)
+    '--pkg', 'gmodule-2.0',  # GModule for dynamic library loading (required for TreeBase)
+    '--pkg', 'tree-sitter',  # Tree-sitter via vapi (required for TreeBase)
     '--pkg', 'ocsqlite',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',

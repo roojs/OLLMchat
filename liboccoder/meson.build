@@ -59,6 +59,8 @@ occoder_base_lib = library('occoder',
     '--pkg=ocsqlite',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
@@ -88,7 +90,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '-C', '--debug',
     '--target-glib=auto',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
-    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi)
+    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
@@ -100,6 +102,8 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
     '--pkg', 'ocsqlite',
+    '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg', 'ocfiles',
     '--pkg', 'ocagent',
     '--pkg', 'libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)

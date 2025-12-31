@@ -19,6 +19,14 @@
 namespace OLLMfiles
 {
 	/**
+	 * Result of checking if a file has been updated on disk.
+	 */
+	public enum FileUpdateStatus {
+		NO_CHANGE,              // File hasn't changed on disk
+		CHANGED_HAS_UNSAVED     // File changed on disk, buffer has unsaved changes - needs warning
+	}
+	
+	/**
 	 * Represents a file in the project.
 	 * 
 	 * Files can be in multiple projects (due to softlinks/symlinks).
@@ -144,8 +152,8 @@ namespace OLLMfiles
 			var detected = this.manager.buffer_provider.detect_language(this);
 			if (detected != null && detected != "") {
 				this.language = detected;
-				GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
-					this.language, this.path);
+				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
+				//	this.language, this.path);
 			}
 		}
 		
@@ -449,6 +457,81 @@ namespace OLLMfiles
 			}
 			
 			return this.cursor_line;
+		}
+		
+		/**
+		 * Check if the file has been modified on disk and differs from the buffer.
+		 * 
+		 * Compares the file's modification time on disk with the buffer's last read timestamp.
+		 * If the file was modified, also checks if the content actually differs from the buffer.
+		 * Automatically reloads the file if it changed and the buffer has no unsaved changes.
+		 * 
+		 * This should be called when the window gains focus to detect external file changes.
+		 * 
+		 * @return FileUpdateStatus indicating what action should be taken:
+		 *         - NO_CHANGE: File hasn't changed on disk (or was auto-reloaded)
+		 *         - CHANGED_HAS_UNSAVED: File changed, buffer has unsaved changes - needs warning
+		 */
+		public async FileUpdateStatus check_updated()
+		{
+			// Check if buffer exists
+			if (this.buffer == null) {
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			
+			// Get file modification time on disk
+			var disk_mtime = this.mtime_on_disk();
+			if (disk_mtime == 0) {
+				// File doesn't exist on disk
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			
+			// Check last_read_timestamp
+			var last_read = this.buffer.last_read_timestamp;
+			
+			// If file was not modified since last read, nothing to check
+			if (disk_mtime <= last_read) {
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			
+			// File was modified since last read, check if content differs
+			try {
+				// Read current buffer content
+				var buffer_content = this.buffer.get_text(0, -1);
+				
+				// Read file from disk
+				var file_obj = GLib.File.new_for_path(this.path);
+				if (!file_obj.query_exists()) {
+					return FileUpdateStatus.NO_CHANGE;
+				}
+				
+				uint8[] file_data;
+				string? etag;
+				yield file_obj.load_contents_async(null, out file_data, out etag);
+				var disk_content = (string)file_data;
+				
+				// Compare content
+				if (buffer_content == disk_content) {
+					// Content matches, no change
+					return FileUpdateStatus.NO_CHANGE;
+				}
+				
+				// File has changed on disk and differs from buffer
+				// Check if buffer has unsaved changes
+				if (this.buffer.is_modified) {
+					// Buffer has unsaved changes - needs warning
+					return FileUpdateStatus.CHANGED_HAS_UNSAVED;
+				}
+				
+				// Buffer not modified - auto-reload
+				yield this.buffer.read_async();
+				return FileUpdateStatus.NO_CHANGE;
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to check file changes for %s: %s", this.path, e.message);
+				return FileUpdateStatus.NO_CHANGE;
+			}
+			
+			return FileUpdateStatus.NO_CHANGE;
 		}
 	}
 }

@@ -38,11 +38,14 @@
           <li class="creation_method"><a href="OLLMfiles.ProjectManager.ProjectManager.html">ProjectManager</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.activate_file.html">activate_file</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.activate_project.html">activate_project</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectManager.check_active_file_changed.html">check_active_file_changed</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.get_file_from_active_project.html">get_file_from_active_project</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.load_projects_from_db.html">load_projects_from_db</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.notify_file_changed.html">notify_file_changed</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.notify_project_changed.html">notify_project_changed</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectManager.reload_file_from_disk.html">reload_file_from_disk</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.restore_active_state.html">restore_active_state</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectManager.write_buffer_to_disk.html">write_buffer_to_disk</a></li>
           <li class="signal"><a href="OLLMfiles.ProjectManager.active_file_changed.html">active_file_changed</a></li>
           <li class="signal"><a href="OLLMfiles.ProjectManager.active_project_changed.html">active_project_changed</a></li>
         </ul>
@@ -132,6 +135,11 @@
             <div class="leaf_brief_description"><span class="brief_description">Activate a project (deactivates previous active project). Note: 
                 Projects are Folders with is_project = true.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMfiles.FileUpdateStatus.html" class="enum">FileUpdateStatus</a></span> <b><a href="OLLMfiles.ProjectManager.check_active_file_changed.html" class="method">check_active_file_changed</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Check if the active file has been modified on disk and differs from 
+                the buffer.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span>? <b><a href="OLLMfiles.ProjectManager.get_file_from_active_project.html" class="method">get_file_from_active_project</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file_path)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Check if a file path is in the active project.</span>
@@ -149,11 +157,20 @@
             <div class="leaf_brief_description"><span class="brief_description">Notify that a project's state has changed (save to database). Note: 
                 Projects are Folders with is_project = true.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectManager.reload_file_from_disk.html" class="method">reload_file_from_disk</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Reloads active file from disk into buffer, discarding unsaved changes.
+              </span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectManager.restore_active_state.html" class="method">restore_active_state</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Restore active project and file from in-memory data structures. Note: 
                 Projects are Folders with is_project = true. This will set this.active_project and this.active_file, deactivate previous items, update
                 the database, and emit signals.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectManager.write_buffer_to_disk.html" class="method">write_buffer_to_disk</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Writes current buffer contents of active file to disk.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>

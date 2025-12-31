@@ -25,6 +25,7 @@
 	public abstract class TestAppBase : Application, OLLMchat.ApplicationInterface
 	{
 		protected static bool opt_debug = false;
+		protected static bool opt_debug_critical = false;
 		protected static string? opt_url = null;
 		protected static string? opt_api_key = null;
 		protected static string? opt_model = null;
@@ -34,6 +35,7 @@
 		
 		protected const OptionEntry[] base_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
 			{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
 			{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
 			{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
@@ -66,6 +68,7 @@
 		{
 			// Reset static option variables at start of each command line invocation
 			opt_debug = false;
+			opt_debug_critical = false;
 			opt_url = null;
 			opt_api_key = null;
 			opt_model = null;
@@ -84,14 +87,14 @@
 				return 1;
 			}
 			
-			if (opt_debug) {
-				GLib.Log.set_default_handler((dom, lvl, msg) => {
-					command_line.printerr("%s [%s] %s\n",
-						(new DateTime.now_local()).format("%H:%M:%S.%f"),
-						lvl.to_string(),
-						msg);
-				});
-			}
+			// Set debug flags and let ApplicationInterface.debug_log handle everything
+			OLLMchat.debug_on = opt_debug;
+			OLLMchat.debug_critical_enabled = opt_debug_critical;
+			
+			// Set up log handler - ApplicationInterface.debug_log will decide what to output
+			GLib.Log.set_default_handler((dom, lvl, msg) => {
+				OLLMchat.ApplicationInterface.debug_log(this.get_application_id(), dom, lvl, msg);
+			});
 			
 			// Validate arguments
 			string? validation_error = this.validate_args(args);

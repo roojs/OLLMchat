@@ -3,20 +3,26 @@
 
 # Dependencies for octools library
 valac = meson.get_compiler('vala')
+cc = meson.get_compiler('c')
+# Find tree-sitter library (C library for parsing)
+tree_sitter_lib = dependency('tree-sitter', required: true)
 octools_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
+  dependency('gmodule-2.0'),  # GModule for dynamic library loading
   dependency('json-glib-1.0'),
   dependency('libsoup-3.0'),
   valac.find_library('posix'),
+  tree_sitter_lib,  # Tree-sitter C library (required - ReadFileSummarize uses TreeSitter API)
 ]
 
 # Source files for OLLMtools namespace
 octools_src = files([
   'ReadFile.vala',
   'RequestReadFile.vala',
+  'ReadFileSummarize.vala',
   'EditMode.vala',
   'RequestEditMode.vala',
   'RunCommand.vala',
@@ -50,12 +56,15 @@ octools_base_lib = library('octools',
     '--pkg=ocfiles',
     '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=json-glib-1.0',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory (last, so local takes priority)
   ],
   install: true
@@ -74,11 +83,13 @@ octools_vapi = custom_target('octools-vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_source_dir() / '../vapi',
+    '--vapidir', meson.current_source_dir() / '../vapi',  # For tree-sitter.vapi
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'json-glib-1.0',
     '--pkg', 'libsoup-3.0',
+    '--pkg', 'gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg', 'tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg', 'sqlite3',  # Required for ocsqlite.vapi (Sqlite namespace)
     '--pkg', 'ollmchat',
     '--pkg', 'ocfiles',

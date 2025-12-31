@@ -48,7 +48,9 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 @param file_path {string} [required] The path to the file to read.
 @param start_line {integer} [optional] The starting line number to read from.
 @param end_line {integer} [optional] The ending line number to read to.
-@param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.""";
+@param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.
+@param with_lines {boolean} [optional] If true, output content with line numbers prefixed to each line (e.g., "1: content", "2: content").
+@param find_words {string} [optional] Search for lines containing this string and return only matching lines with line numbers. Case-insensitive search.""";
 		} }
 		
 		/**

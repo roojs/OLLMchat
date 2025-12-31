@@ -87,11 +87,14 @@ test_ollama = executable('oc-test-cli',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocagent',
     '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -155,13 +158,16 @@ test_web_fetch = executable('oc-test-fetch',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocagent',
     '--pkg=ocmarkdown',
     '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -185,7 +191,7 @@ vmd2html = executable('oc-md2html',
 # Now extends TestAppBase and supports multiple file operations
 # Supports both dummy and sourceview backends (sourceview requires GTK)
 test_files = executable('oc-test-files',
-  dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep],
+  dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, octools_vapi_dep],
   sources: ['TestAppBase.vala', 'oc-test-files.vala'],
   link_with: [ollmchat_base_lib, occoder_base_lib],
   include_directories: [
@@ -197,13 +203,18 @@ test_files = executable('oc-test-files',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
     '--pkg=ocfiles',
     '--pkg=ollmchat',
+    '--pkg=octools',
     # Don't use --pkg=occoder when linking with occoder_base_lib - meson includes occoder-meson.vapi automatically
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -219,10 +230,13 @@ oc_diff = executable('oc-diff',
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('bindir')
@@ -238,10 +252,13 @@ oc_migrate_editors = executable('oc-migrate-editors',
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -274,6 +291,8 @@ oc_vector_index = executable('oc-vector-index',
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',
@@ -309,6 +328,8 @@ oc_vector_search = executable('oc-vector-search',
     '--pkg=sqlite3',
     '--pkg=json-glib-1.0',
     '--pkg=libsoup-3.0',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',

@@ -29,6 +29,8 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.file.html">file</a></li>
           <li class="property"><a href="OLLMfiles.DummyFileBuffer.is_loaded.html">is_loaded</a></li>
+          <li class="property"><a href="OLLMfiles.DummyFileBuffer.is_modified.html">is_modified</a></li>
+          <li class="property"><a href="OLLMfiles.DummyFileBuffer.last_read_timestamp.html">last_read_timestamp</a></li>
           <li class="creation_method"><a href="OLLMfiles.DummyFileBuffer.DummyFileBuffer.html">DummyFileBuffer</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.apply_edits.html">apply_edits</a></li>
           <li class="method"><a href="OLLMfiles.DummyFileBuffer.get_cursor.html">get_cursor</a></li>
@@ -85,6 +87,14 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.DummyFileBuffer.is_loaded.html" class="property">is_loaded</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether the buffer has been loaded with file content.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.DummyFileBuffer.is_modified.html" class="property">is_modified</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether the buffer has unsaved modifications.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMfiles.DummyFileBuffer.last_read_timestamp.html" class="property">last_read_timestamp</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Get the timestamp when the buffer was last read from disk.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -220,12 +230,14 @@
                 <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_selection.html">get_selection</a></li>
                 <li class="abstract_method"><a href="OLLMfiles.FileBuffer.get_text.html">get_text</a></li>
                 <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_loaded.html">is_loaded</a></li>
+                <li class="abstract_property"><a href="OLLMfiles.FileBuffer.is_modified.html">is_modified</a></li>
+                <li class="abstract_property"><a href="OLLMfiles.FileBuffer.last_read_timestamp.html">last_read_timestamp</a></li>
                 <li class="abstract_method"><a href="OLLMfiles.FileBuffer.read_async.html">read_async</a></li>
-                <li class="method"><a href="OLLMfiles.FileBuffer.read_async_real.html">read_async_real</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
+                <li class="method"><a href="OLLMfiles.FileBuffer.read_async_real.html">read_async_real</a></li>
                 <li class="abstract_method"><a href="OLLMfiles.FileBuffer.sync_to_file.html">sync_to_file</a></li>
                 <li class="method"><a href="OLLMfiles.FileBuffer.update_file_metadata_after_write.html">update_file_metadata_after_write</a></li>
                 <li class="abstract_method"><a href="OLLMfiles.FileBuffer.write.html">write</a></li>

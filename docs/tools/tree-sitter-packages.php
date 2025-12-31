@@ -84,6 +84,11 @@ class TreeSitterPackageBuilder {
             'repo' => 'https://github.com/tree-sitter/tree-sitter-bash',
             'language' => 'bash'
         ],
+        'markdown' => [
+            'name' => 'tree-sitter-markdown',
+            'repo' => 'https://github.com/tree-sitter-grammars/tree-sitter-markdown',
+            'language' => 'markdown'
+        ],
         // Add more as needed
 		// stuff that fails
 		'go' => [
@@ -477,7 +482,15 @@ class TreeSitterPackageBuilder {
                 $grammarName = $parser['language'];
             }
             
-            echo "  Building grammar: {$grammarName}\n";
+            // Normalize grammar name for library naming: extract language name
+            // Remove "tree-sitter-" prefix if present to get consistent naming
+            // e.g., "tree-sitter-markdown" -> "markdown", "tree-sitter-markdown-inline" -> "markdown-inline"
+            $langName = $grammarName;
+            if (strpos($langName, 'tree-sitter-') === 0) {
+                $langName = substr($langName, strlen('tree-sitter-'));
+            }
+            
+            echo "  Building grammar: {$grammarName} (library: tree_sitter_parser_{$langName}.so)\n";
             
             // Generate parser for this grammar
             $this->executeCommand(
@@ -504,13 +517,13 @@ class TreeSitterPackageBuilder {
                 throw new Exception("Failed to find parser.c for grammar in {$grammarDir}");
             }
             
-            // Copy parser.c to build directory with unique name
-            $buildParserC = $buildDir . '/parser_' . $grammarName . '.c';
+            // Copy parser.c to build directory with normalized name
+            $buildParserC = $buildDir . '/parser_' . $langName . '.c';
             copy($parserC, $buildParserC);
             echo "    ✓ Found parser.c: {$grammarName}\n";
             
-            // Compile to shared library with unique name
-            $libName = 'parser_' . $grammarName . '.so';
+            // Compile to shared library with standardized name (tree_sitter_parser_<language>.so)
+            $libName = 'tree_sitter_parser_' . $langName . '.so';
             $libPath = $buildDir . '/' . $libName;
             $this->executeCommand(
                 "cd " . escapeshellarg($buildDir) . " && " .
@@ -522,6 +535,7 @@ class TreeSitterPackageBuilder {
             
             $builtLibraries[] = [
                 'name' => $grammarName,
+                'language' => $langName,
                 'so' => $libPath,
                 'basename' => $libName
             ];
@@ -646,10 +660,10 @@ class TreeSitterPackageBuilder {
         if (empty($builtLibraries)) {
             // Fallback: use language name to ensure unique .so filename
             // This should never happen if buildPackage works correctly, but just in case
-            $fallbackName = 'parser_' . $parser['language'] . '.so';
+            $fallbackName = 'tree_sitter_parser_' . $parser['language'] . '.so';
             $installContent = "build/{$fallbackName} usr/lib/x86_64-linux-gnu/\n";
         } else {
-            // Install all built libraries (each with unique name: parser_<language>.so or parser_<grammar>.so)
+            // Install all built libraries (each with standardized name: tree_sitter_parser_<language>.so)
             foreach ($builtLibraries as $lib) {
                 $installContent .= "build/" . $lib['basename'] . " usr/lib/x86_64-linux-gnu/\n";
             }
@@ -725,18 +739,23 @@ CONTROL;
 	for subdir in ../*/grammar.js; do \
 		if [ -f "\$\$subdir" ]; then \
 			grammar_name=\$\$(basename \$\$(dirname "\$\$subdir")); \
+			# Normalize language name: remove "tree-sitter-" prefix if present \
+			lang_name=\$\$grammar_name; \
+			if echo "\$\$lang_name" | grep -q "^tree-sitter-"; then \
+				lang_name=\$\$(echo "\$\$lang_name" | sed 's/^tree-sitter-//'); \
+			fi; \
 			cd \$\$(dirname "\$\$subdir") && \$\$TS_BIN generate >/dev/null 2>&1; \
-			if [ -f src/parser.c ]; then cp src/parser.c ../build/parser_\$\$grammar_name.c; \
-			elif [ -f parser.c ]; then cp parser.c ../build/parser_\$\$grammar_name.c; fi; \
-			if [ -f src/scanner.c ]; then cp src/scanner.c ../build/scanner_\$\$grammar_name.c; \
-			elif [ -f scanner.c ]; then cp scanner.c ../build/scanner_\$\$grammar_name.c; fi; \
+			if [ -f src/parser.c ]; then cp src/parser.c ../build/parser_\$\$lang_name.c; \
+			elif [ -f parser.c ]; then cp parser.c ../build/parser_\$\$lang_name.c; fi; \
+			if [ -f src/scanner.c ]; then cp src/scanner.c ../build/scanner_\$\$lang_name.c; \
+			elif [ -f scanner.c ]; then cp scanner.c ../build/scanner_\$\$lang_name.c; fi; \
 			cd ../build; \
 		fi; \
 	done; \
 	for parser_c in parser*.c; do \
 		if [ -f "\$\$parser_c" ]; then \
-			so_name=\$\$(echo "\$\$parser_c" | sed 's/\.c\$\$/.so/'); \
 			lang_name=\$\$(echo "\$\$parser_c" | sed 's/parser_//; s/\.c\$\$//'); \
+			so_name="tree_sitter_parser_\$\$lang_name.so"; \
 			scanner_c=""; \
 			if [ -f scanner_\$\$lang_name.c ]; then \
 				scanner_c="scanner_\$\$lang_name.c"; \

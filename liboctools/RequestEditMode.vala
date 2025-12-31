@@ -93,7 +93,22 @@ namespace OLLMtools
 				throw new GLib.IOError.INVALID_ARGUMENT("file_path parameter is required");
 			}
 			
-			// Build instructions based on mode
+			// Get project manager and file status for UI message
+			var project_manager = ((EditMode) this.tool).project_manager;
+			var is_in_project = project_manager?.get_file_from_active_project(this.normalized_path) != null;
+			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
+			
+			// Build UI message - just the request info and permission status
+			string ui_message = "Edit mode activated for file: " + this.normalized_path + "\n";
+			ui_message += "File status: " + (file_exists ? "exists" : "will be created") + "\n";
+			ui_message += "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
+			
+			// Send to UI using standardized format
+			this.send_ui("txt", "Edit Mode Activated", ui_message);
+			
+			// Build LLM message - tell LLM edit mode is activated and provide instructions
+			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
+			
 			string instructions;
 			if (this.complete_file) {
 				instructions = "Since complete_file=true is enabled, code blocks should only have the language tag (e.g., ```javascript, ```python). Do not include line numbers. The entire file content will be replaced.";
@@ -101,21 +116,24 @@ namespace OLLMtools
 				instructions = "Code blocks must include line range in format type:startline:endline (e.g., ```javascript:10:15, ```python:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.";
 			}
 			
-			// Build the message string
-			string message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
-			if (this.complete_file) {
-				message += "You should now output the content of the file you want to write in a code block.\n\n";
-			}
-			message += instructions + "\n\n";
-			if (this.overwrite && GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR)) {
-				message += "You set overwrite=true, so we will overwrite the existing file when you complete your message.";
+			llm_message += instructions;
+			if (this.overwrite && file_exists) {
+				llm_message += "\n\nYou set overwrite=true, so we will overwrite the existing file when you complete your message.";
 			}
 			
-			// Emit to UI
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", message),
-				this.chat_call
-			);
+			// Clean up any existing active request for the same file before starting a new one
+			// This handles the case where edit mode is called again after a failed attempt
+			var existing_requests = new Gee.ArrayList<RequestEditMode>();
+			foreach (var req in active_requests) {
+				if (req.normalized_path == this.normalized_path && req != this) {
+					existing_requests.add(req);
+				}
+			}
+			foreach (var req in existing_requests) {
+				GLib.debug("RequestEditMode.execute_request: Cleaning up existing request for file %s", req.normalized_path);
+				req.disconnect_signals();
+				active_requests.remove(req);
+			}
 			
 			// Keep this request alive so signal handlers can be called
 			active_requests.add(this);
@@ -125,7 +143,7 @@ namespace OLLMtools
 			// Connect signals for this request
 			this.connect_signals();
 			
-			return message;
+			return llm_message;
 		}
 		
 		/**
@@ -430,13 +448,17 @@ namespace OLLMtools
 			// Process any remaining current_line (for both streaming and non-streaming)
 			this.add_linebreak();
 			
-			// Check if we have any changes - store error if not
+			// Check if we have any changes - if not, just clean up silently
+			// This allows the LLM to call edit mode again without getting a confusing error message
 			if (this.changes.size == 0) {
-				// No changes were captured
-				GLib.debug("RequestEditMode.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu)", 
+				// No changes were captured - clean up silently
+				GLib.debug("RequestEditMode.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu), cleaning up silently", 
 					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
-				this.error_messages.add("There was a problem: we could not read the content you sent.\n\nYou should call edit mode again, and follow the instructions that you receive.");
-				this.reply_with_errors(response);
+				this.disconnect_signals();
+				active_requests.remove(this);
+				GLib.debug("RequestEditMode.on_message_created: Removed request from active_requests (remaining=%zu, file=%s)", 
+					active_requests.size, this.normalized_path);
+				// Don't send any reply - just let the LLM try again naturally
 				return;
 			}
 			
@@ -455,19 +477,16 @@ namespace OLLMtools
 					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
 				}
 				
-				// Build and emit UI message
-				this.chat_call.client.message_created(
-					new OLLMchat.Message(
-						this.chat_call,
-						"ui",
-						(line_count > 0)
-							? "File '" + this.normalized_path + 
-								"' has been updated. It now has " + 
-								line_count.to_string() + " lines."
-							: "File '" + this.normalized_path + "' has been updated."
-					),
-					this.chat_call
-				);
+				// Build and emit UI message with more detail
+				string update_message = "File updated: " + this.normalized_path + "\n";
+				if (line_count > 0) {
+					update_message += "Total lines: " + line_count.to_string() + "\n";
+				}
+				update_message += "Changes applied: " + this.changes.size.to_string() + "\n";
+				var project_manager = ((EditMode) this.tool).project_manager;
+				var is_in_project = project_manager?.get_file_from_active_project(this.normalized_path) != null;
+				update_message += "Project file: " + (is_in_project ? "yes" : "no");
+				this.send_ui("txt", "File Updated", update_message);
 				
 				// Send tool reply to LLM
 				this.reply_with_errors(
@@ -539,19 +558,6 @@ namespace OLLMtools
 			if (this.changes.size == 0) {
 				return;
 			}
-			
-			// Check if permission status has changed (e.g., revoked by signal handler)
-			if (!this.chat_call.client.permission_provider.check_permission(this)) {
-				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
-			}
-			
-			// Log and notify that we're starting to write
-			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-				"Applying changes to file " + this.normalized_path + "..."),
-				this.chat_call
-			);
 		
 			// Get or create File object from path
 			var project_manager = ((EditMode) this.tool).project_manager;
@@ -561,6 +567,30 @@ namespace OLLMtools
 			
 			// First, try to get from active project
 			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			var is_in_project = (file != null);
+			
+			// Only check permission if file is NOT in active project
+			// Files in active project are auto-approved and don't need permission checks
+			if (!is_in_project) {
+				// Check if permission status has changed (e.g., revoked by signal handler)
+				if (!this.chat_call.client.permission_provider.check_permission(this)) {
+					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+				}
+			}
+			
+			// Log and notify that we're starting to write with more detail
+			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
+				this.normalized_path, is_in_project.to_string(), this.changes.size);
+			
+			string apply_message = "Applying changes to file: " + this.normalized_path + "\n";
+			apply_message += "Changes to apply: " + this.changes.size.to_string() + "\n";
+			apply_message += "Project file: " + (is_in_project ? "yes" : "no") + "\n";
+			if (this.complete_file) {
+				apply_message += "Mode: Complete file replacement";
+			} else {
+				apply_message += "Mode: Line range edits";
+			}
+			this.send_ui("txt", "Applying Changes", apply_message);
 			
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
@@ -598,14 +628,18 @@ namespace OLLMtools
 				yield this.apply_edits(file);
 			}
 			
-			// Log and send status message after successful write
+			// Log and send status message after successful write with more detail
 			GLib.debug("RequestEditMode.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
-			var message = new OLLMchat.Message(this.chat_call, "ui",
-				"Applied changes to file " + this.normalized_path);
-			GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
-				message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
-			this.chat_call.client.message_created(message, this.chat_call);
-			GLib.debug("RequestEditMode.apply_all_changes: Emitted message_created signal");
+			
+			string success_message = "Successfully applied changes to file: " + this.normalized_path + "\n";
+			success_message += "Changes applied: " + this.changes.size.to_string() + "\n";
+			success_message += "Project file: " + (is_in_project ? "yes" : "no") + "\n";
+			if (this.complete_file) {
+				success_message += "Mode: Complete file replacement";
+			} else {
+				success_message += "Mode: Line range edits";
+			}
+			this.send_ui("txt", "Changes Applied", success_message);
 			
 			// Emit change_done signal for each change
 			var edit_tool = (EditMode) this.tool;

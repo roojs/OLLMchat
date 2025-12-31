@@ -38,6 +38,7 @@ class TestFiles : TestAppBase
 	private static string? opt_create_project = null;
 	private static string? opt_info = null;
 	private static string? opt_ls_path = null;
+	private static string? opt_summarize = null;
 
 	protected const string help = """
 Usage: {ARG} [OPTIONS] <action>
@@ -56,6 +57,7 @@ Actions (specify one):
   --list-buffers [--max-buffers=N]    List current file buffers
   --create-project=PATH               Create test project from directory
   --info=PATH                         Show file information
+  --summarize=PATH                    Show file structure summary (tree-sitter based)
 
 Options:
   --test-db=PATH                      Use test database instead of main database
@@ -106,19 +108,21 @@ Examples:
 		{ "max-buffers", 0, 0, OptionArg.INT, ref opt_max_buffers, "Maximum number of buffers to list", "N" },
 		{ "create-project", 0, 0, OptionArg.STRING, ref opt_create_project, "Create test project", "PATH" },
 		{ "info", 0, 0, OptionArg.STRING, ref opt_info, "Show file information", "PATH" },
+		{ "summarize", 0, 0, OptionArg.STRING, ref opt_summarize, "Show file structure summary", "PATH" },
 		{ null }
 	};
 
 	protected override OptionEntry[] get_options()
 	{
-		// Only include debug from base_options, skip url/api-key/model since we don't need LLM connection
-		// debug + all local options (which includes null)
-		var options = new OptionEntry[1 + local_options.length];
+		// Only include debug and debug-critical from base_options, skip url/api-key/model since we don't need LLM connection
+		// debug + debug-critical + all local options (which includes null)
+		var options = new OptionEntry[2 + local_options.length];
 		options[0] = base_options[0];  // debug option
+		options[1] = base_options[1];  // debug-critical option
 		
 		// Copy all local options (includes null terminator)
 		for (int j = 0; j < local_options.length; j++) {
-			options[1 + j] = local_options[j];
+			options[2 + j] = local_options[j];
 		}
 		
 		return options;
@@ -153,6 +157,9 @@ Examples:
 			action_count++;
 		}
 		if (opt_info != null) {
+			action_count++;
+		}
+		if (opt_summarize != null) {
 			action_count++;
 		}
 		
@@ -222,6 +229,8 @@ Examples:
 			yield this.run_create_project(manager, db);
 		} else if (opt_info != null) {
 			yield this.run_info(manager);
+		} else if (opt_summarize != null) {
+			yield this.run_summarize(manager);
 		}
 	}
 
@@ -524,6 +533,32 @@ BUFFER_STATUS: $(file.buffer != null ? "exists" : "null")
 IN_PROJECT: $(in_project ? "true" : "false")
 BACKUP_PATH: $(backup_path)
 ");
+	}
+
+	private async void run_summarize(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_summarize;
+		
+		// Try to get from active project first
+		OLLMfiles.File? file = null;
+		
+		if (manager.active_project != null) {
+			file = manager.get_file_from_active_project(file_path);
+		}
+		
+		// If not in project, create fake file
+		if (file == null) {
+			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		// Create ReadFileSummarize instance
+		var summarizer = new OLLMtools.ReadFileSummarize(file);
+		
+		// Generate summary
+		var summary = yield summarizer.summarize();
+		
+		// Output summary
+		print(summary);
 	}
 
 	/**
