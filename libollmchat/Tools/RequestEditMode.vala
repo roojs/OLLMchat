@@ -449,18 +449,7 @@ namespace OLLMchat.Tools
 				
 				// Calculate line count for success message using buffer
 				// After write() or apply_edits(), buffer should be loaded
-				if (modified_file != null) {
-					try {
-						// Ensure buffer is loaded (should already be after write/apply_edits)
-						if (!modified_file.buffer.is_loaded) {
-							yield modified_file.buffer.read_async();
-						}
-						// Use buffer's built-in get_line_count() method
-						line_count = modified_file.buffer.get_line_count();
-					} catch (Error e) {
-						GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
-					}
-				}
+				line_count = yield this.get_line_count_from_buffer(modified_file);
 				
 				// Build and emit UI message
 				string update_message = (line_count > 0)
