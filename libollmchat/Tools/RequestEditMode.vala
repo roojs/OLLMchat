@@ -74,8 +74,9 @@ namespace OLLMchat.Tools
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
 			// Check if file is in active project (skip permission prompt if so)
+			// Files in active project are auto-approved and don't need permission checks
 			var project_manager = ((EditMode) this.tool).project_manager;
-			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
+			if (project_manager?.get_file_from_active_project(this.normalized_path) != null) {
 				// File is in active project - skip permission prompt
 				// Clear permission question to indicate auto-approved
 				this.permission_question = "";
@@ -537,17 +538,21 @@ namespace OLLMchat.Tools
 			var project_manager = ((EditMode) this.tool).project_manager;
 			
 			// First, try to get from active project
-			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			var file = project_manager?.get_file_from_active_project(this.normalized_path);
+			var is_in_project = (file != null);
 			
 			// Only check permission if file is NOT in active project
 			// Files in active project are auto-approved and don't need permission checks
-			if (file == null && !this.chat_call.client.permission_provider.check_permission(this)) {
-				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+			if (!is_in_project) {
+				// Check if permission status has changed (e.g., revoked by signal handler)
+				if (!this.chat_call.client.permission_provider.check_permission(this)) {
+					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+				}
 			}
 			
 			// Log that we're starting to write
 			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
-				this.normalized_path, (file != null).to_string(), this.changes.size);
+				this.normalized_path, is_in_project.to_string(), this.changes.size);
 			
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
