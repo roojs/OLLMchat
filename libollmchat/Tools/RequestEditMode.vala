@@ -770,17 +770,10 @@ namespace OLLMchat.Tools
 			// Add file to project_manager.file_cache
 			project_manager.file_cache.set(real_file.path, real_file);
 			
-			// Replace buffer's file reference by recreating buffer with new file object
-			// The old buffer was associated with the fake file, so we need to create a new one
+			// Create buffer for new file object
+			// The old buffer was associated with the fake file, so we create a new one
+			// The file was just written to disk, so the buffer will read from disk when needed
 			project_manager.buffer_provider.create_buffer(real_file);
-			
-			// Copy buffer content from old file to new file if old buffer was loaded
-			if (file.buffer != null && file.buffer.is_loaded) {
-				var content = file.buffer.get_text();
-				if (content != null && content != "") {
-					yield real_file.buffer.write(content);
-				}
-			}
 			
 			// Save file to DB (gets id > 0)
 			if (project_manager.db != null) {
