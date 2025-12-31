@@ -179,14 +179,21 @@ The project is organized into component directories, each with its own `meson.bu
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
 
+**Agent Library (`libocagent.so`):**
+- `libocagent/` - Base agent library for AI agent functionality (libocagent.so, namespace: `OLLMagent`)
+  - `BaseAgent.vala` - Base agent class
+  - `JustAsk.vala` - Simple "just ask" agent implementation
+
 **File Management Library (`libocfiles.so`):**
 - `libocfiles/` - File and project management (libocfiles.so, namespace: `OLLMfiles`)
   - Provides file tracking and project management without GTK/git dependencies
   - Used by `libocvector` for file operations
-  - `File.vala`, `FileBase.vala`, `FileAlias.vala` - File classes
+  - `File.vala`, `FileBase.vala`, `FileAlias.vala`, `FileBuffer.vala`, `FileChange.vala` - File classes
   - `Folder.vala`, `FolderFiles.vala` - Folder classes
-  - `ProjectFile.vala`, `ProjectFiles.vala`, `ProjectList.vala`, `ProjectManager.vala` - Project management
-  - `BufferProviderBase.vala`, `GitProviderBase.vala` - Provider base classes
+  - `ProjectFile.vala`, `ProjectFiles.vala`, `ProjectList.vala`, `ProjectManager.vala`, `ProjectMigrate.vala` - Project management
+  - `BufferProvider.vala`, `BufferProviderBase.vala`, `DummyFileBuffer.vala` - Buffer providers
+  - `GitProvider.vala`, `GitProviderBase.vala` - Git provider classes
+  - `Diff/` - Diff and patch utilities (Differ.vala, Patch.vala, PatchApplier.vala)
 
 **Code Editor Library (`liboccoder.so`):**
 - `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
@@ -247,9 +254,7 @@ The project is organized into component directories, each with its own `meson.bu
   - `ChatInput.vala` - Chat input component
   - `ChatPermission.vala` - Permission UI component
   - `HistoryBrowser.vala` - History browser component
-  - `Tools/` - GTK-specific tool UI components (namespace: `OLLMchatGtk.Tools`)
-    - `Permission.vala` - Permission provider UI
-    - `RunCommand.vala` - Run command tool UI
+  - `Message.vala`, `ClipboardManager.vala`, `ClipboardMetadata.vala` - Supporting components
 
 **Other Directories:**
 - `examples/` - Example programs and test code (each with its own meson.build)
