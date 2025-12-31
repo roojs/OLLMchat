@@ -177,7 +177,7 @@ namespace OLLMtools
 			}
 
 			// Get full content (default to entire file)
-			string full_content = ret;
+			var full_content = ret;
 			// Read line range if specified and not reading entire file
 			if (!this.read_entire_file && (this.start_line > 0 || this.end_line > 0)) {
 				// Read line range using buffer.get_text() (convert 1-based to 0-based)
