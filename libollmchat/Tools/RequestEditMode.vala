@@ -446,28 +446,6 @@ namespace OLLMchat.Tools
 			OLLMfiles.File? modified_file = null;
 			try {
 				modified_file = yield this.apply_all_changes();
-				
-				// Calculate line count for success message using buffer
-				// After write() or apply_edits(), buffer should be loaded
-				line_count = yield this.get_line_count_from_buffer(modified_file);
-				
-				// Build and emit UI message
-				string update_message = (line_count > 0)
-					? "File '" + this.normalized_path + 
-						"' has been updated. It now has " + 
-						line_count.to_string() + " lines."
-					: "File '" + this.normalized_path + "' has been updated.";
-				this.send_ui("txt", "CodeEdit Tool: File Updated", update_message);
-				
-				// Send tool reply to LLM
-				this.reply_with_errors(
-					response,
-					(line_count > 0)
-						? "File '" + this.normalized_path + 
-							"' has been updated. It now has " + 
-							line_count.to_string() + " lines."
-						: "File '" + this.normalized_path + "' has been updated."
-				);
 			} catch (Error e) {
 				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
 				// Store error message instead of sending immediately
@@ -475,6 +453,28 @@ namespace OLLMchat.Tools
 				this.reply_with_errors(response);
 				return;
 			}
+			
+			// Calculate line count for success message using buffer
+			// After write() or apply_edits(), buffer should be loaded
+			line_count = yield this.get_line_count_from_buffer(modified_file);
+			
+			// Build and emit UI message
+			string update_message = (line_count > 0)
+				? "File '" + this.normalized_path + 
+					"' has been updated. It now has " + 
+					line_count.to_string() + " lines."
+				: "File '" + this.normalized_path + "' has been updated.";
+			this.send_ui("txt", "CodeEdit Tool: File Updated", update_message);
+			
+			// Send tool reply to LLM
+			this.reply_with_errors(
+				response,
+				(line_count > 0)
+					? "File '" + this.normalized_path + 
+						"' has been updated. It now has " + 
+						line_count.to_string() + " lines."
+					: "File '" + this.normalized_path + "' has been updated."
+			);
 		}
 		
 		/**
