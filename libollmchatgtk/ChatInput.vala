@@ -598,12 +598,6 @@ this.update_models.begin();
 			popover.show.connect(() => {
 				// Only build if not already built
 				if (!this.is_tool_list_loaded) {
-					// Clear existing children
-					var existing_child = popover.get_child();
-					if (existing_child != null) {
-						existing_child.unparent();
-					}
-					
 					// Create popover box
 					this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
 						margin_start = 10,
