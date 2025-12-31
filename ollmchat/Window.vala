@@ -315,6 +315,8 @@ namespace OLLMchat
 						GLib.Environment.get_home_dir(), project_manager));
 			this.history_manager.base_client.addTool(
 					new OLLMtools.WebFetchTool(this.history_manager.base_client, project_manager));
+			this.history_manager.base_client.addTool(
+					new OLLMtools.GoogleSearchTool(this.history_manager.base_client, project_manager));
 			
 			// Also add tools to current session's client (EmptySession was created before tools were added)
 			// Reuse the same tool instances from base_client to preserve state (like active property)

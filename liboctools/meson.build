@@ -23,6 +23,9 @@ octools_src = files([
   'RequestRunCommand.vala',
   'WebFetchTool.vala',
   'RequestWebFetch.vala',
+  'GoogleSearchTool.vala',
+  'GoogleSearchRequest.vala',
+  'GoogleSearchConfig.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
