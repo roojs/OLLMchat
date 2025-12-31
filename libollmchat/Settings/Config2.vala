@@ -24,6 +24,28 @@ namespace OLLMchat.Settings
 	 * This is the top-level container class that holds all configuration data.
 	 * Supports GType registration for external configuration sections.
 	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * // Load configuration
+	 * Config2.config_path = "~/.config/ollmchat/config.2.json";
+	 * var config = Config2.load();
+	 * 
+	 * // Access connections
+	 * foreach (var conn in config.connections.values) {
+	 *     print(@"Connection: $(conn.name) - $(conn.url)");
+	 * }
+	 * 
+	 * // Get model options
+	 * var options = config.model_options.get("llama3.2");
+	 * if (options != null) {
+	 *     options.temperature = 0.7;
+	 * }
+	 * 
+	 * // Save configuration
+	 * config.save();
+	 * }}}
+	 * 
 	 * @since 1.0
 	 */
 	public class Config2 : Object, Json.Serializable

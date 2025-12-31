@@ -27,7 +27,10 @@ namespace OLLMchat
 	 *  * "content-stream" / "content-non-stream": Visible assistant content
 	 *  * "think-stream": Thinking output (for models that support it)
 	 *  * "tool": Tool execution results
+	 *  * "ui": UI messages displayed via tool_message
 	 *  * "system": System prompts
+	 *  * "end-stream": Stream end marker (not displayed)
+	 *  * "done": Completion marker (not displayed)
 	 * 
 	 * Role changes automatically set flags (is_user, is_llm, is_content, etc.)
 	 * for easy filtering and UI display decisions.

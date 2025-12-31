@@ -25,22 +25,6 @@ namespace OLLMchat.Call
 	 * including URL building, request execution, and response handling. Handles
 	 * streaming responses and error management. Subclasses must set url_endpoint
 	 * and implement request-specific logic.
-	 * 
-	 * == Example ==
-	 * 
-	 * {{{
-	 * public class MyCall : Call.Base {
-	 *     public MyCall(Client client) {
-	 *         base(client);
-	 *         this.url_endpoint = "api/myendpoint";
-	 *     }
-	 *     
-	 *     public async Response.Base exec() throws Error {
-	 *         var bytes = yield send_request(true);
-	 *         // Parse response...
-	 *     }
-	 * }
-	 * }}}
 	 */
 	public abstract class Base : OllamaBase
 	{

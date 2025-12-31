@@ -23,6 +23,23 @@ namespace OLLMchat.Response
 	 * 
 	 * Contains the assistant's message, tool calls (if any), and metadata.
 	 * Handles streaming responses and tool call detection for automatic execution.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * var response = yield client.chat("Hello!");
+	 * 
+	 * // Access message content
+	 * print(response.message.content);
+	 * 
+	 * // Check for tool calls
+	 * if (response.tool_calls.size > 0) {
+	 *     // Tools were requested by the model
+	 * }
+	 * 
+	 * // Access performance metrics
+	 * print(@"Total duration: $(response.total_duration)ns");
+	 * }}}
 	 */
 	public class Chat : Base, ChatContentInterface
 	{

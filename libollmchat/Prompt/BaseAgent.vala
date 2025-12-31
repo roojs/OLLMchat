@@ -24,6 +24,25 @@ namespace OLLMchat.Prompt
 	 * Provides common functionality for loading resource sections
 	 * based on agent name. Can be used directly as a default implementation
 	 * that returns empty system prompt and passes through user input.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * // Use as default (no modifications)
+	 * var agent = new Prompt.BaseAgent();
+	 * 
+	 * // Fill chat call with prompts
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * agent.fill(call, "User question");
+	 * 
+	 * // Or create custom agent
+	 * public class MyAgent : Prompt.BaseAgent {
+	 *     public override void fill(Call.Chat call, string user_input) {
+	 *         call.system_content = "You are a helpful assistant.";
+	 *         call.chat_content = user_input;
+	 *     }
+	 * }
+	 * }}}
 	 */
 	public class BaseAgent : Object
 	{

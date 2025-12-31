@@ -24,6 +24,21 @@ namespace OLLMchat.Call
 	 * This is technically accessed through call.options (e.g., chatCall.options, embedCall.options).
 	 * Contains all runtime parameters that can be passed to Ollama API.
 	 * Default values are -1 for numbers (indicating no value set) or empty string for strings.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * call.options = new Call.Options() {
+	 *     temperature = 0.7,
+	 *     top_p = 0.9,
+	 *     num_predict = 100
+	 * };
+	 * 
+	 * // Or modify existing options
+	 * call.options.temperature = 0.5;
+	 * call.options.stop = "\n\n";
+	 * }}}
 	 */
 	public class Options : Object, Json.Serializable
 	{

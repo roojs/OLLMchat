@@ -65,6 +65,26 @@ namespace OLLMchat.ChatPermission
 	 * Includes permission storage system with two layers:
 	 * - Global (permanent): Stored in tool.permissions.json (only if config_file is set)
 	 * - Session (temporary): Stored in memory for current session
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * public class MyPermissionProvider : ChatPermission.Provider {
+	 *     public override async PermissionResult check(
+	 *         string tool_name, Operation op, string resource) {
+	 *         // Check if already allowed/denied
+	 *         var stored = get_stored_permission(tool_name, op, resource);
+	 *         if (stored != PermissionResult.ASK) {
+	 *             return stored;
+	 *         }
+	 *         
+	 *         // Ask user
+	 *         var response = yield ask_user(tool_name, op, resource);
+	 *         store_permission(tool_name, op, resource, response);
+	 *         return response == PermissionResponse.ALLOW_ONCE ? PermissionResult.YES : PermissionResult.NO;
+	 *     }
+	 * }
+	 * }}}
 	 */
 	public abstract class Provider : Object
 	{

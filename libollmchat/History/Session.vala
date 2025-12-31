@@ -22,10 +22,23 @@ namespace OLLMchat.History
 	 * Session is a wrapper around Call.Chat that provides history persistence.
 	 * 
 	 * It uses SQ (SQLite) for database storage of metadata, and JSON files
-	 * for complete session data including all messages.
+	 * for complete session data including all messages. Properties are wrappers
+	 * around this.chat.client.model, etc. Messages come from this.chat.messages
+	 * with a flag to include extra info during JSON encoding.
 	 * 
-	 * Properties are wrappers around this.chat.client.model, etc.
-	 * Messages come from this.chat.messages with a flag to include extra info during JSON encoding.
+	 * == Example ==
+	 * 
+	 * {{{
+	 * // Create session from chat call
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * var session = new History.Session(call, db);
+	 * 
+	 * // Save session to disk and database
+	 * yield session.save();
+	 * 
+	 * // Load session later
+	 * var loaded = History.Session.load(id, db, client, config);
+	 * }}}
 	 * 
 	 * Session requires a Call.Chat object in its constructor.
 	 */

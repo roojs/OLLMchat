@@ -23,6 +23,7 @@ namespace OLLMchat.History
 	 * 
 	 * Contains shared functionality that doesn't depend on chat existing.
 	 * Subclasses must implement abstract methods for chat-dependent operations.
+	 * Provides common properties like id, title, and client management.
 	 */
 	public abstract class SessionBase : Object, Json.Serializable
 	{
