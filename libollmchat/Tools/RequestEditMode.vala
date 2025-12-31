@@ -156,7 +156,7 @@ namespace OLLMchat.Tools
 						this.normalized_path, message.message_interface, this.chat_call);
 					return;
 				}
-				this.on_message_created(message, content_interface);
+				this.on_message_created.begin(message, content_interface);
 			});
 			GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
 		}
@@ -371,7 +371,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Called when a message is created. Processes final content and applies changes when "done" message is received.
 		 */
-		private void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
+		private async void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
 			// Check if request is still valid
 			if (this.chat_call == null || this.chat_call.client == null) {
@@ -436,7 +436,7 @@ namespace OLLMchat.Tools
 			// Apply changes
 			int line_count = 0;
 			try {
-				this.apply_all_changes();
+				yield this.apply_all_changes();
 				
 				// Calculate line count for success message
 				try {
