@@ -592,29 +592,31 @@ this.update_models.begin();
 			
 			// Build menu content when popover is shown (only build once if tools are loaded)
 			popover.show.connect(() => {
-				// Only build if not already built
-				if (!this.is_tool_list_loaded) {
-					// Create popover box
-					this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
-						margin_start = 10,
-						margin_end = 10,
-						margin_top = 10,
-						margin_bottom = 10
-					};
-
-					// Create checkboxes for each tool
-					foreach (var tool in this.manager.session.client.tools.values) {
-						var check_button = new Gtk.CheckButton.with_label(
-							tool.description.strip().split("\n")[0]
-						);
-						// Bind checkbox active state to tool active property
-						tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
-						this.tools_popover_box.append(check_button);
-					}
-					
-					this.is_tool_list_loaded = true;
-					popover.set_child(this.tools_popover_box);
+				// Return early if already built
+				if (this.is_tool_list_loaded) {
+					return;
 				}
+				
+				// Create popover box
+				this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
+					margin_start = 10,
+					margin_end = 10,
+					margin_top = 10,
+					margin_bottom = 10
+				};
+
+				// Create checkboxes for each tool
+				foreach (var tool in this.manager.session.client.tools.values) {
+					var check_button = new Gtk.CheckButton.with_label(
+						tool.description.strip().split("\n")[0]
+					);
+					// Bind checkbox active state to tool active property
+					tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
+					this.tools_popover_box.append(check_button);
+				}
+				
+				this.is_tool_list_loaded = true;
+				popover.set_child(this.tools_popover_box);
 			});
 
 			// Configure the existing menu button (created in constructor) with popover
