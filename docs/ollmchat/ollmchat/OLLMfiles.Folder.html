@@ -53,8 +53,13 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Folder</span></b> : <span class="main_type"><a href="OLLMfiles.FileBase.html" class="abstract_class">FileBase</a></span>
         </div>
         <div class="description">
-          <p>Represents a folder/directory in the project.</p>
-          <p>Folders maintain a list of their children and a hashmap for quick lookup by filename. Emits signals when children are added/removed.</p>
+          <p>Represents a directory/folder in the project.</p>
+          <p>Can also represent a project when is_project = true. Projects are folders with is_project = true (no separate Project class).</p>
+          <h2>Project Management </h2>
+          <p>The project_files property provides a flat list of all files in the project (for dropdowns/search), while the children property provides 
+            the hierarchical tree structure (for tree views).</p>
+          <h2>Git Integration </h2>
+          <p>Automatically discovers git repositories and checks if paths are ignored by git. Uses manager.git_provider for git operations.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMfiles.html">OLLMfiles</a>
         </div>
@@ -113,8 +118,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-27')">All known members inherited from class OLLMfiles.FileBase</div>
-          <div class="content" id="box-content-27">
+          <div class="headline" onclick="toggle_box (this, 'box-content-30')">All known members inherited from class OLLMfiles.FileBase</div>
+          <div class="content" id="box-content-30">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.FileBase.base_type.html">base_type</a></li>
@@ -168,8 +173,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-28')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-28">
+          <div class="headline" onclick="toggle_box (this, 'box-content-31')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-31">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

@@ -128,7 +128,7 @@ namespace OLLMcoder
 				sensitive = false  // Disabled until file is open
 			};
 			this.save_button.clicked.connect(() => {
-				this.save_file();
+				this.save_file.begin();
 			});
 			header_bar.append(this.save_button);
 			
@@ -207,7 +207,7 @@ namespace OLLMcoder
 				var shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
 				
 				if (ctrl && keyval == Gdk.Key.s) {
-					this.save_file();
+					this.save_file.begin();
 					return true;
 				}
 				
@@ -350,33 +350,25 @@ namespace OLLMcoder
 			// Notify manager to activate file
 			this.manager.activate_file(file);
 			
-			// Check if file has existing buffer (via provider)
-			if (!this.manager.buffer_provider.has_buffer(file)) {
-				// Create buffer using provider (handles language)
-				this.manager.buffer_provider.create_buffer(file);
-				
-				// Get the newly created buffer
-				var buffer = file.get_data<GtkSource.Buffer>("buffer");
-				if (buffer != null) {
-					// Load file content asynchronously
-					try {
-						buffer.text = yield file.read_async();
-					} catch (Error e) {
-						GLib.warning("Failed to read file %s: %s", file.path, e.message);
-						buffer.text = "";
-					}
+			// Ensure buffer exists and is a GtkSource.Buffer (GtkSourceFileBuffer extends it)
+			this.manager.buffer_provider.create_buffer(file);
+			
+			// Get GtkSource.Buffer (GtkSourceFileBuffer extends it)
+			var gtk_buffer = file.buffer as GtkSource.Buffer;
+			 
+			
+			// Load file content asynchronously if buffer hasn't been loaded
+			if (!file.buffer.is_loaded) {
+				try {
+					yield file.buffer.read_async();
+				} catch (Error e) {
+					GLib.warning("Failed to read file %s: %s", file.path, e.message);
+					gtk_buffer.text = "";
 				}
 			}
 			
-			// Get buffer from file (via provider's set_data)
-			var buffer = file.get_data<GtkSource.Buffer>("buffer");
-			if (buffer == null) {
-				GLib.warning("SourceView.open_file: Failed to get buffer for file %s", file.path);
-				return;
-			}
-			
-			// Switch view to file's buffer
-			this.source_view.set_buffer(buffer);
+			// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
+			this.source_view.set_buffer(gtk_buffer);
 			this.current_file = file;
 			
 			// Show sourceview and search bar when file is opened
@@ -468,12 +460,14 @@ namespace OLLMcoder
 		 */
 		public async void refresh_file()
 		{
-			if (this.current_file == null) {
+			if (this.current_file == null || this.current_file.buffer == null) {
 				return;
 			}
 			
-			var buffer = this.source_view.buffer as GtkSource.Buffer;
-			
+			var buffer = this.current_file.buffer as GtkSource.Buffer;
+			if (buffer == null) {
+				return;
+			}
 			
 			if (buffer.get_modified()) {
 				// FIXME: Prompt user about unsaved changes
@@ -482,7 +476,7 @@ namespace OLLMcoder
 			}
 			
 			try {
-				buffer.text = yield this.current_file.read_async();
+				yield this.current_file.buffer.read_async();
 			} catch (Error e) {
 				// FIXME: Show error dialog to user
 				GLib.warning("Failed to reload file %s: %s", this.current_file.path, e.message);
@@ -896,26 +890,15 @@ namespace OLLMcoder
 		/**
 		 * Save current file to disk.
 		 */
-		public void save_file()
+		public async void save_file()
 		{
-			if (this.current_file == null) {
+			if (this.current_file == null || this.current_file.buffer == null) {
 				return;
 			}
 			
-			var buffer = this.source_view.buffer as GtkSource.Buffer;
-			if (buffer == null) {
-				return;
-			}
-			
-			// Get buffer content
-			Gtk.TextIter start, end;
-			buffer.get_bounds(out start, out end);
-			string contents = buffer.get_text(start, end, true);
-			
-			// Write to file
+			// Sync buffer to file
 			try {
-				this.current_file.write(contents);
-				buffer.set_modified(false);
+				yield this.current_file.buffer.sync_to_file();
 				this.current_file.is_unsaved = false;
 				
 				// Save state to database and force immediate save to disk

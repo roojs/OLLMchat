@@ -19,10 +19,15 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages projects, files, and folders.
+	 * Central coordinator for all file system operations.
 	 * 
-	 * Provides project discovery, indexing, and file management capabilities.
-	 * Database persistence and sync will be added in Phase 2B.
+	 * ProjectManager is the entry point for all file system operations. It manages
+	 * file cache, tracks active project and active file, provides buffer and git
+	 * providers, handles database persistence, and emits signals for state changes.
+	 * 
+	 * The file_cache provides O(1) lookup by path. Projects are folders with
+	 * is_project = true (no separate Project class). Database operations are optional
+	 * (can work without database).
 	 */
 	public class ProjectManager : Object
 	{
@@ -247,6 +252,23 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Check if a file path is in the active project.
+		 * 
+		 * @param file_path The normalized file path to check
+		 * @return The File object if found in active project, null otherwise
+		 */
+		public File? get_file_from_active_project(string file_path)
+		{
+			if (this.active_project == null) {
+				return null;
+			}
+			
+			var project_file = this.active_project.project_files.child_map.get(file_path);
+			return (project_file == null) ? null : project_file.file;
+			
+		}
+		
+		/**
 		 * Restore active project and file from in-memory data structures.
 		 * Note: Projects are Folders with is_project = true.
 		 * This will set this.active_project and this.active_file, deactivate previous items,
@@ -284,6 +306,97 @@ namespace OLLMfiles
 			if (file != null) {
 				// This will set this.active_file, deactivate previous, update DB, emit signal
 				this.activate_file(file);
+			}
+		}
+		
+		/**
+		 * Timestamp of last backup cleanup run (Unix timestamp).
+		 * Used to ensure cleanup only runs once per day.
+		 */
+		private static int64 last_cleanup_timestamp = 0;
+		
+		/**
+		 * Cleanup old backup files from the backup directory.
+		 * 
+		 * Removes backup files older than 7 days from ~/.cache/ollmchat/edited/.
+		 * This should be called on startup or periodically to prevent backup directory
+		 * from growing indefinitely.
+		 * 
+		 * Only runs once per day to avoid excessive file system operations.
+		 */
+		public static async void cleanup_old_backups()
+		{
+			var now = new GLib.DateTime.now_local().to_unix();
+			
+			if (last_cleanup_timestamp > now - (24 * 60 * 60)) {
+				return;
+			}
+			
+			last_cleanup_timestamp = now;
+			
+			try {
+				var cache_dir = GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(),
+					".cache",
+					"ollmchat",
+					"edited"
+				);
+				
+				var cache_dir_file = GLib.File.new_for_path(cache_dir);
+				if (!cache_dir_file.query_exists()) {
+					return;
+				}
+				
+				var cutoff_timestamp = new GLib.DateTime.now_local().add_days(-7).to_unix();
+				
+				var enumerator = yield cache_dir_file.enumerate_children_async(
+					GLib.FileAttribute.STANDARD_NAME + "," + 
+					GLib.FileAttribute.TIME_MODIFIED + "," +
+					GLib.FileAttribute.STANDARD_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					GLib.Priority.DEFAULT,
+					null
+				);
+				
+				var files_to_delete = new Gee.ArrayList<string>();
+				
+				GLib.FileInfo? info;
+				while ((info = enumerator.next_file(null)) != null) {
+					if (info.get_file_type() == GLib.FileType.DIRECTORY) {
+						continue;
+					}
+					
+					var file_path = GLib.Path.build_filename(cache_dir, info.get_name());
+					
+					if (info.get_modification_date_time().to_unix() < cutoff_timestamp) {
+						files_to_delete.add(file_path);
+					}
+				}
+				
+				enumerator.close(null);
+				
+				int deleted_count = 0;
+				foreach (var file_path in files_to_delete) {
+					try {
+						yield GLib.File.new_for_path(file_path).delete_async(
+							GLib.Priority.DEFAULT,
+							null
+						);
+						deleted_count++;
+					} catch (GLib.Error e) {
+						GLib.warning(
+							"Failed to delete backup file %s: %s",
+							file_path,
+							e.message
+						);
+					}
+				}
+				
+				if (deleted_count > 0) {
+					GLib.debug("Deleted %d old backup file(s)", deleted_count);
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to cleanup old backups: %s", e.message);
 			}
 		}
 		

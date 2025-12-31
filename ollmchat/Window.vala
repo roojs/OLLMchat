@@ -41,6 +41,7 @@ namespace OLLMchat
 		private Gtk.Button settings_button;
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
+		private Adw.Banner tool_error_banner;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
@@ -113,9 +114,21 @@ namespace OLLMchat
 				this.show_settings_dialog();
 			});
 			this.header_bar.pack_start(this.settings_button);
+			
+			// Create tool error banner
+			this.tool_error_banner = new Adw.Banner("") {
+				button_label = "Dismiss",
+				revealed = false
+			};
+			this.tool_error_banner.button_clicked.connect(() => {
+				this.tool_error_banner.revealed = false;
+			});
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
+			
+			// Add tool error banner below header bar
+			toolbar_view.add_top_bar(this.tool_error_banner);
 
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
@@ -285,16 +298,23 @@ namespace OLLMchat
 			// Create history manager (it will create base_client from config)
 			this.history_manager = new OLLMchat.History.Manager(this.app);
 			
+			// Create ProjectManager first to share with tools
+			var project_manager = new OLLMfiles.ProjectManager(
+				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
+			);
+			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
+			project_manager.git_provider = new OLLMcoder.GitProvider();
+			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.ReadFile(this.history_manager.base_client));
+					new OLLMtools.ReadFile(this.history_manager.base_client, project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.EditMode(this.history_manager.base_client));
+					new OLLMtools.EditMode(this.history_manager.base_client, project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.RunCommand(this.history_manager.base_client, 
-						GLib.Environment.get_home_dir()));
+					new OLLMtools.RunCommand(this.history_manager.base_client, 
+						GLib.Environment.get_home_dir(), project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMchat.Tools.WebFetchTool(this.history_manager.base_client));
+					new OLLMtools.WebFetchTool(this.history_manager.base_client, project_manager));
 			
 			// Also add tools to current session's client (EmptySession was created before tools were added)
 			// Reuse the same tool instances from base_client to preserve state (like active property)
@@ -304,13 +324,6 @@ namespace OLLMchat
 
 			
 			// Register CodeAssistant agent
-			// Create ProjectManager first to share with tools
-			var project_manager = new OLLMfiles.ProjectManager(
-				new SQ.Database(GLib.Path.build_filename(this.app.data_dir, "files.sqlite"))
-			);
-			project_manager.buffer_provider = new OLLMcoder.BufferProvider();
-			project_manager.git_provider = new OLLMcoder.GitProvider();
-			
 			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(project_manager) {
 				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
 			};
@@ -400,7 +413,10 @@ namespace OLLMchat
 			
 			// Ensure config is loaded before proceeding
 			if (config == null || !config.loaded) {
-				GLib.warning("Config not loaded, skipping codebase search tool initialization");
+				string error_msg = "Config not loaded, skipping codebase search tool initialization";
+				GLib.warning("%s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
@@ -419,35 +435,49 @@ namespace OLLMchat
 			// Get usage objects and validate they exist
 			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
 			if (embed_usage == null) {
-				GLib.warning("Codebase search tool disabled: ocvector.embed usage not found in config");
+				string error_msg = "ocvector.embed usage not found in config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			var analysis_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
 			if (analysis_usage == null) {
-				GLib.warning("Codebase search tool disabled: ocvector.analysis usage not found in config");
+				string error_msg = "ocvector.analysis usage not found in config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			// Check if required models are available on the server
 			bool models_available = yield OLLMvector.Database.check_required_models_available(config);
 			if (!models_available) {
-				GLib.warning("Codebase search tool disabled: required models not available on server. " +
-				             "Embed model '%s' and/or analysis model '%s' not found. " +
-				             "Please ensure these models are available on your Ollama server.",
-				             embed_usage.model, analysis_usage.model);
+				string error_msg = "Required models not available on server. Embed model '" +
+					embed_usage.model + "' and/or analysis model '" + analysis_usage.model +
+					"' not found. Please ensure these models are available on your Ollama server.";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			// Try to get embed client from config
 			var embed_client = config.create_client("ocvector.embed");
 			if (embed_client == null) {
-				// No embed configuration - tool won't be available
+				string error_msg = "No embed configuration available";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
 			// Ensure embed_client has config set (should be set by create_client, but verify)
 			if (embed_client.config == null) {
-				GLib.warning("Embed client created without config, skipping codebase search tool initialization");
+				string error_msg = "Embed client created without config";
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
@@ -458,12 +488,16 @@ namespace OLLMchat
 				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
 				
 				// Register the tool
-				client.addTool(new OLLMvector.Tool.CodebaseSearchTool(
+				var tool = new OLLMvector.Tool.CodebaseSearchTool(
 					client,
 					project_manager,
 					vector_db,
 					embed_client
-				));
+				);
+				client.addTool(tool);
+				
+				GLib.debug("Codebase search tool registered successfully (name: %s, active: %s)", 
+					tool.name, tool.active.to_string());
 				
 				// Also add to current session's client if it exists
 				if (this.history_manager.session != null && this.history_manager.session.client != null) {
@@ -471,10 +505,17 @@ namespace OLLMchat
 					var tool_name = "codebase_search";
 					if (client.tools.has_key(tool_name)) {
 						this.history_manager.session.client.addTool(client.tools.get(tool_name));
+						GLib.debug("Codebase search tool added to current session (total tools: %d)", 
+							this.history_manager.session.client.tools.size);
+					} else {
+						GLib.warning("Codebase search tool not found in base_client.tools after registration");
 					}
 				}
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to initialize codebase search tool: %s", e.message);
+				string error_msg = "Failed to initialize: " + e.message;
+				GLib.warning("Codebase search tool disabled: %s", error_msg);
+				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
+				this.tool_error_banner.revealed = true;
 			}
 		}
 		
@@ -487,7 +528,7 @@ namespace OLLMchat
 		 * - Adds widget to tab_view if not already present
 		 * - Shows widget and updates WindowPane visibility
 		 */
-		private void on_agent_activated(OLLMagent.BaseAgent agent)
+		private void on_agent_activated(OLLMchat.Prompt.BaseAgent agent)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -512,7 +553,7 @@ namespace OLLMchat
 		 * @param agent The agent that provided the widget
 		 * @param widget_obj The widget object (may be null)
 		 */
-		private void handle_agent_widget(OLLMagent.BaseAgent agent, Object? widget_obj)
+		private void handle_agent_widget(Prompt.BaseAgent agent, Object? widget_obj)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -563,7 +604,7 @@ namespace OLLMchat
 			}
 			
 			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMagent.BaseAgent));
+			var agent_store = new GLib.ListStore(typeof(Prompt.BaseAgent));
 			
 			// Add all registered agents to the store and set selection during load
 			uint selected_index = 0;
@@ -597,7 +638,7 @@ namespace OLLMchat
 					return;
 				}
 				
-				var agent = list_item.item as OLLMagent.BaseAgent;
+				var agent = list_item.item as Prompt.BaseAgent;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
 				if (label != null && agent != null) {
@@ -617,7 +658,7 @@ namespace OLLMchat
 					return;
 				}
 				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMagent.BaseAgent;
+				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as Prompt.BaseAgent;
 				  
 				this.history_manager.session.agent_name = agent.name;
 				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
@@ -636,7 +677,7 @@ namespace OLLMchat
 				}
 				
 				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMagent.BaseAgent)store.get_item(j)).name != session.agent_name) {
+					if (((Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
 						continue;
 					}
 					this.agent_dropdown.selected = j;

@@ -75,9 +75,9 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="property">base_type</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Base type identifier for serialization.</p>
-          <p>Returns "f" for File, "d" for Folder/Directory, "fa" for FileAlias. Projects are folders with is_project = true (no separate "p" type).
-          </p>
+          <p>Base type identifier for serialization and database storage.</p>
+          <p>Type identifiers: "f" = File, "d" = Folder/Directory, "fa" = FileAlias (file alias), "da" = FileAlias (folder alias). Projects are 
+            folders with is_project = true (no separate "p" type).</p>
         </div>
       </div>
     </div><br/>

@@ -97,8 +97,8 @@ namespace OLLMvector.Search
 		{
 			var file = this.file();
 			
-			// Use buffer_provider to get code snippet (0-based line numbers)
-			// Convert from 1-indexed (metadata) to 0-based (buffer_provider)
+			// Use buffer to get code snippet (0-based line numbers)
+			// Convert from 1-indexed (metadata) to 0-based (buffer)
 			var start_line = (this.metadata.start_line - 1).clamp(0, int.MAX);
 			var end_line = (this.metadata.end_line - 1).clamp(0, int.MAX);
 			
@@ -110,7 +110,9 @@ namespace OLLMvector.Search
 			end_line = (max_lines != -1 && (end_line - start_line + 1) > max_lines) ?
 					 start_line + max_lines - 1 : end_line;
 			
-			return this.folder.manager.buffer_provider.get_buffer_text(file, start_line, end_line);
+			file.manager.buffer_provider.create_buffer(file);
+			
+			return file.buffer.get_text(start_line, end_line);
 		}
 		
 		/**

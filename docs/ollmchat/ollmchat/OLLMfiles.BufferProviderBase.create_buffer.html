@@ -28,14 +28,9 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMfiles.BufferProviderBase.BufferProviderBase.html">BufferProviderBase</a></li>
+          <li class="method"><a href="OLLMfiles.BufferProviderBase.cleanup_old_buffers.html">cleanup_old_buffers</a></li>
           <li class="virtual_method">create_buffer</li>
           <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.detect_language.html">detect_language</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_cursor.html">get_buffer_cursor</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_line.html">get_buffer_line</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_line_count.html">get_buffer_line_count</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_selection.html">get_buffer_selection</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_text.html">get_buffer_text</a></li>
-          <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.has_buffer.html">has_buffer</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -46,7 +41,20 @@
         </div>
         <div class="description">
           <p>Create a buffer for the file.</p>
-          <p>The buffer should be stored on the file object using set_data/get_data.</p>
+          <p>Creates a DummyFileBuffer instance and stores it in file.buffer. If file.buffer already exists and is a DummyFileBuffer, returns early.
+          </p>
+          <h2>Buffer Cleanup </h2>
+          <p>Before creating new buffer, performs cleanup of old buffers. Keeps buffers for:</p>
+          <ul>
+            <li>Open files (is_open == true)</li>
+            <li>Top 10 most recently used files (by last_viewed)</li>
+          </ul>
+          <p>Sets file.buffer = null for all other files to free memory.</p>
+          <h2>Buffer Lifecycle </h2>
+          <p>Buffers are created lazily when first accessed. The buffer is stored in file.buffer property. Each File object has at most one buffer 
+            instance.</p>
+          <p>Usage: <pre class="main_source"><code>file.manager.buffer_provider.create_buffer(file);<br/><span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();</code></pre>
+          </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

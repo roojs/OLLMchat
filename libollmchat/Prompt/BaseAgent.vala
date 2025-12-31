@@ -139,7 +139,6 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Fills a ChatCall with system and user prompts.
-		 * This is the only public entry point for prompt generation.
 		 * 
 		 * @param call The ChatCall to fill
 		 * @param user_text The user's input text
@@ -148,6 +147,33 @@ namespace OLLMchat.Prompt
 		{
 			call.system_content = this.generate_system_prompt();
 			call.chat_content = this.generate_user_prompt(user_text);
+		}
+		
+		/**
+		 * Gets the working directory for command execution.
+		 * 
+		 * Agents that have a context-specific working directory (e.g., a selected project)
+		 * should override this method to return that directory path.
+		 * Default implementation returns empty string (use current directory).
+		 * 
+		 * @return Working directory path, or empty string to use current directory
+		 */
+		public virtual string get_working_directory()
+		{
+			return "";
+		}
+		
+		/**
+		 * Gets the UI widget for this agent, if any.
+		 * 
+		 * Agents with UI should override this method to return their widget.
+		 * Default implementation returns null (agents without UI).
+		 * 
+		 * @return The UI widget cast as Object, or null if agent has no UI
+		 */
+		public virtual async Object? get_widget()
+		{
+			return null;
 		}
 		
 		/**

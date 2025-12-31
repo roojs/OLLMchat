@@ -30,12 +30,6 @@
           <li class="creation_method"><a href="OLLMcoder.BufferProvider.BufferProvider.html">BufferProvider</a></li>
           <li class="virtual_method"><a href="OLLMcoder.BufferProvider.create_buffer.html">create_buffer</a></li>
           <li class="virtual_method"><a href="OLLMcoder.BufferProvider.detect_language.html">detect_language</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.get_buffer_cursor.html">get_buffer_cursor</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.get_buffer_line.html">get_buffer_line</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.get_buffer_line_count.html">get_buffer_line_count</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.get_buffer_selection.html">get_buffer_selection</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.get_buffer_text.html">get_buffer_text</a></li>
-          <li class="virtual_method"><a href="OLLMcoder.BufferProvider.has_buffer.html">has_buffer</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -55,7 +49,10 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">BufferProvider</span></b> : <span class="main_type"><a href="OLLMfiles.BufferProviderBase.html" class="class">BufferProviderBase</a></span>
         </div>
         <div class="description">
-          <p>GTK implementation of buffer provider for File operations.</p>
+          <p>GTK implementation for GUI contexts.</p>
+          <p>GTK implementation of buffer provider for File operations. Extends BufferProviderBase and overrides methods to provide GTK-specific 
+            functionality. Uses GtkSource.LanguageManager for language detection and creates GtkSourceFileBuffer instances with syntax highlighting 
+            support.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMcoder.html">OLLMcoder</a>
         </div>
@@ -73,67 +70,38 @@
         <ul class="navi_inline">
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.BufferProvider.create_buffer.html" class="virtual_method">create_buffer</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Create a GTK buffer for the file.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMcoder.BufferProvider.detect_language.html" class="virtual_method">detect_language</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMcoder.BufferProvider.get_buffer_cursor.html" class="virtual_method">get_buffer_cursor</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> line, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> offset)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.BufferProvider.get_buffer_line.html" class="virtual_method">get_buffer_line</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_basic_type"><span class="struct">int</span></span> line)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMcoder.BufferProvider.get_buffer_line_count.html" class="virtual_method">get_buffer_line_count</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.BufferProvider.get_buffer_selection.html" class="virtual_method">get_buffer_selection</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> cursor_line, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">int</span></span> cursor_offset)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMcoder.BufferProvider.get_buffer_text.html" class="virtual_method">get_buffer_text</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_basic_type"><span class="struct">int</span></span> start_line = <span class="main_literal">0</span>, <span class="main_basic_type"><span class="struct">int</span></span> end_line = <span class="main_literal">-1</span>)
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMcoder.BufferProvider.has_buffer.html" class="virtual_method">has_buffer</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-348')">All known members inherited from class OLLMfiles.BufferProviderBase
+          <div class="headline" onclick="toggle_box (this, 'box-content-362')">All known members inherited from class OLLMfiles.BufferProviderBase
           </div>
-          <div class="content" id="box-content-348">
+          <div class="content" id="box-content-362">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method"><a href="OLLMfiles.BufferProviderBase.cleanup_old_buffers.html">cleanup_old_buffers</a></li>
+              </ul>
+            </div>
             <div class="column">
               <ul class="navi_inline">
                 <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.create_buffer.html">create_buffer</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
                 <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.detect_language.html">detect_language</a></li>
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_cursor.html">get_buffer_cursor</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_line.html">get_buffer_line</a></li>
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_line_count.html">get_buffer_line_count</a></li>
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_selection.html">get_buffer_selection</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.get_buffer_text.html">get_buffer_text</a></li>
-                <li class="virtual_method"><a href="OLLMfiles.BufferProviderBase.has_buffer.html">has_buffer</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-349')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-349">
+          <div class="headline" onclick="toggle_box (this, 'box-content-363')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-363">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

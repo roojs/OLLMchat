@@ -40,8 +40,8 @@ namespace OLLMchat.History
 		public Client base_client { get; private set; }
 		public Settings.Config2 config { get; private set; }
 		public SessionBase session { get; internal set; }
-		public Gee.HashMap<string, OLLMagent.BaseAgent> agents { 
-			get; private set; default = new Gee.HashMap<string, OLLMagent.BaseAgent>(); 
+		public Gee.HashMap<string, OLLMchat.Prompt.BaseAgent> agents { 
+			get; private set; default = new Gee.HashMap<string, OLLMchat.Prompt.BaseAgent>(); 
 		}
 		
 		// Signal emitted when a new session is added (for UI updates)
@@ -59,7 +59,7 @@ namespace OLLMchat.History
 		public signal void session_activated(SessionBase session);
 		
 		// Signal emitted when an agent is activated (for UI updates)
-		public signal void agent_activated(OLLMagent.BaseAgent agent);
+		public signal void agent_activated(Prompt.BaseAgent agent);
 		
 		// Signals that relay client signals to UI (from active session)
 		public signal void chat_send(Call.Chat chat);
@@ -112,7 +112,7 @@ namespace OLLMchat.History
 			
 			this.base_client.stream = true;
 			this.base_client.keep_alive = "5m";
-			this.base_client.prompt_assistant = new OLLMagent.JustAsk();
+			this.base_client.prompt_assistant = new Prompt.JustAsk();
 
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()

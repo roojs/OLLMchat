@@ -75,8 +75,17 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">copy_db_fields_to</span></b> (<span class="main_type"><a href="OLLMfiles.FileBase.html" class="abstract_class">FileBase</a></span> target)
         </div>
         <div class="description">
-          <p>Copy database-preserved fields from this object to another. Used when updating from filesystem: preserves DB fields like id, is_active, 
-            cursor positions, etc. that shouldn't be overwritten by filesystem scan.</p>
+          <p>Copy database-preserved fields from this object to another.</p>
+          <p>Used when updating from filesystem: preserves DB fields like id, is_active, cursor positions, etc. that shouldn't be overwritten by 
+            filesystem scan.</p>
+          <h2>Copied Fields </h2>
+          <p>Copies all database-preserved fields (excluding filesystem-derived fields): id, is_active, last_viewed, last_modified, language, 
+            last_approved_copy_path, cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text, is_repo, last_scan.</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>base_type is not copied as it's determined by object type and should match. </p>
+            </div>
+          </div>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

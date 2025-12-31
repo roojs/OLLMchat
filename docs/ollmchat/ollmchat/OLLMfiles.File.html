@@ -27,6 +27,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMfiles.File.buffer.html">buffer</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_line.html">cursor_line</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_offset.html">cursor_offset</a></li>
           <li class="property"><a href="OLLMfiles.File.display_basename.html">display_basename</a></li>
@@ -39,14 +40,13 @@
           <li class="property"><a href="OLLMfiles.File.needs_approval.html">needs_approval</a></li>
           <li class="property"><a href="OLLMfiles.File.scroll_position.html">scroll_position</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.html">File</a></li>
+          <li class="creation_method"><a href="OLLMfiles.File.File.new_fake.html">File.new_fake</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.new_from_info.html">File.new_from_info</a></li>
           <li class="method"><a href="OLLMfiles.File.get_contents.html">get_contents</a></li>
           <li class="method"><a href="OLLMfiles.File.get_cursor_position.html">get_cursor_position</a></li>
           <li class="method"><a href="OLLMfiles.File.get_line_content.html">get_line_content</a></li>
           <li class="method"><a href="OLLMfiles.File.get_line_count.html">get_line_count</a></li>
           <li class="method"><a href="OLLMfiles.File.get_selected_code.html">get_selected_code</a></li>
-          <li class="method"><a href="OLLMfiles.File.read_async.html">read_async</a></li>
-          <li class="method"><a href="OLLMfiles.File.write.html">write</a></li>
           <li class="signal"><a href="OLLMfiles.File.changed.html">changed</a></li>
         </ul>
       </div>
@@ -67,10 +67,15 @@
         <div class="description">
           <p>Represents a file in the project.</p>
           <p>Files can be in multiple projects (due to softlinks/symlinks). All alias references are tracked in ProjectManager's alias_map.</p>
+          <p>Constructors include File(manager) for basic construction, File.new_from_info() for creating from FileInfo during directory scan, and 
+            File.new_fake() for files not in database (id = -1).</p>
+          <h2>Content Access </h2>
+          <p>All content access methods delegate to file.buffer. Ensure buffer is created before use: <pre class="main_source"><code><span class="main_keyword">if</span> (file.buffer == <span class="main_literal">null</span>) {<br/>    file.manager.buffer_provider.create_buffer(file);<br/>}<br/><span class="main_keyword">var</span> contents = <span class="main_keyword">yield</span> file.buffer.read_async();</code></pre>
+          </p>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-21')">All known sub-classes:</div>
-          <div class="content" id="box-content-21">
+          <div class="headline" onclick="toggle_box (this, 'box-content-24')">All known sub-classes:</div>
+          <div class="content" id="box-content-24">
             <div class="column">
               <ul class="navi_inline">
                 <li class="class"><a href="OLLMfiles.FileAlias.html">FileAlias</a></li>
@@ -93,6 +98,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.FileBuffer.html" class="interface">FileBuffer</a></span>? <b><a href="OLLMfiles.File.buffer.html" class="property">buffer</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">File buffer instance (nullable).</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMfiles.File.cursor_line.html" class="property">cursor_line</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Last cursor line number (stored in database, default: 0).</span>
@@ -150,6 +159,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMfiles.File.File.new_fake.html" class="creation_method">File.new_fake</a></b> (<span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span> manager, <span class="main_basic_type"><span class="class">string</span></span> path)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Named constructor: Create a fake File object for files not in 
+                database.</span>
+            </div></li>
           <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMfiles.File.File.new_from_info.html" class="creation_method">File.new_from_info</a></b> (<span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span> manager, <span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span>? parent, <span class="main_type"><span class="class">FileInfo</span></span> info, <span class="main_basic_type"><span class="class">string</span></span> path)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Named constructor: Create a File from FileInfo.</span>
@@ -163,8 +177,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMfiles.File.get_cursor_position.html" class="method">get_cursor_position</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the current cursor position (line number). Updates cursor_line 
-                and cursor_offset properties and saves to database.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the current cursor position (line number).</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.File.get_line_content.html" class="method">get_line_content</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> line)
             </span>
@@ -176,16 +189,7 @@
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.File.get_selected_code.html" class="method">get_selected_code</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the currently selected text (only valid for active file). Updates
-                cursor position and saves to database.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMfiles.File.read_async.html" class="method">read_async</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Read file contents asynchronously.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.File.write.html" class="method">write</a></b> (<span class="main_basic_type"><span class="class">string</span></span> contents) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Write file contents.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the currently selected text (only valid for active file).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Signals:</h3>
@@ -197,8 +201,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-22')">All known members inherited from class OLLMfiles.FileBase</div>
-          <div class="content" id="box-content-22">
+          <div class="headline" onclick="toggle_box (this, 'box-content-25')">All known members inherited from class OLLMfiles.FileBase</div>
+          <div class="content" id="box-content-25">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.FileBase.base_type.html">base_type</a></li>
@@ -252,8 +256,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-23')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-23">
+          <div class="headline" onclick="toggle_box (this, 'box-content-26')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-26">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

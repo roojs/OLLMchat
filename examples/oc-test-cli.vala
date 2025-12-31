@@ -229,7 +229,7 @@ Examples:
 		});
 		
 		// Add ReadFile tool
-		client.addTool(new OLLMchat.Tools.ReadFile(client));
+		client.addTool(new OLLMtools.ReadFile(client));
 		
 		stdout.printf("Query: %s\n\n", query);
 		stdout.printf("Response:\n");

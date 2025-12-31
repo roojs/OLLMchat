@@ -1,0 +1,24 @@
+# Test suite for file operations
+
+# Test script for oc-test-files
+test_file_ops_script = files('test-file-ops.sh')
+
+# Get reference to oc-test-files executable from examples subdir
+# The executable is built in examples/ subdir, so we reference it via parent scope
+oc_test_files_exe = get_variable('test_files', disabler())
+
+# Run the test script
+# Pass the build directory so the script can find the oc-test-files binary
+# The build directory is the parent of current_build_dir (which is tests/)
+test('test-file-ops',
+  find_program('bash'),
+  args: [
+    test_file_ops_script,
+    meson.current_build_dir() / '..'  # Pass build directory as argument
+  ],
+  depends: [oc_test_files_exe],  # Ensure oc-test-files is built first
+  workdir: meson.current_source_dir(),
+  timeout: 300,  # 5 minute timeout
+  suite: 'file-ops'
+)
+

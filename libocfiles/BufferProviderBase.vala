@@ -19,25 +19,13 @@
 namespace OLLMfiles
 {
 	/**
-	 * Cached file contents with lines array.
-	 */
-	private class FileCacheEntry : Object
-	{
-		public string[] lines { get; set; }
-		
-		public FileCacheEntry(string[] lines)
-		{
-			this.lines = lines;
-		}
-	}
-	
-	/**
-	 * Base class for buffer operations with default no-op implementations.
+	 * Base implementation for non-GTK contexts.
 	 * 
-	 * Provides a default implementation that does nothing, allowing
-	 * libocfiles to work without GTK dependencies. Concrete implementations
-	 * (e.g., in liboccoder) can override these methods to provide actual
-	 * buffer functionality.
+	 * Provides a default implementation that creates DummyFileBuffer instances,
+	 * allowing libocfiles to work without GTK dependencies. Concrete implementations
+	 * (e.g., in liboccoder) can override create_buffer() to provide GTK buffers.
+	 * 
+	
 	 */
 	public class BufferProviderBase : Object
 	{
@@ -45,12 +33,6 @@ namespace OLLMfiles
 		 * Static hashmap mapping file extensions to language identifiers.
 		 */
 		private static Gee.HashMap<string, string>? extension_map = null;
-		
-		/**
-		 * Cache of file contents (path => FileCacheEntry with lines array).
-		 */
-		private Gee.HashMap<string, FileCacheEntry> file_cache { 
-			get; set; default = new Gee.HashMap<string, FileCacheEntry>(); }
 		
 		/**
 		 * Initialize the extension map with common file extensions.
@@ -230,137 +212,97 @@ namespace OLLMfiles
 		/**
 		 * Create a buffer for the file.
 		 * 
-		 * The buffer should be stored on the file object using set_data/get_data.
+		 * Creates a DummyFileBuffer instance and stores it in file.buffer.
+		 * If file.buffer already exists and is a DummyFileBuffer, returns early.
+		 * 
+		 * == Buffer Cleanup ==
+		 * 
+		 * Before creating new buffer, performs cleanup of old buffers. Keeps buffers for:
+		 * 
+		 *  * Open files (is_open == true)
+		 *  * Top 10 most recently used files (by last_viewed)
+		 * 
+		 * Sets file.buffer = null for all other files to free memory.
+		 * 
+		 * == Buffer Lifecycle ==
+		 * 
+		 * Buffers are created lazily when first accessed. The buffer is stored in
+		 * file.buffer property. Each File object has at most one buffer instance.
+		 * 
+		 * Usage:
+		 * {{{
+		 * file.manager.buffer_provider.create_buffer(file);
+		 * var contents = yield file.buffer.read_async();
+		 * }}}
 		 * 
 		 * @param file The file to create a buffer for
 		 */
 		public virtual void create_buffer(File file) 
-		{ 
+		{
+			if (file.buffer is DummyFileBuffer) {
+				return;
+			}
+			
+			// Cleanup old buffers before creating new one
+			this.cleanup_old_buffers(file);
+			
+			// Create DummyFileBuffer instance
+			var buffer = new DummyFileBuffer(file);
+			file.buffer = buffer;
 		}
 		
 		/**
-		 * Get lines array from cache or file.
+		 * Cleanup old buffers to free memory.
 		 * 
-		 * @param file_path The path to the file to load
-		 * @return Lines array, or empty array if file cannot be read
+		 * Keeps buffers for:
+		 * 
+		 *  * Open files (is_open == true)
+		 *  * Top 10 most recently used files (by last_viewed)
+		 *  * The current_file being accessed (always keeps its buffer)
+		 * 
+		 * Sets file.buffer = null for all other files to free memory.
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Collect all files with buffers that are not open
+		 *  2. Sort by last_viewed (most recent first)
+		 *  3. Keep top 10, clear buffers for the rest
+		 * 
+		 * This is called automatically before creating new buffers to prevent
+		 * unbounded memory growth.
+		 * 
+		 * @param current_file The file currently being accessed (always keeps its buffer)
 		 */
-		private string[] get_lines(string file_path)
+		protected void cleanup_old_buffers(File current_file)
 		{
-			// Check cache first
-			if (this.file_cache.has_key(file_path)) {
-				return this.file_cache.get(file_path).lines;
-			}
-			string[] ret = {}; 
-			// Load from file
-			try {
-				if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
-					return ret;
+			var manager = current_file.manager;
+			var not_open_files = new Gee.ArrayList<File>();
+			
+			// Collect all files with buffers that are not open
+			foreach (var file_base in manager.file_cache.values) {
+				if (!(file_base is File)) {
+					continue;
 				}
 				
-				string contents;
-				GLib.FileUtils.get_contents(file_path, out contents);
+				var file = (File) file_base;
+				if (file.buffer == null || file == current_file || file.is_open) {
+					continue;
+				}
 				
-				var lines_array = contents.split("\n");
-				var cache_entry = new FileCacheEntry(lines_array);
-				this.file_cache.set(file_path, cache_entry);
-				return lines_array;
-			} catch (GLib.Error e) {
-				GLib.debug("BufferProviderBase.get_lines: Failed to read file %s: %s", file_path, e.message);
-				return ret;
-			}
-		}
-		
-		/**
-		 * Get text from the buffer, optionally limited to a line range.
-		 * 
-		 * Reads file directly from disk if not in cache, and caches the result.
-		 * 
-		 * @param file The file to get text from
-		 * @param start_line Starting line number (0-based, inclusive)
-		 * @param end_line Ending line number (0-based, inclusive), or -1 for all lines
-		 * @return The buffer text, or empty string if not available
-		 */
-		public virtual string get_buffer_text(File file, int start_line = 0, int end_line = -1) 
-		{
-			
-			
-			var lines = this.get_lines(file.path);
-			
-			// Handle line range
-			start_line = start_line < 0 ? 0 : start_line;
-			end_line = end_line == -1 ? lines.length - 1 : (end_line >= lines.length ? lines.length - 1 : end_line);
-			
-			if (start_line > end_line) {
-				return "";
+				not_open_files.add(file);
 			}
 			
-			// Extract lines and join
-			return string.joinv("\n", lines[start_line:end_line+1]);
-		}
-		
-		/**
-		 * Get the total number of lines in the buffer.
-		 * 
-		 * @param file The file to get line count for
-		 * @return Line count, or 0 if not available
-		 */
-		public virtual int get_buffer_line_count(File file) 
-		{ 
-			return 0; 
-		}
-		
-		/**
-		 * Get the currently selected text and cursor position.
-		 * 
-		 * @param file The file to get selection from
-		 * @param cursor_line Output parameter for cursor line number
-		 * @param cursor_offset Output parameter for cursor character offset
-		 * @return Selected text, or empty string if nothing is selected
-		 */
-		public virtual string get_buffer_selection(
-			File file, 
-			out int cursor_line, 
-			out int cursor_offset) 
-		{
-			cursor_line = 0;
-			cursor_offset = 0;
-			return "";
-		}
-		
-		/**
-		 * Get the content of a specific line.
-		 * 
-		 * @param file The file to get line from
-		 * @param line Line number (0-based)
-		 * @return Line content, or empty string if not available
-		 */
-		public virtual string get_buffer_line(File file, int line) 
-		{ 
-			return ""; 
-		}
-		
-		/**
-		 * Get the current cursor position.
-		 * 
-		 * @param file The file to get cursor position from
-		 * @param line Output parameter for cursor line number
-		 * @param offset Output parameter for cursor character offset
-		 */
-		public virtual void get_buffer_cursor(File file, out int line, out int offset) 
-		{
-			line = 0;
-			offset = 0;
-		}
-		
-		/**
-		 * Check if the file has a buffer.
-		 * 
-		 * @param file The file to check
-		 * @return true if buffer exists, false otherwise
-		 */
-		public virtual bool has_buffer(File file) 
-		{ 
-			return false; 
+			// Sort by last_viewed (most recent first)
+			not_open_files.sort((a, b) => {
+				if (a.last_viewed > b.last_viewed) return -1;
+				if (a.last_viewed < b.last_viewed) return 1;
+				return 0;
+			});
+			
+			// Keep top 10, clear buffers for the rest
+			for (int i = 10; i < not_open_files.size; i++) {
+				not_open_files.get(i).buffer = null;
+			}
 		}
 	}
 }

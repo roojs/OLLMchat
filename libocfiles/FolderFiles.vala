@@ -19,10 +19,12 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages folder files with tree structure and hashmap.
+	 * Manages files and subfolders in a folder (hierarchical tree structure).
 	 * 
-	 * Implements ListModel interface using Gee.ArrayList as backing store.
-	 * Provides ListStore-compatible methods that update the backing store and emit items_changed signals.
+	 * Provides both list (for tree view) and hashmap (for quick lookup) access.
+	 * Implements ListModel interface using Gee.ArrayList as backing store. Uses
+	 * path-based comparison for equality. Emits items_changed signal when items are
+	 * added/removed. Used for hierarchical tree views.
 	 */
 	public class FolderFiles : Object, GLib.ListModel
 	{

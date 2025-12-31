@@ -61,7 +61,10 @@
         <div class="description">
           <p>Wrapper around a File object for use in project file lists.</p>
           <p>Used for searching on open files and files that need updating. Provides all interfaces of FileBase but overrides display name properties.
+            Many properties delegate to the wrapped file (is_active, is_open, needs_approval, is_unsaved, display_basename, display_with_indicators).
           </p>
+          <p>ProjectFile is a wrapper for display purposes only. All file operations should be performed on the file property. Used in ProjectFiles 
+            collection for project file lists.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMfiles.html">OLLMfiles</a>
         </div>
@@ -140,8 +143,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-33')">All known members inherited from class OLLMfiles.FileBase</div>
-          <div class="content" id="box-content-33">
+          <div class="headline" onclick="toggle_box (this, 'box-content-36')">All known members inherited from class OLLMfiles.FileBase</div>
+          <div class="content" id="box-content-36">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMfiles.FileBase.base_type.html">base_type</a></li>
@@ -195,8 +198,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-34')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-34">
+          <div class="headline" onclick="toggle_box (this, 'box-content-37')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-37">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

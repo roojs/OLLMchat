@@ -26,11 +26,13 @@ subdir('libocmarkdowngtk') # Depends on libocmarkdown
 subdir('libocagent')       # No dependencies
 subdir('libocfiles')       # Depends on libocsqlite
 subdir('libollmchat')      # Depends on libocsqlite, libocagent
+subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
 subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles, libocvector, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmchat')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
+subdir('tests')             # Test suite - depends on examples
 
 # Create wrapper scripts in top-level build directory for easier access
 # These wrappers set up LD_LIBRARY_PATH and execute the real binaries from examples/
@@ -75,7 +77,8 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libollmchat',
   meson.current_build_dir() / 'libocagent',
   meson.current_build_dir() / 'libollmchatgtk',
-  meson.current_build_dir() / 'libocvector'
+  meson.current_build_dir() / 'libocvector',
+  meson.current_build_dir() / 'liboctools'
 ])
 
 # Create wrapper scripts in top-level build directory

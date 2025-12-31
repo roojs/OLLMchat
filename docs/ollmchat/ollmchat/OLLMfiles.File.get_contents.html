@@ -27,6 +27,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMfiles.File.buffer.html">buffer</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_line.html">cursor_line</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_offset.html">cursor_offset</a></li>
           <li class="property"><a href="OLLMfiles.File.display_basename.html">display_basename</a></li>
@@ -39,14 +40,13 @@
           <li class="property"><a href="OLLMfiles.File.needs_approval.html">needs_approval</a></li>
           <li class="property"><a href="OLLMfiles.File.scroll_position.html">scroll_position</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.html">File</a></li>
+          <li class="creation_method"><a href="OLLMfiles.File.File.new_fake.html">File.new_fake</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.new_from_info.html">File.new_from_info</a></li>
           <li class="method">get_contents</li>
           <li class="method"><a href="OLLMfiles.File.get_cursor_position.html">get_cursor_position</a></li>
           <li class="method"><a href="OLLMfiles.File.get_line_content.html">get_line_content</a></li>
           <li class="method"><a href="OLLMfiles.File.get_line_count.html">get_line_count</a></li>
           <li class="method"><a href="OLLMfiles.File.get_selected_code.html">get_selected_code</a></li>
-          <li class="method"><a href="OLLMfiles.File.read_async.html">read_async</a></li>
-          <li class="method"><a href="OLLMfiles.File.write.html">write</a></li>
           <li class="signal"><a href="OLLMfiles.File.changed.html">changed</a></li>
         </ul>
       </div>
@@ -58,6 +58,12 @@
         </div>
         <div class="description">
           <p>Gets file contents, optionally limited to first N lines.</p>
+          <p>Convenience method that delegates to file.buffer.get_text(). Requires file.buffer to be non-null. Ensure buffer is created before use.
+          </p>
+          <h2>Important </h2>
+          <p>This method requires file.buffer to be non-null. Ensure buffer is created before use: <pre class="main_source"><code><span class="main_keyword">if</span> (file.buffer == <span class="main_literal">null</span>) {<br/>    file.manager.buffer_provider.create_buffer(file);<br/>}<br/><span class="main_keyword">var</span> contents = file.get_contents();</code></pre>
+          </p>
+          <p>Buffer must be loaded first (via read_async() or automatic loading).</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

@@ -16,21 +16,533 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat
+class TestFiles : TestAppBase
 {
+	private static string? opt_test_db = null;
+	private static bool opt_ls = false;
+	private static string? opt_read = null;
+	private static int opt_start_line = 0;
+	private static int opt_end_line = 0;
+	private static string? opt_output = null;
+	private static string? opt_backend = null;
+	private static string? opt_write = null;
+	private static string? opt_content = null;
+	private static string? opt_content_file = null;
+	private static string? opt_backup_dir = null;
+	private static string? opt_create_fake = null;
+	private static string? opt_check_project = null;
+	private static bool opt_cleanup_backups = false;
+	private static int opt_age_days = 7;
+	private static bool opt_list_buffers = false;
+	private static int opt_max_buffers = 0;
+	private static string? opt_create_project = null;
+	private static string? opt_info = null;
+	private static string? opt_ls_path = null;
+
+	protected const string help = """
+Usage: {ARG} [OPTIONS] <action>
+
+Test tool for file operations using libocfiles.
+
+Actions (specify one):
+  --ls [--ls-path=PATH]              List files in directory
+  --read=PATH [--start-line=N] [--end-line=M] [--output=FILE]
+                                      Read file with optional line ranges
+  --write=PATH [--content=TEXT] [--content-file=FILE]
+                                      Write file with backups
+  --create-fake=PATH                  Create fake file (not in database)
+  --check-project=PATH                Check if file is in active project
+  --cleanup-backups                   Cleanup old backup files
+  --list-buffers [--max-buffers=N]    List current file buffers
+  --create-project=PATH               Create test project from directory
+  --info=PATH                         Show file information
+
+Options:
+  --test-db=PATH                      Use test database instead of main database
+  --backend=BACKEND                   Buffer backend: sourceview or dummy (default: dummy)
+  --start-line=N                      Start line number for reading (1-based)
+  --end-line=M                        End line number for reading (1-based)
+  --output=FILE                       Output file path (default: stdout)
+  --content=TEXT                      Content to write to file
+  --content-file=FILE                 File containing content to write
+  --age-days=N                        Age threshold in days for backup cleanup (default: 7)
+  --max-buffers=N                     Maximum number of buffers to list
+
+Examples:
+  {ARG} --read=/path/to/file.txt --start-line=10 --end-line=20
+  {ARG} --write=/path/to/file.txt --content="new content" --test-db=/tmp/test.db
+  {ARG} --create-fake=/tmp/fake.txt --test-db=/tmp/test.db
+  {ARG} --check-project=/path/to/file.txt --test-db=/tmp/test.db
+  {ARG} --create-project=/path/to/project --test-db=/tmp/test.db
+""";
+
+	public TestFiles()
+	{
+		base("com.roojs.ollmchat.test-files");
+	}
+
+	protected override string get_app_name()
+	{
+		return "oc-test-files";
+	}
+
+	private const OptionEntry[] local_options = {
+		{ "test-db", 0, 0, OptionArg.STRING, ref opt_test_db, "Specify test database path (optional, for testing only)", "PATH" },
+		{ "ls", 0, 0, OptionArg.NONE, ref opt_ls, "List files in directory (scan/print functionality)", null },
+		{ "ls-path", 0, 0, OptionArg.STRING, ref opt_ls_path, "Path to scan for --ls (default: current directory)", "PATH" },
+		{ "read", 0, 0, OptionArg.STRING, ref opt_read, "Read file with optional line ranges", "PATH" },
+		{ "start-line", 0, 0, OptionArg.INT, ref opt_start_line, "Start line number (1-based)", "N" },
+		{ "end-line", 0, 0, OptionArg.INT, ref opt_end_line, "End line number (1-based)", "M" },
+		{ "output", 0, 0, OptionArg.STRING, ref opt_output, "Output file path (default: stdout)", "FILE" },
+		{ "backend", 0, 0, OptionArg.STRING, ref opt_backend, "Buffer backend (sourceview|dummy, default: dummy)", "BACKEND" },
+		{ "write", 0, 0, OptionArg.STRING, ref opt_write, "Write file with backups", "PATH" },
+		{ "content", 0, 0, OptionArg.STRING, ref opt_content, "Content to write", "TEXT" },
+		{ "content-file", 0, 0, OptionArg.STRING, ref opt_content_file, "File containing content to write", "FILE" },
+		{ "create-fake", 0, 0, OptionArg.STRING, ref opt_create_fake, "Create fake file", "PATH" },
+		{ "check-project", 0, 0, OptionArg.STRING, ref opt_check_project, "Check if file is in active project", "PATH" },
+		{ "cleanup-backups", 0, 0, OptionArg.NONE, ref opt_cleanup_backups, "Cleanup old backups", null },
+		{ "age-days", 0, 0, OptionArg.INT, ref opt_age_days, "Age threshold in days (default: 7)", "N" },
+		{ "list-buffers", 0, 0, OptionArg.NONE, ref opt_list_buffers, "List current buffers", null },
+		{ "max-buffers", 0, 0, OptionArg.INT, ref opt_max_buffers, "Maximum number of buffers to list", "N" },
+		{ "create-project", 0, 0, OptionArg.STRING, ref opt_create_project, "Create test project", "PATH" },
+		{ "info", 0, 0, OptionArg.STRING, ref opt_info, "Show file information", "PATH" },
+		{ null }
+	};
+
+	protected override OptionEntry[] get_options()
+	{
+		// Only include debug from base_options, skip url/api-key/model since we don't need LLM connection
+		// debug + all local options (which includes null)
+		var options = new OptionEntry[1 + local_options.length];
+		options[0] = base_options[0];  // debug option
+		
+		// Copy all local options (includes null terminator)
+		for (int j = 0; j < local_options.length; j++) {
+			options[1 + j] = local_options[j];
+		}
+		
+		return options;
+	}
+
+	protected override string? validate_args(string[] args)
+	{
+		// Count how many actions are specified
+		int action_count = 0;
+		if (opt_ls) {
+			action_count++;
+		}
+		if (opt_read != null) {
+			action_count++;
+		}
+		if (opt_write != null) {
+			action_count++;
+		}
+		if (opt_create_fake != null) {
+			action_count++;
+		}
+		if (opt_check_project != null) {
+			action_count++;
+		}
+		if (opt_cleanup_backups) {
+			action_count++;
+		}
+		if (opt_list_buffers) {
+			action_count++;
+		}
+		if (opt_create_project != null) {
+			action_count++;
+		}
+		if (opt_info != null) {
+			action_count++;
+		}
+		
+		if (action_count == 0) {
+			return help.replace("{ARG}", args[0]);
+		}
+		if (action_count > 1) {
+			return "Error: Multiple actions specified. Only one action is allowed at a time.\n";
+		}
+		
+		return null;
+	}
+
+	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	{
+		// Determine database path
+		string db_path;
+		if (opt_test_db != null && opt_test_db != "") {
+			db_path = opt_test_db;
+		} else {
+			// Use main database (normal operation)
+			db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		}
+		
+		// Create database
+		var db = new SQ.Database(db_path, false);
+		
+		// Create ProjectManager
+		var manager = new OLLMfiles.ProjectManager(db);
+		
+		// Set buffer provider based on backend option
+		if (opt_backend == "sourceview") {
+			manager.buffer_provider = new OLLMcoder.BufferProvider();
+		} else {
+			// Default to dummy backend
+			manager.buffer_provider = new OLLMfiles.BufferProviderBase();
+		}
+		
+		// Load projects from database
+		yield manager.load_projects_from_db();
+		
+		// Set active project if available (activate the most recently created one)
+		// Projects are loaded in order, so the last one is likely the most recent
+		if (manager.projects.get_n_items() > 0) {
+			var project = manager.projects.get_item(manager.projects.get_n_items() - 1) as OLLMfiles.Folder;
+			if (project != null) {
+				yield manager.activate_project(project);
+			}
+		}
+		
+		// Execute the requested action
+		if (opt_ls) {
+			yield this.run_ls(manager);
+		} else if (opt_read != null) {
+			yield this.run_read(manager);
+		} else if (opt_write != null) {
+			yield this.run_write(manager);
+		} else if (opt_create_fake != null) {
+			yield this.run_create_fake(manager);
+		} else if (opt_check_project != null) {
+			yield this.run_check_project(manager);
+		} else if (opt_cleanup_backups) {
+			yield this.run_cleanup_backups();
+		} else if (opt_list_buffers) {
+			yield this.run_list_buffers(manager);
+		} else if (opt_create_project != null) {
+			yield this.run_create_project(manager, db);
+		} else if (opt_info != null) {
+			yield this.run_info(manager);
+		}
+	}
+
+	private async void run_ls(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string scan_path = opt_ls_path ?? GLib.Environment.get_current_dir();
+		
+		// Create a Folder with is_project = true for the scan path
+		var project = new OLLMfiles.Folder(manager);
+		project.path = scan_path;
+		project.is_project = true;
+		project.display_name = GLib.Path.get_basename(scan_path);
+		
+		// Disable background recursion for testing
+		OLLMfiles.Folder.background_recurse = false;
+		
+		// Save project to database
+		if (manager.db != null) {
+			project.saveToDB(manager.db, null, false);
+		}
+		manager.projects.append(project);
+		
+		// Scan the directory recursively
+		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Output project files
+		this.output_project_files(project);
+	}
+
+	private async void run_read(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_read;
+		
+		// Get or create file
+		OLLMfiles.File? file = null;
+		
+		// Try to get from active project first
+		if (manager.active_project != null) {
+			file = manager.get_file_from_active_project(file_path);
+		}
+		
+		// If not in project, create fake file
+		if (file == null) {
+			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		// Ensure buffer is created
+		if (file.buffer == null) {
+			manager.buffer_provider.create_buffer(file);
+		}
+		
+		string content;
+		int line_count = 0;
+		
+		// Read file or get line range
+		if (opt_start_line > 0 || opt_end_line > 0) {
+			// Read entire file first to load buffer
+			content = yield file.buffer.read_async();
+			line_count = file.buffer.get_line_count();
+			
+			// Convert 1-based to 0-based
+			int start = opt_start_line > 0 ? opt_start_line - 1 : 0;
+			int end = opt_end_line > 0 ? opt_end_line - 1 : line_count - 1;
+			
+			// Get text range
+			content = file.buffer.get_text(start, end);
+		} else {
+			// Read entire file
+			content = yield file.buffer.read_async();
+			line_count = file.buffer.get_line_count();
+		}
+		
+		// Output metadata and content
+		string line_range = "";
+		if (opt_start_line > 0 || opt_end_line > 0) {
+			line_range = @"LINE_RANGE: $(opt_start_line > 0 ? opt_start_line : 1)-$(opt_end_line > 0 ? opt_end_line : line_count)
+";
+		}
+		
+		if (opt_output != null && opt_output != "") {
+			var output_file = GLib.File.new_for_path(opt_output);
+			yield output_file.replace_contents_async(content.data, null, false, GLib.FileCreateFlags.NONE, null, null);
+			print(@"FILE: $(file_path)
+$(line_range)LINE_COUNT: $(line_count)
+BUFFER_TYPE: $(file.buffer.get_type().name())
+BACKEND: $(opt_backend ?? "dummy")
+---
+Content written to: $(opt_output)
+");
+		} else {
+			print(@"FILE: $(file_path)
+$(line_range)LINE_COUNT: $(line_count)
+BUFFER_TYPE: $(file.buffer.get_type().name())
+BACKEND: $(opt_backend ?? "dummy")
+---
+$(content)
+");
+		}
+	}
+
+	private async void run_write(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_write;
+		
+		// Get content from priority: content-file > content > stdin
+		string content = "";
+		
+		if (opt_content_file != null && opt_content_file != "") {
+			var content_file = GLib.File.new_for_path(opt_content_file);
+			if (!content_file.query_exists()) {
+				throw new GLib.FileError.NOENT("Content file not found: " + opt_content_file);
+			}
+			uint8[] data;
+			string etag;
+			yield content_file.load_contents_async(null, out data, out etag);
+			content = (string)data;
+		} else if (opt_content != null && opt_content != "") {
+			content = opt_content;
+		} else {
+			// Read from stdin
+			var lines = new GLib.StringBuilder();
+			string? line;
+			while ((line = GLib.stdin.read_line()) != null) {
+				if (lines.len > 0) {
+					lines.append_c('\n');
+				}
+				lines.append(line);
+			}
+			content = lines.str;
+		}
+		
+		// Get or create file
+		OLLMfiles.File? file = null;
+		
+		// Try to get from active project first
+		if (manager.active_project != null) {
+			file = manager.get_file_from_active_project(file_path);
+		}
+		
+		// If not in project, create fake file
+		if (file == null) {
+			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		// Ensure buffer is created
+		if (file.buffer == null) {
+			manager.buffer_provider.create_buffer(file);
+		}
+		
+		// Write content
+		yield file.buffer.write(content);
+		
+		// Output results
+		string backup_info = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
+			? @"BACKUP: $(file.last_approved_copy_path)
+" 
+			: @"NO_BACKUP: $(file.id < 0 ? "fake_file" : "no_backup_created")
+";
+		print(@"$(backup_info)FILE: $(file_path)
+FILE_ID: $(file.id)
+BACKEND: $(opt_backend ?? "dummy")
+");
+	}
+
+	private async void run_create_fake(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_create_fake;
+		
+		var file = new OLLMfiles.File.new_fake(manager, file_path);
+		
+		print(@"FILE: $(file_path)
+FILE_ID: $(file.id)
+BUFFER_STATUS: $(file.buffer != null ? "created" : "null")
+IS_FAKE: true
+");
+	}
+
+	private async void run_check_project(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_check_project;
+		
+		if (manager.active_project == null) {
+			print(@"FILE: $(file_path)
+STATUS: NOT_IN_PROJECT
+PROJECT_PATH: (no active project)
+");
+			return;
+		}
+		
+		bool in_project = manager.active_project.project_files.child_map.has_key(file_path);
+		
+		print(@"FILE: $(file_path)
+STATUS: $(in_project ? "IN_PROJECT" : "NOT_IN_PROJECT")
+PROJECT_PATH: $(manager.active_project.path)
+");
+	}
+
+	private async void run_cleanup_backups() throws Error
+	{
+		// Note: cleanup_old_backups is static and uses hardcoded 7 days
+		// We can't override the age, but we can call it
+		yield OLLMfiles.ProjectManager.cleanup_old_backups();
+		
+		var cache_dir = GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(),
+			".cache",
+			"ollmchat",
+			"edited"
+		);
+		
+		print(@"BACKUP_DIR: $(cache_dir)
+AGE_THRESHOLD: 7 days
+Cleanup completed (check logs for deleted files)
+");
+	}
+
+	private async void run_list_buffers(OLLMfiles.ProjectManager manager) throws Error
+	{
+		int count = 0;
+		foreach (var entry in manager.file_cache.entries) {
+			if (opt_max_buffers > 0 && count >= opt_max_buffers) {
+				break;
+			}
+			
+			var file_base = entry.value;
+			if (file_base is OLLMfiles.File) {
+				var file = file_base as OLLMfiles.File;
+				if (file.buffer != null) {
+					print(@"BUFFER: $(file.path) TIMESTAMP: $(file.last_viewed) OPEN: true\n");
+					count++;
+				}
+			}
+		}
+		
+		if (count == 0) {
+			print("No buffers found\n");
+		}
+	}
+
+	private async void run_create_project(OLLMfiles.ProjectManager manager, SQ.Database db) throws Error
+	{
+		string project_path = opt_create_project;
+		
+		// Create a Folder with is_project = true
+		var project = new OLLMfiles.Folder(manager);
+		project.path = project_path;
+		project.is_project = true;
+		project.display_name = GLib.Path.get_basename(project_path);
+		
+		// Disable background recursion for testing
+		OLLMfiles.Folder.background_recurse = false;
+		
+		// Save project to database
+		project.saveToDB(db, null, false);
+		manager.projects.append(project);
+		
+		// Scan directory and populate project files
+		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Activate the project so it becomes the active project
+		yield manager.activate_project(project);
+		
+		// Count files
+		int file_count = 0;
+		foreach (var entry in project.project_files.child_map.entries) {
+			file_count++;
+		}
+		
+		stdout.printf("PROJECT_PATH: %s\n", project_path);
+		stdout.printf("DATABASE_PATH: %s\n", db.filename);
+		stdout.printf("FILE_COUNT: %d\n", file_count);
+		stdout.printf("PROJECT_ID: %lld\n", project.id);
+	}
+
+	private async void run_info(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_info;
+		
+		// Try to get from active project first
+		OLLMfiles.File? file = null;
+		bool in_project = false;
+		
+		if (manager.active_project != null) {
+			file = manager.get_file_from_active_project(file_path);
+			in_project = (file != null);
+		}
+		
+		// If not in project, try to create fake file
+		if (file == null) {
+			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		string backup_path = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
+			? file.last_approved_copy_path 
+			: "(none)";
+		print(@"FILE: $(file_path)
+FILE_ID: $(file.id)
+IS_FAKE: $(file.id < 0 ? "true" : "false")
+BUFFER_STATUS: $(file.buffer != null ? "exists" : "null")
+IN_PROJECT: $(in_project ? "true" : "false")
+BACKUP_PATH: $(backup_path)
+");
+	}
+
+	/**
+	 * Output project files in the format: %y %Ts %p is_ignored is_repo\n
+	 * where %y = file type (f for file)
+	 *       %Ts = modification time in seconds since epoch
+	 *       %p = pathname from ProjectFile
+	 *       is_ignored = whether file is ignored by git (0 or 1)
+	 *       is_repo = whether parent folder is a repo (-1, 0, or 1)
+	 */
+	private void output_project_files(OLLMfiles.Folder project)
+	{
+		this.output_folder_recursive(project, project.path);
+	}
+
 	/**
 	 * Recursively output all files and folders with their flags.
-	 * Format: %y %Ts %p is_ignored is_repo\n
-	 * where %y = file type (f for file, d for directory)
-	 *       %Ts = modification time in seconds since epoch
-	 *       %p = relative pathname
-	 *       is_ignored = whether file/folder is ignored by git (0 or 1)
-	 *       is_repo = whether folder is a repo (-1, 0, or 1, -1 for files)
-	 * 
-	 * @param folder The folder to output recursively
-	 * @param base_path Base path for relative path calculation
 	 */
-	void output_folder_recursive(OLLMfiles.Folder folder, string base_path)
+	private void output_folder_recursive(OLLMfiles.Folder folder, string base_path)
 	{
 		// Output this folder
 		string relpath = folder.path;
@@ -44,13 +556,7 @@ namespace OLLMchat
 			relpath = ".";
 		}
 		
-		stdout.printf(
-			"d  %s   --- %lld  %s %s\n",
-			relpath,
-			folder.last_modified,
-			folder.is_ignored ? " IGNORED " : "",
-			folder.is_repo == 1 ? " REPO " : ""
-		);
+		print(@"d  $(relpath)   --- $(folder.last_modified)  $(folder.is_ignored ? " IGNORED " : "")$(folder.is_repo == 1 ? " REPO " : "")\n");
 		
 		// Output all children
 		for (uint i = 0; i < folder.children.get_n_items(); i++) {
@@ -69,113 +575,28 @@ namespace OLLMchat
 			
 			if (child is OLLMfiles.Folder) {
 				var child_folder = child as OLLMfiles.Folder;
-				output_folder_recursive(child_folder, base_path);
+				this.output_folder_recursive(child_folder, base_path);
 			} else if (child is OLLMfiles.File) {
 				var child_file = child as OLLMfiles.File;
-				stdout.printf(
-					"f  %s   --- %lld  %s\n",
-					child_relpath,
-					child_file.mtime_on_disk(),
-					child_file.is_ignored ? " IGNORED " : ""
-				);
-			} else {
-				// Debug: output other types
-				stderr.printf("DEBUG: Skipping child type %s: %s\n", child.get_type().name(), child_relpath);
+				print(@"f  $(child_relpath)   --- $(child_file.mtime_on_disk())  $(child_file.is_ignored ? " IGNORED " : "")\n");
 			}
 		}
-	}
-	
-	/**
-	 * Output project files in the format: %y %Ts %p is_ignored is_repo\n
-	 * where %y = file type (f for file)
-	 *       %Ts = modification time in seconds since epoch
-	 *       %p = pathname from ProjectFile
-	 *       is_ignored = whether file is ignored by git (0 or 1)
-	 *       is_repo = whether parent folder is a repo (-1, 0, or 1)
-	 * 
-	 * @param project The project folder containing project_files
-	 */
-	void output_project_files(OLLMfiles.Folder project)
-	{
-		// Output all files and folders recursively
-		output_folder_recursive(project, project.path);
-	}
-
-	MainLoop? main_loop_ref = null;
-
-	async void run_scan() throws Error
-	{
-		// Get current working directory
-		string cwd = GLib.Environment.get_current_dir();
-		stderr.printf("Scanning directory: %s\n", cwd);
-		
-		// Check if database exists and delete it if necessary
-		string db_path = "/tmp/test.sqlite";
-		var db_file = GLib.File.new_for_path(db_path);
-		if (db_file.query_exists()) {
-			try {
-				db_file.delete(null);
-				stderr.printf("Deleted existing database: %s\n", db_path);
-			} catch (GLib.Error e) {
-				stderr.printf("Warning: Failed to delete existing database: %s\n", e.message);
-			}
-		}
-		
-		// Create database at /tmp/test.sqlite
-		var db = new SQ.Database(db_path, false);
-		
-		// Create ProjectManager with the database
-		// Uses default BufferProviderBase and GitProviderBase from ocfiles (no GTK dependencies)
-		var manager = new OLLMfiles.ProjectManager(db);
- 		
-		// Create a Folder with is_project = true for the current directory
-		var project = new OLLMfiles.Folder(manager);
-		project.path = cwd;
-		project.is_project = true;
-		project.display_name = GLib.Path.get_basename(cwd);
-		
-		// Disable background recursion for testing - ensures all scans complete before returning
-		OLLMfiles.Folder.background_recurse = false;
-		
-		// Save project to database
-		project.saveToDB(db, null, false);
-		manager.projects.append(project);
-		
-		// Scan the directory recursively (this will complete when all folders are processed)
-		yield project.read_dir(new DateTime.now_local().to_unix(), true);
-		
-		// Output project_files in the same format as: find . -printf "%y %Ts %p\n"
-		// This tests what project_files contains (only files, not folders or symlinks)
-		output_project_files(project);
-		
-		// Quit main loop to exit
-		if (main_loop_ref != null) {
-			main_loop_ref.quit();
-		}
-	}
-
-	int main(string[] args)
-	{
-		GLib.Log.set_default_handler((dom, lvl, msg) => {
-			stderr.printf("%s: %s : %s\n", (new DateTime.now_local()).format("%H:%M:%S.%f"), lvl.to_string(), msg);
-		});
-
-		var main_loop = new MainLoop();
-		main_loop_ref = main_loop;
-
-		run_scan.begin((obj, res) => {
-			try {
-				run_scan.end(res);
-			} catch (Error e) {
-				stderr.printf("Error: %s\n", e.message);
-				main_loop.quit();
-				Posix.exit(1);
-			}
-			// Don't quit here - wait for scan_complete signal
-		});
-
-		main_loop.run();
-
-		return 0;
 	}
 }
+
+int main(string[] args)
+{
+	var app = new TestFiles();
+	return app.run(args);
+}
+
+
+
+
+
+
+
+
+
+
+

@@ -10,25 +10,27 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
 
 - **Main Application (`ollmchat`)** - A complete AI chat client with:
   - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
+  - Settings dialog with model search and download from Ollama
   - Code assistant agent with semantic codebase search capabilities
   - Chat history management with session browser
   - Tool integration: ReadFile, EditMode, RunCommand, WebFetch, and CodebaseSearch (semantic search)
   - Project management and file tracking
-  - Bootstrap dialog for initial server configuration
   - Permission system for secure tool access
   - Support for multiple agent types (Just Ask, Code Assistant)
 - **Libraries** - A set of reusable libraries for LLM access, tool integration, and markdown processing
+  - `libocagent.so` - Base agent library for AI agent functionality
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
-  - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
+  - `libocmarkdowngtk.so` - Markdown GTK rendering library (includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
-  - `libocfiles.so` - File and project management library (depends on libocsqlite, no GTK dependencies)
-  - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
-  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies)
-  - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
-  - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
+  - `libocfiles.so` - File and project management library (no GTK dependencies)
+  - `liboccoder.so` - Code editor and project management library (includes GTK components)
+  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (no GTK dependencies)
+  - `libollmchat.so` - Base library for Ollama/OpenAI API access (no GTK dependencies)
+  - `liboctools.so` - Tools library for file operations and utilities (no GTK dependencies)
+  - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
-  - `oc-test-files` - Test tool for file and folder management (recursively lists files/folders with git status)
+  - `oc-test-files` - Test tool for file operations (read/write files with line ranges, project management, buffer operations, backups)
   - `oc-markdown-test` - Markdown parser test tool (parses markdown and outputs callback trace)
   - `oc-html2md` - HTML to Markdown converter (reads HTML from stdin, outputs Markdown)
   - `oc-md2html` - Markdown to HTML converter (converts markdown file to HTML)
@@ -65,6 +67,42 @@ Implementation plans and roadmap:
 
 This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation.
 
+## Dependencies
+
+Before building, install the required dependencies. On Debian/Ubuntu systems:
+
+```bash
+sudo apt install \
+  meson \
+  ninja-build \
+  valac \
+  libgee-0.8-dev \
+  libglib2.0-dev \
+  libgtk-4-dev \
+  libgtksourceview-5-dev \
+  libadwaita-1-dev \
+  libsoup-3.0-dev \
+  libjson-glib-dev \
+  libxml2-dev \
+  libsqlite3-dev \
+  libfaiss-dev \
+  pkg-config
+```
+
+**For code search functionality**, you'll also need:
+
+- **Tree-sitter language parsers**: Install tree-sitter parsers for the languages you want to index. A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers from GitHub repositories.
+
+- **Ollama models**: For vector search to work, you need to have the following models available in Ollama:
+  - `bge-m3:latest` - For generating embeddings
+  - `qwen2.5:latest` or `qwen2.5-coder:latest` - For code analysis and description generation
+
+You can download these models through the settings dialog in the application, or manually using:
+```bash
+ollama pull bge-m3:latest
+ollama pull qwen2.5:latest
+```
+
 ## Building
 
 To build the project, follow these steps:
@@ -88,6 +126,7 @@ ninja -C build
 ```
 
 This will build:
+- `libocagent.so` - Base agent library (with headers, VAPI, and GIR files)
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
@@ -95,6 +134,7 @@ This will build:
 - `liboccoder.so` - Code editor and project management library (with headers, VAPI, and GIR files)
 - `libocvector.so` - Semantic codebase search library (with headers, VAPI, and GIR files)
 - `libollmchat.so` - Base library for LLM API access (with headers, VAPI, and GIR files)
+- `liboctools.so` - Tools library for file operations and utilities (with headers, VAPI, and GIR files)
 - `libollmchatgtk.so` - GTK library with chat widgets (with headers, VAPI, and GIR files)
 - `ollmchat` - Main application executable
 - `oc-test-cli` - Command-line test executable
@@ -134,19 +174,26 @@ The project is organized into component directories, each with its own `meson.bu
 
 **Markdown Libraries:**
 - `libocmarkdown/` - Markdown parsing and rendering (libocmarkdown.so, namespace: `Markdown`)
-- `libocmarkdowngtk/` - GTK-specific markdown rendering (libocmarkdowngtk.so, namespace: `MarkdownGtk`)
+- `libocmarkdowngtk/` - Embeddable widget for rendering markdown using GtkTextView and GtkSourceView (libocmarkdowngtk.so, namespace: `MarkdownGtk`)
 
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
+
+**Agent Library (`libocagent.so`):**
+- `libocagent/` - Base agent library for AI agent functionality (libocagent.so, namespace: `OLLMagent`)
+  - `BaseAgent.vala` - Base agent class
+  - `JustAsk.vala` - Simple "just ask" agent implementation
 
 **File Management Library (`libocfiles.so`):**
 - `libocfiles/` - File and project management (libocfiles.so, namespace: `OLLMfiles`)
   - Provides file tracking and project management without GTK/git dependencies
   - Used by `libocvector` for file operations
-  - `File.vala`, `FileBase.vala`, `FileAlias.vala` - File classes
+  - `File.vala`, `FileBase.vala`, `FileAlias.vala`, `FileBuffer.vala`, `FileChange.vala` - File classes
   - `Folder.vala`, `FolderFiles.vala` - Folder classes
-  - `ProjectFile.vala`, `ProjectFiles.vala`, `ProjectList.vala`, `ProjectManager.vala` - Project management
-  - `BufferProviderBase.vala`, `GitProviderBase.vala` - Provider base classes
+  - `ProjectFile.vala`, `ProjectFiles.vala`, `ProjectList.vala`, `ProjectManager.vala`, `ProjectMigrate.vala` - Project management
+  - `BufferProvider.vala`, `BufferProviderBase.vala`, `DummyFileBuffer.vala` - Buffer providers
+  - `GitProvider.vala`, `GitProviderBase.vala` - Git provider classes
+  - `Diff/` - Diff and patch utilities (Differ.vala, Patch.vala, PatchApplier.vala)
 
 **Code Editor Library (`liboccoder.so`):**
 - `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
@@ -186,11 +233,19 @@ The project is organized into component directories, each with its own `meson.bu
   - `Call/` - API call implementations (Chat, Embed, Generate, etc.)
   - `Response/` - Response handling classes
   - `Tool/` - Tool interface and base classes (namespace: `OLLMchat.Tool`)
-  - `Tools/` - Tool implementations (ReadFile, EditMode, RunCommand, WebFetch, etc., namespace: `OLLMchat.Tools`)
   - `ChatPermission/` - Permission system for tool access control (namespace: `OLLMchat.ChatPermission`)
   - `Prompt/` - Prompt generation system for different agent types with agent management (namespace: `OLLMchat.Prompt`)
   - `History/` - Chat history management (namespace: `OLLMchat.History`)
   - `Message.vala`, `ChatContentInterface.vala`, `OllamaBase.vala` - Core message and base classes
+
+**Tools Library (`liboctools.so`):**
+- `liboctools/` - Tools for file operations and utilities (namespace: `OLLMtools`)
+  - `ReadFile.vala`, `RequestReadFile.vala` - File reading tool with line range support
+  - `EditMode.vala`, `RequestEditMode.vala`, `EditModeChange.vala` - File editing tool
+  - `RunCommand.vala`, `RequestRunCommand.vala` - Terminal command execution tool
+  - `WebFetchTool.vala`, `RequestWebFetch.vala` - Web content fetching tool
+  - Tools have access to `ProjectManager` for project context awareness
+  - Files in active project automatically skip permission prompts
 
 **OLLMchat GTK Library (`libollmchatgtk.so`):**
 - `libollmchatgtk/` - GTK UI components (namespace: `OLLMchatGtk`)
@@ -199,80 +254,13 @@ The project is organized into component directories, each with its own `meson.bu
   - `ChatInput.vala` - Chat input component
   - `ChatPermission.vala` - Permission UI component
   - `HistoryBrowser.vala` - History browser component
-  - `Tools/` - GTK-specific tool UI components (namespace: `OLLMchatGtk.Tools`)
-    - `Permission.vala` - Permission provider UI
-    - `RunCommand.vala` - Run command tool UI
+  - `Message.vala`, `ClipboardManager.vala`, `ClipboardMetadata.vala` - Supporting components
 
 **Other Directories:**
 - `examples/` - Example programs and test code (each with its own meson.build)
 - `docs/` - Generated documentation (Valadoc) and implementation plans
 - `resources/` - Resource files including prompt templates
 - `vapi/` - VAPI files for external dependencies
-
-## Dependencies
-
-**Markdown base library (`libocmarkdown.so`)**:
-- Gee
-- GLib/GIO
-- libxml-2.0
-- libsoup-3.0
-- json-glib
-
-**Markdown GTK library (`libocmarkdowngtk.so`)**:
-- All markdown base library dependencies
-- GTK4
-- gtksourceview-5
-
-**SQLite library (`libocsqlite.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-
-**File management library (`libocfiles.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-- libocsqlite (depends on libocsqlite.so)
-
-**Code editor library (`liboccoder.so`)**:
-- Gee
-- GLib/GIO
-- GTK4
-- gtksourceview-5
-- sqlite3
-- json-glib
-- libocsqlite (depends on libocsqlite.so)
-
-**Vector search library (`libocvector.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-- json-glib
-- libsoup-3.0
-- FAISS (via C++ wrapper)
-- tree-sitter (via VAPI)
-- libocfiles (depends on libocfiles.so, uses OLLMfiles namespace)
-- libollmchat (depends on libollmchat.so, uses OLLMchat namespace)
-- libocsqlite (depends on libocsqlite.so)
-- libocagent (depends on libocagent.so)
-- BLAS, LAPACK, OpenMP (for FAISS)
-
-**OLLMchat base library (`libollmchat.so`)**:
-- Gee
-- GLib/GIO
-- json-glib
-- libsoup-3.0
-- libocsqlite (depends on libocsqlite.so)
-
-**OLLMchat GTK library (`libollmchatgtk.so`)**:
-- All OLLMchat base library dependencies
-- All markdown GTK library dependencies
-- GTK4
-- gtksourceview-5
-- libadwaita-1 (for test executables)
-
-**Test executables**:
-- All dependencies above (ollmchat and oc-markdown-test require GTK4, gtksourceview-5, and libadwaita-1)
 
 ## License
 

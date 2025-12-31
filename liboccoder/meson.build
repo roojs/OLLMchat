@@ -10,8 +10,7 @@ occoder_deps = [
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('json-glib-1.0'),
-  # Temporarily removed - only needed for CodebaseSearchTool
-  # dependency('libsoup-3.0'),  # Required for ollmchat (Soup.Message, Soup.Session)
+  dependency('libsoup-3.0'),  # Required for ollmchat (Soup.Message, Soup.Session)
   dependency('sqlite3'),
   dependency('libgit2-glib-1.0'),
   valac.find_library('posix'),
@@ -22,15 +21,13 @@ occoder_src = files([
   # TODO: Clipboard feature needs proper design - see TODO.md
   # 'ClipboardMetadata.vala',
   'GitProvider.vala',
+  'GtkSourceFileBuffer.vala',  # Must come before SourceView.vala (SourceView uses GtkSourceFileBuffer)
   'SearchableDropdown.vala',
   'ProjectDropdown.vala',
   'FileDropdown.vala',
   'SourceView.vala',
   'Prompt/CodeAssistant.vala',
   'Prompt/CodeAssistantProvider.vala',
-  # Temporarily disabled - requires ocvector and ollmchat dependencies
-  # 'Tool/CodebaseSearchTool.vala',
-  # 'Tool/RequestCodebaseSearch.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -39,46 +36,44 @@ lib_build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'libocsqlite',
   meson.current_build_dir() / '..' / 'libocfiles',
   meson.current_build_dir() / '..' / 'libocmarkdown',
-  meson.current_build_dir() / '..' / 'libocmarkdowngtk'
-  # Temporarily removed - only needed for CodebaseSearchTool
-  # meson.current_build_dir() / '..' / 'libollmchatgtk',
-  # meson.current_build_dir() / '..' / 'libocvector',
-  # meson.current_build_dir() / '..' / 'libollmchat'
+  meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'libollmchatgtk',
+  meson.current_build_dir() / '..' / 'libocvector',
+  meson.current_build_dir() / '..' / 'liboctools'
 ])
 
 occoder_base_lib = library('occoder',
-  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],  # Temporarily removed ocvector_vapi_dep, ollmchat_vapi_dep
+  dependencies: [occoder_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, ocvector_vapi_dep],
   sources: occoder_src,
   vala_header: 'occoder.h',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
   include_directories: [
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # include_directories('..' / 'libollmchat'),  # For C headers (build directory)
-    # include_directories('..' / 'libocvector'),   # For C headers (build directory)
+    include_directories('..' / 'libollmchat'),  # For C headers (build directory) - needed for Prompt.BaseAgent
+    include_directories('..' / 'libocvector'),   # For C headers (build directory)
     include_directories('..' / 'libocfiles')     # For C headers (build directory)
   ],
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=json-glib-1.0',
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # '--pkg=libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
-    # '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
+    '--pkg=libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
+    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=gtk4',
     '--pkg=gtksourceview-5',
     '--pkg=libgit2-glib-1.0',
     '--pkg=ocagent',
     '--pkg=ocfiles',
-    # '--pkg=ocvector',
-    # '--pkg=ollmchat',
+    '--pkg=ollmchat',
+    '--pkg=ocvector',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
-    # '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', '/usr/share/vala/vapi'  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
   ],
   install: true
@@ -93,15 +88,13 @@ occoder_vapi = custom_target('occoder-vapi',
     '-C', '--debug',
     '--target-glib=auto',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi)
+    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi)
     '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # '--vapidir', meson.current_build_dir() / '..' / 'libocvector',  # ocvector.vapi must be built first
-    # '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # ollmchat.vapi must be built first (generated by library)
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # ollmchat.vapi must be built first (generated by library)
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',  # ocvector.vapi must be built first
     '--vapidir', meson.current_build_dir(),
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory for libgit2-glib-1.0 (last, so local takes priority)
     '--pkg', 'posix',
@@ -109,11 +102,10 @@ occoder_vapi = custom_target('occoder-vapi',
     '--pkg', 'ocsqlite',
     '--pkg', 'ocfiles',
     '--pkg', 'ocagent',
-    # Temporarily removed - only needed for CodebaseSearchTool
-    # '--pkg', 'libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
-    # '--pkg', 'fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
-    # '--pkg', 'ocvector',
-    # '--pkg', 'ollmchat',
+    '--pkg', 'libsoup-3.0',  # Required for ollmchat.vapi (Soup.Message, Soup.Session)
+    '--pkg', 'ollmchat',
+    '--pkg', 'fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
+    '--pkg', 'ocvector',
     '--pkg', 'gtk4',  # Required for Tool namespace
     '--pkg', 'gtksourceview-5',
     '--pkg', 'gobject-2.0',
@@ -129,7 +121,7 @@ occoder_vapi = custom_target('occoder-vapi',
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [occoder_base_lib, ocfiles_vapi],  # Temporarily removed ocvector_vapi, ollmchat_base_lib - only needed for CodebaseSearchTool
+  depends: [occoder_base_lib, ocfiles_vapi, ollmchat_base_lib, ocvector_vapi],
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
@@ -141,7 +133,7 @@ occoder_gir = gnome.generate_gir(occoder_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMcoder',
   symbol_prefix: 'ollmcoder',
-  link_with: [ocsqlite_base_lib, ocfiles_base_lib, ocagent_base_lib],  # Temporarily removed ocvector_base_lib, ollmchat_base_lib - only needed for CodebaseSearchTool
+  link_with: [ocsqlite_base_lib, ocfiles_base_lib, ocagent_base_lib, ollmchat_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ocsqlite',

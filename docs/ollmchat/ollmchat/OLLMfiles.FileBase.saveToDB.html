@@ -76,6 +76,23 @@
         </div>
         <div class="description">
           <p>Save filebase object to SQLite database.</p>
+          <h2>ID Semantics </h2>
+          <ul>
+            <li>id = 0: New file (inserts into database, sets this.id to new ID)</li>
+            <li>id &gt; 0: Existing file (updates database record)</li>
+            <li>id &lt; 0: Fake file (skips database operations, returns early)</li>
+          </ul>
+          <h2>Update Modes </h2>
+          <ul>
+            <li>If new_values is provided and this.id &gt; 0: Uses updateOld to only update changed fields</li>
+            <li>Otherwise: Performs insert (id = 0) or full update (id &gt; 0)</li>
+          </ul>
+          <h2>Best Practices </h2>
+          <ul>
+            <li>Set sync = false when saving multiple items to avoid frequent disk writes</li>
+            <li>Fake files (id &lt; 0) automatically skip database operations</li>
+            <li>New files (id = 0) are automatically inserted and assigned an ID</li>
+          </ul>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

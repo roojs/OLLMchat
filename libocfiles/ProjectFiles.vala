@@ -19,13 +19,11 @@
 namespace OLLMfiles
 {
 	/**
-	 * Manages project files with tree structure and hashmap.
+	 * Manages files in a project (flat list for dropdowns/search).
 	 * 
-	 * Handles all async file I/O operations, directory scanning, and synchronization.
-	 * Provides both hierarchical tree structure (for UI tree views) and flat hashmap
-	 * (for fast lookups by full path).
-	 * Implements ListModel interface using Gee.ArrayList as backing store.
-	 * Implements Gee.Iterable for foreach iteration over items.
+	 * Provides flat list of all files in project (not hierarchical). Used for file
+	 * dropdowns and search functionality. Implements ListModel and Gee.Iterable
+	 * interfaces. Uses database ID for equality comparison.
 	 */
 	public class ProjectFiles : Object, GLib.ListModel, Gee.Traversable<ProjectFile>, Gee.Iterable<ProjectFile>
 	{

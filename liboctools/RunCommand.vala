@@ -1,0 +1,96 @@
+/*
+ * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMtools
+{
+	/**
+	 * Tool for executing terminal commands in the project root directory.
+	 * 
+	 * Simple commands (single command or cd <path> && <command> with no bash operators)
+	 * use permission caching based on resolved executable realpath.
+	 * Complex commands (with bash operators or multiple &&) always require approval.
+	 */
+	public class RunCommand : OLLMchat.Tool.Interface
+	{
+		// Base description (without directory note)
+		private const string BASE_DESCRIPTION = """
+Run a terminal command in the project's root directory and return the output.
+
+You should only run commands that are safe and do not modify the user's system in unexpected ways.
+
+If you are unsure about the safety of a command, ask the user for confirmation before running it.
+
+If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
+""";
+		
+		// Base directory for command execution (must exist)
+		public string base_directory { get; private set; }
+		
+		public override string name { get { return "run_command"; } }
+		
+		private string _description = "";
+		
+		public override string description { 
+			get {
+				if (this._description == "") {
+					this._description = BASE_DESCRIPTION + 
+					"\n\nCommands are executed in the directory: " +
+						 this.base_directory + " unless 'cd' is prefixed to the command.";
+				}
+				return this._description;
+			}
+		}
+		
+		public override string parameter_description { get {
+			return """
+@param command {string} [required] The terminal command to run.""";
+		} }
+		
+		/**
+		 * ProjectManager instance for accessing project context.
+		 * Optional - set to null if not available.
+		 */
+		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+		
+		public RunCommand(OLLMchat.Client client, string base_directory, OLLMfiles.ProjectManager? project_manager = null) throws Error
+		{
+			base(client);
+			
+			// Validate that base_directory exists
+			var dir = GLib.File.new_for_path(base_directory);
+			if (!dir.query_exists()) {
+				throw new GLib.IOError.NOT_FOUND("Base directory does not exist: " + base_directory);
+			}
+			
+			// Get absolute path
+			try {
+				this.base_directory = dir.resolve_relative_path(".").get_path();
+			} catch (Error e) {
+				throw new GLib.IOError.FAILED("Failed to resolve base directory path: " + e.message);
+			}
+			
+			this.project_manager = project_manager;
+		}
+		
+		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
+		{
+			return Json.gobject_deserialize(typeof(RequestRunCommand), parameters_node) as OLLMchat.Tool.RequestBase;
+		}
+	}
+}
+

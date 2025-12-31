@@ -41,6 +41,8 @@ namespace OLLMchatGtk
 		private bool is_loading_models = false;
 		private Gtk.MenuButton tools_menu_button;
 		private Binding? tools_button_binding = null;
+		private bool is_tool_list_loaded { get; set; default = false; }
+		private Gtk.Box? tools_popover_box { get; set; default = null; }
 		
 
 		/**
@@ -554,8 +556,6 @@ namespace OLLMchatGtk
 			
 			// Connect to session_activated signal to update when session changes
 			this.manager.session_activated.connect((session) => {
-				// Update tools menu button when session changes
-				this.setup_tools_menu_button();
 				// Reload models for the new session's client
 				if (this.show_models) {
 					Idle.add(() => {
@@ -576,34 +576,46 @@ namespace OLLMchatGtk
 
 		/**
 		 * Sets up the tools menu button with popover containing checkboxes for each tool.
+		 * Builds the menu once when first shown if tools are loaded.
 		 * 
 		 * @since 1.0
 		 */
-		private void setup_tools_menu_button()
+		public void setup_tools_menu_button()
 		{
 			// Create popover for tools menu
-			var popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
-				margin_start = 10,
-				margin_end = 10,
-				margin_top = 10,
-				margin_bottom = 10
-			};
+			var popover = new Gtk.Popover();
+			
+			// Build menu content when popover is shown (only build once if tools are loaded)
+			popover.show.connect(() => {
+				// Return early if already built
+				if (this.is_tool_list_loaded) {
+					return;
+				}
+				
+				// Create popover box
+				this.tools_popover_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 5) {
+					margin_start = 10,
+					margin_end = 10,
+					margin_top = 10,
+					margin_bottom = 10
+				};
 
-			// Create checkboxes for each tool
-			foreach (var tool in this.manager.session.client.tools.values) {
-				 
-				var check_button = new Gtk.CheckButton.with_label(
-					tool.description.strip().split("\n")[0]
-				);
-				// Bind checkbox active state to tool active property
-				tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
-				popover_box.append(check_button);
-			}
+				// Create checkboxes for each tool
+				foreach (var tool in this.manager.session.client.tools.values) {
+					var check_button = new Gtk.CheckButton.with_label(
+						tool.description.strip().split("\n")[0]
+					);
+					// Bind checkbox active state to tool active property
+					tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);
+					this.tools_popover_box.append(check_button);
+				}
+				
+				this.is_tool_list_loaded = true;
+				popover.set_child(this.tools_popover_box);
+			});
 
 			// Configure the existing menu button (created in constructor) with popover
-			this.tools_menu_button.popover = new Gtk.Popover() {
-				child = popover_box
-			};
+			this.tools_menu_button.popover = popover;
 		}
 
 		/**

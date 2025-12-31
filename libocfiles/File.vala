@@ -23,6 +23,20 @@ namespace OLLMfiles
 	 * 
 	 * Files can be in multiple projects (due to softlinks/symlinks).
 	 * All alias references are tracked in ProjectManager's alias_map.
+	 * 
+	 * Constructors include File(manager) for basic construction, File.new_from_info()
+	 * for creating from FileInfo during directory scan, and File.new_fake() for files
+	 * not in database (id = -1).
+	 * 
+	 * == Content Access ==
+	 * 
+	 * All content access methods delegate to file.buffer. Ensure buffer is created before use:
+	 * {{{
+	 * if (file.buffer == null) {
+	 *     file.manager.buffer_provider.create_buffer(file);
+	 * }
+	 * var contents = yield file.buffer.read_async();
+	 * }}}
 	 */
 	public class File : FileBase
 	{
@@ -71,6 +85,49 @@ namespace OLLMfiles
 			// Detect language from filename if not already set
 			if (this.language == null || this.language == "") {
 				this.detect_language();
+			}
+		}
+		
+		/**
+		 * Named constructor: Create a fake File object for files not in database.
+		 * 
+		 * Fake files are used for accessing files outside the project scope.
+		 * They have id = -1 and skip database operations.
+		 * 
+		 * @param manager The ProjectManager instance (required)
+		 * @param path The full path to the file
+		 */
+		public File.new_fake(ProjectManager manager, string path)
+		{
+			base(manager);
+			this.base_type = "f";
+			this.path = path;
+			this.id = -1; // Indicates not in database (fake file)
+			
+			// Detect language from filename
+			this.detect_language();
+			
+			// Set is_text from content type if available
+			try {
+				var file = GLib.File.new_for_path(path);
+				if (file.query_exists()) {
+					var file_info = file.query_info(
+						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					var content_type = file_info.get_content_type();
+					this.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
+					
+					// Set last_modified from FileInfo
+					var mod_time = file_info.get_modification_date_time();
+					if (mod_time != null) {
+						this.last_modified = mod_time.to_unix();
+					}
+				}
+			} catch (GLib.Error e) {
+				// File might not exist yet, that's okay for fake files
+				GLib.debug("File.new_fake: Could not query file info for %s: %s", path, e.message);
 			}
 		}
 		
@@ -221,93 +278,108 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * File buffer instance (nullable).
+		 * 
+		 * Created by buffer provider when needed. Each File object has at most one
+		 * buffer instance. Buffer is created lazily when first accessed. Buffer can
+		 * be null if not yet created or after cleanup. Buffer type depends on
+		 * BufferProvider implementation (GTK vs non-GTK).
+		 * 
+		 * == Key Points ==
+		 * 
+		 *  * Each File object has at most one buffer instance
+		 *  * Buffer is created lazily when needed
+		 *  * Buffer can be null if not yet created or after cleanup
+		 *  * Buffer type depends on BufferProvider implementation (GTK vs non-GTK)
+		 * 
+		 * == Usage ==
+		 * 
+		 * Always check for null before using buffer methods:
+		 * {{{
+		 * if (file.buffer == null) {
+		 *     file.manager.buffer_provider.create_buffer(file);
+		 * }
+		 * var contents = yield file.buffer.read_async();
+		 * }}}
+		 */
+		public FileBuffer? buffer { get; set; default = null; }
+		
+		/**
 		 * Emitted when file content changes.
 		 */
 		public signal void changed();
 		
 		/**
-		 * Read file contents asynchronously.
-		 * 
-		 * @return File contents as string
-		 * @throws Error if file cannot be read
-		 */
-		public async string read_async() throws Error
-		{
-			var file = GLib.File.new_for_path(this.path);
-			if (!file.query_exists()) {
-				throw new GLib.FileError.NOENT("File not found: " + this.path);
-			}
-			
-			uint8[] data;
-			string etag;
-			yield file.load_contents_async(null, out data, out etag);
-			
-			return (string)data;
-		}
-		
-		/**
-		 * Write file contents.
-		 * 
-		 * @param contents Contents to write
-		 * @throws Error if file cannot be written
-		 */
-		public void write(string contents) throws Error
-		{
-			var file = GLib.File.new_for_path(this.path);
-			var parent = file.get_parent();
-			if (parent != null && !parent.query_exists()) {
-				parent.make_directory_with_parents(null);
-			}
-			
-			var output_stream = file.replace(null, false, GLib.FileCreateFlags.NONE, null);
-			var data_stream = new GLib.DataOutputStream(output_stream);
-			data_stream.put_string(contents, null);
-			data_stream.close(null);
-			
-			// Update last_modified from filesystem after writing
-			this.last_modified = this.mtime_on_disk();
-			
-			// Save to database with sync to disk
-			if (this.manager.db != null) {
-				this.saveToDB(this.manager.db, null, true);
-			}
-			
-			this.changed();
-		}
-		
-		/**
 		 * Gets file contents, optionally limited to first N lines.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_text(). Requires
+		 * file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
+		 * == Important ==
+		 * 
+		 * This method requires file.buffer to be non-null. Ensure buffer is created
+		 * before use:
+		 * {{{
+		 * if (file.buffer == null) {
+		 *     file.manager.buffer_provider.create_buffer(file);
+		 * }
+		 * var contents = file.get_contents();
+		 * }}}
+		 * 
+		 * Buffer must be loaded first (via read_async() or automatic loading).
 		 * 
 		 * @param max_lines Maximum number of lines to return (0 = all lines)
 		 * @return File contents, or empty string if not available
 		 */
 		public string get_contents(int max_lines = 0)
 		{
-			return this.manager.buffer_provider.get_buffer_text(this, 0, max_lines > 0 ? max_lines - 1 : -1);
+			if (this.buffer == null) {
+				return "";
+			}
+			return this.buffer.get_text(0, max_lines > 0 ? max_lines - 1 : -1);
 		}
 		
 		/**
 		 * Gets the total number of lines in the file.
 		 * 
+		 * Convenience method that delegates to file.buffer.get_line_count().
+		 * Requires file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
 		 * @return Line count, or 0 if not available
 		 */
 		public int get_line_count()
 		{
-			return this.manager.buffer_provider.get_buffer_line_count(this);
+			if (this.buffer == null) {
+				return 0;
+			}
+			return this.buffer.get_line_count();
 		}
 		
 		/**
 		 * Gets the currently selected text (only valid for active file).
-		 * Updates cursor position and saves to database.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_selection().
+		 * Updates cursor position and saves to database. Requires file.buffer to be
+		 * non-null. Only works with GTK buffers (DummyFileBuffer returns empty string).
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Gets selection from buffer (updates cursor position)
+		 *  2. Updates cursor_line and cursor_offset properties
+		 *  3. Saves to database (if manager.db is available)
 		 * 
 		 * @return Selected text, or empty string if nothing is selected
 		 */
 		public string get_selected_code()
 		{
-			int cursor_line, cursor_offset;
-			var selected = this.manager.buffer_provider.get_buffer_selection(this, out cursor_line, out cursor_offset);
+			if (this.buffer == null) {
+				return "";
+			}
 			
-			// Update cursor position from provider
+			int cursor_line, cursor_offset;
+			var selected = this.buffer.get_selection(out cursor_line, out cursor_offset);
+			
+			// Update cursor position from buffer
 			this.cursor_line = cursor_line;
 			this.cursor_offset = cursor_offset;
 			
@@ -323,24 +395,49 @@ namespace OLLMfiles
 		/**
 		 * Gets the content of a specific line.
 		 * 
+		 * Convenience method that delegates to file.buffer.get_line(). Requires
+		 * file.buffer to be non-null. Ensure buffer is created before use.
+		 * 
+		 * == Line Numbering ==
+		 * 
+		 * Uses 0-based line numbers (internal format). For user-facing APIs,
+		 * convert from 1-based to 0-based.
+		 * 
 		 * @param line Line number (0-based)
 		 * @return Line content, or empty string if not available
 		 */
 		public string get_line_content(int line)
 		{
-			return this.manager.buffer_provider.get_buffer_line(this, line);
+			if (this.buffer == null) {
+				return "";
+			}
+			return this.buffer.get_line(line);
 		}
 		
 		/**
 		 * Gets the current cursor position (line number).
-		 * Updates cursor_line and cursor_offset properties and saves to database.
+		 * 
+		 * Convenience method that delegates to file.buffer.get_cursor(). Updates
+		 * cursor_line and cursor_offset properties and saves to database. Requires
+		 * file.buffer to be non-null. Only works with GTK buffers (DummyFileBuffer
+		 * returns 0,0).
+		 * 
+		 * == Process ==
+		 * 
+		 *  1. Gets cursor position from buffer
+		 *  2. Updates cursor_line and cursor_offset properties
+		 *  3. Saves to database (if manager.db is available)
 		 * 
 		 * @return Line number (0-based), or -1 if not available
 		 */
 		public int get_cursor_position()
 		{
+			if (this.buffer == null) {
+				return -1;
+			}
+			
 			int line, offset;
-			this.manager.buffer_provider.get_buffer_cursor(this, out line, out offset);
+			this.buffer.get_cursor(out line, out offset);
 			
 			this.cursor_line = line;
 			this.cursor_offset = offset;

@@ -27,6 +27,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMfiles.File.buffer.html">buffer</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_line.html">cursor_line</a></li>
           <li class="property"><a href="OLLMfiles.File.cursor_offset.html">cursor_offset</a></li>
           <li class="property"><a href="OLLMfiles.File.display_basename.html">display_basename</a></li>
@@ -39,14 +40,13 @@
           <li class="property"><a href="OLLMfiles.File.needs_approval.html">needs_approval</a></li>
           <li class="property"><a href="OLLMfiles.File.scroll_position.html">scroll_position</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.html">File</a></li>
+          <li class="creation_method"><a href="OLLMfiles.File.File.new_fake.html">File.new_fake</a></li>
           <li class="creation_method"><a href="OLLMfiles.File.File.new_from_info.html">File.new_from_info</a></li>
           <li class="method"><a href="OLLMfiles.File.get_contents.html">get_contents</a></li>
           <li class="method">get_cursor_position</li>
           <li class="method"><a href="OLLMfiles.File.get_line_content.html">get_line_content</a></li>
           <li class="method"><a href="OLLMfiles.File.get_line_count.html">get_line_count</a></li>
           <li class="method"><a href="OLLMfiles.File.get_selected_code.html">get_selected_code</a></li>
-          <li class="method"><a href="OLLMfiles.File.read_async.html">read_async</a></li>
-          <li class="method"><a href="OLLMfiles.File.write.html">write</a></li>
           <li class="signal"><a href="OLLMfiles.File.changed.html">changed</a></li>
         </ul>
       </div>
@@ -57,7 +57,15 @@
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><span class="method">get_cursor_position</span></b> ()
         </div>
         <div class="description">
-          <p>Gets the current cursor position (line number). Updates cursor_line and cursor_offset properties and saves to database.</p>
+          <p>Gets the current cursor position (line number).</p>
+          <p>Convenience method that delegates to file.buffer.get_cursor(). Updates cursor_line and cursor_offset properties and saves to database. 
+            Requires file.buffer to be non-null. Only works with GTK buffers (DummyFileBuffer returns 0,0).</p>
+          <h2>Process </h2>
+          <ol type="1">
+            <li>Gets cursor position from buffer
+              <p>2. Updates cursor_line and cursor_offset properties</p>
+              <p>3. Saves to database (if manager.db is available)</p></li>
+          </ol>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

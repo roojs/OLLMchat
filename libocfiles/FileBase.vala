@@ -19,14 +19,30 @@
 namespace OLLMfiles
 {
 	/**
-	 * Base class for File and Folder objects.
+	 * Abstract base class providing common properties and methods for files and folders.
 	 * 
-	 * Provides common properties and methods shared by both files and folders.
+	 * FileBase is the foundation of the file system hierarchy:
+	 * 
+	 *  * File: Represents individual files
+	 *  * Folder: Represents directories (can also be projects when is_project = true)
+	 *  * FileAlias: Represents symlinks/aliases to files or folders
+	 * 
+	 * == ID Semantics ==
+	 * 
+	 *  * id = 0: New file (will be inserted into database)
+	 *  * id > 0: Existing file (will be updated in database)
+	 *  * id < 0: Fake file (not in database, skips DB operations)
+	 * 
+	 * Fake files are used for accessing files outside the project scope.
+	 * They skip database operations in saveToDB().
 	 */
 	public abstract class FileBase : Object
 	{
 		/**
 		 * Database ID.
+		 * 
+		 * Semantics: 0 = new file (will be inserted), >0 = existing file (will be updated),
+		 * <0 = fake file (not in database, skips DB operations).
 		 */
 		public int64 id { get; set; default = 0; }
 		
@@ -148,10 +164,11 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Base type identifier for serialization.
+		 * Base type identifier for serialization and database storage.
 		 * 
-		 * Returns "f" for File, "d" for Folder/Directory, "fa" for FileAlias.
-		 * Projects are folders with is_project = true (no separate "p" type).
+		 * Type identifiers: "f" = File, "d" = Folder/Directory, "fa" = FileAlias (file alias),
+		 * "da" = FileAlias (folder alias). Projects are folders with is_project = true
+		 * (no separate "p" type).
 		 */
 		public string base_type { get; set; default = ""; }
 		
@@ -324,8 +341,18 @@ namespace OLLMfiles
 		
 		/**
 		 * Copy database-preserved fields from this object to another.
+		 * 
 		 * Used when updating from filesystem: preserves DB fields like id, is_active,
 		 * cursor positions, etc. that shouldn't be overwritten by filesystem scan.
+		 * 
+		 * == Copied Fields ==
+		 * 
+		 * Copies all database-preserved fields (excluding filesystem-derived fields):
+		 * id, is_active, last_viewed, last_modified, language, last_approved_copy_path,
+		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
+		 * is_repo, last_scan.
+		 * 
+		 * Note: base_type is not copied as it's determined by object type and should match.
 		 * 
 		 * @param target The target object to copy fields to (typically the new filesystem item)
 		 */
@@ -357,6 +384,23 @@ namespace OLLMfiles
 		/**
 		 * Save filebase object to SQLite database.
 		 * 
+		 * == ID Semantics ==
+		 * 
+		 *  * id = 0: New file (inserts into database, sets this.id to new ID)
+		 *  * id > 0: Existing file (updates database record)
+		 *  * id < 0: Fake file (skips database operations, returns early)
+		 * 
+		 * == Update Modes ==
+		 * 
+		 *  * If new_values is provided and this.id > 0: Uses updateOld to only update changed fields
+		 *  * Otherwise: Performs insert (id = 0) or full update (id > 0)
+		 * 
+		 * == Best Practices ==
+		 * 
+		 *  * Set sync = false when saving multiple items to avoid frequent disk writes
+		 *  * Fake files (id < 0) automatically skip database operations
+		 *  * New files (id = 0) are automatically inserted and assigned an ID
+		 * 
 		 * @param db The database instance to save to
 		 * @param new_values Optional new values object. If provided and this.id > 0,
 		 *                   uses updateOld to only update changed fields. Otherwise
@@ -366,6 +410,14 @@ namespace OLLMfiles
 		 */
 		public void saveToDB(SQ.Database db, FileBase? new_values = null, bool sync = true)
 		{
+			// Skip DB operations for fake files (id < 0 indicates not in database)
+			// id = -1: fake file (ignore), id = 0: new file (insert), id > 0: existing file (update)
+			if (this.id < 0) {
+				GLib.debug("FileBase.saveToDB: Skipping DB operation for fake file (id=%lld, path='%s')", 
+					this.id, this.path);
+				return;
+			}
+			
 			saveToDB_call_count++;
 			var call_id = saveToDB_call_count;
 			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
@@ -375,7 +427,10 @@ namespace OLLMfiles
 				new_values != null ? "set" : "null", sync.to_string(), this.get_type().name());
 			
 			var sq = new SQ.Query<FileBase>(db, "filebase");
-			if (this.id <= 0) {
+			// At this point, id >= 0 (fake files with id < 0 already returned above)
+			// id = 0: new file (insert), id > 0: existing file (update)
+			if (this.id == 0) {
+				// New file - insert into database
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
 				GLib.debug("FileBase.saveToDB[%lld]: Inserted new record, id=%lld", call_id, this.id);

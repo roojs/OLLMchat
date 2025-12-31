@@ -21,8 +21,14 @@ namespace OLLMfiles
 	/**
 	 * Wrapper around a File object for use in project file lists.
 	 * 
-	 * Used for searching on open files and files that need updating.
-	 * Provides all interfaces of FileBase but overrides display name properties.
+	 * Used for searching on open files and files that need updating. Provides all
+	 * interfaces of FileBase but overrides display name properties. Many properties
+	 * delegate to the wrapped file (is_active, is_open, needs_approval, is_unsaved,
+	 * display_basename, display_with_indicators).
+	 * 
+	 * ProjectFile is a wrapper for display purposes only. All file operations should
+	 * be performed on the file property. Used in ProjectFiles collection for project
+	 * file lists.
 	 */
 	public class ProjectFile : FileBase
 	{

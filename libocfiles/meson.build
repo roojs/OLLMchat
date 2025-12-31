@@ -15,6 +15,9 @@ ocfiles_deps = [
 
 ocfiles_src = files([
   'BufferProviderBase.vala',
+  'FileBuffer.vala',  # Must come before File.vala (File uses FileBuffer)
+  'FileChange.vala',
+  'DummyFileBuffer.vala',
   'FileBase.vala',
   'File.vala',
   'FileAlias.vala',

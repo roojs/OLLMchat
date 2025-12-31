@@ -10,6 +10,7 @@ build_rpath = ':'.join([
   meson.current_build_dir() / '..' / 'liboccoder',
   meson.current_build_dir() / '..' / 'libollmchat',
   meson.current_build_dir() / '..' / 'libollmchatgtk',
+  meson.current_build_dir() / '..' / 'liboctools',
   meson.current_build_dir() / '..' / 'libocvector'
 ])
 
@@ -78,7 +79,7 @@ ocmarkdown_test_deps = [
 
 # Build test-ollama executable (command-line test)
 test_ollama = executable('oc-test-cli',
-  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep],
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, octools_vapi_dep],
   sources: ['oc-test-cli.vala'],
   link_with: [ollmchat_base_lib],  # ollmchat_base_lib already links with ocsqlite via link_args
   include_directories: include_directories('../libollmchat'),
@@ -87,8 +88,10 @@ test_ollama = executable('oc-test-cli',
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ocagent',
+    '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -144,7 +147,7 @@ test_markdown_parser = executable('oc-markdown-test',
 
 # Build oc-test-fetch executable (WebFetchTool test)
 test_web_fetch = executable('oc-test-fetch',
-  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep],
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep, octools_vapi_dep],
   sources: ['TestAppBase.vala', 'oc-test-fetch.vala'],
   link_with: [ollmchat_base_lib],
   include_directories: include_directories('../libollmchat'),
@@ -154,9 +157,11 @@ test_web_fetch = executable('oc-test-fetch',
     '--pkg=ocsqlite',
     '--pkg=ocagent',
     '--pkg=ocmarkdown',
+    '--pkg=octools',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -177,19 +182,28 @@ vmd2html = executable('oc-md2html',
 )
 
 # Build oc-test-files executable (project file scanning test)
-# Only depends on liboccoder (which already includes libocsqlite)
-# Use occoder_vapi_dep instead of link_with to avoid meson auto-including occoder-meson.vapi
+# Now extends TestAppBase and supports multiple file operations
+# Supports both dummy and sourceview backends (sourceview requires GTK)
 test_files = executable('oc-test-files',
-  dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
-  sources: ['oc-test-files.vala'],
-  include_directories: include_directories('../libocfiles'),
+  dependencies: [test_window_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-files.vala'],
+  link_with: [ollmchat_base_lib, occoder_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboccoder')
+  ],
   build_rpath: build_rpath,
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
     '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    # Don't use --pkg=occoder when linking with occoder_base_lib - meson includes occoder-meson.vapi automatically
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
