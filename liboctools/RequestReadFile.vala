@@ -176,13 +176,10 @@ namespace OLLMtools
 				ret = yield file.buffer.read_async();
 			}
 
-			// Get full content
-			string full_content;
-			// Read entire file if requested or no line range specified
-			if (this.read_entire_file || (this.start_line <= 0 && this.end_line <= 0)) {
-				// Use buffer.read_async() for entire file
-				full_content = ret;
-			} else {
+			// Get full content (default to entire file)
+			string full_content = ret;
+			// Read line range if specified and not reading entire file
+			if (!this.read_entire_file && (this.start_line > 0 || this.end_line > 0)) {
 				// Read line range using buffer.get_text() (convert 1-based to 0-based)
 				// Original: 1-based, inclusive start, exclusive end
 				// Buffer: 0-based, inclusive start and end
