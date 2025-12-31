@@ -758,8 +758,11 @@ namespace OLLMchat.Tools
 				real_file.last_modified = mod_time.to_unix();
 			}
 			
-			// Detect language from filename
-			real_file.detect_language();
+			// Detect language from filename using buffer provider
+			var detected_language = project_manager.buffer_provider.detect_language(real_file);
+			if (detected_language != null && detected_language != "") {
+				real_file.language = detected_language;
+			}
 			
 			// Add file to parent folder's children
 			parent_folder.children.append(real_file);
