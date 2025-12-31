@@ -54,14 +54,7 @@ namespace OLLMtools
 				return content;
 			}
 			
-			var result = new StringBuilder();
-			for (int i = 0; i < max_lines; i++) {
-				if (i > 0) {
-					result.append("\n");
-				}
-				result.append(lines[i]);
-			}
-			return result.str;
+			return string.joinv("\n", lines[0:max_lines]);
 		}
 		
 		protected override bool build_perm_question()
