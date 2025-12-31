@@ -587,10 +587,6 @@ this.update_models.begin();
 		 */
 		public void setup_tools_menu_button()
 		{
-			// Reset flag when setting up (new popover means we need to rebuild)
-			this.is_tool_list_loaded = false;
-			this.tools_popover_box = null;
-			
 			// Create popover for tools menu
 			var popover = new Gtk.Popover();
 			
