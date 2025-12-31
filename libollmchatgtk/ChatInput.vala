@@ -559,7 +559,7 @@ namespace OLLMchatGtk
 				// Reload models for the new session's client
 				if (this.show_models) {
 					Idle.add(() => {
-this.update_models.begin();
+						this.update_models.begin();
 						return false;
 					});
 				}
