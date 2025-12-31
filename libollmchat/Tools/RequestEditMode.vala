@@ -68,11 +68,21 @@ namespace OLLMchat.Tools
 			// Normalize file path
 			this.normalized_path = this.normalize_file_path(this.file_path);
 			
-			// Set permission properties for WRITE operation
+			// Set up permission properties for non-project files first
 			this.permission_target_path = this.normalized_path;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
+			// Check if file is in active project (skip permission prompt if so)
+			if (((EditMode) this.tool).project_manager?.get_file_from_active_project(this.normalized_path) != null) {
+				// File is in active project - skip permission prompt
+				// Clear permission question to indicate auto-approved
+				this.permission_question = "";
+				// Return false to skip permission check (auto-approved for project files)
+				return false;
+			}
+			
+			// File is not in active project - require permission
 			return true;
 		}
 		
