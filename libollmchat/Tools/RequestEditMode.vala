@@ -443,14 +443,23 @@ namespace OLLMchat.Tools
 			
 			// Apply changes
 			int line_count = 0;
+			OLLMfiles.File? modified_file = null;
 			try {
-				yield this.apply_all_changes();
+				modified_file = yield this.apply_all_changes();
 				
-				// Calculate line count for success message
-				try {
-					line_count = this.count_file_lines();
-				} catch (Error e) {
-					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
+				// Calculate line count for success message using buffer
+				// After write() or apply_edits(), buffer should be loaded
+				if (modified_file != null) {
+					try {
+						// Ensure buffer is loaded (should already be after write/apply_edits)
+						if (!modified_file.buffer.is_loaded) {
+							yield modified_file.buffer.read_async();
+						}
+						// Use buffer's built-in get_line_count() method
+						line_count = modified_file.buffer.get_line_count();
+					} catch (Error e) {
+						GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
+					}
 				}
 				
 				// Build and emit UI message
@@ -525,12 +534,14 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Applies all captured changes to a file.
+		 * 
+		 * @return The file object that was modified, for use in line counting
 		 */
-		private async void apply_all_changes() throws Error
+		private async OLLMfiles.File? apply_all_changes() throws Error
 		{
 			if (this.changes.size == 0) {
 				this.send_ui("txt", "CodeEdit Tool: No Changes", "No changes to apply to file " + this.normalized_path);
-				return;
+				return null;
 			}
 		
 			// Get or create File object from path
@@ -581,7 +592,8 @@ namespace OLLMchat.Tools
 				this.send_ui("txt", "CodeEdit Tool: Applying Changes", "Applying changes to file " + this.normalized_path + "...");
 				yield this.create_new_file_with_changes(file);
 				this.send_ui("txt", "CodeEdit Tool: Changes Applied", "Applied changes to file " + this.normalized_path);
-				return;
+				// Return file object for line counting
+				return file;
 			}
 			
 			// Normal mode: file must exist
@@ -597,6 +609,8 @@ namespace OLLMchat.Tools
 			// Log successful write
 			GLib.debug("RequestEditMode.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
 			
+			// Return file object for line counting
+			return file;
 		}
 		
 		/**
@@ -649,29 +663,6 @@ namespace OLLMchat.Tools
 			// - Creating backups for project files (automatic)
 			// - Updating file metadata
 			yield file.buffer.write(replacement_content);
-		}
-		
-		
-		/**
-		 * Counts the total number of lines in a file using buffer.
-		 */
-		private int count_file_lines() throws Error
-		{
-			// Get or create File object from path
-			var project_manager = ((EditMode) this.tool).project_manager;
-			
-			// First, try to get from active project
-			var file = project_manager.get_file_from_active_project(this.normalized_path);
-			
-			if (file == null) {
-				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
-			}
-			
-			// Ensure buffer exists (create if needed)
-			file.manager.buffer_provider.create_buffer(file);
-			
-			// Use buffer-based line counting (will load file synchronously if needed)
-			return file.buffer.get_line_count();
 		}
 	}
 }
