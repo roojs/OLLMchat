@@ -30,7 +30,7 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
-  - `oc-test-files` - Test tool for file and folder management (recursively lists files/folders with git status)
+  - `oc-test-files` - Test tool for file operations (read/write files with line ranges, project management, buffer operations, backups)
   - `oc-markdown-test` - Markdown parser test tool (parses markdown and outputs callback trace)
   - `oc-html2md` - HTML to Markdown converter (reads HTML from stdin, outputs Markdown)
   - `oc-md2html` - Markdown to HTML converter (converts markdown file to HTML)
