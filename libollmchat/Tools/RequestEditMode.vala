@@ -624,7 +624,7 @@ namespace OLLMchat.Tools
 		 * Applies multiple edits to a file using a streaming approach.
 		 * Handles both existing files and new file creation.
 		 */
-		private void apply_edits() throws Error
+		private async void apply_edits(OLLMfiles.File file) throws Error
 		{
 			// Sort changes by start line (descending) so we can apply them in reverse order
 			this.changes.sort((a, b) => {
@@ -666,7 +666,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Creates a new file with all changes applied.
 		 */
-		private void create_new_file_with_changes() throws Error
+		private async void create_new_file_with_changes(OLLMfiles.File file) throws Error
 		{
 			// Ensure parent directory exists
 			var parent_dir = GLib.Path.get_dirname(this.normalized_path);
