@@ -581,22 +581,23 @@ this.update_models.begin();
 
 		/**
 		 * Sets up the tools menu button with popover containing checkboxes for each tool.
-		 * Builds the menu once when first shown, or rebuilds if tools have changed.
+		 * Builds the menu once when first shown if tools are loaded.
 		 * 
 		 * @since 1.0
 		 */
 		public void setup_tools_menu_button()
 		{
+			// Reset flag when setting up (new popover means we need to rebuild)
+			this.is_tool_list_loaded = false;
+			this.tools_popover_box = null;
+			
 			// Create popover for tools menu
 			var popover = new Gtk.Popover();
 			
-			// Build menu content when popover is shown (only rebuild if not already built or tools changed)
+			// Build menu content when popover is shown (only build once if tools are loaded)
 			popover.show.connect(() => {
-				// Check if we need to rebuild (not built yet, or tools count changed)
-				int current_tool_count = (int)this.manager.session.client.tools.size;
-				bool needs_rebuild = !this.is_tool_list_loaded || this.tools_popover_box == null;
-				
-				if (needs_rebuild) {
+				// Only build if not already built
+				if (!this.is_tool_list_loaded) {
 					// Clear existing children
 					var existing_child = popover.get_child();
 					if (existing_child != null) {
