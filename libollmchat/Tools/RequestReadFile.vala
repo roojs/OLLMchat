@@ -28,6 +28,7 @@ namespace OLLMchat.Tools
 		public int64 start_line { get; set; default = -1; }
 		public int64 end_line { get; set; default = -1; }
 		public bool read_entire_file { get; set; default = false; }
+		public bool summarize { get; set; default = false; }
 		
 		/**
 		 * Default constructor.
@@ -45,7 +46,9 @@ namespace OLLMchat.Tools
 			
 			// Build permission question based on parameters
 			string question;
-			if (this.read_entire_file) {
+			if (this.summarize) {
+				question = "Summarize file '" + this.file_path + "'?";
+			} else if (this.read_entire_file) {
 				question = "Read entire file '" + this.file_path + "'?";
 			} else if (this.start_line > 0 && this.end_line > 0) {
 				question = "Read file '" + this.file_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
@@ -100,6 +103,13 @@ namespace OLLMchat.Tools
 			
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");
+			}
+			
+			// Handle summarize option
+			if (this.summarize) {
+				// Summarize requires ProjectManager which is not available in this version
+				// This version of ReadFile doesn't support summarize - use OLLMtools.ReadFile instead
+				throw new GLib.IOError.NOT_SUPPORTED("Summarize feature requires ProjectManager. Use OLLMtools.ReadFile instead of OLLMchat.Tools.ReadFile.");
 			}
 			
 			// Validate line range if provided

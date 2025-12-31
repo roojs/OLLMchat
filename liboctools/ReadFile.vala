@@ -32,6 +32,8 @@ namespace OLLMtools
 			return """
 Read the contents of a file (and the outline).
 
+If you want to understand what is in a file, you are recommended to call summarize on it first. This will give you an overview of the file's structure and contents before reading specific sections.
+
 When using this tool to gather information, it's your responsibility to ensure you have the COMPLETE context. Each time you call this command you should:
 1) Assess if contents viewed are sufficient to proceed with the task.
 2) Take note of lines not shown.
@@ -50,7 +52,8 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 @param end_line {integer} [optional] The ending line number to read to.
 @param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.
 @param with_lines {boolean} [optional] If true, output content with line numbers prefixed to each line (e.g., "1: content", "2: content").
-@param find_words {string} [optional] Search for lines containing this string and return only matching lines with line numbers. Case-insensitive search.""";
+@param find_words {string} [optional] Search for lines containing this string and return only matching lines with line numbers. Case-insensitive search.
+@param summarize {boolean} [optional] If true, generate a tree-sitter based summary of the file structure instead of reading the file contents.""";
 		} }
 		
 		/**

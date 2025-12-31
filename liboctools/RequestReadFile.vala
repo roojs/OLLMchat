@@ -30,6 +30,7 @@ namespace OLLMtools
 		public bool read_entire_file { get; set; default = false; }
 		public bool with_lines { get; set; default = false; }
 		public string find_words { get; set; default = ""; }
+		public bool summarize { get; set; default = false; }
 		
 		/**
 		 * Default constructor.
@@ -135,7 +136,9 @@ namespace OLLMtools
 			
 			// Build permission question based on parameters
 			string question;
-			if (this.read_entire_file) {
+			if (this.summarize) {
+				question = "Summarize file '" + normalized_path + "'?";
+			} else if (this.read_entire_file) {
 				question = "Read entire file '" + normalized_path + "'?";
 			} else if (this.start_line > 0 && this.end_line > 0) {
 				question = "Read file '" + normalized_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
@@ -185,6 +188,11 @@ namespace OLLMtools
 				request_message += "Find words: " + this.find_words + "\n";
 			}
 			
+			// Add summarize option
+			if (this.summarize) {
+				request_message += "Summarize: yes\n";
+			}
+			
 			// Send request message to UI in standardized codeblock format
 			this.send_ui("txt", "File Read Requested", request_message);
 			
@@ -207,9 +215,9 @@ namespace OLLMtools
 				throw new GLib.IOError.FAILED(error_msg);
 			}
 			
-			// Validate line range if not reading entire file and not using find_words
-			// (find_words can work without explicit line range)
-			if (!this.read_entire_file && (this.find_words == null || this.find_words.strip() == "")) {
+			// Validate line range if not reading entire file and not using find_words or summarize
+			// (find_words and summarize can work without explicit line range)
+			if (!this.read_entire_file && !this.summarize && (this.find_words == null || this.find_words.strip() == "")) {
 				if (this.start_line < 1) {
 					var error_msg = "Invalid line range: start_line must be >= 1";
 					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
@@ -240,6 +248,21 @@ namespace OLLMtools
 				file = new OLLMfiles.File.new_fake(project_manager, file_path);
 			}
 			
+			// Handle summarize option
+			if (this.summarize) {
+				// Create ReadFileSummarize instance
+				var summarizer = new OLLMtools.ReadFileSummarize(file);
+				
+				// Generate summary
+				var summary = yield summarizer.summarize();
+				
+				// Send summary to UI
+				var preview_summary = this.get_first_lines(summary, 20);
+				this.send_ui("txt", "File Summary", preview_summary);
+				
+				// Return full summary to LLM
+				return summary;
+			}
 			
 			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
