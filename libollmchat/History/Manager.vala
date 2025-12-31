@@ -20,9 +20,28 @@ namespace OLLMchat.History
 {
 	/**
 	 * Manager for chat history persistence.
-	 * 
+	 *
 	 * Handles saving and loading chat sessions to/from disk and SQLite database.
 	 * Manages the history directory structure and provides methods for session management.
+	 * Creates new clients for each session while sharing tools and configuration.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var manager = new History.Manager(history_dir, db, base_client, config);
+	 *
+	 * // Create new session
+	 * var session = yield manager.new_session();
+	 *
+	 * // Get client for this session (shares tools/config)
+	 * var client = manager.session.client;
+	 *
+	 * // Switch to existing session
+	 * yield manager.switch_to_session(existing_session);
+	 *
+	 * // Save current session
+	 * yield manager.save_session();
+	 * }}}
 	 */
 	public class Manager : Object
 	{
@@ -72,7 +91,7 @@ namespace OLLMchat.History
 		 
 		/**
 		 * Constructor.
-		 * 
+		 *
 		 * @param app ApplicationInterface instance (provides config and data_dir)
 		 */
 		public Manager(OLLMchat.ApplicationInterface app)
@@ -139,11 +158,11 @@ namespace OLLMchat.History
 		
 		/**
 		 * Creates a new client instance.
-		 * 
+		 *
 		 * If copy_from is provided, copies all properties from that client.
 		 * Otherwise, copies from base_client.
 		 * Always creates fresh tool instances.
-		 * 
+		 *
 		 * @param copy_from Optional client to copy properties from. If null, uses base_client.
 		 * @return A new Client instance with copied properties and fresh tools
 		 */
@@ -187,10 +206,10 @@ namespace OLLMchat.History
 		
 		/**
 		 * Switches to a new session, deactivating the current one and activating the new one.
-		 * 
+		 *
 		 * When switching to EmptySession, preserves model and tool states from the previous session.
 		 * Loads the session if needed (e.g., for SessionPlaceholder).
-		 * 
+		 *
 		 * @param session The session to switch to
 		 * @throws Error if loading fails
 		 */
@@ -225,7 +244,7 @@ namespace OLLMchat.History
 		/**
 		 * Creates a new session for a new chat.
 		 * Uses the current session's agent_name and model if available, otherwise defaults to "just-ask".
-		 * 
+		 *
 		 * @return A new Session instance with a fresh client
 		 */
 		public Session create_new_session()

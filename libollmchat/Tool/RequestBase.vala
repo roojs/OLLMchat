@@ -20,12 +20,12 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Abstract base class for tool request execution.
-	 * 
+	 *
 	 * Request objects handle all execution concerns: reading parameters,
 	 * building permission questions, requesting permissions, and executing
 	 * the actual work. Tools are stateless and create Request objects when
 	 * execute() is called.
-	 * 
+	 *
 	 * Request objects are deserialized from the function call parameters JSON,
 	 * so parameter properties should match the parameter names from the tool's
 	 * function definition.
@@ -99,7 +99,7 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Normalizes a file path using the permission provider's normalization logic.
-		 * 
+		 *
 		 * @param path The path to normalize
 		 * @return The normalized path
 		 */
@@ -118,21 +118,21 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Abstract method for requests to build permission information.
-		 * 
+		 *
 		 * Requests implement this method to build permission information
 		 * from their specific parameters. Sets permission_question, permission_target_path,
 		 * and permission_operation properties.
-		 * 
+		 *
 		 * @return true if permission needs to be asked, false if permission check can be skipped
 		 */
 		protected abstract bool build_perm_question();
 		
 		/**
 		 * Public method that handles permission checking before execution.
-		 * 
+		 *
 		 * Calls read_params() to read parameters, then build_perm_question() to populate permission properties,
 		 * checks permission if needed, and finally calls execute_request() to perform the actual operation.
-		 * 
+		 *
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
 		public virtual async string execute()
@@ -166,10 +166,10 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Abstract method for requests to implement their actual execution logic.
-		 * 
+		 *
 		 * This method contains the request-specific implementation that performs
 		 * the actual operation after permission has been granted.
-		 * 
+		 *
 		 * @return String content result (will be wrapped in JSON by execute())
 		 */
 		protected abstract async string execute_request() throws Error;

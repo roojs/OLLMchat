@@ -67,6 +67,9 @@
           <p>Options object for Ollama API calls.</p>
           <p>This is technically accessed through call.options (e.g., chatCall.options, embedCall.options). Contains all runtime parameters that can 
             be passed to Ollama API. Default values are -1 for numbers (indicating no value set) or empty string for strings.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.options = <span class="main_keyword">new</span> Call.Options() {<br/>    temperature = <span class="main_literal">0.7</span>,<br/>    top_p = <span class="main_literal">0.9</span>,<br/>    num_predict = <span class="main_literal">100</span><br/>};<br/><br/><span class="main_comment">// Or modify existing options</span><br/>call.options.temperature = <span class="main_literal">0.5</span>;<br/>call.options.stop = <span class="main_literal">"</span><span class="main_escape">\n</span><span class="main_literal"></span><span class="main_escape">\n</span><span class="main_literal">"</span>;</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Call.html">OLLMchat.Call</a>
         </div>

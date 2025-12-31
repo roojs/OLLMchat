@@ -20,7 +20,22 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Represents a single server connection configuration.
-	 * 
+	 *
+	 * Stores connection details for Ollama or OpenAI-compatible API servers.
+	 * Used by Client to establish API connections.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var connection = new Settings.Connection() {
+	 *     name = "Local Ollama",
+	 *     url = "http://127.0.0.1:11434/api",
+	 *     is_default = true
+	 * };
+	 *
+	 * var client = new Client(connection);
+	 * }}}
+	 *
 	 * @since 1.0
 	 */
 	public class Connection : Object, Json.Serializable
@@ -59,7 +74,7 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Creates a clone of this Connection object with all properties copied.
-		 * 
+		 *
 		 * @return A new Connection instance with all properties copied from this object
 		 */
 		public Connection clone()
@@ -133,10 +148,10 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Creates a Soup.Message with authorization headers set.
-		 * 
+		 *
 		 * Creates a new HTTP message with the specified method and URL, and automatically
 		 * adds the Authorization header if an API key is configured.
-		 * 
+		 *
 		 * @param method HTTP method (e.g., "GET", "POST")
 		 * @param url Full URL for the request
 		 * @param body Optional request body string (will be set as JSON content type)

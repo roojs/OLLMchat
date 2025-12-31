@@ -20,10 +20,25 @@ namespace OLLMchat.Call
 {
 	/**
 	 * Options object for Ollama API calls.
-	 * 
+	 *
 	 * This is technically accessed through call.options (e.g., chatCall.options, embedCall.options).
 	 * Contains all runtime parameters that can be passed to Ollama API.
 	 * Default values are -1 for numbers (indicating no value set) or empty string for strings.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * call.options = new Call.Options() {
+	 *     temperature = 0.7,
+	 *     top_p = 0.9,
+	 *     num_predict = 100
+	 * };
+	 *
+	 * // Or modify existing options
+	 * call.options.temperature = 0.5;
+	 * call.options.stop = "\n\n";
+	 * }}}
 	 */
 	public class Options : Object, Json.Serializable
 	{
@@ -45,9 +60,9 @@ namespace OLLMchat.Call
 
 		/**
 		 * Creates a clone of this Options object with all properties copied.
-		 * 
+		 *
 		 * Uses GObject introspection to iterate through all properties and copy them.
-		 * 
+		 *
 		 * @return A new Options instance with all properties copied from this object
 		 */
 		public Options clone()
@@ -64,11 +79,11 @@ namespace OLLMchat.Call
 
 		/**
 		 * Checks if any options have valid values set.
-		 * 
+		 *
 		 * Returns true if at least one option has a non-default value.
 		 * For numeric options, -1 indicates no value set.
 		 * For string options, empty string indicates no value set.
-		 * 
+		 *
 		 * @return true if options have values, false otherwise
 		 */
 		public bool has_values()
@@ -85,11 +100,11 @@ namespace OLLMchat.Call
 
 		/**
 		 * Fills this Options object with values parsed from model parameters string.
-		 * 
+		 *
 		 * Parses the model's parameters string (format: "temperature 0.7\nnum_ctx 2048")
 		 * and sets the corresponding properties using set_property.
 		 * Uses switch case grouped by type (int, double, string).
-		 * 
+		 *
 		 * @param model The model object containing the parameters string
 		 */
 		public void fill_from_model(OLLMchat.Response.Model model)

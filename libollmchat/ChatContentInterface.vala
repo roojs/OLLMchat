@@ -20,7 +20,7 @@ namespace OLLMchat
 {
 	/**
 	 * Interface for objects that provide chat content.
-	 * 
+	 *
 	 * Used to unify access to message content across different types
 	 * (Message, Response.Chat, Call.Chat) for consistent content handling.
 	 */

@@ -30,7 +30,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Writes the replacement text to the output stream and skips old lines in the input stream.
-		 * 
+		 *
 		 * @param output_stream The output stream to write replacement to
 		 * @param input_stream The input stream to skip old lines from
 		 * @param current_line Reference to current line number (will be updated)
@@ -66,7 +66,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Writes the replacement text to the output stream for insertions at end of file.
 		 * Only writes if this is an insertion (start == end) and it's past the current line.
-		 * 
+		 *
 		 * @param output_stream The output stream to write replacement to
 		 * @param current_line The current line number in the file
 		 * @throws Error if I/O operations fail

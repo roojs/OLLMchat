@@ -69,6 +69,9 @@
           <p>Main serializable configuration holder for version 2 format (multiple clients, extended structure).</p>
           <p>This is the top-level container class that holds all configuration data. Supports GType registration for external configuration sections.
           </p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Load configuration</span><br/>Config<span class="main_literal">2</span>.config_path = <span class="main_literal">"~/.config/ollmchat/config.2.json"</span>;<br/><span class="main_keyword">var</span> config = Config<span class="main_literal">2</span>.load();<br/><br/><span class="main_comment">// Access connections</span><br/><span class="main_keyword">foreach</span> (<span class="main_keyword">var</span> conn <span class="main_keyword">in</span> config.connections.values) {<br/>    print(<span class="main_literal">@"Connection: </span><span class="main_escape">$(conn.name)</span><span class="main_literal"> - </span><span class="main_escape">$(conn.url)</span><span class="main_literal">"</span>);<br/>}<br/><br/><span class="main_comment">// Get model options</span><br/><span class="main_keyword">var</span> options = config.model_options.<span class="main_keyword">get</span>(<span class="main_literal">"llama3.2"</span>);<br/><span class="main_keyword">if</span> (options != <span class="main_literal">null</span>) {<br/>    options.temperature = <span class="main_literal">0.7</span>;<br/>}<br/><br/><span class="main_comment">// Save configuration</span><br/>config.save();</code></pre>
+          </p>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div><br/>

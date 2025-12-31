@@ -79,6 +79,9 @@
           <p>Response from a chat API call.</p>
           <p>Contains the assistant's message, tool calls (if any), and metadata. Handles streaming responses and tool call detection for automatic 
             execution.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Hello!"</span>);<br/><br/><span class="main_comment">// Access message content</span><br/>print(response.message.content);<br/><br/><span class="main_comment">// Check for tool calls</span><br/><span class="main_keyword">if</span> (response.tool_calls.size &gt; <span class="main_literal">0</span>) {<br/>    <span class="main_comment">// Tools were requested by the model</span><br/>}<br/><br/><span class="main_comment">// Access performance metrics</span><br/>print(<span class="main_literal">@"Total duration: </span><span class="main_escape">$(response.total_duration)</span><span class="main_literal">ns"</span>);</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Response.html">OLLMchat.Response</a>
         </div>

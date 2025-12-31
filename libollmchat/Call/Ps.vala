@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to list currently running models on the Ollama server.
-	 * 
+	 *
 	 * Shows which models are currently loaded in memory and running.
 	 */
 	public class Ps : Base

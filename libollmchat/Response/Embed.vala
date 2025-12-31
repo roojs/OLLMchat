@@ -20,7 +20,7 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Represents the response from the embeddings API.
-	 * 
+	 *
 	 * Contains the model name, embeddings (array of arrays of floats),
 	 * and timing information.
 	 */

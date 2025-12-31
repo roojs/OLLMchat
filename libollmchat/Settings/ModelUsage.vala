@@ -20,11 +20,11 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Represents model usage configuration (connection, model, and optional options).
-	 * 
+	 *
 	 * This is a reusable class for any feature that needs to specify a connection,
 	 * model, and optional options. The connection property references a connection
 	 * URL from Config2's connections map.
-	 * 
+	 *
 	 * @since 1.0
 	 */
 	public class ModelUsage : Object, Json.Serializable

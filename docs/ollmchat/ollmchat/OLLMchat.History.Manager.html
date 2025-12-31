@@ -73,7 +73,10 @@
         <div class="description">
           <p>Manager for chat history persistence.</p>
           <p>Handles saving and loading chat sessions to/from disk and SQLite database. Manages the history directory structure and provides methods 
-            for session management.</p>
+            for session management. Creates new clients for each session while sharing tools and configuration.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> manager = <span class="main_keyword">new</span> History.Manager(history_dir, db, base_client, config);<br/><br/><span class="main_comment">// Create new session</span><br/><span class="main_keyword">var</span> session = <span class="main_keyword">yield</span> manager.new_session();<br/><br/><span class="main_comment">// Get client for this session (shares tools/config)</span><br/><span class="main_keyword">var</span> client = manager.session.client;<br/><br/><span class="main_comment">// Switch to existing session</span><br/><span class="main_keyword">yield</span> manager.switch_to_session(existing_session);<br/><br/><span class="main_comment">// Save current session</span><br/><span class="main_keyword">yield</span> manager.save_session();</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.History.html">OLLMchat.History</a>
         </div>

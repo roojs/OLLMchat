@@ -20,9 +20,11 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Concrete class representing a function within a Tool.
-	 * 
+	 *
 	 * This class is built from a Tool's properties on construction.
 	 * It provides name, description, and parameters for serialization.
+	 * Used internally by the tool system to generate function schemas
+	 * for the LLM API.
 	 */
 	public class Function : Object, Json.Serializable
 	{

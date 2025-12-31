@@ -20,7 +20,7 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Represents an array parameter with items definition.
-	 * 
+	 *
 	 * Used for parameters with type "array" that define the structure
 	 * of array items (which can be ParamSimple, ParamObject, or ParamArray).
 	 */

@@ -20,7 +20,7 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Code Assistant prompt generator.
-	 * 
+	 *
 	 * Combines static sections from resources with dynamic context
 	 * to create complete system prompts for code-assistant agents.
 	 */
@@ -33,7 +33,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Constructor.
-		 * 
+		 *
 		 * @param provider The provider for context data. If null, a dummy provider will be used.
 		 */
 		public CodeAssistant(AgentInterface? provider = null)
@@ -45,7 +45,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Generates the complete system prompt for a code-assistant agent.
-		 * 
+		 *
 		 * @return Complete system prompt string
 		 */
 		protected override string generate_system_prompt() throws Error
@@ -69,11 +69,11 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Generates the user prompt with additional context data.
-		 * 
+		 *
 		 * Based on Cursor's implementation, this includes:
 		 * - <additional_data> section with <current_file>, <attached_files>, <manually_added_selection>
 		 * - <user_query> tag with the actual user query
-		 * 
+		 *
 		 * @param user_query The actual user query/message
 		 * @return User prompt string with additional context
 		 */
@@ -115,7 +115,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Generates the context data section from application state.
-		 * 
+		 *
 		 * Matches Cursor's format with <current_file>, <attached_files>, and <manually_added_selection>.
 		 */
 		private string generate_context_section()

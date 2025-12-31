@@ -20,7 +20,7 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Represents a progress chunk from the pull API.
-	 * 
+	 *
 	 * Contains status information, progress metrics, and digest information
 	 * for model pull operations.
 	 */

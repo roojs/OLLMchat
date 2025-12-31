@@ -25,9 +25,10 @@ namespace OLLMchat
 
 	/**
 	 * Base class for Ollama API objects that need JSON serialization.
-	 * 
+	 *
 	 * Provides common functionality for serializing and deserializing objects
-	 * to/from JSON. Used as a base for API calls and responses.
+	 * to/from JSON. Used as a base for API calls and responses. Automatically
+	 * excludes the client property from serialization (it's an internal reference).
 	 */
 	public class OllamaBase : Object, Json.Serializable
 	{

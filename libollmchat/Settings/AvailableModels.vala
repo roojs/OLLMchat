@@ -20,10 +20,10 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Manages available models cache with ArrayList backing.
-	 * 
+	 *
 	 * NOTE: This class is technically Ollama-specific, but is kept generic
 	 * for potential future use with other model providers.
-	 * 
+	 *
 	 * Manages downloading and caching the list of available models from
 	 * a remote endpoint, with automatic cache refresh when the cache is
 	 * missing or older than 3 days.
@@ -67,7 +67,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Append an item to the list.
-		 * 
+		 *
 		 * @param item The AvailableModel item to append
 		 */
 		public void append(AvailableModel item)
@@ -111,7 +111,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Constructor.
-		 * 
+		 *
 		 * @param data_dir Directory where cache file will be stored
 		 */
 		public AvailableModels(string data_dir)
@@ -154,7 +154,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Fetches models from remote URL and saves to cache.
-		 * 
+		 *
 		 * @throws Error if fetch or save fails
 		 */
 		 //NOTE: Currently disabled - will be enabled later when remote URL is configured
@@ -215,7 +215,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Attempts to parse JSON from a file path.
-		 * 
+		 *
 		 * @param path File path to parse
 		 * @return Json.Node if successful, null otherwise
 		 */
@@ -233,7 +233,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Attempts to parse JSON from a data string.
-		 * 
+		 *
 		 * @param data JSON data string to parse
 		 * @return Json.Node if successful, null otherwise
 		 */
@@ -251,7 +251,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Attempts to load models from a JSON node if it's a valid array.
-		 * 
+		 *
 		 * @param root JSON root node to load from
 		 * @param source_name Name of the source for logging purposes
 		 * @return true if models were loaded successfully, false otherwise
@@ -269,10 +269,10 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Loads models from cache file.
-		 * 
+		 *
 		 * First checks for ollama-models.json in data_dir (if it exists),
 		 * then falls back to cache file, then to resource.
-		 * 
+		 *
 		 * @throws Error if load fails
 		 */
 		public async void load() throws Error

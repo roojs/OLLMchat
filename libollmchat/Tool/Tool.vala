@@ -20,10 +20,38 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Abstract base class for tools that can be used with Ollama function calling.
-	 * 
+	 *
 	 * This class contains all the implementation logic. Subclasses must implement
-	 * the abstract properties. The Function class is built from Tool's properties
-	 * on construction.
+	 * the abstract properties (name, description, parameter_description). The Function
+	 * class is built from Tool's properties on construction. Parameter descriptions
+	 * use a special syntax with @type, @property, and @param directives.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * public class MyTool : Tool.Interface {
+	 *     public override string name { get { return "my_tool"; } }
+	 *     public override string description { get { return "Does something useful"; } }
+	 *     public override string parameter_description {
+	 *         get {
+	 *             return """
+	 * @param file_path string The path to the file
+	 * @param line_number int Optional line number (default: 0)
+	 * """;
+	 *         }
+	 *     }
+	 *
+	 *     public MyTool(Client client) {
+	 *         base(client);
+	 *     }
+	 *
+	 *     public override async string? execute(Json.Object parameters) {
+	 *         var file_path = parameters.get_string_member("file_path");
+	 *         // ... tool implementation
+	 *         return "Result";
+	 *     }
+	 * }
+	 * }}}
 	 */
 	public abstract class Interface : Object, Json.Serializable
 	{
@@ -125,10 +153,10 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Parses @type and @property declarations.
-		 * 
+		 *
 		 * Format: @type typename {object} Description
 		 * Format: @property typename.propertyname {type} Description
-		 * 
+		 *
 		 * @param desc The declaration string (must start with @type or @property)
 		 * @param type_definitions Map to store type definitions
 		 */
@@ -268,10 +296,10 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Parses a single parameter description and adds it to the function's parameters property.
-		 * 
+		 *
 		 * Format: @param parameter_name {type} [required|optional] Parameter description here
 		 * Format: @param parameter_name {array<type>} [required|optional] Parameter description here
-		 * 
+		 *
 		 * @param desc The parameter description string for a single parameter (must start with @param)
 		 * @param type_definitions Map of type definitions for resolving array<type> references
 		 */
@@ -419,9 +447,9 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Abstract method for tools to deserialize parameters into a Request object.
-		 * 
+		 *
 		 * Each tool implementation creates its specific Request type from the parameters JSON node.
-		 * 
+		 *
 		 * @param parameters_node The parameters as a Json.Node (converted from Json.Object by execute())
 		 * @return A RequestBase instance or null if deserialization fails
 		 */
@@ -429,10 +457,10 @@ namespace OLLMchat.Tool
 		
 		/**
 		 * Public method that creates a Request and delegates execution to it.
-		 * 
+		 *
 		 * Converts parameters to Json.Node, calls deserialize() to create a Request object,
 		 * then sets tool and chat_call properties, and calls its execute() method.
-		 * 
+		 *
 		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
 		 * @return String result or error message (prefixed with "ERROR: " for errors)

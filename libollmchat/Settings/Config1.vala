@@ -20,12 +20,12 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Configuration management for OLLMchat client settings (Version 1).
-	 * 
+	 *
 	 * This is a copy of the original Config class for version 1 format support.
 	 * Handles loading and saving client configuration to JSON file.
 	 * Supports single client configuration (Phase 1) with structure
 	 * designed to support multiple clients in the future.
-	 * 
+	 *
 	 * @since 1.0
 	 */
 	public class Config1 : Object, Json.Serializable
@@ -103,12 +103,12 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Loads Config1 from file.
-		 * 
+		 *
 		 * Uses the static config_path property which must be set before calling.
 		 * The caller should ensure the file exists before calling this method.
 		 * If the file cannot be read/parsed, returns a Config1 object with default
 		 * values and loaded set to false.
-		 * 
+		 *
 		 * @return A new Config1 instance loaded from the file
 		 */
 		public static Config1 load()
@@ -145,11 +145,11 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Converts this Config1 instance to a Config2 instance.
-		 * 
+		 *
 		 * Creates a Config2 with a connection based on this Config1's url and api_key.
 		 * The connection is set as the default connection.
 		 * Preserves model and title_model as ModelUsage objects in Config2's usage map.
-		 * 
+		 *
 		 * @return A new Config2 instance with the migrated configuration
 		 */
 		public Config2 toV2()

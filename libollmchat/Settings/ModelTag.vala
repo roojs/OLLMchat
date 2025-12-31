@@ -20,7 +20,7 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Represents a model tag with size, context, and input information.
-	 * 
+	 *
 	 * Format: { "name": "latest", "size": "14GB", "context": "128K", "input": "Text" }
 	 */
 	public class ModelTag : Object, Json.Serializable
@@ -66,7 +66,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Parses the size string to extract the numeric size in GB.
 		 * Returns -1 if the size cannot be parsed.
-		 * 
+		 *
 		 * Handles formats like "14GB", "1.5GB", etc.
 		 * If the size is in bytes (suffix "B"), converts to GB.
 		 */

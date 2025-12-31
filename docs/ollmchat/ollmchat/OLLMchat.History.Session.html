@@ -65,9 +65,12 @@
         </div>
         <div class="description">
           <p>Session is a wrapper around Call.Chat that provides history persistence.</p>
-          <p>It uses SQ (SQLite) for database storage of metadata, and JSON files for complete session data including all messages.</p>
-          <p>Properties are wrappers around this.chat.client.model, etc. Messages come from this.chat.messages with a flag to include extra info 
-            during JSON encoding.</p>
+          <p>It uses SQ (SQLite) for database storage of metadata, and JSON files for complete session data including all messages. Properties are 
+            wrappers around this.chat.client.model, etc. Messages come from this.chat.messages with a flag to include extra info during JSON encoding.
+          </p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create session from chat call</span><br/><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/><span class="main_keyword">var</span> session = <span class="main_keyword">new</span> History.Session(call, db);<br/><br/><span class="main_comment">// Save session to disk and database</span><br/><span class="main_keyword">yield</span> session.save();<br/><br/><span class="main_comment">// Load session later</span><br/><span class="main_keyword">var</span> loaded = History.Session.load(id, db, client, config);</code></pre>
+          </p>
           <p>Session requires a Call.Chat object in its constructor.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.History.html">OLLMchat.History</a>

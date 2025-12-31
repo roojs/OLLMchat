@@ -20,7 +20,7 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Dummy implementation of AgentInterface.
-	 * 
+	 *
 	 * Returns empty strings and empty lists for all methods.
 	 * Used as a fallback when no real provider is available.
 	 */
@@ -28,7 +28,7 @@ namespace OLLMchat.Prompt
 	{
 		/**
 		 * Gets the workspace path.
-		 * 
+		 *
 		 * @return Always returns empty string
 		 */
 		public string get_workspace_path()
@@ -38,7 +38,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Gets the list of currently open files.
-		 * 
+		 *
 		 * @return Always returns empty list
 		 */
 		public Gee.ArrayList<string> get_open_files()
@@ -48,7 +48,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		* Gets the cursor position for the currently active file.
-		* 
+		*
 		* @return Always returns empty string
 		*/
 		public string get_current_cursor_position()
@@ -58,7 +58,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		* Gets the content of a specific line in the currently active file.
-		* 
+		*
 		* @param cursor_pos The cursor position (ignored)
 		* @return Always returns empty string
 		*/
@@ -69,7 +69,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Gets the full contents of a file.
-		 * 
+		 *
 		 * @param file The file path (ignored)
 		 * @return Always returns empty string
 		 */
@@ -80,7 +80,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Gets the currently selected code.
-		 * 
+		 *
 		 * @return Always returns empty string
 		 */
 		public string get_selected_code()

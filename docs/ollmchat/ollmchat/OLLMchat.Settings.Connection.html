@@ -63,6 +63,10 @@
         </div>
         <div class="description">
           <p>Represents a single server connection configuration.</p>
+          <p>Stores connection details for Ollama or OpenAI-compatible API servers. Used by Client to establish API connections.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    name = <span class="main_literal">"Local Ollama"</span>,<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span>,<br/>    is_default = <span class="main_literal">true</span><br/>};<br/><br/><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection);</code></pre>
+          </p>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div><br/>

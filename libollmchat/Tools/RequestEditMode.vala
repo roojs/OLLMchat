@@ -243,7 +243,7 @@ namespace OLLMchat.Tools
 		 * Tries to parse a code block opener.
 		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when complete_file=false
 		 * Language tag format: ```type (e.g., ```python) when complete_file=true
-		 * 
+		 *
 		 * @param line The line that starts with ```
 		 * @return true if successfully parsed and entered code block, false otherwise
 		 */

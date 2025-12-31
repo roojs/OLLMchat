@@ -20,7 +20,7 @@ namespace OLLMchat.Tools
 {
 	/**
 	 * Tool for editing files by activating "edit mode" for a file.
-	 * 
+	 *
 	 * This tool activates edit mode for a file. While edit mode is active, code blocks
 	 * with type:startline:endline format are automatically captured. When chat is done,
 	 * all captured changes are applied to the file.

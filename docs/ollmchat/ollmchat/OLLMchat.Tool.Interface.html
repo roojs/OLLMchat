@@ -63,8 +63,12 @@
         </div>
         <div class="description">
           <p>Abstract base class for tools that can be used with Ollama function calling.</p>
-          <p>This class contains all the implementation logic. Subclasses must implement the abstract properties. The Function class is built from 
-            Tool's properties on construction.</p>
+          <p>This class contains all the implementation logic. Subclasses must implement the abstract properties (name, description, 
+            parameter_description). The Function class is built from Tool's properties on construction. Parameter descriptions use a special syntax 
+            with @type, @property, and @param directives.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyTool : Tool.Interface {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> name { <span class="main_keyword">get</span> { <span class="main_keyword">return</span> <span class="main_literal">"my_tool"</span>; } }<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> description { <span class="main_keyword">get</span> { <span class="main_keyword">return</span> <span class="main_literal">"Does something useful"</span>; } }<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> parameter_description {<br/>        <span class="main_keyword">get</span> {<br/>            <span class="main_keyword">return</span> <span class="main_literal">"""<br/>@param file_path string The path to the file<br/>@param line_number int Optional line number (default: 0)<br/>"""</span>;<br/>        }<br/>    }<br/><br/>    <span class="main_keyword">public</span> MyTool(Client client) {<br/>        <span class="main_keyword">base</span>(client);<br/>    }<br/><br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type">string</span>? execute(Json.Object parameters) {<br/>        <span class="main_keyword">var</span> file_path = parameters.get_string_member(<span class="main_literal">"file_path"</span>);<br/>        <span class="main_comment">// ... tool implementation</span><br/>        <span class="main_keyword">return</span> <span class="main_literal">"Result"</span>;<br/>    }<br/>}</code></pre>
+          </p>
         </div>
         <div class="box">
           <div class="headline" onclick="toggle_box (this, 'box-content-293')">All known sub-classes:</div>

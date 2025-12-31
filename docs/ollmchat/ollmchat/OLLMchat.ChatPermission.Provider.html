@@ -68,6 +68,9 @@
             implementations for testing</p>
           <p>Includes permission storage system with two layers: - Global (permanent): Stored in tool.permissions.json (only if config_file is set) - 
             Session (temporary): Stored in memory for current session</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyPermissionProvider : ChatPermission.Provider {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> PermissionResult check(<br/>        <span class="main_basic_type">string</span> tool_name, Operation op, <span class="main_basic_type">string</span> resource) {<br/>        <span class="main_comment">// Check if already allowed/denied</span><br/>        <span class="main_keyword">var</span> stored = get_stored_permission(tool_name, op, resource);<br/>        <span class="main_keyword">if</span> (stored != PermissionResult.ASK) {<br/>            <span class="main_keyword">return</span> stored;<br/>        }<br/><br/>        <span class="main_comment">// Ask user</span><br/>        <span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> ask_user(tool_name, op, resource);<br/>        store_permission(tool_name, op, resource, response);<br/>        <span class="main_keyword">return</span> response == PermissionResponse.ALLOW_ONCE ? PermissionResult.YES : PermissionResult.NO;<br/>    }<br/>}</code></pre>
+          </p>
         </div>
         <div class="box">
           <div class="headline" onclick="toggle_box (this, 'box-content-310')">All known sub-classes:</div>

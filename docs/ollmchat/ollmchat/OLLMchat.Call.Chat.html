@@ -69,7 +69,11 @@
         <div class="description">
           <p>Chat API call implementation for sending messages and receiving responses.</p>
           <p>Handles chat conversations with the LLM, including message history, tool calling, streaming responses, and automatic tool execution. 
-            Manages the conversation flow and tool call recursion.</p>
+            Manages the conversation flow and tool call recursion. Automatically executes tools when the model requests them and continues the 
+            conversation with tool results.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.messages.add(<span class="main_keyword">new</span> Message(call, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><br/><span class="main_comment">// Execute chat (handles tool calls automatically)</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> call.exec_chat();<br/><br/><span class="main_comment">// Access response content</span><br/>print(response.message.content);</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Call.html">OLLMchat.Call</a>
         </div>

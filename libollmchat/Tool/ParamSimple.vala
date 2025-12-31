@@ -20,7 +20,7 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Represents a simple parameter type (string, integer, boolean).
-	 * 
+	 *
 	 * Used for parameters that don't have nested structures.
 	 */
 	public class ParamSimple : Param

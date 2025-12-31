@@ -20,10 +20,29 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Base class for agent prompt generators.
-	 * 
+	 *
 	 * Provides common functionality for loading resource sections
 	 * based on agent name. Can be used directly as a default implementation
 	 * that returns empty system prompt and passes through user input.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * // Use as default (no modifications)
+	 * var agent = new Prompt.BaseAgent();
+	 *
+	 * // Fill chat call with prompts
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * agent.fill(call, "User question");
+	 *
+	 * // Or create custom agent
+	 * public class MyAgent : Prompt.BaseAgent {
+	 *     public override void fill(Call.Chat call, string user_input) {
+	 *         call.system_content = "You are a helpful assistant.";
+	 *         call.chat_content = user_input;
+	 *     }
+	 * }
+	 * }}}
 	 */
 	public class BaseAgent : Object
 	{
@@ -83,7 +102,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Loads a static section from resources.
-		 * 
+		 *
 		 * @param section_name Name of the section file (without .md extension)
 		 * @return Contents of the resource file
 		 */
@@ -139,7 +158,7 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Fills a ChatCall with system and user prompts.
-		 * 
+		 *
 		 * @param call The ChatCall to fill
 		 * @param user_text The user's input text
 		 */
@@ -151,11 +170,11 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Gets the working directory for command execution.
-		 * 
+		 *
 		 * Agents that have a context-specific working directory (e.g., a selected project)
 		 * should override this method to return that directory path.
 		 * Default implementation returns empty string (use current directory).
-		 * 
+		 *
 		 * @return Working directory path, or empty string to use current directory
 		 */
 		public virtual string get_working_directory()
@@ -165,10 +184,10 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Gets the UI widget for this agent, if any.
-		 * 
+		 *
 		 * Agents with UI should override this method to return their widget.
 		 * Default implementation returns null (agents without UI).
-		 * 
+		 *
 		 * @return The UI widget cast as Object, or null if agent has no UI
 		 */
 		public virtual async Object? get_widget()
@@ -179,7 +198,7 @@ namespace OLLMchat.Prompt
 		/**
 		 * Generates the complete system prompt for the agent.
 		 * Default implementation returns empty string.
-		 * 
+		 *
 		 * @return Complete system prompt string
 		 */
 		protected virtual string generate_system_prompt() throws GLib.Error
@@ -190,7 +209,7 @@ namespace OLLMchat.Prompt
 		/**
 		 * Generates the user prompt.
 		 * Default implementation returns the input text as-is.
-		 * 
+		 *
 		 * @param user_input The user's input text
 		 * @return User prompt string
 		 */

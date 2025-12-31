@@ -78,6 +78,15 @@
           <p>Main client class for interacting with Ollama API and OpenAI-compatible REST interfaces.</p>
           <p>Provides methods for chat, model management, and tool integration. Handles HTTP requests, streaming responses, and function calling. 
             Manages tool registration and execution with permission checking.</p>
+          <h2>Basic Usage </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span><br/>};<br/><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection) {<br/>    model = <span class="main_literal">"llama3.2"</span>,<br/>    stream = <span class="main_literal">true</span><br/>};<br/><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Hello!"</span>);</code></pre>
+          </p>
+          <h2>Tool Integration </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Add tools before chatting</span><br/><span class="main_keyword">var</span> read_file = <span class="main_keyword">new</span> Tools.ReadFile(client);<br/>client.addTool(read_file);<br/><br/><span class="main_comment">// Tools are automatically called when the model requests them</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Read README.md"</span>);</code></pre>
+          </p>
+          <h2>Streaming </h2>
+          <p><pre class="main_source"><code>client.stream = <span class="main_literal">true</span>;<br/>client.message_created.connect((msg, content) =&gt; {<br/>    <span class="main_keyword">if</span> (msg.is_content &amp;&amp; msg.is_stream) {<br/>        <span class="main_comment">// Process incremental content</span><br/>        print(content.chat_content);<br/>    }<br/>});</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.html">OLLMchat</a>
         </div>

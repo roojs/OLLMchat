@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to list available models on the Ollama server.
-	 * 
+	 *
 	 * Retrieves a list of all models that are available for use.
 	 */
 	public class Models : Base

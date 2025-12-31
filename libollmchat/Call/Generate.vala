@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to generate a response for a prompt.
-	 * 
+	 *
 	 * Generates a response for the provided prompt using the /api/generate endpoint.
 	 * This is a simpler endpoint than chat that doesn't maintain conversation history.
 	 */

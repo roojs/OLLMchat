@@ -20,7 +20,7 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Abstract base class for parameter definitions.
-	 * 
+	 *
 	 * Provides shared serialization code for all parameter types.
 	 * Child classes should extend this class.
 	 */

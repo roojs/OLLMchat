@@ -21,7 +21,7 @@ namespace OLLMchat.History
 	/**
 	 * SessionPlaceholder represents a chat session loaded from the database
 	 * but without the chat connected or messages loaded.
-	 * 
+	 *
 	 * When load() is called, it creates a real Session, loads the JSON file,
 	 * copies messages, and replaces itself in the manager.
 	 */
@@ -42,7 +42,7 @@ namespace OLLMchat.History
 		
 		/**
 		 * Default constructor for placeholder session loaded from database.
-		 * 
+		 *
 		 * Used with Object.new_with_properties. Manager will be set as a construct property.
 		 */
 		public SessionPlaceholder(Manager manager)
@@ -53,9 +53,9 @@ namespace OLLMchat.History
 		
 		/**
 		 * Sets the client for this placeholder.
-		 * 
+		 *
 		 * Called after construction from database to set up the client.
-		 * 
+		 *
 		 * @param client The client to set
 		 */
 		internal void set_client(Client client)
@@ -65,14 +65,14 @@ namespace OLLMchat.History
 		
 		/**
 		 * Converts this(a placeholder)int a real Session by loading it from JSON.
-		 * 
+		 *
 		 * This method:
 		 * a) Creates a new Session with chat
 		 * b) Loads the JSON file into a SessionJson
 		 * c) Copies messages from SessionJson into Session
 		 * d) Removes itself from manager.sessions and fires remove_chat signal
 		 * e) Adds the new Session to manager.sessions and fires add_chat signal
-		 * 
+		 *
 		 * @throws Error if loading fails
 		 */
 		public override async SessionBase? load() throws Error

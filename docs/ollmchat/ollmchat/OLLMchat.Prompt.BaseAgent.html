@@ -63,6 +63,9 @@
           <p>Base class for agent prompt generators.</p>
           <p>Provides common functionality for loading resource sections based on agent name. Can be used directly as a default implementation that 
             returns empty system prompt and passes through user input.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Use as default (no modifications)</span><br/><span class="main_keyword">var</span> agent = <span class="main_keyword">new</span> Prompt.BaseAgent();<br/><br/><span class="main_comment">// Fill chat call with prompts</span><br/><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>agent.fill(call, <span class="main_literal">"User question"</span>);<br/><br/><span class="main_comment">// Or create custom agent</span><br/><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyAgent : Prompt.BaseAgent {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">void</span> fill(Call.Chat call, <span class="main_basic_type">string</span> user_input) {<br/>        call.system_content = <span class="main_literal">"You are a helpful assistant."</span>;<br/>        call.chat_content = user_input;<br/>    }<br/>}</code></pre>
+          </p>
         </div>
         <div class="box">
           <div class="headline" onclick="toggle_box (this, 'box-content-314')">All known sub-classes:</div>

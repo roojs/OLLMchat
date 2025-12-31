@@ -20,7 +20,7 @@ namespace OLLMchat.Tools
 {
 	/**
 	 * Tool for fetching web content with automatic format detection and conversion.
-	 * 
+	 *
 	 * This tool fetches content from URLs and returns it in various formats.
 	 * HTML content can be converted to markdown, and binary content is automatically
 	 * converted to base64. The tool automatically detects content types and applies

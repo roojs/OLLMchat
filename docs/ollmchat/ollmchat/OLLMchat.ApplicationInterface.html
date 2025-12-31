@@ -53,7 +53,10 @@
         <div class="description">
           <p>Interface for OLLMchat applications that provides standardized configuration and data directory management.</p>
           <p>Implementations should call type registration methods (e.g., `OLLMvector.Database.register_config()`) directly before calling 
-            `load_config()` if needed.</p>
+            `load_config()` if needed. The base_load_config() method handles Config1 to Config2 migration automatically.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyApp : Object, ApplicationInterface {<br/>    <span class="main_keyword">public</span> Settings.Config<span class="main_literal">2</span> config { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }<br/>    <span class="main_keyword">public</span> <span class="main_basic_type">string</span> data_dir { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; <span class="main_keyword">default</span> = <span class="main_literal">"~/.local/share/myapp"</span>; }<br/><br/>    <span class="main_keyword">public</span> Settings.Config<span class="main_literal">2</span> load_config() {<br/>        <span class="main_comment">// Register types if needed</span><br/>        OLLMvector.Database.register_config();<br/><br/>        <span class="main_comment">// Use base implementation</span><br/>        <span class="main_keyword">return</span> base_load_config();<br/>    }<br/>}</code></pre>
+          </p>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div>

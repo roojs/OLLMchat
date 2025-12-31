@@ -20,10 +20,10 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Represents an available model from the Ollama models cache.
-	 * 
+	 *
 	 * NOTE: This class is technically Ollama-specific, but is kept generic
 	 * for potential future use with other model providers.
-	 * 
+	 *
 	 * Format: { "name": "gemma3", "description": "...", "tags": ["1b", "4b", ...] }
 	 */
 	public class AvailableModel : Object, Json.Serializable
@@ -227,10 +227,10 @@ namespace OLLMchat.Settings
 		/**
 		 * Parses a tag string to extract the numeric size in billions.
 		 * Returns -1 if the tag cannot be parsed.
-		 * 
+		 *
 		 * Note: Returns double to handle decimal values like "0.6b" and "1.7b".
 		 * If all tags are integers, this could be simplified to return int.
-		 * 
+		 *
 		 * Examples:
 		 * - "1b" -> 1.0
 		 * - "4b" -> 4.0
@@ -288,7 +288,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Finds the largest tag that is less than the specified size (in billions).
 		 * Returns null if no such tag exists.
-		 * 
+		 *
 		 * Works with both simple tags (e.g., "4b") and tags with suffixes
 		 * (e.g., "1b-it-qat", "1b-it-q4_K_M") by parsing the numeric size
 		 * from each tag before comparison.

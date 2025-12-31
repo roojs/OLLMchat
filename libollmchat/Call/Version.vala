@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to get the version of the Ollama server.
-	 * 
+	 *
 	 * Retrieves the version string from the server to verify connectivity.
 	 * Used during bootstrap to test the connection.
 	 */
@@ -35,7 +35,7 @@ namespace OLLMchat.Call
 
 		/**
 		 * Executes the version API call and returns the version string.
-		 * 
+		 *
 		 * @return Version string from the server (e.g., "0.12.6")
 		 * @throws Error if the request fails or response is invalid
 		 */

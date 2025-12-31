@@ -20,13 +20,26 @@ namespace OLLMchat.History
 {
 	/**
 	 * Session is a wrapper around Call.Chat that provides history persistence.
-	 * 
+	 *
 	 * It uses SQ (SQLite) for database storage of metadata, and JSON files
-	 * for complete session data including all messages.
-	 * 
-	 * Properties are wrappers around this.chat.client.model, etc.
-	 * Messages come from this.chat.messages with a flag to include extra info during JSON encoding.
-	 * 
+	 * for complete session data including all messages. Properties are wrappers
+	 * around this.chat.client.model, etc. Messages come from this.chat.messages
+	 * with a flag to include extra info during JSON encoding.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * // Create session from chat call
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * var session = new History.Session(call, db);
+	 *
+	 * // Save session to disk and database
+	 * yield session.save();
+	 *
+	 * // Load session later
+	 * var loaded = History.Session.load(id, db, client, config);
+	 * }}}
+	 *
 	 * Session requires a Call.Chat object in its constructor.
 	 */
 	public class Session : SessionBase
@@ -65,7 +78,7 @@ namespace OLLMchat.History
 		/**
 		 * Constructor requires a Call.Chat object.
 		 * Client is created from chat.client.
-		 * 
+		 *
 		 * @param manager The history manager
 		 * @param chat The chat object (required)
 		 */
@@ -236,7 +249,7 @@ namespace OLLMchat.History
 		/**
 		 * Save session to both DB and file asynchronously.
 		 * Updates metadata and saves to both database and JSON file.
-		 * 
+		 *
 		 * @param update_timestamp If true, update the updated_at_timestamp to current time. Should be true only when there's actual chat activity.
 		 */
 		public override async void save_async(bool update_timestamp = true)
@@ -276,7 +289,7 @@ namespace OLLMchat.History
 		 * Write session to JSON file.
 		 * Uses this.fid and to_path() to determine where to write.
 		 * Serializes the session including messages with history info (timestamp, hidden).
-		 * 
+		 *
 		 * @throws Error if write fails
 		 */
 		public override async void write() throws Error
@@ -320,7 +333,7 @@ namespace OLLMchat.History
 		/**
 		 * Read session from JSON file.
 		 * No-op for Session - sessions are loaded once via SessionPlaceholder.load() and never again.
-		 * 
+		 *
 		 * @throws Error if read fails
 		 */
 		public override async void read() throws Error
@@ -379,10 +392,10 @@ namespace OLLMchat.History
 		
 		/**
 		 * Sends a message using this session's client.
-		 * 
+		 *
 		 * Sets streaming mode and either continues an existing conversation with reply()
 		 * or starts a new conversation with chat().
-		 * 
+		 *
 		 * @param text The message text to send
 		 * @param cancellable Optional cancellable for canceling the request
 		 * @return The response from the chat API
@@ -418,7 +431,7 @@ namespace OLLMchat.History
 		/**
 		 * Loads the session data if needed.
 		 * No-op for Session (already loaded).
-		 * 
+		 *
 		 * @return This session (already loaded)
 		 */
 		public override async SessionBase? load() throws Error
@@ -429,7 +442,7 @@ namespace OLLMchat.History
 		
 		/**
 		 * Cancels the current request if one is active.
-		 * 
+		 *
 		 * Safe to call if no active request exists.
 		 */
 		public override void cancel_current_request()

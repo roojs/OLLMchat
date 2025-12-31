@@ -20,7 +20,7 @@ namespace OLLMchat.ChatPermission
 {
 	/**
 	 * Dummy implementation of Provider for testing.
-	 * 
+	 *
 	 * Logs all permission requests using GLib.debug().
 	 * Always allows READ requests, denies WRITE and EXECUTE requests.
 	 */

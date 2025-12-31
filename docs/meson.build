@@ -77,7 +77,9 @@ valadoc_docs = custom_target('valadoc',
     '../libocmarkdowngtk/Table.vala',
     '../libocmarkdowngtk/TableCell.vala',
     # libollmchat sources (depends on libocagent and libocsqlite)
+    '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',
+    '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
     '../libollmchat/Settings/Config1.vala',
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
@@ -86,6 +88,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/AvailableModel.vala',
     '../libollmchat/Settings/AvailableModels.vala',
     '../libollmchat/Client.vala',
+    '../libollmchat/Call/namespace.vala',  # Call namespace documentation
     '../libollmchat/Call/Base.vala',
     '../libollmchat/Call/Chat.vala',
     '../libollmchat/Call/Embed.vala',
@@ -98,6 +101,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Message.vala',
     '../libollmchat/ChatContentInterface.vala',
     '../libollmchat/OllamaBase.vala',
+    '../libollmchat/Response/namespace.vala',  # Response namespace documentation
     '../libollmchat/Response/Base.vala',
     '../libollmchat/Response/CallFunction.vala',
     '../libollmchat/Response/Chat.vala',
@@ -105,6 +109,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Response/Model.vala',
     '../libollmchat/Response/Pull.vala',
     '../libollmchat/Response/ToolCall.vala',
+    '../libollmchat/Tool/namespace.vala',  # Tool namespace documentation
     '../libollmchat/Tool/RequestBase.vala',
     '../libollmchat/Tool/Tool.vala',
     '../libollmchat/Tool/Param.vala',
@@ -112,10 +117,13 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Tool/ParamObject.vala',
     '../libollmchat/Tool/ParamArray.vala',
     '../libollmchat/Tool/Function.vala',
+    '../libollmchat/ChatPermission/namespace.vala',  # ChatPermission namespace documentation
     '../libollmchat/ChatPermission/Provider.vala',
     '../libollmchat/ChatPermission/Dummy.vala',
+    '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
     '../libollmchat/Prompt/BaseAgent.vala',  # Must come before History/Manager.vala (Manager uses Prompt.BaseAgent)
     '../libollmchat/Prompt/JustAsk.vala',
+    '../libollmchat/History/namespace.vala',  # History namespace documentation
     '../libollmchat/History/Manager.vala',
     '../libollmchat/History/SessionBase.vala',
     '../libollmchat/History/Session.vala',

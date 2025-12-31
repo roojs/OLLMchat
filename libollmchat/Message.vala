@@ -19,8 +19,37 @@
 namespace OLLMchat
 {
 	/**
-	 * Simple message class for chat conversations.
-	 * Implements Json.Serializable for use in chat calls.
+	 * Message class for chat conversations with role-based behavior.
+	 *
+	 * Messages have different roles that control their behavior and visibility:
+	 * * "user" / "user-sent": User messages (user-sent is visible in UI)
+	 * * "assistant": LLM response (not directly visible, use content-stream instead)
+	 * * "content-stream" / "content-non-stream": Visible assistant content
+	 * * "think-stream": Thinking output (for models that support it)
+	 * * "tool": Tool execution results
+	 * * "ui": UI messages displayed via tool_message
+	 * * "system": System prompts
+	 * * "end-stream": Stream end marker (not displayed)
+	 * * "done": Completion marker (not displayed)
+	 *
+	 * Role changes automatically set flags (is_user, is_llm, is_content, etc.)
+	 * for easy filtering and UI display decisions.
+	 *
+	 * == Example ==
+	 *
+	 * {{{
+	 * // Create a user message
+	 * var msg = new Message(call, "user-sent", "Hello!");
+	 *
+	 * // Check message type
+	 * if (msg.is_user && msg.is_ui_visible) {
+	 *     // Display in UI
+	 * }
+	 *
+	 * // Create streaming content message
+	 * var content_msg = new Message(call, "content-stream", "");
+	 * content_msg.chat_content = "Partial response...";
+	 * }}}
 	 */
 	public class Message : Object, Json.Serializable
 	{
@@ -125,7 +154,7 @@ namespace OLLMchat
 		/**
 		 * Constructor for tool response messages.
 		 * Used to send tool execution results back to OLLMchat.
-		 * 
+		 *
 		 * @param message_interface The message interface
 		 * @param tool_call_id The ID of the tool call this response corresponds to
 		 * @param name The name of the tool function that was executed
@@ -144,7 +173,7 @@ namespace OLLMchat
 		/**
 		 * Constructor for tool call failure messages.
 		 * Used when tool execution fails with an error.
-		 * 
+		 *
 		 * @param message_interface The message interface
 		 * @param tool_call The tool call that failed
 		 * @param e The error that occurred during execution
@@ -161,7 +190,7 @@ namespace OLLMchat
 		/**
 		 * Constructor for invalid tool call messages.
 		 * Used when a tool is not found or not available.
-		 * 
+		 *
 		 * @param message_interface The message interface
 		 * @param tool_call The tool call that is invalid
 		 * @param err_message The error message to send to the LLM
@@ -181,7 +210,7 @@ namespace OLLMchat
 		/**
 		 * Constructor for assistant messages with tool calls.
 		 * Used when Ollama requests tool execution (tool call request from Ollama).
-		 * 
+		 *
 		 * @param message_interface The message interface
 		 * @param tool_calls The list of tool calls requested by the assistant
 		 */
