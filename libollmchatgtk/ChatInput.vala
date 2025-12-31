@@ -41,8 +41,8 @@ namespace OLLMchatGtk
 		private bool is_loading_models = false;
 		private Gtk.MenuButton tools_menu_button;
 		private Binding? tools_button_binding = null;
-		private bool is_tool_list_loaded = false;
-		private Gtk.Box? tools_popover_box = null;
+		private bool is_tool_list_loaded { get; set; default = false; }
+		private Gtk.Box? tools_popover_box { get; set; default = null; }
 		
 
 		/**
