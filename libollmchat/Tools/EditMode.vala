@@ -56,7 +56,7 @@ When complete_file=true, do not include line numbers in the code block. When com
 		 * This signal is emitted for each change as it is applied, allowing UI
 		 * components to track and preview changes non-blockingly.
 		 */
-		public signal void change_done(string file_path, EditModeChange change);
+		public signal void change_done(string file_path, OLLMfiles.FileChange change);
 		
 		/**
 		 * ProjectManager instance for accessing project context.
