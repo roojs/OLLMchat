@@ -174,7 +174,7 @@ The project is organized into component directories, each with its own `meson.bu
 
 **Markdown Libraries:**
 - `libocmarkdown/` - Markdown parsing and rendering (libocmarkdown.so, namespace: `Markdown`)
-- `libocmarkdowngtk/` - GTK-specific markdown rendering (libocmarkdowngtk.so, namespace: `MarkdownGtk`)
+- `libocmarkdowngtk/` - Embeddable widget for rendering markdown using GtkTextView and GtkSourceView (libocmarkdowngtk.so, namespace: `MarkdownGtk`)
 
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
