@@ -76,7 +76,7 @@ namespace OLLMchat.Tools
 			// Check if file is in active project (skip permission prompt if so)
 			// Files in active project are auto-approved and don't need permission checks
 			var project_manager = ((EditMode) this.tool).project_manager;
-			if (project_manager?.get_file_from_active_project(this.normalized_path) != null) {
+			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
 				// File is in active project - skip permission prompt
 				// Clear permission question to indicate auto-approved
 				this.permission_question = "";
@@ -538,7 +538,7 @@ namespace OLLMchat.Tools
 			var project_manager = ((EditMode) this.tool).project_manager;
 			
 			// First, try to get from active project
-			var file = project_manager?.get_file_from_active_project(this.normalized_path);
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
 			var is_in_project = (file != null);
 			
 			// Only check permission if file is NOT in active project
