@@ -79,20 +79,19 @@ namespace OLLMvector.Tool
 			);
 			
 			// Build search request message with query and options
-			var request_message = new StringBuilder();
-			request_message.append("Query: ").append(this.query);
+			var request_message = "Query: " + this.query;
 			if (this.language != null && this.language != "") {
-				request_message.append("\nLanguage: ").append(this.language);
+				request_message += "\nLanguage: " + this.language;
 			}
 			if (this.element_type != null && this.element_type != "") {
-				request_message.append("\nElement Type: ").append(this.element_type);
+				request_message += "\nElement Type: " + this.element_type;
 			}
-			request_message.append("\nMax Results: ").append(this.max_results.to_string());
+			request_message += "\nMax Results: " + this.max_results.to_string();
 			
 			// Send search query to UI (same format as commands)
 			this.chat_call.client.message_created(
 				new OLLMchat.Message(this.chat_call, "ui",
-					"```txt Code Search requested\n" + request_message.str + "\n```"),
+					"```txt Code Search requested\n" + request_message + "\n```"),
 				this.chat_call
 			);
 			
