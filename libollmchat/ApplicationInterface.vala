@@ -28,7 +28,25 @@ namespace OLLMchat
 	 * 
 	 * Implementations should call type registration methods (e.g.,
 	 * `OLLMvector.Database.register_config()`) directly before calling
-	 * `load_config()` if needed.
+	 * `load_config()` if needed. The base_load_config() method handles
+	 * Config1 to Config2 migration automatically.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * public class MyApp : Object, ApplicationInterface {
+	 *     public Settings.Config2 config { get; set; }
+	 *     public string data_dir { get; set; default = "~/.local/share/myapp"; }
+	 *     
+	 *     public Settings.Config2 load_config() {
+	 *         // Register types if needed
+	 *         OLLMvector.Database.register_config();
+	 *         
+	 *         // Use base implementation
+	 *         return base_load_config();
+	 *     }
+	 * }
+	 * }}}
 	 * 
 	 * @since 1.0
 	 */

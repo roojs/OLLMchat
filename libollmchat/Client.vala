@@ -24,6 +24,43 @@ namespace OLLMchat
 	 * Provides methods for chat, model management, and tool integration. Handles
 	 * HTTP requests, streaming responses, and function calling. Manages tool
 	 * registration and execution with permission checking.
+	 * 
+	 * == Basic Usage ==
+	 * 
+	 * {{{
+	 * var connection = new Settings.Connection() {
+	 *     url = "http://127.0.0.1:11434/api"
+	 * };
+	 * var client = new Client(connection) {
+	 *     model = "llama3.2",
+	 *     stream = true
+	 * };
+	 * 
+	 * var response = yield client.chat("Hello!");
+	 * }}}
+	 * 
+	 * == Tool Integration ==
+	 * 
+	 * {{{
+	 * // Add tools before chatting
+	 * var read_file = new Tools.ReadFile(client);
+	 * client.addTool(read_file);
+	 * 
+	 * // Tools are automatically called when the model requests them
+	 * var response = yield client.chat("Read README.md");
+	 * }}}
+	 * 
+	 * == Streaming ==
+	 * 
+	 * {{{
+	 * client.stream = true;
+	 * client.message_created.connect((msg, content) => {
+	 *     if (msg.is_content && msg.is_stream) {
+	 *         // Process incremental content
+	 *         print(content.chat_content);
+	 *     }
+	 * });
+	 * }}}
 	 */
 	public class Client : Object
 	{

@@ -21,6 +21,21 @@ namespace OLLMchat.Settings
 	/**
 	 * Represents a single server connection configuration.
 	 * 
+	 * Stores connection details for Ollama or OpenAI-compatible API servers.
+	 * Used by Client to establish API connections.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * var connection = new Settings.Connection() {
+	 *     name = "Local Ollama",
+	 *     url = "http://127.0.0.1:11434/api",
+	 *     is_default = true
+	 * };
+	 * 
+	 * var client = new Client(connection);
+	 * }}}
+	 * 
 	 * @since 1.0
 	 */
 	public class Connection : Object, Json.Serializable

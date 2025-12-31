@@ -23,7 +23,21 @@ namespace OLLMchat.Call
 	 * 
 	 * Handles chat conversations with the LLM, including message history, tool calling,
 	 * streaming responses, and automatic tool execution. Manages the conversation
-	 * flow and tool call recursion.
+	 * flow and tool call recursion. Automatically executes tools when the model
+	 * requests them and continues the conversation with tool results.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * var call = new Call.Chat(client, "llama3.2");
+	 * call.messages.add(new Message(call, "user", "Hello!"));
+	 * 
+	 * // Execute chat (handles tool calls automatically)
+	 * var response = yield call.exec_chat();
+	 * 
+	 * // Access response content
+	 * print(response.message.content);
+	 * }}}
 	 */
 	public class Chat : Base, ChatContentInterface
 	{

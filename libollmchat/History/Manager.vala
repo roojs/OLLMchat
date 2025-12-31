@@ -23,6 +23,25 @@ namespace OLLMchat.History
 	 * 
 	 * Handles saving and loading chat sessions to/from disk and SQLite database.
 	 * Manages the history directory structure and provides methods for session management.
+	 * Creates new clients for each session while sharing tools and configuration.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * var manager = new History.Manager(history_dir, db, base_client, config);
+	 * 
+	 * // Create new session
+	 * var session = yield manager.new_session();
+	 * 
+	 * // Get client for this session (shares tools/config)
+	 * var client = manager.session.client;
+	 * 
+	 * // Switch to existing session
+	 * yield manager.switch_to_session(existing_session);
+	 * 
+	 * // Save current session
+	 * yield manager.save_session();
+	 * }}}
 	 */
 	public class Manager : Object
 	{

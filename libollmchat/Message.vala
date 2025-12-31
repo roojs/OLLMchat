@@ -19,8 +19,34 @@
 namespace OLLMchat
 {
 	/**
-	 * Simple message class for chat conversations.
-	 * Implements Json.Serializable for use in chat calls.
+	 * Message class for chat conversations with role-based behavior.
+	 * 
+	 * Messages have different roles that control their behavior and visibility:
+	 *  * "user" / "user-sent": User messages (user-sent is visible in UI)
+	 *  * "assistant": LLM response (not directly visible, use content-stream instead)
+	 *  * "content-stream" / "content-non-stream": Visible assistant content
+	 *  * "think-stream": Thinking output (for models that support it)
+	 *  * "tool": Tool execution results
+	 *  * "system": System prompts
+	 * 
+	 * Role changes automatically set flags (is_user, is_llm, is_content, etc.)
+	 * for easy filtering and UI display decisions.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * // Create a user message
+	 * var msg = new Message(call, "user-sent", "Hello!");
+	 * 
+	 * // Check message type
+	 * if (msg.is_user && msg.is_ui_visible) {
+	 *     // Display in UI
+	 * }
+	 * 
+	 * // Create streaming content message
+	 * var content_msg = new Message(call, "content-stream", "");
+	 * content_msg.chat_content = "Partial response...";
+	 * }}}
 	 */
 	public class Message : Object, Json.Serializable
 	{

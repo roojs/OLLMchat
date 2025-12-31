@@ -22,8 +22,36 @@ namespace OLLMchat.Tool
 	 * Abstract base class for tools that can be used with Ollama function calling.
 	 * 
 	 * This class contains all the implementation logic. Subclasses must implement
-	 * the abstract properties. The Function class is built from Tool's properties
-	 * on construction.
+	 * the abstract properties (name, description, parameter_description). The Function
+	 * class is built from Tool's properties on construction. Parameter descriptions
+	 * use a special syntax with @type, @property, and @param directives.
+	 * 
+	 * == Example ==
+	 * 
+	 * {{{
+	 * public class MyTool : Tool.Interface {
+	 *     public override string name { get { return "my_tool"; } }
+	 *     public override string description { get { return "Does something useful"; } }
+	 *     public override string parameter_description {
+	 *         get {
+	 *             return """
+	 * @param file_path string The path to the file
+	 * @param line_number int Optional line number (default: 0)
+	 * """;
+	 *         }
+	 *     }
+	 *     
+	 *     public MyTool(Client client) {
+	 *         base(client);
+	 *     }
+	 *     
+	 *     public override async string? execute(Json.Object parameters) {
+	 *         var file_path = parameters.get_string_member("file_path");
+	 *         // ... tool implementation
+	 *         return "Result";
+	 *     }
+	 * }
+	 * }}}
 	 */
 	public abstract class Interface : Object, Json.Serializable
 	{
