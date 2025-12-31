@@ -80,10 +80,10 @@ namespace OLLMvector.Tool
 			
 			// Build search request message with query and options
 			var request_message = "Query: " + this.query;
-			if (this.language != null && this.language != "") {
+			if ((this.language ?? "") != "") {
 				request_message += "\nLanguage: " + this.language;
 			}
-			if (this.element_type != null && this.element_type != "") {
+			if ((this.element_type ?? "") != "") {
 				request_message += "\nElement Type: " + this.element_type;
 			}
 			request_message += "\nMax Results: " + this.max_results.to_string();
