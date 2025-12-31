@@ -20,14 +20,14 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
 - **Libraries** - A set of reusable libraries for LLM access, tool integration, and markdown processing
   - `libocagent.so` - Base agent library for AI agent functionality
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
-  - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
+  - `libocmarkdowngtk.so` - Markdown GTK rendering library (includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
-  - `libocfiles.so` - File and project management library (depends on libocsqlite, no GTK dependencies)
-  - `liboccoder.so` - Code editor and project management library (depends on libocsqlite, includes GTK components)
-  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (depends on libocfiles, libollmchat, libocsqlite, no GTK dependencies)
-  - `libollmchat.so` - Base library for Ollama/OpenAI API access (depends on libocsqlite, no GTK dependencies)
-  - `liboctools.so` - Tools library for file operations and utilities (depends on libollmchat, libocfiles, no GTK dependencies)
-  - `libollmchatgtk.so` - GTK library with chat widgets (depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite, includes GTK components)
+  - `libocfiles.so` - File and project management library (no GTK dependencies)
+  - `liboccoder.so` - Code editor and project management library (includes GTK components)
+  - `libocvector.so` - Semantic codebase search library using vector embeddings and FAISS (no GTK dependencies)
+  - `libollmchat.so` - Base library for Ollama/OpenAI API access (no GTK dependencies)
+  - `liboctools.so` - Tools library for file operations and utilities (no GTK dependencies)
+  - `libollmchatgtk.so` - GTK library with chat widgets (includes GTK components)
 - **Example Tools** - Command-line utilities demonstrating library capabilities:
   - `oc-test-cli` - Test tool for LLM API calls (models, chat, streaming)
   - `oc-test-files` - Test tool for file and folder management (recursively lists files/folders with git status)
