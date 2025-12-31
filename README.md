@@ -10,14 +10,15 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
 
 - **Main Application (`ollmchat`)** - A complete AI chat client with:
   - Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
+  - Settings dialog with model search and download from Ollama
   - Code assistant agent with semantic codebase search capabilities
   - Chat history management with session browser
   - Tool integration: ReadFile, EditMode, RunCommand, WebFetch, and CodebaseSearch (semantic search)
   - Project management and file tracking
-  - Bootstrap dialog for initial server configuration
   - Permission system for secure tool access
   - Support for multiple agent types (Just Ask, Code Assistant)
 - **Libraries** - A set of reusable libraries for LLM access, tool integration, and markdown processing
+  - `libocagent.so` - Base agent library for AI agent functionality
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (depends on libocmarkdown, includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
@@ -66,6 +67,42 @@ Implementation plans and roadmap:
 
 This directory contains the OLLMchat library and test applications for working with Ollama API and prompt generation.
 
+## Dependencies
+
+Before building, install the required dependencies. On Debian/Ubuntu systems:
+
+```bash
+sudo apt install \
+  meson \
+  ninja-build \
+  valac \
+  libgee-0.8-dev \
+  libglib2.0-dev \
+  libgtk-4-dev \
+  libgtksourceview-5-dev \
+  libadwaita-1-dev \
+  libsoup-3.0-dev \
+  libjson-glib-dev \
+  libxml2-dev \
+  libsqlite3-dev \
+  libfaiss-dev \
+  pkg-config
+```
+
+**For code search functionality**, you'll also need:
+
+- **Tree-sitter language parsers**: Install tree-sitter parsers for the languages you want to index. A script is available at `docs/tools/tree-sitter-packages.php` to generate Debian packages for tree-sitter language parsers from GitHub repositories.
+
+- **Ollama models**: For vector search to work, you need to have the following models available in Ollama:
+  - `bge-m3:latest` - For generating embeddings
+  - `qwen2.5:latest` or `qwen2.5-coder:latest` - For code analysis and description generation
+
+You can download these models through the settings dialog in the application, or manually using:
+```bash
+ollama pull bge-m3:latest
+ollama pull qwen2.5:latest
+```
+
 ## Building
 
 To build the project, follow these steps:
@@ -89,6 +126,7 @@ ninja -C build
 ```
 
 This will build:
+- `libocagent.so` - Base agent library (with headers, VAPI, and GIR files)
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
@@ -218,78 +256,6 @@ The project is organized into component directories, each with its own `meson.bu
 - `docs/` - Generated documentation (Valadoc) and implementation plans
 - `resources/` - Resource files including prompt templates
 - `vapi/` - VAPI files for external dependencies
-
-## Dependencies
-
-**Markdown base library (`libocmarkdown.so`)**:
-- Gee
-- GLib/GIO
-- libxml-2.0
-- libsoup-3.0
-- json-glib
-
-**Markdown GTK library (`libocmarkdowngtk.so`)**:
-- All markdown base library dependencies
-- GTK4
-- gtksourceview-5
-
-**SQLite library (`libocsqlite.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-
-**File management library (`libocfiles.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-- libocsqlite (depends on libocsqlite.so)
-
-**Code editor library (`liboccoder.so`)**:
-- Gee
-- GLib/GIO
-- GTK4
-- gtksourceview-5
-- sqlite3
-- json-glib
-- libocsqlite (depends on libocsqlite.so)
-
-**Vector search library (`libocvector.so`)**:
-- Gee
-- GLib/GIO
-- sqlite3
-- json-glib
-- libsoup-3.0
-- FAISS (via C++ wrapper)
-- tree-sitter (via VAPI)
-- libocfiles (depends on libocfiles.so, uses OLLMfiles namespace)
-- libollmchat (depends on libollmchat.so, uses OLLMchat namespace)
-- libocsqlite (depends on libocsqlite.so)
-- libocagent (depends on libocagent.so)
-- BLAS, LAPACK, OpenMP (for FAISS)
-
-**OLLMchat base library (`libollmchat.so`)**:
-- Gee
-- GLib/GIO
-- json-glib
-- libsoup-3.0
-- libocsqlite (depends on libocsqlite.so)
-
-**Tools library (`liboctools.so`)**:
-- Gee
-- GLib/GIO
-- json-glib
-- libollmchat (depends on libollmchat.so)
-- libocfiles (depends on libocfiles.so)
-
-**OLLMchat GTK library (`libollmchatgtk.so`)**:
-- All OLLMchat base library dependencies
-- All markdown GTK library dependencies
-- GTK4
-- gtksourceview-5
-- libadwaita-1 (for test executables)
-
-**Test executables**:
-- All dependencies above (ollmchat and oc-markdown-test require GTK4, gtksourceview-5, and libadwaita-1)
 
 ## License
 
