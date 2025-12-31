@@ -627,6 +627,32 @@ namespace OLLMchat.Tools
 		}
 		
 		/**
+		 * Gets line count from buffer, handling errors gracefully.
+		 * Returns 0 if counting fails (non-fatal error).
+		 * 
+		 * @param file The file to count lines for, or null
+		 * @return Line count, or 0 if unavailable
+		 */
+		private async int get_line_count_from_buffer(OLLMfiles.File? file)
+		{
+			if (file == null) {
+				return 0;
+			}
+			
+			try {
+				// Ensure buffer is loaded (should already be after write/apply_edits)
+				if (!file.buffer.is_loaded) {
+					yield file.buffer.read_async();
+				}
+				// Use buffer's built-in get_line_count() method
+				return file.buffer.get_line_count();
+			} catch (Error e) {
+				GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
+				return 0;
+			}
+		}
+		
+		/**
 		 * Creates a new file with all changes applied.
 		 * Uses buffer-based writing for automatic backups and proper file handling.
 		 */
