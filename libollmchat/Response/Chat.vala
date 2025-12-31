@@ -20,23 +20,23 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Response from a chat API call.
-	 * 
+	 *
 	 * Contains the assistant's message, tool calls (if any), and metadata.
 	 * Handles streaming responses and tool call detection for automatic execution.
-	 * 
+	 *
 	 * == Example ==
-	 * 
+	 *
 	 * {{{
 	 * var response = yield client.chat("Hello!");
-	 * 
+	 *
 	 * // Access message content
 	 * print(response.message.content);
-	 * 
+	 *
 	 * // Check for tool calls
 	 * if (response.tool_calls.size > 0) {
 	 *     // Tools were requested by the model
 	 * }
-	 * 
+	 *
 	 * // Access performance metrics
 	 * print(@"Total duration: $(response.total_duration)ns");
 	 * }}}
@@ -86,7 +86,7 @@ namespace OLLMchat.Response
 
 		/**
 		 * Generates a summary string with performance metrics.
-		 * 
+		 *
 		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s"
 		 *         Returns empty string if eval_duration is 0 (no metrics available)
 		 */
@@ -247,7 +247,7 @@ namespace OLLMchat.Response
 		/**
 		 * Creates a reply Chat with conversation history and executes it.
 		 * Adds the previous user message and this assistant response to the messages array, then executes the call.
-		 * 
+		 *
 		 * @param text The new user message text
 		 * @return The Chat from executing the reply call
 		 */

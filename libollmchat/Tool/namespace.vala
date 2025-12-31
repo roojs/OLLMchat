@@ -18,7 +18,7 @@
 
 /**
  * Tool interface and parameter system namespace.
- * 
+ *
  * The OLLMchat.Tool namespace provides the abstract base for function-calling
  * tools, parameter type definitions, and function schema generation. Tools
  * use a special parameter description syntax with @type, @property, and @param

@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to generate embeddings for input text.
-	 * 
+	 *
 	 * Creates vector embeddings representing the input text using the specified model.
 	 * Supports single string or array of strings as input.
 	 */
@@ -113,7 +113,7 @@ namespace OLLMchat.Call
 
 		/**
 		 * Normalizes a single embedding vector to unit length (L2 normalization).
-		 * 
+		 *
 		 * @param embedding The embedding vector to normalize
 		 */
 		private void normalize_embedding(Gee.ArrayList<double?> embedding)

@@ -20,7 +20,7 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Represents model information from the Ollama server.
-	 * 
+	 *
 	 * Contains model metadata including name, size, capabilities, context length,
 	 * and other details. Used in model listing and model information responses.
 	 */
@@ -28,7 +28,7 @@ namespace OLLMchat.Response
 	{
 		/**
 		 * Model name/identifier. This is the primary identifier for the model.
-		 * 
+		 *
 		 * When setting Client.model, always use this property (model.name), not model.model.
 		 * This ensures consistency across all model sources (models(), ps(), show_model()).
 		 */
@@ -47,7 +47,7 @@ namespace OLLMchat.Response
 		public int64 eval_duration { get; set; default = 0; }
 		/**
 		 * Model identifier from ps() API response. 
-		 * 
+		 *
 		 * Note: For setting Client.model, always use model.name instead of this property
 		 * to ensure consistency. This property may be null or differ from name in some contexts.
 		 */
@@ -56,7 +56,7 @@ namespace OLLMchat.Response
 		public int context_length { get; set; default = 0; }
 		/**
 		 * Model parameters string from show API response.
-		 * 
+		 *
 		 * Contains default parameter values in format like "temperature 0.7\nnum_ctx 2048"
 		 * When set, automatically fills this.options with parsed values.
 		 */
@@ -75,7 +75,7 @@ namespace OLLMchat.Response
 		
 		/**
 		 * Default options parsed from model parameters.
-		 * 
+		 *
 		 * Automatically populated when parameters property is set.
 		 */
 		public OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
@@ -193,10 +193,10 @@ namespace OLLMchat.Response
 		 * - capabilities
 		 * - context_length (if present in show response)
 		 * - parameters (if present in show response)
-		 * 
+		 *
 		 * Does NOT update fields from models() API (name, size, digest) or
 		 * runtime fields from ps() API (size_vram, durations, counts).
-		 * 
+		 *
 		 * @param source The model from show API response to copy properties from
 		 */
 		public void updateFrom(Model source)
@@ -236,7 +236,7 @@ namespace OLLMchat.Response
 		
 		/**
 		* Gets the cache file path for this model.
-		* 
+		*
 		* @return Path to the cache file in ~/.local/share/ollmchat/models/
 		*/
 		public string get_cache_path()
@@ -262,7 +262,7 @@ namespace OLLMchat.Response
 
 		/**
 		* Loads model details from cache if available and updates this model using updateFrom().
-		* 
+		*
 		* @return true if cache was loaded successfully, false otherwise
 		*/
 		public bool load_from_cache()

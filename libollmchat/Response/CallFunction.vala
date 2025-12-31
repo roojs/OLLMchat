@@ -21,9 +21,9 @@ namespace OLLMchat.Response
 	/**
 	 * Represents a function call with name and arguments.
 	 * Used within ToolCall to represent the function being called.
-	 * 
+	 *
 	 * JSON example handled by this class:
-	 * 
+	 *
 	 *   "function": {
 	 *     "name": "read_file",
 	 *     "arguments": {
@@ -35,7 +35,7 @@ namespace OLLMchat.Response
 	 *       "tags": ["important", "documentation"]
 	 *     }
 	 *   }
-	 * 
+	 *
 	 * This is the "function" object within a tool call.
 	 */
 	public class CallFunction : Object, Json.Serializable

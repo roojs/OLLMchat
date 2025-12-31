@@ -20,7 +20,7 @@ namespace OLLMchat.History
 {
 	/**
 	 * SessionJson is used only for loading messages from JSON files.
-	 * 
+	 *
 	 * This is a minimal temporary class used only during JSON deserialization.
 	 */
 	public class SessionJson : Object, Json.Serializable

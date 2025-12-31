@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to get detailed information about a specific model.
-	 * 
+	 *
 	 * Retrieves model details including size, digest, capabilities, and other metadata.
 	 * Can optionally include verbose information.
 	 */

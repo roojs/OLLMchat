@@ -20,7 +20,7 @@ namespace OLLMchat.History
 {
 	/**
 	 * Base class for Session implementations.
-	 * 
+	 *
 	 * Contains shared functionality that doesn't depend on chat existing.
 	 * Subclasses must implement abstract methods for chat-dependent operations.
 	 * Provides common properties like id, title, and client management.
@@ -121,7 +121,7 @@ namespace OLLMchat.History
 		
 		/**
 		 * Constructor for base class.
-		 * 
+		 *
 		 * @param manager The history manager (can be set via construct property)
 		 */
 		protected SessionBase(Manager manager)
@@ -256,7 +256,7 @@ namespace OLLMchat.History
 		/**
 		 * Convert file ID to path format.
 		 * Converts ID format "Y-m-d-H-i-s" to path format "YYYY/mm/dd/h-i-s"
-		 * 
+		 *
 		 * @return File path relative to history directory
 		 */
 		public string to_path()
@@ -276,7 +276,7 @@ namespace OLLMchat.History
 		/**
 		 * Save session to both DB and file asynchronously.
 		 * Must be implemented by subclasses.
-		 * 
+		 *
 		 * @param update_timestamp If true, update the updated_at_timestamp to current time. Should be true only when there's actual chat activity.
 		 */
 		public abstract async void save_async(bool update_timestamp = true);
@@ -284,7 +284,7 @@ namespace OLLMchat.History
 		/**
 		 * Write session to JSON file.
 		 * Must be implemented by subclasses.
-		 * 
+		 *
 		 * @throws Error if write fails
 		 */
 		public abstract async void write() throws Error;
@@ -292,7 +292,7 @@ namespace OLLMchat.History
 		/**
 		 * Read session from JSON file.
 		 * Must be implemented by subclasses.
-		 * 
+		 *
 		 * @throws Error if read fails
 		 */
 		public abstract async void read() throws Error;
@@ -300,7 +300,7 @@ namespace OLLMchat.History
 		/**
 		 * Loads the session data if needed (e.g., for SessionPlaceholder).
 		 * No-op for sessions that are already loaded.
-		 * 
+		 *
 		 * @return The loaded session (may be a new Session object for SessionPlaceholder, or this for already-loaded sessions)
 		 * @throws Error if loading fails
 		 */
@@ -309,7 +309,7 @@ namespace OLLMchat.History
 		/**
 		 * Sends a message using this session's client.
 		 * Must be implemented by subclasses.
-		 * 
+		 *
 		 * @param text The message text to send
 		 * @param cancellable Optional cancellable for canceling the request
 		 * @return The response from the chat API

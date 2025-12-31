@@ -56,18 +56,18 @@ namespace OLLMchat.ChatPermission
 	
 	/**
 	 * Abstract base class for requesting permission to execute tool operations.
-	 * 
+	 *
 	 * Subclasses can provide different approval mechanisms:
 	 * - User prompts/dialogs
 	 * - Automatic approval based on rules
 	 * - Logging-only implementations for testing
-	 * 
+	 *
 	 * Includes permission storage system with two layers:
 	 * - Global (permanent): Stored in tool.permissions.json (only if config_file is set)
 	 * - Session (temporary): Stored in memory for current session
-	 * 
+	 *
 	 * == Example ==
-	 * 
+	 *
 	 * {{{
 	 * public class MyPermissionProvider : ChatPermission.Provider {
 	 *     public override async PermissionResult check(
@@ -77,7 +77,7 @@ namespace OLLMchat.ChatPermission
 	 *         if (stored != PermissionResult.ASK) {
 	 *             return stored;
 	 *         }
-	 *         
+	 *
 	 *         // Ask user
 	 *         var response = yield ask_user(tool_name, op, resource);
 	 *         store_permission(tool_name, op, resource, response);
@@ -117,7 +117,7 @@ namespace OLLMchat.ChatPermission
 		
 		/**
 		 * Constructor.
-		 * 
+		 *
 		 * @param directory Directory where permission files are stored (empty string by default)
 		 */
 		protected Provider(string directory = "")
@@ -148,12 +148,12 @@ namespace OLLMchat.ChatPermission
 		
 		/**
 		 * Requests permission to execute a tool operation.
-		 * 
+		 *
 		 * This method checks permission storage layers in order:
 		 * 1. Session (temporary)
 		 * 2. Global (permanent)
 		 * 3. If not found, calls request_user() to ask user
-		 * 
+		 *
 		 * @param request The Request instance requesting permission
 		 * @return true if permission is granted, false otherwise
 		 */
@@ -197,7 +197,7 @@ namespace OLLMchat.ChatPermission
 		/**
 		 * Abstract method for requesting permission from user.
 		 * Subclasses implement this to show UI dialogs, prompts, etc.
-		 * 
+		 *
 		 * @param request The Request instance requesting permission
 		 * @return PermissionResponse enum indicating user's choice
 		 */
@@ -207,7 +207,7 @@ namespace OLLMchat.ChatPermission
 		 * Checks if permission is currently granted for a tool operation.
 		 * This is a synchronous check that only looks at stored permissions,
 		 * it does not ask the user.
-		 * 
+		 *
 		 * @param request The Request instance to check permissions for
 		 * @return true if permission is granted, false if denied or unknown
 		 */
@@ -238,7 +238,7 @@ namespace OLLMchat.ChatPermission
 		
 		/**
 		 * Checks if a permission string allows the requested operation(s).
-		 * 
+		 *
 		 * @param perm Permission string (e.g., "rwx", "r--", "---", "???")
 		 * @param operation Operation type(s) (can be combined with |, e.g., READ | WRITE)
 		 * @return PermissionResult.YES if all operations allowed, PermissionResult.NO if any denied, PermissionResult.ASK if unknown
@@ -301,7 +301,7 @@ namespace OLLMchat.ChatPermission
 		 * Normalizes a path for consistent storage and lookup.
 		 * If relative_path is set, converts relative paths to absolute using that base path.
 		 * Always resolves symlinks regardless of relative_path setting.
-		 * 
+		 *
 		 * @param path The path to normalize
 		 * @param depth Current recursion depth (prevents infinite loops from symlink cycles)
 		 * @return Normalized path with symlinks resolved
@@ -350,10 +350,10 @@ namespace OLLMchat.ChatPermission
 		
 		/**
 		 * Handles user's permission response and updates storage accordingly.
-		 * 
+		 *
 		 * If config_file is empty, ALWAYS responses are treated as SESSION.
 		 * When WRITE permission is granted, READ permission is automatically granted as well.
-		 * 
+		 *
 		 * @param target_path The normalized target path
 		 * @param operation The operation type(s) (can be combined with |, e.g., READ | WRITE)
 		 * @param response The user's response enum
@@ -404,7 +404,7 @@ namespace OLLMchat.ChatPermission
 		static char[] op_chars = {'r', 'w', 'x'};
 		/**
 		 * Updates a permission string with new operation permission(s).
-		 * 
+		 *
 		 * @param current Current permission string (e.g., "rw-", "???")
 		 * @param operation Operation type(s) (can be combined with |, e.g., READ | WRITE)
 		 * @param allowed Whether the operation(s) are allowed

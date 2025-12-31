@@ -20,21 +20,21 @@ namespace OLLMchat.Call
 {
 	/**
 	 * Chat API call implementation for sending messages and receiving responses.
-	 * 
+	 *
 	 * Handles chat conversations with the LLM, including message history, tool calling,
 	 * streaming responses, and automatic tool execution. Manages the conversation
 	 * flow and tool call recursion. Automatically executes tools when the model
 	 * requests them and continues the conversation with tool results.
-	 * 
+	 *
 	 * == Example ==
-	 * 
+	 *
 	 * {{{
 	 * var call = new Call.Chat(client, "llama3.2");
 	 * call.messages.add(new Message(call, "user", "Hello!"));
-	 * 
+	 *
 	 * // Execute chat (handles tool calls automatically)
 	 * var response = yield call.exec_chat();
-	 * 
+	 *
 	 * // Access response content
 	 * print(response.message.content);
 	 * }}}
@@ -225,7 +225,7 @@ namespace OLLMchat.Call
 		/**
 		 * Sets up this Chat as a reply to a previous conversation and executes it.
 		 * Appends the previous assistant response and new user message to the messages array, then calls exec_chat().
-		 * 
+		 *
 		 * @param new_text The new user message text
 		 * @param previous_response The previous Response from the assistant
 		 * @return The Response from executing the chat call
@@ -280,13 +280,13 @@ namespace OLLMchat.Call
 
 		/**
 		 * Executes tool calls from a response and continues the conversation automatically.
-		 * 
+		 *
 		 * This method:
 		 * 1. Adds the assistant message with tool_calls to the conversation
 		 * 2. Executes all tool calls from the response
 		 * 3. Adds tool result messages to the conversation
 		 * 4. Continues the conversation automatically until a final response is received
-		 * 
+		 *
 		 * @param response The Response containing tool calls
 		 * @return The final Response after tool execution and auto-reply
 		 */

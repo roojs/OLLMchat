@@ -18,7 +18,7 @@
 
 /**
  * Configuration and settings namespace.
- * 
+ *
  * The OLLMchat.Settings namespace provides configuration management including
  * connection settings, model configuration, and usage tracking. Config2 is the
  * main configuration format supporting multiple connections and extended options.

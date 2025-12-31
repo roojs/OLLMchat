@@ -172,7 +172,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Core HTTP fetching logic (GET only).
-		 * 
+		 *
 		 * @param url The URL to fetch
 		 * @return The response body as Bytes
 		 */
@@ -191,7 +191,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Extract domain from URL and normalize to https://{domain}/ format.
-		 * 
+		 *
 		 * @param url The URL to extract domain from
 		 * @return Normalized domain string (e.g., "https://example.com/") or empty string on error
 		 */
@@ -218,7 +218,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Extract Content-Type from response headers.
-		 * 
+		 *
 		 * @param headers The response headers
 		 * @return Content-Type string or "application/octet-stream" if not found
 		 */
@@ -247,7 +247,7 @@ namespace OLLMchat.Tools
 		 * Convert content based on Content-Type and format property.
 		 * Uses structured if/else for Content-Type matching (Vala doesn't support string switches).
 		 * Updates this.format to reflect the actual format used.
-		 * 
+		 *
 		 * @param content The content bytes
 		 * @param content_type The detected Content-Type
 		 * @return Converted content as string
@@ -298,7 +298,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Convert content to base64 encoding.
-		 * 
+		 *
 		 * @param content The content bytes
 		 * @return Base64-encoded string
 		 */
@@ -309,7 +309,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Convert HTML content to markdown format.
-		 * 
+		 *
 		 * @param html The HTML content as Bytes
 		 * @return Markdown string
 		 */

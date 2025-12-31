@@ -18,7 +18,7 @@
 
 /**
  * API call implementations namespace.
- * 
+ *
  * The OLLMchat.Call namespace provides classes for making API calls to Ollama
  * and OpenAI-compatible servers. All call classes extend Call.Base which handles
  * HTTP communication, URL building, streaming, and error management.

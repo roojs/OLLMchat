@@ -20,7 +20,7 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Represents the response from the generate API.
-	 * 
+	 *
 	 * Contains the model name, generated response text, thinking output,
 	 * and timing information.
 	 */

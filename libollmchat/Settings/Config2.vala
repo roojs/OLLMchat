@@ -20,32 +20,32 @@ namespace OLLMchat.Settings
 {
 	/**
 	 * Main serializable configuration holder for version 2 format (multiple clients, extended structure).
-	 * 
+	 *
 	 * This is the top-level container class that holds all configuration data.
 	 * Supports GType registration for external configuration sections.
-	 * 
+	 *
 	 * == Example ==
-	 * 
+	 *
 	 * {{{
 	 * // Load configuration
 	 * Config2.config_path = "~/.config/ollmchat/config.2.json";
 	 * var config = Config2.load();
-	 * 
+	 *
 	 * // Access connections
 	 * foreach (var conn in config.connections.values) {
 	 *     print(@"Connection: $(conn.name) - $(conn.url)");
 	 * }
-	 * 
+	 *
 	 * // Get model options
 	 * var options = config.model_options.get("llama3.2");
 	 * if (options != null) {
 	 *     options.temperature = 0.7;
 	 * }
-	 * 
+	 *
 	 * // Save configuration
 	 * config.save();
 	 * }}}
-	 * 
+	 *
 	 * @since 1.0
 	 */
 	public class Config2 : Object, Json.Serializable
@@ -62,7 +62,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Map of usage key → model usage objects (handled by registered GTypes)
-		 * 
+		 *
 		 * Contains model usage configurations such as "default_model", "title_model",
 		 * and external library configurations like "ocvector".
 		 */
@@ -70,7 +70,7 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Map of usage key → Json.Node for unregistered types.
-		 * 
+		 *
 		 * Stores unregistered usage configurations as JSON nodes so they can be
 		 * serialized back later when the type is registered.
 		 */
@@ -121,10 +121,10 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Registers a GType for a property/section key (static method).
-		 * 
+		 *
 		 * When deserializing JSON, Config2 will use the registered GType to deserialize
 		 * the property using standard Json.Serializable.
-		 * 
+		 *
 		 * @param key The property/section key name
 		 * @param gtype The GType to use for deserialization
 		 */
@@ -300,12 +300,12 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Loads Config2 from file.
-		 * 
+		 *
 		 * Uses the static config_path property which must be set before calling.
 		 * The caller should ensure the file exists before calling this method.
 		 * If the file cannot be read/parsed, returns a Config2 object with default
 		 * values and loaded set to false.
-		 * 
+		 *
 		 * @return A new Config2 instance loaded from the file
 		 */
 		public static Config2 load()
@@ -340,7 +340,7 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Gets the default connection from the connections map.
-		 * 
+		 *
 		 * @return The default connection, or null if no default connection is found
 		 */
 		public Connection? get_default_connection()
@@ -355,7 +355,7 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Gets the default model name from the usage map.
-		 * 
+		 *
 		 * @return The default model name, or empty string if not configured
 		 */
 		public string get_default_model()
@@ -369,12 +369,12 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Creates a Client instance configured from a usage entry.
-		 * 
+		 *
 		 * Gets the ModelUsage for the given name, finds the connection specified
 		 * in ModelUsage.connection URL, and creates a Client with the connection,
 		 * model, and config. Returns null if the usage entry doesn't exist or
 		 * the specified connection is not found.
-		 * 
+		 *
 		 * @param name The usage key name (e.g., "default_model", "title_model")
 		 * @return A new Client instance configured from the usage entry, or null if not found or connection invalid
 		 */
@@ -401,13 +401,13 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Creates a Chat instance configured from a usage entry.
-		 * 
+		 *
 		 * Gets the ModelUsage for the given name, creates a Client using create_client(),
 		 * and creates a Chat object with the client, model, and options from the ModelUsage.
 		 * Returns null if the usage entry doesn't exist or the client cannot be created.
-		 * 
+		 *
 		 * The caller can then set properties on chat.client (e.g., chat.client.stream = true).
-		 * 
+		 *
 		 * @param name The usage key name (e.g., "default_model", "ocvector.analysis")
 		 * @return A new Chat instance configured from the usage entry, or null if not found or client invalid
 		 */
@@ -429,10 +429,10 @@ namespace OLLMchat.Settings
 
 		/**
 		 * Saves configuration to file.
-		 * 
+		 *
 		 * Creates the directory structure if it doesn't exist.
 		 * Uses the static config_path property.
-		 * 
+		 *
 		 * @throws Error if file cannot be written
 		 */
 		public void save() throws Error

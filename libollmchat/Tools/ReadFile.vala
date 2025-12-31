@@ -20,7 +20,7 @@ namespace OLLMchat.Tools
 {
 	/**
 	 * Tool for reading file contents with optional line range support.
-	 * 
+	 *
 	 * This tool reads file contents and returns them as a string. The caller
 	 * is responsible for creating the JSON reply.
 	 */

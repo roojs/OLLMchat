@@ -20,7 +20,7 @@ namespace OLLMchat.History
 {
 	/**
 	 * EmptySession represents a session that hasn't started yet (no messages sent).
-	 * 
+	 *
 	 * This is used to provide a consistent API where Manager always has a session.
 	 * When a message is sent, EmptySession converts itself to a real Session.
 	 * EmptySession is never saved to the database or added to the sessions list.
@@ -60,7 +60,7 @@ namespace OLLMchat.History
 		
 		/**
 		 * Converts EmptySession to a real Session when a message is sent.
-		 * 
+		 *
 		 * Creates a new Session, copies client properties, replaces this EmptySession
 		 * in the manager, and then calls send_message() on the new Session.
 		 */

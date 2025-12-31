@@ -20,7 +20,7 @@ namespace OLLMchat.Tools
 {
 	/**
 	 * Tool for executing terminal commands in the project root directory.
-	 * 
+	 *
 	 * Simple commands (single command or cd <path> && <command> with no bash operators)
 	 * use permission caching based on resolved executable realpath.
 	 * Complex commands (with bash operators or multiple &&) always require approval.

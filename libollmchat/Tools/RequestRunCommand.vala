@@ -38,7 +38,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Detects bash operators in a command string.
-		 * 
+		 *
 		 * @param cmd The command string to check
 		 * @return true if bash operators are detected
 		 */
@@ -63,7 +63,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Detects if command matches simple pattern for permission caching.
-		 * 
+		 *
 		 * @param cmd The command to check
 		 * @return true if it's a simple pattern
 		 */
@@ -98,7 +98,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Extracts the executable command from a simple pattern.
-		 * 
+		 *
 		 * @param cmd The full command
 		 * @return The command part to resolve (without cd if present)
 		 */
@@ -120,7 +120,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Extracts the executable name from a command string.
-		 * 
+		 *
 		 * @param cmd The command string
 		 * @return The executable name (first word)
 		 */
@@ -351,7 +351,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Truncates output to a maximum number of lines, adding a truncation message.
-		 * 
+		 *
 		 * @param output The output string to truncate
 		 * @param max_lines Maximum number of lines to keep (default: 50)
 		 * @return Truncated output with truncation message if needed

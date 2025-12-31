@@ -20,13 +20,13 @@ namespace OLLMchat
 {
 	/**
 	 * Main client class for interacting with Ollama API and OpenAI-compatible REST interfaces.
-	 * 
+	 *
 	 * Provides methods for chat, model management, and tool integration. Handles
 	 * HTTP requests, streaming responses, and function calling. Manages tool
 	 * registration and execution with permission checking.
-	 * 
+	 *
 	 * == Basic Usage ==
-	 * 
+	 *
 	 * {{{
 	 * var connection = new Settings.Connection() {
 	 *     url = "http://127.0.0.1:11434/api"
@@ -35,23 +35,23 @@ namespace OLLMchat
 	 *     model = "llama3.2",
 	 *     stream = true
 	 * };
-	 * 
+	 *
 	 * var response = yield client.chat("Hello!");
 	 * }}}
-	 * 
+	 *
 	 * == Tool Integration ==
-	 * 
+	 *
 	 * {{{
 	 * // Add tools before chatting
 	 * var read_file = new Tools.ReadFile(client);
 	 * client.addTool(read_file);
-	 * 
+	 *
 	 * // Tools are automatically called when the model requests them
 	 * var response = yield client.chat("Read README.md");
 	 * }}}
-	 * 
+	 *
 	 * == Streaming ==
-	 * 
+	 *
 	 * {{{
 	 * client.stream = true;
 	 * client.message_created.connect((msg, content) => {
@@ -66,27 +66,27 @@ namespace OLLMchat
 	{
 		/**
 		 * Connection configuration for this client.
-		 * 
+		 *
 		 * Contains URL, API key, and connection settings.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Settings.Connection connection { get; set; }
 		
 		/**
 		 * Configuration settings (Config2 instance).
-		 * 
+		 *
 		 * Contains all configuration including connections, model_options, and usage map.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Settings.Config2? config { get; set; }
 		
 		/**
 		 * Model name to use for chat requests.
-		 * 
+		 *
 		 * Set by caller after constructor from Config2's usage map if needed.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public string model { get; set; default = ""; }
@@ -94,98 +94,98 @@ namespace OLLMchat
 		
 		/**
 		 * Whether to stream responses from the API.
-		 * 
+		 *
 		 * When true, responses are streamed incrementally as they are generated.
 		 * When false, the complete response is returned after generation finishes.
 		 * Defaults to false. See the Ollama API documentation for details.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public bool stream { get; set; default = false; }
 		
 		/**
 		 * Format to return a response in.
-		 * 
+		 *
 		 * Can be "json" to force JSON output, or a JSON schema object for structured output.
 		 * Set to null to use the model's default format.
 		 * See the Ollama API documentation for details.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public string? format { get; set; }
 		
 		/**
 		 * Whether to return separate thinking output in addition to content.
-		 * 
+		 *
 		 * When true, returns thinking content separately from regular content.
 		 * Can be a boolean (true/false) or a string ("high", "medium", "low") for supported models.
 		 * Defaults to false. See the Ollama API documentation for details.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public bool think { get; set; default = false; }
 		
 		/**
 		 * Model keep-alive duration.
-		 * 
+		 *
 		 * Controls how long the model stays loaded in memory after use.
 		 * Can be a duration string (e.g., "5m", "10s") or a number in seconds.
 		 * Set to "0" to unload immediately after use.
 		 * See the Ollama API documentation for details.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public string? keep_alive { get; set; }
 		
 		/**
 		 * Map of available tools (functions) that the model can call during chat.
-		 * 
+		 *
 		 * Tools are indexed by their name. The model can request to call these tools
 		 * during conversation, and they will be executed with permission checking.
 		 * See the Ollama API documentation for details on tools parameter.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Gee.HashMap<string, Tool.Interface> tools { get; set; default = new Gee.HashMap<string, Tool.Interface>(); }
 		
 		/**
 		 * Current streaming response object (internal use).
-		 * 
+		 *
 		 * Used internally to track the streaming state during chat operations.
 		 * Also accessed by OLLMchatGtk for UI updates. Set to null when not streaming.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Response.Chat? streaming_response { get; set; default = null; }
 		
 		/**
 		 * Prompt generator for agent-based conversations.
-		 * 
+		 *
 		 * Used to generate system and user prompts for chat requests.
 		 * Defaults to a basic BaseAgent instance.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Prompt.BaseAgent prompt_assistant { get; set; default = new Prompt.BaseAgent(); }
 		
 		/**
 		 * Permission provider for tool execution.
-		 * 
+		 *
 		 * Handles permission requests when tools need to access files or execute commands.
 		 * Defaults to a Dummy provider that logs requests.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public OLLMchat.ChatPermission.Provider permission_provider { get; set; default = new OLLMchat.ChatPermission.Dummy(); }
 	
 		/**
 		 * Runtime options for text generation.
-		 * 
+		 *
 		 * Contains all runtime parameters that can be passed to Ollama API.
 		 * Default values (-1 for numbers, empty string for strings) indicate no value set,
 		 * and the option will not be included in API requests.
 		 * See the Ollama API documentation for details on the options parameter.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public Call.Options options { get; set; default = new Call.Options(); }
@@ -194,7 +194,7 @@ namespace OLLMchat
 		 * HTTP request timeout in seconds.
 		 * Default is 300 seconds (5 minutes) to accommodate long-running LLM requests.
 		 * Set to 0 for no timeout (not recommended).
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public uint timeout { get; set; default = 300; }
@@ -208,7 +208,7 @@ namespace OLLMchat
 
 		/**
 		 * Emitted when a streaming chunk is received from the chat API.
-		 * 
+		 *
 		 * @param new_text The new text chunk received
 		 * @param is_thinking Whether this chunk is thinking content (true) or regular content (false)
 		 * @param response The Response object containing the streaming state
@@ -218,11 +218,11 @@ namespace OLLMchat
 
 		/**
 		 * Emitted when streaming content (not thinking) is received from the chat API.
-		 * 
+		 *
 		 * This signal is emitted only for regular content chunks, not thinking content.
 		 * Tools can connect to this signal to capture streaming messages and build strings,
 		 * including extracting code blocks as they arrive.
-		 * 
+		 *
 		 * @param new_text The new content text chunk received (not thinking)
 		 * @param response The Response.Chat object containing the streaming state
 		 * @since 1.0
@@ -231,7 +231,7 @@ namespace OLLMchat
 
 		/**
 		 * Emitted when a tool sends a status message during execution.
-		 * 
+		 *
 		 * @param message The Message object from the tool (typically "ui" role)
 		 * @since 1.0
 		 */
@@ -241,7 +241,7 @@ namespace OLLMchat
 		 * Emitted when a chat request is sent to the server.
 		 * This signal is emitted when the request is about to be sent, including
 		 * initial chat requests and automatic continuations after tool execution.
-		 * 
+		 *
 		 * @param chat The Call.Chat object that is being sent
 		 * @since 1.0
 		 */
@@ -251,7 +251,7 @@ namespace OLLMchat
 		 * Emitted when the streaming response starts (first chunk received).
 		 * This signal is emitted when the first chunk of the response is processed,
 		 * indicating that the server has started sending data back.
-		 * 
+		 *
 		 * @since 1.0
 		 */
 		public signal void stream_start();
@@ -261,7 +261,7 @@ namespace OLLMchat
 		 * This signal is the primary driver for message creation events, used for
 		 * both persistence (Manager) and UI display. Messages are created before
 		 * prompt engine modification to preserve original user text.
-		 * 
+		 *
 		 * @param m The Message object that was created
 		 * @param content_interface The ChatContentInterface associated with this message (e.g., Response.Chat for assistant messages)
 		 * @since 1.0
@@ -272,9 +272,9 @@ namespace OLLMchat
 
 		/**
 		* Available models loaded from the server, keyed by model name.
-		* 
+		*
 		* This map is populated by calling fetch_all_model_details().
-		* 
+		*
 		* @since 1.0
 		*/
 		public Gee.HashMap<string, Response.Model> available_models { get; private set; 
@@ -282,9 +282,9 @@ namespace OLLMchat
 
 		/**
 		* Adds a tool to the client's tools map.
-		* 
+		*
 		* Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
-		* 
+		*
 		* @param tool The tool to add
 		*/
 		public void addTool(Tool.Interface tool)
@@ -345,10 +345,10 @@ namespace OLLMchat
 
 		/**
 		 * Gets the version of the Ollama server.
-		 * 
+		 *
 		 * Calls the /api/version endpoint to retrieve the server version.
 		 * Useful for verifying connectivity during bootstrap.
-		 * 
+		 *
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return Version string from the server (e.g., "0.12.6")
 		 * @throws Error if the request fails or response is invalid
@@ -367,12 +367,12 @@ namespace OLLMchat
 
 		/**
 		* Gets detailed information about a specific model including capabilities and stores it in available_models.
-		* 
+		*
 		* If the model already exists in available_models, it will be updated with the new data using updateFrom().
 		* Otherwise, the new model will be added to available_models.
-		* 
+		*
 		* Checks cache first, and saves to cache after fetching from API.
-		* 
+		*
 		* @param model_name The name of the model to get details for
 		* @return Model object with full details including capabilities
 		* @since 1.0
@@ -412,11 +412,11 @@ namespace OLLMchat
 
 		/**
 		* Fetches detailed information for all available models and populates available_models.
-		* 
+		*
 		* This method calls models() to get the list of models, then calls show_model()
 		* for each model to get full details including capabilities. The results are
 		* stored in available_models HashMap keyed by model name.
-		* 
+		*
 		* @since 1.0
 		*/
 		public async void fetch_all_model_details() throws Error
@@ -441,10 +441,10 @@ namespace OLLMchat
 
 		/**
 		 * Generates embeddings for the input text.
-		 * 
+		 *
 		 * Creates vector embeddings representing the input text using the configured model.
 		 * Returns a single Response.Embed object containing the embeddings and metadata.
-		 * 
+		 *
 		 * @param input The text to generate embeddings for
 		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
 		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
@@ -473,10 +473,10 @@ namespace OLLMchat
 
 		/**
 		 * Generates embeddings for an array of input texts.
-		 * 
+		 *
 		 * Creates vector embeddings representing the input texts using the configured model.
 		 * Returns a single Response.Embed object containing the embeddings and metadata.
-		 * 
+		 *
 		 * @param input_array The array of texts to generate embeddings for
 		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
 		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
@@ -505,10 +505,10 @@ namespace OLLMchat
 
 		/**
 		 * Generates a response for the provided prompt.
-		 * 
+		 *
 		 * Uses the /api/generate endpoint to generate a response without maintaining
 		 * conversation history. This is useful for simple prompt-response scenarios.
-		 * 
+		 *
 		 * @param prompt The text prompt to generate a response for
 		 * @param system Optional system prompt
 		 * @param cancellable Optional cancellable for cancelling the request

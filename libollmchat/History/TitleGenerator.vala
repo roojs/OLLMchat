@@ -20,7 +20,7 @@ namespace OLLMchat.History
 {
 	/**
 	 * Generates concise titles for chat conversations using LLM.
-	 * 
+	 *
 	 * Uses the Ollama generate API to create meaningful titles from chat content.
 	 */
 	public class TitleGenerator : Object
@@ -34,10 +34,10 @@ namespace OLLMchat.History
 		
 		/**
 		 * Generate a title from a chat conversation.
-		 * 
+		 *
 		 * Extracts the first user message and generates a concise title.
 		 * If client is not set or model is not available, returns a default title.
-		 * 
+		 *
 		 * @param session The SessionBase object containing the conversation messages
 		 * @return Generated title string
 		 */

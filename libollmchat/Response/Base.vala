@@ -20,7 +20,7 @@ namespace OLLMchat.Response
 {
 	/**
 	 * Abstract base class for Ollama API responses.
-	 * 
+	 *
 	 * Provides common functionality for deserializing responses from the Ollama API.
 	 * All response types extend this class. Responses are automatically deserialized
 	 * from JSON when received from the API.

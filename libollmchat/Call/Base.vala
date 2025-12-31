@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * Abstract base class for all Ollama API calls.
-	 * 
+	 *
 	 * Provides common functionality for making HTTP requests to the Ollama API,
 	 * including URL building, request execution, and response handling. Handles
 	 * streaming responses and error management. Subclasses must set url_endpoint

@@ -25,29 +25,29 @@ namespace OLLMchat
 	/**
 	 * Interface for OLLMchat applications that provides standardized
 	 * configuration and data directory management.
-	 * 
+	 *
 	 * Implementations should call type registration methods (e.g.,
 	 * `OLLMvector.Database.register_config()`) directly before calling
 	 * `load_config()` if needed. The base_load_config() method handles
 	 * Config1 to Config2 migration automatically.
-	 * 
+	 *
 	 * == Example ==
-	 * 
+	 *
 	 * {{{
 	 * public class MyApp : Object, ApplicationInterface {
 	 *     public Settings.Config2 config { get; set; }
 	 *     public string data_dir { get; set; default = "~/.local/share/myapp"; }
-	 *     
+	 *
 	 *     public Settings.Config2 load_config() {
 	 *         // Register types if needed
 	 *         OLLMvector.Database.register_config();
-	 *         
+	 *
 	 *         // Use base implementation
 	 *         return base_load_config();
 	 *     }
 	 * }
 	 * }}}
-	 * 
+	 *
 	 * @since 1.0
 	 */
 	public interface ApplicationInterface : GLib.Object
@@ -64,7 +64,7 @@ namespace OLLMchat
 		
 		/**
 		 * Ensures the data directory exists, creating it if necessary.
-		 * 
+		 *
 		 * @throws GLib.Error if the directory cannot be created
 		 */
 		public void ensure_data_dir() throws GLib.Error
@@ -77,17 +77,17 @@ namespace OLLMchat
 		
 		/**
 		 * Base implementation that loads configuration, handling Config1 to Config2 migration.
-		 * 
+		 *
 		 * This method:
 		 * - Initializes Config1 and Config2 static properties
 		 * - Sets config paths
 		 * - Loads Config2 if it exists
 		 * - Migrates Config1 to Config2 if needed
 		 * - Returns loaded or default Config2 instance
-		 * 
+		 *
 		 * Implementations should call this from their `load_config()` method
 		 * after performing any necessary type registration.
-		 * 
+		 *
 		 * @return The loaded Config2 instance
 		 */
 		protected virtual OLLMchat.Settings.Config2 base_load_config()
@@ -139,11 +139,11 @@ namespace OLLMchat
 		
 		/**
 		 * Loads and returns the configuration.
-		 * 
+		 *
 		 * Implementations should call type registration methods (e.g.,
 		 * `OLLMvector.Database.register_config()`) if needed, then call
 		 * `base_load_config()` to perform the actual loading.
-		 * 
+		 *
 		 * @return The loaded Config2 instance
 		 */
 		public abstract OLLMchat.Settings.Config2 load_config();
@@ -151,7 +151,7 @@ namespace OLLMchat
 		/**
 		 * Debug logging function that writes to ~/.cache/ollmchat/{app_id}.debug.log
 		 * Also writes to stderr for immediate console output.
-		 * 
+		 *
 		 * @param app_id The application ID to use for the log file name
 		 * @param in_domain The log domain (can be null)
 		 * @param level The log level

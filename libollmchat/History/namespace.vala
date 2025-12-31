@@ -18,7 +18,7 @@
 
 /**
  * Chat history and session management namespace.
- * 
+ *
  * The OLLMchat.History namespace provides session persistence and management
  * for chat conversations. Sessions can be stored in JSON files or SQLite database,
  * with automatic title generation and client state management.

@@ -18,7 +18,7 @@
 
 /**
  * Tool permission system namespace.
- * 
+ *
  * The OLLMchat.ChatPermission namespace provides permission checking for tool
  * execution. Implement ChatPermission.Provider to control which tools can be
  * executed and under what conditions. The Dummy provider allows all operations

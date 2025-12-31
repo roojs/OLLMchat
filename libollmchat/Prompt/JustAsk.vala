@@ -20,7 +20,7 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Just Ask agent - a simple pass-through agent.
-	 * 
+	 *
 	 * Returns empty system prompt and passes user input through unchanged.
 	 * This is the default agent for general chat interactions.
 	 */

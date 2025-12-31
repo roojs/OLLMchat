@@ -18,7 +18,7 @@
 
 /**
  * Concrete tool implementations namespace.
- * 
+ *
  * The OLLMchat.Tools namespace provides ready-to-use tool implementations
  * for common operations: ReadFile for file reading, EditMode for file editing,
  * RunCommand for command execution, and WebFetchTool for web content fetching.

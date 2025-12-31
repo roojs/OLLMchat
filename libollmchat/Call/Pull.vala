@@ -20,7 +20,7 @@ namespace OLLMchat.Call
 {
 	/**
 	 * API call to pull a model from the Ollama server.
-	 * 
+	 *
 	 * Pulls a model by name, with optional streaming progress updates.
 	 * The pull operation downloads the model files from the server.
 	 */
@@ -31,7 +31,7 @@ namespace OLLMchat.Call
 
 		/**
 		 * Signal emitted when a progress chunk is received during pull.
-		 * 
+		 *
 		 * @param response The pull progress response object
 		 */
 		public signal void progress_chunk(Response.Pull response);
@@ -49,10 +49,10 @@ namespace OLLMchat.Call
 
 		/**
 		 * Executes the pull API call.
-		 * 
+		 *
 		 * Processes streaming JSON chunks and emits progress_chunk signals for each update.
 		 * The pull operation completes when done.
-		 * 
+		 *
 		 * @throws Error if the request fails or response is invalid
 		 */
 		public async void exec_pull() throws Error

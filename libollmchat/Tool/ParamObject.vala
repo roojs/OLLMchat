@@ -20,7 +20,7 @@ namespace OLLMchat.Tool
 {
 	/**
 	 * Represents an object parameter with nested properties.
-	 * 
+	 *
 	 * Used for parameters with type "object" that have nested properties.
 	 * Properties can be either ParamObject or ParamArray instances.
 	 */

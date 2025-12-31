@@ -18,7 +18,7 @@
 
 /**
  * Prompt generation and agent system namespace.
- * 
+ *
  * The OLLMchat.Prompt namespace provides agent-based prompt generation for
  * different conversation types. Agents load system prompts from resource files
  * and can modify user input before sending to the LLM. Includes BaseAgent for

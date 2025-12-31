@@ -18,7 +18,7 @@
 
 /**
  * API response handling namespace.
- * 
+ *
  * The OLLMchat.Response namespace provides classes for deserializing and
  * handling responses from Ollama API calls. All response types extend
  * Response.Base and are automatically deserialized from JSON.

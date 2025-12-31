@@ -21,9 +21,9 @@ namespace OLLMchat.Response
 	/**
 	 * Represents a tool call from the assistant.
 	 * Used in assistant messages with tool_calls array.
-	 * 
+	 *
 	 * JSON example handled by this class:
-	 * 
+	 *
 	 *   {
 	 *     "id": "call_123",
 	 *     "function": {
@@ -34,7 +34,7 @@ namespace OLLMchat.Response
 	 *       }
 	 *     }
 	 *   }
-	 * 
+	 *
 	 * This appears as an element in the "tool_calls" array within an assistant message.
 	 */
 	public class ToolCall : Object, Json.Serializable
