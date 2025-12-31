@@ -770,31 +770,28 @@ namespace OLLMchat.Tools
 		}
 		
 		/**
-		 * Counts the total number of lines in a file.
+		 * Counts the total number of lines in a file using buffer.
 		 */
 		private int count_file_lines() throws Error
 		{
-			var file = GLib.File.new_for_path(this.normalized_path);
-			var file_stream = file.read(null);
-			var data_stream = new GLib.DataInputStream(file_stream);
-			
-			int line_count = 0;
-			string? line;
-			size_t length;
-			
-			try {
-				while ((line = data_stream.read_line(out length, null)) != null) {
-					line_count++;
-				}
-			} finally {
-				try {
-					data_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
+			// Get or create File object from path
+			var project_manager = ((EditMode) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			
-			return line_count;
+			// First, try to get from active project
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			file.manager.buffer_provider.create_buffer(file);
+			
+			// Use buffer-based line counting (will load file synchronously if needed)
+			return file.buffer.get_line_count();
 		}
 	}
 }
