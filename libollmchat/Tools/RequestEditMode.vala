@@ -524,25 +524,46 @@ namespace OLLMchat.Tools
 		/**
 		 * Applies all captured changes to a file.
 		 */
-		private void apply_all_changes() throws Error
+		private async void apply_all_changes() throws Error
 		{
 			if (this.changes.size == 0) {
 				return;
 			}
+		
+			// Get or create File object from path
+			var project_manager = ((EditMode) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
 			
-			// Check if permission status has changed (e.g., revoked by signal handler)
-			if (!this.chat_call.client.permission_provider.check_permission(this)) {
-				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+			// First, try to get from active project
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			var is_in_project = (file != null);
+			
+			// Only check permission if file is NOT in active project
+			// Files in active project are auto-approved and don't need permission checks
+			if (!is_in_project) {
+				// Check if permission status has changed (e.g., revoked by signal handler)
+				if (!this.chat_call.client.permission_provider.check_permission(this)) {
+					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+				}
 			}
 			
 			// Log and notify that we're starting to write
-			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
+			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
+				this.normalized_path, is_in_project.to_string(), this.changes.size);
 			this.chat_call.client.message_created(
 				new OLLMchat.Message(this.chat_call, "ui",
 				"Applying changes to file " + this.normalized_path + "..."),
 				this.chat_call
 			);
-		
+			
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			file.manager.buffer_provider.create_buffer(file);
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
@@ -563,14 +584,14 @@ namespace OLLMchat.Tools
 					throw new GLib.IOError.EXISTS("File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
 				}
 				// Create new file or overwrite existing file
-				this.create_new_file_with_changes();
+				yield this.create_new_file_with_changes(file);
 			} else {
 				// Normal mode: file must exist
 				if (!file_exists) {
 					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
 				}
 				// Apply edits to existing file
-				this.apply_edits();
+				yield this.apply_edits(file);
 			}
 			
 			// Log and send status message after successful write
