@@ -25,8 +25,8 @@ namespace OLLMvector.Tool
 	{
 		// Parameter properties (from LLM function call)
 		public string query { get; set; default = ""; }
-		public string? language { get; set; default = null; }
-		public string? element_type { get; set; default = null; }
+		public string language { get; set; default = ""; }
+		public string element_type { get; set; default = ""; }
 		public int max_results { get; set; default = 10; }
 		
 		/**
@@ -71,19 +71,19 @@ namespace OLLMvector.Tool
 			}
 			
 			// Debug: Log input parameters
-			GLib.debug("codebase_search input: query='%s', language=%s, element_type=%s, max_results=%d",
+			GLib.debug("codebase_search input: query='%s', language='%s', element_type='%s', max_results=%d",
 				this.query,
-				this.language ?? "null",
-				this.element_type ?? "null",
+				this.language != "" ? this.language : "none",
+				this.element_type != "" ? this.element_type : "none",
 				this.max_results
 			);
 			
 			// Build search request message with query and options
 			var request_message = "Query: " + this.query;
-			if ((this.language ?? "") != "") {
+			if (this.language != "") {
 				request_message += "\nLanguage: " + this.language;
 			}
-			if ((this.element_type ?? "") != "") {
+			if (this.element_type != "") {
 				request_message += "\nElement Type: " + this.element_type;
 			}
 			request_message += "\nMax Results: " + this.max_results.to_string();
@@ -102,13 +102,12 @@ namespace OLLMvector.Tool
 			}
 			
 			// Step 2: Get file IDs from project_files (with optional language filter)
-			var language_filter = this.language != null ? this.language : "";
-			var file_ids = active_project.project_files.get_ids(language_filter);
+			var file_ids = active_project.project_files.get_ids(this.language);
 			
 			if (file_ids.size == 0) {
-				if (language_filter != "") {
+				if (this.language != "") {
 					throw new GLib.IOError.FAILED(
-						"No files found in folder matching language filter: " + language_filter
+						"No files found in folder matching language filter: " + this.language
 					);
 				}
 				throw new GLib.IOError.FAILED("No files found in folder");
@@ -121,14 +120,14 @@ namespace OLLMvector.Tool
 			var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (" +
 				string.joinv(",", file_ids.to_array()) + ")";
 			
-			if (this.element_type != null) {
+			if (this.element_type != "") {
 				sql = sql + " AND element_type = $element_type";
 			}
 			
 			// Debug: Log vector filtering query
-			GLib.debug("codebase_search vector filter: file_ids_count=%d, element_type=%s, sql='%s'",
+			GLib.debug("codebase_search vector filter: file_ids_count=%d, element_type='%s', sql='%s'",
 				file_ids.size,
-				this.element_type ?? "null",
+				this.element_type != "" ? this.element_type : "none",
 				sql
 			);
 			
@@ -141,7 +140,7 @@ namespace OLLMvector.Tool
 			var vector_query = OLLMvector.VectorMetadata.query(sql_db);
 			var vector_stmt = vector_query.selectPrepare(sql);
 			
-			if (this.element_type != null) {
+			if (this.element_type != "") {
 				vector_stmt.bind_text(
 					vector_stmt.bind_parameter_index("$element_type"), this.element_type);
 			}
