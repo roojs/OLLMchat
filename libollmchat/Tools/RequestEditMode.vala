@@ -625,6 +625,7 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Creates a new file with all changes applied.
+		 * Uses buffer-based writing for automatic backups and proper file handling.
 		 */
 		private async void create_new_file_with_changes(OLLMfiles.File file) throws Error
 		{
@@ -639,35 +640,15 @@ namespace OLLMchat.Tools
 				}
 			}
 			
-			 
+			// Get replacement content (should be the full file content for complete_file mode)
+			var replacement_content = this.changes[0].replacement;
 			
-			// Create new file and write all changes (overwrite if exists)
-			// If overwrite is true and file exists, delete it first
-			var output_file = GLib.File.new_for_path(this.normalized_path);
-			if (this.overwrite && output_file.query_exists()) {
-				try {
-					output_file.delete(null);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to delete existing file: " + e.message);
-				}
-			}
-			var output_stream = new GLib.DataOutputStream(
-				output_file.create(GLib.FileCreateFlags.NONE, null)
-			);
-			
-			try {
-				// Write replacement lines
-				foreach (var new_line in this.changes[0].replacement.split("\n")) {
-					output_stream.put_string(new_line);
-					output_stream.put_byte('\n');
-				}
-			} finally {
-				try {
-					output_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
+			// Write to buffer - this handles:
+			// - Creating the file if it doesn't exist
+			// - Overwriting if it exists (buffer.write() always overwrites)
+			// - Creating backups for project files (automatic)
+			// - Updating file metadata
+			yield file.buffer.write(replacement_content);
 		}
 		
 		
