@@ -556,11 +556,6 @@ namespace OLLMchatGtk
 			
 			// Connect to session_activated signal to update when session changes
 			this.manager.session_activated.connect((session) => {
-				// Reset tool list flag when session changes (new popover needs to be built)
-				this.is_tool_list_loaded = false;
-				this.tools_popover_box = null;
-				// Update tools menu button when session changes
-				this.setup_tools_menu_button();
 				// Reload models for the new session's client
 				if (this.show_models) {
 					Idle.add(() => {
