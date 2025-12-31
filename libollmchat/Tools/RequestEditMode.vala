@@ -679,6 +679,214 @@ namespace OLLMchat.Tools
 			// - Creating backups for project files (automatic)
 			// - Updating file metadata
 			yield file.buffer.write(replacement_content);
+			
+			// If this is a fake file (id = -1), convert it to a real file if within project
+			if (file.id == -1) {
+				yield this.deal_with_new_file(file);
+			}
+		}
+		
+		/**
+		 * Converts a fake file (id = -1) to a real File object if it's within the active project.
+		 * 
+		 * This method:
+		 * - Checks if the file is within the active project
+		 * - Finds or creates parent folder objects in the project tree
+		 * - Queries file info from disk
+		 * - Converts the fake file to a real File object
+		 * - Saves the file to the database
+		 * - Updates the ProjectFiles list
+		 * - Emits the new_file_added signal
+		 * 
+		 * @param file The fake file to convert (must have id = -1)
+		 */
+		private async void deal_with_new_file(OLLMfiles.File file) throws Error
+		{
+			var project_manager = ((EditMode) this.tool).project_manager;
+			var active_project = project_manager.active_project;
+			
+			// Early return if file is outside active project
+			if (active_project == null || !this.normalized_path.has_prefix(active_project.path)) {
+				// File is outside project - keep as fake file (id = -1)
+				return;
+			}
+			
+			// File is within project and has id = -1 (fake file)
+			// Get parent directory path
+			var parent_dir_path = GLib.Path.get_dirname(this.normalized_path);
+			
+			// Find or create parent folder objects in project tree
+			var parent_folder = yield this.find_or_create_parent_folder(active_project, parent_dir_path);
+			if (parent_folder == null) {
+				GLib.warning("RequestEditMode.deal_with_new_file: Could not find or create parent folder for %s", this.normalized_path);
+				return;
+			}
+			
+			// Query file info from disk
+			var gfile = GLib.File.new_for_path(this.normalized_path);
+			if (!gfile.query_exists()) {
+				GLib.warning("RequestEditMode.deal_with_new_file: File does not exist on disk: %s", this.normalized_path);
+				return;
+			}
+			
+			GLib.FileInfo file_info;
+			try {
+				file_info = gfile.query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," + GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("RequestEditMode.deal_with_new_file: Could not query file info for %s: %s", this.normalized_path, e.message);
+				return;
+			}
+			
+			// Convert fake file to real File object
+			// Create new File (not new_fake)
+			var real_file = new OLLMfiles.File(project_manager);
+			real_file.path = this.normalized_path;
+			real_file.parent = parent_folder;
+			real_file.parent_id = parent_folder.id;
+			real_file.id = 0; // New file, will be inserted on save
+			
+			// Set properties from FileInfo
+			var content_type = file_info.get_content_type();
+			real_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
+			
+			var mod_time = file_info.get_modification_date_time();
+			if (mod_time != null) {
+				real_file.last_modified = mod_time.to_unix();
+			}
+			
+			// Detect language from filename
+			real_file.detect_language();
+			
+			// Add file to parent folder's children
+			parent_folder.children.append(real_file);
+			
+			// Add file to project_manager.file_cache
+			project_manager.file_cache.set(real_file.path, real_file);
+			
+			// Replace buffer's file reference by recreating buffer with new file object
+			// The old buffer was associated with the fake file, so we need to create a new one
+			project_manager.buffer_provider.create_buffer(real_file);
+			
+			// Copy buffer content from old file to new file if old buffer was loaded
+			if (file.buffer != null && file.buffer.is_loaded) {
+				var content = file.buffer.get_text();
+				if (content != null && content != "") {
+					yield real_file.buffer.write(content);
+				}
+			}
+			
+			// Save file to DB (gets id > 0)
+			if (project_manager.db != null) {
+				real_file.saveToDB(project_manager.db, null, false);
+			}
+			
+			// Update ProjectFiles list
+			active_project.project_files.update_from(active_project);
+			
+			// Manually emit new_file_added signal
+			active_project.project_files.new_file_added(real_file);
+		}
+		
+		/**
+		 * Finds or creates a folder by walking down the path from the project root.
+		 * 
+		 * @param project_root The project root folder
+		 * @param folder_path The full path to the folder to find or create
+		 * @return The Folder object, or null if path is outside project
+		 */
+		private async OLLMfiles.Folder? find_or_create_parent_folder(OLLMfiles.Folder project_root, string folder_path) throws Error
+		{
+			// If folder_path is the project root, return it
+			if (folder_path == project_root.path) {
+				return project_root;
+			}
+			
+			// Check if folder_path is within project
+			if (!folder_path.has_prefix(project_root.path)) {
+				return null;
+			}
+			
+			// Get relative path from project root
+			var relative_path = folder_path.substring(project_root.path.length);
+			if (relative_path.has_prefix("/")) {
+				relative_path = relative_path.substring(1);
+			}
+			if (relative_path == "") {
+				return project_root;
+			}
+			
+			// Split path into components
+			var components = relative_path.split("/");
+			
+			// Walk down the path, finding or creating folders
+			var current_folder = project_root;
+			var current_path = project_root.path;
+			
+			foreach (var component in components) {
+				if (component == "") {
+					continue;
+				}
+				
+				current_path = GLib.Path.build_filename(current_path, component);
+				
+				// Check if folder exists in children
+				OLLMfiles.Folder? child_folder = null;
+				if (current_folder.children.child_map.has_key(component)) {
+					var child = current_folder.children.child_map.get(component);
+					if (child is OLLMfiles.Folder) {
+						child_folder = child as OLLMfiles.Folder;
+					}
+				}
+				
+				// If folder doesn't exist, create it
+				if (child_folder == null) {
+					// Query folder info from disk
+					var gfile = GLib.File.new_for_path(current_path);
+					if (!gfile.query_exists()) {
+						GLib.warning("RequestEditMode.find_or_create_parent_folder: Folder does not exist on disk: %s", current_path);
+						return null;
+					}
+					
+					GLib.FileInfo folder_info;
+					try {
+						folder_info = gfile.query_info(
+							GLib.FileAttribute.TIME_MODIFIED,
+							GLib.FileQueryInfoFlags.NONE,
+							null
+						);
+					} catch (GLib.Error e) {
+						GLib.warning("RequestEditMode.find_or_create_parent_folder: Could not query folder info for %s: %s", current_path, e.message);
+						return null;
+					}
+					
+					// Create new folder
+					child_folder = new OLLMfiles.Folder.new_from_info(
+						project_root.manager,
+						current_folder,
+						folder_info,
+						current_path
+					);
+					
+					// Add to parent's children
+					current_folder.children.append(child_folder);
+					
+					// Add to file_cache
+					project_root.manager.file_cache.set(child_folder.path, child_folder);
+					
+					// Save to DB
+					if (project_root.manager.db != null) {
+						child_folder.saveToDB(project_root.manager.db, null, false);
+					}
+				}
+				
+				current_folder = child_folder;
+			}
+			
+			return current_folder;
 		}
 	}
 }
