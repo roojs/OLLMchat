@@ -67,6 +67,15 @@ namespace OLLMfiles
 			default = new Gee.HashMap<string, ProjectFile>(); }
 		
 		/**
+		 * Emitted when a new file is explicitly added to the project (not during scans).
+		 * This signal is only emitted when a new file is created, not when files are
+		 * discovered during directory scans. Use this to react to new file creation.
+		 * 
+		 * @param file The newly created File object
+		 */
+		public signal void new_file_added(File file);
+		
+		/**
 		 * Constructor.
 		 */
 		public ProjectFiles()
