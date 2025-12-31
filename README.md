@@ -95,12 +95,12 @@ sudo apt install \
 
 - **Ollama models**: For vector search to work, you need to have the following models available in Ollama:
   - `bge-m3:latest` - For generating embeddings
-  - `qwen2.5:latest` or `qwen2.5-coder:latest` - For code analysis and description generation
+  - `qwen3-coder:30b` - For code analysis and description generation
 
 You can download these models through the settings dialog in the application, or manually using:
 ```bash
 ollama pull bge-m3:latest
-ollama pull qwen2.5:latest
+ollama pull qwen3-coder:30b
 ```
 
 ## Building
@@ -197,9 +197,9 @@ The project is organized into component directories, each with its own `meson.bu
 
 **Code Editor Library (`liboccoder.so`):**
 - `liboccoder/` - Code editor and project management (liboccoder.so, namespace: `OLLMcoder`)
-  - `Files/` - File, folder, and project classes (namespace: `OLLMcoder.Files`)
-  - `ProjectManager.vala` - Project and file management
   - `SourceView.vala` - Code editor component with syntax highlighting
+  - `GtkSourceFileBuffer.vala` - GTK SourceView buffer implementation
+  - `BufferProvider.vala`, `GitProvider.vala` - Buffer and git providers for GTK contexts
   - `SearchableDropdown.vala`, `ProjectDropdown.vala`, `FileDropdown.vala` - Dropdown widgets
   - `Prompt/CodeAssistant.vala` - Code assistant agent with semantic search capabilities
     - The code assistant can perform semantic codebase search using the vector indexing system
