@@ -418,32 +418,28 @@ namespace OLLMfiles
 				return;
 			}
 			
-			saveToDB_call_count++;
-			var call_id = saveToDB_call_count;
-			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
-			
-			GLib.debug("FileBase.saveToDB[%lld] @%s: path='%s', id=%lld, new_values=%s, sync=%s, type=%s", 
-				call_id, timestamp, this.path, this.id, 
-				new_values != null ? "set" : "null", sync.to_string(), this.get_type().name());
-			
 			var sq = new SQ.Query<FileBase>(db, "filebase");
 			// At this point, id >= 0 (fake files with id < 0 already returned above)
 			// id = 0: new file (insert), id > 0: existing file (update)
 			if (this.id == 0) {
 				// New file - insert into database
+				GLib.debug("INSERT new file path='%s'", this.path);
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
 			} else {
 				if (new_values != null) {
-					sq.updateOld(this, new_values);
+					var updated = sq.updateOld(this, new_values);
+					if (updated) {
+						GLib.debug("UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
+					}
 				} else {
+					GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
 					sq.updateById(this);
 				}
 			}
 			// Backup in-memory database to disk only if sync is true
 			if (sync) {
 				db.backupDB();
-				GLib.debug("FileBase.saveToDB[%lld]: Database synced to disk", call_id);
 			}
 		}
 		
