@@ -39,6 +39,9 @@ class TestFiles : TestAppBase
 	private static string? opt_info = null;
 	private static string? opt_ls_path = null;
 	private static string? opt_summarize = null;
+	private static string? opt_edit = null;
+	private static bool opt_edit_complete_file = false;
+	private static bool opt_overwrite = false;
 
 	protected const string help = """
 Usage: {ARG} [OPTIONS] <action>
@@ -58,6 +61,8 @@ Actions (specify one):
   --create-project=PATH               Create test project from directory
   --info=PATH                         Show file information
   --summarize=PATH                    Show file structure summary (tree-sitter based)
+  --edit=PATH [--edit-complete-file] [--overwrite]
+                                      Edit file (reads from stdin)
 
 Options:
   --test-db=PATH                      Use test database instead of main database
