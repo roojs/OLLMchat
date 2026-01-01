@@ -127,10 +127,11 @@ namespace OLLMvector {
             this.emit_project_scan_started (project.path);
 
             // Dispatch the heavy work to the background thread via idle source.
-            // The background thread will call queueProject().
+            // Pass only the path string (thread-safe) - the background thread will
+            // load the project from the database.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.queueProject (project);
+                this.queueProject (project.path);
                 return false;
             });
             source.attach (this.worker_context);
