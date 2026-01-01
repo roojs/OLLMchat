@@ -236,11 +236,8 @@ namespace OLLMvector {
                 return;
             }
 
-            // Set as active project (clears previous project's files if different)
-            this.set_active_project (project);
-
-            // Load project files from DB (will check needs_reload() internally)
-            yield project.load_files_from_db ();
+            // Set as active project and load files from DB (will check needs_reload() internally)
+            yield this.set_active_project_and_load (project);
 
             // Iterate through project_files.items (flat list, not hierarchical)
             foreach (var project_file in project.project_files.items) {
