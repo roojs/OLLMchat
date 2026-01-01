@@ -363,7 +363,7 @@ namespace OLLMfiles
 			GLib.debug("  ✓ Path exists and is a directory");
 			
 			// Check if project already exists in projects list
-			if (this.manager.projects.contains_path(path)) {
+			if (this.manager.projects.path_map.has_key(path)) {
 				GLib.debug("  Skipping (project already exists)");
 				return;
 			}
