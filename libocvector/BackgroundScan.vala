@@ -16,10 +16,6 @@ namespace OLLMvector {
      */
     public class BackgroundScan : GLib.Object {
 
-        /*--------------------------------------------------------------------
-         *  Signals
-         *-------------------------------------------------------------------*/
-
         /**
          * Emitted when a file scan completes.
          *
@@ -42,17 +38,11 @@ namespace OLLMvector {
          */
         public signal void project_scan_completed (string project_path, int files_indexed);
 
-        /*--------------------------------------------------------------------
-         *  Dependencies – injected by the UI or the main application.
-         *-------------------------------------------------------------------*/
         private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
         private Database vector_db;               // OLLMvector.Database (FAISS)
         private SQ.Database sql_db;               // SQ.Database for metadata
         private OLLMfiles.ProjectManager project_manager;   // OLLMfiles.ProjectManager
 
-        /*--------------------------------------------------------------------
-         *  Thread management
-         *-------------------------------------------------------------------*/
         private GLib.Thread<void*>? worker_thread = null;
         private GLib.MainLoop? worker_loop = null;
         private GLib.MainContext? worker_context = null;
