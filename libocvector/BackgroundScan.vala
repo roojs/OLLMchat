@@ -258,10 +258,6 @@ namespace OLLMvector {
             }
         }
 
-        /*--------------------------------------------------------------------
-         *  Signal emission helpers – dispatch signals to main thread.
-         *-------------------------------------------------------------------*/
-
         /**
          * Emits file_scanned signal on the main thread.
          */
@@ -295,11 +291,6 @@ namespace OLLMvector {
             });
         }
 
-        /*--------------------------------------------------------------------
-         *  Cleanup – not strictly required because the thread lives for the
-         *  lifetime of the application, but we provide a method for graceful
-         *  shutdown if the host wishes to stop it.
-         *-------------------------------------------------------------------*/
         public void stop () {
             if (this.worker_loop != null) {
                 this.worker_loop.quit ();
