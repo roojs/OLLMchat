@@ -287,6 +287,7 @@ namespace OLLMvector {
 
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
+                    this.queue_processing = false;
                     this.emit_scan_update (0, "");
                     break;
                 }
