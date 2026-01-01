@@ -539,10 +539,9 @@ namespace OLLMchat
 				
 				// Connect to file_contents_changed signal to trigger background scanning
 				// Only connect when background_scan is available
+				// scanFile handles null project internally
 				this.project_manager.file_contents_changed.connect((file) => {
-					if (this.project_manager.active_project != null) {
-						this.background_scan.scanFile(file, this.project_manager.active_project);
-					}
+					this.background_scan.scanFile(file, this.project_manager.active_project);
 				});
 				
 				// Register the tool
