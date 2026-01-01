@@ -25,13 +25,6 @@ namespace OLLMvector {
         }
 
         /**
-         * Emitted when a file scan completes.
-         *
-         * @param file_path The path of the file that was scanned.
-         */
-        public signal void file_scanned (string file_path);
-
-        /**
          * Emitted when a project scan starts.
          *
          * @param project_path The path of the project being scanned.
@@ -332,20 +325,7 @@ namespace OLLMvector {
                     GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
 
-                // Emit per‑file signal.
-                this.emit_file_scanned (next_item.file_path);
             }
-        }
-
-        /**
-         * Emits file_scanned signal on the main thread.
-         */
-        private void emit_file_scanned (string file_path)
-        {
-            this.main_context.invoke (() => {
-                this.file_scanned (file_path);
-                return false;
-            });
         }
 
         /**
