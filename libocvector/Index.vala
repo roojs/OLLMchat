@@ -139,8 +139,13 @@ namespace OLLMvector
 				);
 			}
 			
-			if (Faiss.index_add(this.index, (int64)vectors.rows, vectors.data) != 0) {
-				throw new GLib.IOError.FAILED("Failed to add vectors to FAISS index");
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.index_add(this.index, (int64)vectors.rows, vectors.data) != 0) {
+					throw new GLib.IOError.FAILED("Failed to add vectors to FAISS index");
+				}
+			} finally {
+				this.faiss_mutex.unlock();
 			}
 		}
 		
@@ -166,8 +171,13 @@ namespace OLLMvector
 			var distances = new float[k];
 			var labels = new int64[k];
 			
-			if (Faiss.index_search_with_ids(this.index, 1, query_vector, (int64)k, selector, distances, labels) != 0) {
-				throw new GLib.IOError.FAILED("Failed to search FAISS index");
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.index_search_with_ids(this.index, 1, query_vector, (int64)k, selector, distances, labels) != 0) {
+					throw new GLib.IOError.FAILED("Failed to search FAISS index");
+				}
+			} finally {
+				this.faiss_mutex.unlock();
 			}
 			
 			var results = new SearchResult[k];
@@ -184,7 +194,12 @@ namespace OLLMvector
 		
 		public uint64 get_total_vectors()
 		{
-			return (uint64)Faiss.index_ntotal(this.index);
+			this.faiss_mutex.lock();
+			try {
+				return (uint64)Faiss.index_ntotal(this.index);
+			} finally {
+				this.faiss_mutex.unlock();
+			}
 		}
 		
 		/**
