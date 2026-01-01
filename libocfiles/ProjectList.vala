@@ -46,7 +46,7 @@ namespace OLLMfiles
 		/**
 		 * Hashmap of project path => Folder object for quick path lookup.
 		 */
-		private Gee.HashMap<string, Folder> path_map { get; set;
+		public Gee.HashMap<string, Folder> path_map { get; private set;
 			default = new Gee.HashMap<string, Folder>(); }
 		
 		/**
@@ -139,28 +139,6 @@ namespace OLLMfiles
 			
 			// Emit items_changed signal
 			this.items_changed((uint)position, 1, 0);
-		}
-		
-		/**
-		 * Check if a project with the given path exists in the list.
-		 * 
-		 * @param path The path to check
-		 * @return true if a project with this path exists, false otherwise
-		 */
-		public bool contains_path(string path)
-		{
-			return this.path_map.has_key(path);
-		}
-		
-		/**
-		 * Get a project by its path.
-		 * 
-		 * @param path The path of the project to find
-		 * @return The Folder (project) with the given path, or null if not found
-		 */
-		public Folder? get_by_path(string path)
-		{
-			return this.path_map.get(path);
 		}
 		
 		/**
