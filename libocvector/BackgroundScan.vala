@@ -262,21 +262,14 @@ namespace OLLMvector {
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer_tail (item);
 
-            // Ensure the queue processing source is active.
-            // If not already running, start it via an idle source.
-            // The idle source will keep pulling items until the queue is empty.
-            var source = new GLib.IdleSource ();
-            source.set_callback (() => {
-                this.startQueue.begin ((obj, res) => {
-                    try {
-                        this.startQueue.end (res);
-                    } catch (GLib.Error e) {
-                        GLib.warning ("BackgroundScan.startQueue error: %s", e.message);
-                    }
-                });
-                return false;
+            // Start queue processing (we're already in the background thread context)
+            this.startQueue.begin ((obj, res) => {
+                try {
+                    this.startQueue.end (res);
+                } catch (GLib.Error e) {
+                    GLib.warning ("BackgroundScan.startQueue error: %s", e.message);
+                }
             });
-            source.attach (this.worker_context);
         }
 
         /**
