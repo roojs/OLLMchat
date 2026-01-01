@@ -345,6 +345,13 @@ namespace OLLMchat
 				});
 			});
 			
+			// Connect to file_contents_changed signal to trigger background scanning
+			this.project_manager.file_contents_changed.connect((file) => {
+				if (this.background_scan != null && this.project_manager.active_project != null) {
+					this.background_scan.scanFile(file, this.project_manager.active_project);
+				}
+			});
+			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
 					new OLLMtools.ReadFile(this.history_manager.base_client, this.project_manager));
@@ -528,6 +535,14 @@ namespace OLLMchat
 				var vector_db_path = GLib.Path.build_filename(this.app.data_dir, "codedb.faiss.vectors");
 				var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
 				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
+				
+				// Create BackgroundScan instance for background file indexing
+				// Uses the same vector_db and embed_client, and the ProjectManager's database
+				this.background_scan = new OLLMvector.BackgroundScan(
+					embed_client,
+					vector_db,
+					project_manager.db
+				);
 				
 				// Register the tool
 				var tool = new OLLMvector.Tool.CodebaseSearchTool(
