@@ -553,10 +553,11 @@ namespace OLLMfiles
 			// Query: SELECT MAX(last_modified) FROM filebase
 			var query = FileBase.query(this.manager.db, this.manager);
 			var stmt = query.selectPrepare("SELECT MAX(last_modified) FROM filebase");
+			var results = query.fetchAllInt64(stmt);
 			
 			int64 max_mtime = 0;
-			if (stmt.step() == Sqlite.ROW) {
-				max_mtime = stmt.column_int64(0);
+			if (results.size > 0) {
+				max_mtime = results.get(0);
 			}
 			
 			// If max mtime in DB is greater than project's last_scan, reload needed
