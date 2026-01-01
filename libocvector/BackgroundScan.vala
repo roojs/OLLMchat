@@ -65,8 +65,6 @@ namespace OLLMvector {
                                Database vector_db,
                                SQ.Database sql_db,
                                OLLMfiles.ProjectManager project_manager) {
-            GLib.Object ();
-
             this.embedding_client = embedding_client;
             this.vector_db       = vector_db;
             this.sql_db          = sql_db;
