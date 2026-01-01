@@ -82,6 +82,36 @@ namespace OLLMvector {
         }
 
         /**
+         * Ensure ProjectManager exists in background thread context.
+         */
+        private void ensure_project_manager () {
+            if (this.worker_project_manager == null) {
+                // Create ProjectManager in background thread context
+                // Use same sql_db (thread-safe in serialized mode)
+                this.worker_project_manager = new OLLMfiles.ProjectManager(this.sql_db);
+                // Default providers are fine - we only need to read from DB
+            }
+        }
+
+        /**
+         * Set active project and clear files from previous active project to free memory.
+         * 
+         * Note: This does NOT update database (is_active flag) - that's main thread's responsibility.
+         * The background worker only manages memory, not database state.
+         */
+        private void set_active_project (OLLMfiles.Folder? project) {
+            // If switching to a different project, clear files from previous project
+            if (this.active_project != null && this.active_project != project) {
+                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
+                // This will cause needs_reload() to return true on next access, forcing a reload
+                this.active_project.clear_data();
+                // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
+                // The background worker only manages memory, not database state
+            }
+            this.active_project = project;
+        }
+
+        /**
          * Ensure the background thread is running.
          */
         private void ensure_thread () {
