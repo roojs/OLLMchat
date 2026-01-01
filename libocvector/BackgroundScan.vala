@@ -261,7 +261,7 @@ namespace OLLMvector {
          */
         private void queueFile (BackgroundScanItem item) {
             // All queue operations happen in the background thread context, so no mutex needed
-            this.file_queue.offer_tail (item);
+            this.file_queue.offer (item);
 
             // Start queue processing (we're already in the background thread context)
             this.startQueue.begin ();
@@ -284,7 +284,7 @@ namespace OLLMvector {
 
                 // All queue operations happen in the background thread context, so no mutex needed
                 if (!this.file_queue.is_empty) {
-                    next_item = this.file_queue.poll_head ();
+                    next_item = this.file_queue.poll ();
                     queue_size = (int)this.file_queue.size;
                 }
 
