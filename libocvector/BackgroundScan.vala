@@ -51,7 +51,7 @@ namespace OLLMvector {
         /*--------------------------------------------------------------------
          *  Queue – a thread‑safe list of file paths awaiting processing.
          *-------------------------------------------------------------------*/
-        private ArrayDeque<string> file_queue;
+        private Gee.ArrayDeque<string> file_queue;
         private GLib.Mutex queue_mutex;
 
         /*--------------------------------------------------------------------
@@ -62,10 +62,10 @@ namespace OLLMvector {
         /*--------------------------------------------------------------------
          *  Constructor
          *-------------------------------------------------------------------*/
-        public BackgroundScan (Client embedding_client,
+        public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
                                SQ.Database sql_db,
-                               ProjectManager project_manager) {
+                               OLLMfiles.ProjectManager project_manager) {
             GLib.Object ();
 
             this.embedding_client = embedding_client;
@@ -73,7 +73,7 @@ namespace OLLMvector {
             this.sql_db          = sql_db;
             this.project_manager = project_manager;
 
-            this.file_queue = new ArrayDeque<string> ();
+            this.file_queue = new Gee.ArrayDeque<string> ();
             this.queue_mutex = GLib.Mutex ();
             this.main_context = GLib.MainContext.default ();
         }
@@ -123,7 +123,7 @@ namespace OLLMvector {
          *
          * @param project The Project object representing the active project.
          */
-        public void scanProject (Project project) {
+        public void scanProject (OLLMfiles.Project project) {
             // Start thread if not already running.
             this.ensure_thread ();
 
