@@ -268,11 +268,6 @@ namespace OLLMfiles
 			if (!background_recurse) {
 				// Process folders synchronously using yield
 				foreach (var folder in folders_to_process) {
-					// Ensure subfolder's children are loaded from DB before scanning
-					// This prevents recreating records for files that already exist in DB
-					if (folder.id > 0 && folder.children.items.size == 0 && this.manager.db != null) {
-						yield folder.load_files_from_db();
-					}
 					yield folder.read_dir(check_time, true);
 				}
 				// All folders processed
