@@ -272,7 +272,13 @@ namespace OLLMvector {
             // The idle source will keep pulling items until the queue is empty.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.startQueue.begin ();
+                this.startQueue.begin ((obj, res) => {
+                    try {
+                        this.startQueue.end (res);
+                    } catch (GLib.Error e) {
+                        GLib.warning ("BackgroundScan.startQueue error: %s", e.message);
+                    }
+                });
                 return false;
             });
             source.attach (this.worker_context);
