@@ -57,7 +57,7 @@ namespace OLLMvector {
         private GLib.MainContext? worker_context = null;
         private GLib.MainContext main_context;
 
-        private Gee.ArrayList<BackgroundScanItem> file_queue;
+        private Gee.ArrayQueue<BackgroundScanItem> file_queue;
         private bool queue_processing = false;
 
         private Indexer? indexer = null;
@@ -76,7 +76,7 @@ namespace OLLMvector {
             this.vector_db = vector_db;
             this.sql_db = sql_db;
 
-            this.file_queue = new Gee.ArrayList<BackgroundScanItem> ();
+            this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
             this.main_context = GLib.MainContext.default ();
         }
 
