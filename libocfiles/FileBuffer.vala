@@ -510,7 +510,8 @@ namespace OLLMfiles
 		/**
 		 * Internal method: Update file metadata after writing.
 		 * 
-		 * Updates last_modified, saves to database, updates last_viewed, and emits changed signal.
+		 * Updates last_modified, saves to database, updates last_viewed, and notifies ProjectManager
+		 * that file contents have changed.
 		 */
 		protected void update_file_metadata_after_write()
 		{
@@ -525,6 +526,10 @@ namespace OLLMfiles
 			// Update last_viewed timestamp
 			this.file.last_viewed = new GLib.DateTime.now_local().to_unix();
 			
+			// Notify ProjectManager that file contents have changed (triggers background scanning)
+			this.file.manager.on_file_contents_change(this.file);
+			
+			// Also emit file.changed() signal for backward compatibility (though nothing currently listens)
 			this.file.changed();
 		}
 	}

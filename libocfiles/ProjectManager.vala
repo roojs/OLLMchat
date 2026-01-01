@@ -207,13 +207,42 @@ namespace OLLMfiles
 		 * Notify that a file's state has changed (save to database).
 		 * 
 		 * @param file The file that changed
+		 * @deprecated Use on_file_metadata_change() or on_file_contents_change() instead
 		 */
 		public void notify_file_changed(File file)
+		{
+			// For backward compatibility, treat as metadata change
+			this.on_file_metadata_change(file);
+		}
+		
+		/**
+		 * Notify that file metadata has changed (cursor, scroll, last_viewed).
+		 * Saves to database and emits file_metadata_changed signal.
+		 * 
+		 * @param file The file whose metadata changed
+		 */
+		public void on_file_metadata_change(File file)
 		{
 			if (this.db != null) {
 				file.saveToDB(this.db, null, false);
 				this.db.is_dirty = true;
 			}
+			this.file_metadata_changed(file);
+		}
+		
+		/**
+		 * Notify that file content has changed (saved, edited).
+		 * Saves to database and emits file_contents_changed signal.
+		 * 
+		 * @param file The file whose content changed
+		 */
+		public void on_file_contents_change(File file)
+		{
+			if (this.db != null) {
+				file.saveToDB(this.db, null, false);
+				this.db.is_dirty = true;
+			}
+			this.file_contents_changed(file);
 		}
 		
 		/**
