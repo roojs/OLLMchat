@@ -17,6 +17,14 @@ namespace OLLMvector {
     public class BackgroundScan : GLib.Object {
 
         /**
+         * Struct to track both project_path and file_path when queuing files.
+         */
+        private struct BackgroundScanItem {
+            string project_path;
+            string file_path;
+        }
+
+        /**
          * Emitted when a file scan completes.
          *
          * @param file_path The path of the file that was scanned.
@@ -31,24 +39,25 @@ namespace OLLMvector {
         public signal void project_scan_started (string project_path);
 
         /**
-         * Emitted when a project scan completes.
+         * Emitted at the start of each file scan and when queue becomes empty.
          *
-         * @param project_path The path of the project that was scanned.
-         * @param files_indexed The number of files that were indexed.
+         * @param queue_size Current size of the file queue (number of files remaining).
+         * @param current_file Path of the file currently being scanned (empty string "" when queue is empty).
          */
-        public signal void project_scan_completed (string project_path, int files_indexed);
+        public signal void scan_update (int queue_size, string current_file);
 
         private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
         private Database vector_db;               // OLLMvector.Database (FAISS)
         private SQ.Database sql_db;               // SQ.Database for metadata
-        private OLLMfiles.ProjectManager project_manager;   // OLLMfiles.ProjectManager
+        private OLLMfiles.ProjectManager? worker_project_manager = null;   // ProjectManager instance for background thread
+        private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
 
         private GLib.Thread<void*>? worker_thread = null;
         private GLib.MainLoop? worker_loop = null;
         private GLib.MainContext? worker_context = null;
         private GLib.MainContext main_context;
 
-        private Gee.ArrayDeque<string> file_queue;
+        private Gee.ArrayDeque<BackgroundScanItem> file_queue;
         private GLib.Mutex queue_mutex;
 
         private Indexer? indexer = null;
@@ -59,18 +68,15 @@ namespace OLLMvector {
          * @param embedding_client The OLLMchat.Client instance for LLM calls and embeddings.
          * @param vector_db The OLLMvector.Database instance for vector storage (FAISS).
          * @param sql_db The SQ.Database instance for metadata storage.
-         * @param project_manager The OLLMfiles.ProjectManager instance for file operations.
          */
         public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
-                               SQ.Database sql_db,
-                               OLLMfiles.ProjectManager project_manager) {
+                               SQ.Database sql_db) {
             this.embedding_client = embedding_client;
             this.vector_db       = vector_db;
             this.sql_db          = sql_db;
-            this.project_manager = project_manager;
 
-            this.file_queue = new Gee.ArrayDeque<string> ();
+            this.file_queue = new Gee.ArrayDeque<BackgroundScanItem> ();
             this.queue_mutex = GLib.Mutex ();
             this.main_context = GLib.MainContext.default ();
         }
