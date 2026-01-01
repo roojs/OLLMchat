@@ -79,7 +79,7 @@ namespace OLLMvector {
             this.project_manager = project_manager;
 
             this.file_queue = new ArrayDeque<string> ();
-            this.queue_mutex = new GLib.Mutex ();
+            this.queue_mutex = GLib.Mutex ();
             this.main_context = GLib.MainContext.default ();
         }
 
