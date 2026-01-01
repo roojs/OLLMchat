@@ -128,8 +128,11 @@ namespace OLLMvector {
         }
 
         /**
-         * Queue an entire project for scanning.  This method is safe to call
-         * from the UI thread.
+         * Enqueue all files of a project that need scanning.
+         *
+         * This method is safe to call from the UI thread. It will start the
+         * background thread if not already running and dispatch the project
+         * scanning work to the background thread.
          *
          * @param project The Project object representing the active project.
          */
@@ -151,7 +154,11 @@ namespace OLLMvector {
         }
 
         /**
-         * Queue a single file for scanning (e.g. after a save).
+         * Enqueue a single file for scanning (e.g. after a save).
+         *
+         * This method is safe to call from the UI thread. It will start the
+         * background thread if not already running and dispatch the file
+         * scanning work to the background thread.
          *
          * @param file The File object that was modified.
          */
