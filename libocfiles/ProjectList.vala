@@ -153,6 +153,17 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Get a project by its path.
+		 * 
+		 * @param path The path of the project to find
+		 * @return The Folder (project) with the given path, or null if not found
+		 */
+		public Folder? get_by_path(string path)
+		{
+			return this.path_map.get(path);
+		}
+		
+		/**
 		 * Find first project matching a predicate.
 		 * 
 		 * @param predicate Function that returns true for matching project
