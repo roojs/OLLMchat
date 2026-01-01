@@ -169,13 +169,7 @@ namespace OLLMvector {
             // load the project from the database.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.queueProject.begin (project_path, (obj, res) => {
-                    try {
-                        this.queueProject.end (res);
-                    } catch (GLib.Error e) {
-                        GLib.warning ("BackgroundScan.queueProject error: %s", e.message);
-                    }
-                });
+                this.queueProject.begin (project_path);
                 return false;
             });
             source.attach (this.worker_context);
