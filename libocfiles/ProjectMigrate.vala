@@ -341,6 +341,12 @@ namespace OLLMfiles
 				return;
 			}
 			
+			// Skip "." and ".." paths explicitly
+			if (folder_path == "." || folder_path == "..") {
+				GLib.debug("  Skipping (invalid path: '%s')", folder_path);
+				return;
+			}
+			
 			// Resolve to absolute path
 			string path = GLib.Path.is_absolute(folder_path) 
 				? folder_path 
@@ -353,6 +359,12 @@ namespace OLLMfiles
 				GLib.debug("  Normalized path: %s", path);
 			} catch (GLib.Error e) {
 				GLib.debug("  Warning: Failed to normalize path: %s", e.message);
+			}
+			
+			// Check again after normalization (might have become "." or "..")
+			if (path == "." || path == ".." || !GLib.Path.is_absolute(path)) {
+				GLib.debug("  Skipping (invalid normalized path: '%s')", path);
+				return;
 			}
 			
 			// Check if path exists and is a directory (IS_DIR implies EXISTS)

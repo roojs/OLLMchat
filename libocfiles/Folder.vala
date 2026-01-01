@@ -349,6 +349,11 @@ namespace OLLMfiles
 			while ((info = enumerator.next_file(null)) != null) {
 				var name = info.get_name();
 				
+				// Skip "." and ".." entries explicitly (shouldn't appear, but be safe)
+				if (name == "." || name == "..") {
+					continue;
+				}
+				
 				// Skip .git directories and other hidden/system folders
 				if (name == ".git") {
 					continue;

@@ -85,25 +85,9 @@ namespace OLLMchat.Settings
 			this.connection_list = new Gtk.StringList(null);
 			
 		// Connection row
-		// Create minimal factory for StringList (GTK4 requirement)
-		var connection_factory = new Gtk.SignalListItemFactory();
-		connection_factory.setup.connect((item) => {
-			var list_item = item as Gtk.ListItem;
-			if (list_item != null) {
-				var label = new Gtk.Label("");
-				list_item.child = label;
-			}
-		});
-		connection_factory.bind.connect((item) => {
-			var list_item = item as Gtk.ListItem;
-			if (list_item != null && list_item.item != null) {
-				var label = list_item.child as Gtk.Label;
-				if (label != null) {
-					label.label = (string)list_item.item;
-				}
-			}
-		});
-		this.connection_dropdown = new Gtk.DropDown(this.connection_list, connection_factory) {
+		// Use expression for StringList (simpler than factory)
+		this.connection_dropdown = new Gtk.DropDown(this.connection_list, 
+			new Gtk.PropertyExpression(typeof(string), null, "string")) {
 			vexpand = false,
 			valign = Gtk.Align.CENTER
 		};

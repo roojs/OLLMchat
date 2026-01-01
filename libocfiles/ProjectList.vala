@@ -86,7 +86,7 @@ namespace OLLMfiles
 		
 		/**
 		 * Append an item to the list (ListStore-compatible).
-		 * Checks for duplicates before adding.
+		 * Checks for duplicates by both id and path before adding.
 		 * 
 		 * @param item The Folder (project) item to append
 		 */
@@ -94,6 +94,13 @@ namespace OLLMfiles
 		{
 			// Check for duplicates by id
 			if (this.contains(item)) {
+				return;
+			}
+			
+			// Check for duplicates by path (prevent same path with different IDs)
+			if (item.path != "" && this.path_map.has_key(item.path)) {
+				GLib.debug("ProjectList.append: Skipping duplicate path '%s' (existing id=%lld, new id=%lld)", 
+					item.path, this.path_map.get(item.path).id, item.id);
 				return;
 			}
 			

@@ -145,15 +145,9 @@ namespace OLLMchatGtk
 			};
 			
 		// Create empty dropdown (will be set up in setup_model_dropdown)
-		// Create minimal factory to satisfy GTK4 requirement (will be replaced in setup_model_dropdown)
-		var minimal_factory = new Gtk.SignalListItemFactory();
-		minimal_factory.setup.connect((item) => {
-			var list_item = item as Gtk.ListItem;
-			if (list_item != null) {
-				list_item.child = new Gtk.Label("");
-			}
-		});
-		this.model_dropdown = new Gtk.DropDown(null, minimal_factory) {
+		// Use expression for Model.name_with_size (will be replaced in setup_model_dropdown)
+		this.model_dropdown = new Gtk.DropDown(null, 
+			new Gtk.PropertyExpression(typeof(OLLMchat.Response.Model), null, "name_with_size")) {
 			visible = false,
 			hexpand = false
 		};
