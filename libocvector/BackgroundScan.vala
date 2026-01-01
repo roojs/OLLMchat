@@ -91,18 +91,34 @@ namespace OLLMvector {
          * Ensure the background thread is running.
          */
         private void ensure_thread () {
-            if (worker_thread == null) {
-                // Create a new MainLoop that will live inside the worker thread.
-                worker_loop = new MainLoop (null, false);
-                // Spawn the thread; it will run worker_loop.run()
-                worker_thread = new Thread<void*>.try ("background-scan-thread", () => {
-                    // The thread owns its own default context.
-                    var ctx = new MainContext ();
-                    ctx.acquire ();
-                    worker_loop.run ();
-                    ctx.release ();
+            if (this.worker_thread != null) {
+                return;
+            }
+
+            // Create MainContext for background thread
+            this.worker_context = new GLib.MainContext ();
+
+            // Start background thread
+            try {
+                this.worker_thread = new GLib.Thread<void*>.try ("background-scan-thread", () => {
+                    // Set this context as thread default
+                    this.worker_context.push_thread_default ();
+
+                    // Create and run MainLoop
+                    this.worker_loop = new GLib.MainLoop (this.worker_context);
+                    this.worker_loop.run ();
+
+                    // Clean up
+                    this.worker_context.pop_thread_default ();
+                    this.worker_loop = null;
+                    this.worker_context = null;
+
                     return null;
                 });
+            } catch (GLib.Error e) {
+                GLib.warning ("Failed to start background thread: %s", e.message);
+                this.worker_thread = null;
+                this.worker_context = null;
             }
         }
 
@@ -114,17 +130,19 @@ namespace OLLMvector {
          */
         public void scanProject (Project project) {
             // Start thread if not already running.
-            ensure_thread ();
+            this.ensure_thread ();
 
-            // Emit start signal.
-            project_scan_started (project.path);
+            // Emit start signal on main thread.
+            this.emit_project_scan_started (project.path);
 
             // Dispatch the heavy work to the background thread via idle source.
             // The background thread will call queueProject().
-            Idle.add (() => {
-                queueProject (project);
-                return false; // run once
+            var source = new GLib.IdleSource ();
+            source.set_callback (() => {
+                this.queueProject (project);
+                return false;
             });
+            source.attach (this.worker_context);
         }
 
         /**
@@ -133,13 +151,15 @@ namespace OLLMvector {
          * @param file The File object that was modified.
          */
         public void scanFile (File file) {
-            ensure_thread ();
+            this.ensure_thread ();
 
             // Dispatch to background thread.
-            Idle.add (() => {
-                queueFile (file.path);
+            var source = new GLib.IdleSource ();
+            source.set_callback (() => {
+                this.queueFile (file.path);
                 return false;
             });
+            source.attach (this.worker_context);
         }
 
         /*--------------------------------------------------------------------
