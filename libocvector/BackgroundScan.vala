@@ -58,6 +58,7 @@ namespace OLLMvector {
         private GLib.MainContext main_context;
 
         private Gee.ArrayDeque<BackgroundScanItem> file_queue;
+        private bool queue_processing = false;
 
         private Indexer? indexer = null;
 
@@ -262,14 +263,11 @@ namespace OLLMvector {
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer_tail (item);
 
-            // Start queue processing (we're already in the background thread context)
-            this.startQueue.begin ((obj, res) => {
-                try {
-                    this.startQueue.end (res);
-                } catch (GLib.Error e) {
-                    GLib.warning ("BackgroundScan.startQueue error: %s", e.message);
-                }
-            });
+            // Start queue processing if not already running (we're already in the background thread context)
+            if (!this.queue_processing) {
+                this.queue_processing = true;
+                this.startQueue.begin ();
+            }
         }
 
         /**
