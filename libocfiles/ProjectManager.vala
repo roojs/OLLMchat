@@ -76,6 +76,18 @@ namespace OLLMfiles
 		public signal void active_project_changed(Folder? project);
 		
 		/**
+		 * Emitted when file metadata changes (cursor, scroll, last_viewed, etc.).
+		 * This signal is emitted for metadata-only updates that don't require background scanning.
+		 */
+		public signal void file_metadata_changed(File file);
+		
+		/**
+		 * Emitted when file content changes (saved, edited, etc.).
+		 * This signal is emitted when file content is written to disk and triggers background scanning.
+		 */
+		public signal void file_contents_changed(File file);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param db Optional database instance for persistence
