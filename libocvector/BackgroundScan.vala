@@ -51,14 +51,8 @@ namespace OLLMvector {
         private Gee.ArrayDeque<string> file_queue;
         private GLib.Mutex queue_mutex;
 
-        /*--------------------------------------------------------------------
-         *  Indexer reuse – an Indexer instance can be reused for multiple files.
-         *-------------------------------------------------------------------*/
         private Indexer? indexer = null;
 
-        /*--------------------------------------------------------------------
-         *  Constructor
-         *-------------------------------------------------------------------*/
         public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
                                SQ.Database sql_db,
