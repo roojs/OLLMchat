@@ -219,9 +219,9 @@ namespace OLLMcoder.Prompt
 			if (!db_file.query_exists()) {
 				// Database file doesn't exist - run migration
 				var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
-				migrator.migrate_all();
-				// Save migrated data to database file
-				this.project_manager.db.backupDB();
+				// Start migration (async, but we don't wait - migration will save to DB when done)
+				migrator.migrate_all.begin();
+				// Note: migrate_all() will call backupDB() when it completes
 			}
 			
 			// Create SourceView with ProjectManager

@@ -245,11 +245,11 @@ namespace OLLMfiles
 		public int is_repo { get; set; default = -1; }
 		
 		/**
-		 * Unix timestamp of last scan (stored in database, default: 0).
-		 * For files: timestamp when scan completed (after successful vectorization).
-		 * For folders: timestamp when scan started (to prevent re-recursion during same scan).
+		 * Unix timestamp of last vector scan (stored in database, default: 0).
+		 * For files: timestamp when vector scan completed (after successful vectorization).
+		 * For folders: timestamp when vector scan started (to prevent re-recursion during same scan).
 		 */
-		public int64 last_scan { get; set; default = 0; }
+		public int64 last_vector_scan { get; set; default = 0; }
 		
 		/**
 		 * Initialize database table for filebase objects.
@@ -276,14 +276,14 @@ namespace OLLMfiles
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
-				"last_scan INT64 NOT NULL DEFAULT 0" +
+				"last_vector_scan INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
 			}
 			
-			// Migrate existing databases: add last_scan column if it doesn't exist
-			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_scan INT64 NOT NULL DEFAULT 0";
+			// Migrate existing databases: add last_vector_scan column if it doesn't exist
+			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
@@ -350,7 +350,7 @@ namespace OLLMfiles
 		 * Copies all database-preserved fields (excluding filesystem-derived fields):
 		 * id, is_active, last_viewed, last_modified, language, last_approved_copy_path,
 		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
-		 * is_repo, last_scan.
+		 * is_repo, last_vector_scan.
 		 * 
 		 * Note: base_type is not copied as it's determined by object type and should match.
 		 * 
@@ -375,7 +375,7 @@ namespace OLLMfiles
 			target.is_ignored = this.is_ignored;
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
-			target.last_scan = this.last_scan;
+			target.last_vector_scan = this.last_vector_scan;
 		}
 		
 		// Static counter for tracking saveToDB calls
@@ -418,35 +418,28 @@ namespace OLLMfiles
 				return;
 			}
 			
-			saveToDB_call_count++;
-			var call_id = saveToDB_call_count;
-			var timestamp = (new GLib.DateTime.now_local()).format("%H:%M:%S.%f");
-			
-			GLib.debug("FileBase.saveToDB[%lld] @%s: path='%s', id=%lld, new_values=%s, sync=%s, type=%s", 
-				call_id, timestamp, this.path, this.id, 
-				new_values != null ? "set" : "null", sync.to_string(), this.get_type().name());
-			
 			var sq = new SQ.Query<FileBase>(db, "filebase");
 			// At this point, id >= 0 (fake files with id < 0 already returned above)
 			// id = 0: new file (insert), id > 0: existing file (update)
 			if (this.id == 0) {
 				// New file - insert into database
+				GLib.debug("INSERT new file path='%s'", this.path);
 				this.id = sq.insert(this);
 				this.manager.file_cache.set(this.path, this);
-				GLib.debug("FileBase.saveToDB[%lld]: Inserted new record, id=%lld", call_id, this.id);
 			} else {
 				if (new_values != null) {
-					sq.updateOld(this, new_values);
-					GLib.debug("FileBase.saveToDB[%lld]: Updated with new_values (old id=%lld)", call_id, this.id);
+					var updated = sq.updateOld(this, new_values);
+					if (updated) {
+						GLib.debug("UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
+					}
 				} else {
+					GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
 					sq.updateById(this);
-					GLib.debug("FileBase.saveToDB[%lld]: Updated by id=%lld", call_id, this.id);
 				}
 			}
 			// Backup in-memory database to disk only if sync is true
 			if (sync) {
 				db.backupDB();
-				GLib.debug("FileBase.saveToDB[%lld]: Database synced to disk", call_id);
 			}
 		}
 		

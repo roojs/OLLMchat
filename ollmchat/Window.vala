@@ -43,6 +43,7 @@ namespace OLLMchat
 		private Gtk.Image settings_icon;
 		private Adw.Banner tool_error_banner;
 		private FileChangeBanner file_change_banner;
+		private VectorScanBanner vector_scan_banner;
 		private OLLMfiles.ProjectManager project_manager;
 		private OLLMvector.BackgroundScan? background_scan = null;
 
@@ -131,6 +132,9 @@ namespace OLLMchat
 			
 			// Create file change banner (creates revealer internally)
 			this.file_change_banner = new FileChangeBanner(this);
+			
+			// Create vector scan banner (creates revealer internally)
+			this.vector_scan_banner = new VectorScanBanner();
 				
 			// Add header bar to toolbar view's top slot
 			toolbar_view.add_top_bar(this.header_bar);
@@ -140,6 +144,9 @@ namespace OLLMchat
 			
 			// Add file change banner below tool error banner
 			toolbar_view.add_top_bar(this.file_change_banner.revealer);
+			
+			// Add vector scan banner below file change banner
+			toolbar_view.add_top_bar(this.vector_scan_banner.revealer);
 
 			// Create overlay split view
 			this.split_view = new Adw.OverlaySplitView();
@@ -542,6 +549,11 @@ namespace OLLMchat
 						project_manager.db,
 						new OLLMcoder.GitProvider()
 					);
+					
+					// Connect to scan_update signal to update banner
+					this.background_scan.scan_update.connect((queue_size, current_file) => {
+						this.vector_scan_banner.update_scan_status(queue_size, current_file);
+					});
 					
 					// Connect to file_contents_changed signal to trigger background scanning
 					// Only connect when background_scan is available

@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMfiles.FileBase.last_scan &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMfiles.FileBase.last_vector_scan &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMfiles.FileBase.last_scan &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMfiles.FileBase.last_vector_scan &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -44,7 +44,7 @@
           <li class="property"><a href="OLLMfiles.FileBase.language.html">language</a></li>
           <li class="property"><a href="OLLMfiles.FileBase.last_approved_copy_path.html">last_approved_copy_path</a></li>
           <li class="property"><a href="OLLMfiles.FileBase.last_modified.html">last_modified</a></li>
-          <li class="property">last_scan</li>
+          <li class="property">last_vector_scan</li>
           <li class="property"><a href="OLLMfiles.FileBase.last_viewed.html">last_viewed</a></li>
           <li class="property"><a href="OLLMfiles.FileBase.manager.html">manager</a></li>
           <li class="property"><a href="OLLMfiles.FileBase.needs_approval.html">needs_approval</a></li>
@@ -69,14 +69,14 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">last_scan</h1>
+        <h1 class="main_title">last_vector_scan</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><span class="property">last_scan</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><span class="property">last_vector_scan</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Unix timestamp of last scan (stored in database, default: 0). For files: timestamp when scan completed (after successful vectorization). 
-            For folders: timestamp when scan started (to prevent re-recursion during same scan).</p>
+          <p>Unix timestamp of last vector scan (stored in database, default: 0). For files: timestamp when vector scan completed (after successful 
+            vectorization). For folders: timestamp when vector scan started (to prevent re-recursion during same scan).</p>
         </div>
       </div>
     </div><br/>

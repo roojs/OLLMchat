@@ -207,7 +207,7 @@ namespace SQ {
 				string.joinv(",", keys) + " ) VALUES ( " + 
 				string.joinv(",", values) +   " );";
 			
-			//GLib.debug("Query %s", q);
+			GLib.debug("Query %s", q);
 			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			
@@ -268,8 +268,9 @@ namespace SQ {
 		 * 
 		 * @param old The original object (can be null, in which case newer.id is used)
 		 * @param newer The updated object with new values
+		 * @return true if an update was performed, false if nothing changed
 		 */
-		public void updateOld(T old, T newer)
+		public bool updateOld(T old, T newer)
 		{
 			assert(this.table != "");
 			var schema = new Schema(this.db);
@@ -291,10 +292,11 @@ namespace SQ {
 				if (old ==null || !this.compareProperty(old, newer, prop_name, value_type)) {
 					setter += (s.name +  " = $" + s.name);
 					types.set(s.name,s.ctype);
+					GLib.debug("Change: %s",s.name);
 				}
 			}
 			if (setter.length < 1) {
-				return;
+				return false;
 			}
 
 			Type id_type;
@@ -304,8 +306,7 @@ namespace SQ {
 			var id = this.getInt(old == null ? newer : old, "id", id_type);
 				
 			this.updateImp(newer, types, setter, id);
-			
-				
+			return true;
 		}
 		
 		/**

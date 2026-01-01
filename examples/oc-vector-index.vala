@@ -263,8 +263,6 @@ Examples:
 		// Scan the folder (like the desktop does)
 		stdout.printf("Scanning folder for files...\n");
 		var scan_time = new DateTime.now_local().to_unix();
-		folder_obj.last_scan = scan_time;
-		folder_obj.saveToDB(sql_db, null, false);
 		yield folder_obj.read_dir(scan_time, true);
 		
 		// Update project_files to get the list of files to index
@@ -282,6 +280,11 @@ Examples:
 			              "  Total vectors: %llu\n" +
 			              "  Vector dimension: %llu\n\n",
 			              files_indexed, files_indexed, vector_db.vector_count, vector_db.dimension);
+			
+			// Set last_vector_scan timestamp after successful indexing
+			var vector_scan_time = new DateTime.now_local().to_unix();
+			folder_obj.last_vector_scan = vector_scan_time;
+			folder_obj.saveToDB(sql_db, null, false);
 		} catch (GLib.Error e) {
 			stdout.printf("Error during indexing: %s\n", e.message);
 			throw e;

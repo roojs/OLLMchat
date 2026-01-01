@@ -194,7 +194,7 @@ namespace OLLMfiles
 				}
 				
 				// Start async directory scan (don't await - runs in background)
- 			 
+			 
 				yield project.read_dir( new DateTime.now_local().to_unix() , true);
 				
 			}

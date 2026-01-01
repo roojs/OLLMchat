@@ -115,5 +115,32 @@
   background-color: #fffacd;
 }
 
+/* Banner styling - matches Adwaita banner appearance */
+/* Uses libadwaita warning colors for background and text (light theme values) */
+.banner {
+  background-color: #eee; /* warning-bg-color light theme */
+  color: #666; /* warning-fg-color light theme */
+}
 
 
+.banner progressbar  trough progress {
+	min-height: 6px;
+	border-radius: 3px;
+	background-color:  #f5c211; /* warning-bg-color light theme */
+  }
+
+/* Progress bar styling in banner - full width with better appearance */
+/* GTK4 ProgressBar structure: progressbar > trough > progress */
+.banner progressbar trough {
+  min-height: 6px;
+  border-radius: 3px;
+  background-color: #eee; /* warning-bg-color light theme */
+  color: #666; /* warning-fg-color light theme */
+}
+ 
+/* Banner label styling - centered text */
+.banner label {
+  font-weight: 500;
+  background-color: #eee; /* warning-bg-color light theme */
+  color: #666; /* warning-fg-color light theme */}
+}

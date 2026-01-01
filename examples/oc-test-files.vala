@@ -217,14 +217,9 @@ Examples:
 		// Load projects from database
 		yield manager.load_projects_from_db();
 		
-		// Set active project if available (activate the most recently created one)
-		// Projects are loaded in order, so the last one is likely the most recent
-		if (manager.projects.get_n_items() > 0) {
-			var project = manager.projects.get_item(manager.projects.get_n_items() - 1) as OLLMfiles.Folder;
-			if (project != null) {
-				yield manager.activate_project(project);
-			}
-		}
+		// Don't activate projects in test code - it triggers filesystem scanning
+		// and database updates which are unwanted side effects. Operations can
+		// work without active_project (they fall back to fake files or require explicit paths).
 		
 		// Execute the requested action
 		if (opt_ls) {
@@ -254,28 +249,55 @@ Examples:
 
 	private async void run_ls(OLLMfiles.ProjectManager manager) throws Error
 	{
-		string scan_path = opt_ls_path ?? GLib.Environment.get_current_dir();
+		OLLMfiles.Folder? project = null;
+		var scan_path = GLib.Environment.get_current_dir();
 		
-		// Create a Folder with is_project = true for the scan path
-		var project = new OLLMfiles.Folder(manager);
-		project.path = scan_path;
-		project.is_project = true;
-		project.display_name = GLib.Path.get_basename(scan_path);
 		
-		// Disable background recursion for testing
+		// Determine scan path
+		if (opt_ls_path != null && opt_ls_path != "") {
+			// Use provided path
+			scan_path = GLib.Path.is_absolute(opt_ls_path) 
+				? opt_ls_path 
+				: GLib.Path.build_filename(GLib.Environment.get_current_dir(), opt_ls_path);
+		} 
+		
+		// Normalize the path
+		try {
+			scan_path = GLib.File.new_for_path(scan_path).get_path();
+		} catch (GLib.Error e) {
+			throw new GLib.IOError.INVALID_ARGUMENT("Invalid path: " + scan_path);
+		}
+		
+		// Try to find existing project in database
+		project = manager.projects.path_map.get(scan_path);
+		
+		// Project must exist in database
+		if (project == null) {
+			throw new GLib.IOError.NOT_FOUND("Project not found in database: " + scan_path);
+		}
+		
+		// Load existing project files from database first
+		// This populates project.children so read_dir() can compare filesystem with database
+		yield project.load_files_from_db();
+		
+		// Disable background recursion for testing (ensure it's off)
+		var was_background = OLLMfiles.Folder.background_recurse;
 		OLLMfiles.Folder.background_recurse = false;
 		
-		// Save project to database
-		if (manager.db != null) {
-			project.saveToDB(manager.db, null, false);
-		}
-		manager.projects.append(project);
-		
-		// Scan the directory recursively
+		// Scan the filesystem to update project files
+		// read_dir() automatically updates project_files when recursion completes
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Restore previous background setting
+		OLLMfiles.Folder.background_recurse = was_background;
 		
 		// Output project files
 		this.output_project_files(project);
+		
+		// Sync database to filesystem
+		if (manager.db != null) {
+			manager.db.backupDB();
+		}
 	}
 
 	private async void run_read(OLLMfiles.ProjectManager manager) throws Error
@@ -492,18 +514,30 @@ Cleanup completed (check logs for deleted files)
 	{
 		string project_path = opt_create_project;
 		
-		// Create a Folder with is_project = true
-		var project = new OLLMfiles.Folder(manager);
-		project.path = project_path;
-		project.is_project = true;
-		project.display_name = GLib.Path.get_basename(project_path);
+		// Load existing projects from database first
+		yield manager.load_projects_from_db();
+		
+		// Check if project already exists
+		var existing_project = manager.projects.path_map.get(project_path);
+		OLLMfiles.Folder project;
+		if (existing_project != null) {
+			// Project exists - use it
+			project = existing_project;
+			GLib.debug("oc-test-files: Using existing project '%s' (id=%lld)", project_path, project.id);
+		} else {
+			// Create a new Folder with is_project = true
+			project = new OLLMfiles.Folder(manager);
+			project.path = project_path;
+			project.is_project = true;
+			project.display_name = GLib.Path.get_basename(project_path);
+			
+			// Save project to database
+			project.saveToDB(db, null, false);
+			manager.projects.append(project);
+		}
 		
 		// Disable background recursion for testing
 		OLLMfiles.Folder.background_recurse = false;
-		
-		// Save project to database
-		project.saveToDB(db, null, false);
-		manager.projects.append(project);
 		
 		// Scan directory and populate project files
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);

@@ -191,6 +191,7 @@ valadoc_docs = custom_target('valadoc',
     '../ollmchat/Window.vala',
     '../ollmchat/WindowPane.vala',
     '../ollmchat/FileChangeBanner.vala',
+    '../ollmchat/VectorScanBanner.vala',
     # ollmchat application sources (Settings UI)
     '../ollmchat/Settings/ConnectionAdd.vala',
     '../ollmchat/Settings/ConnectionRow.vala',

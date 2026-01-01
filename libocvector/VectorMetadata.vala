@@ -314,7 +314,7 @@ namespace OLLMvector
 			
 			// Delete metadata and reset scan dates
 			sql_db.exec("DELETE FROM vector_metadata");
-			sql_db.exec("UPDATE filebase SET last_scan = -1 WHERE base_type = 'f'");
+			sql_db.exec("UPDATE filebase SET last_vector_scan = -1 WHERE base_type = 'f'");
 			
 			// Sync database to disk after reset
 			sql_db.backupDB();

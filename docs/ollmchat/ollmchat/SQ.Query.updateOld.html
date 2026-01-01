@@ -53,7 +53,7 @@
         <h1 class="main_title">updateOld</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">updateOld</span></b> (<span class="main_type"><span>T</span></span> old, <span class="main_type"><span>T</span></span> newer)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="method">updateOld</span></b> (<span class="main_type"><span>T</span></span> old, <span class="main_type"><span>T</span></span> newer)
         </div>
         <div class="description">
           <p>Updates an existing object in the database, only changing modified fields.</p>
@@ -71,6 +71,14 @@
               <td class="main_parameter_table_name">newer</td>
               <td>
                 <p>The updated object with new values </p>
+              </td>
+            </tr>
+          </table>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>true if an update was performed, false if nothing changed </p>
               </td>
             </tr>
           </table>

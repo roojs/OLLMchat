@@ -253,7 +253,7 @@ namespace OLLMvector {
 		{
             // If switching to a different project, clear files from previous project
             if (this.active_project != null && this.active_project != project) {
-                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
+                // Clear all in-memory data (children, project_files)
                 // This will cause needs_reload() to return true on next access, forcing a reload
                 this.active_project.clear_data();
                 // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
@@ -296,13 +296,16 @@ namespace OLLMvector {
 
             // Set as active project and load files from DB (will check needs_reload() internally)
             yield this.set_active_project_and_load (project);
+            
+            // Ensure project_files is populated (load_files_from_db may skip update_from if needs_reload() is false)
+            project.project_files.update_from(project);
 
             int queued_count = 0;
             // Iterate through project_files (flat list, not hierarchical)
             // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
             foreach (var project_file in project.project_files) {
                 // Skip if file doesn't need scanning (negative test)
-                if (project_file.file.last_scan >= project_file.file.mtime_on_disk ()) {
+                if (project_file.file.last_vector_scan >= project_file.file.mtime_on_disk ()) {
                     continue;
                 }
                 // Create BackgroundScanItem and queue it
@@ -374,6 +377,9 @@ namespace OLLMvector {
                 // Set as active project and reload files from database (state may have changed since queued)
                 // This will automatically check needs_reload() and skip if no changes
                 yield this.set_active_project_and_load (project);
+                
+                // Ensure project_files is populated (load_files_from_db may skip update_from if needs_reload() is false)
+                project.project_files.update_from(project);
 
                 // Find file in that project's project_files.child_map
                 var project_file = project.project_files.child_map.get (next_item.file_path);
