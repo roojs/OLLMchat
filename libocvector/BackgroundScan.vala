@@ -173,10 +173,10 @@ namespace OLLMvector {
         private void queueProject (Project project) {
             // Load project from DB – ProjectManager already has it.
             // Ensure we have the latest representation.
-            var proj = project_manager.get_project_by_path (project.path);
+            var proj = this.project_manager.get_project_by_path (project.path);
             if (proj == null) {
                 // If the project cannot be loaded, abort silently.
-                warning ("BackgroundScan: could not load project %s", project.path);
+                GLib.warning ("BackgroundScan: could not load project %s", project.path);
                 return;
             }
 
@@ -189,7 +189,7 @@ namespace OLLMvector {
                     // Compare last_scan timestamp with file modification time.
                     // If the file has never been scanned or changed, queue it.
                     if (f.last_scan < f.mtime_on_disk ()) {
-                        queueFile (f.path);
+                        this.queueFile (f.path);
                         files_indexed++;
                     }
                 } else if (child is Folder) {
@@ -198,13 +198,13 @@ namespace OLLMvector {
                     var folder = child as Folder;
                     if (folder.last_scan < folder.mtime_on_disk ()) {
                         // Recurse into sub‑folder.
-                        queueProject (folder as Project); // Folder is also a Project‑like node
+                        this.queueProject (folder as Project); // Folder is also a Project‑like node
                     }
                 }
             }
 
             // Emit completion signal (after all files have been queued).
-            project_scan_completed (project.path, files_indexed);
+            this.emit_project_scan_completed (project.path, files_indexed);
         }
 
         /**
@@ -213,17 +213,19 @@ namespace OLLMvector {
          */
         private void queueFile (string path) {
             // Guard the queue with the mutex.
-            queue_mutex.lock ();
-            file_queue.offer_tail (path);
-            queue_mutex.unlock ();
+            this.queue_mutex.lock ();
+            this.file_queue.offer_tail (path);
+            this.queue_mutex.unlock ();
 
             // Ensure the queue processing source is active.
             // If not already running, start it via an idle source.
             // The idle source will keep pulling items until the queue is empty.
-            Idle.add (() => {
-                startQueue ();
+            var source = new GLib.IdleSource ();
+            source.set_callback (() => {
+                this.startQueue ();
                 return false;
             });
+            source.attach (this.worker_context);
         }
 
         /**
