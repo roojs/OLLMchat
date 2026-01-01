@@ -280,7 +280,7 @@ namespace OLLMvector {
 
             while (true) {
                 BackgroundScanItem? next_item = null;
-                int queue_size = 0;
+                var queue_size = 0;
 
                 // All queue operations happen in the background thread context, so no mutex needed
                 if (!this.file_queue.is_empty) {
