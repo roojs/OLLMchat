@@ -9,7 +9,6 @@
 
 namespace OLLMvector {
 
-    using GLib;
     using Gee;
     using OLLMfiles;
     using OLLMchat;
@@ -29,7 +28,7 @@ namespace OLLMvector {
      *   - project_scan_started(string project_path)
      *   - project_scan_completed(string project_path, int files_indexed)
      */
-    public class BackgroundScan : Object {
+    public class BackgroundScan : GLib.Object {
 
         /*--------------------------------------------------------------------
          *  Signals
@@ -49,14 +48,16 @@ namespace OLLMvector {
         /*--------------------------------------------------------------------
          *  Thread management
          *-------------------------------------------------------------------*/
-        private Thread<void*>? worker_thread = null;
-        private MainLoop? worker_loop = null;
+        private GLib.Thread<void*>? worker_thread = null;
+        private GLib.MainLoop? worker_loop = null;
+        private GLib.MainContext? worker_context = null;
+        private GLib.MainContext main_context;
 
         /*--------------------------------------------------------------------
          *  Queue – a thread‑safe list of file paths awaiting processing.
          *-------------------------------------------------------------------*/
         private ArrayDeque<string> file_queue;
-        private Mutex queue_mutex;
+        private GLib.Mutex queue_mutex;
 
         /*--------------------------------------------------------------------
          *  Indexer reuse – an Indexer instance can be reused for multiple files.
@@ -70,7 +71,7 @@ namespace OLLMvector {
                                Database vector_db,
                                SQ.Database sql_db,
                                ProjectManager project_manager) {
-            Object ();
+            GLib.Object ();
 
             this.embedding_client = embedding_client;
             this.vector_db       = vector_db;
@@ -78,7 +79,8 @@ namespace OLLMvector {
             this.project_manager = project_manager;
 
             this.file_queue = new ArrayDeque<string> ();
-            this.queue_mutex = new Mutex ();
+            this.queue_mutex = new GLib.Mutex ();
+            this.main_context = GLib.MainContext.default ();
         }
 
         /*--------------------------------------------------------------------
