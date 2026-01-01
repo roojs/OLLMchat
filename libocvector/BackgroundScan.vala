@@ -145,7 +145,7 @@ namespace OLLMvector {
          *
          * @param file The File object that was modified.
          */
-        public void scanFile (File file) {
+        public void scanFile (OLLMfiles.File file) {
             this.ensure_thread ();
 
             // Dispatch to background thread.
