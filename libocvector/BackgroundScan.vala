@@ -225,8 +225,8 @@ namespace OLLMvector {
             // Load projects from database
             yield this.worker_project_manager.load_projects_from_db ();
 
-            // Find project by path
-            var project = this.worker_project_manager.projects.find_first ((p) => p.path == path);
+            // Find project by path (O(1) lookup using path_map)
+            var project = this.worker_project_manager.projects.get_by_path (path);
             if (project == null) {
                 GLib.warning ("BackgroundScan: could not find project %s", path);
                 return;
