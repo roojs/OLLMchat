@@ -1,0 +1,5 @@
+[
+  {"start": 2, "end": 3, "replacement": "Second line: changed\n"},
+  {"start": 5, "end": 6, "replacement": "Fifth line: modified\n"},
+  {"start": 7, "end": 7, "replacement": "Eighth line: inserted\n"}
+]

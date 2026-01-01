@@ -46,7 +46,7 @@ namespace OLLMfiles
 		/**
 		 * Hashmap of project path => Folder object for quick path lookup.
 		 */
-		private Gee.HashMap<string, Folder> path_map { get; set;
+		public Gee.HashMap<string, Folder> path_map { get; private set;
 			default = new Gee.HashMap<string, Folder>(); }
 		
 		/**
@@ -142,33 +142,6 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Check if a project with the given path exists in the list.
-		 * 
-		 * @param path The path to check
-		 * @return true if a project with this path exists, false otherwise
-		 */
-		public bool contains_path(string path)
-		{
-			return this.path_map.has_key(path);
-		}
-		
-		/**
-		 * Find first project matching a predicate.
-		 * 
-		 * @param predicate Function that returns true for matching project
-		 * @return The first matching Folder, or null if none found
-		 */
-		public Folder? find_first(Gee.Predicate<Folder> predicate)
-		{
-			foreach (var project in this.items) {
-				if (predicate(project)) {
-					return project;
-				}
-			}
-			return null;
-		}
-		
-		/**
 		 * Get the active project from the projects list.
 		 * 
 		 * @return The active Folder (project), or null if no project is active
@@ -177,17 +150,19 @@ namespace OLLMfiles
 		{
 			// Count how many projects have is_active = true
 			int active_count = 0;
+			Folder? result = null;
 			foreach (var project in this.items) {
-				if (project.is_active && project.is_project) {
-					active_count++;
-					GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
-						project.path, active_count);
+				if (!(project.is_active && project.is_project)) {
+					continue;
 				}
+				active_count++;
+				if (result == null) {
+					result = project;
+				}
+				GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
+					project.path, active_count);
 			}
 			GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
-			var result = this.find_first(
-				(p) => { return  p.is_active && p.is_project; } 
-			);
 			GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
 				result != null ? result.path : "null");
 			return result;

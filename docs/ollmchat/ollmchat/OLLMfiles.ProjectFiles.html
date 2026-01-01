@@ -28,11 +28,13 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMfiles.ProjectFiles.child_map.html">child_map</a></li>
+          <li class="property"><a href="OLLMfiles.ProjectFiles.folder_map.html">folder_map</a></li>
           <li class="creation_method"><a href="OLLMfiles.ProjectFiles.ProjectFiles.html">ProjectFiles</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.@foreach.html">@foreach</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.append.html">append</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.contains.html">contains</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.find.html">find</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectFiles.find_container_of.html">find_container_of</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_active_file.html">get_active_file</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_by_id.html">get_by_id</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_ids.html">get_ids</a></li>
@@ -46,6 +48,7 @@
           <li class="method"><a href="OLLMfiles.ProjectFiles.remove_all.html">remove_all</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.remove_at.html">remove_at</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.update_from.html">update_from</a></li>
+          <li class="signal"><a href="OLLMfiles.ProjectFiles.new_file_added.html">new_file_added</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -77,6 +80,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Hashmap of file path =&gt; ProjectFile object for quick lookup.</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span>&gt; <b><a href="OLLMfiles.ProjectFiles.folder_map.html" class="property">folder_map</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Hashmap of folder path =&gt; Folder object for quick lookup. Includes 
+                both direct folders and folders accessed through aliases.</span>
+            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -103,6 +111,11 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMfiles.ProjectFiles.find.html" class="method">find</a></b> (<span class="main_type"><a href="OLLMfiles.ProjectFile.html" class="class">ProjectFile</a></span> item, <span class="main_keyword">out</span> <span class="main_basic_type"><span class="struct">uint</span></span> position)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Find an item in the list and return its position.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span>? <b><a href="OLLMfiles.ProjectFiles.find_container_of.html" class="method">find_container_of</a></b> (<span class="main_basic_type"><span class="class">string</span></span> folder_path)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Finds the container folder of a given path by walking up the directory
+                tree.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span>? <b><a href="OLLMfiles.ProjectFiles.get_active_file.html" class="method">get_active_file</a></b> ()
             </span>
@@ -159,6 +172,15 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectFiles.update_from.html" class="method">update_from</a></b> (<span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span> folder)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Recursively update project files from a folder tree.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Signals:</h3>
+        <ul class="navi_inline">
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectFiles.new_file_added.html" class="signal">new_file_added</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a new file is explicitly added to the project (not during
+                scans). This signal is only emitted when a new file is created, not when files are discovered during directory scans. Use this to 
+                react to new file creation.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

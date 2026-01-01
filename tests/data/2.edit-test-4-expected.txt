@@ -1,0 +1,8 @@
+First line
+Second line: changed
+Third line
+Fourth line
+Fifth line: modified
+Sixth line
+Eighth line: inserted
+Seventh line

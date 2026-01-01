@@ -5,263 +5,374 @@
 // OLLMvector indexing pipeline (Indexer) and emits signals so the UI can
 // react to scan progress.
 //
-// The implementation follows the description in the project plan (Phase 7).
+// The implementation follows the description in the project plan (Phase 7).
 
 namespace OLLMvector {
-
-    using GLib;
-    using Gee;
-    using OLLMfiles;
-    using OLLMchat;
-    using SQ;
 
     /**
      * BackgroundScan manages a background thread that continuously processes
      * file‑indexing jobs.  The thread is started on first use and lives for the
      * lifetime of the application.
-     *
-     * Public API:
-     *   - scanProject(Project project) : enqueue all files of a project that need scanning.
-     *   - scanFile(File file)          : enqueue a single file (e.g. after a save).
-     *
-     * Signals:
-     *   - file_scanned(string file_path)
-     *   - project_scan_started(string project_path)
-     *   - project_scan_completed(string project_path, int files_indexed)
      */
-    public class BackgroundScan : Object {
+    public class BackgroundScan : GLib.Object {
 
-        /*--------------------------------------------------------------------
-         *  Signals
-         *-------------------------------------------------------------------*/
-        public signal void file_scanned (string file_path);
-        public signal void project_scan_started (string project_path);
-        public signal void project_scan_completed (string project_path, int files_indexed);
+        // ============================================================================
+        // MAIN THREAD SECTION
+        // ============================================================================
+        // All code and properties in this section are accessed from the main thread.
+        // Methods here are called from the UI thread and dispatch work to the
+        // background thread via IdleSource callbacks attached to worker_context.
+        // ============================================================================
 
-        /*--------------------------------------------------------------------
-         *  Dependencies – injected by the UI or the main application.
-         *-------------------------------------------------------------------*/
-        private Client embedding_client;          // OLLMchat.Client for LLM calls
-        private Database vector_db;               // OLLMvector.Database (FAISS)
-        private SQ.Database sql_db;               // SQ.Database for metadata
-        private ProjectManager project_manager;   // OLLMfiles.ProjectManager
+        /**
+         * Emitted at the start of each file scan and when queue becomes empty.
+         *
+         * @param queue_size Current size of the file queue (number of files remaining).
+         * @param current_file Path of the file currently being scanned (empty string "" when queue is empty).
+         */
+        public signal void scan_update (int queue_size, string current_file);
 
-        /*--------------------------------------------------------------------
-         *  Thread management
-         *-------------------------------------------------------------------*/
-        private Thread<void*>? worker_thread = null;
-        private MainLoop? worker_loop = null;
+        // Shared resources (accessed from both threads)
+        // Note: sql_db is thread-safe (SQLite configured for SERIALIZED mode)
+        // Note: vector_db (FAISS) is thread-safe via mutex in Index class
+        private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
+        private Database vector_db;               // OLLMvector.Database (FAISS) - thread-safe via mutex in Index class
+        private SQ.Database sql_db;               // SQ.Database for metadata - thread-safe (SERIALIZED mode)
 
-        /*--------------------------------------------------------------------
-         *  Queue – a thread‑safe list of file paths awaiting processing.
-         *-------------------------------------------------------------------*/
-        private ArrayDeque<string> file_queue;
-        private Mutex queue_mutex;
+        // Thread management (main thread creates/manages, background thread uses)
+        private GLib.Thread<void*>? worker_thread = null;
+        private GLib.MainLoop? worker_loop = null;
+        private GLib.MainContext? worker_context = null;
+        private GLib.MainContext main_context;
 
-        /*--------------------------------------------------------------------
-         *  Indexer reuse – an Indexer instance can be reused for multiple files.
-         *-------------------------------------------------------------------*/
-        private Indexer? indexer = null;
-
-        /*--------------------------------------------------------------------
-         *  Constructor
-         *-------------------------------------------------------------------*/
-        public BackgroundScan (Client embedding_client,
+        /**
+         * Creates a new BackgroundScan instance.
+         *
+         * @param embedding_client The OLLMchat.Client instance for LLM calls and embeddings.
+         * @param vector_db The OLLMvector.Database instance for vector storage (FAISS).
+         * @param sql_db The SQ.Database instance for metadata storage.
+         */
+        public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
-                               SQ.Database sql_db,
-                               ProjectManager project_manager) {
-            Object ();
-
+                               SQ.Database sql_db) 
+		{
             this.embedding_client = embedding_client;
-            this.vector_db       = vector_db;
-            this.sql_db          = sql_db;
-            this.project_manager = project_manager;
+            this.vector_db = vector_db;
+            this.sql_db = sql_db;
 
-            this.file_queue = new ArrayDeque<string> ();
-            this.queue_mutex = new Mutex ();
+            this.main_context = GLib.MainContext.default ();
         }
-
-        /*--------------------------------------------------------------------
-         *  Public API – called from the UI (main thread)
-         *-------------------------------------------------------------------*/
 
         /**
          * Ensure the background thread is running.
          */
-        private void ensure_thread () {
-            if (worker_thread == null) {
-                // Create a new MainLoop that will live inside the worker thread.
-                worker_loop = new MainLoop (null, false);
-                // Spawn the thread; it will run worker_loop.run()
-                worker_thread = new Thread<void*>.try ("background-scan-thread", () => {
-                    // The thread owns its own default context.
-                    var ctx = new MainContext ();
-                    ctx.acquire ();
-                    worker_loop.run ();
-                    ctx.release ();
+        private void ensure_thread () 
+		{
+            if (this.worker_thread != null) {
+                return;
+            }
+
+            // Create MainContext for background thread
+            this.worker_context = new GLib.MainContext ();
+
+            // Start background thread
+            try {
+                this.worker_thread = new GLib.Thread<void*>.try ("background-scan-thread", () => {
+                    // Set this context as thread default
+                    this.worker_context.push_thread_default ();
+
+                    // Create and run MainLoop
+                    this.worker_loop = new GLib.MainLoop (this.worker_context);
+                    this.worker_loop.run ();
+
+                    // Clean up
+                    this.worker_context.pop_thread_default ();
+                    this.worker_loop = null;
+                    this.worker_context = null;
+
                     return null;
                 });
+            } catch (GLib.Error e) {
+                GLib.warning ("Failed to start background thread: %s", e.message);
+                this.worker_thread = null;
+                this.worker_context = null;
             }
         }
 
         /**
-         * Queue an entire project for scanning.  This method is safe to call
-         * from the UI thread.
+         * Enqueue all files of a project that need scanning.
          *
-         * @param project The Project object representing the active project.
+         * This method is safe to call from the UI thread. It will start the
+         * background thread if not already running and dispatch the project
+         * scanning work to the background thread.
+         *
+         * @param project The Folder object representing the active project (is_project = true).
          */
-        public void scanProject (Project project) {
+        public void scanProject (OLLMfiles.Folder project) {
             // Start thread if not already running.
-            ensure_thread ();
+            this.ensure_thread ();
 
-            // Emit start signal.
-            project_scan_started (project.path);
+            // Extract path before creating callback to avoid capturing object in closure.
+            // This is required for thread safety - we pass only the path string (thread-safe)
+            // rather than the object itself, which may not be thread-safe.
+            var project_path = project.path;
 
             // Dispatch the heavy work to the background thread via idle source.
-            // The background thread will call queueProject().
-            Idle.add (() => {
-                queueProject (project);
-                return false; // run once
+            // The background thread will load the project from the database.
+            var source = new GLib.IdleSource ();
+            source.set_callback (() => {
+                this.queueProject.begin (project_path);
+                return false;
             });
+            source.attach (this.worker_context);
         }
 
         /**
-         * Queue a single file for scanning (e.g. after a save).
+         * Enqueue a single file for scanning (e.g. after a save).
+         *
+         * This method is safe to call from the UI thread. It will start the
+         * background thread if not already running and dispatch the file
+         * scanning work to the background thread.
          *
          * @param file The File object that was modified.
+         * @param project The Folder object that contains this file (is_project = true).
          */
-        public void scanFile (File file) {
-            ensure_thread ();
+        public void scanFile (OLLMfiles.File file, OLLMfiles.Folder project) 
+		{
+            this.ensure_thread ();
+
+            // Extract paths before creating callback to avoid capturing object in closure.
+            // This is required for thread safety - we pass only the path strings (thread-safe)
+            // rather than the objects themselves, which may not be thread-safe.
+            var file_path = file.path;
+            var project_path = project.path;
 
             // Dispatch to background thread.
-            Idle.add (() => {
-                queueFile (file.path);
+            var source = new GLib.IdleSource ();
+            source.set_callback (() => {
+                this.queueFile (new BackgroundScanItem (project_path, file_path));
+                return false;
+            });
+            source.attach (this.worker_context);
+        }
+
+        /**
+         * Emits scan_update signal on the main thread.
+         */
+        private void emit_scan_update (int queue_size, string current_file)
+        {
+            this.main_context.invoke (() => {
+                this.scan_update (queue_size, current_file);
                 return false;
             });
         }
 
-        /*--------------------------------------------------------------------
-         *  Internal helpers – executed inside the background thread.
-         *-------------------------------------------------------------------*/
+        /**
+         * Stops the background thread gracefully.
+         *
+         * This method is not strictly required because the thread lives for the
+         * lifetime of the application, but it provides a way for graceful shutdown
+         * if the host wishes to stop it.
+         */
+        public void stop () {
+            if (this.worker_loop != null) {
+                this.worker_loop.quit ();
+                this.worker_loop = null;
+            }
+            if (this.worker_thread != null) {
+                this.worker_thread.join ();
+                this.worker_thread = null;
+            }
+        }
+
+        // ============================================================================
+        // BACKGROUND THREAD SECTION
+        // ============================================================================
+        // All code and properties in this section are accessed ONLY from the
+        // background thread. These methods are called via IdleSource callbacks
+        // attached to worker_context, ensuring they run in the background thread.
+        // ============================================================================
+
+        /**
+         * Class to track both project_path and file_path when queuing files.
+         */
+        private class BackgroundScanItem {
+            public string project_path;
+            public string file_path;
+            
+            public BackgroundScanItem (string project_path, string file_path) {
+                this.project_path = project_path;
+                this.file_path = file_path;
+            }
+        }
+
+        // Background thread state (accessed only from background thread)
+        private OLLMfiles.ProjectManager? worker_project_manager = null;   // ProjectManager instance for background thread
+        private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
+        private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
+        private bool queue_processing = false;
+        private Indexing.Indexer? indexer = null;
+
+        /**
+         * Ensure ProjectManager exists in background thread context.
+         */
+        private void ensure_project_manager () 
+		{
+            if (this.worker_project_manager == null) {
+                // Create ProjectManager in background thread context
+                // Use same sql_db (thread-safe in serialized mode)
+                this.worker_project_manager = new OLLMfiles.ProjectManager(this.sql_db);
+                // Default providers are fine - we only need to read from DB
+            }
+        }
+
+        /**
+         * Set active project and clear files from previous active project to free memory.
+         * 
+         * Note: This does NOT update database (is_active flag) - that's main thread's responsibility.
+         * The background worker only manages memory, not database state.
+         */
+        private void set_active_project (OLLMfiles.Folder? project) 
+		{
+            // If switching to a different project, clear files from previous project
+            if (this.active_project != null && this.active_project != project) {
+                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
+                // This will cause needs_reload() to return true on next access, forcing a reload
+                this.active_project.clear_data();
+                // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
+                // The background worker only manages memory, not database state
+            }
+            this.active_project = project;
+        }
+
+        /**
+         * Set active project and load files from database.
+         * 
+         * This combines set_active_project() and load_files_from_db() into one operation.
+         * The load will automatically check needs_reload() and skip if no changes.
+         */
+        private async void set_active_project_and_load (OLLMfiles.Folder project) 
+		{
+            this.set_active_project (project);
+            yield project.load_files_from_db ();
+        }
 
         /**
          * Process a project: load its files, check timestamps, and enqueue any
          * that need (re)scanning.
+         *
+         * @param path The path of the project to process.
          */
-        private void queueProject (Project project) {
-            // Load project from DB – ProjectManager already has it.
-            // Ensure we have the latest representation.
-            var proj = project_manager.get_project_by_path (project.path);
-            if (proj == null) {
-                // If the project cannot be loaded, abort silently.
-                warning ("BackgroundScan: could not load project %s", project.path);
+        private async void queueProject (string path) {
+            // Ensure worker_project_manager exists
+            this.ensure_project_manager ();
+
+            // Load projects from database
+            yield this.worker_project_manager.load_projects_from_db ();
+
+            // Find project by path (O(1) lookup using path_map)
+            var project = this.worker_project_manager.projects.path_map.get (path);
+            if (project == null) {
+                GLib.warning ("BackgroundScan: could not find project %s", path);
                 return;
             }
 
-            int files_indexed = 0;
+            // Set as active project and load files from DB (will check needs_reload() internally)
+            yield this.set_active_project_and_load (project);
 
-            // Iterate over all children; we only care about File objects.
-            foreach (var child in proj.children.values) {
-                if (child is File) {
-                    var f = child as File;
-                    // Compare last_scan timestamp with file modification time.
-                    // If the file has never been scanned or changed, queue it.
-                    if (f.last_scan < f.mtime_on_disk ()) {
-                        queueFile (f.path);
-                        files_indexed++;
-                    }
-                } else if (child is Folder) {
-                    // For folders we only need to avoid re‑processing the same folder
-                    // during the same run – the plan suggests checking folder.last_scan.
-                    var folder = child as Folder;
-                    if (folder.last_scan < folder.mtime_on_disk ()) {
-                        // Recurse into sub‑folder.
-                        queueProject (folder as Project); // Folder is also a Project‑like node
-                    }
+            // Iterate through project_files (flat list, not hierarchical)
+            // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
+            foreach (var project_file in project.project_files) {
+                // Skip if file doesn't need scanning (negative test)
+                if (project_file.file.last_scan >= project_file.file.mtime_on_disk ()) {
+                    continue;
                 }
+                // Create BackgroundScanItem and queue it
+                this.queueFile (new BackgroundScanItem (project.path, project_file.file.path));
             }
 
-            // Emit completion signal (after all files have been queued).
-            project_scan_completed (project.path, files_indexed);
+            // Do NOT emit project_scan_completed - project scan just queues files,
+            // completion is handled by file queue via scan_update signal
         }
 
         /**
-         * Add a file path to the queue in a thread‑safe way and ensure the queue
-         * processing loop is running.
+         * Add a file item to the queue and ensure the queue processing loop is running.
          */
-        private void queueFile (string path) {
-            // Guard the queue with the mutex.
-            queue_mutex.lock ();
-            file_queue.offer_tail (path);
-            queue_mutex.unlock ();
+        private void queueFile (BackgroundScanItem item) {
+            // Initialize queue if needed (lazy initialization in background thread)
+            if (this.file_queue == null) {
+                this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
+            }
+            // All queue operations happen in the background thread context, so no mutex needed
+            this.file_queue.offer (item);
 
-            // Ensure the queue processing source is active.
-            // If not already running, start it via an idle source.
-            // The idle source will keep pulling items until the queue is empty.
-            Idle.add (() => {
-                startQueue ();
-                return false;
-            });
+            // Start queue processing (we're already in the background thread context)
+            this.startQueue.begin ();
         }
 
         /**
          * Pull items from the queue and index them.  Runs in the background
          * thread's main context.
          */
-        private void startQueue () {
+        private async void startQueue () {
+            // If already processing, just return (can be called multiple times safely)
+            if (this.queue_processing) {
+                return;
+            }
+            this.queue_processing = true;
+
+            // Initialize queue if needed (lazy initialization in background thread)
+            if (this.file_queue == null) {
+                this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
+            }
+
             while (true) {
-                string? next_path = null;
+                // All queue operations happen in the background thread context, so no mutex needed
+                var next_item = this.file_queue.poll ();
 
-                // Critical section – fetch one item.
-                queue_mutex.lock ();
-                if (!file_queue.is_empty) {
-                    next_path = file_queue.poll_head ();
-                }
-                queue_mutex.unlock ();
-
-                if (next_path == null) {
-                    // Queue empty – exit loop.
+                if (next_item == null) {
+                    // Queue empty – emit completion signal and exit loop.
+                    this.queue_processing = false;
+                    this.emit_scan_update (0, "");
                     break;
                 }
 
-                // Load the File object from the database.
-                var file_obj = project_manager.get_file_by_path (next_path);
-                if (file_obj == null) {
-                    warning ("BackgroundScan: could not locate file %s in DB", next_path);
+                // Ensure worker_project_manager exists
+                this.ensure_project_manager ();
+
+                // Find the project by item.project_path (O(1) lookup using path_map)
+                var project = this.worker_project_manager.projects.path_map.get (next_item.project_path);
+                if (project == null) {
+                    GLib.warning ("BackgroundScan: could not find project %s for file %s", next_item.project_path, next_item.file_path);
                     continue;
                 }
 
+                // Set as active project and reload files from database (state may have changed since queued)
+                // This will automatically check needs_reload() and skip if no changes
+                yield this.set_active_project_and_load (project);
+
+                // Find file in that project's project_files.child_map
+                var project_file = project.project_files.child_map.get (next_item.file_path);
+                if (project_file == null) {
+                    // File doesn't exist in project - may have been deleted or moved
+                    continue;
+                }
+
+                // Emit scan_update signal at start of scan (before indexing)
+                this.emit_scan_update ((int)this.file_queue.size, next_item.file_path);
+
                 // Lazily create/reuse the Indexer.
-                if (indexer == null) {
-                    indexer = new Indexer (vector_db, sql_db, embedding_client);
+                if (this.indexer == null) {
+                    this.indexer = new Indexing.Indexer (this.embedding_client, this.embedding_client, this.vector_db, this.sql_db, this.worker_project_manager);
                 }
 
-                // Perform indexing.  Indexer.index_file() is expected to be async
-                // but for simplicity we call it synchronously here.
+                // Perform indexing.  Indexer.index_file() is async.
                 try {
-                    indexer.index_file (file_obj);
-                } catch (Error e) {
-                    warning ("BackgroundScan: indexing error for %s – %s", next_path, e.message);
+                    yield this.indexer.index_file (project_file.file);
+                } catch (GLib.Error e) {
+                    GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
 
-                // Emit per‑file signal.
-                file_scanned (next_path);
-            }
-        }
-
-        /*--------------------------------------------------------------------
-         *  Cleanup – not strictly required because the thread lives for the
-         *  lifetime of the application, but we provide a method for graceful
-         *  shutdown if the host wishes to stop it.
-         *-------------------------------------------------------------------*/
-        public void stop () {
-            if (worker_loop != null) {
-                worker_loop.quit ();
-                worker_loop = null;
-            }
-            if (worker_thread != null) {
-                worker_thread.join ();
-                worker_thread = null;
             }
         }
     }

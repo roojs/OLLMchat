@@ -39,6 +39,9 @@ class TestFiles : TestAppBase
 	private static string? opt_info = null;
 	private static string? opt_ls_path = null;
 	private static string? opt_summarize = null;
+	private static string? opt_edit = null;
+	private static bool opt_edit_complete_file = false;
+	private static bool opt_overwrite = false;
 
 	protected const string help = """
 Usage: {ARG} [OPTIONS] <action>
@@ -58,6 +61,8 @@ Actions (specify one):
   --create-project=PATH               Create test project from directory
   --info=PATH                         Show file information
   --summarize=PATH                    Show file structure summary (tree-sitter based)
+  --edit=PATH [--edit-complete-file] [--overwrite]
+                                      Edit file (reads from stdin)
 
 Options:
   --test-db=PATH                      Use test database instead of main database
@@ -69,6 +74,8 @@ Options:
   --content-file=FILE                 File containing content to write
   --age-days=N                        Age threshold in days for backup cleanup (default: 7)
   --max-buffers=N                     Maximum number of buffers to list
+  --edit-complete-file                Enable complete file mode (overwrite entire file)
+  --overwrite                         Allow overwriting existing files in complete_file mode
 
 Examples:
   {ARG} --read=/path/to/file.txt --start-line=10 --end-line=20
@@ -109,6 +116,9 @@ Examples:
 		{ "create-project", 0, 0, OptionArg.STRING, ref opt_create_project, "Create test project", "PATH" },
 		{ "info", 0, 0, OptionArg.STRING, ref opt_info, "Show file information", "PATH" },
 		{ "summarize", 0, 0, OptionArg.STRING, ref opt_summarize, "Show file structure summary", "PATH" },
+		{ "edit", 0, 0, OptionArg.STRING, ref opt_edit, "Edit file (reads from stdin)", "PATH" },
+		{ "edit-complete-file", 0, 0, OptionArg.NONE, ref opt_edit_complete_file, "Enable complete file mode", null },
+		{ "overwrite", 0, 0, OptionArg.NONE, ref opt_overwrite, "Allow overwriting existing files", null },
 		{ null }
 	};
 
@@ -160,6 +170,9 @@ Examples:
 			action_count++;
 		}
 		if (opt_summarize != null) {
+			action_count++;
+		}
+		if (opt_edit != null) {
 			action_count++;
 		}
 		
@@ -231,6 +244,8 @@ Examples:
 			yield this.run_info(manager);
 		} else if (opt_summarize != null) {
 			yield this.run_summarize(manager);
+		} else if (opt_edit != null) {
+			yield this.run_edit(manager);
 		}
 	}
 
@@ -559,6 +574,130 @@ BACKUP_PATH: $(backup_path)
 		
 		// Output summary
 		print(summary);
+	}
+
+	private async void run_edit(OLLMfiles.ProjectManager manager) throws Error
+	{
+		string file_path = opt_edit;
+		bool complete_file = opt_edit_complete_file;
+		bool overwrite = opt_overwrite;
+		
+		// Read from stdin
+		var lines = new GLib.StringBuilder();
+		string? line;
+		while ((line = GLib.stdin.read_line()) != null) {
+			if (lines.len > 0) {
+				lines.append_c('\n');
+			}
+			lines.append(line);
+		}
+		string stdin_content = lines.str;
+		
+		// Validate stdin is not empty
+		if (stdin_content.length == 0) {
+			throw new GLib.IOError.INVALID_ARGUMENT("Stdin is empty. Edit operations require input from stdin.");
+		}
+		
+		// Get or create file
+		OLLMfiles.File? file = null;
+		if (manager.active_project != null) {
+			file = manager.get_file_from_active_project(file_path);
+		}
+		if (file == null) {
+			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		// Ensure buffer is created
+		if (file.buffer == null) {
+			manager.buffer_provider.create_buffer(file);
+		}
+		
+		// Handle complete_file mode (early return)
+		if (complete_file) {
+			var file_exists = GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR);
+			if (file_exists && !overwrite) {
+				throw new GLib.IOError.EXISTS("File already exists: " + file_path + ". Use --overwrite to overwrite it.");
+			}
+			
+			yield file.buffer.write(stdin_content);
+			
+			int line_count = file.buffer.get_line_count();
+			string backup_info = "";
+			if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
+				backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
+			}
+			print(backup_info + "FILE: " + file_path + "\n" +
+				"FILE_ID: " + file.id.to_string() + "\n" +
+				"LINE_COUNT: " + line_count.to_string() + "\n" +
+				"MODE: complete_file\n");
+			return;
+		}
+		
+		// Edit mode: parse JSON array of FileChange objects
+		var changes = new Gee.ArrayList<OLLMfiles.FileChange>();
+		
+		try {
+			var parser = new Json.Parser();
+			parser.load_from_data(stdin_content, -1);
+			var root = parser.get_root();
+			
+			if (root == null || root.get_node_type() != Json.NodeType.ARRAY) {
+				throw new GLib.IOError.INVALID_ARGUMENT("Stdin must contain a JSON array of FileChange objects");
+			}
+			
+			var array = root.get_array();
+			for (uint i = 0; i < array.get_length(); i++) {
+				var element_node = array.get_element(i);
+				
+				var change = Json.gobject_deserialize(typeof(OLLMfiles.FileChange), element_node) as OLLMfiles.FileChange;
+				if (change == null) {
+					throw new GLib.IOError.INVALID_ARGUMENT("Array element " + i.to_string() + " could not be deserialized as FileChange");
+				}
+				
+				if (change.start < 1 || change.end < 1 || change.start > change.end) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"Invalid line range in element " + i.to_string() + ": start=" + change.start.to_string() +
+						", end=" + change.end.to_string() + " (start must be >= 1, end must be >= start)"
+					);
+				}
+				
+				changes.add(change);
+			}
+		} catch (Error e) {
+			throw new GLib.IOError.INVALID_ARGUMENT("Failed to parse JSON: " + e.message);
+		}
+		
+		if (changes.size == 0) {
+			throw new GLib.IOError.INVALID_ARGUMENT("No changes found in JSON array");
+		}
+		
+		var file_exists = GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR);
+		if (!file_exists) {
+			throw new GLib.IOError.NOT_FOUND("File does not exist: " + file_path + ". Use --edit-complete-file to create a new file.");
+		}
+		
+		if (!file.buffer.is_loaded) {
+			yield file.buffer.read_async();
+		}
+		
+		changes.sort((a, b) => {
+			if (a.start < b.start) return 1;
+			if (a.start > b.start) return -1;
+			return 0;
+		});
+		
+		yield file.buffer.apply_edits(changes);
+		
+		int line_count = file.buffer.get_line_count();
+		string backup_info = "";
+		if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
+			backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
+		}
+		print(backup_info + "FILE: " + file_path + "\n" +
+			"FILE_ID: " + file.id.to_string() + "\n" +
+			"LINE_COUNT: " + line_count.to_string() + "\n" +
+			"CHANGES_APPLIED: " + changes.size.to_string() + "\n" +
+			"MODE: edit\n");
 	}
 
 	/**

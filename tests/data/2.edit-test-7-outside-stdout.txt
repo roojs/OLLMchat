@@ -1,0 +1,5 @@
+FILE: /home/alan/.cache/ollmchat/testing/outside_file.txt
+FILE_ID: -1
+LINE_COUNT: 4
+CHANGES_APPLIED: 1
+MODE: edit

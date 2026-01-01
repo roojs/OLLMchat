@@ -64,6 +64,9 @@ ocvector_src = files([
   # Tool/ directory
   'Tool/CodebaseSearchTool.vala',
   'Tool/RequestCodebaseSearch.vala',
+  
+  # Background scanning
+  'BackgroundScan.vala',  # Background file indexing thread
 ])
 
 # Build rpath for libraries to find each other in build directory

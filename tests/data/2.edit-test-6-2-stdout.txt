@@ -1,0 +1,6 @@
+BACKUP: /home/alan/.cache/ollmchat/edited/3-26-01-01-test2.txt
+FILE: /home/alan/.cache/ollmchat/testing/testproj6/test2.txt
+FILE_ID: 3
+LINE_COUNT: 12
+CHANGES_APPLIED: 1
+MODE: edit

@@ -32,6 +32,7 @@
           <li class="method"><a href="OLLMvector.Index.add_vectors.html">add_vectors</a></li>
           <li class="method"><a href="OLLMvector.Index.get_total_vectors.html">get_total_vectors</a></li>
           <li class="method"><a href="OLLMvector.Index.reconstruct_vector.html">reconstruct_vector</a></li>
+          <li class="method"><a href="OLLMvector.Index.save_to_file.html">save_to_file</a></li>
           <li class="method"><a href="OLLMvector.Index.search.html">search</a></li>
         </ul>
       </div>
@@ -80,6 +81,10 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">float</span></span>[] <b><a href="OLLMvector.Index.reconstruct_vector.html" class="method">reconstruct_vector</a></b> (<span class="main_basic_type"><span class="struct">int64</span></span> vector_id) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Reconstruct a vector by its ID.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Index.save_to_file.html" class="method">save_to_file</a></b> (<span class="main_basic_type"><span class="class">string</span></span> filename) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Saves the FAISS index to a file.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMvector.SearchResult.html" class="struct">SearchResult</a></span>[] <b><a href="OLLMvector.Index.search.html" class="method">search</a></b> (<span class="main_basic_type"><span class="struct">float</span></span>[] query_vector, <span class="main_basic_type"><span class="struct">uint64</span></span> k = <span class="main_literal">5</span>, <span class="main_type"><span class="class">IDSelector</span></span>? selector = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

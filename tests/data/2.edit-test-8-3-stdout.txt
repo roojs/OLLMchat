@@ -1,0 +1,5 @@
+FILE: /home/alan/.cache/ollmchat/testing/testproj8/test.txt
+FILE_ID: 2
+LINE_COUNT: 5
+CHANGES_APPLIED: 1
+MODE: edit

@@ -536,6 +536,35 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Check if this folder needs to be reloaded from the database.
+		 * 
+		 * Compares the project's last_scan timestamp with the maximum last_modified
+		 * timestamp in the database. If any file in the database has been modified
+		 * more recently than the last scan, a reload is needed.
+		 * 
+		 * @return true if reload is needed, false otherwise
+		 */
+		private bool needs_reload()
+		{
+			if (this.manager.db == null) {
+				return false; // No DB, can't check
+			}
+			
+			// Query: SELECT MAX(last_modified) FROM filebase
+			var query = FileBase.query(this.manager.db, this.manager);
+			var stmt = query.selectPrepare("SELECT MAX(last_modified) FROM filebase");
+			var results = query.fetchAllInt64(stmt);
+			
+			int64 max_mtime = 0;
+			if (results.size > 0) {
+				max_mtime = results.get(0);
+			}
+			
+			// If max mtime in DB is greater than project's last_scan, reload needed
+			return max_mtime > this.last_scan;
+		}
+
+		/**
 		 * Load project files from database.
 		* 
 		* This method performs a three-step process:
@@ -547,6 +576,12 @@ namespace OLLMfiles
 		{
 			if (this.id <= 0 || this.manager.db == null) {
 				GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
+				return;
+			}
+			
+			// Check if reload is needed (optimization: skip if database hasn't changed)
+			if (!this.needs_reload()) {
+				GLib.debug("Folder.load_files_from_db: Skipping reload (no changes detected) for '%s'", this.path);
 				return;
 			}
 			
@@ -695,6 +730,160 @@ namespace OLLMfiles
 			
 			// Add to parent's children (append handles duplicates)
 			parent.children.append(file_base);
+		}
+		
+		/**
+		 * Creates child folders recursively until reaching the target file path.
+		 * 
+		 * Starting from this folder, creates any missing intermediate folders
+		 * needed to reach the parent directory of the target file path. Returns
+		 * the final folder (the parent directory of the file).
+		 * 
+		 * @param file_path The target file path
+		 * @return The Folder object for the parent directory of the file, or null on error
+		 */
+		public async Folder? make_children(string file_path) throws Error
+		{
+			// Get the parent directory of the file
+			var target_dir = GLib.Path.get_dirname(file_path);
+			
+			// If target_dir is this folder's path, return this folder
+			if (target_dir == this.path) {
+				return this;
+			}
+			
+			// Check if target_dir is within this folder
+			if (!target_dir.has_prefix(this.path)) {
+				GLib.warning("Folder.make_children: Target path %s is not within folder %s", target_dir, this.path);
+				return null;
+			}
+			
+			// Get relative path from this folder to target directory
+			var relative_path = target_dir.substring(this.path.length);
+			if (relative_path.has_prefix("/")) {
+				relative_path = relative_path.substring(1);
+			}
+			if (relative_path == "") {
+				return this;
+			}
+			
+			// Get the first component of the relative path
+			var components = relative_path.split("/");
+			var first_component = components[0];
+			if (first_component == "") {
+				return this;
+			}
+			
+			// Check if folder exists in children
+			Folder? child_folder = null;
+			if (this.children.child_map.has_key(first_component)) {
+				var child = this.children.child_map.get(first_component);
+				if (child is Folder) {
+					child_folder = child as Folder;
+				}
+			}
+			
+			// If folder exists, recursively call make_children on it
+			if (child_folder != null) {
+				return yield child_folder.make_children(file_path);
+			}
+			
+			// Folder doesn't exist, create it
+			var child_path = GLib.Path.build_filename(this.path, first_component);
+			
+			// Query folder info from disk
+			var gfile = GLib.File.new_for_path(child_path);
+			if (!gfile.query_exists()) {
+				GLib.warning("Folder.make_children: Folder does not exist on disk: %s", child_path);
+				return null;
+			}
+			
+			GLib.FileInfo folder_info;
+			try {
+				folder_info = gfile.query_info(
+					GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Folder.make_children: Could not query folder info for %s: %s", child_path, e.message);
+				return null;
+			}
+			
+			// Create new folder
+			child_folder = new Folder.new_from_info(
+				this.manager,
+				this,
+				folder_info,
+				child_path
+			);
+			
+			// Add to parent's children
+			this.children.append(child_folder);
+			
+			// Add to project's folder_map if this is a project folder
+			var project_root = this.is_project ? this : this.find_project_root();
+			if (project_root != null && project_root.project_files != null) {
+				project_root.project_files.folder_map.set(child_folder.path, child_folder);
+			}
+			
+			// Save to DB (this will also add to file_cache automatically)
+			if (this.manager.db != null) {
+				child_folder.saveToDB(this.manager.db, null, false);
+			} else {
+				// If no DB, manually add to file_cache for immediate lookup
+				this.manager.file_cache.set(child_folder.path, child_folder);
+			}
+			
+			// Recursively call make_children on the newly created child folder
+			return yield child_folder.make_children(file_path);
+		}
+		
+		/**
+		 * Finds the project root folder by walking up the parent chain.
+		 * 
+		 * @return The project root folder, or null if not found
+		 */
+		private Folder? find_project_root()
+		{
+			var current = this;
+			while (current != null) {
+				if (current.is_project) {
+					return current;
+				}
+				current = current.parent;
+			}
+			return null;
+		}
+		
+		/**
+		 * Clears all in-memory data for this folder to free memory.
+		 * 
+		 * This method:
+		 * - Clears the hierarchical tree structure (children)
+		 * - Clears the flat file list (project_files)
+		 * - Resets last_scan to 0, which will cause needs_reload() to return true
+		 * 
+		 * After calling this method, the folder will appear as if it has never been
+		 * loaded. The next call to load_files_from_db() will reload all data from the
+		 * database (since needs_reload() will return true due to last_scan = 0).
+		 * 
+		 * This is useful for memory management when switching between projects or
+		 * when you want to force a reload on the next access.
+		 * 
+		 * Note: This does NOT update the database - it only clears in-memory state.
+		 */
+		public void clear_data()
+		{
+			// Clear hierarchical tree structure
+			this.children.remove_all();
+			
+			// Clear flat file list (for projects)
+			this.project_files.remove_all();
+			
+			// Reset last_scan to 0 so that needs_reload() will return true
+			// This ensures the next load_files_from_db() call will reload all data
+			this.last_scan = 0;
 		}
 	}
 }

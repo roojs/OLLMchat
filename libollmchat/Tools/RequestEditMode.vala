@@ -42,7 +42,7 @@ namespace OLLMchat.Tools
 		private int current_end_line = -1;
 		
 		// Captured changes
-		private Gee.ArrayList<EditModeChange> changes = new Gee.ArrayList<EditModeChange>();
+		private Gee.ArrayList<OLLMfiles.FileChange> changes = new Gee.ArrayList<OLLMfiles.FileChange>();
 		
 		// Stored error messages to send when message is done
 		private Gee.ArrayList<string> error_messages = new Gee.ArrayList<string>();
@@ -68,11 +68,23 @@ namespace OLLMchat.Tools
 			// Normalize file path
 			this.normalized_path = this.normalize_file_path(this.file_path);
 			
-			// Set permission properties for WRITE operation
+			// Set up permission properties for non-project files first
 			this.permission_target_path = this.normalized_path;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
+			// Check if file is in active project (skip permission prompt if so)
+			// Files in active project are auto-approved and don't need permission checks
+			var project_manager = ((EditMode) this.tool).project_manager;
+			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
+				// File is in active project - skip permission prompt
+				// Clear permission question to indicate auto-approved
+				this.permission_question = "";
+				// Return false to skip permission check (auto-approved for project files)
+				return false;
+			}
+			
+			// File is not in active project - require permission
 			return true;
 		}
 		
@@ -101,11 +113,8 @@ namespace OLLMchat.Tools
 				message += "You set overwrite=true, so we will overwrite the existing file when you complete your message.";
 			}
 			
-			// Emit to UI
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", message),
-				this.chat_call
-			);
+			// Send to UI using standardized format
+			this.send_ui("txt", "CodeEdit Tool: Edit Mode Activated", message);
 			
 			// Keep this request alive so signal handlers can be called
 			active_requests.add(this);
@@ -156,7 +165,7 @@ namespace OLLMchat.Tools
 						this.normalized_path, message.message_interface, this.chat_call);
 					return;
 				}
-				this.on_message_created(message, content_interface);
+				this.on_message_created.begin(message, content_interface);
 			});
 			GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
 		}
@@ -333,7 +342,7 @@ namespace OLLMchat.Tools
 					return;
 				}
 				
-				// Exiting code block: create EditModeChange
+				// Exiting code block: create FileChange
 				// Remove the marker text from current_block if it was accidentally added
 				if (this.current_block.has_suffix("```\n")) {
 					this.current_block = this.current_block.substring(0, this.current_block.length - 4);
@@ -341,10 +350,10 @@ namespace OLLMchat.Tools
 					this.current_block = this.current_block.substring(0, this.current_block.length - 3);
 				}
 				
-				// Create EditModeChange
+				// Create FileChange
 				GLib.debug("RequestEditMode.add_linebreak: Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
 					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
-				this.changes.add(new EditModeChange() {
+				this.changes.add(new OLLMfiles.FileChange() {
 					start = this.current_start_line,
 					end = this.current_end_line,
 					replacement = this.current_block
@@ -371,7 +380,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Called when a message is created. Processes final content and applies changes when "done" message is received.
 		 */
-		private void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
+		private async void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
 			// Check if request is still valid
 			if (this.chat_call == null || this.chat_call.client == null) {
@@ -435,39 +444,9 @@ namespace OLLMchat.Tools
 			
 			// Apply changes
 			int line_count = 0;
+			OLLMfiles.File? modified_file = null;
 			try {
-				this.apply_all_changes();
-				
-				// Calculate line count for success message
-				try {
-					line_count = this.count_file_lines();
-				} catch (Error e) {
-					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
-				}
-				
-				// Build and emit UI message
-				this.chat_call.client.message_created(
-					new OLLMchat.Message(
-						this.chat_call,
-						"ui",
-						(line_count > 0)
-							? "File '" + this.normalized_path + 
-								"' has been updated. It now has " + 
-								line_count.to_string() + " lines."
-							: "File '" + this.normalized_path + "' has been updated."
-					),
-					this.chat_call
-				);
-				
-				// Send tool reply to LLM
-				this.reply_with_errors(
-					response,
-					(line_count > 0)
-						? "File '" + this.normalized_path + 
-							"' has been updated. It now has " + 
-							line_count.to_string() + " lines."
-						: "File '" + this.normalized_path + "' has been updated."
-				);
+				modified_file = yield this.apply_all_changes();
 			} catch (Error e) {
 				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
 				// Store error message instead of sending immediately
@@ -475,6 +454,28 @@ namespace OLLMchat.Tools
 				this.reply_with_errors(response);
 				return;
 			}
+			
+			// Calculate line count for success message using buffer
+			// After write() or apply_edits(), buffer should be loaded
+			line_count = yield this.get_line_count_from_buffer(modified_file);
+			
+			// Build and emit UI message
+			string update_message = (line_count > 0)
+				? "File '" + this.normalized_path + 
+					"' has been updated. It now has " + 
+					line_count.to_string() + " lines."
+				: "File '" + this.normalized_path + "' has been updated.";
+			this.send_ui("txt", "CodeEdit Tool: File Updated", update_message);
+			
+			// Send tool reply to LLM
+			this.reply_with_errors(
+				response,
+				(line_count > 0)
+					? "File '" + this.normalized_path + 
+						"' has been updated. It now has " + 
+						line_count.to_string() + " lines."
+					: "File '" + this.normalized_path + "' has been updated."
+			);
 		}
 		
 		/**
@@ -523,78 +524,96 @@ namespace OLLMchat.Tools
 		
 		/**
 		 * Applies all captured changes to a file.
+		 * 
+		 * @return The file object that was modified, for use in line counting
 		 */
-		private void apply_all_changes() throws Error
+		private async OLLMfiles.File? apply_all_changes() throws Error
 		{
 			if (this.changes.size == 0) {
-				return;
+				this.send_ui("txt", "CodeEdit Tool: No Changes", "No changes to apply to file " + this.normalized_path);
+				return null;
 			}
+		
+			// Get or create File object from path
+			var project_manager = ((EditMode) this.tool).project_manager;
 			
-			// Check if permission status has changed (e.g., revoked by signal handler)
-			if (!this.chat_call.client.permission_provider.check_permission(this)) {
+			// First, try to get from active project
+			var file = project_manager.get_file_from_active_project(this.normalized_path);
+			
+			// Only check permission if file is NOT in active project
+			// Files in active project are auto-approved and don't need permission checks
+			if (file == null && !this.chat_call.client.permission_provider.check_permission(this)) {
 				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
 			
-			// Log and notify that we're starting to write
-			GLib.debug("Starting to apply changes to file %s", this.normalized_path);
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-				"Applying changes to file " + this.normalized_path + "..."),
-				this.chat_call
-			);
-		
+			// Log that we're starting to write
+			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
+				this.normalized_path, (file != null).to_string(), this.changes.size);
+			
+			if (file == null) {
+				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Ensure buffer exists (create if needed)
+			file.manager.buffer_provider.create_buffer(file);
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
-			// Validate and apply changes
+			// Handle complete_file mode first (early return)
 			if (this.complete_file) {
 				// Complete file mode: only allow a single change
 				if (this.changes.size > 1) {
+					this.send_ui("txt", "CodeEdit Tool: Validation Error", "Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
 					throw new GLib.IOError.INVALID_ARGUMENT("Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
 				}
 				// Check if code block had line numbers (invalid in complete_file mode)
 				// In complete_file mode, start and end should both be -1 (not set) when no line numbers provided
 				// If they sent line numbers, start would be >= 1
 				if (this.changes[0].start != -1 || this.changes[0].end != -1) {
+					this.send_ui("txt", "CodeEdit Tool: Validation Error", "Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
 					throw new GLib.IOError.INVALID_ARGUMENT("Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
 				}
 				// Check if file exists and overwrite is not allowed
 				if (file_exists && !this.overwrite) {
+					this.send_ui("txt", "CodeEdit Tool: Validation Error", "File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
 					throw new GLib.IOError.EXISTS("File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
 				}
 				// Create new file or overwrite existing file
-				this.create_new_file_with_changes();
-			} else {
-				// Normal mode: file must exist
-				if (!file_exists) {
-					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
-				}
-				// Apply edits to existing file
-				this.apply_edits();
+				this.send_ui("txt", "CodeEdit Tool: Applying Changes", "Applying changes to file " + this.normalized_path + "...");
+				yield this.create_new_file_with_changes(file);
+				this.send_ui("txt", "CodeEdit Tool: Changes Applied", "Applied changes to file " + this.normalized_path);
+				// Return file object for line counting
+				return file;
 			}
 			
-			// Log and send status message after successful write
+			// Normal mode: file must exist
+			if (!file_exists) {
+				this.send_ui("txt", "CodeEdit Tool: Validation Error", "File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
+				throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
+			}
+			// Apply edits to existing file
+			this.send_ui("txt", "CodeEdit Tool: Applying Changes", "Applying changes to file " + this.normalized_path + "...");
+			yield this.apply_edits(file);
+			this.send_ui("txt", "CodeEdit Tool: Changes Applied", "Applied changes to file " + this.normalized_path);
+			
+			// Log successful write
 			GLib.debug("RequestEditMode.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
-			var message = new OLLMchat.Message(this.chat_call, "ui",
-				"Applied changes to file " + this.normalized_path);
-			GLib.debug("RequestEditMode.apply_all_changes: Created message (role=%s, content='%s', chat_call=%p, client=%p, in_active_requests=%s)", 
-				message.role, message.content, this.chat_call, this.chat_call.client, active_requests.contains(this).to_string());
-			this.chat_call.client.message_created(message, this.chat_call);
-			GLib.debug("RequestEditMode.apply_all_changes: Emitted message_created signal");
 			
-			// Emit change_done signal for each change
-			var edit_tool = (EditMode) this.tool;
-			foreach (var change in this.changes) {
-				edit_tool.change_done(this.normalized_path, change);
-			}
+			// Return file object for line counting
+			return file;
 		}
 		
 		/**
-		 * Applies multiple edits to a file using a streaming approach.
+		 * Applies multiple edits to a file using buffer-based approach.
 		 * Handles both existing files and new file creation.
 		 */
-		private void apply_edits() throws Error
+		private async void apply_edits(OLLMfiles.File file) throws Error
 		{
+			// Ensure buffer is loaded
+			if (!file.buffer.is_loaded) {
+				yield file.buffer.read_async();
+			}
+			
 			// Sort changes by start line (descending) so we can apply them in reverse order
 			this.changes.sort((a, b) => {
 				if (a.start < b.start) return 1;
@@ -602,40 +621,43 @@ namespace OLLMchat.Tools
 				return 0;
 			});
 			
-			// Create temporary file for output in system temp directory
-			var file_basename = GLib.Path.get_basename(this.normalized_path);
-			var timestamp = GLib.get_real_time().to_string();
-			var temp_file = GLib.File.new_for_path(GLib.Path.build_filename(
-				GLib.Environment.get_tmp_dir(),
-				"ollmchat-edit-" + file_basename + "-" + timestamp + ".tmp"
-			));
-			var temp_output = new GLib.DataOutputStream(
-				temp_file.create(GLib.FileCreateFlags.NONE, null)
-			);
-			
-			// Open input file
-			var input_file = GLib.File.new_for_path(this.normalized_path);
-			var input_data = new GLib.DataInputStream(input_file.read(null));
-			
-			this.process_edits(input_data, temp_output);
-			
-			input_data.close(null);
-			temp_output.close(null);
-			
-			// Replace original file with temporary file
-			var original_file = GLib.File.new_for_path(this.normalized_path);
-			try {
-				original_file.delete(null);
-			} catch (GLib.Error e) {
-				// Ignore if file doesn't exist
+			// Apply edits using buffer's efficient apply_edits method
+			// This will use GTK buffer operations for GtkSourceFileBuffer
+			// or in-memory lines array for DummyFileBuffer
+			yield file.buffer.apply_edits(this.changes);
+		}
+		
+		/**
+		 * Gets line count from buffer, handling errors gracefully.
+		 * Returns 0 if counting fails (non-fatal error).
+		 * 
+		 * @param file The file to count lines for, or null
+		 * @return Line count, or 0 if unavailable
+		 */
+		private async int get_line_count_from_buffer(OLLMfiles.File? file)
+		{
+			if (file == null) {
+				return 0;
 			}
-			temp_file.move(original_file, GLib.FileCopyFlags.OVERWRITE, null, null);
+			
+			try {
+				// Ensure buffer is loaded (should already be after write/apply_edits)
+				if (!file.buffer.is_loaded) {
+					yield file.buffer.read_async();
+				}
+				// Use buffer's built-in get_line_count() method
+				return file.buffer.get_line_count();
+			} catch (Error e) {
+				GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
+				return 0;
+			}
 		}
 		
 		/**
 		 * Creates a new file with all changes applied.
+		 * Uses buffer-based writing for automatic backups and proper file handling.
 		 */
-		private void create_new_file_with_changes() throws Error
+		private async void create_new_file_with_changes(OLLMfiles.File file) throws Error
 		{
 			// Ensure parent directory exists
 			var parent_dir = GLib.Path.get_dirname(this.normalized_path);
@@ -648,122 +670,21 @@ namespace OLLMchat.Tools
 				}
 			}
 			
-			 
+			// Get replacement content (should be the full file content for complete_file mode)
+			var replacement_content = this.changes[0].replacement;
 			
-			// Create new file and write all changes (overwrite if exists)
-			// If overwrite is true and file exists, delete it first
-			var output_file = GLib.File.new_for_path(this.normalized_path);
-			if (this.overwrite && output_file.query_exists()) {
-				try {
-					output_file.delete(null);
-				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to delete existing file: " + e.message);
-				}
+			// Write to buffer - this handles:
+			// - Creating the file if it doesn't exist
+			// - Overwriting if it exists (buffer.write() always overwrites)
+			// - Creating backups for project files (automatic)
+			// - Updating file metadata
+			yield file.buffer.write(replacement_content);
+			
+			// If this is a fake file (id = -1), convert it to a real file if within project
+			if (file.id == -1) {
+				var project_manager = ((EditMode) this.tool).project_manager;
+				yield project_manager.convert_fake_file_to_real(file, this.normalized_path);
 			}
-			var output_stream = new GLib.DataOutputStream(
-				output_file.create(GLib.FileCreateFlags.NONE, null)
-			);
-			
-			try {
-				// Write replacement lines
-				foreach (var new_line in this.changes[0].replacement.split("\n")) {
-					output_stream.put_string(new_line);
-					output_stream.put_byte('\n');
-				}
-				
-				// Emit change_done signal
-				var edit_tool = (EditMode) this.tool;
-				edit_tool.change_done(this.normalized_path, this.changes[0]);
-			} finally {
-				try {
-					output_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
-		}
-		
-		/**
-		 * Processes the file line by line, applying all edits.
-		 */
-		private void process_edits(
-			GLib.DataInputStream input_data,
-			GLib.DataOutputStream temp_output) throws Error
-		{
-			int current_line = 0;
-			string? line;
-			size_t length;
-			int change_index = 0;
-			var edit_tool = (EditMode) this.tool;
-			
-			while ((line = input_data.read_line(out length, null)) != null) {
-				current_line++;
-				
-				// Check if we need to apply a change at this line
-				if (change_index < this.changes.size) {
-					var change = this.changes[change_index];
-					
-					// If we're at the start of the edit, write replacement and skip old lines
-					if (current_line == change.start) {
-						// Skip old lines in input stream until end of edit range (exclusive)
-						current_line = change.apply_changes(temp_output, input_data, current_line);
-						
-						// Emit change_done signal
-						edit_tool.change_done(this.normalized_path, change);
-						
-						change_index++;
-						continue;
-					}
-					
-					// If we're in the edit range (being replaced), skip it
-					if (current_line >= change.start && current_line < change.end) {
-						continue;
-					}
-				}
-				
-				// Write line as-is (not part of any edit)
-				temp_output.put_string(line);
-				temp_output.put_byte('\n');
-			}
-			
-			// Handle insertions at end of file for remaining changes
-			while (change_index < this.changes.size) {
-				var change = this.changes[change_index];
-				change.write_changes(temp_output, current_line);
-				if (change.start == change.end && change.start > current_line) {
-					// Emit change_done signal
-					edit_tool.change_done(this.normalized_path, change);
-				}
-				change_index++;
-			}
-		}
-		
-		/**
-		 * Counts the total number of lines in a file.
-		 */
-		private int count_file_lines() throws Error
-		{
-			var file = GLib.File.new_for_path(this.normalized_path);
-			var file_stream = file.read(null);
-			var data_stream = new GLib.DataInputStream(file_stream);
-			
-			int line_count = 0;
-			string? line;
-			size_t length;
-			
-			try {
-				while ((line = data_stream.read_line(out length, null)) != null) {
-					line_count++;
-				}
-			} finally {
-				try {
-					data_stream.close(null);
-				} catch (GLib.Error e) {
-					// Ignore close errors
-				}
-			}
-			
-			return line_count;
 		}
 	}
 }

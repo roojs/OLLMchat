@@ -67,6 +67,22 @@ namespace OLLMfiles
 			default = new Gee.HashMap<string, ProjectFile>(); }
 		
 		/**
+		 * Hashmap of folder path => Folder object for quick lookup.
+		 * Includes both direct folders and folders accessed through aliases.
+		 */
+		public Gee.HashMap<string, Folder> folder_map { get; private set;
+			default = new Gee.HashMap<string, Folder>(); }
+		
+		/**
+		 * Emitted when a new file is explicitly added to the project (not during scans).
+		 * This signal is only emitted when a new file is created, not when files are
+		 * discovered during directory scans. Use this to react to new file creation.
+		 * 
+		 * @param file The newly created File object
+		 */
+		public signal void new_file_added(File file);
+		
+		/**
 		 * Constructor.
 		 */
 		public ProjectFiles()
@@ -238,6 +254,7 @@ namespace OLLMfiles
 			var old_n_items = this.items.size;
 			this.items.clear();
 			this.child_map.clear();
+			this.folder_map.clear();
 			
 			// Emit items_changed signal for ListModel
 			if (old_n_items > 0) {
@@ -252,6 +269,7 @@ namespace OLLMfiles
 		 * (not aliases) to the project files list. Handles FileAliases by following
 		 * them to their target files. Prevents recursing the same folder more than
 		 * once by tracking scanned folders using a HashSet of folder IDs.
+		 * Also builds a hashmap of folder paths => Folder objects for quick lookup.
 		 * 
 		 * @param folder The folder to start scanning from (should be a project folder)
 		 */
@@ -263,12 +281,19 @@ namespace OLLMfiles
 			// Track files found in this scan
 			var found_files = new Gee.HashSet<string>();
 			
+			// Track folders found in this scan
+			var found_folders = new Gee.HashSet<string>();
+			
+			// Clear folder map before rebuilding
+			this.folder_map.clear();
+			
 			// Recursively process the folder (folder is the project root)
 			this.update_from_recursive(
 				folder,
 				folder,
 				scanned_folders,
 				found_files,
+				found_folders,
 				""); // Not inside a symlink at the root
 			
 			// Remove files that are no longer in the project
@@ -281,6 +306,17 @@ namespace OLLMfiles
 			foreach (var project_file in to_remove) {
 				this.remove(project_file);
 			}
+			
+			// Remove folders that are no longer in the project
+			var folders_to_remove = new Gee.ArrayList<string>();
+			foreach (var folder_path in this.folder_map.keys) {
+				if (!found_folders.contains(folder_path)) {
+					folders_to_remove.add(folder_path);
+				}
+			}
+			foreach (var folder_path in folders_to_remove) {
+				this.folder_map.unset(folder_path);
+			}
 		}
 		
 		/**
@@ -290,6 +326,7 @@ namespace OLLMfiles
 		 * @param project_folder The root project folder (for creating ProjectFile objects)
 		 * @param scanned_folders Set of folder IDs that have already been scanned
 		 * @param found_files Set of file paths found during this scan
+		 * @param found_folders Set of folder paths found during this scan
 		 * @param symlink_path The accumulated relative path through symlinks (empty string if not in a symlink)
 		 */
 		private void update_from_recursive(
@@ -297,6 +334,7 @@ namespace OLLMfiles
 			Folder project_folder,
 			Gee.HashSet<int> scanned_folders,
 			Gee.HashSet<string> found_files,
+			Gee.HashSet<string> found_folders,
 			string symlink_path = "")
 		{
 			// Prevent recursing the same folder more than once
@@ -311,6 +349,10 @@ namespace OLLMfiles
 			
 			// Mark this folder as scanned
 			scanned_folders.add((int)folder.id);
+			
+			// Add folder to folder_map and found_folders
+			found_folders.add(folder.path);
+			this.folder_map.set(folder.path, folder);
 			
 			// Loop through children of this folder
 			// GLib.debug("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u", folder.path, symlink_path, folder.children.items.size);
@@ -337,6 +379,7 @@ namespace OLLMfiles
 						project_folder,
 						scanned_folders,
 						found_files,
+						found_folders,
 						symlink_path);
 					continue;
 				}
@@ -349,6 +392,7 @@ namespace OLLMfiles
 						project_folder,
 						scanned_folders,
 						found_files,
+						found_folders,
 						(symlink_path != "") ? 
 							(symlink_path + "/" + GLib.Path.get_basename(child.path)) :
 							 symlink_path);
@@ -412,6 +456,7 @@ namespace OLLMfiles
 		 * @param project_folder The root project folder
 		 * @param scanned_folders Set of folder IDs that have already been scanned
 		 * @param found_files Set of file paths found during this scan
+		 * @param found_folders Set of folder paths found during this scan
 		 * @param parent_symlink_path The accumulated relative path through parent symlinks (empty string if none)
 		 */
 		private void handle_file_alias(
@@ -419,6 +464,7 @@ namespace OLLMfiles
 			Folder project_folder,
 			Gee.HashSet<int> scanned_folders,
 			Gee.HashSet<string> found_files,
+			Gee.HashSet<string> found_folders,
 			string parent_symlink_path = "")
 		{
 			// GLib.debug("DEBUG handle_file_alias: alias.path=%s, parent_symlink_path='%s'", alias.path, parent_symlink_path);
@@ -459,6 +505,7 @@ namespace OLLMfiles
 					project_folder,
 					scanned_folders,
 					found_files,
+					found_folders,
 					new_symlink_path);
 			} else {
 				// GLib.debug("DEBUG handle_file_alias: target is neither File nor Folder, type=%s", target.get_type().name());
@@ -541,6 +588,39 @@ namespace OLLMfiles
 			}
 			
 			return file_ids;
+		}
+		
+		/**
+		 * Finds the container folder of a given path by walking up the directory tree.
+		 * 
+		 * Starting from the given path, walks up using dirname and checks if each
+		 * path exists in the folder_map. Returns the first matching folder found,
+		 * or null if no folder in the path exists in the project.
+		 * 
+		 * @param folder_path The path to find the container folder for
+		 * @return The Folder object if found, null otherwise
+		 */
+		public Folder? find_container_of(string folder_path)
+		{
+			var current_path = folder_path;
+			
+			// Walk up the directory tree using dirname
+			while (current_path != "" && current_path != "/") {
+				// Check if this path exists in folder_map
+				if (this.folder_map.has_key(current_path)) {
+					return this.folder_map.get(current_path);
+				}
+				
+				// Go up one level using dirname
+				var parent = GLib.Path.get_dirname(current_path);
+				if (parent == current_path) {
+					// Reached root, stop
+					break;
+				}
+				current_path = parent;
+			}
+			
+			return null;
 		}
 	}
 }

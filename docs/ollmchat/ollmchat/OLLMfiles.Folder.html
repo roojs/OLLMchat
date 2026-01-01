@@ -34,7 +34,9 @@
           <li class="property"><a href="OLLMfiles.Folder.project_files.html">project_files</a></li>
           <li class="creation_method"><a href="OLLMfiles.Folder.Folder.html">Folder</a></li>
           <li class="creation_method"><a href="OLLMfiles.Folder.Folder.new_from_info.html">Folder.new_from_info</a></li>
+          <li class="method"><a href="OLLMfiles.Folder.clear_data.html">clear_data</a></li>
           <li class="method"><a href="OLLMfiles.Folder.load_files_from_db.html">load_files_from_db</a></li>
+          <li class="method"><a href="OLLMfiles.Folder.make_children.html">make_children</a></li>
           <li class="method"><a href="OLLMfiles.Folder.read_dir.html">read_dir</a></li>
         </ul>
       </div>
@@ -106,9 +108,18 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.Folder.clear_data.html" class="method">clear_data</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Clears all in-memory data for this folder to free memory.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.Folder.load_files_from_db.html" class="method">load_files_from_db</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Load project files from database.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><span class="class">Folder</span></span>? <b><a href="OLLMfiles.Folder.make_children.html" class="method">make_children</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file_path) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates child folders recursively until reaching the target file path.
+              </span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.Folder.read_dir.html" class="method">read_dir</a></b> (<span class="main_basic_type"><span class="struct">int64</span></span> check_time, <span class="main_basic_type"><span class="struct">bool</span></span> recurse = <span class="main_literal">false</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

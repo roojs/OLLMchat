@@ -170,6 +170,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/Search/SearchResult.vala',
     '../libocvector/Tool/CodebaseSearchTool.vala',
     '../libocvector/Tool/RequestCodebaseSearch.vala',
+    '../libocvector/BackgroundScan.vala',
     # examples base classes (used by vector tools)
     '../examples/TestAppBase.vala',
     '../examples/VectorAppBase.vala',

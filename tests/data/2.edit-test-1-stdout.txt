@@ -1,0 +1,4 @@
+FILE: /home/alan/.cache/ollmchat/testing/test_new.txt
+FILE_ID: -1
+LINE_COUNT: 4
+MODE: complete_file

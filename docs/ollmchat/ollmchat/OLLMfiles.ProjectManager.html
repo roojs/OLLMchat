@@ -39,6 +39,7 @@
           <li class="method"><a href="OLLMfiles.ProjectManager.activate_file.html">activate_file</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.activate_project.html">activate_project</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.check_active_file_changed.html">check_active_file_changed</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectManager.convert_fake_file_to_real.html">convert_fake_file_to_real</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.get_file_from_active_project.html">get_file_from_active_project</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.load_projects_from_db.html">load_projects_from_db</a></li>
           <li class="method"><a href="OLLMfiles.ProjectManager.notify_file_changed.html">notify_file_changed</a></li>
@@ -139,6 +140,11 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Check if the active file has been modified on disk and differs from 
                 the buffer.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMfiles.ProjectManager.convert_fake_file_to_real.html" class="method">convert_fake_file_to_real</a></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_basic_type"><span class="class">string</span></span> file_path) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Converts a fake file (id = -1) to a real File object if it's within 
+                the active project.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span>? <b><a href="OLLMfiles.ProjectManager.get_file_from_active_project.html" class="method">get_file_from_active_project</a></b> (<span class="main_basic_type"><span class="class">string</span></span> file_path)
             </span>

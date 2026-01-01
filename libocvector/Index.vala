@@ -68,6 +68,9 @@ namespace OLLMvector
 		private bool normalized = false;
 		private string filename;
 		
+		// Mutex to protect FAISS operations (FAISS is not thread-safe)
+		private GLib.Mutex faiss_mutex = GLib.Mutex();
+		
 		public Index(string filename, uint64 dim) throws Error
 		{
 			this.filename = filename;
@@ -136,8 +139,13 @@ namespace OLLMvector
 				);
 			}
 			
-			if (Faiss.index_add(this.index, (int64)vectors.rows, vectors.data) != 0) {
-				throw new GLib.IOError.FAILED("Failed to add vectors to FAISS index");
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.index_add(this.index, (int64)vectors.rows, vectors.data) != 0) {
+					throw new GLib.IOError.FAILED("Failed to add vectors to FAISS index");
+				}
+			} finally {
+				this.faiss_mutex.unlock();
 			}
 		}
 		
@@ -163,8 +171,13 @@ namespace OLLMvector
 			var distances = new float[k];
 			var labels = new int64[k];
 			
-			if (Faiss.index_search_with_ids(this.index, 1, query_vector, (int64)k, selector, distances, labels) != 0) {
-				throw new GLib.IOError.FAILED("Failed to search FAISS index");
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.index_search_with_ids(this.index, 1, query_vector, (int64)k, selector, distances, labels) != 0) {
+					throw new GLib.IOError.FAILED("Failed to search FAISS index");
+				}
+			} finally {
+				this.faiss_mutex.unlock();
 			}
 			
 			var results = new SearchResult[k];
@@ -181,7 +194,12 @@ namespace OLLMvector
 		
 		public uint64 get_total_vectors()
 		{
-			return (uint64)Faiss.index_ntotal(this.index);
+			this.faiss_mutex.lock();
+			try {
+				return (uint64)Faiss.index_ntotal(this.index);
+			} finally {
+				this.faiss_mutex.unlock();
+			}
 		}
 		
 		/**
@@ -192,23 +210,49 @@ namespace OLLMvector
 		 */
 		public float[] reconstruct_vector(int64 vector_id) throws Error
 		{
-			if (vector_id < 0 || (uint64)vector_id >= this.get_total_vectors()) {
-				throw new GLib.IOError.FAILED(
-					"Vector ID out of range: %lld (total vectors: %llu)".printf(
-						vector_id, this.get_total_vectors()));
+			this.faiss_mutex.lock();
+			try {
+				uint64 total = (uint64)Faiss.index_ntotal(this.index);
+				if (vector_id < 0 || (uint64)vector_id >= total) {
+					throw new GLib.IOError.FAILED(
+						"Vector ID out of range: %lld (total vectors: %llu)".printf(
+							vector_id, total));
+				}
+				
+				var vector = new float[this.dimension];
+				if (Faiss.index_reconstruct(this.index, vector_id, vector) != 0) {
+					throw new GLib.IOError.FAILED("Failed to reconstruct vector %lld".printf(vector_id));
+				}
+				
+				return vector;
+			} finally {
+				this.faiss_mutex.unlock();
 			}
-			
-			var vector = new float[this.dimension];
-			if (Faiss.index_reconstruct(this.index, vector_id, vector) != 0) {
-				throw new GLib.IOError.FAILED("Failed to reconstruct vector %lld".printf(vector_id));
-			}
-			
-			return vector;
 		}
 		
 		internal unowned Faiss.Index get_faiss_index()
 		{
 			return this.index;
+		}
+		
+		/**
+		 * Saves the FAISS index to a file.
+		 * 
+		 * This method is thread-safe and should be used instead of directly
+		 * calling Faiss.write_index_fname() on the result of get_faiss_index().
+		 * 
+		 * @param filename Path to the file where the index should be saved
+		 */
+		public void save_to_file(string filename) throws Error
+		{
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.write_index_fname(this.index, filename) != 0) {
+					throw new GLib.IOError.FAILED("Failed to save FAISS index to " + filename);
+				}
+			} finally {
+				this.faiss_mutex.unlock();
+			}
 		}
 		
 		internal void set_faiss_index(owned Faiss.Index new_index)
