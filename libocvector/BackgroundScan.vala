@@ -13,15 +13,6 @@ namespace OLLMvector {
      * BackgroundScan manages a background thread that continuously processes
      * file‑indexing jobs.  The thread is started on first use and lives for the
      * lifetime of the application.
-     *
-     * Public API:
-     *   - scanProject(OLLMfiles.Project project) : enqueue all files of a project that need scanning.
-     *   - scanFile(OLLMfiles.File file)          : enqueue a single file (e.g. after a save).
-     *
-     * Signals:
-     *   - file_scanned(string file_path)
-     *   - project_scan_started(string project_path)
-     *   - project_scan_completed(string project_path, int files_indexed)
      */
     public class BackgroundScan : GLib.Object {
 
