@@ -310,8 +310,8 @@ namespace OLLMvector {
                 // Ensure worker_project_manager exists
                 this.ensure_project_manager ();
 
-                // Find the project by item.project_path
-                var project = this.worker_project_manager.projects.find_first ((p) => p.path == next_item.project_path);
+                // Find the project by item.project_path (O(1) lookup using path_map)
+                var project = this.worker_project_manager.projects.path_map.get (next_item.project_path);
                 if (project == null) {
                     GLib.warning ("BackgroundScan: could not find project %s for file %s", next_item.project_path, next_item.file_path);
                     continue;
