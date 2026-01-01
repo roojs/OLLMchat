@@ -152,14 +152,15 @@ namespace OLLMfiles
 			int active_count = 0;
 			Folder? result = null;
 			foreach (var project in this.items) {
-				if (project.is_active && project.is_project) {
-					active_count++;
-					if (result == null) {
-						result = project;
-					}
-					GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
-						project.path, active_count);
+				if (!(project.is_active && project.is_project)) {
+					continue;
 				}
+				active_count++;
+				if (result == null) {
+					result = project;
+				}
+				GLib.debug("ProjectList.get_active_project: Found active project '%s' (count=%d)", 
+					project.path, active_count);
 			}
 			GLib.debug("ProjectList.get_active_project: Total active projects found: %d", active_count);
 			GLib.debug("ProjectList.get_active_project: Returning project '%s'", 
