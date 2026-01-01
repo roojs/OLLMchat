@@ -263,11 +263,8 @@ namespace OLLMvector {
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer_tail (item);
 
-            // Start queue processing if not already running (we're already in the background thread context)
-            if (!this.queue_processing) {
-                this.queue_processing = true;
-                this.startQueue.begin ();
-            }
+            // Start queue processing (we're already in the background thread context)
+            this.startQueue.begin ();
         }
 
         /**
@@ -275,6 +272,12 @@ namespace OLLMvector {
          * thread's main context.
          */
         private async void startQueue () {
+            // If already processing, just return (can be called multiple times safely)
+            if (this.queue_processing) {
+                return;
+            }
+            this.queue_processing = true;
+
             while (true) {
                 BackgroundScanItem? next_item = null;
                 int queue_size = 0;
