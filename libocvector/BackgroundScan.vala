@@ -170,7 +170,7 @@ namespace OLLMvector {
             // load the project from the database.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.queueProject (project_path);
+                this.queueProject.begin (project_path);
                 return false;
             });
             source.attach (this.worker_context);
@@ -252,13 +252,13 @@ namespace OLLMvector {
         }
 
         /**
-         * Add a file path to the queue in a thread‑safe way and ensure the queue
+         * Add a file item to the queue in a thread‑safe way and ensure the queue
          * processing loop is running.
          */
-        private void queueFile (string path) {
+        private void queueFile (BackgroundScanItem item) {
             // Guard the queue with the mutex.
             this.queue_mutex.lock ();
-            this.file_queue.offer_tail (path);
+            this.file_queue.offer_tail (item);
             this.queue_mutex.unlock ();
 
             // Ensure the queue processing source is active.
@@ -266,7 +266,7 @@ namespace OLLMvector {
             // The idle source will keep pulling items until the queue is empty.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.startQueue ();
+                this.startQueue.begin ();
                 return false;
             });
             source.attach (this.worker_context);
