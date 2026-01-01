@@ -296,6 +296,10 @@ namespace OLLMvector {
          * Add a file item to the queue and ensure the queue processing loop is running.
          */
         private void queueFile (BackgroundScanItem item) {
+            // Initialize queue if needed (lazy initialization in background thread)
+            if (this.file_queue == null) {
+                this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
+            }
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer (item);
 
