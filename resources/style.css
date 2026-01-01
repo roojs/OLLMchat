@@ -115,9 +115,5 @@
   background-color: #fffacd;
 }
 
-/* Fix cursor for buttons inside TextView */
-.permission-widget button {
-  cursor: pointer;
-}
 
 

@@ -19,7 +19,6 @@ popover.menu > scrolledwindow {
   padding: 0;
   /* Prevent scrolled window from expanding horizontally */
   min-width: 0;
-  max-width: 100%;
 }
 
 popover.menu listview {
@@ -30,7 +29,6 @@ popover.menu listview > row {
   padding: 8px;
   /* Prevent rows from expanding beyond popover width */
   min-width: 0;
-  max-width: 100%;
 }
 
 popover.menu listview > row:selected {

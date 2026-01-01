@@ -93,7 +93,15 @@ namespace OLLMchat
 			});
 			
 			// Create agent dropdown (will be set up in setup_agent_dropdown)
-			this.agent_dropdown = new Gtk.DropDown(null, null) {
+			// Create minimal factory to satisfy GTK4 requirement (will be replaced in setup_agent_dropdown)
+			var minimal_factory = new Gtk.SignalListItemFactory();
+			minimal_factory.setup.connect((item) => {
+				var list_item = item as Gtk.ListItem;
+				if (list_item != null) {
+					list_item.child = new Gtk.Label("");
+				}
+			});
+			this.agent_dropdown = new Gtk.DropDown(null, minimal_factory) {
 				hexpand = false
 			};
 			this.header_bar.pack_start(this.agent_dropdown);

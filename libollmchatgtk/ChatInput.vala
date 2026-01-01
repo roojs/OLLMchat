@@ -144,11 +144,19 @@ namespace OLLMchatGtk
 				hexpand = false
 			};
 			
-			// Create empty dropdown (will be set up in setup_model_dropdown)
-			this.model_dropdown = new Gtk.DropDown(null, null) {
-				visible = false,
-				hexpand = false
-			};
+		// Create empty dropdown (will be set up in setup_model_dropdown)
+		// Create minimal factory to satisfy GTK4 requirement (will be replaced in setup_model_dropdown)
+		var minimal_factory = new Gtk.SignalListItemFactory();
+		minimal_factory.setup.connect((item) => {
+			var list_item = item as Gtk.ListItem;
+			if (list_item != null) {
+				list_item.child = new Gtk.Label("");
+			}
+		});
+		this.model_dropdown = new Gtk.DropDown(null, minimal_factory) {
+			visible = false,
+			hexpand = false
+		};
 			
 			// Create tools menu button (will be set up in setup_model_dropdown)
 			this.tools_menu_button = new Gtk.MenuButton() {
