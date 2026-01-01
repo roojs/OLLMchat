@@ -304,9 +304,8 @@ namespace OLLMvector
 				return;
 			}
 			
-			if (Faiss.write_index_fname(this.index.get_faiss_index(), this.filename) != 0) {
-				throw new GLib.IOError.FAILED("Failed to save FAISS index to " + this.filename);
-			}
+			// Use Index.save_to_file() which handles thread-safety
+			this.index.save_to_file(this.filename);
 			
 			// TODO: save metadata mapping (vector_id -> file_path, line_range, element_info) to database
 		}
