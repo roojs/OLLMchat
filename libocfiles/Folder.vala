@@ -181,11 +181,7 @@ namespace OLLMfiles
 			this.manager.git_provider.discover_repository(this);
 			
 			// Update is_repo based on whether repository exists
-			if (this.manager.git_provider.repository_exists(this)) {
-				this.is_repo = 1;
-			} else {
-				this.is_repo = 0;
-			}
+			this.is_repo = this.manager.git_provider.repository_exists(this) ? 1 : 0;
 		}
 		
 		
@@ -248,15 +244,25 @@ namespace OLLMfiles
 			}
 			
 
-			// Collect all folders that need recursive reading
+			// Collect all folders that need recursive reading (skip ignored folders)
 			var folders_to_process = new Gee.ArrayList<Folder>();
 			foreach (var child in this.children.items) {
+				if (child.is_ignored) {
+					continue;
+				}
+				
 				if (child is Folder) {
 					folders_to_process.add((Folder)child);
+					continue;
 				}
-				if (child is FileAlias && child.points_to is Folder) {
-					folders_to_process.add((Folder)child.points_to);
+				if (!(child is FileAlias && child.points_to is Folder)) {
+					continue;
 				}
+				var target_folder = (Folder)child.points_to;
+				if (target_folder.is_ignored) {
+					continue;
+				}
+				folders_to_process.add(target_folder);
 			}
 
 			if (!background_recurse) {

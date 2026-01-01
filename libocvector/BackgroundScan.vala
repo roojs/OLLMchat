@@ -38,6 +38,7 @@ namespace OLLMvector {
         private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
         private Database vector_db;               // OLLMvector.Database (FAISS) - thread-safe via mutex in Index class
         private SQ.Database sql_db;               // SQ.Database for metadata - thread-safe (SERIALIZED mode)
+        private OLLMfiles.GitProviderBase git_provider;     // Git provider instance (each thread needs its own instance for thread safety)
 
         // Thread management (main thread creates/manages, background thread uses)
         private GLib.Thread<void*>? worker_thread = null;
@@ -51,14 +52,17 @@ namespace OLLMvector {
          * @param embedding_client The OLLMchat.Client instance for LLM calls and embeddings.
          * @param vector_db The OLLMvector.Database instance for vector storage (FAISS).
          * @param sql_db The SQ.Database instance for metadata storage.
+         * @param git_provider The Git provider instance (each thread needs its own instance for thread safety).
          */
         public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
-                               SQ.Database sql_db) 
+                               SQ.Database sql_db,
+                               OLLMfiles.GitProviderBase git_provider) 
 		{
             this.embedding_client = embedding_client;
             this.vector_db = vector_db;
             this.sql_db = sql_db;
+            this.git_provider = git_provider;
 
             this.main_context = GLib.MainContext.default ();
         }
@@ -81,6 +85,8 @@ namespace OLLMvector {
                     // Set this context as thread default
                     this.worker_context.push_thread_default ();
 
+                    GLib.debug ("BackgroundScan: background thread started");
+                    
                     // Create and run MainLoop
                     this.worker_loop = new GLib.MainLoop (this.worker_context);
                     this.worker_loop.run ();
@@ -232,7 +238,8 @@ namespace OLLMvector {
                 // Create ProjectManager in background thread context
                 // Use same sql_db (thread-safe in serialized mode)
                 this.worker_project_manager = new OLLMfiles.ProjectManager(this.sql_db);
-                // Default providers are fine - we only need to read from DB
+                // Use the git_provider instance passed to constructor (each thread needs its own instance for thread safety)
+                this.worker_project_manager.git_provider = this.git_provider;
             }
         }
 
@@ -290,6 +297,7 @@ namespace OLLMvector {
             // Set as active project and load files from DB (will check needs_reload() internally)
             yield this.set_active_project_and_load (project);
 
+            int queued_count = 0;
             // Iterate through project_files (flat list, not hierarchical)
             // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
             foreach (var project_file in project.project_files) {
@@ -299,7 +307,10 @@ namespace OLLMvector {
                 }
                 // Create BackgroundScanItem and queue it
                 this.queueFile (new BackgroundScanItem (project.path, project_file.file.path));
+                queued_count++;
             }
+            
+            GLib.debug ("BackgroundScan: queued %d files from project '%s'", queued_count, path);
 
             // Do NOT emit project_scan_completed - project scan just queues files,
             // completion is handled by file queue via scan_update signal
@@ -315,6 +326,8 @@ namespace OLLMvector {
             }
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer (item);
+            
+            GLib.debug ("BackgroundScan: queued file '%s' (queue size: %u)", item.file_path, this.file_queue.size);
 
             // Start queue processing (we're already in the background thread context)
             this.startQueue.begin ();
@@ -343,6 +356,7 @@ namespace OLLMvector {
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
                     this.queue_processing = false;
+                    GLib.debug ("BackgroundScan: queue empty, processing complete");
                     this.emit_scan_update (0, "");
                     break;
                 }
@@ -370,6 +384,8 @@ namespace OLLMvector {
 
                 // Emit scan_update signal at start of scan (before indexing)
                 this.emit_scan_update ((int)this.file_queue.size, next_item.file_path);
+                
+                GLib.debug ("BackgroundScan: processing file '%s' (queue size: %u)", next_item.file_path, this.file_queue.size);
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {

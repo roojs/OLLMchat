@@ -208,6 +208,7 @@ namespace SQ {
 				string.joinv(",", values) +   " );";
 			
 			//GLib.debug("Query %s", q);
+			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			
 
@@ -248,6 +249,8 @@ namespace SQ {
 			
 			stmt.reset(); //not really needed.
 			var id = this.db.db.last_insert_rowid();
+			this.db.db_mutex.unlock();
+			
 			var  newv = GLib.Value ( typeof(int64) );
 			newv.set_int64(id);
 			((Object)newer).set_property("id", newv);
@@ -364,6 +367,7 @@ namespace SQ {
 			Sqlite.Statement stmt;
 			var q = "UPDATE " + this.table + " SET  " + string.joinv(",", setter) +
 				" WHERE id = " + id.to_string();
+			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			if (stmt == null) {
 			    GLib.error("Update: %s %s", q, this.db.db.errmsg());
@@ -394,10 +398,10 @@ namespace SQ {
 			
 			}
 			GLib.debug("Execute %s", stmt.expanded_sql());	 
- 			if (Sqlite.DONE != stmt.step ()) {
+			if (Sqlite.DONE != stmt.step ()) {
 			    GLib.error("Update:   %s",   this.db.db.errmsg());
 			}
-			
+			this.db.db_mutex.unlock();
 
 		}
 		
@@ -558,10 +562,23 @@ namespace SQ {
 		{
 			assert(this.table != "");
 			
-			// Build query string on main thread (fast operation, safe cache access)
+			// Build query string (fast operation, safe cache access)
 			var keys = this.getColsExcept(null);
 			var q = "SELECT " + string.joinv(",", keys) + " FROM " + this.table + " " + where;
 			
+			// Check if we're already in a background thread
+			// If so, just run synchronously to avoid creating another thread and potential deadlocks
+			var main_context = GLib.MainContext.default();
+			var current_context = GLib.MainContext.get_thread_default();
+			bool is_main_thread = (main_context == current_context);
+			
+			if (!is_main_thread) {
+				// Already in a background thread - run synchronously
+				this.selectQuery(q, ret);
+				return;
+			}
+			
+			// We're in the main thread - create background thread
 			SourceFunc callback = select_async.callback;
 			
 			// Hold reference to closure to keep it from being freed whilst thread is active
@@ -593,11 +610,12 @@ namespace SQ {
 		{	
 			Sqlite.Statement stmt;
 
+			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			if (stmt == null) {
 			    GLib.error("%s from query   %s",   this.db.db.errmsg(), q);
-			
 			}
+			this.db.db_mutex.unlock();
  			return stmt;
  		}
  		
@@ -625,6 +643,7 @@ namespace SQ {
 				}
 			}
 			
+			this.db.db_mutex.lock();
 			while (stmt.step() == Sqlite.ROW) {
 		 		T row;
 		 		
@@ -648,6 +667,7 @@ namespace SQ {
 		 		ret.add( row);
 		 		
 			}
+			this.db.db_mutex.unlock();
 			 
 		    GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 					
@@ -663,11 +683,13 @@ namespace SQ {
 		 * @return A list of string values from the first column
 		 */
 		public Gee.ArrayList<string> fetchAllString(Sqlite.Statement stmt )
- 		{
+		{
 			var ret = new Gee.ArrayList<string>();
+			this.db.db_mutex.lock();
 			while (stmt.step() == Sqlite.ROW) {
 		 		 ret.add( stmt.column_text(0));
 			}
+			this.db.db_mutex.unlock();
 			 
 		    GLib.debug("fetchAllString got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
@@ -683,11 +705,13 @@ namespace SQ {
 		 * @return A list of integer values from the first column
 		 */
 		public Gee.ArrayList<int> fetchAllInt64(Sqlite.Statement stmt )
- 		{
+		{
 			var ret = new Gee.ArrayList<int>();
+			this.db.db_mutex.lock();
 			while (stmt.step() == Sqlite.ROW) {
 		 		 ret.add(( int)stmt.column_int64(0));
 			}
+			this.db.db_mutex.unlock();
 			 
 		    GLib.debug("fetchAllInt64 got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return ret;		
@@ -706,13 +730,14 @@ namespace SQ {
 		 */
 		public bool selectExecuteInto(Sqlite.Statement stmt,  T row )
 		{
-			GLib.debug("Execute INTO %s", stmt.expanded_sql());	
+			GLib.debug("Execute INTO %s", stmt.expanded_sql());
+			this.db.db_mutex.lock();
 			if (stmt.step() == Sqlite.ROW) {
-		 		 
-				this.fetchRow(stmt, row);
+		 		this.fetchRow(stmt, row);
+		 		this.db.db_mutex.unlock();
 		 		return true;
-		 		
-			}
+		 	}
+			this.db.db_mutex.unlock();
 //		    GLib.debug("select got %d rows / last errr  %s", ret.size,  this.db.db.errmsg());
 			return false;
 			 
@@ -905,9 +930,11 @@ namespace SQ {
 			GLib.debug("Query %s", q);
 			var stmt = this.selectPrepare( q );
 			stmt.bind_int64 (stmt.bind_parameter_index ("$id"), id);
+			this.db.db_mutex.lock();
 			if (Sqlite.DONE != stmt.step ()) {
 			    GLib.error("Delete %d:   %s", (int)id,   this.db.db.errmsg());
 			}
+			this.db.db_mutex.unlock();
 				 
 			
 		

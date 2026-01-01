@@ -531,25 +531,32 @@ namespace OLLMchat
 				
 				// Create BackgroundScan instance for background file indexing
 				// Uses the same vector_db and embed_client, and the ProjectManager's database
-				this.background_scan = new OLLMvector.BackgroundScan(
-					embed_client,
-					vector_db,
-					project_manager.db
-				);
-				
-				// Connect to file_contents_changed signal to trigger background scanning
-				// Only connect when background_scan is available
-				// scanFile handles null project internally
-				this.project_manager.file_contents_changed.connect((file) => {
-					this.background_scan.scanFile(file, this.project_manager.active_project);
-				});
-				
-				// Connect to active_project_changed signal to trigger project scanning
-				// When project changes, scan all files in the project
-				// scanProject handles null project internally
-				this.project_manager.active_project_changed.connect((project) => {
-					this.background_scan.scanProject(project);
-				});
+				// Pass a new GitProvider instance (libgit2 is not thread-safe, each thread needs its own instance)
+				// Check if indexer is disabled via command-line option
+				if (!OllmchatApplication.opt_disable_indexer) {
+					this.background_scan = new OLLMvector.BackgroundScan(
+						embed_client,
+						vector_db,
+						project_manager.db,
+						new OLLMcoder.GitProvider()
+					);
+					
+					// Connect to file_contents_changed signal to trigger background scanning
+					// Only connect when background_scan is available
+					// scanFile handles null project internally
+					this.project_manager.file_contents_changed.connect((file) => {
+						this.background_scan.scanFile(file, this.project_manager.active_project);
+					});
+					
+					// Connect to active_project_changed signal to trigger project scanning
+					// When project changes, scan all files in the project
+					// scanProject handles null project internally
+					this.project_manager.active_project_changed.connect((project) => {
+						this.background_scan.scanProject(project);
+					});
+				} else {
+					GLib.debug("Background semantic search indexing disabled via --disable-indexer");
+				}
 				
 				// Register the tool
 				var tool = new OLLMvector.Tool.CodebaseSearchTool(
