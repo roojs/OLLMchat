@@ -288,13 +288,11 @@ namespace OLLMvector {
                 BackgroundScanItem? next_item = null;
                 int queue_size = 0;
 
-                // Critical section – fetch one item and get queue size.
-                this.queue_mutex.lock ();
+                // All queue operations happen in the background thread context, so no mutex needed
                 if (!this.file_queue.is_empty) {
                     next_item = this.file_queue.poll_head ();
                     queue_size = (int)this.file_queue.size;
                 }
-                this.queue_mutex.unlock ();
 
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
