@@ -74,7 +74,7 @@ namespace OLLMvector {
                                SQ.Database sql_db) {
             this.embedding_client = embedding_client;
             this.vector_db = vector_db;
-            this.sql_db          = sql_db;
+            this.sql_db  = sql_db;
 
             this.file_queue = new Gee.ArrayDeque<BackgroundScanItem> ();
             this.queue_mutex = GLib.Mutex ();
@@ -366,12 +366,12 @@ namespace OLLMvector {
         }
 
         /**
-         * Emits project_scan_completed signal on the main thread.
+         * Emits scan_update signal on the main thread.
          */
-        private void emit_project_scan_completed (string project_path, int files_indexed)
+        private void emit_scan_update (int queue_size, string current_file)
         {
             this.main_context.invoke (() => {
-                this.project_scan_completed (project_path, files_indexed);
+                this.scan_update (queue_size, current_file);
                 return false;
             });
         }
