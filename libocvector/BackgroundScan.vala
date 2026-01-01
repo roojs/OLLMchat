@@ -184,17 +184,23 @@ namespace OLLMvector {
          * scanning work to the background thread.
          *
          * @param file The File object that was modified.
+         * @param project The Project object that contains this file.
          */
-        public void scanFile (OLLMfiles.File file) {
+        public void scanFile (OLLMfiles.File file, OLLMfiles.Project project) {
             this.ensure_thread ();
 
-            // Extract path before creating callback to avoid capturing object in closure.
+            // Extract paths before creating callback to avoid capturing object in closure.
             var file_path = file.path;
+            var project_path = project.path;
 
             // Dispatch to background thread.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.queueFile (file_path);
+                var item = BackgroundScanItem() {
+                    project_path = project_path,
+                    file_path = file_path
+                };
+                this.queueFile (item);
                 return false;
             });
             source.attach (this.worker_context);
