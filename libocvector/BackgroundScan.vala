@@ -135,10 +135,15 @@ namespace OLLMvector {
          * scanning work to the background thread.
          *
          * @param file The File object that was modified.
-         * @param project The Folder object that contains this file (is_project = true).
+         * @param project The Folder object that contains this file (is_project = true), or null if no active project.
          */
-        public void scanFile (OLLMfiles.File file, OLLMfiles.Folder project) 
+        public void scanFile (OLLMfiles.File file, OLLMfiles.Folder? project) 
 		{
+            // If no active project, skip scanning (file may be outside any project)
+            if (project == null) {
+                return;
+            }
+            
             this.ensure_thread ();
 
             // Extract paths before creating callback to avoid capturing object in closure.
