@@ -1,0 +1,5 @@
+Completely new content
+replacing the entire file
+with different text
+and more lines
+final replacement line

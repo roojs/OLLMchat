@@ -1,0 +1,4 @@
+Original file content
+line 2 of original
+line 3 of original
+final line
