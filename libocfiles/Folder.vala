@@ -552,9 +552,8 @@ namespace OLLMfiles
 			
 			// Query: SELECT MAX(last_modified) FROM filebase
 			Sqlite.Statement stmt;
-			var query = "SELECT MAX(last_modified) FROM filebase";
-			if (this.manager.db.db.prepare_v2(query, query.length, out stmt) != Sqlite.OK) {
-				GLib.warning("Folder.needs_reload: Failed to prepare query: %s", this.manager.db.db.errmsg());
+			if (this.manager.db.db.prepare_v2("SELECT MAX(last_modified) FROM filebase", -1, out stmt) != Sqlite.OK) {
+				GLib.warning("Failed to prepare query: %s", this.manager.db.db.errmsg());
 				return true; // On error, assume reload needed (conservative)
 			}
 			
