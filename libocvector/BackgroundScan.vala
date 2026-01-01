@@ -25,13 +25,6 @@ namespace OLLMvector {
         }
 
         /**
-         * Emitted when a project scan starts.
-         *
-         * @param project_path The path of the project being scanned.
-         */
-        public signal void project_scan_started (string project_path);
-
-        /**
          * Emitted at the start of each file scan and when queue becomes empty.
          *
          * @param queue_size Current size of the file queue (number of files remaining).
