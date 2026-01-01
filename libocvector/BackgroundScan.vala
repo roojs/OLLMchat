@@ -202,7 +202,7 @@ namespace OLLMvector {
         // Background thread state (accessed only from background thread)
         private OLLMfiles.ProjectManager? worker_project_manager = null;   // ProjectManager instance for background thread
         private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
-        private Gee.ArrayQueue<BackgroundScanItem> file_queue;
+        private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
         private bool queue_processing = false;
         private Indexer? indexer = null;
 
@@ -317,6 +317,11 @@ namespace OLLMvector {
                 return;
             }
             this.queue_processing = true;
+
+            // Initialize queue if needed (lazy initialization in background thread)
+            if (this.file_queue == null) {
+                this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
+            }
 
             while (true) {
                 // All queue operations happen in the background thread context, so no mutex needed
