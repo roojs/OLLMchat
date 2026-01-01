@@ -19,8 +19,27 @@ namespace OLLMvector {
         /*--------------------------------------------------------------------
          *  Signals
          *-------------------------------------------------------------------*/
+
+        /**
+         * Emitted when a file scan completes.
+         *
+         * @param file_path The path of the file that was scanned.
+         */
         public signal void file_scanned (string file_path);
+
+        /**
+         * Emitted when a project scan starts.
+         *
+         * @param project_path The path of the project being scanned.
+         */
         public signal void project_scan_started (string project_path);
+
+        /**
+         * Emitted when a project scan completes.
+         *
+         * @param project_path The path of the project that was scanned.
+         * @param files_indexed The number of files that were indexed.
+         */
         public signal void project_scan_completed (string project_path, int files_indexed);
 
         /*--------------------------------------------------------------------
