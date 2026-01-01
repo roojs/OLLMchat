@@ -74,7 +74,7 @@ namespace OLLMvector {
                                SQ.Database sql_db) {
             this.embedding_client = embedding_client;
             this.vector_db = vector_db;
-            this.sql_db  = sql_db;
+            this.sql_db = sql_db;
 
             this.file_queue = new Gee.ArrayDeque<BackgroundScanItem> ();
             this.queue_mutex = GLib.Mutex ();
@@ -170,7 +170,13 @@ namespace OLLMvector {
             // load the project from the database.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                this.queueProject.begin (project_path);
+                this.queueProject.begin (project_path, (obj, res) => {
+                    try {
+                        this.queueProject.end (res);
+                    } catch (GLib.Error e) {
+                        GLib.warning ("BackgroundScan.queueProject error: %s", e.message);
+                    }
+                });
                 return false;
             });
             source.attach (this.worker_context);
