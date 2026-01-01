@@ -76,7 +76,6 @@ namespace OLLMvector {
             this.sql_db = sql_db;
 
             this.file_queue = new Gee.ArrayDeque<BackgroundScanItem> ();
-            this.queue_mutex = GLib.Mutex ();
             this.main_context = GLib.MainContext.default ();
         }
 
@@ -257,14 +256,11 @@ namespace OLLMvector {
         }
 
         /**
-         * Add a file item to the queue in a thread‑safe way and ensure the queue
-         * processing loop is running.
+         * Add a file item to the queue and ensure the queue processing loop is running.
          */
         private void queueFile (BackgroundScanItem item) {
-            // Guard the queue with the mutex.
-            this.queue_mutex.lock ();
+            // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer_tail (item);
-            this.queue_mutex.unlock ();
 
             // Ensure the queue processing source is active.
             // If not already running, start it via an idle source.
