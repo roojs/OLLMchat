@@ -492,18 +492,30 @@ Cleanup completed (check logs for deleted files)
 	{
 		string project_path = opt_create_project;
 		
-		// Create a Folder with is_project = true
-		var project = new OLLMfiles.Folder(manager);
-		project.path = project_path;
-		project.is_project = true;
-		project.display_name = GLib.Path.get_basename(project_path);
+		// Load existing projects from database first
+		yield manager.load_projects_from_db();
+		
+		// Check if project already exists
+		var existing_project = manager.projects.path_map.get(project_path);
+		OLLMfiles.Folder project;
+		if (existing_project != null) {
+			// Project exists - use it
+			project = existing_project;
+			GLib.debug("oc-test-files: Using existing project '%s' (id=%lld)", project_path, project.id);
+		} else {
+			// Create a new Folder with is_project = true
+			project = new OLLMfiles.Folder(manager);
+			project.path = project_path;
+			project.is_project = true;
+			project.display_name = GLib.Path.get_basename(project_path);
+			
+			// Save project to database
+			project.saveToDB(db, null, false);
+			manager.projects.append(project);
+		}
 		
 		// Disable background recursion for testing
 		OLLMfiles.Folder.background_recurse = false;
-		
-		// Save project to database
-		project.saveToDB(db, null, false);
-		manager.projects.append(project);
 		
 		// Scan directory and populate project files
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);

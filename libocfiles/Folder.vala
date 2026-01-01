@@ -547,11 +547,17 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Timestamp of last database load (in-memory only, not stored in database).
+		 * Used to determine if we need to reload from database.
+		 */
+		private int64 last_db_load = 0;
+		
+		/**
 		 * Check if this folder needs to be reloaded from the database.
 		 * 
-		 * Compares the project's last_scan timestamp with the maximum last_modified
+		 * Compares the project's last_db_load timestamp with the maximum last_modified
 		 * timestamp in the database. If any file in the database has been modified
-		 * more recently than the last scan, a reload is needed.
+		 * more recently than the last load, a reload is needed.
 		 * 
 		 * @return true if reload is needed, false otherwise
 		 */
@@ -559,6 +565,11 @@ namespace OLLMfiles
 		{
 			if (this.manager.db == null) {
 				return false; // No DB, can't check
+			}
+			
+			// If last_db_load is 0, we've never loaded - always reload
+			if (this.last_db_load == 0) {
+				return true;
 			}
 			
 			// Query: SELECT MAX(last_modified) FROM filebase
@@ -571,8 +582,8 @@ namespace OLLMfiles
 				max_mtime = results.get(0);
 			}
 			
-			// If max mtime in DB is greater than project's last_scan, reload needed
-			return max_mtime > this.last_scan;
+			// If max mtime in DB is greater than last_db_load, reload needed
+			return max_mtime > this.last_db_load;
 		}
 
 		/**
@@ -615,12 +626,20 @@ namespace OLLMfiles
 			
 			GLib.debug("Folder.load_files_from_db: Loaded %d items total, building tree structure", id_map.size);
 			// Step c: Build the tree structure
+			// Skip the root folder itself (it's already in the tree, doesn't need to be added to a parent)
 			foreach (var file_base in id_map.values) {
+				// Root folder (this) doesn't need tree building - it's already the root
+				if (file_base.id == this.id) {
+					continue;
+				}
 				this.build_tree_structure(file_base, id_map);
 			}
 			
 			// Populate project_files from children
 			this.project_files.update_from(this);
+			
+			// Update last_db_load timestamp to current time
+			this.last_db_load = new GLib.DateTime.now_local().to_unix();
 		}
 		
 	/**
@@ -719,25 +738,20 @@ namespace OLLMfiles
 			
 			// Get or set parent reference
  			if (file_base.parent != null) {
-				
 				file_base.parent.children.append(file_base);
 				return;
 			} 
 			// Set parent reference if not already set
 			if (file_base.parent_id < 1 || !id_map.has_key((int)file_base.parent_id)) {
-				GLib.debug("Folder.build_tree_structure: Skipping '%s' (parent_id=%lld, parent_in_map=%s)", 
-					file_base.path, file_base.parent_id, id_map.has_key((int)file_base.parent_id).to_string());
 				return;
 			}
 				
 			var	parent = id_map.get((int)file_base.parent_id) as Folder;
 			if (parent == null) {
-				GLib.debug("Folder.build_tree_structure: Parent %lld is not a Folder for '%s'", file_base.parent_id, file_base.path);
 				return;
 			}
 				
 			file_base.parent = parent;
-			 
 			
 			// Add to parent's children (append handles duplicates)
 			parent.children.append(file_base);
@@ -873,11 +887,11 @@ namespace OLLMfiles
 		 * This method:
 		 * - Clears the hierarchical tree structure (children)
 		 * - Clears the flat file list (project_files)
-		 * - Resets last_scan to 0, which will cause needs_reload() to return true
+		 * - Clears the in-memory tree structure
 		 * 
 		 * After calling this method, the folder will appear as if it has never been
 		 * loaded. The next call to load_files_from_db() will reload all data from the
-		 * database (since needs_reload() will return true due to last_scan = 0).
+		 * database (since needs_reload() will return true).
 		 * 
 		 * This is useful for memory management when switching between projects or
 		 * when you want to force a reload on the next access.
@@ -892,9 +906,8 @@ namespace OLLMfiles
 			// Clear flat file list (for projects)
 			this.project_files.remove_all();
 			
-			// Reset last_scan to 0 so that needs_reload() will return true
-			// This ensures the next load_files_from_db() call will reload all data
-			this.last_scan = 0;
+			// Reset last_db_load so that needs_reload() will return true on next access
+			this.last_db_load = 0;
 		}
 	}
 }

@@ -96,7 +96,7 @@ namespace OLLMvector.Indexing
 		 * Index a single file.
 		 * 
 		 * Processes the file through Tree → Analysis → VectorBuilder pipeline.
-		 * Updates last_scan timestamp after successful indexing.
+		 * Updates last_vector_scan timestamp after successful indexing.
 		 * 
 		 * @param file The file to index (must exist in database)
 		 * @param force If true, skip incremental check and force re-indexing
@@ -119,7 +119,7 @@ namespace OLLMvector.Indexing
 			
 			if (!force) {
 				var mtime = file.mtime_on_disk();
-				if (file.last_scan >= mtime && mtime > 0) {
+				if (file.last_vector_scan >= mtime && mtime > 0) {
 					GLib.debug("Skipping file '%s' (not modified since last scan)", file.path);
 					return false;
 				}
@@ -132,7 +132,7 @@ namespace OLLMvector.Indexing
 			
 			if (tree.elements.size == 0) {
 				GLib.debug("No elements found in file '%s'", file.path);
-				file.last_scan = new DateTime.now_local().to_unix();
+				file.last_vector_scan = new DateTime.now_local().to_unix();
 				file.saveToDB(this.sql_db, null, false);
 				return true;
 			}
@@ -144,7 +144,7 @@ namespace OLLMvector.Indexing
 				this.embed_client, this.vector_db, this.sql_db);
 			yield vector_builder.process_file(tree);
 			
-			file.last_scan = new DateTime.now_local().to_unix();
+			file.last_vector_scan = new DateTime.now_local().to_unix();
 			file.saveToDB(this.sql_db, null, false);
 			
 			// Save vector database after each file

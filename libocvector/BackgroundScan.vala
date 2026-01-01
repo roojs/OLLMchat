@@ -253,7 +253,7 @@ namespace OLLMvector {
 		{
             // If switching to a different project, clear files from previous project
             if (this.active_project != null && this.active_project != project) {
-                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
+                // Clear all in-memory data (children, project_files)
                 // This will cause needs_reload() to return true on next access, forcing a reload
                 this.active_project.clear_data();
                 // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
@@ -305,7 +305,7 @@ namespace OLLMvector {
             // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
             foreach (var project_file in project.project_files) {
                 // Skip if file doesn't need scanning (negative test)
-                if (project_file.file.last_scan >= project_file.file.mtime_on_disk ()) {
+                if (project_file.file.last_vector_scan >= project_file.file.mtime_on_disk ()) {
                     continue;
                 }
                 // Create BackgroundScanItem and queue it

@@ -401,8 +401,11 @@ namespace OLLMfiles
 		/**
 		 * Run all migration methods and sync database at the end.
 		 */
-		public void migrate_all()
+		public async void migrate_all()
 		{
+			// Load existing projects from database first
+			yield this.manager.load_projects_from_db();
+			
 			this.migrate_from_cursor();
 			this.migrate_from_roobuilder();
 			this.migrate_from_vscode();

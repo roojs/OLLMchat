@@ -48,10 +48,10 @@
         </div>
         <div class="description">
           <p>Clears all in-memory data for this folder to free memory.</p>
-          <p>This method: - Clears the hierarchical tree structure (children) - Clears the flat file list (project_files) - Resets last_scan to 0, 
-            which will cause needs_reload() to return true</p>
+          <p>This method: - Clears the hierarchical tree structure (children) - Clears the flat file list (project_files) - Clears the in-memory tree 
+            structure</p>
           <p>After calling this method, the folder will appear as if it has never been loaded. The next call to load_files_from_db() will reload all 
-            data from the database (since needs_reload() will return true due to last_scan = 0).</p>
+            data from the database (since needs_reload() will return true).</p>
           <p>This is useful for memory management when switching between projects or when you want to force a reload on the next access.</p>
           <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
             <div class="main_block_content">

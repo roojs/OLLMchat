@@ -207,7 +207,7 @@ namespace SQ {
 				string.joinv(",", keys) + " ) VALUES ( " + 
 				string.joinv(",", values) +   " );";
 			
-			//GLib.debug("Query %s", q);
+			GLib.debug("Query %s", q);
 			this.db.db_mutex.lock();
 			this.db.db.prepare_v2 (q, q.length, out stmt);
 			
