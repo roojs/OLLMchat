@@ -212,42 +212,43 @@ namespace OLLMvector {
          *
          * @param path The path of the project to process.
          */
-        private void queueProject (string path) {
-            // Load project from database in the background thread (thread-safe).
-            // This ensures we have the latest representation and avoid passing
-            // objects between threads.
-            var proj = this.project_manager.get_project_by_path (path);
-            if (proj == null) {
-                // If the project cannot be loaded, abort silently.
-                GLib.warning ("BackgroundScan: could not load project %s", path);
+        private async void queueProject (string path) {
+            // Ensure worker_project_manager exists
+            this.ensure_project_manager ();
+
+            // Load projects from database
+            yield this.worker_project_manager.load_projects_from_db ();
+
+            // Find project by path
+            var project = this.worker_project_manager.projects.find_first ((p) => p.path == path);
+            if (project == null) {
+                GLib.warning ("BackgroundScan: could not find project %s", path);
                 return;
             }
 
-            int files_indexed = 0;
+            // Set as active project (clears previous project's files if different)
+            this.set_active_project (project);
 
-            // Iterate over all children; we only care about File objects.
-            foreach (var child in proj.children.values) {
-                if (child is OLLMfiles.File) {
-                    var f = child as OLLMfiles.File;
-                    // Compare last_scan timestamp with file modification time.
-                    // If the file has never been scanned or changed, queue it.
-                    if (f.last_scan < f.mtime_on_disk ()) {
-                        this.queueFile (f.path);
-                        files_indexed++;
-                    }
-                } else if (child is OLLMfiles.Folder) {
-                    // For folders we only need to avoid re‑processing the same folder
-                    // during the same run – the plan suggests checking folder.last_scan.
-                    var folder = child as OLLMfiles.Folder;
-                    if (folder.last_scan < folder.mtime_on_disk ()) {
-                        // Recurse into sub‑folder. Pass path string (thread-safe).
-                        this.queueProject (folder.path);
-                    }
+            // Load project files from DB (will check needs_reload() internally)
+            yield project.load_files_from_db ();
+
+            // Iterate through project_files.items (flat list, not hierarchical)
+            foreach (var project_file in project.project_files.items) {
+                // Access file via project_file.file
+                var file = project_file.file;
+                // Check if file needs scanning
+                if (file.last_scan < file.mtime_on_disk ()) {
+                    // Create BackgroundScanItem with project_path and file_path
+                    var item = BackgroundScanItem() {
+                        project_path = project.path,
+                        file_path = file.path
+                    };
+                    this.queueFile (item);
                 }
             }
 
-            // Emit completion signal (after all files have been queued).
-            this.emit_project_scan_completed (path, files_indexed);
+            // Do NOT emit project_scan_completed - project scan just queues files,
+            // completion is handled by file queue via scan_update signal
         }
 
         /**
