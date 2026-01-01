@@ -76,7 +76,7 @@ namespace OLLMvector {
             this.vector_db = vector_db;
             this.sql_db = sql_db;
 
-            this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
+            this.file_queue = new Gee.ArrayList<BackgroundScanItem> ();
             this.main_context = GLib.MainContext.default ();
         }
 
