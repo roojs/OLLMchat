@@ -84,24 +84,16 @@ test_read_file() {
     local expected_output="$TEST_DIR/expected_read.txt"
     local actual_output="$TEST_DIR/read_output.txt"
     
-    # Create test file with known content (use unique filename to avoid conflicts)
-    cat > "$test_file" << 'EOF'
-line 1
-line 2
-line 3
-line 4
-line 5
-line 6
-line 7
-EOF
+    # Get data files from tests/data directory
+    local data_dir="$SCRIPT_DIR/data"
+    local original_file="$data_dir/1.read-test-1-original.txt"
+    local expected_file="$data_dir/1.read-test-1-expected.txt"
     
-    # Create expected output (lines 2-5)
-    cat > "$expected_output" << 'EOF'
-line 2
-line 3
-line 4
-line 5
-EOF
+    # Create test file from data file
+    cp "$original_file" "$test_file"
+    
+    # Copy expected output from data file
+    cp "$expected_file" "$expected_output"
     
     # Run oc-test-files to read lines 2-5 (use sourceview backend - the critical one)
     local output
