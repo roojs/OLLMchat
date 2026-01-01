@@ -48,9 +48,6 @@ namespace OLLMvector {
         private GLib.MainContext? worker_context = null;
         private GLib.MainContext main_context;
 
-        /*--------------------------------------------------------------------
-         *  Queue – a thread‑safe list of file paths awaiting processing.
-         *-------------------------------------------------------------------*/
         private Gee.ArrayDeque<string> file_queue;
         private GLib.Mutex queue_mutex;
 
