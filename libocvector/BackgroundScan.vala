@@ -106,18 +106,19 @@ namespace OLLMvector {
          * background thread if not already running and dispatch the project
          * scanning work to the background thread.
          *
-         * @param project The Project object representing the active project.
+         * @param project The Folder object representing the active project (is_project = true).
          */
-        public void scanProject (OLLMfiles.Project project) {
+        public void scanProject (OLLMfiles.Folder project) {
             // Start thread if not already running.
             this.ensure_thread ();
 
             // Extract path before creating callback to avoid capturing object in closure.
+            // This is required for thread safety - we pass only the path string (thread-safe)
+            // rather than the object itself, which may not be thread-safe.
             var project_path = project.path;
 
             // Dispatch the heavy work to the background thread via idle source.
-            // Pass only the path string (thread-safe) - the background thread will
-            // load the project from the database.
+            // The background thread will load the project from the database.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
                 this.queueProject.begin (project_path);
@@ -134,23 +135,22 @@ namespace OLLMvector {
          * scanning work to the background thread.
          *
          * @param file The File object that was modified.
-         * @param project The Project object that contains this file.
+         * @param project The Folder object that contains this file (is_project = true).
          */
-        public void scanFile (OLLMfiles.File file, OLLMfiles.Project project) {
+        public void scanFile (OLLMfiles.File file, OLLMfiles.Folder project) 
+		{
             this.ensure_thread ();
 
             // Extract paths before creating callback to avoid capturing object in closure.
+            // This is required for thread safety - we pass only the path strings (thread-safe)
+            // rather than the objects themselves, which may not be thread-safe.
             var file_path = file.path;
             var project_path = project.path;
 
             // Dispatch to background thread.
             var source = new GLib.IdleSource ();
             source.set_callback (() => {
-                var item = BackgroundScanItem() {
-                    project_path = project_path,
-                    file_path = file_path
-                };
-                this.queueFile (item);
+                this.queueFile (new BackgroundScanItem (project_path, file_path));
                 return false;
             });
             source.attach (this.worker_context);
@@ -194,11 +194,16 @@ namespace OLLMvector {
         // ============================================================================
 
         /**
-         * Struct to track both project_path and file_path when queuing files.
+         * Class to track both project_path and file_path when queuing files.
          */
-        private struct BackgroundScanItem {
-            string project_path;
-            string file_path;
+        private class BackgroundScanItem {
+            public string project_path;
+            public string file_path;
+            
+            public BackgroundScanItem (string project_path, string file_path) {
+                this.project_path = project_path;
+                this.file_path = file_path;
+            }
         }
 
         // Background thread state (accessed only from background thread)
@@ -206,7 +211,7 @@ namespace OLLMvector {
         private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
         private Gee.ArrayQueue<BackgroundScanItem>? file_queue = null;
         private bool queue_processing = false;
-        private Indexer? indexer = null;
+        private Indexing.Indexer? indexer = null;
 
         /**
          * Ensure ProjectManager exists in background thread context.
@@ -275,19 +280,15 @@ namespace OLLMvector {
             // Set as active project and load files from DB (will check needs_reload() internally)
             yield this.set_active_project_and_load (project);
 
-            // Iterate through project_files.items (flat list, not hierarchical)
-            foreach (var project_file in project.project_files.items) {
-                // Access file via project_file.file
-                var file = project_file.file;
-                // Check if file needs scanning
-                if (file.last_scan < file.mtime_on_disk ()) {
-                    // Create BackgroundScanItem with project_path and file_path
-                    var item = BackgroundScanItem() {
-                        project_path = project.path,
-                        file_path = file.path
-                    };
-                    this.queueFile (item);
+            // Iterate through project_files (flat list, not hierarchical)
+            // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
+            foreach (var project_file in project.project_files) {
+                // Skip if file doesn't need scanning (negative test)
+                if (project_file.file.last_scan >= project_file.file.mtime_on_disk ()) {
+                    continue;
                 }
+                // Create BackgroundScanItem and queue it
+                this.queueFile (new BackgroundScanItem (project.path, project_file.file.path));
             }
 
             // Do NOT emit project_scan_completed - project scan just queues files,
@@ -328,7 +329,6 @@ namespace OLLMvector {
             while (true) {
                 // All queue operations happen in the background thread context, so no mutex needed
                 var next_item = this.file_queue.poll ();
-                var queue_size = (int)this.file_queue.size;
 
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
@@ -358,21 +358,17 @@ namespace OLLMvector {
                     continue;
                 }
 
-                // Get File via project_file.file
-                var file = project_file.file;
-
                 // Emit scan_update signal at start of scan (before indexing)
-                this.emit_scan_update (queue_size, next_item.file_path);
+                this.emit_scan_update ((int)this.file_queue.size, next_item.file_path);
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
-                    this.indexer = new Indexer (this.vector_db, this.sql_db, this.embedding_client);
+                    this.indexer = new Indexing.Indexer (this.embedding_client, this.embedding_client, this.vector_db, this.sql_db, this.worker_project_manager);
                 }
 
-                // Perform indexing.  Indexer.index_file() is expected to be async
-                // but for simplicity we call it synchronously here.
+                // Perform indexing.  Indexer.index_file() is async.
                 try {
-                    this.indexer.index_file (file);
+                    yield this.indexer.index_file (project_file.file);
                 } catch (GLib.Error e) {
                     GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
