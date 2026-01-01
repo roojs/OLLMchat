@@ -34,9 +34,9 @@ namespace OLLMvector {
 
         // Shared resources (accessed from both threads)
         // Note: sql_db is thread-safe (SQLite configured for SERIALIZED mode)
-        // Note: vector_db (FAISS) is NOT thread-safe - only background thread writes, main thread may read
+        // Note: vector_db (FAISS) is thread-safe via mutex in Index class
         private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
-        private Database vector_db;               // OLLMvector.Database (FAISS) - writes only from background thread
+        private Database vector_db;               // OLLMvector.Database (FAISS) - thread-safe via mutex in Index class
         private SQ.Database sql_db;               // SQ.Database for metadata - thread-safe (SERIALIZED mode)
 
         // Thread management (main thread creates/manages, background thread uses)
