@@ -68,6 +68,9 @@ namespace OLLMvector
 		private bool normalized = false;
 		private string filename;
 		
+		// Mutex to protect FAISS operations (FAISS is not thread-safe)
+		private GLib.Mutex faiss_mutex = GLib.Mutex();
+		
 		public Index(string filename, uint64 dim) throws Error
 		{
 			this.filename = filename;
