@@ -48,6 +48,16 @@
 
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Index</span></b> : <span class="main_type"><span class="class">Object</span></span>
+        </div>
+        <div class="description">
+          <p>FAISS index wrapper for vector storage and similarity search.</p>
+          <p>Provides thread-safe access to FAISS operations (FAISS itself is not thread-safe, so all operations are protected by a mutex). Supports 
+            both creating new indexes and loading existing ones from disk.</p>
+          <p>The index uses HNSW (Hierarchical Navigable Small World) algorithm for efficient approximate nearest neighbor search. New indexes are 
+            created with M=16 for a good balance of speed, recall, and memory usage.</p>
+          <h2>Usage Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create or load index</span><br/><span class="main_keyword">var</span> index = <span class="main_keyword">new</span> OLLMvector.Index(<span class="main_literal">"/path/to/index.faiss"</span>, <span class="main_literal">1024</span>);<br/><br/><span class="main_comment">// Add vectors</span><br/><span class="main_keyword">var</span> vectors = <span class="main_keyword">new</span> OLLMvector.FloatArray(<span class="main_literal">1024</span>);<br/>vectors.add(vector<span class="main_literal">1</span>);<br/>vectors.add(vector<span class="main_literal">2</span>);<br/>index.add_vectors(vectors);<br/><br/><span class="main_comment">// Search for similar vectors</span><br/><span class="main_keyword">var</span> results = index.search(query_vector, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index to disk</span><br/>index.save_to_file(<span class="main_literal">"/path/to/index.faiss"</span>);</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
         </div>
@@ -58,25 +68,25 @@
         <ul class="navi_inline">
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.Index.dimension.html" class="property">dimension</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">The dimension (width) of vectors in this index.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
           <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Index.Index.html" class="creation_method">Index</a></b> (<span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">uint64</span></span> dim) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Index.add_vectors.html" class="method">add_vectors</a></b> (<span class="main_type"><a href="OLLMvector.FloatArray.html" class="struct">FloatArray</a></span> vectors) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Adds vectors in batch to the FAISS index.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.Index.get_total_vectors.html" class="method">get_total_vectors</a></b> ()
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Gets the total number of vectors in the index.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">float</span></span>[] <b><a href="OLLMvector.Index.reconstruct_vector.html" class="method">reconstruct_vector</a></b> (<span class="main_basic_type"><span class="struct">int64</span></span> vector_id) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

@@ -22,7 +22,33 @@ namespace OLLMvector.Search
 	 * Executes vector search operations.
 	 * 
 	 * Performs semantic codebase search using FAISS vector similarity
-	 * and returns formatted search results with code snippets.
+	 * and returns formatted search results with code snippets. Converts
+	 * search queries to vector embeddings, performs similarity search,
+	 * and retrieves code snippets from source files using the buffer
+	 * system.
+	 * 
+	 * Supports filtering by vector IDs (from SQL queries) and element
+	 * type. Results include metadata and code snippets extracted from
+	 * the source files.
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Create search instance
+	 * var search = new OLLMvector.Search.Search(
+	 *     vector_db,
+	 *     sql_db,
+	 *     embedding_client,
+	 *     active_project,
+	 *     "find authentication logic",
+	 *     10,  // max_results
+	 *     filtered_vector_ids,  // optional filter
+	 *     "method"  // optional element_type filter
+	 * );
+	 * 
+	 * // Execute search
+	 * var results = yield search.execute();
+	 * }}}
 	 */
 	public class Search : Object
 	{

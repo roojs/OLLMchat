@@ -544,6 +544,13 @@ namespace OLLMchat
 					this.background_scan.scanFile(file, this.project_manager.active_project);
 				});
 				
+				// Connect to active_project_changed signal to trigger project scanning
+				// When project changes, scan all files in the project
+				// scanProject handles null project internally
+				this.project_manager.active_project_changed.connect((project) => {
+					this.background_scan.scanProject(project);
+				});
+				
 				// Register the tool
 				var tool = new OLLMvector.Tool.CodebaseSearchTool(
 					client,

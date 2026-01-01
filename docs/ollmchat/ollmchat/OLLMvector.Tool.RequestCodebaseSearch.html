@@ -58,6 +58,10 @@
         </div>
         <div class="description">
           <p>Request handler for codebase search operations.</p>
+          <p>Handles codebase search requests from LLM function calls. Validates parameters, executes vector search, and formats results for LLM 
+            consumption. Integrates with CodebaseSearchTool to access vector database and project manager.</p>
+          <p>Supports filtering by language and element_type, and validates element_type against a list of supported types. Results are formatted with
+            code citations using the standard citation format.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.Tool.html">OLLMvector.Tool</a>
         </div>

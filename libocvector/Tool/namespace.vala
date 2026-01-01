@@ -17,17 +17,17 @@
  */
 
 /**
- * Concrete tool implementations namespace.
+ * Tool integration namespace.
  *
- * The OLLMchat.Tools namespace provides ready-to-use tool implementations
- * for common operations: ReadFile for file reading, EditMode for file editing,
- * RunCommand for command execution, and WebFetchTool for web content fetching.
+ * The OLLMvector.Tool namespace provides tool implementations for integrating
+ * vector search functionality into LLM tool calling systems. Provides
+ * CodebaseSearchTool for semantic codebase search via the tool interface.
  */
-namespace OLLMchat.Tools
+namespace OLLMvector.Tool
 {
 	/**
 	 * Namespace documentation marker.
-	 * This file contains namespace-level documentation for OLLMchat.Tools.
+	 * This file contains namespace-level documentation for OLLMvector.Tool.
 	 */
 	internal class NamespaceDoc {}
 }

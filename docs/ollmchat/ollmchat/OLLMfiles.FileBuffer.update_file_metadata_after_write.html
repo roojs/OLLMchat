@@ -55,7 +55,8 @@
         </div>
         <div class="description">
           <p>Internal method: Update file metadata after writing.</p>
-          <p>Updates last_modified, saves to database, updates last_viewed, and emits changed signal.</p>
+          <p>Updates last_modified, saves to database, updates last_viewed, and notifies ProjectManager that file contents have changed (triggers 
+            background scanning).</p>
         </div>
       </div>
     </div><br/>

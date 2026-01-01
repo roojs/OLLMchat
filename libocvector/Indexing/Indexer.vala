@@ -24,6 +24,33 @@ namespace OLLMvector.Indexing
 	 * Integrates Tree, Analysis, and VectorBuilder components to process
 	 * files and folders for vector indexing. Implements incremental update
 	 * logic and folder-based indexing with recursion support.
+	 * 
+	 * The indexing pipeline processes files through three layers:
+	 * 1. Tree: Extracts code structure using tree-sitter
+	 * 2. Analysis: Generates one-line descriptions using LLM
+	 * 3. VectorBuilder: Converts to embeddings and stores in FAISS
+	 * 
+	 * Supports incremental indexing by checking file modification times
+	 * and skipping unchanged files (unless force=true).
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Create indexer
+	 * var indexer = new OLLMvector.Indexing.Indexer(
+	 *     analysis_client,
+	 *     embed_client,
+	 *     vector_db,
+	 *     sql_db,
+	 *     project_manager
+	 * );
+	 * 
+	 * // Index single file
+	 * yield indexer.index_file(file, force: false);
+	 * 
+	 * // Index folder recursively
+	 * yield indexer.index_folder(folder, recursive: true);
+	 * }}}
 	 */
 	public class Indexer : Object
 	{

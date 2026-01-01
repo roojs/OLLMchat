@@ -44,6 +44,10 @@
 
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">struct</span> <b><span class="struct">SearchResult</span></b>
+        </div>
+        <div class="description">
+          <p>Represents a single search result from FAISS similarity search.</p>
+          <p>Contains the vector ID, distance (similarity score), and rank (position in results, 1-based).</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
         </div>
@@ -54,15 +58,15 @@
         <ul class="navi_inline">
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMvector.SearchResult.document_id.html" class="field">document_id</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Vector ID from FAISS index.</span>
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">float</span></span> <b><a href="OLLMvector.SearchResult.distance.html" class="field">distance</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Distance/similarity score (lower is better for L2 distance).</span>
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMvector.SearchResult.rank.html" class="field">rank</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Rank in search results (1-based, 1 = most similar).</span>
             </div></li>
         </ul>
       </div>

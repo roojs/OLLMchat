@@ -6,6 +6,39 @@ namespace OLLMvector
 		public string document_text;
 	}
 	
+	/**
+	 * Vector database with embedding generation and FAISS storage.
+	 * 
+	 * Manages the complete vector database lifecycle: embedding generation,
+	 * vector storage in FAISS, and similarity search. Integrates with OLLMchat
+	 * for embedding generation and automatically manages the FAISS index.
+	 * 
+	 * The database requires configuration of model usage types before use:
+	 * - "ocvector.embed": Embedding model for converting text to vectors
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Register and setup model usage
+	 * OLLMvector.Database.register_config();
+	 * OLLMvector.Database.setup_embed_usage(config);
+	 * 
+	 * // Get embedding dimension
+	 * var dimension = yield OLLMvector.Database.get_embedding_dimension(embedding_client);
+	 * 
+	 * // Create database
+	 * var db = new OLLMvector.Database(embedding_client, "/path/to/index.faiss", dimension);
+	 * 
+	 * // Add documents (automatically generates embeddings)
+	 * yield db.add_documents({"document 1", "document 2"});
+	 * 
+	 * // Search
+	 * var results = yield db.search("query text", k: 10);
+	 * 
+	 * // Save index
+	 * db.save_index();
+	 * }}}
+	 */
 	public class Database : Object
 	{
 			

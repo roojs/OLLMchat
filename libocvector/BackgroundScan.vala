@@ -106,9 +106,14 @@ namespace OLLMvector {
          * background thread if not already running and dispatch the project
          * scanning work to the background thread.
          *
-         * @param project The Folder object representing the active project (is_project = true).
+         * @param project The Folder object representing the active project (is_project = true), or null if no active project.
          */
-        public void scanProject (OLLMfiles.Folder project) {
+        public void scanProject (OLLMfiles.Folder? project) {
+            // If no active project, skip scanning
+            if (project == null) {
+                return;
+            }
+            
             // Start thread if not already running.
             this.ensure_thread ();
 

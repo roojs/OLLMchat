@@ -159,15 +159,19 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Prompt/CodeAssistant.vala',
     '../liboccoder/Prompt/CodeAssistantProvider.vala',
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
+    '../libocvector/namespace.vala',  # Namespace documentation
     '../libocvector/VectorMetadata.vala',
     '../libocvector/Index.vala',
     '../libocvector/Database.vala',
+    '../libocvector/Indexing/namespace.vala',  # Indexing namespace documentation
     '../libocvector/Indexing/Tree.vala',
     '../libocvector/Indexing/Analysis.vala',
     '../libocvector/Indexing/VectorBuilder.vala',
     '../libocvector/Indexing/Indexer.vala',
+    '../libocvector/Search/namespace.vala',  # Search namespace documentation
     '../libocvector/Search/Search.vala',
     '../libocvector/Search/SearchResult.vala',
+    '../libocvector/Tool/namespace.vala',  # Tool namespace documentation
     '../libocvector/Tool/CodebaseSearchTool.vala',
     '../libocvector/Tool/RequestCodebaseSearch.vala',
     '../libocvector/BackgroundScan.vala',

@@ -109,6 +109,6 @@ namespace OLLMfiles
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMfiles.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

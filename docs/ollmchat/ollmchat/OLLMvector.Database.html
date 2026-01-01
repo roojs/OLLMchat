@@ -52,6 +52,16 @@
 
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Database</span></b> : <span class="main_type"><span class="class">Object</span></span>
+        </div>
+        <div class="description">
+          <p>Vector database with embedding generation and FAISS storage.</p>
+          <p>Manages the complete vector database lifecycle: embedding generation, vector storage in FAISS, and similarity search. Integrates with 
+            OLLMchat for embedding generation and automatically manages the FAISS index.</p>
+          <p>The database requires configuration of model usage types before use: - "ocvector.embed": Embedding model for converting text to vectors
+          </p>
+          <h2>Usage Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Register and setup model usage</span><br/>OLLMvector.Database.register_config();<br/>OLLMvector.Database.setup_embed_usage(config);<br/><br/><span class="main_comment">// Get embedding dimension</span><br/><span class="main_keyword">var</span> dimension = <span class="main_keyword">yield</span> OLLMvector.Database.get_embedding_dimension(embedding_client);<br/><br/><span class="main_comment">// Create database</span><br/><span class="main_keyword">var</span> db = <span class="main_keyword">new</span> OLLMvector.Database(embedding_client, <span class="main_literal">"/path/to/index.faiss"</span>, dimension);<br/><br/><span class="main_comment">// Add documents (automatically generates embeddings)</span><br/><span class="main_keyword">yield</span> db.add_documents({<span class="main_literal">"document 1"</span>, <span class="main_literal">"document 2"</span>});<br/><br/><span class="main_comment">// Search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> db.search(<span class="main_literal">"query text"</span>, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index</span><br/>db.save_index();</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
         </div>

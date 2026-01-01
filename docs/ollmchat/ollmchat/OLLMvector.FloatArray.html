@@ -47,6 +47,10 @@
 
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">struct</span> <b><span class="struct">FloatArray</span></b>
+        </div>
+        <div class="description">
+          <p>Container for batch vector operations.</p>
+          <p>Stores multiple vectors in a flat array for efficient batch operations with FAISS. All vectors must have the same width (dimension).</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
         </div>
@@ -57,33 +61,33 @@
         <ul class="navi_inline">
           <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.FloatArray.FloatArray.html" class="creation_method">FloatArray</a></b> (<span class="main_basic_type"><span class="struct">uint64</span></span> width)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.FloatArray.add.html" class="method">add</a></b> (<span class="main_basic_type"><span class="struct">float</span></span>[] vector) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Adds a vector to the batch.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">float</span></span>[] <b><a href="OLLMvector.FloatArray.get_vector.html" class="method">get_vector</a></b> (<span class="main_basic_type"><span class="struct">int</span></span> index) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Retrieves a vector by index.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Fields:</h3>
         <ul class="navi_inline">
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">float</span></span>[] <b><a href="OLLMvector.FloatArray.data.html" class="field">data</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Flat array containing all vector data (row-major order).</span>
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.FloatArray.width.html" class="field">width</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Vector dimension (width of each vector).</span>
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMvector.FloatArray.rows.html" class="field">rows</a></b>
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Number of vectors stored.</span>
             </div></li>
         </ul>
       </div>
