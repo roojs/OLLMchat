@@ -294,11 +294,9 @@ namespace OLLMvector {
                     continue;
                 }
 
-                // Set as active project (clears previous project's files if different)
-                this.set_active_project (project);
-
-                // Reload project files from database (state may have changed since queued)
+                // Set as active project and reload files from database (state may have changed since queued)
                 // This will automatically check needs_reload() and skip if no changes
+                this.set_active_project (project);
                 yield project.load_files_from_db ();
 
                 // Find file in that project's project_files.child_map
