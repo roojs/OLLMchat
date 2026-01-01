@@ -210,18 +210,24 @@ namespace OLLMvector
 		 */
 		public float[] reconstruct_vector(int64 vector_id) throws Error
 		{
-			if (vector_id < 0 || (uint64)vector_id >= this.get_total_vectors()) {
-				throw new GLib.IOError.FAILED(
-					"Vector ID out of range: %lld (total vectors: %llu)".printf(
-						vector_id, this.get_total_vectors()));
+			this.faiss_mutex.lock();
+			try {
+				uint64 total = (uint64)Faiss.index_ntotal(this.index);
+				if (vector_id < 0 || (uint64)vector_id >= total) {
+					throw new GLib.IOError.FAILED(
+						"Vector ID out of range: %lld (total vectors: %llu)".printf(
+							vector_id, total));
+				}
+				
+				var vector = new float[this.dimension];
+				if (Faiss.index_reconstruct(this.index, vector_id, vector) != 0) {
+					throw new GLib.IOError.FAILED("Failed to reconstruct vector %lld".printf(vector_id));
+				}
+				
+				return vector;
+			} finally {
+				this.faiss_mutex.unlock();
 			}
-			
-			var vector = new float[this.dimension];
-			if (Faiss.index_reconstruct(this.index, vector_id, vector) != 0) {
-				throw new GLib.IOError.FAILED("Failed to reconstruct vector %lld".printf(vector_id));
-			}
-			
-			return vector;
 		}
 		
 		internal unowned Faiss.Index get_faiss_index()
