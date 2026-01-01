@@ -73,7 +73,7 @@ namespace OLLMvector {
                                Database vector_db,
                                SQ.Database sql_db) {
             this.embedding_client = embedding_client;
-            this.vector_db       = vector_db;
+            this.vector_db = vector_db;
             this.sql_db          = sql_db;
 
             this.file_queue = new Gee.ArrayDeque<BackgroundScanItem> ();
@@ -276,28 +276,54 @@ namespace OLLMvector {
          * Pull items from the queue and index them.  Runs in the background
          * thread's main context.
          */
-        private void startQueue () {
+        private async void startQueue () {
             while (true) {
-                string? next_path = null;
+                BackgroundScanItem? next_item = null;
+                int queue_size = 0;
 
-                // Critical section – fetch one item.
+                // Critical section – fetch one item and get queue size.
                 this.queue_mutex.lock ();
                 if (!this.file_queue.is_empty) {
-                    next_path = this.file_queue.poll_head ();
+                    next_item = this.file_queue.poll_head ();
+                    queue_size = (int)this.file_queue.size;
                 }
                 this.queue_mutex.unlock ();
 
-                if (next_path == null) {
-                    // Queue empty – exit loop.
+                if (next_item == null) {
+                    // Queue empty – emit completion signal and exit loop.
+                    this.emit_scan_update (0, "");
                     break;
                 }
 
-                // Load the File object from the database.
-                var file_obj = this.project_manager.get_file_by_path (next_path);
-                if (file_obj == null) {
-                    GLib.warning ("BackgroundScan: could not locate file %s in DB", next_path);
+                // Ensure worker_project_manager exists
+                this.ensure_project_manager ();
+
+                // Find the project by item.project_path
+                var project = this.worker_project_manager.projects.find_first ((p) => p.path == next_item.project_path);
+                if (project == null) {
+                    GLib.warning ("BackgroundScan: could not find project %s for file %s", next_item.project_path, next_item.file_path);
                     continue;
                 }
+
+                // Set as active project (clears previous project's files if different)
+                this.set_active_project (project);
+
+                // Reload project files from database (state may have changed since queued)
+                // This will automatically check needs_reload() and skip if no changes
+                yield project.load_files_from_db ();
+
+                // Find file in that project's project_files.child_map
+                var project_file = project.project_files.child_map.get (next_item.file_path);
+                if (project_file == null) {
+                    // File doesn't exist in project - may have been deleted or moved
+                    continue;
+                }
+
+                // Get File via project_file.file
+                var file = project_file.file;
+
+                // Emit scan_update signal at start of scan (before indexing)
+                this.emit_scan_update (queue_size, next_item.file_path);
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
@@ -307,13 +333,13 @@ namespace OLLMvector {
                 // Perform indexing.  Indexer.index_file() is expected to be async
                 // but for simplicity we call it synchronously here.
                 try {
-                    this.indexer.index_file (file_obj);
+                    this.indexer.index_file (file);
                 } catch (GLib.Error e) {
-                    GLib.warning ("BackgroundScan: indexing error for %s – %s", next_path, e.message);
+                    GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
 
                 // Emit per‑file signal.
-                this.emit_file_scanned (next_path);
+                this.emit_file_scanned (next_item.file_path);
             }
         }
 
