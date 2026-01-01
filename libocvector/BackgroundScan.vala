@@ -237,11 +237,11 @@ namespace OLLMvector {
                 string? next_path = null;
 
                 // Critical section – fetch one item.
-                queue_mutex.lock ();
-                if (!file_queue.is_empty) {
-                    next_path = file_queue.poll_head ();
+                this.queue_mutex.lock ();
+                if (!this.file_queue.is_empty) {
+                    next_path = this.file_queue.poll_head ();
                 }
-                queue_mutex.unlock ();
+                this.queue_mutex.unlock ();
 
                 if (next_path == null) {
                     // Queue empty – exit loop.
@@ -249,28 +249,65 @@ namespace OLLMvector {
                 }
 
                 // Load the File object from the database.
-                var file_obj = project_manager.get_file_by_path (next_path);
+                var file_obj = this.project_manager.get_file_by_path (next_path);
                 if (file_obj == null) {
-                    warning ("BackgroundScan: could not locate file %s in DB", next_path);
+                    GLib.warning ("BackgroundScan: could not locate file %s in DB", next_path);
                     continue;
                 }
 
                 // Lazily create/reuse the Indexer.
-                if (indexer == null) {
-                    indexer = new Indexer (vector_db, sql_db, embedding_client);
+                if (this.indexer == null) {
+                    this.indexer = new Indexer (this.vector_db, this.sql_db, this.embedding_client);
                 }
 
                 // Perform indexing.  Indexer.index_file() is expected to be async
                 // but for simplicity we call it synchronously here.
                 try {
-                    indexer.index_file (file_obj);
-                } catch (Error e) {
-                    warning ("BackgroundScan: indexing error for %s – %s", next_path, e.message);
+                    this.indexer.index_file (file_obj);
+                } catch (GLib.Error e) {
+                    GLib.warning ("BackgroundScan: indexing error for %s – %s", next_path, e.message);
                 }
 
                 // Emit per‑file signal.
-                file_scanned (next_path);
+                this.emit_file_scanned (next_path);
             }
+        }
+
+        /*--------------------------------------------------------------------
+         *  Signal emission helpers – dispatch signals to main thread.
+         *-------------------------------------------------------------------*/
+
+        /**
+         * Emits file_scanned signal on the main thread.
+         */
+        private void emit_file_scanned (string file_path)
+        {
+            this.main_context.invoke (() => {
+                this.file_scanned (file_path);
+                return false;
+            });
+        }
+
+        /**
+         * Emits project_scan_started signal on the main thread.
+         */
+        private void emit_project_scan_started (string project_path)
+        {
+            this.main_context.invoke (() => {
+                this.project_scan_started (project_path);
+                return false;
+            });
+        }
+
+        /**
+         * Emits project_scan_completed signal on the main thread.
+         */
+        private void emit_project_scan_completed (string project_path, int files_indexed)
+        {
+            this.main_context.invoke (() => {
+                this.project_scan_completed (project_path, files_indexed);
+                return false;
+            });
         }
 
         /*--------------------------------------------------------------------
@@ -279,13 +316,13 @@ namespace OLLMvector {
          *  shutdown if the host wishes to stop it.
          *-------------------------------------------------------------------*/
         public void stop () {
-            if (worker_loop != null) {
-                worker_loop.quit ();
-                worker_loop = null;
+            if (this.worker_loop != null) {
+                this.worker_loop.quit ();
+                this.worker_loop = null;
             }
-            if (worker_thread != null) {
-                worker_thread.join ();
-                worker_thread = null;
+            if (this.worker_thread != null) {
+                this.worker_thread.join ();
+                this.worker_thread = null;
             }
         }
     }
