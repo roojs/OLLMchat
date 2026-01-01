@@ -57,7 +57,8 @@ namespace OLLMvector {
          */
         public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
-                               SQ.Database sql_db) {
+                               SQ.Database sql_db) 
+		{
             this.embedding_client = embedding_client;
             this.vector_db = vector_db;
             this.sql_db = sql_db;
@@ -69,7 +70,8 @@ namespace OLLMvector {
         /**
          * Ensure ProjectManager exists in background thread context.
          */
-        private void ensure_project_manager () {
+        private void ensure_project_manager () 
+		{
             if (this.worker_project_manager == null) {
                 // Create ProjectManager in background thread context
                 // Use same sql_db (thread-safe in serialized mode)
@@ -84,7 +86,8 @@ namespace OLLMvector {
          * Note: This does NOT update database (is_active flag) - that's main thread's responsibility.
          * The background worker only manages memory, not database state.
          */
-        private void set_active_project (OLLMfiles.Folder? project) {
+        private void set_active_project (OLLMfiles.Folder? project) 
+		{
             // If switching to a different project, clear files from previous project
             if (this.active_project != null && this.active_project != project) {
                 // Clear all in-memory data (children, project_files, and resets last_scan to 0)
@@ -102,7 +105,8 @@ namespace OLLMvector {
          * This combines set_active_project() and load_files_from_db() into one operation.
          * The load will automatically check needs_reload() and skip if no changes.
          */
-        private async void set_active_project_and_load (OLLMfiles.Folder project) {
+        private async void set_active_project_and_load (OLLMfiles.Folder project) 
+		{
             this.set_active_project (project);
             yield project.load_files_from_db ();
         }
@@ -110,7 +114,8 @@ namespace OLLMvector {
         /**
          * Ensure the background thread is running.
          */
-        private void ensure_thread () {
+        private void ensure_thread () 
+		{
             if (this.worker_thread != null) {
                 return;
             }
