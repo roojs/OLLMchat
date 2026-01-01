@@ -820,5 +820,35 @@ namespace OLLMfiles
 			}
 			return null;
 		}
+		
+		/**
+		 * Clears all in-memory data for this folder to free memory.
+		 * 
+		 * This method:
+		 * - Clears the hierarchical tree structure (children)
+		 * - Clears the flat file list (project_files)
+		 * - Resets last_scan to 0, which will cause needs_reload() to return true
+		 * 
+		 * After calling this method, the folder will appear as if it has never been
+		 * loaded. The next call to load_files_from_db() will reload all data from the
+		 * database (since needs_reload() will return true due to last_scan = 0).
+		 * 
+		 * This is useful for memory management when switching between projects or
+		 * when you want to force a reload on the next access.
+		 * 
+		 * Note: This does NOT update the database - it only clears in-memory state.
+		 */
+		public void clear_data()
+		{
+			// Clear hierarchical tree structure
+			this.children.remove_all();
+			
+			// Clear flat file list (for projects)
+			this.project_files.remove_all();
+			
+			// Reset last_scan to 0 so that needs_reload() will return true
+			// This ensures the next load_files_from_db() call will reload all data
+			this.last_scan = 0;
+		}
 	}
 }
