@@ -254,10 +254,6 @@ namespace OLLMvector.Indexing
 				return null;
 			}
 			
-			// VERY RISKY: Filtering elements by name characteristics may lose important information
-			// Different languages have different naming conventions (e.g., single-letter names, underscore prefixes)
-			// This filtering could incorrectly exclude valid elements in some languages
-			// TODO: Consider making this configurable or language-aware, or remove entirely
 			// Skip if too short or starts with underscore (likely internal)
 			if (element_name.length < 2) {
 				GLib.debug("Skipping %s: %s (lines %d-%d): name too short (< 2 chars)", element_type, element_name, start_line, end_line);

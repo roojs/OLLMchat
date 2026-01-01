@@ -21,10 +21,35 @@ namespace OLLMvector
 	/**
 	 * Represents vector metadata stored in SQL database.
 	 * 
-	 * Maps vector_id (from FAISS) to code location information:
-	 * - file_id (references OLLMfiles.File.id)
-	 * - start_line, end_line (line range for code snippet)
-	 * - element_type, element_name (for display/filtering)
+	 * Maps vector_id (from FAISS) to code location information. This class
+	 * provides the link between vector embeddings in FAISS and actual code
+	 * locations in source files. Used by both the indexing pipeline (to store
+	 * metadata) and search operations (to retrieve code snippets).
+	 * 
+	 * The class uses SQ.Query for database operations and provides methods
+	 * for querying metadata by file_id, element_type, and other filters.
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Initialize database schema
+	 * VectorMetadata.initDB(sql_db);
+	 * 
+	 * // Create metadata entry
+	 * var metadata = new VectorMetadata() {
+	 *     vector_id = 123,
+	 *     file_id = file.id,
+	 *     start_line = 10,
+	 *     end_line = 25,
+	 *     element_type = "method",
+	 *     element_name = "process_data"
+	 * };
+	 * metadata.insert(sql_db);
+	 * 
+	 * // Query metadata
+	 * var query = VectorMetadata.query(sql_db);
+	 * var results = query.select("SELECT * FROM vector_metadata WHERE file_id = $file_id");
+	 * }}}
 	 */
 	public class VectorMetadata : Object
 	{

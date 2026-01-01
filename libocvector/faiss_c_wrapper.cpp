@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <exception>
 #include <vector>
+#include <glib.h>
 
 extern "C" {
 
@@ -25,15 +26,15 @@ int faiss_IndexHNSWFlat_new(
     int64_t M
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: index pointer is null\n");
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: index pointer is null");
         return -1;
     }
     if (d <= 0) {
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: invalid dimension %ld\n", d);
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: invalid dimension %ld", d);
         return -1;
     }
     if (M <= 0) {
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: invalid M %ld (using default 32)\n", M);
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: invalid M %ld (using default 32)", M);
         M = 32;
     }
     try {
@@ -42,13 +43,13 @@ int faiss_IndexHNSWFlat_new(
         hnsw_index->hnsw.efConstruction = 64;
         hnsw_index->hnsw.efSearch = 32;
         *index = hnsw_index;
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: created HNSW index with dimension %ld, M=%ld\n", d, M);
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: created HNSW index with dimension %ld, M=%ld", d, M);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_IndexHNSWFlat_new: unknown exception\n");
+        g_debug("[FAISS] faiss_IndexHNSWFlat_new: unknown exception");
         return -1;
     }
 }
@@ -60,11 +61,11 @@ int faiss_IDSelectorBatch_new(
     const int64_t* ids
 ) {
     if (!selector) {
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: selector pointer is null\n");
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: selector pointer is null");
         return -1;
     }
     if (n < 0) {
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: invalid n=%ld\n", n);
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: invalid n=%ld", n);
         return -1;
     }
     if (n == 0) {
@@ -73,7 +74,7 @@ int faiss_IDSelectorBatch_new(
         return 0;
     }
     if (!ids) {
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: ids pointer is null\n");
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: ids pointer is null");
         return -1;
     }
     try {
@@ -83,13 +84,13 @@ int faiss_IDSelectorBatch_new(
         // We need to assign the void* to what *selector points to
         void** sel_ptr = reinterpret_cast<void**>(selector);
         *sel_ptr = static_cast<void*>(sel);
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: created IDSelector with %ld IDs\n", n);
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: created IDSelector with %ld IDs", n);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_IDSelectorBatch_new: unknown exception\n");
+        g_debug("[FAISS] faiss_IDSelectorBatch_new: unknown exception");
         return -1;
     }
 }
@@ -104,10 +105,10 @@ void faiss_IDSelector_free(FaissIDSelector selector) {
 // Free index
 void faiss_Index_free(FaissIndex index) {
     if (index) {
-        fprintf(stderr, "[FAISS] faiss_Index_free: freeing index\n");
+        g_debug("[FAISS] faiss_Index_free: freeing index");
         delete static_cast<faiss::Index*>(index);
     } else {
-        fprintf(stderr, "[FAISS] faiss_Index_free: index is null, nothing to free\n");
+        g_debug("[FAISS] faiss_Index_free: index is null, nothing to free");
     }
 }
 
@@ -118,26 +119,26 @@ int faiss_Index_add(
     const float* x
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_add: index is null\n");
+        g_debug("[FAISS] faiss_Index_add: index is null");
         return -1;
     }
     if (!x) {
-        fprintf(stderr, "[FAISS] faiss_Index_add: x pointer is null\n");
+        g_debug("[FAISS] faiss_Index_add: x pointer is null");
         return -1;
     }
     if (n <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_add: invalid n=%ld\n", n);
+        g_debug("[FAISS] faiss_Index_add: invalid n=%ld", n);
         return -1;
     }
     try {
         static_cast<faiss::Index*>(index)->add((faiss::idx_t)n, x);
-        fprintf(stderr, "[FAISS] faiss_Index_add: added %ld vectors\n", n);
+        g_debug("[FAISS] faiss_Index_add: added %ld vectors", n);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_Index_add: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_Index_add: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_Index_add: unknown exception\n");
+        g_debug("[FAISS] faiss_Index_add: unknown exception");
         return -1;
     }
 }
@@ -150,30 +151,30 @@ int faiss_Index_add_with_ids(
     const int64_t* xids
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: index is null\n");
+        g_debug("[FAISS] faiss_Index_add_with_ids: index is null");
         return -1;
     }
     if (!x) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: x pointer is null\n");
+        g_debug("[FAISS] faiss_Index_add_with_ids: x pointer is null");
         return -1;
     }
     if (!xids) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: xids pointer is null\n");
+        g_debug("[FAISS] faiss_Index_add_with_ids: xids pointer is null");
         return -1;
     }
     if (n <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: invalid n=%ld\n", n);
+        g_debug("[FAISS] faiss_Index_add_with_ids: invalid n=%ld", n);
         return -1;
     }
     try {
         static_cast<faiss::Index*>(index)->add_with_ids((faiss::idx_t)n, x, xids);
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: added %ld vectors with IDs\n", n);
+        g_debug("[FAISS] faiss_Index_add_with_ids: added %ld vectors with IDs", n);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_Index_add_with_ids: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_Index_add_with_ids: unknown exception\n");
+        g_debug("[FAISS] faiss_Index_add_with_ids: unknown exception");
         return -1;
     }
 }
@@ -187,43 +188,43 @@ int faiss_Index_search(
     float* distances,
     int64_t* labels
 ) {
-    fprintf(stderr, "[FAISS] faiss_Index_search: called with n=%ld, k=%ld\n", n, k);
+    g_debug("[FAISS] faiss_Index_search: called with n=%ld, k=%ld", n, k);
     
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: index is null\n");
+        g_debug("[FAISS] faiss_Index_search: index is null");
         return -1;
     }
     if (!x) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: x pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search: x pointer is null");
         return -1;
     }
     if (!distances) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: distances pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search: distances pointer is null");
         return -1;
     }
     if (!labels) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: labels pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search: labels pointer is null");
         return -1;
     }
     if (n <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: invalid n=%ld\n", n);
+        g_debug("[FAISS] faiss_Index_search: invalid n=%ld", n);
         return -1;
     }
     if (k <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: invalid k=%ld\n", k);
+        g_debug("[FAISS] faiss_Index_search: invalid k=%ld", k);
         return -1;
     }
     
     // Check index state
     faiss::Index* idx = static_cast<faiss::Index*>(index);
-    fprintf(stderr, "[FAISS] faiss_Index_search: index dimension=%d, ntotal=%ld\n", idx->d, idx->ntotal);
+    g_debug("[FAISS] faiss_Index_search: index dimension=%d, ntotal=%ld", idx->d, idx->ntotal);
     
     if (idx->ntotal == 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: warning - index is empty (ntotal=0)\n");
+        g_debug("[FAISS] faiss_Index_search: warning - index is empty (ntotal=0)");
     }
     
     try {
-        fprintf(stderr, "[FAISS] faiss_Index_search: calling FAISS search...\n");
+        g_debug("[FAISS] faiss_Index_search: calling FAISS search...");
         idx->search(
             (faiss::idx_t)n,
             x,
@@ -231,13 +232,13 @@ int faiss_Index_search(
             distances,
             labels
         );
-        fprintf(stderr, "[FAISS] faiss_Index_search: search completed successfully\n");
+        g_debug("[FAISS] faiss_Index_search: search completed successfully");
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_Index_search: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_Index_search: unknown exception\n");
+        g_debug("[FAISS] faiss_Index_search: unknown exception");
         return -1;
     }
 }
@@ -252,31 +253,31 @@ int faiss_Index_search_with_ids(
     float* distances,
     int64_t* labels
 ) {
-    fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: called with n=%ld, k=%ld, selector=%s\n", 
+    g_debug("[FAISS] faiss_Index_search_with_ids: called with n=%ld, k=%ld, selector=%s", 
         n, k, sel ? "set" : "null");
     
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: index is null\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: index is null");
         return -1;
     }
     if (!x) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: x pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: x pointer is null");
         return -1;
     }
     if (!distances) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: distances pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: distances pointer is null");
         return -1;
     }
     if (!labels) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: labels pointer is null\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: labels pointer is null");
         return -1;
     }
     if (n <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: invalid n=%ld\n", n);
+        g_debug("[FAISS] faiss_Index_search_with_ids: invalid n=%ld", n);
         return -1;
     }
     if (k <= 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: invalid k=%ld\n", k);
+        g_debug("[FAISS] faiss_Index_search_with_ids: invalid k=%ld", k);
         return -1;
     }
     
@@ -316,13 +317,13 @@ int faiss_Index_search_with_ids(
                 &params
             );
         }
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: search completed successfully\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: search completed successfully");
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_Index_search_with_ids: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_Index_search_with_ids: unknown exception\n");
+        g_debug("[FAISS] faiss_Index_search_with_ids: unknown exception");
         return -1;
     }
 }
@@ -330,22 +331,22 @@ int faiss_Index_search_with_ids(
 // Get dimension
 int faiss_Index_d(FaissIndex index) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_d: index is null\n");
+        g_debug("[FAISS] faiss_Index_d: index is null");
         return -1;
     }
     int d = static_cast<faiss::Index*>(index)->d;
-    fprintf(stderr, "[FAISS] faiss_Index_d: dimension=%d\n", d);
+    g_debug("[FAISS] faiss_Index_d: dimension=%d", d);
     return d;
 }
 
 // Get total vectors
 int64_t faiss_Index_ntotal(FaissIndex index) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_ntotal: index is null\n");
+        g_debug("[FAISS] faiss_Index_ntotal: index is null");
         return -1;
     }
     int64_t ntotal = static_cast<faiss::Index*>(index)->ntotal;
-    fprintf(stderr, "[FAISS] faiss_Index_ntotal: ntotal=%ld\n", ntotal);
+    g_debug("[FAISS] faiss_Index_ntotal: ntotal=%ld", ntotal);
     return ntotal;
 }
 
@@ -355,23 +356,23 @@ int faiss_write_index_fname(
     const char* fname
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: index is null\n");
+        g_debug("[FAISS] faiss_write_index_fname: index is null");
         return -1;
     }
     if (!fname) {
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: fname is null\n");
+        g_debug("[FAISS] faiss_write_index_fname: fname is null");
         return -1;
     }
     try {
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: writing to %s\n", fname);
+        g_debug("[FAISS] faiss_write_index_fname: writing to %s", fname);
         faiss::write_index(static_cast<faiss::Index*>(index), fname);
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: write completed\n");
+        g_debug("[FAISS] faiss_write_index_fname: write completed");
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_write_index_fname: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_write_index_fname: unknown exception\n");
+        g_debug("[FAISS] faiss_write_index_fname: unknown exception");
         return -1;
     }
 }
@@ -383,23 +384,23 @@ int faiss_read_index_fname(
     FaissIndex* index
 ) {
     if (!fname) {
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: fname is null\n");
+        g_debug("[FAISS] faiss_read_index_fname: fname is null");
         return -1;
     }
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: index pointer is null\n");
+        g_debug("[FAISS] faiss_read_index_fname: index pointer is null");
         return -1;
     }
     try {
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: reading from %s\n", fname);
+        g_debug("[FAISS] faiss_read_index_fname: reading from %s", fname);
         *index = faiss::read_index(fname, io_flags);
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: read completed\n");
+        g_debug("[FAISS] faiss_read_index_fname: read completed");
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_read_index_fname: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_read_index_fname: unknown exception\n");
+        g_debug("[FAISS] faiss_read_index_fname: unknown exception");
         return -1;
     }
 }
@@ -411,30 +412,30 @@ int faiss_Index_reconstruct(
     float* recons
 ) {
     if (!index) {
-        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: index is null\n");
+        g_debug("[FAISS] faiss_Index_reconstruct: index is null");
         return -1;
     }
     if (!recons) {
-        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: recons pointer is null\n");
+        g_debug("[FAISS] faiss_Index_reconstruct: recons pointer is null");
         return -1;
     }
     if (key < 0) {
-        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: invalid key=%ld\n", key);
+        g_debug("[FAISS] faiss_Index_reconstruct: invalid key=%ld", key);
         return -1;
     }
     try {
         faiss::Index* idx = static_cast<faiss::Index*>(index);
         if (key >= idx->ntotal) {
-            fprintf(stderr, "[FAISS] faiss_Index_reconstruct: key %ld >= ntotal %ld\n", key, idx->ntotal);
+            g_debug("[FAISS] faiss_Index_reconstruct: key %ld >= ntotal %ld", key, idx->ntotal);
             return -1;
         }
         idx->reconstruct((faiss::idx_t)key, recons);
         return 0;
     } catch (const std::exception& e) {
-        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: exception: %s\n", e.what());
+        g_debug("[FAISS] faiss_Index_reconstruct: exception: %s", e.what());
         return -1;
     } catch (...) {
-        fprintf(stderr, "[FAISS] faiss_Index_reconstruct: unknown exception\n");
+        g_debug("[FAISS] faiss_Index_reconstruct: unknown exception");
         return -1;
     }
 }

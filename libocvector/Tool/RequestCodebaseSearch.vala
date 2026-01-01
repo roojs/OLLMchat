@@ -20,6 +20,15 @@ namespace OLLMvector.Tool
 {
 	/**
 	 * Request handler for codebase search operations.
+	 * 
+	 * Handles codebase search requests from LLM function calls. Validates
+	 * parameters, executes vector search, and formats results for LLM
+	 * consumption. Integrates with CodebaseSearchTool to access vector
+	 * database and project manager.
+	 * 
+	 * Supports filtering by language and element_type, and validates
+	 * element_type against a list of supported types. Results are formatted
+	 * with code citations using the standard citation format.
 	 */
 	public class RequestCodebaseSearch : OLLMchat.Tool.RequestBase
 	{

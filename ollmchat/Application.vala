@@ -27,11 +27,22 @@ namespace OLLMchat
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
 		
+		public static bool opt_debug = false;
+		public static bool opt_debug_critical = false;
+		public static bool opt_disable_indexer = false;
+		
+		private const OptionEntry[] app_options = {
+			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
+			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
+			{ "disable-indexer", 0, 0, OptionArg.NONE, ref opt_disable_indexer, "Disable background semantic search indexing", null },
+			{ null }
+		};
+		
 		public OllmchatApplication()
 		{
 			Object(
 				application_id: "org.roojs.ollmchat",
-				flags: GLib.ApplicationFlags.DEFAULT_FLAGS
+				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 			);
 			
 			// Set up debug logging
@@ -63,6 +74,40 @@ namespace OLLMchat
 		{
 			// Call base implementation
 			return base_load_config();
+		}
+		
+		protected override int command_line(ApplicationCommandLine command_line)
+		{
+			// Reset static option variables at start of each command line invocation
+			opt_debug = false;
+			opt_debug_critical = false;
+			opt_disable_indexer = false;
+			
+			string[] args = command_line.get_arguments();
+			var opt_context = new OptionContext(this.get_application_id());
+			opt_context.set_help_enabled(true);
+			opt_context.add_main_entries(app_options, null);
+			
+			try {
+				unowned string[] unowned_args = args;
+				opt_context.parse(ref unowned_args);
+			} catch (OptionError e) {
+				command_line.printerr("error: %s\n", e.message);
+				command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
+				return 1;
+			}
+			
+			// Set debug flags
+			OLLMchat.debug_on = opt_debug;
+			OLLMchat.debug_critical_enabled = opt_debug_critical;
+			
+			// Activate the application (this will call activate signal)
+			// Use hold/release to keep app alive during async operations
+			this.hold();
+			this.activate();
+			this.release();
+			
+			return 0;
 		}
 	}
 

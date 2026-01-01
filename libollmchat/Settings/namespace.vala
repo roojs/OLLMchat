@@ -29,6 +29,6 @@ namespace OLLMchat.Settings
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.Settings.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

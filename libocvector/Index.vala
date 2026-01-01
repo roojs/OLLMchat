@@ -1,18 +1,54 @@
 namespace OLLMvector
 {
+	/**
+	 * Represents a single search result from FAISS similarity search.
+	 * 
+	 * Contains the vector ID, distance (similarity score), and rank
+	 * (position in results, 1-based).
+	 */
 	public struct SearchResult
 	{
+		/**
+		 * Vector ID from FAISS index.
+		 */
 		public int64 document_id;
+		/**
+		 * Distance/similarity score (lower is better for L2 distance).
+		 */
 		public float distance;
+		/**
+		 * Rank in search results (1-based, 1 = most similar).
+		 */
 		public int rank;
 	}
 	
+	/**
+	 * Container for batch vector operations.
+	 * 
+	 * Stores multiple vectors in a flat array for efficient batch
+	 * operations with FAISS. All vectors must have the same width
+	 * (dimension).
+	 */
 	public struct FloatArray
 	{
+		/**
+		 * Flat array containing all vector data (row-major order).
+		 */
 		public float[] data;
+		/**
+		 * Vector dimension (width of each vector).
+		 */
 		public uint64 width;
+		/**
+		 * Number of vectors stored.
+		 */
 		public int rows;
 		
+		/**
+		 * Constructor.
+		 * 
+		 * @param width The dimension of each vector
+		 */
 		public FloatArray(uint64 width)
 		{
 			this.data = {};
@@ -20,6 +56,12 @@ namespace OLLMvector
 			this.rows = 0;
 		}
 		
+		/**
+		 * Adds a vector to the batch.
+		 * 
+		 * @param vector The vector to add (must match width)
+		 * @throws Error if vector dimension doesn't match width
+		 */
 		public void add(float[] vector) throws Error
 		{
 			if (vector.length != this.width) {
@@ -43,7 +85,13 @@ namespace OLLMvector
 			this.rows++;
 		}
 		
-		
+		/**
+		 * Retrieves a vector by index.
+		 * 
+		 * @param index The vector index (0-based)
+		 * @return The vector as a float array
+		 * @throws Error if index is out of range
+		 */
 		public float[] get_vector(int index) throws Error
 		{
 			if (index < 0 || index >= this.rows) {
@@ -60,10 +108,46 @@ namespace OLLMvector
 		
 	}
 
+	/**
+	 * FAISS index wrapper for vector storage and similarity search.
+	 * 
+	 * Provides thread-safe access to FAISS operations (FAISS itself is not
+	 * thread-safe, so all operations are protected by a mutex). Supports both
+	 * creating new indexes and loading existing ones from disk.
+	 * 
+	 * The index uses HNSW (Hierarchical Navigable Small World) algorithm for
+	 * efficient approximate nearest neighbor search. New indexes are created
+	 * with M=16 for a good balance of speed, recall, and memory usage.
+	 * 
+	 * == Usage Example ==
+	 * 
+	 * {{{
+	 * // Create or load index
+	 * var index = new OLLMvector.Index("/path/to/index.faiss", 1024);
+	 * 
+	 * // Add vectors
+	 * var vectors = new OLLMvector.FloatArray(1024);
+	 * vectors.add(vector1);
+	 * vectors.add(vector2);
+	 * index.add_vectors(vectors);
+	 * 
+	 * // Search for similar vectors
+	 * var results = index.search(query_vector, k: 10);
+	 * 
+	 * // Save index to disk
+	 * index.save_to_file("/path/to/index.faiss");
+	 * }}}
+	 */
 	public class Index : Object
 	{
 		// Store as generic Index type - works for both creating new indexes (IndexFlatIP) and loading from file
 		private Faiss.Index index;
+		
+		/**
+		 * The dimension (width) of vectors in this index.
+		 * 
+		 * All vectors added to the index must have this dimension.
+		 */
 		public uint64 dimension { get; internal set; }
 		private bool normalized = false;
 		private string filename;
@@ -71,6 +155,18 @@ namespace OLLMvector
 		// Mutex to protect FAISS operations (FAISS is not thread-safe)
 		private GLib.Mutex faiss_mutex = GLib.Mutex();
 		
+		/**
+		 * Constructor.
+		 * 
+		 * Creates a new index or loads an existing one from disk. If the index
+		 * file exists, it will be loaded (dimension comes from the file). If
+		 * the file doesn't exist, a new HNSW index will be created with the
+		 * specified dimension.
+		 * 
+		 * @param filename Path to the FAISS index file
+		 * @param dim The dimension of vectors (must match if loading existing index)
+		 * @throws Error if index file exists but dimension doesn't match, or if index creation/loading fails
+		 */
 		public Index(string filename, uint64 dim) throws Error
 		{
 			this.filename = filename;
@@ -123,7 +219,15 @@ namespace OLLMvector
 		// 	((Faiss.Index)this.index).free();
 		// }
 	
-		
+		/**
+		 * Adds vectors in batch to the FAISS index.
+		 * 
+		 * All vectors in the FloatArray must have the same dimension as the
+		 * index. This method is thread-safe (protected by mutex).
+		 * 
+		 * @param vectors The FloatArray containing vectors to add
+		 * @throws Error if vector dimension doesn't match index dimension, or if FAISS operation fails
+		 */
 		public void add_vectors(FloatArray vectors) throws Error
 		{
 			if (vectors.rows == 0) {
@@ -192,6 +296,11 @@ namespace OLLMvector
 			return results;
 		}
 		
+		/**
+		 * Gets the total number of vectors in the index.
+		 * 
+		 * @return The number of vectors currently stored in the index
+		 */
 		public uint64 get_total_vectors()
 		{
 			this.faiss_mutex.lock();

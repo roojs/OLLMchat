@@ -111,6 +111,6 @@ namespace OLLMchat
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

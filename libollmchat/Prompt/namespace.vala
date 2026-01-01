@@ -31,6 +31,6 @@ namespace OLLMchat.Prompt
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.Prompt.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

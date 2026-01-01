@@ -50,7 +50,13 @@
         </div>
         <div class="description">
           <p>Executes vector search operations.</p>
-          <p>Performs semantic codebase search using FAISS vector similarity and returns formatted search results with code snippets.</p>
+          <p>Performs semantic codebase search using FAISS vector similarity and returns formatted search results with code snippets. Converts search 
+            queries to vector embeddings, performs similarity search, and retrieves code snippets from source files using the buffer system.</p>
+          <p>Supports filtering by vector IDs (from SQL queries) and element type. Results include metadata and code snippets extracted from the 
+            source files.</p>
+          <h2>Usage Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create search instance</span><br/><span class="main_keyword">var</span> search = <span class="main_keyword">new</span> OLLMvector.Search.Search(<br/>    vector_db,<br/>    sql_db,<br/>    embedding_client,<br/>    active_project,<br/>    <span class="main_literal">"find authentication logic"</span>,<br/>    <span class="main_literal">10</span>,  <span class="main_comment">// max_results</span><br/>    filtered_vector_ids,  <span class="main_comment">// optional filter</span><br/>    <span class="main_literal">"method"</span>  <span class="main_comment">// optional element_type filter</span><br/>);<br/><br/><span class="main_comment">// Execute search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> search.execute();</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.Search.html">OLLMvector.Search</a>
         </div>

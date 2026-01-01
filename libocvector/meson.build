@@ -40,6 +40,7 @@ ocvector_deps = [
 
 # Source files for OLLMvector namespace
 # Note: Files will be added as they are created in subsequent phases
+# Note: namespace.vala files are NOT included here - they're only used for valadoc documentation
 ocvector_src = files([
   # Core components (migrated from VectorSearch/)
   'Index.vala',      # FAISS integration

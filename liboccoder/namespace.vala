@@ -112,6 +112,6 @@ namespace OLLMcoder
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMcoder.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

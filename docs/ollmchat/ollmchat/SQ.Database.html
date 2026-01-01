@@ -33,6 +33,7 @@
           <li class="method"><a href="SQ.Database.backupDB.html">backupDB</a></li>
           <li class="method"><a href="SQ.Database.exec.html">exec</a></li>
           <li class="field"><a href="SQ.Database.db.html">db</a></li>
+          <li class="field"><a href="SQ.Database.db_mutex.html">db_mutex</a></li>
           <li class="field"><a href="SQ.Database.schema_cache.html">schema_cache</a></li>
         </ul>
       </div>
@@ -54,6 +55,8 @@
           <p>The Database class provides a wrapper around SQLite that uses an in-memory database for performance, with the ability to backup to and 
             restore from a file. It maintains a schema cache to avoid repeated schema queries.</p>
           <p>The database is configured for serialized access mode, allowing safe multi-threaded access.</p>
+          <p>Thread safety is ensured via a mutex that protects all database operations, allowing safe concurrent access from multiple threads (e.g., 
+            main thread and background async query threads).</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="SQ.html">SQ</a>
         </div>
@@ -94,6 +97,11 @@
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Database</span></span> <b><a href="SQ.Database.db.html" class="field">db</a></b>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">The underlying SQLite database connection.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="struct">Mutex</span></span> <b><a href="SQ.Database.db_mutex.html" class="field">db_mutex</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Mutex to protect database operations from concurrent access. All 
+                operations that use `db` must lock this mutex first.</span>
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="SQ.Schema.html" class="class">Schema</a></span>&gt;&gt; <b><a href="SQ.Database.schema_cache.html" class="field">schema_cache</a></b>
             </span>

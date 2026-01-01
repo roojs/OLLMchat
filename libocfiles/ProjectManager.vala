@@ -76,6 +76,18 @@ namespace OLLMfiles
 		public signal void active_project_changed(Folder? project);
 		
 		/**
+		 * Emitted when file metadata changes (cursor, scroll, last_viewed, etc.).
+		 * This signal is emitted for metadata-only updates that don't require background scanning.
+		 */
+		public signal void file_metadata_changed(File file);
+		
+		/**
+		 * Emitted when file content changes (saved, edited, etc.).
+		 * This signal is emitted when file content is written to disk and triggers background scanning.
+		 */
+		public signal void file_contents_changed(File file);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param db Optional database instance for persistence
@@ -192,16 +204,37 @@ namespace OLLMfiles
 		
 		
 		/**
-		 * Notify that a file's state has changed (save to database).
+		 * Notify that a file's metadata has changed (save to database and emit signal).
 		 * 
-		 * @param file The file that changed
+		 * This method is used for metadata-only updates such as cursor position, scroll position,
+		 * or last_viewed timestamp. It does NOT trigger background scanning.
+		 * 
+		 * @param file The file whose metadata changed
 		 */
-		public void notify_file_changed(File file)
+		public void on_file_metadata_change(File file)
 		{
 			if (this.db != null) {
 				file.saveToDB(this.db, null, false);
 				this.db.is_dirty = true;
 			}
+			this.file_metadata_changed(file);
+		}
+		
+		/**
+		 * Notify that a file's content has changed (save to database and emit signal).
+		 * 
+		 * This method is used when file content is written to disk (saved, edited, etc.).
+		 * It triggers background scanning via the file_contents_changed signal.
+		 * 
+		 * @param file The file whose content changed
+		 */
+		public void on_file_contents_change(File file)
+		{
+			if (this.db != null) {
+				file.saveToDB(this.db, null, false);
+				this.db.is_dirty = true;
+			}
+			this.file_contents_changed(file);
 		}
 		
 		/**

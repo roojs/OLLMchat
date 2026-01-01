@@ -37,6 +37,15 @@
         <h1 class="main_title">OLLMvector.Indexing</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
+        <div class="description">
+          <p>Code indexing namespace.</p>
+          <p>The OLLMvector.Indexing namespace provides components for parsing source code, analyzing code elements, and converting them into vector 
+            embeddings for semantic search. The indexing pipeline consists of Tree (tree-sitter parsing), Analysis (LLM-based description generation),
+            and VectorBuilder (embedding creation and storage).</p>
+          <h2>Usage Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create indexer with required clients and databases</span><br/><span class="main_keyword">var</span> indexer = <span class="main_keyword">new</span> OLLMvector.Indexing.Indexer(<br/>    analysis_client,<br/>    embed_client,<br/>    vector_db,<br/>    sql_db,<br/>    project_manager<br/>);<br/><br/><span class="main_comment">// Index a single file</span><br/><span class="main_keyword">yield</span> indexer.index_file(file, force: <span class="main_literal">false</span>);<br/><br/><span class="main_comment">// Index a folder recursively</span><br/><span class="main_keyword">yield</span> indexer.index_folder(folder, recursive: <span class="main_literal">true</span>);</code></pre>
+          </p>
+        </div>
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Classes:</h3>
         <ul class="navi_inline">

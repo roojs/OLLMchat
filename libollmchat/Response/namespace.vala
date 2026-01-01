@@ -29,6 +29,6 @@ namespace OLLMchat.Response
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.Response.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

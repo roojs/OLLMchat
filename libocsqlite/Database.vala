@@ -27,6 +27,10 @@ namespace SQ {
 	 * 
 	 * The database is configured for serialized access mode, allowing safe
 	 * multi-threaded access.
+	 * 
+	 * Thread safety is ensured via a mutex that protects all database operations,
+	 * allowing safe concurrent access from multiple threads (e.g., main thread
+	 * and background async query threads).
 	 */
 	public class Database {
 	
@@ -34,6 +38,12 @@ namespace SQ {
 		 * The underlying SQLite database connection.
 		 */
 		public Sqlite.Database db;
+		
+		/**
+		 * Mutex to protect database operations from concurrent access.
+		 * All operations that use `db` must lock this mutex first.
+		 */
+		public GLib.Mutex db_mutex = GLib.Mutex();
 		
 		/**
 		 * The filename used for backup and restore operations.
@@ -96,11 +106,15 @@ namespace SQ {
 				return false;
 			}
 			
+			// Note: db_mutex not needed here as this is only called from constructor
+			// before any other operations, but we'll protect it anyway for safety
+			db_mutex.lock();
 			Sqlite.Database filedb;
 			Sqlite.Database.open(this.filename, out filedb);
 			Sqlite.Database.open(":memory:", out db);
 			var b = new Sqlite.Backup(db, "main", filedb, "main");
 			b.step(-1);
+			db_mutex.unlock();
 			
 			return true;
 		}
@@ -139,11 +153,13 @@ namespace SQ {
 				GLib.debug("database not open = not saving");
 				return;
 			}
+			db_mutex.lock();
 			Sqlite.Database filedb;
 			Sqlite.Database.open(this.filename, out filedb);
 			var b = new Sqlite.Backup(filedb, "main", db, "main");
 			b.step(-1);
 			this.is_dirty = false;
+			db_mutex.unlock();
 		}
 		 
 		/**
@@ -157,11 +173,14 @@ namespace SQ {
 		public void exec(string q) 
 		{
 			GLib.debug("EXEC %s", q);
+			db_mutex.lock();
 			string errmsg;
 			if (Sqlite.OK != db.exec(q, null, out errmsg)) {
 				GLib.debug("error %s", db.errmsg());
 			}
+			db_mutex.unlock();
 		}
+		
 	}
 }
 		

@@ -30,6 +30,6 @@ namespace OLLMchat.Tool
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.Tool.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

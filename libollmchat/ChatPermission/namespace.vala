@@ -30,6 +30,6 @@ namespace OLLMchat.ChatPermission
 	 * Namespace documentation marker.
 	 * This file contains namespace-level documentation for OLLMchat.ChatPermission.
 	 */
-	public class NamespaceDoc {}
+	internal class NamespaceDoc {}
 }
 

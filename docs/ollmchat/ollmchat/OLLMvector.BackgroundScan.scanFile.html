@@ -38,7 +38,7 @@
         <h1 class="main_title">scanFile</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">scanFile</span></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span> project)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">scanFile</span></b> (<span class="main_type"><a href="OLLMfiles.File.html" class="class">File</a></span> file, <span class="main_type"><a href="OLLMfiles.Folder.html" class="class">Folder</a></span>? project)
         </div>
         <div class="description">
           <p>Enqueue a single file for scanning (e.g. after a save).</p>
@@ -55,7 +55,7 @@
             <tr>
               <td class="main_parameter_table_name">project</td>
               <td>
-                <p>The Folder object that contains this file (is_project = true). </p>
+                <p>The Folder object that contains this file (is_project = true), or null if no active project. </p>
               </td>
             </tr>
           </table>

@@ -57,6 +57,12 @@
           <p>Main indexing orchestrator.</p>
           <p>Integrates Tree, Analysis, and VectorBuilder components to process files and folders for vector indexing. Implements incremental update 
             logic and folder-based indexing with recursion support.</p>
+          <p>The indexing pipeline processes files through three layers: 1. Tree: Extracts code structure using tree-sitter 2. Analysis: Generates one
+            -line descriptions using LLM 3. VectorBuilder: Converts to embeddings and stores in FAISS</p>
+          <p>Supports incremental indexing by checking file modification times and skipping unchanged files (unless force=true).</p>
+          <h2>Usage Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create indexer</span><br/><span class="main_keyword">var</span> indexer = <span class="main_keyword">new</span> OLLMvector.Indexing.Indexer(<br/>    analysis_client,<br/>    embed_client,<br/>    vector_db,<br/>    sql_db,<br/>    project_manager<br/>);<br/><br/><span class="main_comment">// Index single file</span><br/><span class="main_keyword">yield</span> indexer.index_file(file, force: <span class="main_literal">false</span>);<br/><br/><span class="main_comment">// Index folder recursively</span><br/><span class="main_keyword">yield</span> indexer.index_folder(folder, recursive: <span class="main_literal">true</span>);</code></pre>
+          </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.Indexing.html">OLLMvector.Indexing</a>
         </div>
