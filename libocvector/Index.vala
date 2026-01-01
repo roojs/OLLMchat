@@ -235,6 +235,26 @@ namespace OLLMvector
 			return this.index;
 		}
 		
+		/**
+		 * Saves the FAISS index to a file.
+		 * 
+		 * This method is thread-safe and should be used instead of directly
+		 * calling Faiss.write_index_fname() on the result of get_faiss_index().
+		 * 
+		 * @param filename Path to the file where the index should be saved
+		 */
+		public void save_to_file(string filename) throws Error
+		{
+			this.faiss_mutex.lock();
+			try {
+				if (Faiss.write_index_fname(this.index, filename) != 0) {
+					throw new GLib.IOError.FAILED("Failed to save FAISS index to " + filename);
+				}
+			} finally {
+				this.faiss_mutex.unlock();
+			}
+		}
+		
 		internal void set_faiss_index(owned Faiss.Index new_index)
 		{
 			// Don't free old index - Vala's ownership system handles it
