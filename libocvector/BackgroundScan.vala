@@ -111,6 +111,17 @@ namespace OLLMvector {
         }
 
         /**
+         * Set active project and load files from database.
+         * 
+         * This combines set_active_project() and load_files_from_db() into one operation.
+         * The load will automatically check needs_reload() and skip if no changes.
+         */
+        private async void set_active_project_and_load (OLLMfiles.Folder project) {
+            this.set_active_project (project);
+            yield project.load_files_from_db ();
+        }
+
+        /**
          * Ensure the background thread is running.
          */
         private void ensure_thread () {
