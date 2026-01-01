@@ -57,7 +57,7 @@ namespace OLLMvector {
         private GLib.MainContext? worker_context = null;
         private GLib.MainContext main_context;
 
-        private Gee.ArrayQueue<BackgroundScanItem> file_queue;
+        private Gee.ArrayList<BackgroundScanItem> file_queue;
         private bool queue_processing = false;
 
         private Indexer? indexer = null;
