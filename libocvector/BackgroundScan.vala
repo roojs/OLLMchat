@@ -192,14 +192,14 @@ namespace OLLMvector {
                     // during the same run – the plan suggests checking folder.last_scan.
                     var folder = child as OLLMfiles.Folder;
                     if (folder.last_scan < folder.mtime_on_disk ()) {
-                        // Recurse into sub‑folder.
-                        this.queueProject (folder as OLLMfiles.Project); // Folder is also a Project‑like node
+                        // Recurse into sub‑folder. Pass path string (thread-safe).
+                        this.queueProject (folder.path);
                     }
                 }
             }
 
             // Emit completion signal (after all files have been queued).
-            this.emit_project_scan_completed (project.path, files_indexed);
+            this.emit_project_scan_completed (path, files_indexed);
         }
 
         /**
