@@ -269,6 +269,116 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Converts a fake file (id = -1) to a real File object if it's within the active project.
+		 * 
+		 * This method:
+		 * - Checks if the file is within the active project
+		 * - Finds or creates parent folder objects in the project tree
+		 * - Queries file info from disk
+		 * - Converts the fake file to a real File object
+		 * - Saves the file to the database
+		 * - Updates the ProjectFiles list
+		 * - Emits the new_file_added signal
+		 * 
+		 * @param file The fake file to convert (must have id = -1)
+		 * @param file_path The normalized file path
+		 */
+		public async void convert_fake_file_to_real(File file, string file_path) throws Error
+		{
+			var active_project = this.active_project;
+			
+			// Early return if no active project
+			if (active_project == null) {
+				// File is outside project - keep as fake file (id = -1)
+				return;
+			}
+			
+			// Get parent directory path
+			// We may have created multiple subdirectories when creating the file,
+			// so use find_container_of to find the closest existing folder in the project
+			var parent_dir_path = GLib.Path.get_dirname(file_path);
+			var found_base_folder = active_project.project_files.find_container_of(parent_dir_path);
+			
+			// If we didn't find any parent folder in the project, the file is outside the project
+			if (found_base_folder == null) {
+				// File is outside project - keep as fake file (id = -1)
+				return;
+			}
+			
+			// Create missing child folders from found_base_folder down to parent_dir_path
+			var parent_folder = yield found_base_folder.make_children(file_path);
+			if (parent_folder == null) {
+				GLib.warning("ProjectManager.convert_fake_file_to_real: Could not create parent folder for %s", file_path);
+				return;
+			}
+			
+			// Query file info from disk
+			var gfile = GLib.File.new_for_path(file_path);
+			if (!gfile.query_exists()) {
+				GLib.warning("ProjectManager.convert_fake_file_to_real: File does not exist on disk: %s", file_path);
+				return;
+			}
+			
+			GLib.FileInfo file_info;
+			try {
+				file_info = gfile.query_info(
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," + GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("ProjectManager.convert_fake_file_to_real: Could not query file info for %s: %s", file_path, e.message);
+				return;
+			}
+			
+			// Convert fake file to real File object
+			// Create new File (not new_fake)
+			var real_file = new File(this) {
+				path = file_path,
+				parent = parent_folder,
+				parent_id = parent_folder.id,
+				id = 0 // New file, will be inserted on save
+			};
+			
+			// Set properties from FileInfo
+			var content_type = file_info.get_content_type();
+			real_file.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
+			
+			var mod_time = file_info.get_modification_date_time();
+			if (mod_time != null) {
+				real_file.last_modified = mod_time.to_unix();
+			}
+			
+			// Detect language from filename using buffer provider
+			var detected_language = this.buffer_provider.detect_language(real_file);
+			if (detected_language != null && detected_language != "") {
+				real_file.language = detected_language;
+			}
+			
+			// Add file to parent folder's children
+			parent_folder.children.append(real_file);
+			
+			// Create buffer for new file object
+			// The old buffer was associated with the fake file, so we create a new one
+			// The file was just written to disk, so the buffer will read from disk when needed
+			this.buffer_provider.create_buffer(real_file);
+			
+			// Save file to DB (gets id > 0, and adds to file_cache automatically)
+			if (this.db != null) {
+				real_file.saveToDB(this.db, null, false);
+			} else {
+				// If no DB, manually add to file_cache for immediate lookup
+				this.file_cache.set(real_file.path, real_file);
+			}
+			
+			// Update ProjectFiles list
+			active_project.project_files.update_from(active_project);
+			
+			// Manually emit new_file_added signal
+			active_project.project_files.new_file_added(real_file);
+		}
+		
+		/**
 		 * Restore active project and file from in-memory data structures.
 		 * Note: Projects are Folders with is_project = true.
 		 * This will set this.active_project and this.active_file, deactivate previous items,
