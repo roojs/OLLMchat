@@ -53,6 +53,14 @@ namespace OLLMvector {
 
         private Indexer? indexer = null;
 
+        /**
+         * Creates a new BackgroundScan instance.
+         *
+         * @param embedding_client The OLLMchat.Client instance for LLM calls and embeddings.
+         * @param vector_db The OLLMvector.Database instance for vector storage (FAISS).
+         * @param sql_db The SQ.Database instance for metadata storage.
+         * @param project_manager The OLLMfiles.ProjectManager instance for file operations.
+         */
         public BackgroundScan (OLLMchat.Client embedding_client,
                                Database vector_db,
                                SQ.Database sql_db,
@@ -291,6 +299,13 @@ namespace OLLMvector {
             });
         }
 
+        /**
+         * Stops the background thread gracefully.
+         *
+         * This method is not strictly required because the thread lives for the
+         * lifetime of the application, but it provides a way for graceful shutdown
+         * if the host wishes to stop it.
+         */
         public void stop () {
             if (this.worker_loop != null) {
                 this.worker_loop.quit ();
