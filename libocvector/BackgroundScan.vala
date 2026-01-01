@@ -9,19 +9,14 @@
 
 namespace OLLMvector {
 
-    using Gee;
-    using OLLMfiles;
-    using OLLMchat;
-    using SQ;
-
     /**
      * BackgroundScan manages a background thread that continuously processes
      * file‑indexing jobs.  The thread is started on first use and lives for the
      * lifetime of the application.
      *
      * Public API:
-     *   - scanProject(Project project) : enqueue all files of a project that need scanning.
-     *   - scanFile(File file)          : enqueue a single file (e.g. after a save).
+     *   - scanProject(OLLMfiles.Project project) : enqueue all files of a project that need scanning.
+     *   - scanFile(OLLMfiles.File file)          : enqueue a single file (e.g. after a save).
      *
      * Signals:
      *   - file_scanned(string file_path)
@@ -40,10 +35,10 @@ namespace OLLMvector {
         /*--------------------------------------------------------------------
          *  Dependencies – injected by the UI or the main application.
          *-------------------------------------------------------------------*/
-        private Client embedding_client;          // OLLMchat.Client for LLM calls
+        private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
         private Database vector_db;               // OLLMvector.Database (FAISS)
         private SQ.Database sql_db;               // SQ.Database for metadata
-        private ProjectManager project_manager;   // OLLMfiles.ProjectManager
+        private OLLMfiles.ProjectManager project_manager;   // OLLMfiles.ProjectManager
 
         /*--------------------------------------------------------------------
          *  Thread management
