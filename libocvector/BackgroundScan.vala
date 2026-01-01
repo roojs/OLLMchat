@@ -58,7 +58,6 @@ namespace OLLMvector {
         private GLib.MainContext main_context;
 
         private Gee.ArrayDeque<BackgroundScanItem> file_queue;
-        private GLib.Mutex queue_mutex;
 
         private Indexer? indexer = null;
 
