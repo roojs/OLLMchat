@@ -225,7 +225,7 @@ test_files = executable('oc-test-files',
 # Diff classes moved from liboccoder to libocfiles
 oc_diff = executable('oc-diff',
   dependencies: [base_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep],
-  sources: [meson.current_source_dir() / '../libocfiles/oc-diff.vala'],
+  sources: ['oc-diff.vala'],
   include_directories: include_directories('../libocfiles'),
   build_rpath: build_rpath,
   vala_args: [
