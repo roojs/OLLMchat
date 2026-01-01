@@ -5,7 +5,7 @@
 // OLLMvector indexing pipeline (Indexer) and emits signals so the UI can
 // react to scan progress.
 //
-// The implementation follows the description in the project plan (Phase 7).
+// The implementation follows the description in the project plan (Phase 7).
 
 namespace OLLMvector {
 
@@ -16,13 +16,13 @@ namespace OLLMvector {
      */
     public class BackgroundScan : GLib.Object {
 
-        /**
-         * Struct to track both project_path and file_path when queuing files.
-         */
-        private struct BackgroundScanItem {
-            string project_path;
-            string file_path;
-        }
+        // ============================================================================
+        // MAIN THREAD SECTION
+        // ============================================================================
+        // All code and properties in this section are accessed from the main thread.
+        // Methods here are called from the UI thread and dispatch work to the
+        // background thread via IdleSource callbacks attached to worker_context.
+        // ============================================================================
 
         /**
          * Emitted at the start of each file scan and when queue becomes empty.
@@ -32,21 +32,16 @@ namespace OLLMvector {
          */
         public signal void scan_update (int queue_size, string current_file);
 
+        // Shared resources (accessed from both threads, but thread-safe)
         private OLLMchat.Client embedding_client;          // OLLMchat.Client for LLM calls
         private Database vector_db;               // OLLMvector.Database (FAISS)
         private SQ.Database sql_db;               // SQ.Database for metadata
-        private OLLMfiles.ProjectManager? worker_project_manager = null;   // ProjectManager instance for background thread
-        private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
 
+        // Thread management (main thread creates/manages, background thread uses)
         private GLib.Thread<void*>? worker_thread = null;
         private GLib.MainLoop? worker_loop = null;
         private GLib.MainContext? worker_context = null;
         private GLib.MainContext main_context;
-
-        private Gee.ArrayQueue<BackgroundScanItem> file_queue;
-        private bool queue_processing = false;
-
-        private Indexer? indexer = null;
 
         /**
          * Creates a new BackgroundScan instance.
@@ -63,52 +58,7 @@ namespace OLLMvector {
             this.vector_db = vector_db;
             this.sql_db = sql_db;
 
-            this.file_queue = new Gee.ArrayQueue<BackgroundScanItem> ();
             this.main_context = GLib.MainContext.default ();
-        }
-
-        /**
-         * Ensure ProjectManager exists in background thread context.
-         */
-        private void ensure_project_manager () 
-		{
-            if (this.worker_project_manager == null) {
-                // Create ProjectManager in background thread context
-                // Use same sql_db (thread-safe in serialized mode)
-                this.worker_project_manager = new OLLMfiles.ProjectManager(this.sql_db);
-                // Default providers are fine - we only need to read from DB
-            }
-        }
-
-        /**
-         * Set active project and clear files from previous active project to free memory.
-         * 
-         * Note: This does NOT update database (is_active flag) - that's main thread's responsibility.
-         * The background worker only manages memory, not database state.
-         */
-        private void set_active_project (OLLMfiles.Folder? project) 
-		{
-            // If switching to a different project, clear files from previous project
-            if (this.active_project != null && this.active_project != project) {
-                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
-                // This will cause needs_reload() to return true on next access, forcing a reload
-                this.active_project.clear_data();
-                // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
-                // The background worker only manages memory, not database state
-            }
-            this.active_project = project;
-        }
-
-        /**
-         * Set active project and load files from database.
-         * 
-         * This combines set_active_project() and load_files_from_db() into one operation.
-         * The load will automatically check needs_reload() and skip if no changes.
-         */
-        private async void set_active_project_and_load (OLLMfiles.Folder project) 
-		{
-            this.set_active_project (project);
-            yield project.load_files_from_db ();
         }
 
         /**
@@ -202,6 +152,102 @@ namespace OLLMvector {
                 return false;
             });
             source.attach (this.worker_context);
+        }
+
+        /**
+         * Emits scan_update signal on the main thread.
+         */
+        private void emit_scan_update (int queue_size, string current_file)
+        {
+            this.main_context.invoke (() => {
+                this.scan_update (queue_size, current_file);
+                return false;
+            });
+        }
+
+        /**
+         * Stops the background thread gracefully.
+         *
+         * This method is not strictly required because the thread lives for the
+         * lifetime of the application, but it provides a way for graceful shutdown
+         * if the host wishes to stop it.
+         */
+        public void stop () {
+            if (this.worker_loop != null) {
+                this.worker_loop.quit ();
+                this.worker_loop = null;
+            }
+            if (this.worker_thread != null) {
+                this.worker_thread.join ();
+                this.worker_thread = null;
+            }
+        }
+
+        // ============================================================================
+        // BACKGROUND THREAD SECTION
+        // ============================================================================
+        // All code and properties in this section are accessed ONLY from the
+        // background thread. These methods are called via IdleSource callbacks
+        // attached to worker_context, ensuring they run in the background thread.
+        // ============================================================================
+
+        /**
+         * Struct to track both project_path and file_path when queuing files.
+         */
+        private struct BackgroundScanItem {
+            string project_path;
+            string file_path;
+        }
+
+        // Background thread state (accessed only from background thread)
+        private OLLMfiles.ProjectManager? worker_project_manager = null;   // ProjectManager instance for background thread
+        private OLLMfiles.Folder? active_project = null;   // Track currently active project in background thread (for memory management)
+        private Gee.ArrayQueue<BackgroundScanItem> file_queue;
+        private bool queue_processing = false;
+        private Indexer? indexer = null;
+
+        /**
+         * Ensure ProjectManager exists in background thread context.
+         */
+        private void ensure_project_manager () 
+		{
+            if (this.worker_project_manager == null) {
+                // Create ProjectManager in background thread context
+                // Use same sql_db (thread-safe in serialized mode)
+                this.worker_project_manager = new OLLMfiles.ProjectManager(this.sql_db);
+                // Default providers are fine - we only need to read from DB
+            }
+        }
+
+        /**
+         * Set active project and clear files from previous active project to free memory.
+         * 
+         * Note: This does NOT update database (is_active flag) - that's main thread's responsibility.
+         * The background worker only manages memory, not database state.
+         */
+        private void set_active_project (OLLMfiles.Folder? project) 
+		{
+            // If switching to a different project, clear files from previous project
+            if (this.active_project != null && this.active_project != project) {
+                // Clear all in-memory data (children, project_files, and resets last_scan to 0)
+                // This will cause needs_reload() to return true on next access, forcing a reload
+                this.active_project.clear_data();
+                // Note: We do NOT update database (is_active flag) - that's the main thread's responsibility
+                // The background worker only manages memory, not database state
+            }
+            this.active_project = project;
+        }
+
+        /**
+         * Set active project and load files from database.
+         * 
+         * This combines set_active_project() and load_files_from_db() into one operation.
+         * The load will automatically check needs_reload() and skip if no changes.
+         */
+        private async void set_active_project_and_load (OLLMfiles.Folder project) 
+		{
+            this.set_active_project (project);
+            yield project.load_files_from_db ();
         }
 
         /**
@@ -320,35 +366,6 @@ namespace OLLMvector {
                     GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
 
-            }
-        }
-
-        /**
-         * Emits scan_update signal on the main thread.
-         */
-        private void emit_scan_update (int queue_size, string current_file)
-        {
-            this.main_context.invoke (() => {
-                this.scan_update (queue_size, current_file);
-                return false;
-            });
-        }
-
-        /**
-         * Stops the background thread gracefully.
-         *
-         * This method is not strictly required because the thread lives for the
-         * lifetime of the application, but it provides a way for graceful shutdown
-         * if the host wishes to stop it.
-         */
-        public void stop () {
-            if (this.worker_loop != null) {
-                this.worker_loop.quit ();
-                this.worker_loop = null;
-            }
-            if (this.worker_thread != null) {
-                this.worker_thread.join ();
-                this.worker_thread = null;
             }
         }
     }
