@@ -165,7 +165,7 @@ namespace OLLMvector {
          * Process a project: load its files, check timestamps, and enqueue any
          * that need (re)scanning.
          */
-        private void queueProject (Project project) {
+        private void queueProject (OLLMfiles.Project project) {
             // Load project from DB – ProjectManager already has it.
             // Ensure we have the latest representation.
             var proj = this.project_manager.get_project_by_path (project.path);
@@ -179,21 +179,21 @@ namespace OLLMvector {
 
             // Iterate over all children; we only care about File objects.
             foreach (var child in proj.children.values) {
-                if (child is File) {
-                    var f = child as File;
+                if (child is OLLMfiles.File) {
+                    var f = child as OLLMfiles.File;
                     // Compare last_scan timestamp with file modification time.
                     // If the file has never been scanned or changed, queue it.
                     if (f.last_scan < f.mtime_on_disk ()) {
                         this.queueFile (f.path);
                         files_indexed++;
                     }
-                } else if (child is Folder) {
+                } else if (child is OLLMfiles.Folder) {
                     // For folders we only need to avoid re‑processing the same folder
                     // during the same run – the plan suggests checking folder.last_scan.
-                    var folder = child as Folder;
+                    var folder = child as OLLMfiles.Folder;
                     if (folder.last_scan < folder.mtime_on_disk ()) {
                         // Recurse into sub‑folder.
-                        this.queueProject (folder as Project); // Folder is also a Project‑like node
+                        this.queueProject (folder as OLLMfiles.Project); // Folder is also a Project‑like node
                     }
                 }
             }
