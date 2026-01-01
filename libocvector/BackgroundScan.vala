@@ -161,14 +161,17 @@ namespace OLLMvector {
         /**
          * Process a project: load its files, check timestamps, and enqueue any
          * that need (re)scanning.
+         *
+         * @param path The path of the project to process.
          */
-        private void queueProject (OLLMfiles.Project project) {
-            // Load project from DB – ProjectManager already has it.
-            // Ensure we have the latest representation.
-            var proj = this.project_manager.get_project_by_path (project.path);
+        private void queueProject (string path) {
+            // Load project from database in the background thread (thread-safe).
+            // This ensures we have the latest representation and avoid passing
+            // objects between threads.
+            var proj = this.project_manager.get_project_by_path (path);
             if (proj == null) {
                 // If the project cannot be loaded, abort silently.
-                GLib.warning ("BackgroundScan: could not load project %s", project.path);
+                GLib.warning ("BackgroundScan: could not load project %s", path);
                 return;
             }
 
