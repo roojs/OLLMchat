@@ -304,8 +304,7 @@ namespace OLLMvector {
 
                 // Set as active project and reload files from database (state may have changed since queued)
                 // This will automatically check needs_reload() and skip if no changes
-                this.set_active_project (project);
-                yield project.load_files_from_db ();
+                yield this.set_active_project_and_load (project);
 
                 // Find file in that project's project_files.child_map
                 var project_file = project.project_files.child_map.get (next_item.file_path);
