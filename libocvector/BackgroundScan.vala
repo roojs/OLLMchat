@@ -273,14 +273,9 @@ namespace OLLMvector {
             this.queue_processing = true;
 
             while (true) {
-                BackgroundScanItem? next_item = null;
-                var queue_size = 0;
-
                 // All queue operations happen in the background thread context, so no mutex needed
-                if (!this.file_queue.is_empty) {
-                    next_item = this.file_queue.poll ();
-                    queue_size = (int)this.file_queue.size;
-                }
+                var next_item = this.file_queue.poll ();
+                var queue_size = (int)this.file_queue.size;
 
                 if (next_item == null) {
                     // Queue empty – emit completion signal and exit loop.
