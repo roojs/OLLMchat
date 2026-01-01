@@ -486,8 +486,24 @@ namespace OLLMfiles
 
 
 
-			// New item - append and insert into DB
+			// New item - check if it exists in file_cache before creating new record
 			if (old_item == null) {
+				// Check file_cache first (fast lookup) - this should be populated when files are loaded from DB
+				if (this.manager.file_cache.has_key(new_item.path)) {
+					var existing_item = this.manager.file_cache.get(new_item.path);
+					// If it's the same type and has an ID, use it instead of creating new
+					if (existing_item.base_type == new_item.base_type && existing_item.id > 0) {
+						// Copy DB fields to preserve them, then update only changed fields
+						existing_item.copy_db_fields_to(new_item);
+						existing_item.saveToDB(this.manager.db, new_item, false);
+						// Use existing item instead of new one
+						this.children.append(existing_item);
+						this.children.child_map.set(name, existing_item);
+						return;
+					}
+				}
+				
+				// Truly new item - append and insert into DB
 				this.children.append(new_item);
 				this.children.child_map.set(name, new_item);
 
