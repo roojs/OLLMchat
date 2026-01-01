@@ -158,9 +158,6 @@ namespace OLLMvector {
             // Extract path before creating callback to avoid capturing object in closure.
             var project_path = project.path;
 
-            // Emit start signal on main thread.
-            this.emit_project_scan_started (project_path);
-
             // Dispatch the heavy work to the background thread via idle source.
             // Pass only the path string (thread-safe) - the background thread will
             // load the project from the database.
@@ -319,17 +316,6 @@ namespace OLLMvector {
                 }
 
             }
-        }
-
-        /**
-         * Emits project_scan_started signal on the main thread.
-         */
-        private void emit_project_scan_started (string project_path)
-        {
-            this.main_context.invoke (() => {
-                this.project_scan_started (project_path);
-                return false;
-            });
         }
 
         /**
