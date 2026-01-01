@@ -398,8 +398,8 @@ namespace OLLMcoder
 			var now = new DateTime.now_local();
 			file.last_viewed = now.to_unix();
 			file.last_modified = file.mtime_on_disk();
-			// Save to database (notify_file_changed calls saveToDB)
-			this.manager.notify_file_changed(file);
+			// Save to database (metadata-only change - cursor/scroll not changed yet)
+			this.manager.on_file_metadata_change(file);
 			
 			// Update placeholder text with file basename
 			// Note: selected_file is now read-only and set when dialog closes
@@ -512,8 +512,8 @@ namespace OLLMcoder
 			var now = new DateTime.now_local();
 			this.current_file.last_viewed = now.to_unix();
 			
-			// Notify manager to save to database
-			this.manager.notify_file_changed(this.current_file);
+			// Notify manager to save to database (metadata-only change - cursor/scroll position)
+			this.manager.on_file_metadata_change(this.current_file);
 		}
 		
 		/**
@@ -554,9 +554,9 @@ namespace OLLMcoder
 			
 			// Set up new timeout to save scroll position after scrolling stops
 			this.scroll_save_timeout_id = GLib.Timeout.add(500, () => {
-				// Save scroll position and update database in memory (mark as dirty)
+				// Save scroll position and update database (metadata-only change)
 				this.save_scroll_position();
-				this.manager.notify_file_changed(this.current_file);
+				this.manager.on_file_metadata_change(this.current_file);
 				this.scroll_save_timeout_id = null;
 				return false; // Only run once
 			});
