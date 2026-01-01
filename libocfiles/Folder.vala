@@ -536,6 +536,38 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Check if this folder needs to be reloaded from the database.
+		 * 
+		 * Compares the project's last_scan timestamp with the maximum last_modified
+		 * timestamp in the database. If any file in the database has been modified
+		 * more recently than the last scan, a reload is needed.
+		 * 
+		 * @return true if reload is needed, false otherwise
+		 */
+		private bool needs_reload()
+		{
+			if (this.manager.db == null) {
+				return false; // No DB, can't check
+			}
+			
+			// Query: SELECT MAX(last_modified) FROM filebase
+			Sqlite.Statement stmt;
+			var query = "SELECT MAX(last_modified) FROM filebase";
+			if (this.manager.db.db.prepare_v2(query, query.length, out stmt) != Sqlite.OK) {
+				GLib.warning("Folder.needs_reload: Failed to prepare query: %s", this.manager.db.db.errmsg());
+				return true; // On error, assume reload needed (conservative)
+			}
+			
+			int64 max_mtime = 0;
+			if (stmt.step() == Sqlite.ROW) {
+				max_mtime = stmt.column_int64(0);
+			}
+			
+			// If max mtime in DB is greater than project's last_scan, reload needed
+			return max_mtime > this.last_scan;
+		}
+
+		/**
 		 * Load project files from database.
 		* 
 		* This method performs a three-step process:
@@ -547,6 +579,12 @@ namespace OLLMfiles
 		{
 			if (this.id <= 0 || this.manager.db == null) {
 				GLib.debug("Folder.load_files_from_db: Skipping (id=%lld or db=null)", this.id);
+				return;
+			}
+			
+			// Check if reload is needed (optimization: skip if database hasn't changed)
+			if (!this.needs_reload()) {
+				GLib.debug("Folder.load_files_from_db: Skipping reload (no changes detected) for '%s'", this.path);
 				return;
 			}
 			
