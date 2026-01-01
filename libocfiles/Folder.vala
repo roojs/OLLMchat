@@ -551,11 +551,8 @@ namespace OLLMfiles
 			}
 			
 			// Query: SELECT MAX(last_modified) FROM filebase
-			Sqlite.Statement stmt;
-			if (this.manager.db.db.prepare_v2("SELECT MAX(last_modified) FROM filebase", -1, out stmt) != Sqlite.OK) {
-				GLib.warning("Failed to prepare query: %s", this.manager.db.db.errmsg());
-				return true; // On error, assume reload needed (conservative)
-			}
+			var query = FileBase.query(this.manager.db, this.manager);
+			var stmt = query.selectPrepare("SELECT MAX(last_modified) FROM filebase");
 			
 			int64 max_mtime = 0;
 			if (stmt.step() == Sqlite.ROW) {
