@@ -4,5 +4,5 @@ Third line
 Fourth line
 Fifth line: modified
 Sixth line
-Seventh line
 Eighth line: inserted
+Seventh line

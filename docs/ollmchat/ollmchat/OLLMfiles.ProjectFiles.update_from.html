@@ -28,11 +28,13 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMfiles.ProjectFiles.child_map.html">child_map</a></li>
+          <li class="property"><a href="OLLMfiles.ProjectFiles.folder_map.html">folder_map</a></li>
           <li class="creation_method"><a href="OLLMfiles.ProjectFiles.ProjectFiles.html">ProjectFiles</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.@foreach.html">@foreach</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.append.html">append</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.contains.html">contains</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.find.html">find</a></li>
+          <li class="method"><a href="OLLMfiles.ProjectFiles.find_container_of.html">find_container_of</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_active_file.html">get_active_file</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_by_id.html">get_by_id</a></li>
           <li class="method"><a href="OLLMfiles.ProjectFiles.get_ids.html">get_ids</a></li>
@@ -59,7 +61,7 @@
           <p>Recursively update project files from a folder tree.</p>
           <p>Scans the folder and its children recursively, adding only real files (not aliases) to the project files list. Handles FileAliases by 
             following them to their target files. Prevents recursing the same folder more than once by tracking scanned folders using a HashSet of 
-            folder IDs.</p>
+            folder IDs. Also builds a hashmap of folder paths =&gt; Folder objects for quick lookup.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
