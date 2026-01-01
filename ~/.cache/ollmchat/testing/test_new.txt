@@ -1,4 +1,0 @@
-This is a new file
-created in complete file mode
-with multiple lines
-for testing purposes
