@@ -44,6 +44,7 @@ namespace OLLMchat
 		private Adw.Banner tool_error_banner;
 		private FileChangeBanner file_change_banner;
 		private OLLMfiles.ProjectManager project_manager;
+		private OLLMvector.BackgroundScan? background_scan = null;
 
 		/**
 		 * Creates a new OllmchatWindow instance.
