@@ -345,13 +345,6 @@ namespace OLLMchat
 				});
 			});
 			
-			// Connect to file_contents_changed signal to trigger background scanning
-			this.project_manager.file_contents_changed.connect((file) => {
-				if (this.background_scan != null && this.project_manager.active_project != null) {
-					this.background_scan.scanFile(file, this.project_manager.active_project);
-				}
-			});
-			
 			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
 			this.history_manager.base_client.addTool(
 					new OLLMtools.ReadFile(this.history_manager.base_client, this.project_manager));
@@ -543,6 +536,14 @@ namespace OLLMchat
 					vector_db,
 					project_manager.db
 				);
+				
+				// Connect to file_contents_changed signal to trigger background scanning
+				// Only connect when background_scan is available
+				this.project_manager.file_contents_changed.connect((file) => {
+					if (this.project_manager.active_project != null) {
+						this.background_scan.scanFile(file, this.project_manager.active_project);
+					}
+				});
 				
 				// Register the tool
 				var tool = new OLLMvector.Tool.CodebaseSearchTool(
