@@ -69,10 +69,6 @@ namespace OLLMvector {
             this.main_context = GLib.MainContext.default ();
         }
 
-        /*--------------------------------------------------------------------
-         *  Public API – called from the UI (main thread)
-         *-------------------------------------------------------------------*/
-
         /**
          * Ensure the background thread is running.
          */
@@ -154,10 +150,6 @@ namespace OLLMvector {
             });
             source.attach (this.worker_context);
         }
-
-        /*--------------------------------------------------------------------
-         *  Internal helpers – executed inside the background thread.
-         *-------------------------------------------------------------------*/
 
         /**
          * Process a project: load its files, check timestamps, and enqueue any
