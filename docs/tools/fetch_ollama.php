@@ -58,6 +58,13 @@ class OllamaModelScraper {
         }
     }
     
+    private function debug(string $message, ?string $checkText = null): void {
+        // Only output if checkText contains debug keywords, or if checkText is null (always debug)
+        if ($checkText === null || strpos($checkText, 'smollm2') !== false || strpos($checkText, 'smollm') !== false) {
+            echo "    DEBUG: {$message}\n";
+        }
+    }
+    
     private function printStatusReport(): void {
         $totalModels = count($this->models);
         $baseModels = 0;
@@ -315,6 +322,9 @@ class OllamaModelScraper {
             // Step 5: Fetch derivative models for top 5 popular models
             $this->fetchDerivativeModels();
             
+            // Step 5a: Fetch minimax derivatives
+            $this->fetchDerivativesBySearch('minimax', 'Step 5a: Fetching minimax derivative models', 10, 'minimax');
+            
             // Step 5b: Fetch any remaining derivative models that were discovered but not yet fetched
             // (This handles derivatives that were added to the array but not fetched due to limits)
             $this->fetchModelDetails(false);
@@ -527,6 +537,7 @@ class OllamaModelScraper {
         
         // Convert to models array
         foreach ($foundModels as $slug => $data) {
+            $this->debug("parseSearchResults - Adding model - slug: {$slug}, name: {$data['name']}", $slug);
             $this->models[$slug] = [
                 'name' => $data['name'],
                 'description' => $data['description'],
@@ -549,6 +560,7 @@ class OllamaModelScraper {
         
         $initialCount = $this->fetchedCount;
         $skipped = 0;
+        $skippedOriginal = 0;
         $isDerivative = false;
         
         foreach ($this->models as $slug => $model) {
@@ -559,6 +571,18 @@ class OllamaModelScraper {
             
             // Check if this is a derivative
             $isDerivative = isset($this->derivativeModels[$slug]);
+            
+            // Check if model already exists in original models and has tags
+            // Skip fetching if we already have complete data from the original source
+            $modelName = $model['name'];
+            if (isset($this->originalModels[$modelName])) {
+                $originalModel = $this->originalModels[$modelName];
+                // If original model has tags, we don't need to fetch (we'll merge later)
+                if (!empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0) {
+                    $skippedOriginal++;
+                    continue;
+                }
+            }
             
             // Handle namespaced models (e.g., huihui_ai/gemma3-abliterated -> huihui_ai_gemma3-abliterated.html)
             $fileSlug = str_replace('/', '_', $slug);
@@ -591,10 +615,18 @@ class OllamaModelScraper {
         }
         
         $newlyFetched = $this->fetchedCount - $initialCount;
-        if ($newlyFetched > 0 || $skipped > 0) {
+        $totalSkipped = $skipped + $skippedOriginal;
+        if ($newlyFetched > 0 || $totalSkipped > 0) {
             echo "  Fetched {$newlyFetched} new model detail pages";
-            if ($skipped > 0) {
-                echo " (skipped {$skipped} that already exist)";
+            if ($totalSkipped > 0) {
+                $skipParts = [];
+                if ($skipped > 0) {
+                    $skipParts[] = "{$skipped} already cached";
+                }
+                if ($skippedOriginal > 0) {
+                    $skipParts[] = "{$skippedOriginal} from original source";
+                }
+                echo " (skipped " . implode(', ', $skipParts) . ")";
             }
             echo "\n";
         } else {
@@ -732,82 +764,155 @@ class OllamaModelScraper {
             // Parse search results to find derivatives
             $derivatives = $this->parseDerivativeSearch($searchFile, $modelName);
             
-            if (empty($derivatives)) {
+            // Process and fetch derivatives (limit to 5 per model)
+            $this->processAndFetchDerivatives($derivatives, 5);
+        }
+        
+        echo "\n";
+    }
+    
+    private function processAndFetchDerivatives(array $derivatives, int $maxDerivatives, bool $showHeader = true): int {
+        if (empty($derivatives)) {
+            if ($showHeader) {
                 echo "    No derivatives found\n";
-                continue;
             }
-            
+            return 0;
+        }
+        
+        if ($showHeader) {
             echo "    Found " . count($derivatives) . " derivatives:\n";
-            
-            // Add all discovered derivatives to the models array (queue them for future fetching)
-            foreach ($derivatives as $index => $derivative) {
-                $derivativeSlug = $derivative['slug'];
-                $pullsFormatted = number_format($derivative['pulls']);
+        }
+        
+        // Add all discovered derivatives to the models array (queue them for future fetching)
+        foreach ($derivatives as $index => $derivative) {
+            $derivativeSlug = $derivative['slug'];
+            $pullsFormatted = number_format($derivative['pulls']);
+            if ($showHeader) {
                 echo "      " . ($index + 1) . ". {$derivative['name']} ({$pullsFormatted} pulls)\n";
-                
-                // Add to models array if not already there (queue for future fetching)
-                if (!isset($this->models[$derivativeSlug])) {
-                    $this->models[$derivativeSlug] = [
-                        'name' => $derivative['name'],
-                        'description' => '',
-                        'features' => [],
-                        'tags' => [],
-                        'downloads' => null
-                    ];
-                    // Mark as derivative
-                    $this->derivativeModels[$derivativeSlug] = true;
-                }
             }
             
-            // Fetch up to 5 most popular derivatives (but respect total limit)
-            $fetched = 0;
-            foreach ($derivatives as $derivative) {
-                // Check total fetch limit
-                if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
-                    echo "    Reached total limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n";
-                    break;
-                }
-                
-                // Limit to 5 derivatives per model
-                if ($fetched >= 5) {
-                    break;
-                }
-                
-                $derivativeSlug = $derivative['slug'];
-                // Handle namespaced models in file path (e.g., huihui_ai/gemma3-abliterated -> huihui_ai_gemma3-abliterated.html)
-                $fileSlug = str_replace('/', '_', $derivativeSlug);
-                $derivativeFile = $this->modelsDir . '/' . $fileSlug . '.html';
-                
-                // Check if we already have complete information for this derivative
-                $alreadyHasInfo = false;
-                if (!empty($this->models[$derivativeSlug]['tags'])) {
-                    $alreadyHasInfo = true;
-                } elseif (file_exists($derivativeFile)) {
-                    // File exists, we'll parse it later, so we have the info
-                    $alreadyHasInfo = true;
-                }
-                
-                if ($alreadyHasInfo) {
-                    // Already have this derivative's information, skip it
-                    continue;
-                }
-                
-                // Fetch the derivative detail page (use /tags for full tag list)
-                // Derivatives (namespaced) don't have /library/ in the URL
-                $derivativeUrl = 'https://ollama.com/' . $derivativeSlug . '/tags';
-                if ($this->fetchUrl($derivativeUrl, $derivativeFile, false)) {
-                    $fetched++;
-                    $this->fetchedCount++;
-                    $pullsFormatted = number_format($derivative['pulls']);
-                    echo "    → Fetched new derivative: {$derivative['name']} ({$pullsFormatted} pulls)\n";
-                }
-            }
+            // Add to models array if not already there (queue for future fetching)
+            $this->debug("processAndFetchDerivatives - Processing derivative: {$derivativeSlug}", $derivativeSlug);
             
-            if ($fetched > 0) {
-                echo "    Fetched {$fetched} new derivative(s)\n";
+            if (!isset($this->models[$derivativeSlug])) {
+                $this->debug("Adding to models array - slug: {$derivativeSlug}, name: {$derivative['name']}", $derivativeSlug);
+                $this->debug("Stack trace:", $derivativeSlug);
+                if (strpos($derivativeSlug, 'smollm2') !== false || strpos($derivativeSlug, 'smollm') !== false) {
+                    debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5);
+                }
+                $this->models[$derivativeSlug] = [
+                    'name' => $derivative['name'],
+                    'description' => '',
+                    'features' => [],
+                    'tags' => [],
+                    'downloads' => null
+                ];
+                // Mark as derivative
+                $this->derivativeModels[$derivativeSlug] = true;
+            } else {
+                $this->debug("Model already in models array, skipping", $derivativeSlug);
             }
         }
         
+        // Fetch up to maxDerivatives most popular derivatives (but respect total limit)
+        $fetched = 0;
+        foreach ($derivatives as $derivative) {
+            // Check total fetch limit
+            if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
+                if ($showHeader) {
+                    echo "    Reached total limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n";
+                }
+                break;
+            }
+            
+            // Limit to maxDerivatives
+            if ($fetched >= $maxDerivatives) {
+                break;
+            }
+            
+            $derivativeSlug = $derivative['slug'];
+            // Handle namespaced models in file path (e.g., huihui_ai/gemma3-abliterated -> huihui_ai_gemma3-abliterated.html)
+            $fileSlug = str_replace('/', '_', $derivativeSlug);
+            $derivativeFile = $this->modelsDir . '/' . $fileSlug . '.html';
+            
+            // Check if we already have complete information for this derivative
+            $alreadyHasInfo = false;
+            if (!empty($this->models[$derivativeSlug]['tags'])) {
+                $alreadyHasInfo = true;
+            } elseif (file_exists($derivativeFile)) {
+                // File exists, we'll parse it later, so we have the info
+                $alreadyHasInfo = true;
+            }
+            
+            if ($alreadyHasInfo) {
+                // Already have this derivative's information, skip it
+                continue;
+            }
+            
+            // Fetch the derivative detail page (use /tags for full tag list)
+            // Check if it's actually a base model (from /library/) or a derivative
+            // Base models: /library/model-name
+            // Derivatives: /author/model-name
+            if (strpos($derivativeSlug, '/') !== false) {
+                // Namespaced model (derivative) - no /library/
+                $derivativeUrl = 'https://ollama.com/' . $derivativeSlug . '/tags';
+            } else {
+                // Base model - has /library/
+                $derivativeUrl = 'https://ollama.com/library/' . $derivativeSlug . '/tags';
+            }
+            if ($this->fetchUrl($derivativeUrl, $derivativeFile, false)) {
+                $fetched++;
+                $this->fetchedCount++;
+                $pullsFormatted = number_format($derivative['pulls']);
+                if ($showHeader) {
+                    echo "    → Fetched new derivative: {$derivative['name']} ({$pullsFormatted} pulls)\n";
+                }
+            }
+        }
+        
+        if ($fetched > 0 && $showHeader) {
+            echo "    Fetched {$fetched} new derivative(s)\n";
+        }
+        
+        return $fetched;
+    }
+    
+    private function fetchDerivativesBySearch(string $searchQuery, string $stepName, int $maxDerivatives = 10, ?string $filterName = null, ?string $cacheFile = null): void {
+        echo "{$stepName}: Fetching derivative models for search: {$searchQuery}...\n";
+        
+        // Check total fetch limit
+        if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
+            echo "  Reached total limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n\n";
+            return;
+        }
+        
+        echo "  Searching for: {$searchQuery}\n";
+        
+        // Fetch search results
+        $searchUrl = 'https://ollama.com/search?q=' . urlencode($searchQuery);
+        if ($cacheFile === null) {
+            $cacheKey = str_replace([' ', '/'], ['-', '_'], strtolower($searchQuery));
+            $cacheFile = $this->cacheDir . '/search-' . $cacheKey . '.html';
+        }
+        
+        if (!$this->shouldFetch($cacheFile)) {
+            echo "    Using cached search results\n";
+        } else {
+            if ($this->fetchUrl($searchUrl, $cacheFile)) {
+                echo "    Fetched search results\n";
+            } else {
+                echo "    Failed to fetch search results\n\n";
+                return;
+            }
+        }
+        
+        // Parse search results to find derivatives
+        // Use filterName if provided, otherwise use searchQuery to filter out base model
+        $filterModelName = $filterName ?? $searchQuery;
+        $derivatives = $this->parseDerivativeSearch($cacheFile, $filterModelName);
+        
+        // Process and fetch derivatives
+        $this->processAndFetchDerivatives($derivatives, $maxDerivatives);
         echo "\n";
     }
     
@@ -988,7 +1093,8 @@ class OllamaModelScraper {
             $anchor = $xpath->query('.//a[contains(@href, "/library/")]', $li)->item(0);
             if ($anchor === null) {
                 // Try links that match /author/model or /model pattern (without /library/)
-                $anchor = $xpath->query('.//a[starts-with(@href, "/") and not(contains(@href, "/public/")) and not(contains(@href, "/signin")) and not(contains(@href, "/download")) and not(contains(@href, "/docs")) and not(contains(@href, "/cloud")) and not(contains(@href, "/models")) and not(contains(@href, "/search"))]', $li)->item(0);
+                // Exclude /tags paths (except /library/model/tags which are handled separately)
+                $anchor = $xpath->query('.//a[starts-with(@href, "/") and not(contains(@href, "/public/")) and not(contains(@href, "/signin")) and not(contains(@href, "/download")) and not(contains(@href, "/docs")) and not(contains(@href, "/cloud")) and not(contains(@href, "/models")) and not(contains(@href, "/search")) and not(contains(@href, "/tags"))]', $li)->item(0);
             }
             if ($anchor === null) {
                 // Fallback: just get any anchor
@@ -1004,23 +1110,72 @@ class OllamaModelScraper {
                 continue;
             }
             
+            $originalHref = $href; // Keep original for debugging
+            
+            // Remove query parameters and fragments for processing
+            // Use different delimiter to avoid conflict with # in the pattern
+            $href = preg_replace('~[?#].*$~', '', $href);
+            
+            // DEBUG: Track suspicious hrefs
+            $this->debug("Found suspicious href: {$originalHref} -> {$href}", $href);
+            
+            // Skip if href contains /tags - these are tag pages, not model pages
+            // Exception: /library/model/tags is allowed (we extract model from it)
+            if (strpos($href, '/tags') !== false && !preg_match('#^/library/[^/]+/tags#', $href)) {
+                // Allow /library/model/tags but skip other /tags paths like /smollm2/tags
+                $this->debug("Skipped - contains /tags (not library model)", $href);
+                continue;
+            }
+            
+            // Skip single-segment paths (like /smollm2) - these are not model pages
+            // Model pages are either /library/model or /author/model
+            if (preg_match('#^/[^/]+$#', $href)) {
+                $this->debug("Skipped - single segment path", $href);
+                continue;
+            }
+            
+            // Additional check: skip if it looks like /something/tags (where something is not library)
+            if (preg_match('#^/([^/]+)/tags$#', $href, $tagMatches) && $tagMatches[1] !== 'library') {
+                $this->debug("Skipped - /something/tags format where something is not library", $href);
+                continue;
+            }
+            
             // Try to extract model slug - handle multiple formats:
             // 1. /library/model or /library/author/model
-            // 2. /author/model (without /library/)
-            // 3. /model (without /library/ and without author)
+            // 2. /author/model (without /library/) - must have both author and model parts
+            // Note: We don't accept single-segment paths like /model as they're likely not model pages
             $modelSlug = null;
             if (preg_match('#/library/(.+?)(?:/tags|$)#', $href, $matches)) {
                 $modelSlug = $matches[1];
-            } elseif (preg_match('#^/([^/]+(?:/[^/]+)*?)(?:/tags|$)#', $href, $matches)) {
-                // Match /author/model or /model (but exclude common non-model paths)
-                $potentialSlug = $matches[1];
+                $this->debug("Extracted from /library/ pattern: {$modelSlug}", $modelSlug);
+            } elseif (preg_match('#^/([^/]+)/([^/]+)(?:/tags|$)#', $href, $matches)) {
+                // Match /author/model format (must have exactly 2 segments)
+                // This ensures we only match actual namespaced models, not single-segment paths
+                $author = $matches[1];
+                $model = $matches[2];
+                
+                $this->debug("Matched /author/model pattern - author: {$author}, model: {$model}", $href);
+                
                 // Skip if it's a known non-model path
-                if (!in_array($potentialSlug, ['', 'signin', 'download', 'docs', 'cloud', 'models', 'search', 'public'])) {
-                    $modelSlug = $potentialSlug;
+                $excludedPaths = ['signin', 'download', 'docs', 'cloud', 'models', 'search', 'public', 'library', 'tags'];
+                if (in_array($author, $excludedPaths) || in_array($model, $excludedPaths)) {
+                    $this->debug("Skipped - author or model in excluded paths", $href);
+                    continue;
                 }
+                
+                $potentialSlug = $author . '/' . $model;
+                $modelSlug = $potentialSlug;
+                $this->debug("Created model slug: {$modelSlug}", $modelSlug);
             }
             
             if ($modelSlug === null) {
+                $this->debug("No model slug extracted, skipping", $href);
+                continue;
+            }
+            
+            // Validate slug - must have at least 2 characters and not be too short
+            // Also skip slugs that look like common non-model identifiers
+            if (strlen($modelSlug) < 2) {
                 continue;
             }
             
@@ -1085,6 +1240,9 @@ class OllamaModelScraper {
                     $pulls = intval($cleanText);
                 }
             }
+            
+            $this->debug("Adding to derivatives array - slug: {$modelSlug}, name: {$modelName}, pulls: {$pulls}", $modelSlug);
+            $this->debug("Original href was: {$originalHref}", $modelSlug);
             
             $derivatives[] = [
                 'slug' => $modelSlug,
