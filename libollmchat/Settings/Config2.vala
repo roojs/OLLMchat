@@ -77,10 +77,33 @@ namespace OLLMchat.Settings
 		public Gee.Map<string, Json.Node> usage_unregistered { get; set; default = new Gee.HashMap<string, Json.Node>(); }
 		
 		/**
+		 * Map of tool name → tool configuration objects (handled by registered GTypes)
+		 *
+		 * Contains tool configurations such as "codebase_search", "google_search",
+		 * "read_file", etc. Simple tools use BaseToolConfig, complex tools use
+		 * tool-specific configs that extend BaseToolConfig.
+		 */
+		public Gee.Map<string, BaseToolConfig> tools { get; set; default = new Gee.HashMap<string, BaseToolConfig>(); }
+		
+		/**
+		 * Map of tool name → Json.Node for unregistered types.
+		 *
+		 * Stores unregistered tool configurations as JSON nodes so they can be
+		 * serialized back later when the type is registered.
+		 */
+		public Gee.Map<string, Json.Node> tools_unregistered { get; set; default = new Gee.HashMap<string, Json.Node>(); }
+		
+		/**
 		 * Static registry of key → GType for deserialization.
 		 * Shared across all Config2 instances.
 		 */
 		private static Gee.HashMap<string, Type>? usage_types = null;
+		
+		/**
+		 * Static registry of tool name → GType for deserialization.
+		 * Shared across all Config2 instances.
+		 */
+		private static Gee.HashMap<string, Type>? tools_types = null;
 		
 		/**
 		 * Configuration file path (static, set once at application startup)
@@ -94,7 +117,7 @@ namespace OLLMchat.Settings
 		public bool loaded = false;
 
 		/**
-		 * Initializes the usage_types map and registers default types.
+		 * Initializes the usage_types and tools_types maps and registers default types.
 		 * This is called lazily when first needed.
 		 */
 		private static void init()
@@ -110,6 +133,9 @@ namespace OLLMchat.Settings
 			// Register default ModelUsage types
 			usage_types.set("default_model", typeof(ModelUsage));
 			usage_types.set("title_model", typeof(ModelUsage));
+			
+			// Initialize tools_types map (no default registrations - tools register themselves)
+			tools_types = new Gee.HashMap<string, Type>();
 		}
 
 		/**
@@ -123,7 +149,7 @@ namespace OLLMchat.Settings
 		 * Registers a GType for a property/section key (static method).
 		 *
 		 * When deserializing JSON, Config2 will use the registered GType to deserialize
-		 * the property using standard Json.Serializable.
+		 * the property using standard Json.Serializable. This is used for the usage map.
 		 *
 		 * @param key The property/section key name
 		 * @param gtype The GType to use for deserialization
@@ -134,6 +160,23 @@ namespace OLLMchat.Settings
 			init();
 			
 			usage_types.set(key, gtype);
+		}
+		
+		/**
+		 * Registers a GType for a tool configuration key (static method).
+		 *
+		 * When deserializing JSON, Config2 will use the registered GType to deserialize
+		 * the tool configuration using standard Json.Serializable. This is used for the tools map.
+		 *
+		 * @param tool_name The tool name (e.g., "codebase_search", "google_search")
+		 * @param gtype The GType to use for deserialization (must extend BaseToolConfig)
+		 */
+		public static void register_tool_type(string tool_name, Type gtype)
+		{
+			// Ensure init() has been called (it will return early if already initialized)
+			init();
+			
+			tools_types.set(tool_name, gtype);
 		}
  
 
@@ -208,6 +251,33 @@ namespace OLLMchat.Settings
 					
 				case "usage-unregistered":
 					// Exclude usage_unregistered from serialization - it's already included in "usage"
+					return null;
+					
+				case "tools":
+					// Serialize both registered and unregistered tool types
+					var obj = new Json.Object();
+					
+					// Serialize registered types from tools map
+					foreach (var entry in this.tools.entries) {
+						var key = entry.key;
+						var tool_config = entry.value;
+						var node = Json.gobject_serialize(tool_config);
+						obj.set_member(key, node);
+					}
+					
+					// Serialize unregistered types from tools_unregistered map
+					foreach (var entry in this.tools_unregistered.entries) {
+						var key = entry.key;
+						var node = entry.value;
+						obj.set_member(key, node);
+					}
+					
+					var result = new Json.Node(Json.NodeType.OBJECT);
+					result.set_object(obj);
+					return result;
+					
+				case "tools-unregistered":
+					// Exclude tools_unregistered from serialization - it's already included in "tools"
 					return null;
 					
 				case "loaded":
@@ -291,6 +361,35 @@ namespace OLLMchat.Settings
 					// Return the usage map as the value
 					value = Value(typeof(Gee.Map));
 					value.set_object(this.usage);
+					return true;
+					
+				case "tools":
+
+					init();
+					// tools will be an object - iterate through the object(node)
+					if (property_node.get_node_type() != Json.NodeType.OBJECT) {
+						break;
+					}
+					
+					var obj = property_node.get_object();
+					obj.foreach_member((object, key, node) => {
+						if (tools_types == null || !tools_types.has_key(key)) {
+							// Unregistered type - save JSON node for later serialization
+							this.tools_unregistered.set(key, node);
+							return;
+						}
+						
+						// Registered type - deserialize and set in tools map
+						var deserialized_obj = Json.gobject_deserialize(tools_types.get(key), node) as BaseToolConfig;
+						if (deserialized_obj == null) {
+							return;
+						}
+						this.tools.set(key, deserialized_obj);
+					});
+					
+					// Return the tools map as the value
+					value = Value(typeof(Gee.Map));
+					value.set_object(this.tools);
 					return true;
 			}
 			
@@ -432,10 +531,10 @@ namespace OLLMchat.Settings
 		 *
 		 * Creates the directory structure if it doesn't exist.
 		 * Uses the static config_path property.
-		 *
-		 * @throws Error if file cannot be written
+		 * 
+		 * If saving fails, logs a warning but does not throw an error.
 		 */
-		public void save() throws Error
+		public void save()
 		{
 			// Ensure directory exists
 			var dir = GLib.File.new_for_path(GLib.Path.get_dirname(Config2.config_path));
@@ -443,7 +542,8 @@ namespace OLLMchat.Settings
 				try {
 					dir.make_directory_with_parents(null);
 				} catch (GLib.Error e) {
-					throw new GLib.FileError.FAILED("Failed to create config directory: %s", e.message);
+					GLib.warning("Failed to create config directory: %s", e.message);
+					return;
 				}
 			}
 
@@ -453,7 +553,11 @@ namespace OLLMchat.Settings
 			generator.indent = 4;
 			generator.set_root(Json.gobject_serialize(this));
 			
-			generator.to_file(Config2.config_path);
+			try {
+				generator.to_file(Config2.config_path);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save config: %s", e.message);
+			}
 		}
 	}
 }

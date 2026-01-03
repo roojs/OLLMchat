@@ -85,6 +85,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/Config2.vala',
     '../libollmchat/Settings/Connection.vala',
     '../libollmchat/Settings/ModelUsage.vala',
+    '../libollmchat/Settings/BaseToolConfig.vala',
     '../libollmchat/Settings/ModelTag.vala',
     '../libollmchat/Settings/AvailableModel.vala',
     '../libollmchat/Settings/AvailableModels.vala',
@@ -147,6 +148,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/GoogleSearchTool.vala',
     '../liboctools/GoogleSearchRequest.vala',
     '../liboctools/GoogleSearchConfig.vala',
+    '../liboctools/GoogleSearchToolConfig.vala',
     # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
@@ -172,6 +174,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/Search/Search.vala',
     '../libocvector/Search/SearchResult.vala',
     '../libocvector/Tool/namespace.vala',  # Tool namespace documentation
+    '../libocvector/Tool/CodebaseSearchToolConfig.vala',  # Must come before CodebaseSearchTool (CodebaseSearchTool uses CodebaseSearchToolConfig)
     '../libocvector/Tool/CodebaseSearchTool.vala',
     '../libocvector/Tool/RequestCodebaseSearch.vala',
     '../libocvector/BackgroundScan.vala',

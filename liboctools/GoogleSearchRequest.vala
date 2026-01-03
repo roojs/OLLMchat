@@ -180,25 +180,22 @@ namespace OLLMtools
 				throw new GLib.IOError.INVALID_ARGUMENT("Start parameter must be >= 1");
 			}
 			
-			// Load Google Search config
-			var config = GoogleSearchConfig.load();
+			// Ensure tool config exists (creates with empty values if needed)
+			OLLMtools.GoogleSearchTool.setup_tool_config(this.tool.client.config);
 			
-			if (config == null) {
-				throw new GLib.IOError.FAILED(
-					"Google Search config not found or invalid. Please create ~/.config/ollmchat/google.json with api_key and engine_id."
-				);
-			}
+			// Get tool config (guaranteed to exist after setup_tool_config)
+			var tool_config = this.tool.client.config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;
 			
-			if (config.api_key == "" || config.engine_id == "") {
+			if (tool_config.api_key == "" || tool_config.engine_id == "") {
 				throw new GLib.IOError.FAILED(
-					"Google Search config is missing api_key or engine_id. Please check ~/.config/ollmchat/google.json"
+					"Google Search config is missing api_key or engine_id. Please configure it in Settings > Tools."
 				);
 			}
 			
 			// Build API URL
 			var url = "https://www.googleapis.com/customsearch/v1?key=%s&cx=%s&q=%s&start=%d".printf(
-				GLib.Uri.escape_string(config.api_key, "", true),
-				GLib.Uri.escape_string(config.engine_id, "", true),
+				GLib.Uri.escape_string(tool_config.api_key, "", true),
+				GLib.Uri.escape_string(tool_config.engine_id, "", true),
 				GLib.Uri.escape_string(this.query, "", true),
 				this.start
 			);

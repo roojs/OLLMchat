@@ -33,9 +33,12 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.Config2.connections.html">connections</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.model_options.html">model_options</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools.html">tools</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools_unregistered.html">tools_unregistered</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage.html">usage</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage_unregistered.html">usage_unregistered</a></li>
           <li class="static_method"><a href="OLLMchat.Settings.Config2.load.html">load</a></li>
+          <li class="static_method"><a href="OLLMchat.Settings.Config2.register_tool_type.html">register_tool_type</a></li>
           <li class="static_method">register_type</li>
           <li class="creation_method"><a href="OLLMchat.Settings.Config2.Config2.html">Config2</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.create_chat.html">create_chat</a></li>
@@ -60,7 +63,8 @@
         </div>
         <div class="description">
           <p>Registers a GType for a property/section key (static method).</p>
-          <p>When deserializing JSON, Config2 will use the registered GType to deserialize the property using standard Json.Serializable.</p>
+          <p>When deserializing JSON, Config2 will use the registered GType to deserialize the property using standard Json.Serializable. This is used
+            for the usage map.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

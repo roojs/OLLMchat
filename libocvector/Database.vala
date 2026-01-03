@@ -19,9 +19,9 @@ namespace OLLMvector
 	 * == Usage Example ==
 	 * 
 	 * {{{
-	 * // Register and setup model usage
-	 * OLLMvector.Database.register_config();
-	 * OLLMvector.Database.setup_embed_usage(config);
+	 * // Register tool config type
+	 * OLLMvector.Tool.CodebaseSearchTool.register_config();
+	 * OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);
 	 * 
 	 * // Get embedding dimension
 	 * var dimension = yield OLLMvector.Database.get_embedding_dimension(embedding_client);
@@ -48,125 +48,28 @@ namespace OLLMvector
 		// TODO: needs to store metadata mapping: vector_id -> (file_path, start_line, end_line, element_type, element_name)
 		// Code snippets will be read from filesystem when needed, not stored here
 		
-		/**
-		 * Registers the embed ModelUsage type in Config2.
-		 * 
-		 * This should be called before loading config to register
-		 * "ocvector.embed" as a ModelUsage type for deserialization.
-		 */
-		public static void register_config()
-		{
-			OLLMchat.Settings.Config2.register_type("ocvector.embed", typeof(OLLMchat.Settings.ModelUsage));
-		}
 		
-		/**
-		 * Sets up the embed ModelUsage entry in Config2.
-		 * 
-		 * Creates a ModelUsage entry for "ocvector.embed" in the config's usage map
-		 * if it doesn't already exist. Uses the default connection and "bge-m3:latest" model.
-		 * This should be called when setting up the codebase search tool.
-		 * 
-		 * @param config The Config2 instance to update
-		 */
-		public static void setup_embed_usage(OLLMchat.Settings.Config2 config)
-		{
-			// Only create if it doesn't already exist
-			if (config.usage.has_key("ocvector.embed")) {
-				return;
-			}
-			
-			var default_connection = config.get_default_connection();
-			if (default_connection == null) {
-				GLib.warning("No default connection found, cannot setup embed usage");
-				return;
-			}
-			
-			var embed_usage = new OLLMchat.Settings.ModelUsage() {
-				connection = default_connection.url,
-				model = "bge-m3:latest",
-				options = new OLLMchat.Call.Options() {
-					temperature = 0.0,
-					num_ctx = 2048
-				}
-			};
-			
-			config.usage.set("ocvector.embed", embed_usage);
-		}
 		
 		/**
 		 * Checks if the required models for codebase search are available on the server.
 		 * 
-		 * Verifies that both the embedding model (from ocvector.embed) and analysis model
-		 * (from ocvector.analysis) are available on the server. This should be called before
-		 * initializing the codebase search tool.
+		 * Verifies that both the embedding model and analysis model are available on the server.
+		 * Reads from CodebaseSearchToolConfig in tools map, or falls back to usage map for
+		 * backward compatibility. This should be called before initializing the codebase search tool.
 		 * 
 		 * @param config The Config2 instance containing model usage configuration
 		 * @return true if both models are available, false otherwise
 		 */
 		public static async bool check_required_models_available(OLLMchat.Settings.Config2 config)
 		{
-			// Check if embed usage exists
-			if (!config.usage.has_key("ocvector.embed")) {
+			// Use the validated tool config
+			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
+			if (!tool_config.enabled) {
 				return false;
 			}
 			
-			// Check if analysis usage exists
-			if (!config.usage.has_key("ocvector.analysis")) {
-				return false;
-			}
-			
-			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
-			var analysis_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
-			
-			if (embed_usage == null || analysis_usage == null) {
-				return false;
-			}
-			
-			// Get connection for embed model
-			var embed_connection = config.connections.get(embed_usage.connection);
-			if (embed_connection == null) {
-				return false;
-			}
-			
-			// Get connection for analysis model
-			var analysis_connection = config.connections.get(analysis_usage.connection);
-			if (analysis_connection == null) {
-				return false;
-			}
-			
-			// Create test client for embed connection
-			var embed_client = new OLLMchat.Client(embed_connection);
-			
-			// Get list of models from embed connection (populates available_models)
- 			try {
-				yield embed_client.models();
-				
-				// Check if embed model is in available_models HashMap
-				if (!embed_client.available_models.has_key(embed_usage.model)) {
-					return false;
-				}
-				
-				// Check if connections are the same - if so, reuse the same client
-				if (embed_usage.connection == analysis_usage.connection) {
-					// Same connection, check analysis model in the same available_models
-					return embed_client.available_models.has_key(analysis_usage.model);
-				}
-			} catch (GLib.Error e) {
-				return false;
-			}
-			
-			// Different connection, fetch models from analysis connection
-			var analysis_client = new OLLMchat.Client(analysis_connection);
-			
-			try {
-				yield analysis_client.models();
-				return analysis_client.available_models.has_key(analysis_usage.model);
-			} catch (GLib.Error e) {
-				return false;
-			}
-			
-			// will not get here..
-			
+			// If tool config is enabled, models are already validated
+			return tool_config.embed.is_valid && tool_config.analysis.is_valid;
 		}
 		
 		/**

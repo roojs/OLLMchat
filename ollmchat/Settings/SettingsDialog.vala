@@ -182,14 +182,20 @@ namespace OLLMchat.Settings
 		 * Shows the settings dialog and initializes models page.
 		 * 
 		 * @param parent Parent window to attach the dialog to
+		 * @param page_name Optional page name to switch to (e.g., "connections", "models")
 		 */
-		public void show_dialog(Gtk.Window? parent = null)
+		public void show_dialog(Gtk.Window? parent = null, string? page_name = null)
 		{
 			// Refresh models when dialog is shown (every time)
 			this.models_page.render_models.begin();
 			
 			// Initialize progress bars for any existing active pulls
 			this.progress_banner.initialize_existing_pulls();
+			
+			// Switch to specified page if provided
+			if (page_name != null) {
+				this.view_stack.set_visible_child_name(page_name);
+			}
 			
 			// Present the dialog
 			this.present(parent);
@@ -203,11 +209,7 @@ namespace OLLMchat.Settings
 			// Save all model options before closing
 			this.models_page.save_all_options();
 			
-			try {
-				this.app.config.save();
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to save config: %s", e.message);
-			}
+			this.app.config.save();
 		}
 	}
 }

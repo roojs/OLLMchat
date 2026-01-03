@@ -32,6 +32,7 @@ ollmchat_ollama_src = files([
   'Settings/ModelUsage.vala',
   'Settings/Config1.vala',
   'Settings/Config2.vala',
+  'Settings/BaseToolConfig.vala',
   'Settings/ModelTag.vala',
   'Settings/AvailableModel.vala',
   'Settings/AvailableModels.vala',

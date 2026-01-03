@@ -72,37 +72,41 @@ public abstract class VectorAppBase : TestAppBase
 	}
 	
 	/**
-	 * Gets or creates a client for a specific usage type and verifies the model is available.
+	 * Gets or creates a client from the codebase search tool config and verifies the model is available.
 	 * 
-	 * Checks if the usage exists in config, creates it if it doesn't,
-	 * applies CLI model override if provided, verifies the model is available on the server,
-	 * but doesn't save config until after all checks are complete.
+	 * Uses the tool config system (not the usage map). Ensures tool config exists, applies CLI model override
+	 * if provided, verifies the model is available on the server, but doesn't save config until after
+	 * all checks are complete.
 	 * 
-	 * @param usage_name The usage name (e.g., "ocvector.embed", "ocvector.analysis")
-	 * @param opt_url Optional URL from command line (required if config not loaded)
-	 * @param opt_api_key Optional API key from command line
-	 * @param cli_model_override Optional model name override from command line
-	 * @return Client instance for the usage
+	 * Note: `opt_url` and `opt_api_key` only affect defaults if config is not already loaded.
+	 * If config is loaded, they are ignored and existing defaults are used.
+	 * 
+	 * @param model_type "embed" for embed model, "analysis" for analysis model
+	 * @param opt_url Optional URL from command line (required if config not loaded; creates default connection if provided)
+	 * @param opt_api_key Optional API key from command line (only used if config not loaded)
+	 * @param cli_model_override Optional model name override from command line (overrides the model in tool config)
+	 * @return Client instance for the model
 	 * @throws Error if client cannot be created or model is not available
 	 */
-	protected async OLLMchat.Client usage_client(string usage_name, string? opt_url = null, string? opt_api_key = null, string? cli_model_override = null) throws GLib.Error
+	protected async OLLMchat.Client tool_config_client(string model_type, string? opt_url = null, string? opt_api_key = null, string? cli_model_override = null) throws GLib.Error
 	{
 		yield this.ensure_config(opt_url, opt_api_key);
 		
-		// Check if usage exists, create if it doesn't
-		if (!this.config.usage.has_key(usage_name)) {
-			if (usage_name == "ocvector.embed") {
-				OLLMvector.Database.setup_embed_usage(this.config);
-			} else if (usage_name == "ocvector.analysis") {
-				OLLMvector.Indexing.Analysis.setup_analysis_usage(this.config);
-			} else {
-				throw new GLib.IOError.NOT_FOUND("Unknown usage type: " + usage_name);
-			}
-		}
+		// Ensure tool config exists
+		OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(this.config);
 		
-		var usage = this.config.usage.get(usage_name) as OLLMchat.Settings.ModelUsage;
-		if (usage == null) {
-			throw new GLib.IOError.NOT_FOUND(usage_name + " usage not found in config");
+		// Get tool config and extract the appropriate ModelUsage
+		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
+		OLLMchat.Settings.ModelUsage usage;
+		switch (model_type) {
+			case "embed":
+				usage = tool_config.embed;
+				break;
+			case "analysis":
+				usage = tool_config.analysis;
+				break;
+			default:
+				GLib.error("Unknown model type: %s (must be 'embed' or 'analysis')", model_type);
 		}
 		
 		// Apply command-line model override if provided
@@ -110,33 +114,23 @@ public abstract class VectorAppBase : TestAppBase
 			usage.model = cli_model_override;
 		}
 		
+		// Verify model is available on the server (verify_model checks connection and model availability)
+		stdout.printf("Verifying %s model '%s'...\n", model_type, usage.model);
+		if (!(yield usage.verify_model(this.config))) {
+			GLib.error("Error: %s model '%s' not found on server.\n" +
+			           "  Please ensure this model is available on your Ollama server.",
+			           model_type, usage.model);
+		}
+		stdout.printf("%s model found.\n", model_type);
+		
+		// Get connection (already validated by verify_model)
 		var connection = this.config.connections.get(usage.connection);
-		if (connection == null) {
-			throw new GLib.IOError.NOT_FOUND("Connection '%s' not found for %s", usage.connection, usage_name);
-		}
 		
-		// Verify model is available on the server
-		stdout.printf("Verifying %s model '%s'...\n", usage_name, usage.model);
-		var test_client = new OLLMchat.Client(connection);
-		try {
-			yield test_client.models();
-		} catch (GLib.Error e) {
-			stderr.printf("Error: Failed to fetch models from server: %s\n", e.message);
-			throw new GLib.IOError.FAILED("Failed to fetch models from server: %s", e.message);
-		}
-		
-		if (!test_client.available_models.has_key(usage.model)) {
-			stderr.printf("Error: %s model '%s' not found on server.\n" +
-			              "  Please ensure this model is available on your Ollama server.\n",
-			              usage_name, usage.model);
-			throw new GLib.IOError.NOT_FOUND("%s model '%s' not found on server", usage_name, usage.model);
-		}
-		stdout.printf("%s model found.\n", usage_name);
-		
-		var client = this.config.create_client(usage_name);
-		if (client == null) {
-			throw new GLib.IOError.NOT_FOUND(usage_name + " not configured");
-		}
+		// Create client directly from ModelUsage
+		var client = new OLLMchat.Client(connection) {
+			config = this.config,
+			model = usage.model
+		};
 		
 		return client;
 	}

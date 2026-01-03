@@ -258,18 +258,9 @@ namespace OLLMchat
 				});
 				
 				// Save config
-				try {
-					config.save();
-					// Connection already verified in bootstrap dialog, so call initialize_client directly
-					this.initialize_client.begin(config);
-				} catch (GLib.Error e) {
-					var alert = new Adw.AlertDialog(
-						"Configuration Error",
-						"Failed to save configuration: " + e.message
-					);
-					alert.add_response("ok", "OK");
-					alert.choose.begin(this, null);
-				}
+				config.save();
+				// Connection already verified in bootstrap dialog, so call initialize_client directly
+				this.initialize_client.begin(config);
 			});
 			
 			this.bootstrap_dialog.present(this);
@@ -278,26 +269,60 @@ namespace OLLMchat
 		/**
 		 * Initializes the client and sets up the UI.
 		 * Tests connection first, then calls initialize_client.
-		 * Shows bootstrap dialog if connection fails.
+		 * Shows warning dialog if connection fails (with option to configure).
+		 * Loops until connection succeeds or user cancels.
 		 * 
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 */
 		private async void initialize_unverified_client(Settings.Config2 config)
 		{
-			// Get default connection from config for testing
-			var default_connection = config.get_default_connection();
-			if (default_connection == null) {
-				yield this.show_bootstrap_dialog("No default connection found in config");
-				return;
-			}
-			
-			// Test connection first
-			try {
-				var test_client = new OLLMchat.Client(default_connection);
-				yield test_client.version();
-			} catch (GLib.Error e) {
-				// Connection failed - show bootstrap dialog with error
-				yield this.show_bootstrap_dialog("Failed to connect to server: " + e.message);
+			// Loop until connection succeeds
+			while (true) {
+				// Get default connection from config for testing
+				var default_connection = config.get_default_connection();
+				if (default_connection == null) {
+					yield this.show_bootstrap_dialog("No default connection found in config");
+					return;
+				}
+				
+				// Show checking connection dialog
+				var checking_dialog = this.show_checking_connection_dialog();
+				
+				// Test connection (version() method uses short timeout internally)
+				GLib.Error? connection_error = null;
+				try {
+					var test_client = new OLLMchat.Client(default_connection);
+					yield test_client.version();
+					// Connection succeeded - close checking dialog and proceed
+					checking_dialog.close();
+					break;
+				} catch (GLib.Error e) {
+					connection_error = e;
+					checking_dialog.close();
+				}
+				
+				// Connection failed - show warning dialog with option to configure
+				var response = yield this.show_connection_error_dialog("Failed to connect to server: " + connection_error.message);
+				
+				if (response != "settings") {
+					// User closed dialog without configuring - exit
+					return;
+				}
+				
+				// User clicked Configure - show settings dialog
+				// Connect to closed signal to re-check connection after settings dialog closes
+				ulong signal_id = 0;
+				signal_id = this.settings_dialog.closed.connect(() => {
+					// Disconnect signal to avoid multiple connections
+					this.settings_dialog.disconnect(signal_id);
+					// Re-check connection after settings dialog closes
+					this.initialize_unverified_client.begin(config);
+				});
+				
+				// Show settings dialog and switch to connections tab
+				this.show_settings_dialog("connections");
+				
+				// Wait for settings dialog to close (will trigger re-check via signal)
 				return;
 			}
 			
@@ -471,57 +496,29 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Auto-create embed and analysis ModelUsage entries if they don't exist
-			// These use the default connection with hardcoded models
-			OLLMvector.Database.setup_embed_usage(config);
-			OLLMvector.Indexing.Analysis.setup_analysis_usage(config);
+			// Setup tool config with default values if it doesn't exist (saves automatically if created)
+			OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);
 			
-			// Save config if we created new entries (so they persist)
-			try {
-				config.save();
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to save config after setting up embed usage: %s", e.message);
-			}
-			
-			// Get usage objects and validate they exist
-			var embed_usage = config.usage.get("ocvector.embed") as OLLMchat.Settings.ModelUsage;
-			if (embed_usage == null) {
-				string error_msg = "ocvector.embed usage not found in config";
+			// Get and validate tool config (validation sets is_valid flags and disables tool if needed)
+			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
+			if (!tool_config.enabled) {
+				string error_msg = "codebase_search tool configuration is invalid or disabled";
 				GLib.warning("Codebase search tool disabled: %s", error_msg);
 				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
 				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
-			var analysis_usage = config.usage.get("ocvector.analysis") as OLLMchat.Settings.ModelUsage;
-			if (analysis_usage == null) {
-				string error_msg = "ocvector.analysis usage not found in config";
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
-				return;
-			}
+			// Get embed and analysis ModelUsage from tool config (already validated)
+			var embed_usage = tool_config.embed;
+			var analysis_usage = tool_config.analysis;
 			
-			// Check if required models are available on the server
-			bool models_available = yield OLLMvector.Database.check_required_models_available(config);
-			if (!models_available) {
-				string error_msg = "Required models not available on server. Embed model '" +
-					embed_usage.model + "' and/or analysis model '" + analysis_usage.model +
-					"' not found. Please ensure these models are available on your Ollama server.";
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
-				return;
-			}
-			// Try to get embed client from config
-			var embed_client = config.create_client("ocvector.embed");
-			if (embed_client == null) {
-				string error_msg = "No embed configuration available";
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
-				return;
-			}
+			// Create embed client from tool config (connection already validated)
+			var embed_connection = config.connections.get(embed_usage.connection);
+			var embed_client = new OLLMchat.Client(embed_connection) {
+				config = config,
+				model = embed_usage.model
+			};
 			
 			// Ensure embed_client has config set (should be set by create_client, but verify)
 			if (embed_client.config == null) {
@@ -803,16 +800,76 @@ namespace OLLMchat
 		/**
 		 * Shows the settings dialog.
 		 * 
+		 * @param page_name Optional page name to switch to (e.g., "connections", "models")
 		 * @since 1.0
 		 */
-		private void show_settings_dialog()
+		private void show_settings_dialog(string? page_name = null)
 		{
-			if (this.history_manager == null) {
-				return;
-			}
-			
 			// Show settings dialog (already created in constructor)
-			this.settings_dialog.show_dialog(this);
+			// Note: settings_dialog doesn't require history_manager, so we can show it anytime
+			this.settings_dialog.show_dialog(this, page_name);
+		}
+		
+		/**
+		 * Shows a dialog indicating that connection is being checked.
+		 * 
+		 * @return The dialog instance (caller should close it when done)
+		 */
+		private Adw.Dialog show_checking_connection_dialog()
+		{
+			// Create a simple dialog with spinner
+			var dialog = new Adw.Dialog() {
+				title = "Checking Connection"
+			};
+			
+			// Create content box
+			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
+				margin_top = 24,
+				margin_bottom = 24,
+				margin_start = 24,
+				margin_end = 24,
+				spacing = 12
+			};
+			
+			var spinner = new Gtk.Spinner() {
+				spinning = true,
+				halign = Gtk.Align.CENTER,
+				width_request = 48,
+				height_request = 48
+			};
+			box.append(spinner);
+			
+			var label = new Gtk.Label("Verifying connection to server...") {
+				halign = Gtk.Align.CENTER
+			};
+			box.append(label);
+			
+			dialog.set_child(box);
+			
+			// Present dialog (non-blocking)
+			dialog.present(this);
+			
+			return dialog;
+		}
+		
+		/**
+		 * Shows a warning dialog when connection fails, with option to configure settings.
+		 * 
+		 * @param error_message The error message to display
+		 * @return The response string ("settings" or "cancel")
+		 */
+		private async string show_connection_error_dialog(string error_message)
+		{
+			var alert = new Adw.AlertDialog(
+				"Connection Failed",
+				error_message + "\n\nPlease check your connection settings and try again."
+			);
+			alert.add_response("cancel", "Close");
+			alert.add_response("settings", "Configure");
+			alert.set_response_appearance("settings", Adw.ResponseAppearance.SUGGESTED);
+			
+			var response = yield alert.choose(this, null);
+			return response;
 		}
 		
 	}

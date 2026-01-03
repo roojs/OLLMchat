@@ -33,9 +33,12 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.Config2.connections.html">connections</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.model_options.html">model_options</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools.html">tools</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools_unregistered.html">tools_unregistered</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage.html">usage</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage_unregistered.html">usage_unregistered</a></li>
           <li class="static_method"><a href="OLLMchat.Settings.Config2.load.html">load</a></li>
+          <li class="static_method"><a href="OLLMchat.Settings.Config2.register_tool_type.html">register_tool_type</a></li>
           <li class="static_method"><a href="OLLMchat.Settings.Config2.register_type.html">register_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.Config2.Config2.html">Config2</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.create_chat.html">create_chat</a></li>
@@ -90,6 +93,15 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Map of model name → Call.Options (per-model option overrides)</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="interface">Map</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Settings.BaseToolConfig.html" class="class">BaseToolConfig</a></span>&gt; <b><a href="OLLMchat.Settings.Config2.tools.html" class="property">tools</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Map of tool name → tool configuration objects (handled by registered
+                GTypes)</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="interface">Map</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="class">Node</span></span>&gt; <b><a href="OLLMchat.Settings.Config2.tools_unregistered.html" class="property">tools_unregistered</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Map of tool name → Json.Node for unregistered types.</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="interface">Map</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="class">Object</span></span>&gt; <b><a href="OLLMchat.Settings.Config2.usage.html" class="property">usage</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Map of usage key → model usage objects (handled by registered 
@@ -105,6 +117,10 @@
           <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><span class="class">Config2</span></span> <b><a href="OLLMchat.Settings.Config2.load.html" class="static_method">load</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Loads Config2 from file.</span>
+            </div></li>
+          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Config2.register_tool_type.html" class="static_method">register_tool_type</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tool_name, <span class="main_type"><span class="struct">Type</span></span> gtype)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Registers a GType for a tool configuration key (static method).</span>
             </div></li>
           <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Config2.register_type.html" class="static_method">register_type</a></b> (<span class="main_basic_type"><span class="class">string</span></span> key, <span class="main_type"><span class="struct">Type</span></span> gtype)
             </span>
@@ -148,7 +164,7 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Config2.save.html" class="method">save</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Config2.save.html" class="method">save</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Saves configuration to file.</span>
             </div></li>

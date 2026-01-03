@@ -33,9 +33,12 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.Config2.connections.html">connections</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.model_options.html">model_options</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools.html">tools</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Config2.tools_unregistered.html">tools_unregistered</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage.html">usage</a></li>
           <li class="property"><a href="OLLMchat.Settings.Config2.usage_unregistered.html">usage_unregistered</a></li>
           <li class="static_method"><a href="OLLMchat.Settings.Config2.load.html">load</a></li>
+          <li class="static_method"><a href="OLLMchat.Settings.Config2.register_tool_type.html">register_tool_type</a></li>
           <li class="static_method"><a href="OLLMchat.Settings.Config2.register_type.html">register_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.Config2.Config2.html">Config2</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.create_chat.html">create_chat</a></li>
@@ -56,20 +59,12 @@
         <h1 class="main_title">save</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">save</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">save</span></b> ()
         </div>
         <div class="description">
           <p>Saves configuration to file.</p>
           <p>Creates the directory structure if it doesn't exist. Uses the static config_path property.</p>
-          <h2 class="main_title">Exceptions:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">Error</td>
-              <td>
-                <p>if file cannot be written </p>
-              </td>
-            </tr>
-          </table>
+          <p>If saving fails, logs a warning but does not throw an error.</p>
         </div>
       </div>
     </div><br/>

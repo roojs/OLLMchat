@@ -35,10 +35,10 @@ Options:
   -d, --debug          Enable debug output
   -r, --recurse        Recurse into subfolders (only for folders)
   --reset-database     Reset the vector database (delete vectors, metadata, and reset scan dates)
-  --url=URL           Ollama server URL (required if config not found)
-  --api-key=KEY       API key (optional)
-  --embed-model=MODEL Embedding model name (default: bge-m3)
-  --analyze-model=MODEL Analysis model name (default: qwen3-coder:30b)
+  --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
+  --api-key=KEY       API key (only used if config not found; ignored if config exists)
+  --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
+  --analyze-model=MODEL Analysis model name (overrides config; default: qwen3-coder:30b)
 
 Examples:
   {ARG} libocvector/Database.vala
@@ -77,8 +77,8 @@ Examples:
 	public override OLLMchat.Settings.Config2 load_config()
 	{
 		// Register ocvector types before loading config
-		OLLMvector.Database.register_config();
-		OLLMvector.Indexing.Analysis.register_config();
+		// Use unified tool config registration
+		OLLMvector.Tool.CodebaseSearchTool.register_config();
 		
 		// Call base implementation
 		return base_load_config();
@@ -181,12 +181,12 @@ Examples:
 		
 		if (this.config.loaded) {
 			yield this.ensure_config();
-			embed_client = yield this.usage_client("ocvector.embed");
-			analysis_client = yield this.usage_client("ocvector.analysis");
+			embed_client = yield this.tool_config_client("embed");
+			analysis_client = yield this.tool_config_client("analysis");
 		} else {
-			// Get clients and verify models (usage_client will check model availability and apply CLI overrides)
-			embed_client = yield this.usage_client("ocvector.embed", opt_url, opt_api_key, opt_embed_model);
-			analysis_client = yield this.usage_client("ocvector.analysis", opt_url, opt_api_key, opt_analyze_model);
+			// Get clients and verify models (tool_config_client will check model availability and apply CLI overrides)
+			embed_client = yield this.tool_config_client("embed", opt_url, opt_api_key, opt_embed_model);
+			analysis_client = yield this.tool_config_client("analysis", opt_url, opt_api_key, opt_analyze_model);
 			
 			// Save config after all checks are complete
 			this.save_config();

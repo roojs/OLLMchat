@@ -26,6 +26,47 @@ namespace OLLMtools
 	 */
 	public class GoogleSearchTool : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Registers the Google search tool configuration type in Config2.
+		 * 
+		 * This should be called before loading config to register
+		 * "google_search" as a GoogleSearchToolConfig type for deserialization.
+		 */
+		public static void register_config()
+		{
+			// Register the tool config type
+			OLLMchat.Settings.Config2.register_tool_type("google_search", typeof(Tool.GoogleSearchToolConfig));
+		}
+		
+		/**
+		 * Sets up the Google search tool configuration with default values.
+		 * 
+		 * Creates a GoogleSearchToolConfig in `Config2.tools["google_search"]` if it doesn't exist.
+		 * The config will have empty api_key and engine_id, which the user must configure.
+		 * 
+		 * If a new config is created, it will be saved automatically. If saving fails, a warning
+		 * will be logged but the method will still return true (config was created successfully).
+		 * 
+		 * @param config The Config2 instance to update
+		 * @return true if the tool config was created, false if it already existed
+		 */
+		public static bool setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			// Only create if it doesn't already exist
+			if (config.tools.has_key("google_search")) {
+				return false;
+			}
+			
+			// Create tool config with empty values (user must configure api_key and engine_id)
+			var tool_config = new Tool.GoogleSearchToolConfig();
+			config.tools.set("google_search", tool_config);
+			
+			// Save config if we created new entries (so they persist)
+			config.save();
+			
+			return true;
+		}
+		
 		public override string name { get { return "google_search"; } }
 		
 		public override string description { get {

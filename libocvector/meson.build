@@ -64,6 +64,7 @@ ocvector_src = files([
   
   # Tool/ directory
   'Tool/CodebaseSearchTool.vala',
+  'Tool/CodebaseSearchToolConfig.vala',
   'Tool/RequestCodebaseSearch.vala',
   
   # Background scanning

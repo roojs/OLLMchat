@@ -43,12 +43,58 @@ namespace OLLMchat.Settings
 		 * Optional runtime options (temperature, top_p, top_k, num_ctx, etc.)
 		 */
 		public OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
+		
+		/**
+		 * Whether this ModelUsage is valid (connection exists, model is available).
+		 * 
+		 * Set to false by validation methods if the connection is missing or
+		 * the model is not available on the server.
+		 */
+		public bool is_valid { get; set; default = true; }
 
 		/**
 		 * Default constructor.
 		 */
 		public ModelUsage()
 		{
+		}
+		
+		/**
+		 * Verifies that the model specified in this ModelUsage is available on the connection.
+		 * 
+		 * Creates a temporary client, fetches the list of available models from the server,
+		 * and checks if the model name exists in the available models. Updates the `is_valid`
+		 * property based on the verification result.
+		 * 
+		 * Returns false if connection is empty, model is empty, connection is not found,
+		 * or if there's an error fetching models. Returns true only if the model is available.
+		 * 
+		 * @param config The Config2 instance containing the connection configuration
+		 * @return true if the model is available, false otherwise
+		 */
+		public async bool verify_model(Config2 config)
+		{
+			if (this.connection == "" || this.model == "") {
+				this.is_valid = false;
+				return false;
+			}
+			
+			var connection_obj = config.connections.get(this.connection);
+			if (connection_obj == null) {
+				this.is_valid = false;
+				return false;
+			}
+			
+			try {
+				var client = new OLLMchat.Client(connection_obj);
+				yield client.models();
+				
+				this.is_valid = client.available_models.has_key(this.model);
+				return this.is_valid;
+			} catch (GLib.Error e) {
+				this.is_valid = false;
+				return false;
+			}
 		}
 
 		public unowned ParamSpec? find_property(string name)

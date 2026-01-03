@@ -27,6 +27,104 @@ namespace OLLMvector.Tool
 	 */
 	public class CodebaseSearchTool : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Registers the codebase search tool configuration type in Config2.
+		 * 
+		 * This should be called before loading config to register
+		 * "codebase_search" as a CodebaseSearchToolConfig type for deserialization.
+		 */
+		public static void register_config()
+		{
+			// Register the tool config type
+			OLLMchat.Settings.Config2.register_tool_type("codebase_search",
+				 typeof(CodebaseSearchToolConfig));
+		}
+		
+		/**
+		 * Sets up the codebase search tool configuration with default connection.
+		 * 
+		 * Creates a CodebaseSearchToolConfig in `Config2.tools["codebase_search"]` if it doesn't exist.
+		 * The config class already has default model names and options set in its properties.
+		 * This method only sets the connection from the default connection. This replaces the separate
+		 * setup_embed_usage() and setup_analysis_usage() methods with a unified setup.
+		 * 
+		 * If a new config is created, it will be saved automatically. If saving fails, a warning
+		 * will be logged but the method will still return true (config was created successfully).
+		 * 
+		 * @param config The Config2 instance to update
+		 * @return true if the tool config was created, false if it already existed
+		 */
+		public static bool setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			// Only create if it doesn't already exist
+			if (config.tools.has_key("codebase_search")) {
+				return false;
+			}
+			
+			var default_connection = config.get_default_connection();
+			if (default_connection == null) {
+				GLib.warning("No default connection found, cannot setup codebase search tool config");
+				return false;
+			}
+			
+			// Create tool config and set up defaults
+			var tool_config = new CodebaseSearchToolConfig();
+			tool_config.setup_defaults(default_connection.url);
+			
+			config.tools.set("codebase_search", tool_config);
+			
+			// Save config if we created new entries (so they persist)
+			config.save();
+			
+			return true;
+		}
+		
+		/**
+		 * Gets and validates the codebase search tool configuration.
+		 * 
+		 * Returns the CodebaseSearchToolConfig from `Config2.tools["codebase_search"]` if it exists.
+		 * Validates that:
+		 * - Tool config exists
+		 * - Embed and analysis ModelUsage have connection and model set
+		 * - Connections exist in config
+		 * - Models are available on the servers
+		 * 
+		 * If validation fails, sets `is_valid = false` on the ModelUsage objects,
+		 * disables the tool, and logs warnings. If config doesn't exist, returns a disabled tool_config.
+		 * 
+		 * @param config The Config2 instance
+		 * @return The CodebaseSearchToolConfig instance from tools map, or a disabled one if not found
+		 */
+		public static async CodebaseSearchToolConfig get_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			if (!config.tools.has_key("codebase_search")) {
+				var tool_config = new CodebaseSearchToolConfig();
+				tool_config.enabled = false;
+				return tool_config;
+			}
+			
+			var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+			
+			// Validate embed ModelUsage (verify_model checks connection and model availability)
+			var embed_usage = tool_config.embed;
+			if (!(yield embed_usage.verify_model(config))) {
+				GLib.warning("Codebase search tool: Embed model verification failed");
+				tool_config.enabled = false;
+				return tool_config;
+			}
+			
+			// Validate analysis ModelUsage (verify_model checks connection and model availability)
+			var analysis_usage = tool_config.analysis;
+			if (!(yield analysis_usage.verify_model(config))) {
+				GLib.warning("Codebase search tool: Analysis model verification failed");
+				tool_config.enabled = false;
+				return tool_config;
+			}
+			
+			// All validation passed
+			return tool_config;
+		}
+		
 		public override string name { get { return "codebase_search"; } }
 		
 		public override string description { get {

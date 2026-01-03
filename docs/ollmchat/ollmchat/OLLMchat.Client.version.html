@@ -69,7 +69,8 @@
         </div>
         <div class="description">
           <p>Gets the version of the Ollama server.</p>
-          <p>Calls the /api/version endpoint to retrieve the server version. Useful for verifying connectivity during bootstrap.</p>
+          <p>Calls the /api/version endpoint to retrieve the server version. Useful for verifying connectivity during bootstrap. Uses a short timeout 
+            (10 seconds) since version checks should be quick.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

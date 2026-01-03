@@ -31,8 +31,6 @@
           <li class="property"><a href="OLLMvector.Database.vector_count.html">vector_count</a></li>
           <li class="static_method">check_required_models_available</li>
           <li class="static_method"><a href="OLLMvector.Database.get_embedding_dimension.html">get_embedding_dimension</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.register_config.html">register_config</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.setup_embed_usage.html">setup_embed_usage</a></li>
           <li class="creation_method"><a href="OLLMvector.Database.Database.html">Database</a></li>
           <li class="method"><a href="OLLMvector.Database.add_documents.html">add_documents</a></li>
           <li class="method"><a href="OLLMvector.Database.add_vectors_batch.html">add_vectors_batch</a></li>
@@ -48,8 +46,8 @@
         </div>
         <div class="description">
           <p>Checks if the required models for codebase search are available on the server.</p>
-          <p>Verifies that both the embedding model (from ocvector.embed) and analysis model (from ocvector.analysis) are available on the server. 
-            This should be called before initializing the codebase search tool.</p>
+          <p>Verifies that both the embedding model and analysis model are available on the server. Reads from CodebaseSearchToolConfig in tools map, 
+            or falls back to usage map for backward compatibility. This should be called before initializing the codebase search tool.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>

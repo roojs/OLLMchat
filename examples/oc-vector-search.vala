@@ -44,9 +44,9 @@ Options:
   -e, --element-type=TYPE Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant)
   -n, --max-results=N  Maximum number of results (default: 10)
   -s, --max-snippet-lines=N Maximum lines of code snippet to display (default: 10, -1 for no limit)
-  --url=URL           Ollama server URL (required if config not found)
-  --api-key=KEY       API key (optional)
-  --embed-model=MODEL Embedding model name (default: bge-m3)
+  --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
+  --api-key=KEY       API key (only used if config not found; ignored if config exists)
+  --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
 
 Examples:
   {ARG} libocvector "database connection"
@@ -87,8 +87,8 @@ Examples:
 	public override OLLMchat.Settings.Config2 load_config()
 	{
 		// Register ocvector types before loading config
-		OLLMvector.Database.register_config();
-		OLLMvector.Indexing.Analysis.register_config();
+		// Use unified tool config registration
+		OLLMvector.Tool.CodebaseSearchTool.register_config();
 		
 		// Call base implementation
 		return base_load_config();
@@ -158,10 +158,10 @@ Examples:
 		
 		if (this.config.loaded) {
 			yield this.ensure_config();
-			embed_client = yield this.usage_client("ocvector.embed");
+			embed_client = yield this.tool_config_client("embed");
 		} else {
-			// Get client and verify model (usage_client will check model availability and apply CLI override)
-			embed_client = yield this.usage_client("ocvector.embed", opt_url, opt_api_key, opt_embed_model);
+			// Get client and verify model (tool_config_client will check model availability and apply CLI override)
+			embed_client = yield this.tool_config_client("embed", opt_url, opt_api_key, opt_embed_model);
 			
 			// Save config after all checks are complete
 			this.save_config();

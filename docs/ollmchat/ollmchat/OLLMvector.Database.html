@@ -31,8 +31,6 @@
           <li class="property"><a href="OLLMvector.Database.vector_count.html">vector_count</a></li>
           <li class="static_method"><a href="OLLMvector.Database.check_required_models_available.html">check_required_models_available</a></li>
           <li class="static_method"><a href="OLLMvector.Database.get_embedding_dimension.html">get_embedding_dimension</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.register_config.html">register_config</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.setup_embed_usage.html">setup_embed_usage</a></li>
           <li class="creation_method"><a href="OLLMvector.Database.Database.html">Database</a></li>
           <li class="method"><a href="OLLMvector.Database.add_documents.html">add_documents</a></li>
           <li class="method"><a href="OLLMvector.Database.add_vectors_batch.html">add_vectors_batch</a></li>
@@ -60,7 +58,7 @@
           <p>The database requires configuration of model usage types before use: - "ocvector.embed": Embedding model for converting text to vectors
           </p>
           <h2>Usage Example </h2>
-          <p><pre class="main_source"><code><span class="main_comment">// Register and setup model usage</span><br/>OLLMvector.Database.register_config();<br/>OLLMvector.Database.setup_embed_usage(config);<br/><br/><span class="main_comment">// Get embedding dimension</span><br/><span class="main_keyword">var</span> dimension = <span class="main_keyword">yield</span> OLLMvector.Database.get_embedding_dimension(embedding_client);<br/><br/><span class="main_comment">// Create database</span><br/><span class="main_keyword">var</span> db = <span class="main_keyword">new</span> OLLMvector.Database(embedding_client, <span class="main_literal">"/path/to/index.faiss"</span>, dimension);<br/><br/><span class="main_comment">// Add documents (automatically generates embeddings)</span><br/><span class="main_keyword">yield</span> db.add_documents({<span class="main_literal">"document 1"</span>, <span class="main_literal">"document 2"</span>});<br/><br/><span class="main_comment">// Search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> db.search(<span class="main_literal">"query text"</span>, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index</span><br/>db.save_index();</code></pre>
+          <p><pre class="main_source"><code><span class="main_comment">// Register tool config type</span><br/>OLLMvector.Tool.CodebaseSearchTool.register_config();<br/>OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);<br/><br/><span class="main_comment">// Get embedding dimension</span><br/><span class="main_keyword">var</span> dimension = <span class="main_keyword">yield</span> OLLMvector.Database.get_embedding_dimension(embedding_client);<br/><br/><span class="main_comment">// Create database</span><br/><span class="main_keyword">var</span> db = <span class="main_keyword">new</span> OLLMvector.Database(embedding_client, <span class="main_literal">"/path/to/index.faiss"</span>, dimension);<br/><br/><span class="main_comment">// Add documents (automatically generates embeddings)</span><br/><span class="main_keyword">yield</span> db.add_documents({<span class="main_literal">"document 1"</span>, <span class="main_literal">"document 2"</span>});<br/><br/><span class="main_comment">// Search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> db.search(<span class="main_literal">"query text"</span>, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index</span><br/>db.save_index();</code></pre>
           </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
@@ -91,14 +89,6 @@
             <div class="leaf_brief_description"><span class="brief_description">Gets the embedding dimension from the client by doing a test embed.
               </span>
             </div></li>
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.register_config.html" class="static_method">register_config</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Registers the embed ModelUsage type in Config2.</span>
-            </div></li>
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.setup_embed_usage.html" class="static_method">setup_embed_usage</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Sets up the embed ModelUsage entry in Config2.</span>
-            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
@@ -128,8 +118,8 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-446')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-446">
+          <div class="headline" onclick="toggle_box (this, 'box-content-452')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-452">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>

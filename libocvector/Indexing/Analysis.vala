@@ -37,45 +37,6 @@ namespace OLLMvector.Indexing
 		private PromptTemplate? cached_template = null;
 		
 		/**
-		 * Registers the analysis ModelUsage type in Config2.
-		 * 
-		 * This should be called before loading config to register
-		 * "ocvector.analysis" as a ModelUsage type for deserialization.
-		 */
-		public static void register_config()
-		{
-			OLLMchat.Settings.Config2.register_type("ocvector.analysis", typeof(OLLMchat.Settings.ModelUsage));
-		}
-		
-		/**
-		 * Sets up the analysis ModelUsage entry in Config2.
-		 * 
-		 * Creates a ModelUsage entry for "ocvector.analysis" in the config's usage map
-		 * if it doesn't already exist. Uses the default connection and "qwen3-coder:30b" model.
-		 * This should be called when setting up the codebase search tool.
-		 * 
-		 * @param config The Config2 instance to update
-		 */
-		public static void setup_analysis_usage(OLLMchat.Settings.Config2 config)
-		{
-			// Only create if it doesn't already exist
-			if (config.usage.has_key("ocvector.analysis")) {
-				return;
-			}
-			
-			var default_connection = config.get_default_connection();
-			var analysis_usage = new OLLMchat.Settings.ModelUsage() {
-				connection = default_connection.url,
-				model = "qwen3-coder:30b",
-				options = new OLLMchat.Call.Options() {
-					temperature = 0.0
-				}
-			};
-			
-			config.usage.set("ocvector.analysis", analysis_usage);
-		}
-		
-		/**
 		 * Constructor.
 		 * 
 		 * @param client The OLLMchat client for LLM API calls
@@ -344,11 +305,21 @@ namespace OLLMvector.Indexing
 			
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					// Create chat call from config
-					var chat = this.client.config.create_chat("ocvector.analysis");
-					if (chat == null) {
-						throw new GLib.IOError.FAILED("Failed to create chat from ocvector.analysis config");
+					// Get tool config and create chat from analysis ModelUsage
+					var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.client.config);
+					if (!tool_config.enabled || !tool_config.analysis.is_valid) {
+						throw new GLib.IOError.FAILED("Codebase analysis tool is not configured or enabled correctly.");
 					}
+					
+					var analysis_usage = tool_config.analysis;
+					var analysis_connection = this.client.config.connections.get(analysis_usage.connection);
+					
+					var analysis_client = new OLLMchat.Client(analysis_connection) {
+						config = this.client.config,
+						model = analysis_usage.model
+					};
+					
+					var chat = new OLLMchat.Call.Chat(analysis_client, analysis_usage.model, analysis_usage.options);
 					// Enable streaming on the client (same as constructor does for this.client)
 					chat.client.stream = true;
 					

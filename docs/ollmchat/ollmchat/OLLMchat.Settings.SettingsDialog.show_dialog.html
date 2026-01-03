@@ -44,7 +44,7 @@
         <h1 class="main_title">show_dialog</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">show_dialog</span></b> (<span class="main_type"><span class="class">Window</span></span>? parent = <span class="main_literal">null</span>)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">show_dialog</span></b> (<span class="main_type"><span class="class">Window</span></span>? parent = <span class="main_literal">null</span>, <span class="main_basic_type"><span class="class">string</span></span>? page_name = <span class="main_literal">null</span>)
         </div>
         <div class="description">
           <p>Shows the settings dialog and initializes models page.</p>
@@ -54,6 +54,12 @@
               <td class="main_parameter_table_name">parent</td>
               <td>
                 <p>Parent window to attach the dialog to </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">page_name</td>
+              <td>
+                <p>Optional page name to switch to (e.g., "connections", "models") </p>
               </td>
             </tr>
           </table>

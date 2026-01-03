@@ -138,12 +138,8 @@ namespace OLLMchat
 			
 			// Save as config.2.json if conversion was successful
 			if (config.loaded) {
-				try {
-					config.save();
-					GLib.debug("Saved converted config as %s", OLLMchat.Settings.Config2.config_path);
-				} catch (GLib.Error e) {
-					GLib.warning("Failed to save config.2.json: %s", e.message);
-				}
+				config.save();
+				GLib.debug("Saved converted config as %s", OLLMchat.Settings.Config2.config_path);
 			}
 			
 			return config;

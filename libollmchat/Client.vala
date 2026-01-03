@@ -348,6 +348,7 @@ namespace OLLMchat
 		 *
 		 * Calls the /api/version endpoint to retrieve the server version.
 		 * Useful for verifying connectivity during bootstrap.
+		 * Uses a short timeout (10 seconds) since version checks should be quick.
 		 *
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return Version string from the server (e.g., "0.12.6")
@@ -356,11 +357,20 @@ namespace OLLMchat
 		 */
 		public async string version(GLib.Cancellable? cancellable = null) throws Error
 		{
-			var call = new OLLMchat.Call.Version(this) {
-				cancellable = cancellable
-			};
-			var result = yield call.exec_version();
-			return result;
+			// Save original timeout and set short timeout for version check
+			var original_timeout = this.timeout;
+			this.timeout = 10;  // 10 seconds - version check should be quick
+			
+			try {
+				var call = new OLLMchat.Call.Version(this) {
+					cancellable = cancellable
+				};
+				var result = yield call.exec_version();
+				return result;
+			} finally {
+				// Restore original timeout
+				this.timeout = original_timeout;
+			}
 		}
 
 
