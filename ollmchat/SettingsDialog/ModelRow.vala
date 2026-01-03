@@ -36,7 +36,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * The connection this model belongs to.
 		 */
-		public Connection connection { get; construct; }
+		public OLLMchat.Settings.Connection connection { get; construct; }
 
 		/**
 		 * The model's options (can be modified).
@@ -57,7 +57,7 @@ namespace OLLMchat.SettingsDialog
 		 */
 		public ModelRow( 
 			OLLMchat.Response.Model model,
-			Connection connection,
+			OLLMchat.Settings.Connection connection,
 			OLLMchat.Call.Options options,
 			ModelsPage models_page
 		)

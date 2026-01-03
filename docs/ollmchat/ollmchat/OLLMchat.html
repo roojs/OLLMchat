@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>OLLMchat &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">OLLMchat &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace">OLLMchat</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.Call.html">Call</a></li>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a></li>
+          <li class="namespace"><a href="OLLMchat.History.html">History</a></li>
+          <li class="namespace"><a href="OLLMchat.Prompt.html">Prompt</a></li>
+          <li class="namespace"><a href="OLLMchat.Response.html">Response</a></li>
+          <li class="namespace"><a href="OLLMchat.Settings.html">Settings</a></li>
+          <li class="namespace"><a href="OLLMchat.SettingsDialog.html">SettingsDialog</a></li>
+          <li class="namespace"><a href="OLLMchat.Tool.html">Tool</a></li>
+          <li class="interface"><a href="OLLMchat.ApplicationInterface.html">ApplicationInterface</a></li>
+          <li class="interface"><a href="OLLMchat.ChatContentInterface.html">ChatContentInterface</a></li>
+          <li class="class"><a href="OLLMchat.Client.html">Client</a></li>
+          <li class="class"><a href="OLLMchat.FileChangeBanner.html">FileChangeBanner</a></li>
+          <li class="class"><a href="OLLMchat.Message.html">Message</a></li>
+          <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a></li>
+          <li class="class"><a href="OLLMchat.OllmchatApplication.html">OllmchatApplication</a></li>
+          <li class="class"><a href="OLLMchat.OllmchatWindow.html">OllmchatWindow</a></li>
+          <li class="class"><a href="OLLMchat.VectorScanBanner.html">VectorScanBanner</a></li>
+          <li class="class"><a href="OLLMchat.WindowPane.html">WindowPane</a></li>
+          <li class="field"><a href="OLLMchat.debug_critical_enabled.html">debug_critical_enabled</a></li>
+          <li class="field"><a href="OLLMchat.debug_on.html">debug_on</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">OLLMchat</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <div class="description">
+          <p>LLM chat client namespace.</p>
+          <p>The OLLMchat namespace provides a complete client library for interacting with Ollama API and OpenAI-compatible REST interfaces. It 
+            handles chat conversations, tool calling, streaming responses, history management, and configuration without GTK dependencies, allowing 
+            use in both GUI and non-GUI contexts. The namespace includes Client for API communication, Call and Response classes for API operations, 
+            Message for chat messages, Tool system for function calling, History for session persistence, Settings for configuration, and Prompt 
+            system for agent-based conversations.</p>
+          <h2>Architecture Benefits </h2>
+          <p>* Separation of Concerns: Core logic without GUI dependencies * Tool Integration: Extensible function-calling system with permissions * 
+            Streaming Support: Real-time response streaming * History Persistence: Automatic session management * Flexible Configuration: Multiple 
+            connection support * Agent System: Pluggable prompt generation</p>
+          <h2>Usage Examples </h2>
+          <h3>Basic Chat </h3>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span><br/>};<br/><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection) {<br/>    model = <span class="main_literal">"llama3.2"</span><br/>};<br/><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Hello, how are you?"</span>);<br/>print(response.message.content);</code></pre>
+          </p>
+          <h3>Chat with Tools </h3>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection) {<br/>    model = <span class="main_literal">"llama3.2"</span><br/>};<br/><br/><span class="main_comment">// Add a tool</span><br/><span class="main_keyword">var</span> read_file_tool = <span class="main_keyword">new</span> Tools.ReadFile(client);<br/>client.addTool(read_file_tool);<br/><br/><span class="main_comment">// Chat will automatically use tools when needed</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Read the file README.md"</span>);</code></pre>
+          </p>
+          <h3>Streaming Responses </h3>
+          <p><pre class="main_source"><code>client.stream = <span class="main_literal">true</span>;<br/>client.message_created.connect((msg, content) =&gt; {<br/>    <span class="main_keyword">if</span> (msg.is_content &amp;&amp; msg.is_stream) {<br/>        print(content.chat_content);<br/>    }<br/>});<br/><br/><span class="main_keyword">yield</span> client.chat(<span class="main_literal">"Tell me a story"</span>);</code></pre>
+          </p>
+          <h3>History Management </h3>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> manager = <span class="main_keyword">new</span> History.Manager(history_dir, db, client, config);<br/><br/><span class="main_comment">// Create new session</span><br/><span class="main_keyword">var</span> session = <span class="main_keyword">yield</span> manager.new_session();<br/><br/><span class="main_comment">// Switch to existing session</span><br/><span class="main_keyword">yield</span> manager.switch_to_session(existing_session);<br/><br/><span class="main_comment">// Save current session</span><br/><span class="main_keyword">yield</span> manager.save_session();</code></pre>
+          </p>
+          <h2>Best Practices </h2>
+          <ol type="1">
+            <li>Connection Setup: Always set connection before creating Client
+              <p>2. Model Selection: Set model from Config2's usage map if available</p>
+              <p>3. Tool Registration: Add tools before starting chat conversations</p>
+              <p>4. Permission Checking: Implement ChatPermission.Provider for tool security</p>
+              <p>5. Error Handling: Wrap API calls in try-catch blocks</p>
+              <p>6. Streaming: Use message_created signal for real-time updates</p>
+              <p>7. Session Management: Use History.Manager for persistent conversations</p></li>
+          </ol>
+        </div>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Namespaces:</h3>
+        <ul class="navi_inline">
+          <li class="namespace"><a href="OLLMchat.Call.html">Call</a> - <span class="brief_description">API call implementations namespace.</span>
+          </li>
+          <li class="namespace"><a href="OLLMchat.ChatPermission.html">ChatPermission</a> - <span class="brief_description">Tool permission system 
+              namespace.</span></li>
+          <li class="namespace"><a href="OLLMchat.History.html">History</a> - <span class="brief_description">Chat history and session management 
+              namespace.</span></li>
+          <li class="namespace"><a href="OLLMchat.Prompt.html">Prompt</a> - <span class="brief_description">Prompt generation and agent system 
+              namespace.</span></li>
+          <li class="namespace"><a href="OLLMchat.Response.html">Response</a> - <span class="brief_description">API response handling namespace.
+            </span></li>
+          <li class="namespace"><a href="OLLMchat.Settings.html">Settings</a> - <span class="brief_description">Configuration and settings namespace.
+            </span></li>
+          <li class="namespace"><a href="OLLMchat.SettingsDialog.html">SettingsDialog</a></li>
+          <li class="namespace"><a href="OLLMchat.SettingsDialog.Rows.html">Rows</a></li>
+          <li class="namespace"><a href="OLLMchat.Tool.html">Tool</a> - <span class="brief_description">Tool interface and parameter system namespace.
+            </span></li>
+        </ul>
+        <h3 class="main_title">Interfaces:</h3>
+        <ul class="navi_inline">
+          <li class="interface"><a href="OLLMchat.ApplicationInterface.html">ApplicationInterface</a> - <span class="brief_description">Interface for 
+              OLLMchat applications that provides standardized configuration and data directory management.</span></li>
+          <li class="interface"><a href="OLLMchat.ChatContentInterface.html">ChatContentInterface</a> - <span class="brief_description">Interface for 
+              objects that provide chat content.</span></li>
+        </ul>
+        <h3 class="main_title">Classes:</h3>
+        <ul class="navi_inline">
+          <li class="class"><a href="OLLMchat.Client.html">Client</a> - <span class="brief_description">Main client class for interacting with Ollama 
+              API and OpenAI-compatible REST interfaces.</span></li>
+          <li class="class"><a href="OLLMchat.FileChangeBanner.html">FileChangeBanner</a> - <span class="brief_description">Banner widget that 
+              displays file change warnings with action buttons.</span></li>
+          <li class="class"><a href="OLLMchat.Message.html">Message</a> - <span class="brief_description">Message class for chat conversations with 
+              role-based behavior.</span></li>
+          <li class="class"><a href="OLLMchat.OllamaBase.html">OllamaBase</a> - <span class="brief_description">Base class for Ollama API objects that
+              need JSON serialization.</span></li>
+          <li class="class"><a href="OLLMchat.OllmchatApplication.html">OllmchatApplication</a> - <span class="brief_description">Main application 
+              class implementing OLLMchat.ApplicationInterface interface.</span></li>
+          <li class="class"><a href="OLLMchat.OllmchatWindow.html">OllmchatWindow</a></li>
+          <li class="class"><a href="OLLMchat.VectorScanBanner.html">VectorScanBanner</a> - <span class="brief_description">Banner widget that 
+              displays semantic search analysis progress.</span></li>
+          <li class="class"><a href="OLLMchat.WindowPane.html">WindowPane</a> - <span class="brief_description">Window pane utility class that manages
+              a split view with special resizing behavior.</span></li>
+        </ul>
+        <h3 class="main_title">Error domains:</h3>
+        <ul class="navi_inline">
+          <li class="errordomain"><a href="OLLMchat.OllamaError.html">OllamaError</a></li>
+        </ul>
+        <h3 class="main_title">Fields:</h3>
+        <ul class="navi_inline">
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_critical_enabled.html" class="field">debug_critical_enabled</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Enable treating critical warnings as errors (abort on critical 
+                warnings). Set to true to cause the program to abort on critical warnings.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.debug_on.html" class="field">debug_on</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Enable debug output (show all log messages). Set to true to see all 
+                log messages, false to only see critical warnings.</span>
+            </div></li>
+        </ul>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

@@ -208,7 +208,7 @@ namespace OLLMchat.SettingsDialog
 			this.add(page);
 			
 			// Create AvailableModels instance (will be loaded in load())
-			this.available_models = new AvailableModels(this.settings_dialog.app.data_dir);
+			this.available_models = new OLLMchat.Settings.AvailableModels(this.settings_dialog.app.data_dir);
 		}
 		
 		/**

@@ -100,6 +100,7 @@ ollmchat = executable('ollmchat',
     '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
     '--pkg=ocvector',  # Use manually generated ocvector.vapi (via ocvector_vapi_dep)
     '--pkg=octools',  # Tools library
+    '--pkg=ollmchat',  # Required for OLLMchat types (Call, Settings, History, etc.)
     '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
     '--pkg=libgit2-glib-1.0',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
@@ -110,6 +111,7 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',  # For ollmchat.vapi
     '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
   ],
   install: true,

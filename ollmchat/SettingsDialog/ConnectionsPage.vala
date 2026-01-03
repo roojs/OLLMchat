@@ -32,7 +32,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Reference to parent SettingsDialog (which has the app object)
 		 */
-		public SettingsDialog dialog { get; construct; }
+		public MainDialog dialog { get; construct; }
 
 		private Gtk.Button add_btn;
 		private Adw.PreferencesGroup group;
@@ -45,7 +45,7 @@ namespace OLLMchat.SettingsDialog
 		 * 
 		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
-		public ConnectionsPage(SettingsDialog dialog)
+		public ConnectionsPage(MainDialog dialog)
 		{
 			Object(
 				dialog: dialog,
@@ -134,7 +134,7 @@ namespace OLLMchat.SettingsDialog
 
 			// Create Connection object with current values
 			var newName = row.nameEntry.text.strip();
-			var test_connection = new Connection() {
+			var test_connection = new OLLMchat.Settings.Connection() {
 				name = newName != "" ? newName : newUrl,
 				url = newUrl,
 				api_key = row.apiKeyEntry.text.strip(),

@@ -50,7 +50,7 @@ namespace OLLMchat.Settings
 		/**
 		 * Whether this ModelUsage is valid (connection exists, model is available).
 		 * 
-		 * not serialized or can be set by config.
+		 * Not serialized and not shown in config dialogs.
 		 * Set to false by validation methods if the connection is missing or
 		 * the model is not available on the server.
 		 */
@@ -120,6 +120,8 @@ namespace OLLMchat.Settings
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Skip is_valid field - it's not serialized
+			
 			return default_serialize_property(property_name, value, pspec);
 		}
 

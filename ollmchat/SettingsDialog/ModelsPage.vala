@@ -32,7 +32,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Reference to parent SettingsDialog (which has the app object)
 		 */
-		public SettingsDialog settings_dialog { get; construct; }
+		public MainDialog settings_dialog { get; construct; }
 
 		/**
 		 * Current search filter text
@@ -59,7 +59,7 @@ namespace OLLMchat.SettingsDialog
 		 * 
 		 * @param settings_dialog Parent SettingsDialog (which has the app object)
 		 */
-		public ModelsPage(SettingsDialog settings_dialog)
+		public ModelsPage(MainDialog settings_dialog)
 		{
 			Object(
 				settings_dialog: settings_dialog,

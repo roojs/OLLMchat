@@ -16,7 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMchat.OLLMchat.SettingsDialog.Rows
+namespace OLLMchat.SettingsDialog.Rows
 {
 	/**
 	 * Widget that contains all option rows for model configuration.
