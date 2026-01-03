@@ -36,8 +36,8 @@ namespace OLLMchat
 		private Gtk.Widget? current_agent_widget = null;
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
-		private OLLMchat.Settings.ConnectionAdd? bootstrap_dialog = null;
-		private OLLMchat.Settings.SettingsDialog? settings_dialog = null;
+		private OLLMchat.SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
+		private OLLMchat.SettingsDialog.MainDialog? settings_dialog = null;
 		private Gtk.Button settings_button;
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
@@ -64,7 +64,7 @@ namespace OLLMchat
 			app.ensure_data_dir();
 
 			// Create settings dialog (creates PullManager which loads status from file)
-			this.settings_dialog = new OLLMchat.Settings.SettingsDialog(this.app);
+			this.settings_dialog = new OLLMchat.SettingsDialog.MainDialog(this.app);
 			
 			// Connect to PullManager signals to update settings button icon
 			this.settings_dialog.pull_manager.pulls_changed.connect(this.update_settings_button);
@@ -203,7 +203,7 @@ namespace OLLMchat
 		private async void show_bootstrap_dialog(string error_message)
 		{
 			if (this.bootstrap_dialog == null) {
-				this.bootstrap_dialog = new OLLMchat.Settings.ConnectionAdd();
+				this.bootstrap_dialog = new OLLMchat.SettingsDialog.ConnectionAdd();
 			}
 			this.bootstrap_dialog.show_bootstrap();
 			 

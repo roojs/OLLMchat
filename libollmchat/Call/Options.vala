@@ -43,15 +43,29 @@ namespace OLLMchat.Call
 	public class Options : Object, Json.Serializable
 	{
 		// Numeric options - default to -1 (no value set)
+		[Description(nick = "Seed", blurb = "Random seed for reproducible outputs")]
 		public int seed { get; set; default = -1; }
+		
+		[Description(nick = "Temperature", blurb = "Controls randomness in the output (0.0 = deterministic, higher = more random)")]
 		public double temperature { get; set; default = -1.0; }
+		
+		[Description(nick = "Top P", blurb = "Nucleus sampling: consider tokens with top_p probability mass")]
 		public double top_p { get; set; default = -1.0; }
+		
+		[Description(nick = "Top K", blurb = "Limit the number of highest probability tokens to consider")]
 		public int top_k { get; set; default = -1; }
+		
+		[Description(nick = "Max Tokens", blurb = "Maximum number of tokens to generate")]
 		public int num_predict { get; set; default = -1; }
+		
+		[Description(nick = "Min P", blurb = "Minimum probability threshold for token selection")]
 		public double min_p { get; set; default = -1.0; }
+		
+		[Description(nick = "Context Window", blurb = "Size of the context window in tokens")]
 		public int num_ctx { get; set; default = -1; }
 		
 		// String options - default to empty string (no value set)
+		[Description(nick = "Stop Sequences", blurb = "Sequences that will stop generation (separate multiple with commas)")]
 		public string stop { get; set; default = ""; }
 
 		public Options()

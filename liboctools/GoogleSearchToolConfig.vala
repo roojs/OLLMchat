@@ -34,11 +34,13 @@ namespace OLLMtools.Tool
 		/**
 		 * Google Custom Search API key.
 		 */
+		[Description(nick = "API Key", blurb = "Google Custom Search API key")]
 		public string api_key { get; set; default = ""; }
 		
 		/**
 		 * Google Custom Search Engine ID (CSID).
 		 */
+		[Description(nick = "Engine ID", blurb = "Google Custom Search Engine ID (CSID)")]
 		public string engine_id { get; set; default = ""; }
 
 		/**

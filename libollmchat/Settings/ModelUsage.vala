@@ -32,25 +32,29 @@ namespace OLLMchat.Settings
 		/**
 		 * Connection URL key (references a connection from the connections map)
 		 */
+		[Description(nick = "Connection", blurb = "Connection URL key (references a connection from the connections map)")]
 		public string connection { get; set; default = ""; }
 		
 		/**
 		 * Model name to use
 		 */
+		[Description(nick = "Model", blurb = "Model name to use")]
 		public string model { get; set; default = ""; }
 		
 		/**
 		 * Optional runtime options (temperature, top_p, top_k, num_ctx, etc.)
 		 */
+		[Description(nick = "Options", blurb = "Optional runtime options (temperature, top_p, top_k, num_ctx, etc.)")]
 		public OLLMchat.Call.Options options { get; set; default = new OLLMchat.Call.Options(); }
 		
 		/**
 		 * Whether this ModelUsage is valid (connection exists, model is available).
 		 * 
+		 * not serialized or can be set by config.
 		 * Set to false by validation methods if the connection is missing or
 		 * the model is not available on the server.
 		 */
-		public bool is_valid { get; set; default = true; }
+		public bool is_valid = true; 
 
 		/**
 		 * Default constructor.
