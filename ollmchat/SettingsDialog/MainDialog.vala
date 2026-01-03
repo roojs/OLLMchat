@@ -66,16 +66,26 @@ namespace OLLMchat.SettingsDialog
 		 * Progress banner for pull operations (displayed above action widgets)
 		 */
 		private PullManagerBanner progress_banner;
+		
+		/**
+		 * Checking connection dialog (reused for connection verification)
+		 */
+		private CheckingConnectionDialog checking_connection_dialog;
+		
+		/**
+		 * Current parent window (stored for use in check_all_connections)
+		 */
+		public OllmchatWindow parent;
 
 		/**
 		 * Creates a new MainDialog.
 		 * 
 		 * @param app ApplicationInterface instance (provides config and data_dir)
 		 */
-		public MainDialog(OLLMchat.ApplicationInterface app)
+		public MainDialog(OllmchatWindow parent)
 		{
-			Object(app: app);
-		
+			Object(app: parent.app);
+			this.parent = parent;
 			this.title = "Settings";
 			this.set_content_width(800);
 			this.set_content_height(800);
@@ -163,6 +173,7 @@ namespace OLLMchat.SettingsDialog
 
 			// Connect closed signal to save config when dialog closes
 			this.closed.connect(this.on_closed);
+
 		}
 		
 		/**
@@ -194,12 +205,21 @@ namespace OLLMchat.SettingsDialog
 		 * @param parent Parent window to attach the dialog to
 		 * @param page_name Optional page name to switch to (e.g., "connections", "models")
 		 */
-		public void show_dialog(Gtk.Window? parent = null, string? page_name = null)
+		public async void show_dialog(string? page_name = null)
 		{
-			// Refresh models when dialog is shown (every time)
-			this.models_page.render_models.begin();
+			// Present the main dialog immediately
 			
-			// Load configs for tools page
+			// Create and show checking connection dialog
+			var checking_connection_dialog = new CheckingConnectionDialog(this.parent);
+			checking_connection_dialog.show_dialog();
+
+			yield this.check_all_connections();
+			
+			// Hide checking connection dialog
+			checking_connection_dialog.hide_dialog();
+			
+			// Load tools and configs for tools page (non-blocking)
+			this.tools_page.load_tools();
 			this.tools_page.load_configs();
 			
 			// Initialize progress bars for any existing active pulls
@@ -210,8 +230,18 @@ namespace OLLMchat.SettingsDialog
 				this.view_stack.set_visible_child_name(page_name);
 			}
 			
-			// Present the dialog
+			// Show checking connection dialog
+			//this.parent.checking_connection_dialog.show_dialog();
+
+			// Check version on all connections in the background
+
+			// Hide checking dialog when done
+			//this.parent.checking_connection_dialog.hide_dialog();
+
+			// Refresh models after connection checks complete
 			this.present(parent);
+
+			this.models_page.render_models.begin();
 		}
 
 		/**
@@ -222,8 +252,34 @@ namespace OLLMchat.SettingsDialog
 			// Save all model options before closing
 			this.models_page.save_all_options();
 			
+			// Apply all connection values from UI before closing
+			this.connections_page.apply_config();
+			
+			// Check version on all connections and update is_working flag
+			this.check_all_connections.begin();
+			
 			this.app.config.save();
+		}
+
+		/**
+		 * Checks version on all connections and updates is_working flag.
+		 */
+		private async void check_all_connections()
+		{
+			
+			
+			foreach (var entry in this.app.config.connections.entries) {
+				var connection = entry.value;
+				try {
+					var test_client = new OLLMchat.Client(connection);
+					yield test_client.version();
+					connection.is_working = true;
+				} catch (Error e) {
+					connection.is_working = false;
+					GLib.debug("Connection %s is not working: %s", connection.url, e.message);
+				}
+			}
+			
 		}
 	}
 }
-

@@ -27,6 +27,20 @@ namespace OLLMtools
 	 */
 	public class EditMode : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Sets up the edit_mode tool configuration with default values.
+		 */
+		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			var tool_config = new OLLMchat.Settings.BaseToolConfig();
+			tool_config.title = new EditMode(
+				new OLLMchat.Client(
+					new OLLMchat.Settings.Connection() { url = "http://localhost" }
+				)
+			).description.strip().split("\n")[0];
+			config.tools.set("edit_mode", tool_config);
+		}
+		
 		public override string name { get { return "edit_mode"; } }
 		
 		public override string description { get {

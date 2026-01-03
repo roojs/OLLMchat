@@ -224,6 +224,19 @@ namespace OLLMchat.SettingsDialog
 			this.verifyButton.visible = false;
 		}
 
+		/**
+		 * Applies current UI values to the connection object.
+		 * 
+		 * @param connection Connection object to update
+		 */
+		public void apply_config(OLLMchat.Settings.Connection connection)
+		{
+			connection.name = this.nameEntry.text.strip();
+			connection.url = this.urlEntry.text.strip();
+			connection.api_key = this.apiKeyEntry.text.strip();
+			connection.is_default = this.defaultSwitch.active;
+		}
+
 	}
 }
 

@@ -39,7 +39,7 @@ namespace OLLMchat.SettingsDialog
 		private Gtk.StringList connection_list;
 		private GLib.ListStore size_list_store;
 		private Gee.ArrayList<string> connection_urls;
-		private OLLMchat.SettingsDialog.MainDialog settings_dialog;
+		public MainDialog dialog { get; construct; }
 		private OLLMchat.Settings.AvailableModel? selected_model = null;
 		
 		// Model chain for SearchablePulldown
@@ -62,11 +62,11 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Creates a new AddModelDialog.
 		 * 
-		 * @param settings_dialog Parent SettingsDialog (provides app with config and data_dir)
+		 * @param dialog Parent SettingsDialog (provides app with config and data_dir)
 		 */
-		public AddModelDialog(OLLMchat.SettingsDialog.MainDialog settings_dialog)
+		public AddModelDialog(MainDialog dialog)
 		{
-			this.settings_dialog = settings_dialog;
+			Object(dialog: dialog);
 			
 			this.set_content_height(400);
 			this.set_content_width(800);
@@ -169,11 +169,11 @@ namespace OLLMchat.SettingsDialog
 				var connection_url = this.connection_urls.get((int)selected_index);
 				
 				// Get connection object from config
-				if (!this.settings_dialog.app.config.connections.has_key(connection_url)) {
+				if (!this.dialog.app.config.connections.has_key(connection_url)) {
 					GLib.warning("Connection not found: %s", connection_url);
 					return;
 				}
-				var connection = this.settings_dialog.app.config.connections.get(connection_url);
+				var connection = this.dialog.app.config.connections.get(connection_url);
 				
 				// Get selected model and size
 				if (this.selected_model == null) {
@@ -192,8 +192,8 @@ namespace OLLMchat.SettingsDialog
 				}
 				
 				// Start pull operation
-				this.settings_dialog.pull_manager.start_pull(model_name, connection);
-				// this.settings_dialog.pull_manager.start_pull(model_name, connection);
+				this.dialog.pull_manager.start_pull(model_name, connection);
+				// this.dialog.pull_manager.start_pull(model_name, connection);
 				
 				// Close dialog
 				this.force_close();
@@ -208,7 +208,7 @@ namespace OLLMchat.SettingsDialog
 			this.add(page);
 			
 			// Create AvailableModels instance (will be loaded in load())
-			this.available_models = new OLLMchat.Settings.AvailableModels(this.settings_dialog.app.data_dir);
+			this.available_models = new OLLMchat.Settings.AvailableModels(this.dialog.app.data_dir);
 		}
 		
 		/**
@@ -224,7 +224,7 @@ namespace OLLMchat.SettingsDialog
 			
 			int default_index = 0;
 			int index = 0;
-			foreach (var entry in this.settings_dialog.app.config.connections.entries) {
+			foreach (var entry in this.dialog.app.config.connections.entries) {
 				this.connection_urls.add(entry.key);
 				// Display format: "name (url)" or just "name" if name is set
 				var display_name = entry.value.name != "" ? 

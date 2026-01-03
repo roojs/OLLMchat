@@ -35,9 +35,9 @@ namespace OLLMchat.SettingsDialog.Rows
 
 		private Gtk.SpinButton spin_button;
 
-		public Float(ParamSpec pspec, Object config)
+		public Float(MainDialog dialog, Object config, ParamSpec pspec)
 		{
-			base(pspec, config);
+			base(dialog, config, pspec);
 		}
 
 		protected override void setup_widget()

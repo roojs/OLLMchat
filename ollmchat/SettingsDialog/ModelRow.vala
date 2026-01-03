@@ -126,7 +126,7 @@ namespace OLLMchat.SettingsDialog
 				options = this.options
 			};
 			var dummy_pspec = dummy_config.get_class().find_property("options");
-			this.options_widget = new Rows.Options(dummy_pspec, dummy_config);
+			this.options_widget = new Rows.Options(this.models_page.dialog, dummy_pspec, dummy_config);
 			
 			// Add rows from options_widget to this ExpanderRow
 			foreach (var row in this.options_widget.rows) {

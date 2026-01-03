@@ -48,10 +48,11 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Constructor.
 		 * 
+		 * @param dialog The settings dialog
 		 * @param pspec The property spec for the Call.Options property
 		 * @param config The config object that contains this property
 		 */
-		public Options(ParamSpec pspec, Object config)
+		public Options(MainDialog dialog, ParamSpec pspec, Object config)
 		{
 			this.pspec = pspec;
 			this.config = config;
@@ -62,19 +63,20 @@ namespace OLLMchat.SettingsDialog.Rows
 			var options = val.get_object() as OLLMchat.Call.Options;
 			
 			
-			this.init_rows(options);
+			this.init_rows(dialog, options);
 		}
 
 		/**
 		 * Initializes the option rows.
 		 * 
+		 * @param dialog The settings dialog
 		 * @param options The Options object to bind rows to
 		 */
-		private void init_rows(OLLMchat.Call.Options options)
+		private void init_rows(MainDialog dialog, OLLMchat.Call.Options options)
 		{
 			unowned var options_class = options.get_class();
 			
-			this.rows.add(new Float(options_class.find_property("temperature"), options) {
+			this.rows.add(new Float(dialog, options, options_class.find_property("temperature")) {
 				min_value = 0.0,
 				max_value = 2.0,
 				step_value = 0.1,
@@ -82,7 +84,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 0.7
 			});
 
-			this.rows.add(new Float(options_class.find_property("top_p"), options) {
+			this.rows.add(new Float(dialog, options, options_class.find_property("top_p")) {
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -90,7 +92,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 0.9
 			});
 
-			this.rows.add(new Int(options_class.find_property("top_k"), options) {
+			this.rows.add(new Int(dialog, options, options_class.find_property("top_k")) {
 				min_value = 1.0,
 				max_value = 1000.0,
 				step_value = 1.0,
@@ -98,7 +100,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 40.0
 			});
 
-			this.rows.add(new Int(options_class.find_property("num_ctx"), options) {
+			this.rows.add(new Int(dialog, options, options_class.find_property("num_ctx")) {
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1024.0,
@@ -106,7 +108,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 16384.0
 			});
 
-			this.rows.add(new Int(options_class.find_property("num_predict"), options) {
+			this.rows.add(new Int(dialog, options, options_class.find_property("num_predict")) {
 				min_value = 1.0,
 				max_value = 1000000.0,
 				step_value = 1.0,
@@ -114,7 +116,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 16384.0
 			});
 
-			this.rows.add(new Float(options_class.find_property("min_p"), options) {
+			this.rows.add(new Float(dialog, options, options_class.find_property("min_p")) {
 				min_value = 0.0,
 				max_value = 1.0,
 				step_value = 0.01,
@@ -122,7 +124,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				default_value = 0.1
 			});
 
-			this.rows.add(new Int(options_class.find_property("seed"), options) {
+			this.rows.add(new Int(dialog, options, options_class.find_property("seed")) {
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				step_value = 1.0,

@@ -32,7 +32,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Reference to parent SettingsDialog (which has the app object)
 		 */
-		public MainDialog settings_dialog { get; construct; }
+		public MainDialog dialog { get; construct; }
 
 		/**
 		 * Current search filter text
@@ -57,12 +57,12 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Creates a new ModelsPage.
 		 * 
-		 * @param settings_dialog Parent SettingsDialog (which has the app object)
+		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
-		public ModelsPage(MainDialog settings_dialog)
+		public ModelsPage(MainDialog dialog)
 		{
 			Object(
-				settings_dialog: settings_dialog,
+				dialog: dialog,
 				page_name: "models",
 				page_title: "Models",
 				orientation: Gtk.Orientation.VERTICAL,
@@ -152,7 +152,7 @@ namespace OLLMchat.SettingsDialog
 			this.append(this.group);
 			
 			// Connect to pull manager to reload models when a pull completes
-			this.settings_dialog.pull_manager.model_complete.connect((model_name) => {
+			this.dialog.pull_manager.model_complete.connect((model_name) => {
 				this.render_models.begin();
 			});
 			
@@ -176,10 +176,11 @@ namespace OLLMchat.SettingsDialog
 			this.show_loading(true);
 
 			// Update models for each connection
-			foreach (var entry in this.settings_dialog.app.config.connections.entries) {
-				var connection = entry.value;
-				var connection_url = entry.key;
-				yield this.update_models(connection_url, connection);
+			foreach (var entry in this.dialog.app.config.connections.entries) {
+				if (!entry.value.is_working) {
+					continue;
+				}
+				yield this.update_models(entry.key, entry.value);
 			}
 
 			// Remove models that no longer exist in any connection
@@ -201,9 +202,15 @@ namespace OLLMchat.SettingsDialog
 		 */
 		private async void update_models(string connection_url, OLLMchat.Settings.Connection connection)
 		{
+			// Skip if connection is not working
+			if (!connection.is_working) {
+				GLib.debug("Skipping models update for connection %s (not working)", connection_url);
+				return;
+			}
+
 			try {
 				var client = new OLLMchat.Client(connection) {
-					config = this.settings_dialog.app.config
+					config = this.dialog.app.config
 				};
 				var models_list = yield client.models();
 				// Fetch detailed model info (including parameters) for all models
@@ -254,8 +261,8 @@ namespace OLLMchat.SettingsDialog
 
 					// Get or create options
 					var options = new OLLMchat.Call.Options();
-					if (this.settings_dialog.app.config.model_options.has_key(model.name)) {
-						var config_options = this.settings_dialog.app.config.model_options.get(model.name);
+					if (this.dialog.app.config.model_options.has_key(model.name)) {
+						var config_options = this.dialog.app.config.model_options.get(model.name);
 						options = config_options.clone();
 					}
 
@@ -292,6 +299,7 @@ namespace OLLMchat.SettingsDialog
 
 			} catch (Error e) {
 				GLib.warning("Failed to fetch models from connection %s: %s", connection.name, e.message);
+			
 			}
 		}
 
@@ -302,7 +310,7 @@ namespace OLLMchat.SettingsDialog
 		{
 			var headers_to_remove = new Gee.ArrayList<string>();
 			foreach (var key in this.section_headers.keys) {
-				if (!this.settings_dialog.app.config.connections.has_key(key)) {
+				if (!this.dialog.app.config.connections.has_key(key)) {
 					headers_to_remove.add(key);
 				}
 			}
@@ -367,10 +375,10 @@ namespace OLLMchat.SettingsDialog
 		{
 			if (options.has_values()) {
 				// Save to config using model name only as key
-				this.settings_dialog.app.config.model_options.set(model_name, options.clone());
+				this.dialog.app.config.model_options.set(model_name, options.clone());
 			} else {
 				// Remove from config if no values are set
-				this.settings_dialog.app.config.model_options.unset(model_name);
+				this.dialog.app.config.model_options.unset(model_name);
 			}
 		}
 
@@ -449,10 +457,10 @@ namespace OLLMchat.SettingsDialog
 		 */
 		public void scroll_to(Gtk.Widget widget)
 		{
-			var vadjustment = this.settings_dialog.scrolled_window.vadjustment;
+			var vadjustment = this.dialog.scrolled_window.vadjustment;
 			
 			// Get the viewport's child (the ViewStack) - this is our reference point
-			var viewport_child = this.settings_dialog.viewport.get_child();
+			var viewport_child = this.dialog.viewport.get_child();
 			
 			// Calculate Y position relative to viewport's child by walking up parent chain
 			double y = 0.0;
@@ -478,13 +486,13 @@ namespace OLLMchat.SettingsDialog
 		{
 			// Create dialog if it doesn't exist
 			if (this.add_model_dialog == null) {
-				this.add_model_dialog = new AddModelDialog(this.settings_dialog);
+				this.add_model_dialog = new AddModelDialog(this.dialog);
 			}
 			
 			this.add_model_dialog.load.begin((obj, res) => {
 				try {
 					this.add_model_dialog.load.end(res);
-					this.add_model_dialog.present(this.settings_dialog);
+					this.add_model_dialog.present(this.dialog);
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to load AddModelDialog: %s", e.message);
 				}

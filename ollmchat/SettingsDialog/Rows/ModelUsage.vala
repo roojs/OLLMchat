@@ -28,9 +28,9 @@ namespace OLLMchat.SettingsDialog.Rows
 	 */
 	public class ModelUsage : GLib.Object
 	{
+		public MainDialog dialog { get; construct; }
 		public ParamSpec pspec { get; construct; }
 		public Object config { get; construct; }
-		private OLLMchat.SettingsDialog.MainDialog settings_dialog;
 		private OLLMchat.Settings.ModelUsage model_usage;
 		private Adw.ExpanderRow expander_row;
 		private Connection connection_widget;
@@ -40,14 +40,13 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Creates a new ModelUsage widget.
 		 * 
-		 * @param pspec The property spec for the ModelUsage property
+		 * @param dialog SettingsDialog to access Config2
 		 * @param config The config object that contains this property
-		 * @param settings_dialog SettingsDialog to access Config2
+		 * @param pspec The property spec for the ModelUsage property
 		 */
-		public ModelUsage(ParamSpec pspec, Object config, OLLMchat.SettingsDialog.MainDialog settings_dialog)
+		public ModelUsage(MainDialog dialog, Object config, ParamSpec pspec)
 		{
-			Object(pspec: pspec, config: config);
-			this.settings_dialog = settings_dialog;
+			Object(dialog: dialog, pspec: pspec, config: config);
 			this.setup_widget();
 		}
 		
@@ -76,12 +75,12 @@ namespace OLLMchat.SettingsDialog.Rows
 			
 			// Create widgets for nested properties: connection, model, options
 			var connection_pspec = this.model_usage.get_class().find_property("connection");
-			this.connection_widget = new Connection(connection_pspec, this.model_usage, this.settings_dialog);
+			this.connection_widget = new Connection(this.dialog, this.model_usage, connection_pspec);
 			this.expander_row.add_row(this.connection_widget);
 			
 			// Create model dropdown
 			var model_pspec = this.model_usage.get_class().find_property("model");
-			this.model_widget = new Model(model_pspec, this.model_usage, this.settings_dialog);
+			this.model_widget = new Model(this.dialog, this.model_usage, model_pspec);
 			this.expander_row.add_row(this.model_widget);
 			
 			// Monitor connection widget dropdown selection changes and update model widget
@@ -96,7 +95,7 @@ namespace OLLMchat.SettingsDialog.Rows
 			
 			// Create options widget
 			var options_pspec = this.model_usage.get_class().find_property("options");
-			this.options_widget = new Options(options_pspec, this.model_usage);
+			this.options_widget = new Options(this.dialog, options_pspec, this.model_usage);
 			// Options returns a container, so we need to add each row individually
 			foreach (var row in this.options_widget.rows) {
 				this.expander_row.add_row(row);

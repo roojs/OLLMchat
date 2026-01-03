@@ -33,7 +33,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Reference to parent SettingsDialog (which has the app object)
 		 */
-		public MainDialog settings_dialog { get; construct; }
+		public MainDialog dialog { get; construct; }
 		
 		/**
 		 * Reference to Client instance to access Client.tools registry.
@@ -50,12 +50,12 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Creates a new ToolsPage.
 		 * 
-		 * @param settings_dialog Parent SettingsDialog (which has the app object)
+		 * @param dialog Parent SettingsDialog (which has the app object)
 		 */
-		public ToolsPage(MainDialog settings_dialog)
+		public ToolsPage(MainDialog dialog)
 		{
 			Object(
-				settings_dialog: settings_dialog,
+				dialog: dialog,
 				page_name: "tools",
 				page_title: "Tools",
 				orientation: Gtk.Orientation.VERTICAL,
@@ -84,9 +84,6 @@ namespace OLLMchat.SettingsDialog
 			
 			// Add preferences group to page
 			this.append(this.group);
-			
-			// Initial render of tools
-			this.load_tools();
 		}
 		
 		/**
@@ -98,8 +95,11 @@ namespace OLLMchat.SettingsDialog
 		 */
 		public void load_tools()
 		{
+			// Get client with tools from parent window's history_manager
+			this.client = (this.dialog.parent as OllmchatWindow).history_manager.base_client;
+			
 			// Iterate through Config2.tools to discover all configured tools
-			foreach (var entry in this.settings_dialog.app.config.tools.entries) {
+			foreach (var entry in this.dialog.app.config.tools.entries) {
 				// If tool already exists, refresh its config
 				if (this.tool_rows.has_key(entry.key)) {
 					this.load_configs();
@@ -108,10 +108,10 @@ namespace OLLMchat.SettingsDialog
 				
 				// Get tool object from Client.tools if available (for metadata) and create tool row
 				var tool_row = new Rows.Tool(
+					this.dialog,
 					this.client.tools.get(entry.key),
 					entry.value,
-					entry.key,
-					this.settings_dialog
+					entry.key
 				);
 				
 				// Add to list

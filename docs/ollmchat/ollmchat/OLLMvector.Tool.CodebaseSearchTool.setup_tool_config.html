@@ -48,32 +48,13 @@
         <h1 class="main_title">setup_tool_config</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><span class="static_method">setup_tool_config</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><span class="static_method">setup_tool_config</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
         </div>
         <div class="description">
           <p>Sets up the codebase search tool configuration with default connection.</p>
           <p>Creates a CodebaseSearchToolConfig in `Config2.tools["codebase_search"]` if it doesn't exist. The config class already has default model 
             names and options set in its properties. This method only sets the connection from the default connection. This replaces the separate 
             setup_embed_usage() and setup_analysis_usage() methods with a unified setup.</p>
-          <p>If a new config is created, it will be saved automatically. If saving fails, a warning will be logged but the method will still return 
-            true (config was created successfully).</p>
-          <h2 class="main_title">Parameters:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">config</td>
-              <td>
-                <p>The Config2 instance to update </p>
-              </td>
-            </tr>
-          </table>
-          <h2 class="main_title">Returns:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td>
-                <p>true if the tool config was created, false if it already existed </p>
-              </td>
-            </tr>
-          </table>
         </div>
       </div>
     </div><br/>

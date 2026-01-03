@@ -32,12 +32,13 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Creates a new String widget.
 		 * 
-		 * @param pspec The property spec for the string property
+		 * @param dialog The settings dialog
 		 * @param config The config object that contains this property
+		 * @param pspec The property spec for the string property
 		 */
-		public String(ParamSpec pspec, Object config)
+		public String(MainDialog dialog, Object config, ParamSpec pspec)
 		{
-			base(pspec, config);
+			base(dialog, config, pspec);
 		}
 		
 		protected override void setup_widget()

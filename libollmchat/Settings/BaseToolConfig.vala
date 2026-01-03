@@ -37,7 +37,14 @@ namespace OLLMchat.Settings
 		/**
 		 * Whether the tool is enabled.
 		 */
+		[Description(nick = "Enable", blurb = "You can disable this tool here")]
 		public bool enabled { get; set; default = true; }
+
+		/**
+		 * Tool description (stored when config is created).
+		 */
+		public string title = ""; 
+		
 
 		/**
 		 * Default constructor.

@@ -27,6 +27,25 @@ namespace OLLMtools
 	 */
 	public class RunCommand : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Sets up the run_command tool configuration with default values.
+		 */
+		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			var tool_config = new OLLMchat.Settings.BaseToolConfig();
+			try {
+				tool_config.title = new RunCommand(
+					new OLLMchat.Client(
+						new OLLMchat.Settings.Connection() { url = "http://localhost" }
+					),
+					GLib.Environment.get_home_dir()
+				).description.strip().split("\n")[0];
+			} catch (GLib.Error e) {
+				tool_config.title = "Run a terminal command in the project's root directory and return the output.";
+			}
+			config.tools.set("run_command", tool_config);
+		}
+		
 		// Base description (without directory note)
 		private const string BASE_DESCRIPTION = """
 Run a terminal command in the project's root directory and return the output.

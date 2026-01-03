@@ -31,6 +31,11 @@ namespace OLLMchat.SettingsDialog.Rows
 	public abstract class Row : Adw.ActionRow
 	{
 		/**
+		 * The settings dialog (for accessing config, etc.)
+		 */
+		public MainDialog dialog { get; construct; }
+		
+		/**
 		 * The property spec for this widget.
 		 */
 		public ParamSpec pspec { get; construct; }
@@ -65,12 +70,13 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Creates a new Row.
 		 * 
-		 * @param pspec The property spec for the property this widget represents
+		 * @param dialog The settings dialog
 		 * @param config The config object that contains this property (BaseToolConfig or Object with GObject properties)
+		 * @param pspec The property spec for the property this widget represents
 		 */
-		protected Row(ParamSpec pspec, Object config)
+		protected Row(MainDialog dialog, Object config, ParamSpec pspec)
 		{
-			Object(pspec: pspec, config: config);
+			Object(dialog: dialog, pspec: pspec, config: config);
 			this.title = this.pspec.get_nick();
 			this.subtitle = this.pspec.get_blurb();
 			this.setup_widget();

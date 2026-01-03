@@ -47,36 +47,27 @@ namespace OLLMvector.Tool
 		 * The config class already has default model names and options set in its properties.
 		 * This method only sets the connection from the default connection. This replaces the separate
 		 * setup_embed_usage() and setup_analysis_usage() methods with a unified setup.
-		 * 
-		 * If a new config is created, it will be saved automatically. If saving fails, a warning
-		 * will be logged but the method will still return true (config was created successfully).
-		 * 
-		 * @param config The Config2 instance to update
-		 * @return true if the tool config was created, false if it already existed
 		 */
-		public static bool setup_tool_config(OLLMchat.Settings.Config2 config)
+		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
 		{
-			// Only create if it doesn't already exist
+			CodebaseSearchToolConfig tool_config;
 			if (config.tools.has_key("codebase_search")) {
-				return false;
+				tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+			} else {
+				tool_config = new CodebaseSearchToolConfig();
+				var default_connection = config.get_default_connection();
+				if (default_connection != null) {
+					tool_config.setup_defaults(default_connection.url);
+				}
+				config.tools.set("codebase_search", tool_config);
 			}
 			
-			var default_connection = config.get_default_connection();
-			if (default_connection == null) {
-				GLib.warning("No default connection found, cannot setup codebase search tool config");
-				return false;
-			}
+			// Get description using GType system - create instance via Object.new
+		
+			var dummy_tool = Object.new(typeof(CodebaseSearchTool)) as CodebaseSearchTool;
 			
-			// Create tool config and set up defaults
-			var tool_config = new CodebaseSearchToolConfig();
-			tool_config.setup_defaults(default_connection.url);
-			
-			config.tools.set("codebase_search", tool_config);
-			
-			// Save config if we created new entries (so they persist)
-			config.save();
-			
-			return true;
+			// Read property directly
+			tool_config.title = dummy_tool.description.strip().split("\n")[0];
 		}
 		
 		/**
@@ -95,7 +86,8 @@ namespace OLLMvector.Tool
 		 * @param config The Config2 instance
 		 * @return The CodebaseSearchToolConfig instance from tools map, or a disabled one if not found
 		 */
-		public static async CodebaseSearchToolConfig get_tool_config(OLLMchat.Settings.Config2 config)
+		public static async CodebaseSearchToolConfig get_tool_config(
+			OLLMchat.Settings.Config2 config)
 		{
 			if (!config.tools.has_key("codebase_search")) {
 				var tool_config = new CodebaseSearchToolConfig();

@@ -29,21 +29,20 @@ namespace OLLMchat.SettingsDialog.Rows
 	public class Model : Row
 	{
 		private Gtk.DropDown dropdown;
-		private OLLMchat.SettingsDialog.MainDialog settings_dialog;
 		private Gtk.StringList string_list;
 		
 		/**
 		 * Creates a new Model widget.
 		 * 
-		 * @param pspec The property spec for the model property
+		 * @param dialog SettingsDialog to access Config2
 		 * @param config The config object that contains this property
-		 * @param settings_dialog SettingsDialog to access Config2
+		 * @param pspec The property spec for the model property
 		 */
-		public Model(ParamSpec pspec, Object config, OLLMchat.SettingsDialog.MainDialog settings_dialog)
+		public Model(MainDialog dialog, Object config, ParamSpec pspec)
 		{
+			base(dialog, config, pspec);
 			this.string_list = new Gtk.StringList({});
-			base(pspec, config);
-			this.settings_dialog = settings_dialog;
+
 		}
 		
 		protected override void setup_widget()
@@ -93,12 +92,12 @@ namespace OLLMchat.SettingsDialog.Rows
 				return;
 			}
 			
-			var connection_obj = this.settings_dialog.app.config.connections.get(connection_url);
+			var connection_obj = this.dialog.app.config.connections.get(connection_url);
 			
 			// FIXME - model lists need some sorting rules and filtering rules globally
 			try {
 				var client = new OLLMchat.Client(connection_obj) {
-					config = this.settings_dialog.app.config
+					config = this.dialog.app.config
 				};
 				var models_list = yield client.models();
 				

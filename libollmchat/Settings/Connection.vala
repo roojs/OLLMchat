@@ -61,6 +61,12 @@ namespace OLLMchat.Settings
 		public bool is_default { get; set; default = false; }
 		
 		/**
+		 * Whether this connection is currently working (version check passed).
+		 * Not saved to config - checked on dialog close.
+		 */
+		public bool is_working = true;
+		
+		/**
 		 * List of model names to hide from the UI
 		 */
 		public Gee.ArrayList<string> hidden_models { get; set; default = new Gee.ArrayList<string>(); }

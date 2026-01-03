@@ -28,6 +28,20 @@ namespace OLLMtools
 	 */
 	public class WebFetchTool : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Sets up the web_fetch tool configuration with default values.
+		 */
+		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			var tool_config = new OLLMchat.Settings.BaseToolConfig();
+			tool_config.title = new WebFetchTool(
+				new OLLMchat.Client(
+					new OLLMchat.Settings.Connection() { url = "http://localhost" }
+				)
+			).description.strip().split("\n")[0];
+			config.tools.set("web_fetch", tool_config);
+		}
+		
 		public override string name { get { return "web_fetch"; } }
 		
 		public override string description { get {

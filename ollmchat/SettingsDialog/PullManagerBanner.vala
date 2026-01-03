@@ -82,21 +82,15 @@ namespace OLLMchat.SettingsDialog
 		 */
 		private void on_progress_updated(PullStatus status)
 		{
-			// Update tracking map (keep even if complete/failed for 15 second delay)
+			// Update tracking map
 			this.status_tracking.set(status.model_name, status);
 			
 			// Update progress bar for this model
 			this.update_progress_bar(status);
 			
-			// Handle completion with delay
+			// Handle completion - hide immediately
 			if (status.status == "complete" || status.status == "failed") {
-				// Only schedule if not already scheduled
-				if (status.completion_timer_id == 0) {
-					this.schedule_hide_after_completion(status);
-				}
-			} else {
-				// Cancel any pending hide timer if status changed back to active
-				this.cancel_hide_timer(status);
+				this.remove_progress_bar(status.model_name);
 			}
 		}
 		
@@ -149,35 +143,6 @@ namespace OLLMchat.SettingsDialog
 			}
 			
 			this.update_banner_visibility();
-		}
-		
-		/**
-		 * Schedules hiding a progress bar 15 seconds after completion.
-		 */
-		private void schedule_hide_after_completion(PullStatus status)
-		{
-			// Cancel any existing timer
-			this.cancel_hide_timer(status);
-			
-			// Schedule hide after 15 seconds
-			var model_name = status.model_name;
-			var timer_id = GLib.Timeout.add_seconds(15, () => {
-				this.remove_progress_bar(model_name);
-				status.completion_timer_id = 0;
-				return false;
-			});
-			status.completion_timer_id = timer_id;
-		}
-		
-		/**
-		 * Cancels the hide timer for a model.
-		 */
-		private void cancel_hide_timer(PullStatus status)
-		{
-			if (status.completion_timer_id != 0) {
-				GLib.Source.remove(status.completion_timer_id);
-				status.completion_timer_id = 0;
-			}
 		}
 		
 		/**

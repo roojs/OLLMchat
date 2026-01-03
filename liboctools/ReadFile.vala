@@ -26,6 +26,20 @@ namespace OLLMtools
 	 */
 	public class ReadFile : OLLMchat.Tool.Interface
 	{
+		/**
+		 * Sets up the read_file tool configuration with default values.
+		 */
+		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
+		{
+			var tool_config = new OLLMchat.Settings.BaseToolConfig();
+			tool_config.title = new ReadFile(
+				new OLLMchat.Client(
+					new OLLMchat.Settings.Connection() { url = "http://localhost" }
+				)
+			).description.strip().split("\n")[0];
+			config.tools.set("read_file", tool_config);
+		}
+		
 		public override string name { get { return "read_file"; } }
 		
 		public override string description { get {

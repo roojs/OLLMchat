@@ -40,7 +40,7 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Reference to SettingsDialog for accessing Config2.
 		 */
-		public OLLMchat.SettingsDialog.MainDialog settings_dialog { get; construct; }
+		public MainDialog dialog { get; construct; }
 		
 		private Gee.ArrayList<ModelUsage> model_usage_widgets = new Gee.ArrayList<ModelUsage>();
 		private Gee.ArrayList<Row> row_widgets = new Gee.ArrayList<Row>();
@@ -48,24 +48,23 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Creates a new Tool.
 		 * 
+		 * @param dialog SettingsDialog to access Config2
 		 * @param tool The Tool.Interface object (can be null if Client.tools not available)
 		 * @param config The BaseToolConfig object
 		 * @param tool_name The tool name (used if tool is null)
-		 * @param settings_dialog SettingsDialog to access Config2
 		 */
 		public Tool(
+			MainDialog dialog,
 			OLLMchat.Tool.Interface? tool,
 			OLLMchat.Settings.BaseToolConfig config,
-			string tool_name,
-			OLLMchat.SettingsDialog.MainDialog settings_dialog
+			string tool_name
 		)
 		{
 			Object(
+				dialog: dialog,
 				tool_name: tool_name,
 				config: config,
-				settings_dialog: settings_dialog,
-				title: tool != null ? tool.name : tool_name,
-				subtitle: tool != null ? tool.description : ""
+				title: config.title
 			);
 			
 			// Introspect config properties and create widgets
@@ -77,7 +76,9 @@ namespace OLLMchat.SettingsDialog.Rows
 		 */
 		private void introspect_config_properties()
 		{
+			GLib.debug("Introspecting properties for config class: %s", this.config.get_class().get_type().name());
 			foreach (var pspec in this.config.get_class().list_properties()) {
+				GLib.debug("Found property: %s (type: %s)", pspec.get_name(), pspec.value_type.name());
 				// Skip properties that shouldn't be shown in UI
 				// (e.g., internal GObject properties)
 				if (pspec.get_name().has_prefix("_") || 
@@ -102,9 +103,9 @@ namespace OLLMchat.SettingsDialog.Rows
 		 */
 		private Gtk.Widget? create_property_widget(ParamSpec pspec)
 		{
-			switch (pspec.value_type.to_string()) {
+			switch (pspec.value_type.name()) {
 				case "gboolean":
-					var widget = new Bool(pspec, this.config);
+					var widget = new Bool(this.dialog, this.config, pspec);
 					this.row_widgets.add(widget);
 					return widget;
 				
@@ -113,7 +114,7 @@ namespace OLLMchat.SettingsDialog.Rows
 				
 				default:
 					if (pspec.value_type.is_a(typeof(OLLMchat.Settings.ModelUsage))) {
-						var widget = new ModelUsage(pspec, this.config, this.settings_dialog);
+						var widget = new ModelUsage(this.dialog, this.config, pspec);
 						this.model_usage_widgets.add(widget);
 						return widget.get_widget();
 					}
@@ -125,17 +126,17 @@ namespace OLLMchat.SettingsDialog.Rows
 			// Handle string properties
 			switch (pspec.get_name()) {
 				case "connection":
-					var widget = new Connection(pspec, this.config, this.settings_dialog);
+					var widget = new Connection(this.dialog, this.config, pspec);
 					this.row_widgets.add(widget);
 					return widget;
 				
 				case "model":
-					var widget = new Model(pspec, this.config, this.settings_dialog);
+					var widget = new Model(this.dialog, this.config, pspec);
 					this.row_widgets.add(widget);
 					return widget;
 				
 				default:
-					var widget = new String(pspec, this.config);
+					var widget = new String(this.dialog, this.config, pspec);
 					this.row_widgets.add(widget);
 					return widget;
 			}

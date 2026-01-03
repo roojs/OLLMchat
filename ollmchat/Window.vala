@@ -27,17 +27,18 @@ namespace OLLMchat
 	public class OllmchatWindow : Adw.Window
 	{
 		private OLLMchatGtk.ChatWidget chat_widget;
-		private OLLMchat.History.Manager? history_manager = null;
+		public History.Manager? history_manager = null;
 		private Adw.OverlaySplitView split_view;
 		private OLLMchatGtk.HistoryBrowser? history_browser = null;
 		private Gtk.Button new_chat_button;
-		private OLLMchat.ApplicationInterface app;
+		public ApplicationInterface app;
 		private WindowPane? window_pane = null;
 		private Gtk.Widget? current_agent_widget = null;
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
-		private OLLMchat.SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
-		private OLLMchat.SettingsDialog.MainDialog? settings_dialog = null;
+		private SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
+		private SettingsDialog.MainDialog? settings_dialog = null;
+		public SettingsDialog.CheckingConnectionDialog checking_connection_dialog;
 		private Gtk.Button settings_button;
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
@@ -50,10 +51,10 @@ namespace OLLMchat
 		/**
 		 * Creates a new OllmchatWindow instance.
 		 * 
-		 * @param app The OLLMchat.ApplicationInterface instance
+		 * @param app The ApplicationInterface instance
 		 * @since 1.0
 		 */
-		public OllmchatWindow(OLLMchat.ApplicationInterface app)
+		public OllmchatWindow(ApplicationInterface app)
 		{
 			this.app = app;
 			this.title = "OLLMchat";
@@ -63,11 +64,19 @@ namespace OLLMchat
 			// Ensure data directory exists (using interface)
 			app.ensure_data_dir();
 
+			// Create checking connection dialog first (needed by MainDialog)
+			this.checking_connection_dialog = new SettingsDialog.CheckingConnectionDialog(this);
+			
 			// Create settings dialog (creates PullManager which loads status from file)
-			this.settings_dialog = new OLLMchat.SettingsDialog.MainDialog(this.app);
+			this.settings_dialog = new SettingsDialog.MainDialog(this);
 			
 			// Connect to PullManager signals to update settings button icon
 			this.settings_dialog.pull_manager.pulls_changed.connect(this.update_settings_button);
+			
+			// Update model list when settings dialog closes
+			this.settings_dialog.closed.connect(() => {
+				this.chat_widget.update_models.begin();
+			});
 
 			// Create toolbar view to manage header bar and content
 			var toolbar_view = new Adw.ToolbarView();
@@ -203,7 +212,7 @@ namespace OLLMchat
 		private async void show_bootstrap_dialog(string error_message)
 		{
 			if (this.bootstrap_dialog == null) {
-				this.bootstrap_dialog = new OLLMchat.SettingsDialog.ConnectionAdd();
+				this.bootstrap_dialog = new SettingsDialog.ConnectionAdd();
 			}
 			this.bootstrap_dialog.show_bootstrap();
 			 
@@ -248,13 +257,13 @@ namespace OLLMchat
 				config.usage.set("default_model", new Settings.ModelUsage() {
 					connection = this.bootstrap_dialog.verified_connection.url,
 					model = "",
-					options = new OLLMchat.Call.Options()
+					options = new Call.Options()
 				});
 				
 				config.usage.set("title_model", new Settings.ModelUsage() {
 					connection = this.bootstrap_dialog.verified_connection.url,
 					model = "",
-					options = new OLLMchat.Call.Options()
+					options = new Call.Options()
 				});
 				
 				// Save config
@@ -286,19 +295,19 @@ namespace OLLMchat
 				}
 				
 				// Show checking connection dialog
-				var checking_dialog = this.show_checking_connection_dialog();
+				this.checking_connection_dialog.show_dialog();
 				
 				// Test connection (version() method uses short timeout internally)
 				GLib.Error? connection_error = null;
 				try {
-					var test_client = new OLLMchat.Client(default_connection);
+					var test_client = new Client(default_connection);
 					yield test_client.version();
-					// Connection succeeded - close checking dialog and proceed
-					checking_dialog.close();
+					// Connection succeeded - hide checking dialog and proceed
+					this.checking_connection_dialog.hide_dialog();
 					break;
 				} catch (GLib.Error e) {
 					connection_error = e;
-					checking_dialog.close();
+					this.checking_connection_dialog.hide_dialog();
 				}
 				
 				// Connection failed - show warning dialog with option to configure
@@ -339,7 +348,7 @@ namespace OLLMchat
 		private async void initialize_client(Settings.Config2 config)
 		{
 			// Create history manager (it will create base_client from config)
-			this.history_manager = new OLLMchat.History.Manager(this.app);
+			this.history_manager = new History.Manager(this.app);
 			
 			// Create ProjectManager first to share with tools
 			this.project_manager = new OLLMfiles.ProjectManager(
@@ -480,7 +489,7 @@ namespace OLLMchat
 		 * then creates vector database and registers the tool.
 		 */
 		private async void initialize_codebase_search_tool(
-			OLLMchat.Client client,
+			Client client,
 			OLLMfiles.ProjectManager project_manager
 		)
 		{
@@ -496,8 +505,13 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Setup tool config with default values if it doesn't exist (saves automatically if created)
+			// Setup tool configs with default values if they don't exist (saves automatically if created)
 			OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);
+			OLLMtools.GoogleSearchTool.setup_tool_config(config);
+			OLLMtools.ReadFile.setup_tool_config(config);
+			OLLMtools.EditMode.setup_tool_config(config);
+			OLLMtools.RunCommand.setup_tool_config(config);
+			OLLMtools.WebFetchTool.setup_tool_config(config);
 			
 			// Get and validate tool config (validation sets is_valid flags and disables tool if needed)
 			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
@@ -515,7 +529,7 @@ namespace OLLMchat
 			
 			// Create embed client from tool config (connection already validated)
 			var embed_connection = config.connections.get(embed_usage.connection);
-			var embed_client = new OLLMchat.Client(embed_connection) {
+			var embed_client = new Client(embed_connection) {
 				config = config,
 				model = embed_usage.model
 			};
@@ -610,7 +624,7 @@ namespace OLLMchat
 		 * - Adds widget to tab_view if not already present
 		 * - Shows widget and updates WindowPane visibility
 		 */
-		private void on_agent_activated(OLLMchat.Prompt.BaseAgent agent)
+		private void on_agent_activated(Prompt.BaseAgent agent)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -807,51 +821,8 @@ namespace OLLMchat
 		{
 			// Show settings dialog (already created in constructor)
 			// Note: settings_dialog doesn't require history_manager, so we can show it anytime
-			this.settings_dialog.show_dialog(this, page_name);
+			this.settings_dialog.show_dialog.begin(page_name);
 		}
-		
-		/**
-		 * Shows a dialog indicating that connection is being checked.
-		 * 
-		 * @return The dialog instance (caller should close it when done)
-		 */
-		private Adw.Dialog show_checking_connection_dialog()
-		{
-			// Create a simple dialog with spinner
-			var dialog = new Adw.Dialog() {
-				title = "Checking Connection"
-			};
-			
-			// Create content box
-			var box = new Gtk.Box(Gtk.Orientation.VERTICAL, 12) {
-				margin_top = 24,
-				margin_bottom = 24,
-				margin_start = 24,
-				margin_end = 24,
-				spacing = 12
-			};
-			
-			var spinner = new Gtk.Spinner() {
-				spinning = true,
-				halign = Gtk.Align.CENTER,
-				width_request = 48,
-				height_request = 48
-			};
-			box.append(spinner);
-			
-			var label = new Gtk.Label("Verifying connection to server...") {
-				halign = Gtk.Align.CENTER
-			};
-			box.append(label);
-			
-			dialog.set_child(box);
-			
-			// Present dialog (non-blocking)
-			dialog.present(this);
-			
-			return dialog;
-		}
-		
 		/**
 		 * Shows a warning dialog when connection fails, with option to configure settings.
 		 * 

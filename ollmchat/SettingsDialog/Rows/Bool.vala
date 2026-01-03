@@ -32,12 +32,13 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Creates a new Bool widget.
 		 * 
-		 * @param pspec The property spec for the bool property
+		 * @param dialog The settings dialog
 		 * @param config The config object that contains this property
+		 * @param pspec The property spec for the bool property
 		 */
-		public Bool(ParamSpec pspec, Object config)
+		public Bool(MainDialog dialog, Object config, ParamSpec pspec)
 		{
-			base(pspec, config);
+			base(dialog, config, pspec);
 		}
 		
 		protected override void setup_widget()

@@ -598,6 +598,17 @@ namespace OLLMchatGtk
 			// The user can continue the conversation after stopping
 		}
 
+		/**
+		 * Updates the model list in the dropdown.
+		 * 
+		 * Called when settings change to refresh the available models.
+		 * 
+		 * @since 1.0
+		 */
+		public async void update_models()
+		{
+			yield this.chat_input.update_models();
+		}
 
 	}
 }

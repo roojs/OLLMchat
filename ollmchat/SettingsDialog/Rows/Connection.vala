@@ -28,22 +28,20 @@ namespace OLLMchat.SettingsDialog.Rows
 	public class Connection : Row
 	{
 		public Gtk.DropDown dropdown;
-		private OLLMchat.SettingsDialog.MainDialog settings_dialog;
 		private Gtk.StringList string_list;
 		
 		/**
 		 * Creates a new Connection widget.
 		 * 
-		 * @param pspec The property spec for the connection property
+		 * @param dialog SettingsDialog to access Config2
 		 * @param config The config object that contains this property
-		 * @param settings_dialog SettingsDialog to access Config2
+		 * @param pspec The property spec for the connection property
 		 */
-		public Connection(ParamSpec pspec, Object config, OLLMchat.SettingsDialog.MainDialog settings_dialog)
+		public Connection(MainDialog dialog, Object config, ParamSpec pspec)
 		{
+			base(dialog, config, pspec);
 			this.string_list = new Gtk.StringList({});
-			base(pspec, config);
-			this.settings_dialog = settings_dialog;
-			
+
 		}
 		
 		protected override void setup_widget()
@@ -78,7 +76,7 @@ namespace OLLMchat.SettingsDialog.Rows
 			string[] urls = {};
 			uint selected_index = 0;
 			int index = 0;
-			foreach (var entry in this.settings_dialog.app.config.connections.entries) {
+			foreach (var entry in this.dialog.app.config.connections.entries) {
 				urls += entry.key;
 				if (entry.key == current_url) {
 					selected_index = (uint)index;

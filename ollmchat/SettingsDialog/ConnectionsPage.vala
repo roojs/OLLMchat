@@ -39,6 +39,7 @@ namespace OLLMchat.SettingsDialog
 		private Gtk.Box boxed_list;
 		private Gee.HashMap<string, ConnectionRow> rows = new Gee.HashMap<string, ConnectionRow>();
 		private ConnectionAdd add_dialog;
+		private bool updating_defaults = false;
 
 		/**
 		 * Creates a new ConnectionsPage.
@@ -136,10 +137,9 @@ namespace OLLMchat.SettingsDialog
 			var newName = row.nameEntry.text.strip();
 			var test_connection = new OLLMchat.Settings.Connection() {
 				name = newName != "" ? newName : newUrl,
-				url = newUrl,
-				api_key = row.apiKeyEntry.text.strip(),
-				is_default = row.defaultSwitch.active
+				url = newUrl
 			};
+			row.apply_config(test_connection);
 
 			// Validate connection by testing it
 			try {
@@ -247,9 +247,84 @@ namespace OLLMchat.SettingsDialog
 			row.verify_requested.connect(() => {
 				this.verify_connection.begin(row.url);
 			});
+			row.defaultSwitch.notify["active"].connect(() => {
+				this.on_default_changed(row.url, row.defaultSwitch.active);
+			});
 
 			this.rows.set(url, row);
 			this.boxed_list.append(row.expander);
+		}
+
+		/**
+		 * Called when a connection's default switch is toggled.
+		 * 
+		 * Applies config from UI, then ensures only one connection is default.
+		 * If unsetting default and this is the only connection, it will be set back to default.
+		 * 
+		 * @param url Connection URL
+		 * @param is_default Whether this connection should be default
+		 */
+		private void on_default_changed(string url, bool is_default)
+		{
+			// Prevent recursion when we update other switches
+			if (this.updating_defaults) {
+				return;
+			}
+
+			var row = this.rows.get(url);
+			var connection = this.dialog.app.config.connections.get(url);
+
+			// Apply config from UI first
+			row.apply_config(connection);
+
+			// If unsetting default and this is the only connection, set it back to default
+			if (!is_default && this.dialog.app.config.connections.size == 1) {
+				this.updating_defaults = true;
+				connection.is_default = true;
+				row.defaultSwitch.active = true;
+				this.updating_defaults = false;
+				return;
+			}
+
+			// Update other connections based on the new state
+			this.updating_defaults = true;
+			bool found_first = false;
+			foreach (var entry in this.dialog.app.config.connections.entries) {
+				if (entry.key == url) {
+					continue;
+				}
+				
+				if (is_default) {
+					// Setting this as default: clear all other connections
+					entry.value.is_default = false;
+					if (this.rows.has_key(entry.key)) {
+						this.rows.get(entry.key).defaultSwitch.active = false;
+					}
+					continue;
+				}
+				
+				if (found_first) {
+					continue;
+				}
+				
+				// Unsetting default: set the first other connection as default
+				entry.value.is_default = true;
+				if (this.rows.has_key(entry.key)) {
+					this.rows.get(entry.key).defaultSwitch.active = true;
+				}
+				found_first = true;
+			}
+			this.updating_defaults = false;
+		}
+
+		/**
+		 * Applies all connection row UI values to their corresponding connection objects.
+		 */
+		public void apply_config()
+		{
+			foreach (var entry in this.rows.entries) {
+				entry.value.apply_config(this.dialog.app.config.connections.get(entry.key));
+			}
 		}
 
 

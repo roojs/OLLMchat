@@ -36,7 +36,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.config.html">config</a></li>
-          <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.settings_dialog.html">settings_dialog</a></li>
+          <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.dialog.html">dialog</a></li>
           <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.tool_name.html">tool_name</a></li>
           <li class="creation_method">Tool</li>
           <li class="method"><a href="OLLMchat.SettingsDialog.Rows.Tool.load_config.html">load_config</a></li>
@@ -46,12 +46,18 @@
         <h1 class="main_title">Tool</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Tool</span></b> (<span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span>? tool, <span class="main_type"><a href="OLLMchat.Settings.BaseToolConfig.html" class="class">BaseToolConfig</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> tool_name, <span class="main_type"><a href="OLLMchat.SettingsDialog.MainDialog.html" class="class">MainDialog</a></span> settings_dialog)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Tool</span></b> (<span class="main_type"><a href="OLLMchat.SettingsDialog.MainDialog.html" class="class">MainDialog</a></span> dialog, <span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span>? tool, <span class="main_type"><a href="OLLMchat.Settings.BaseToolConfig.html" class="class">BaseToolConfig</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> tool_name)
         </div>
         <div class="description">
           <p>Creates a new Tool.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">dialog</td>
+              <td>
+                <p>SettingsDialog to access Config2 </p>
+              </td>
+            </tr>
             <tr>
               <td class="main_parameter_table_name">tool</td>
               <td>
@@ -68,12 +74,6 @@
               <td class="main_parameter_table_name">tool_name</td>
               <td>
                 <p>The tool name (used if tool is null) </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">settings_dialog</td>
-              <td>
-                <p>SettingsDialog to access Config2 </p>
               </td>
             </tr>
           </table>
