@@ -418,7 +418,6 @@ namespace OLLMchatGtk
 			
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				connection_models,
-				(a, b) => { return sorter.compare(a, b) == Gtk.Ordering.EQUAL; },
 				sorter,
 				match_all_filter
 			);

@@ -122,7 +122,6 @@ namespace OLLMchat.SettingsDialog.Rows
 			
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				this.filtered_models,
-				(a, b) => { return sorter.compare(a, b) == Gtk.Ordering.EQUAL; },
 				sorter,
 				match_all_filter
 			);

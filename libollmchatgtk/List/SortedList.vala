@@ -44,19 +44,26 @@ namespace OLLMchatGtk.List
 		 * Constructor.
 		 * 
 		 * @param source_model The source ListModel
-		 * @param equal_func The equality function for ArrayList operations like index_of (returns true if a == b)
-		 * @param sorter The sorter to apply
+		 * @param sorter The sorter to apply (used to derive equality function: items are equal if sorter.compare(a, b) == Gtk.Ordering.EQUAL)
 		 * @param filter The filter to apply. To match all items, use `new Gtk.CustomFilter((item) => { return true; })`
 		 */
-		public SortedList(GLib.ListModel source_model, owned Gee.EqualDataFunc<Object> equal_func, Gtk.Sorter sorter, Gtk.Filter filter)
+		public SortedList(GLib.ListModel source_model, Gtk.Sorter sorter, Gtk.Filter filter)
 		{
 			this.source_model = source_model;
 			this.sorter = sorter;
 			this.model_filter = filter;
 			this.filter = filter;
-			this.sorted_items = new Gee.ArrayList<Object>(equal_func);
-			this.got_list = new Gee.ArrayList<Object>(equal_func);
-			this.pre_update = new Gee.ArrayList<Object>(equal_func);
+			
+			// Derive equality function from sorter: items are equal if sorter.compare returns EQUAL
+			this.sorted_items = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
+			this.got_list = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
+			this.pre_update = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
 			
 			// Connect to source model changes
 			this.source_changed_id = this.source_model.items_changed.connect(this.on_source_changed);
