@@ -54,7 +54,13 @@ namespace OLLMchat.Settings
 		 * Set to false by validation methods if the connection is missing or
 		 * the model is not available on the server.
 		 */
-		public bool is_valid = true; 
+		public bool is_valid = true;
+		
+		/**
+		 * Response.Model object for display names and filling in details later.
+		 * Not serialized - runtime only.
+		 */
+		public Response.Model? model_obj = null; 
 
 		/**
 		 * Default constructor.
@@ -129,6 +135,31 @@ namespace OLLMchat.Settings
 		{
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
+		
+		/**
+		 * Returns the display name for this model (just the model name).
+		 * 
+		 * @return The model name
+		 */
+		public string display_name()
+		{
+			return this.model;
+		}
+		
+		/**
+		 * Returns the display name with size in parentheses (e.g., "llama3.1:70b (4.1 GB)").
+		 * Uses model_obj if available, otherwise just returns the model name.
+		 * 
+		 * @return The model name with size, or just the model name if model_obj is null
+		 */
+		public string display_name_with_size()
+		{
+			if (this.model_obj != null) {
+				return this.model_obj.name_with_size;
+			}
+			return this.model;
+		}
+	
 	}
 }
 
