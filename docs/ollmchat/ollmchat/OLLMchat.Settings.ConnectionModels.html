@@ -32,6 +32,7 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Settings.ConnectionModels.config.html">config</a></li>
+          <li class="property"><a href="OLLMchat.Settings.ConnectionModels.connection_map.html">connection_map</a></li>
           <li class="property"><a href="OLLMchat.Settings.ConnectionModels.items.html">items</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.ConnectionModels.ConnectionModels.html">ConnectionModels</a></li>
           <li class="method"><a href="OLLMchat.Settings.ConnectionModels.append.html">append</a></li>
@@ -79,6 +80,11 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> <b><a href="OLLMchat.Settings.ConnectionModels.config.html" class="property">config</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">construct</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Config2 instance (set via constructor).</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span>&gt;&gt; <b><a href="OLLMchat.Settings.ConnectionModels.connection_map.html" class="property">connection_map</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Storage: HashMap of connection URL to HashMap of model name to 
+                ModelUsage. Used for efficient O(1) lookup by both connection and model name.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span>&gt; <b><a href="OLLMchat.Settings.ConnectionModels.items.html" class="property">items</a></b> { <span class="main_keyword">get</span>; }
             </span>

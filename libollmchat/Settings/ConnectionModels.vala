@@ -46,10 +46,10 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Internal storage: HashMap of connection URL to HashMap of model name to ModelUsage.
+		 * Storage: HashMap of connection URL to HashMap of model name to ModelUsage.
 		 * Used for efficient O(1) lookup by both connection and model name.
 		 */
-		private Gee.HashMap<string, Gee.HashMap<string, ModelUsage>> connection_map { get; set;
+		public Gee.HashMap<string, Gee.HashMap<string, ModelUsage>> connection_map { get; private set;
 			default = new Gee.HashMap<string, Gee.HashMap<string, ModelUsage>>(); }
 		
 		/**
