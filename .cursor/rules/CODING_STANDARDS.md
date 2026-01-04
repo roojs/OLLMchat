@@ -38,6 +38,8 @@ Options:
 
 **IMPORTANT:** Avoid temporary variables that are just pointers to object properties. Access the property directly instead.
 
+**IMPORTANT:** Avoid simple aliased variables and trivial aliases. If a variable is just an alias for a property or method result that's used once or trivially, inline it instead.
+
 **Bad:**
 ```vala
 var width = this.scrolled_window.get_width();
@@ -65,6 +67,13 @@ private void perform_search(string search_text)
 }
 ```
 
+**Also Bad (simple alias):**
+```vala
+var model = model_usage.model_obj;
+this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
+    BindingFlags.SYNC_CREATE);
+```
+
 **Good:**
 ```vala
 if (this.scrolled_window.get_width() <= 1) {
@@ -87,6 +96,16 @@ private void perform_search(string search_text)
     search_settings.case_sensitive = this.case_sensitive_checkbox.active;
     this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
 }
+```
+
+**Also Good (inline simple alias):**
+```vala
+this.tools_button_binding = model_usage.model_obj.bind_property(
+    "can-call",
+    this.tools_menu_button,
+    "visible",
+    BindingFlags.SYNC_CREATE
+);
 ```
 
 ## Brace Placement

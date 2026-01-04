@@ -178,7 +178,7 @@ namespace OLLMchat.Settings
 		 * @param model_name The model name
 		 * @return The ModelUsage if found, null otherwise
 		 */
-		private ModelUsage? find_model(string connection_url, string model_name)
+		public ModelUsage? find_model(string connection_url, string model_name)
 		{
 			var connection_models = this.connection_map.get(connection_url);
 			if (connection_models == null) {

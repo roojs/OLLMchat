@@ -34,8 +34,7 @@ namespace OLLMchatGtk
 		private Gtk.Button action_button;
 		private Gtk.DropDown model_dropdown;
 		private Gtk.Label model_loading_label;
-		private GLib.ListStore? model_store = null;
-		private Gtk.SortListModel? sorted_models = null;
+		private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
 		private OLLMchat.History.Manager manager;
 		private bool is_streaming = false;
 		private bool is_loading_models = false;
@@ -60,12 +59,6 @@ namespace OLLMchatGtk
 			}
 		}
 
-		/**
-		 * Whether to show the model selection dropdown.
-		 * 
-		 * @since 1.0
-		 */
-		public bool show_models { get; set; default = true; }
 
 		/**
 	 * Emitted when the send button is clicked or Enter is pressed.
@@ -370,41 +363,38 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Updates the visibility of model-related widgets based on show_models property.
+		 * Updates the visibility of model-related widgets based on connection_models size.
 		 * 
 		 * @since 1.0
 		 */
 		private void update_model_widgets_visibility()
 		{
-			this.model_dropdown.visible = this.show_models;
-			this.model_loading_label.visible = this.show_models && this.is_loading_models;
+			bool has_models = this.manager.connection_models.get_n_items() > 0;
 			
-			// Tools button visibility is controlled by both show_models and model's can_call property
-			if (!this.show_models) {
-				// Unbind and hide when show_models is false
-				if (this.tools_button_binding != null) {
-					this.tools_button_binding.unbind();
-					this.tools_button_binding = null;
-				}
+			this.model_dropdown.visible = has_models;
+			this.model_loading_label.visible = has_models && this.is_loading_models;
+			
+			// Tools button visibility is controlled by both has_models and model's can_call property
+			// The binding (set up in selection handler) automatically updates visibility when can_call changes
+			if (!has_models) {
+				// Hide when there are no models (binding will be cleaned up in selection handler)
 				this.tools_menu_button.visible = false;
 				return;
 			}
 			
 			// Update tools button visibility based on current model selection
-			if (this.model_dropdown.selected == Gtk.INVALID_LIST_POSITION || this.sorted_models == null) {
+			// The binding handles automatic updates, we just need to ensure it's visible if model supports tools
+			if (this.model_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
+				this.tools_menu_button.visible = false;
 				return;
 			}
 			
-			var model = this.sorted_models.get_item(this.model_dropdown.selected) as OLLMchat.Response.Model;
-			if (model == null) {
-				return;
-			}
+			var model_usage = this.sorted_models.get_item_typed(this.model_dropdown.selected);
 			
-			// Ensure binding is set up for automatic updates
-			if (this.tools_button_binding == null) {
-				this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
-					BindingFlags.SYNC_CREATE);
-			}
+			// Visibility is controlled by binding to model_obj.can_call property
+			// If binding doesn't exist yet, it will be created in the selection handler
+			// For now, just set visibility based on current value
+			this.tools_menu_button.visible = model_usage.model_obj.can_call;
 		}
 
 		/**
@@ -414,110 +404,34 @@ namespace OLLMchatGtk
 		 */
 		public void setup_model_dropdown()
 		{
+			// Use ConnectionModels from history manager
+			var connection_models = this.manager.connection_models;
 
-			// Create ListStore for models
-			this.model_store = new GLib.ListStore(typeof(OLLMchat.Response.Model));
-
-			// Create custom sorter that sorts by name (case-insensitive)
-			// Split by "/" and sort by the second part (model name) if present,
-			// otherwise sort by the full name
-			var sorter = new Gtk.CustomSorter((a, b) => {
-				var model_a = a as OLLMchat.Response.Model;
-				var model_b = b as OLLMchat.Response.Model;
-				if (model_a == null || model_b == null) {
-					return Gtk.Ordering.EQUAL;
-				}
-				
-				string name_a = model_a.name;
-				string name_b = model_b.name;
-				
-				// Split by "/" and use the second part if it exists
-				var parts_a = name_a.split("/", 2);
-				var parts_b = name_b.split("/", 2);
-				
-				string sort_key_a = parts_a.length > 1 ? parts_a[1] : parts_a[0];
-				string sort_key_b = parts_b.length > 1 ? parts_b[1] : parts_b[0];
-				
-				// Case-insensitive comparison
-				int cmp = strcmp(sort_key_a.down(), sort_key_b.down());
-				if (cmp < 0) {
-					return Gtk.Ordering.SMALLER;
-				} else if (cmp > 0) {
-					return Gtk.Ordering.LARGER;
-				} else {
-					return Gtk.Ordering.EQUAL;
-				}
+			// Connect to items-changed signal to update visibility based on model count
+			connection_models.items_changed.connect((position, removed, added) => {
+				this.update_model_widgets_visibility();
 			});
 
-			// Create sorted model
-			this.sorted_models = new Gtk.SortListModel(this.model_store, sorter);
+			// Create sorted list model
+			var sorter = new OLLMchatGtk.List.ModelUsageSort();
+			var match_all_filter = new Gtk.CustomFilter((item) => { return true; });
+			
+			// Create equality function from sorter for ArrayList operations (index_of, remove, etc.)
+			Gee.EqualDataFunc<Object> equal_func = (a, b) => {
+				return sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			};
+			
+			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
+				connection_models,
+				equal_func,
+				sorter,
+				match_all_filter
+			);
 
-			// Create shared factory for both button and popup (with icons, name, size)
-			var factory = new Gtk.SignalListItemFactory();
-			factory.setup.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null) {
-					return;
-				}
+			// Create factory using ModelUsageFactory
+			var factory = new OLLMchatGtk.List.ModelUsageFactory();
 
-				var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5) {
-					margin_start = 5,
-					margin_end = 5
-				};
-
-				// Icons for capabilities
-				var tools_icon = new Gtk.Image.from_icon_name("document-properties") {
-					visible = false,
-					tooltip_text = "Supports tool calling"
-				};
-				var thinking_icon = new Gtk.Image.from_icon_name("weather-fog") {
-					visible = false,
-					tooltip_text = "Supports thinking output"
-				};
-
-				// Model name label (with size)
-				var name_label = new Gtk.Label("") {
-					hexpand = true,
-					halign = Gtk.Align.START
-				};
-
-				box.append(tools_icon);
-				box.append(thinking_icon);
-				box.append(name_label);
-
-				// Store widget references using object data (like the GTK example)
-				list_item.set_data<Gtk.Image>("tools_icon", tools_icon);
-				list_item.set_data<Gtk.Image>("thinking_icon", thinking_icon);
-				list_item.set_data<Gtk.Label>("name_label", name_label);
-
-				list_item.child = box;
-			});
-
-			factory.bind.connect((item) => {
-				var list_item = item as Gtk.ListItem;
-				if (list_item == null || list_item.item == null) {
-					return;
-				}
-
-				var model = list_item.item as OLLMchat.Response.Model;
-
-				// Retrieve widgets using object data
-				var tools_icon = list_item.get_data<Gtk.Image>("tools_icon");
-				var thinking_icon = list_item.get_data<Gtk.Image>("thinking_icon");
-				var name_label = list_item.get_data<Gtk.Label>("name_label");
-
-				// Bind widget properties to model properties
-				// SYNC_CREATE syncs on binding creation, and bindings automatically update when source properties change
-				model.bind_property("can_call", tools_icon, "visible", BindingFlags.SYNC_CREATE);
-				model.bind_property("is_thinking", thinking_icon, "visible", BindingFlags.SYNC_CREATE);
-				model.bind_property("name_with_size", name_label, "label", BindingFlags.SYNC_CREATE);
-			});
-
-			factory.unbind.connect((item) => {
-				// Property bindings are automatically cleaned up when objects are destroyed
-			});
-
-			// Set up dropdown with models
+			// Set up dropdown with models (SortedList implements ListModel)
 			this.model_dropdown.model = this.sorted_models;
 
 			// Use the same factory for both button and popup (with icons)
@@ -532,24 +446,42 @@ namespace OLLMchatGtk
 					return;
 				}
 				
-				if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
-					var model = this.sorted_models.get_item(this.model_dropdown.selected) as OLLMchat.Response.Model;
+					if (this.model_dropdown.selected != Gtk.INVALID_LIST_POSITION) {
+						var model_usage = this.sorted_models.get_item_typed(this.model_dropdown.selected);
+					if (model_usage == null || model_usage.model_obj == null) {
+						return;
+					}
 					
+					var model = model_usage.model_obj;
+					
+					// Update client with connection and model
+					var connection = this.manager.config.connections.get(model_usage.connection);
+					if (connection != null) {
+						this.manager.session.client.connection = connection;
+					}
 					this.manager.session.client.model = model.name;
 					// Set think based on model capability
 					this.manager.session.client.think = model.is_thinking;
 					
-					// Update binding to new model's can_call property
-					if (this.show_models) {
-						if (this.tools_button_binding != null) {
-							this.tools_button_binding.unbind();
-						}
-						this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
-							BindingFlags.SYNC_CREATE);
+					// Update binding to new model's can_call property for automatic visibility updates
+					this.update_model_widgets_visibility();
+
+					if (this.manager.connection_models.get_n_items() == 0) {
+						return;
 					}
 					
+					if (this.tools_button_binding != null) {
+						this.tools_button_binding.unbind();
+					}
+					this.tools_button_binding = model.bind_property(
+						"can-call",
+						this.tools_menu_button,
+						"visible",
+						BindingFlags.SYNC_CREATE
+					);
+					
 					// Update tools button visibility based on model's can_call property
-					this.update_model_widgets_visibility();
+					
 				}
 			});
 
@@ -559,21 +491,23 @@ namespace OLLMchatGtk
 			// Connect to session_activated signal to update when session changes
 			this.manager.session_activated.connect((session) => {
 				// Reload models for the new session's client
-				if (this.show_models) {
-					Idle.add(() => {
-						this.update_models.begin();
-						return false;
-					});
+				if (this.manager.connection_models.get_n_items() == 0) {
+					return;
 				}
-			});
-			
-			// Load models asynchronously if enabled
-			if (this.show_models) {
 				Idle.add(() => {
 					this.update_models.begin();
 					return false;
 				});
+			});
+			
+			// Load models asynchronously if available
+			if (this.manager.connection_models.get_n_items() == 0) {
+				return;
 			}
+			Idle.add(() => {
+				this.update_models.begin();
+				return false;
+			});
 		}
 
 		/**
@@ -633,90 +567,52 @@ namespace OLLMchatGtk
 			GLib.debug("update_models: client.model='%s'", this.manager.session.client.model);
 			this.is_loading_models = true;
 			try {
-				// Get basic model list - this populates available_models automatically
-				var models_list = yield this.manager.session.client.models();
-				
-				// Clear existing models
-				this.model_store.remove_all();
-
-				// Add models from available_models (populated by models() call)
-				// Prioritize the current model by adding it first
-				if (this.manager.session.client.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.model)) {
-					var current_model = this.manager.session.client.available_models.get(this.manager.session.client.model);
-					this.model_store.append(current_model);
-				} else {
-					GLib.debug("Current model '%s' not in available_models", this.manager.session.client.model);
-				}
-				
-				// Add all other models (excluding the current one if it was already added)
-				foreach (var model in this.manager.session.client.available_models.values) {
-					if (this.manager.session.client.model != "" && model.name == this.manager.session.client.model) {
-						continue; // Skip current model as it was already added first
-					}
-					this.model_store.append(model);
-				}
+				// Refresh ConnectionModels - this will load models from all working connections
+				yield this.manager.connection_models.refresh();
 				
 				// Set selection to match client.model and update client state
 				// This will trigger the notify signal, but we're ignoring it during loading
+				bool model_found = false;
 				OLLMchat.Response.Model? current_model_obj = null;
 				if (this.manager.session.client.model != "") {
-					for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
-						var model = this.sorted_models.get_item(i) as OLLMchat.Response.Model;
-						if (model.name != this.manager.session.client.model) {
-							continue;
+					var model_usage = this.manager.connection_models.find_model(
+						this.manager.session.client.connection.url,
+						this.manager.session.client.model
+					);
+					
+					if (model_usage != null) {
+						// Find position in sorted_models
+						uint position = this.sorted_models.find_position(model_usage);
+						if (position != Gtk.INVALID_LIST_POSITION) {
+							this.model_dropdown.selected = position;
+							current_model_obj = model_usage.model_obj;
+							// Update client.think based on selected model (do this directly, not via signal)
+							this.manager.session.client.think = model_usage.model_obj.is_thinking;
+							// Update tools button visibility based on model's can_call property
+							this.update_model_widgets_visibility();
+							model_found = true;
 						}
-						this.model_dropdown.selected = i;
-						current_model_obj = model;
-						// Update client.think based on selected model (do this directly, not via signal)
-						this.manager.session.client.think = model.is_thinking;
-						// Update tools button visibility based on model's can_call property
-						this.update_model_widgets_visibility();
-						break;
 					}
 				}
 				
 				// Bind tools button visibility to current model's can_call property if we have a model
 				// This will automatically update when model capabilities are loaded
-				// The binding will update visibility based on can_call, but we still need to check show_models
-				if (current_model_obj != null && this.show_models) {
+				if (model_found && this.manager.connection_models.get_n_items() > 0) {
 					if (this.tools_button_binding != null) {
 						this.tools_button_binding.unbind();
 					}
-					this.tools_button_binding = current_model_obj.bind_property("can-call", this.tools_menu_button, "visible", 
-						BindingFlags.SYNC_CREATE);
+					this.tools_button_binding = current_model_obj.bind_property(
+						"can-call",
+						this.tools_menu_button,
+						"visible",
+						BindingFlags.SYNC_CREATE
+					);
 				}
 				
 				// Models are now loaded - hide loading label and show dropdown
 				// Set is_loading_models to false so update_model_widgets_visibility() hides the label
 				this.is_loading_models = false;
 				this.update_model_widgets_visibility();
-				
-				// Asynchronously fetch detailed info for each model
-				// Prioritize the current model by fetching its details first
-				// This will automatically update the UI since we're updating the same Model objects
-				if (this.manager.session.client.model != "" && this.manager.session.client.available_models.has_key(this.manager.session.client.model)) {
-					try {
-						yield this.manager.session.client.show_model(this.manager.session.client.model);
-						// Update tools button visibility immediately after current model details are loaded
-						this.update_model_widgets_visibility();
-					} catch (Error e) {
-						GLib.warning("Failed to get details for current model %s: %s", this.manager.session.client.model, e.message);
-					}
-				}
-				
-				// Then fetch details for all other models (in background)
-				foreach (var model in models_list) {
-					// Skip current model as it was already fetched
-					if (this.manager.session.client.model != "" && model.name == this.manager.session.client.model) {
-						continue;
-					}
-					try {
-						yield this.manager.session.client.show_model(model.name);
-					} catch (Error e) {
-						GLib.warning("Failed to get details for model %s: %s", model.name, e.message);
-						// Continue with other models
-					}
-				}
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to load models: %s", e.message);
 				// Don't show error to user - dropdown will just remain hidden

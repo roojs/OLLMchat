@@ -62,6 +62,7 @@ namespace OLLMchat.History
 		public Gee.HashMap<string, OLLMchat.Prompt.BaseAgent> agents { 
 			get; private set; default = new Gee.HashMap<string, OLLMchat.Prompt.BaseAgent>(); 
 		}
+		public Settings.ConnectionModels connection_models { get; private set; }
 		
 		// Signal emitted when a new session is added (for UI updates)
 		public signal void session_added(SessionBase session);
@@ -122,6 +123,9 @@ namespace OLLMchat.History
 			
 			// Store config
 			this.config = app.config;
+			
+			// Create ConnectionModels instance
+			this.connection_models = new Settings.ConnectionModels(this.config);
 			
 			// Create base client from default_model usage
 			this.base_client = app.config.create_client("default_model");

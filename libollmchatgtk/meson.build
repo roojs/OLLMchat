@@ -19,11 +19,6 @@ ollmchatgtk_deps = [
   valac.find_library('posix'),
 ]
 
-# Source files for Tools namespace (GTK-dependent)
-ollmchat_tools_gtk_src = files([
-  'Tools/Permission.vala',
-])
-
 # GTK source files (for GTK library and test-window)
 ollmchatgtk_src = files([
   'ChatWidget.vala',
@@ -35,7 +30,12 @@ ollmchatgtk_src = files([
   # 'ClipboardMetadata.vala',
   'HistoryBrowser.vala',
   'Message.vala',
-]) + ollmchat_tools_gtk_src
+  'Tools/Permission.vala',
+  'List/ModelUsageFilter.vala',
+  'List/ModelUsageSort.vala',
+  'List/ModelUsageFactory.vala',
+  'List/SortedList.vala',
+])
 
 # Build rpath for libraries to find each other in build directory
 lib_build_rpath = ':'.join([
@@ -48,7 +48,7 @@ lib_build_rpath = ':'.join([
 
 ollmchatgtk_lib = library('ollmchatgtk',
   dependencies: [ollmchatgtk_deps, ocagent_vapi_dep],
-  sources: [ollmchat_tools_gtk_src, ollmchatgtk_src],
+  sources: [ollmchatgtk_src],
   vala_header: 'ollmchatgtk.h',
   vala_vapi: 'ollmchatgtk.vapi',
   link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib],  # Link with base libraries
