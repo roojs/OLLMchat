@@ -38,7 +38,6 @@ namespace OLLMchat
 		private Adw.HeaderBar header_bar;
 		private SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
 		private SettingsDialog.MainDialog? settings_dialog = null;
-		public SettingsDialog.CheckingConnectionDialog checking_connection_dialog;
 		private Gtk.Button settings_button;
 		private Gtk.Spinner settings_spinner;
 		private Gtk.Image settings_icon;
@@ -63,9 +62,6 @@ namespace OLLMchat
 			
 			// Ensure data directory exists (using interface)
 			app.ensure_data_dir();
-
-			// Create checking connection dialog first (needed by MainDialog)
-			this.checking_connection_dialog = new SettingsDialog.CheckingConnectionDialog(this);
 			
 			// Create settings dialog (creates PullManager which loads status from file)
 			this.settings_dialog = new SettingsDialog.MainDialog(this);
@@ -287,52 +283,41 @@ namespace OLLMchat
 		{
 			// Loop until connection succeeds
 			while (true) {
-				// Get default connection from config for testing
-				var default_connection = config.get_default_connection();
-				if (default_connection == null) {
-					yield this.show_bootstrap_dialog("No default connection found in config");
+				// Check all connections and get first working one
+				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(this);
+				checking_dialog.show_dialog();
+				yield config.check_connections();
+				checking_dialog.hide_dialog();
+				
+				var working_conn = config.working_connection();
+				if (working_conn == null) {
+					// No working connection found - show warning dialog with option to configure
+					var response = yield this.show_connection_error_dialog("No working connection found. Please check your connection settings.");
+					
+					if (response != "settings") {
+						// User closed dialog without configuring - exit
+						return;
+					}
+					
+					// User clicked Configure - show settings dialog
+					// Connect to closed signal to re-check connection after settings dialog closes
+					ulong signal_id = 0;
+					signal_id = this.settings_dialog.closed.connect(() => {
+						// Disconnect signal to avoid multiple connections
+						this.settings_dialog.disconnect(signal_id);
+						// Re-check connection after settings dialog closes
+						this.initialize_unverified_client.begin(config);
+					});
+					
+					// Show settings dialog and switch to connections tab
+					this.show_settings_dialog("connections");
+					
+					// Wait for settings dialog to close (will trigger re-check via signal)
 					return;
 				}
 				
-				// Show checking connection dialog
-				this.checking_connection_dialog.show_dialog();
-				
-				// Test connection (version() method uses short timeout internally)
-				GLib.Error? connection_error = null;
-				try {
-					var test_client = new Client(default_connection);
-					yield test_client.version();
-					// Connection succeeded - hide checking dialog and proceed
-					this.checking_connection_dialog.hide_dialog();
-					break;
-				} catch (GLib.Error e) {
-					connection_error = e;
-					this.checking_connection_dialog.hide_dialog();
-				}
-				
-				// Connection failed - show warning dialog with option to configure
-				var response = yield this.show_connection_error_dialog("Failed to connect to server: " + connection_error.message);
-				
-				if (response != "settings") {
-					// User closed dialog without configuring - exit
-					return;
-				}
-				
-				// User clicked Configure - show settings dialog
-				// Connect to closed signal to re-check connection after settings dialog closes
-				ulong signal_id = 0;
-				signal_id = this.settings_dialog.closed.connect(() => {
-					// Disconnect signal to avoid multiple connections
-					this.settings_dialog.disconnect(signal_id);
-					// Re-check connection after settings dialog closes
-					this.initialize_unverified_client.begin(config);
-				});
-				
-				// Show settings dialog and switch to connections tab
-				this.show_settings_dialog("connections");
-				
-				// Wait for settings dialog to close (will trigger re-check via signal)
-				return;
+				// Found a working connection - break out of loop
+				break;
 			}
 			
 			// Connection verified, proceed with initialization
@@ -349,6 +334,11 @@ namespace OLLMchat
 		{
 			// Create history manager (it will create base_client from config)
 			this.history_manager = new History.Manager(this.app);
+			
+			// Check all connections and set is_working flags before refreshing models
+			
+			// Refresh connection models after connection validation (version tests completed)
+			yield this.history_manager.connection_models.refresh();
 			
 			// Create ProjectManager first to share with tools
 			this.project_manager = new OLLMfiles.ProjectManager(

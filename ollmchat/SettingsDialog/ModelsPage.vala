@@ -53,6 +53,7 @@ namespace OLLMchat.SettingsDialog
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
 		private AddModelDialog? add_model_dialog = null;
+		private OLLMchat.Settings.ConnectionModels connection_models;
 
 		/**
 		 * Creates a new ModelsPage.
@@ -68,6 +69,15 @@ namespace OLLMchat.SettingsDialog
 				orientation: Gtk.Orientation.VERTICAL,
 				spacing: 0
 			);
+			
+			// Get ConnectionModels from parent window's history manager
+			var parent_window = this.dialog.parent as OllmchatWindow;
+			if (parent_window != null && parent_window.history_manager != null) {
+				this.connection_models = parent_window.history_manager.connection_models;
+			} else {
+				// Create a default ConnectionModels instance if parent window is not available
+				this.connection_models = new OLLMchat.Settings.ConnectionModels(this.dialog.app.config);
+			}
 			
 			// Add proper margins to the page
 			this.margin_start = 12;
@@ -162,7 +172,7 @@ namespace OLLMchat.SettingsDialog
 		/**
 		 * Main method to render/update models list.
 		 * 
-		 * Fetches models from all connections, updates the UI incrementally,
+		 * Uses ConnectionModels to get models from all connections, updates the UI incrementally,
 		 * and shows a loading indicator during the process.
 		 */
 		public async void render_models()
@@ -175,12 +185,20 @@ namespace OLLMchat.SettingsDialog
 			// Show loading indicator and hide existing items
 			this.show_loading(true);
 
-			// Update models for each connection
-			foreach (var entry in this.dialog.app.config.connections.entries) {
-				if (!entry.value.is_working) {
+			// Refresh ConnectionModels (this will update the list)
+			yield this.connection_models.refresh();
+
+			// Update models for each connection using ConnectionModels connection_map
+			foreach (var entry in this.connection_models.connection_map.entries) {
+				var connection_url = entry.key;
+				var connection = this.dialog.app.config.connections.get(connection_url);
+				if (connection == null || !connection.is_working) {
 					continue;
 				}
-				yield this.update_models(entry.key, entry.value);
+				
+				var models_list = new Gee.ArrayList<OLLMchat.Settings.ModelUsage>();
+				models_list.add_all(entry.value.values);
+				yield this.update_models_from_connection_models(connection, models_list);
 			}
 
 			// Remove models that no longer exist in any connection
@@ -193,113 +211,90 @@ namespace OLLMchat.SettingsDialog
 		}
 
 		/**
-		 * Updates models for a single connection.
+		 * Updates models for a single connection using ConnectionModels.
 		 * 
-		 * Fetches models from the connection and updates the UI incrementally.
+		 * Updates the UI incrementally based on ModelUsage objects from ConnectionModels.
 		 * 
-		 * @param connection_url Connection URL (key in config.connections)
 		 * @param connection Connection object
+		 * @param models_list List of ModelUsage objects for this connection
 		 */
-		private async void update_models(string connection_url, OLLMchat.Settings.Connection connection)
+		private async void update_models_from_connection_models(OLLMchat.Settings.Connection connection, Gee.ArrayList<OLLMchat.Settings.ModelUsage> models_list)
 		{
 			// Skip if connection is not working
 			if (!connection.is_working) {
-				GLib.debug("Skipping models update for connection %s (not working)", connection_url);
+				GLib.debug("Skipping models update for connection %s (not working)", connection.url);
 				return;
 			}
 
-			try {
-				var client = new OLLMchat.Client(connection) {
-					config = this.dialog.app.config
+			// Sort models by model name using ModelUsageSort
+			var sorter = new OLLMchatGtk.List.ModelUsageSort();
+			models_list.sort((a, b) => {
+				return (int)sorter.compare(a, b);
+			});
+
+			// Get or create section header for connection
+			Gtk.Widget header_row;
+			if (this.section_headers.has_key(connection.url)) {
+				header_row = this.section_headers.get(connection.url);
+			} else {
+				header_row = new Adw.PreferencesRow() {
+					title = connection.name
 				};
-				var models_list = yield client.models();
-				// Fetch detailed model info (including parameters) for all models
-				yield client.fetch_all_model_details();
+				this.section_headers.set(connection.url, header_row);
+				this.boxed_list.append(header_row);
+			}
+			header_row.visible = true;
 
-				// Sort models alphabetically by name (case-insensitive)
-				// Split by "/" and sort by the second part (model name) if present,
-				// otherwise sort by the full name
-				models_list.sort((a, b) => {
-					string name_a = a.name;
-					string name_b = b.name;
-					
-					// Split by "/" and use the second part if it exists
-					var parts_a = name_a.split("/", 2);
-					var parts_b = name_b.split("/", 2);
-					
-					string sort_key_a = parts_a.length > 1 ? parts_a[1] : parts_a[0];
-					string sort_key_b = parts_b.length > 1 ? parts_b[1] : parts_b[0];
-					
-					// Case-insensitive comparison
-					return strcmp(sort_key_a.down(), sort_key_b.down());
-				});
+			// Update/create model rows for this connection
+			var existing_keys = new Gee.HashSet<string>();
+			foreach (var model_usage in models_list) {
+				var composite_key = "%s#%s".printf(connection.url, model_usage.model);
+				existing_keys.add(composite_key);
 
-				// Get or create section header for connection
-				Gtk.Widget header_row;
-				if (this.section_headers.has_key(connection_url)) {
-					header_row = this.section_headers.get(connection_url);
+				// Use model_obj from ModelUsage if available, otherwise create a basic one
+				OLLMchat.Response.Model detailed_model;
+				if (model_usage.model_obj != null) {
+					detailed_model = model_usage.model_obj;
 				} else {
-					header_row = new Adw.PreferencesRow() {
-						title = connection.name
-					};
-					this.section_headers.set(connection_url, header_row);
-					this.boxed_list.append(header_row);
+					// Create a basic model object if model_obj is not set
+					detailed_model = new OLLMchat.Response.Model();
+					detailed_model.name = model_usage.model;
 				}
-				header_row.visible = true;
 
-				// Update/create model rows for this connection
-				var existing_keys = new Gee.HashSet<string>();
-				foreach (var model in models_list) {
-					var composite_key = "%s#%s".printf(connection_url, model.name);
-					existing_keys.add(composite_key);
+				// Get or create options
+				var options = new OLLMchat.Call.Options();
+				if (this.dialog.app.config.model_options.has_key(model_usage.model)) {
+					var config_options = this.dialog.app.config.model_options.get(model_usage.model);
+					options = config_options.clone();
+				}
 
-					// Use detailed model from available_models if it exists (has parameters)
-					OLLMchat.Response.Model detailed_model = model;
-					if (client.available_models.has_key(model.name)) {
-						detailed_model = client.available_models.get(model.name);
-					}
-
-					// Get or create options
-					var options = new OLLMchat.Call.Options();
-					if (this.dialog.app.config.model_options.has_key(model.name)) {
-						var config_options = this.dialog.app.config.model_options.get(model.name);
-						options = config_options.clone();
-					}
-
-					// Get or create model row
-					ModelRow model_row;
-					if (this.model_rows.has_key(composite_key)) {
-						model_row = this.model_rows.get(composite_key);
-						// Note: model property is construct-only, so we can't update it
-						// But the model object itself should be updated via updateFrom() in show_model()
+				// Get or create model row
+				ModelRow model_row;
+				if (this.model_rows.has_key(composite_key)) {
+					model_row = this.model_rows.get(composite_key);
 					// Update options in case config changed
-						model_row.load_options(options); 
-						model_row.visible = true;
-						continue;
-					} 
-					model_row = new ModelRow(detailed_model, connection, options, this);
-					this.model_rows.set(composite_key, model_row);
-					this.boxed_list.append(model_row);
-					
+					model_row.load_options(options); 
 					model_row.visible = true;
-				}
+					continue;
+				} 
+				model_row = new ModelRow(detailed_model, connection, options, this);
+				this.model_rows.set(composite_key, model_row);
+				this.boxed_list.append(model_row);
+				
+				model_row.visible = true;
+			}
 
-				// Remove models from this connection that no longer exist
-				var keys_to_remove = new Gee.ArrayList<string>();
-				foreach (var key in this.model_rows.keys) {
-					if (key.has_prefix(connection_url + "#") && !existing_keys.contains(key)) {
-						keys_to_remove.add(key);
-					}
+			// Remove models from this connection that no longer exist
+			var keys_to_remove = new Gee.ArrayList<string>();
+			foreach (var key in this.model_rows.keys) {
+				if (key.has_prefix(connection.url + "#") && !existing_keys.contains(key)) {
+					keys_to_remove.add(key);
 				}
-				foreach (var key in keys_to_remove) {
-					var row = this.model_rows.get(key);
-					row.unparent();
-					this.model_rows.unset(key);
-				}
-
-			} catch (Error e) {
-				GLib.warning("Failed to fetch models from connection %s: %s", connection.name, e.message);
-			
+			}
+			foreach (var key in keys_to_remove) {
+				var row = this.model_rows.get(key);
+				row.unparent();
+				this.model_rows.unset(key);
 			}
 		}
 
@@ -409,23 +404,15 @@ namespace OLLMchat.SettingsDialog
 
 			// Filter models
 			foreach (var entry in this.model_rows.entries) {
-				var composite_key = entry.key;
-				var row = entry.value;
-				
 				// Extract model name from composite key
-				var parts = composite_key.split("#", 2);
+				var parts = entry.key.split("#", 2);
 				if (parts.length != 2) {
-					row.visible = false;
+					entry.value.visible = false;
 					continue;
 				}
-				var model_name = parts[1];
 				
 				// Check if model name matches search
-				if (search_lower == "" || model_name.down().contains(search_lower)) {
-					row.visible = true;
-				} else {
-					row.visible = false;
-				}
+				entry.value.visible = (search_lower == "" || parts[1].down().contains(search_lower));
 			}
 /*
 			// Filter section headers - hide if no visible models in that connection

@@ -136,8 +136,7 @@ namespace OLLMchatGtk
 
 			// Create chat input
 			this.chat_input = new ChatInput(this.manager) {
-				vexpand = true,
-				show_models = this.show_models
+				vexpand = true
 			};
 			this.chat_input.send_clicked.connect(this.on_send_clicked);
 			this.chat_input.stop_clicked.connect(this.on_stop_clicked);

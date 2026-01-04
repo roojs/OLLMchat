@@ -38,6 +38,8 @@ Options:
 
 **IMPORTANT:** Avoid temporary variables that are just pointers to object properties. Access the property directly instead.
 
+**IMPORTANT:** Avoid simple aliased variables and trivial aliases. If a variable is just an alias for a property or method result that's used once or trivially, inline it instead.
+
 **Bad:**
 ```vala
 var width = this.scrolled_window.get_width();
@@ -65,6 +67,13 @@ private void perform_search(string search_text)
 }
 ```
 
+**Also Bad (simple alias):**
+```vala
+var model = model_usage.model_obj;
+this.tools_button_binding = model.bind_property("can-call", this.tools_menu_button, "visible", 
+    BindingFlags.SYNC_CREATE);
+```
+
 **Good:**
 ```vala
 if (this.scrolled_window.get_width() <= 1) {
@@ -87,6 +96,16 @@ private void perform_search(string search_text)
     search_settings.case_sensitive = this.case_sensitive_checkbox.active;
     this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
 }
+```
+
+**Also Good (inline simple alias):**
+```vala
+this.tools_button_binding = model_usage.model_obj.bind_property(
+    "can-call",
+    this.tools_menu_button,
+    "visible",
+    BindingFlags.SYNC_CREATE
+);
 ```
 
 ## Brace Placement
@@ -480,6 +499,69 @@ public class Renderer
 ```
 
 Note: The `Table` class should have `public bool active { get; set; default = false; }` to ensure it defaults to `false`.
+
+## Null Checks
+
+**IMPORTANT:** Avoid null checks unless there is an absolutely valid reason why an object will be null. Null checks tend to hide bugs, which is why they're not put in the codebase. Only add null checks when explicitly required by the design.
+
+**IMPORTANT:** Avoid nullable parameters (`Type?`) at all costs. Design your APIs to not require nullable parameters. Use alternative patterns like default objects, empty collections, or separate methods instead.
+
+**Bad:**
+```vala
+public void process_item(Item? item)
+{
+    if (item == null) {
+        return;
+    }
+    this.do_something(item);
+}
+```
+
+**Also Bad (nullable parameter):**
+```vala
+public void process_item(Item? item)
+{
+    if (item == null) {
+        this.handle_null_case();
+        return;
+    }
+    this.do_something(item);
+}
+```
+
+**Good:**
+```vala
+public void process_item(Item item)
+{
+    this.do_something(item);
+}
+```
+
+**Also Good (separate method instead of nullable parameter):**
+```vala
+public void process_item(Item item)
+{
+    this.do_something(item);
+}
+
+public void process_without_item()
+{
+    this.handle_no_item_case();
+}
+```
+
+**Exception (when null is explicitly part of the design and absolutely unavoidable):**
+```vala
+// This is OK only if null is truly required by external API or design constraints
+public void process_item(Item? item)
+{
+    if (item == null) {
+        this.handle_null_case();
+        return;
+    }
+    this.do_something(item);
+}
+```
 
 ## Line Length and Breaking
 

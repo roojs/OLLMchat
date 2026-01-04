@@ -23,13 +23,18 @@ namespace OLLMchat.SettingsDialog.Rows
 	 * 
 	 * Creates a dropdown widget populated with models from the selected connection.
 	 * If property is within a ModelUsage, uses the connection from that ModelUsage.
+	 * Uses ConnectionModels from history manager with connection filter.
 	 * 
 	 * @since 1.0
 	 */
 	public class Model : Row
 	{
-		private Gtk.DropDown dropdown;
-		private Gtk.StringList string_list;
+	private Gtk.DropDown dropdown;
+	private OLLMchat.Settings.ConnectionModels? connection_models = null;
+	private Gtk.FilterListModel? filtered_models = null;
+	private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>? sorted_models = null;
+	private OLLMchatGtk.List.ModelUsageFilter connection_filter;
+	private OLLMchatGtk.List.ModelUsageFactory factory;
 		
 		/**
 		 * Creates a new Model widget.
@@ -41,18 +46,28 @@ namespace OLLMchat.SettingsDialog.Rows
 		public Model(MainDialog dialog, Object config, ParamSpec pspec)
 		{
 			base(dialog, config, pspec);
-			this.string_list = new Gtk.StringList({});
-
+			
+			// Get ConnectionModels from parent window's history manager
+			var parent_window = dialog.parent as OllmchatWindow;
+			if (parent_window != null && parent_window.history_manager != null) {
+				this.connection_models = parent_window.history_manager.connection_models;
+			}
+			
+			// Create connection filter (initially empty to match all)
+			this.connection_filter = new OLLMchatGtk.List.ModelUsageFilter("");
 		}
 		
 		protected override void setup_widget()
 		{
-			// Create dropdown
-			this.dropdown = new Gtk.DropDown(this.string_list, null) {
+			// Create dropdown with empty model initially
+			this.dropdown = new Gtk.DropDown(null, null) {
 				valign = Gtk.Align.CENTER
 			};
 			this.add_suffix(this.dropdown);
 			this.set_activatable_widget(this.dropdown);
+			
+			// Create factory for displaying model names (keep reference to prevent garbage collection)
+			this.factory = new OLLMchatGtk.List.ModelUsageFactory();
 			
 			// Bind property changes - update config when selection changes
 			this.dropdown.notify["selected"].connect(() => {
@@ -65,11 +80,15 @@ namespace OLLMchat.SettingsDialog.Rows
 		
 		public override void apply_property(Object obj)
 		{
+			if (this.sorted_models == null || this.dropdown.selected == Gtk.INVALID_LIST_POSITION) {
+				Value new_val = Value(pspec.value_type);
+				new_val.set_string("");
+				obj.set_property(this.pspec.get_name(), new_val);
+				return;
+			}
 			
-			
-			var selected_item = this.string_list.get_item(this.dropdown.selected);
-			
-			var model_name = selected_item != null ? (selected_item as Gtk.StringObject).get_string() : "";
+			var model_usage = this.sorted_models.get_item_typed(this.dropdown.selected);
+			var model_name = model_usage != null ? model_usage.model : "";
 			Value new_val = Value(pspec.value_type);
 			new_val.set_string(model_name);
 			obj.set_property(this.pspec.get_name(), new_val);
@@ -78,51 +97,50 @@ namespace OLLMchat.SettingsDialog.Rows
 		/**
 		 * Loads models from the specified connection.
 		 * 
+		 * Uses ConnectionModels with connection filter instead of fetching models directly.
+		 * 
 		 * @param connection_url The connection URL to fetch models from
 		 * @param current_model The currently selected model name
 		 */
 		public async void load_models(string connection_url, string current_model)
 		{
 			this.loading_config = true;
-			this.string_list = new Gtk.StringList({});
-			this.dropdown.model = this.string_list;
-			this.dropdown.selected = 0;
-			if (connection_url == "") {
+			
+			// Clear dropdown if no connection
+			if (connection_url == "" || this.connection_models == null) {
+				this.dropdown.model = null;
+				this.dropdown.selected = Gtk.INVALID_LIST_POSITION;
 				this.loading_config = false;
 				return;
 			}
 			
-			var connection_obj = this.dialog.app.config.connections.get(connection_url);
+			// Update connection filter
+			this.connection_filter.connection_url = connection_url;
 			
-			// FIXME - model lists need some sorting rules and filtering rules globally
-			try {
-				var client = new OLLMchat.Client(connection_obj) {
-					config = this.dialog.app.config
-				};
-				var models_list = yield client.models();
-				
-				// Sort models alphabetically
-				models_list.sort((a, b) => {
-					return strcmp(a.name.down(), b.name.down());
-				});
-				
-				// Create string list for dropdown
-				string[] strings = {};
-				uint selected_index = 0;
-				for (var i = 0; i < models_list.size; i++) {
-					var model = models_list.get(i);
-					strings += model.name;
-					if (current_model == model.name) {
-						selected_index = (uint)i;
-					}
+			// Create filtered list model
+			this.filtered_models = new Gtk.FilterListModel(this.connection_models, this.connection_filter);
+			
+			// Create sorted list model
+			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
+				this.filtered_models,
+				new OLLMchatGtk.List.ModelUsageSort(),
+				new Gtk.CustomFilter((item) => { return true; })
+			);
+			
+			// Set up dropdown with sorted models
+			this.dropdown.model = this.sorted_models;
+			this.dropdown.set_factory(this.factory.factory);
+			this.dropdown.set_list_factory(this.factory.factory);
+			
+			// Find and select current model using O(1) lookup
+			uint selected_index = Gtk.INVALID_LIST_POSITION;
+			if (current_model != "") {
+				var model_usage = this.connection_models.find_model(connection_url, current_model);
+				if (model_usage != null) {
+					selected_index = this.sorted_models.find_position(model_usage);
 				}
-				this.string_list = new Gtk.StringList(strings);
-				this.dropdown.model = this.string_list;
-				this.dropdown.selected = selected_index;
-
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to fetch models from connection %s: %s", connection_url, e.message);
 			}
+			this.dropdown.selected = selected_index;
 			
 			this.loading_config = false;
 		}

@@ -453,6 +453,39 @@ namespace OLLMchat.Settings
 		}
 
 		/**
+		 * Checks version on all connections and updates is_working flag.
+		 */
+		public async void check_connections()
+		{
+			foreach (var entry in this.connections.entries) {
+				var connection = entry.value;
+				try {
+					var test_client = new OLLMchat.Client(connection);
+					yield test_client.version();
+					connection.is_working = true;
+				} catch (Error e) {
+					connection.is_working = false;
+					GLib.debug("Connection %s is not working: %s", connection.url, e.message);
+				}
+			}
+		}
+
+		/**
+		 * Returns the first working connection based on is_working flag.
+		 *
+		 * @return The first working connection, or null if no working connection is found
+		 */
+		public Connection? working_connection()
+		{
+			foreach (var entry in this.connections.entries) {
+				if (entry.value.is_working) {
+					return entry.value;
+				}
+			}
+			return null;
+		}
+
+		/**
 		 * Gets the default model name from the usage map.
 		 *
 		 * @return The default model name, or empty string if not configured
