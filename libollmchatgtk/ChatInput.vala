@@ -29,21 +29,21 @@ namespace OLLMchatGtk
 	 */
 	public class ChatInput : Gtk.Box
 	{
-	private Gtk.TextView text_view;
-	private Gtk.TextBuffer buffer;
-	private Gtk.Button action_button;
-	private Gtk.DropDown model_dropdown;
-	private Gtk.Label model_loading_label;
-	private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
-	private OLLMchat.History.Manager manager;
-	private bool is_streaming = false;
-	private bool is_loading_models = false;
-	private Gtk.MenuButton tools_menu_button;
-	private Binding? tools_button_binding = null;
-	private bool is_tool_list_loaded { get; set; default = false; }
-	private Gtk.Box? tools_popover_box { get; set; default = null; }
-	private OLLMchatGtk.List.ModelUsageFactory factory;
-		
+		private Gtk.TextView text_view;
+		private Gtk.TextBuffer buffer;
+		private Gtk.Button action_button;
+		private Gtk.DropDown model_dropdown;
+		private Gtk.Label model_loading_label;
+		private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
+		private OLLMchat.History.Manager manager;
+		private bool is_streaming = false;
+		private bool is_loading_models = false;
+		private Gtk.MenuButton tools_menu_button;
+		private Binding? tools_button_binding = null;
+		private bool is_tool_list_loaded { get; set; default = false; }
+		private Gtk.Box? tools_popover_box { get; set; default = null; }
+		private OLLMchatGtk.List.ModelUsageFactory factory;
+			
 
 		/**
 		* Default message text to display in the input field.
