@@ -29,19 +29,20 @@ namespace OLLMchatGtk
 	 */
 	public class ChatInput : Gtk.Box
 	{
-		private Gtk.TextView text_view;
-		private Gtk.TextBuffer buffer;
-		private Gtk.Button action_button;
-		private Gtk.DropDown model_dropdown;
-		private Gtk.Label model_loading_label;
-		private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
-		private OLLMchat.History.Manager manager;
-		private bool is_streaming = false;
-		private bool is_loading_models = false;
-		private Gtk.MenuButton tools_menu_button;
-		private Binding? tools_button_binding = null;
-		private bool is_tool_list_loaded { get; set; default = false; }
-		private Gtk.Box? tools_popover_box { get; set; default = null; }
+	private Gtk.TextView text_view;
+	private Gtk.TextBuffer buffer;
+	private Gtk.Button action_button;
+	private Gtk.DropDown model_dropdown;
+	private Gtk.Label model_loading_label;
+	private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage> sorted_models;
+	private OLLMchat.History.Manager manager;
+	private bool is_streaming = false;
+	private bool is_loading_models = false;
+	private Gtk.MenuButton tools_menu_button;
+	private Binding? tools_button_binding = null;
+	private bool is_tool_list_loaded { get; set; default = false; }
+	private Gtk.Box? tools_popover_box { get; set; default = null; }
+	private OLLMchatGtk.List.ModelUsageFactory factory;
 		
 
 		/**
@@ -422,15 +423,15 @@ namespace OLLMchatGtk
 				match_all_filter
 			);
 
-			// Create factory using ModelUsageFactory
-			var factory = new OLLMchatGtk.List.ModelUsageFactory();
+			// Create factory using ModelUsageFactory (keep reference to prevent garbage collection)
+			this.factory = new OLLMchatGtk.List.ModelUsageFactory();
 
 			// Set up dropdown with models (SortedList implements ListModel)
 			this.model_dropdown.model = this.sorted_models;
 
 			// Use the same factory for both button and popup (with icons)
-			this.model_dropdown.set_factory(factory);
-			this.model_dropdown.set_list_factory(factory);
+			this.model_dropdown.set_factory(this.factory.factory);
+			this.model_dropdown.set_list_factory(this.factory.factory);
 
 			// Connect selection change to update client.model, think, and tools
 			// Ignore selection changes during model loading to preserve configured values

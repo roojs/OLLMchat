@@ -29,11 +29,12 @@ namespace OLLMchat.SettingsDialog.Rows
 	 */
 	public class Model : Row
 	{
-		private Gtk.DropDown dropdown;
-		private OLLMchat.Settings.ConnectionModels? connection_models = null;
-		private Gtk.FilterListModel? filtered_models = null;
-		private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>? sorted_models = null;
-		private OLLMchatGtk.List.ModelUsageFilter connection_filter;
+	private Gtk.DropDown dropdown;
+	private OLLMchat.Settings.ConnectionModels? connection_models = null;
+	private Gtk.FilterListModel? filtered_models = null;
+	private OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>? sorted_models = null;
+	private OLLMchatGtk.List.ModelUsageFilter connection_filter;
+	private OLLMchatGtk.List.ModelUsageFactory factory;
 		
 		/**
 		 * Creates a new Model widget.
@@ -64,6 +65,9 @@ namespace OLLMchat.SettingsDialog.Rows
 			};
 			this.add_suffix(this.dropdown);
 			this.set_activatable_widget(this.dropdown);
+			
+			// Create factory for displaying model names (keep reference to prevent garbage collection)
+			this.factory = new OLLMchatGtk.List.ModelUsageFactory();
 			
 			// Bind property changes - update config when selection changes
 			this.dropdown.notify["selected"].connect(() => {
@@ -117,32 +121,23 @@ namespace OLLMchat.SettingsDialog.Rows
 			this.filtered_models = new Gtk.FilterListModel(this.connection_models, this.connection_filter);
 			
 			// Create sorted list model
-			var sorter = new OLLMchatGtk.List.ModelUsageSort();
-			var match_all_filter = new Gtk.CustomFilter((item) => { return true; });
-			
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				this.filtered_models,
-				sorter,
-				match_all_filter
+				new OLLMchatGtk.List.ModelUsageSort(),
+				new Gtk.CustomFilter((item) => { return true; })
 			);
-			
-			// Create factory for displaying model names
-			var factory = new OLLMchatGtk.List.ModelUsageFactory();
 			
 			// Set up dropdown with sorted models
 			this.dropdown.model = this.sorted_models;
-			this.dropdown.set_factory(factory);
-			this.dropdown.set_list_factory(factory);
+			this.dropdown.set_factory(this.factory.factory);
+			this.dropdown.set_list_factory(this.factory.factory);
 			
-			// Find and select current model
+			// Find and select current model using O(1) lookup
 			uint selected_index = Gtk.INVALID_LIST_POSITION;
 			if (current_model != "") {
-				for (uint i = 0; i < this.sorted_models.get_n_items(); i++) {
-					var model_usage = this.sorted_models.get_item_typed(i);
-					if (model_usage != null && model_usage.model == current_model) {
-						selected_index = i;
-						break;
-					}
+				var model_usage = this.connection_models.find_model(connection_url, current_model);
+				if (model_usage != null) {
+					selected_index = this.sorted_models.find_position(model_usage);
 				}
 			}
 			this.dropdown.selected = selected_index;

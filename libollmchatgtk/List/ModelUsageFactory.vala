@@ -26,20 +26,31 @@ namespace OLLMchatGtk.List
 	 * - Model name with size (using display_name_with_size())
 	 * 
 	 * Can be used with Gtk.ListView, Gtk.DropDown, and other list widgets.
+	 * Access the factory via the .factory property.
+	 * 
+	 * **IMPORTANT:** This class must be stored as a property of the widget or
+	 * object that uses it. If stored as a local variable, it may be garbage
+	 * collected and the signal connections will be lost.
 	 * 
 	 * @since 1.0
 	 */
-	public class ModelUsageFactory : Gtk.SignalListItemFactory
+	public class ModelUsageFactory : GLib.Object
 	{
+		/**
+		 * The Gtk.SignalListItemFactory instance.
+		 * Use this property to access the factory for dropdowns and list views.
+		 */
+		public Gtk.SignalListItemFactory factory { get; private set; }
+		
 		/**
 		 * Constructor.
 		 */
 		public ModelUsageFactory()
 		{
-			Object();
+			this.factory = new Gtk.SignalListItemFactory();
 			
 			// Setup: Create widgets when list item is created
-			this.setup.connect((item) => {
+			this.factory.setup.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null) {
 					return;
@@ -79,7 +90,7 @@ namespace OLLMchatGtk.List
 			});
 
 			// Bind: Update widgets when list item is bound to a ModelUsage
-			this.bind.connect((item) => {
+			this.factory.bind.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null || list_item.item == null) {
 					return;
@@ -113,7 +124,7 @@ namespace OLLMchatGtk.List
 			});
 
 			// Unbind: Clean up when list item is unbound
-			this.unbind.connect((item) => {
+			this.factory.unbind.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null) {
 					return;
