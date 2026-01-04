@@ -416,14 +416,9 @@ namespace OLLMchatGtk
 			var sorter = new OLLMchatGtk.List.ModelUsageSort();
 			var match_all_filter = new Gtk.CustomFilter((item) => { return true; });
 			
-			// Create equality function from sorter for ArrayList operations (index_of, remove, etc.)
-			Gee.EqualDataFunc<Object> equal_func = (a, b) => {
-				return sorter.compare(a, b) == Gtk.Ordering.EQUAL;
-			};
-			
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				connection_models,
-				equal_func,
+				(a, b) => { return sorter.compare(a, b) == Gtk.Ordering.EQUAL; },
 				sorter,
 				match_all_filter
 			);
