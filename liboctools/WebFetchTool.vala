@@ -26,24 +26,14 @@ namespace OLLMtools
 	 * converted to base64. The tool automatically detects content types and applies
 	 * appropriate conversions.
 	 */
-	public class WebFetchTool : OLLMchat.Tool.Interface
+	public class WebFetchTool : OLLMchat.Tool.BaseTool
 	{
-		/**
-		 * Sets up the web_fetch tool configuration with default values.
-		 */
-		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
-		{
-			var tool_config = new OLLMchat.Settings.BaseToolConfig();
-			tool_config.title = new WebFetchTool(
-				new OLLMchat.Client(
-					new OLLMchat.Settings.Connection() { url = "http://localhost" }
-				)
-			).description.strip().split("\n")[0];
-			config.tools.set("web_fetch", tool_config);
-		}
-		
 		public override string name { get { return "web_fetch"; } }
 		
+		public override string title { get { return "Web Fetch URL Tool"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+			
 		public override string description { get {
 			return """
 Fetch content from a URL and return it in the specified format.
@@ -69,7 +59,7 @@ The tool requires permission to access the domain of the URL being fetched.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public WebFetchTool(OLLMchat.Client client, OLLMfiles.ProjectManager? project_manager = null)
+		public WebFetchTool(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			this.project_manager = project_manager;

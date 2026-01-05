@@ -29,7 +29,7 @@ namespace OLLMchat.Tool
 	 * == Example ==
 	 *
 	 * {{{
-	 * public class MyTool : Tool.Interface {
+	 * public class MyTool : Tool.BaseTool {
 	 *     public override string name { get { return "my_tool"; } }
 	 *     public override string description { get { return "Does something useful"; } }
 	 *     public override string parameter_description {
@@ -41,7 +41,7 @@ namespace OLLMchat.Tool
 	 *         }
 	 *     }
 	 *
-	 *     public MyTool(Client client) {
+	 *     public MyTool(Client? client = null) {
 	 *         base(client);
 	 *     }
 	 *
@@ -53,23 +53,27 @@ namespace OLLMchat.Tool
 	 * }
 	 * }}}
 	 */
-	public abstract class Interface : Object, Json.Serializable
+	public abstract class BaseTool : Object, Json.Serializable
 	{
 		public string tool_type { get; set; default = "function"; }
 		
 		// Abstract properties that subclasses must implement
 		public abstract string name { get; }
 		public abstract string description { get; }
+		public abstract string title { get; }
 		public abstract string  parameter_description { get; default = ""; }
+		
+		// Abstract method that subclasses must implement
+		public abstract Type config_class();
 		
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }
 		
-		public Client client { get; set;  }
+		public Client? client { get; set; default = null; }
 		
 		public bool active { get; set; default = true; }
 
-		protected Interface(Client client)
+		protected BaseTool(Client? client = null)
 		{
 			this.client = client;
 			this.function = new Function(this);
@@ -482,6 +486,128 @@ namespace OLLMchat.Tool
 			request.chat_call = chat_call;
 			
 			return yield request.execute();
+		}
+		
+		/**
+		 * Sets up tool configuration with default values.
+		 *
+		 * Default implementation for simple tools using BaseToolConfig.
+		 * Creates a BaseToolConfig instance if it doesn't exist in the config.
+		 * 
+		 * Simple tools using BaseToolConfig don't need to override this - it's handled automatically.
+		 * Complex tools that need custom config setup should override this method.
+		 *
+		 * @param config The Config2 instance
+		 */
+		public virtual void setup_tool_config(Settings.Config2 config)
+		{
+			// If config already exists, nothing to do
+			if (config.tools.has_key(this.name)) {
+				return;
+			}
+			
+			// Create config instance using config_class() - works for all tool config types
+			config.tools.set(this.name, Object.new(this.config_class()) as Settings.BaseToolConfig);
+		}
+		
+		/**
+		 * Sets up all tool configurations by discovering tools and calling setup_tool_config() on each.
+		 *
+		 * This discovers all tool classes, creates dummy instances, and calls setup_tool_config()
+		 * on each. Simple tools will use the default implementation, complex tools will use their overrides.
+		 *
+		 * @param config The Config2 instance
+		 */
+		public static void setup_all_tool_configs(Settings.Config2 config)
+		{
+			foreach (var tool_type in discover_classes()) {
+				// Create tool instance without parameters - works because constructors are nullable
+				// Call setup_tool_config() on the instance
+				// Simple tools will use the default implementation, complex tools will use their overrides
+				(Object.new(tool_type) as Tool.BaseTool).setup_tool_config(config);
+			}
+		}
+		
+		/**
+		 * Discovers all tool classes that extend Tool.BaseTool via GType registry.
+		 *
+		 * Queries the GType registry to find all registered types that extend
+		 * Tool.BaseTool (abstract base class) and returns them as a list.
+		 * All tools extend BaseTool directly, so we only need to check direct children.
+		 *
+		 * @return List of tool class GTypes
+		 */
+		public static Gee.ArrayList<Type> discover_classes()
+		{
+			var tool_types = new Gee.ArrayList<Type>();
+			
+			// Get direct children of Tool.BaseTool (all tools extend it directly)
+			Type[] children = typeof(Tool.BaseTool).children();
+			
+			foreach (var child_type in children) {
+				// Check if it's a class and not abstract
+				if (!child_type.is_classed() || child_type.is_abstract()) {
+					continue;
+				}
+				
+				tool_types.add(child_type);
+			}
+			
+			return tool_types;
+		}
+		
+		/**
+		 * Registers all tool config types with Config2 (Phase 1: before loading config).
+		 *
+		 * This method discovers all tool classes, creates tool instances (without
+		 * dependencies), calls config_class() on each to get the config GType, and
+		 * registers it with Config2. Must be called before config.load_config().
+		 *
+		 * Constructors must handle null values gracefully since this is called
+		 * before dependencies (client, project_manager) are available.
+		 */
+		public static void register_config()
+		{
+			var tool_classes = discover_classes();
+			
+			foreach (var tool_type in tool_classes) {
+				// Create tool instance without parameters - works because constructors are nullable
+				// Constructors handle null values gracefully (for Phase 1, we only need config_class())
+				var tool = Object.new(tool_type) as Tool.BaseTool;
+				
+				// Register config type with Config2
+				Settings.Config2.register_tool_type(tool.name, tool.config_class());
+			}
+		}
+		
+		/**
+		 * Creates and registers all tool instances with Client (Phase 2: after dependencies ready).
+		 *
+		 * This method discovers all tool classes, creates tool instances with the
+		 * provided dependencies (client, project_manager), and registers them via
+		 * Client.addTool(). Must be called after all dependencies are available.
+		 *
+		 * @param client The LLM client instance
+		 * @param project_manager The project manager instance (should be OLLMfiles.ProjectManager, but using Object? for library independence)
+		 */
+		public static void register_all_tools(Client client, Object? project_manager)
+		{
+			var tool_classes = discover_classes();
+			
+			foreach (var tool_type in tool_classes) {
+				// Use Object.new() to create tool instance with constructor parameters
+				// Standard signature: (Client? client = null, ProjectManager? project_manager = null)
+				// Special cases handled in constructors:
+				// - RunCommand: base_directory hardcoded to home dir
+				// - CodebaseSearchTool: Database location hardcoded, embedding_client extracted from client.config internally
+				var tool = Object.new(
+					tool_type,
+					"client", client,
+					"project-manager", project_manager
+				) as Tool.BaseTool;
+				
+				client.addTool(tool);
+			}
 		}
 	}
 }

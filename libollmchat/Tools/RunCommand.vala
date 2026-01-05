@@ -25,7 +25,7 @@ namespace OLLMchat.Tools
 	 * use permission caching based on resolved executable realpath.
 	 * Complex commands (with bash operators or multiple &&) always require approval.
 	 */
-	public class RunCommand : OLLMchat.Tool.Interface
+	public class RunCommand : OLLMchat.Tool.BaseTool
 	{
 		// Base description (without directory note)
 		private const string BASE_DESCRIPTION = """
@@ -38,10 +38,18 @@ If you are unsure about the safety of a command, ask the user for confirmation b
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
 		
-		// Base directory for command execution (must exist)
+		/**
+		 * ProjectManager instance for accessing project context.
+		 * Optional - set to null if not available.
+		 */
+		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+		
+		// Base directory for command execution (hardcoded to home directory)
 		public string base_directory { get; private set; }
 		
 		public override string name { get { return "run_command"; } }
+		
+		public override string title { get { return "Run Shell Commands Tool"; } }
 		
 		private string _description = "";
 		
@@ -61,23 +69,17 @@ If the command fails, you should handle the error gracefully and provide a helpf
 @param command {string} [required] The terminal command to run.""";
 		} }
 		
-		public RunCommand(OLLMchat.Client client, string base_directory) throws Error
+		public RunCommand(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			
-			// Validate that base_directory exists
-			var dir = GLib.File.new_for_path(base_directory);
-			if (!dir.query_exists()) {
-				throw new GLib.IOError.NOT_FOUND("Base directory does not exist: " + base_directory);
-			}
+			// Hardcode base_directory to home directory
+			this.base_directory = GLib.Environment.get_home_dir();
 			
-			// Get absolute path
-			try {
-				this.base_directory = dir.resolve_relative_path(".").get_path();
-			} catch (Error e) {
-				throw new GLib.IOError.FAILED("Failed to resolve base directory path: " + e.message);
-			}
+			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

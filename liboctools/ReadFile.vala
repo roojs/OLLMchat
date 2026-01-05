@@ -24,24 +24,15 @@ namespace OLLMtools
 	 * This tool reads file contents and returns them as a string. The caller
 	 * is responsible for creating the JSON reply.
 	 */
-	public class ReadFile : OLLMchat.Tool.Interface
+	public class ReadFile : OLLMchat.Tool.BaseTool
 	{
-		/**
-		 * Sets up the read_file tool configuration with default values.
-		 */
-		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
-		{
-			var tool_config = new OLLMchat.Settings.BaseToolConfig();
-			tool_config.title = new ReadFile(
-				new OLLMchat.Client(
-					new OLLMchat.Settings.Connection() { url = "http://localhost" }
-				)
-			).description.strip().split("\n")[0];
-			config.tools.set("read_file", tool_config);
-		}
 		
 		public override string name { get { return "read_file"; } }
 		
+		public override string title { get { return "Read File Tool"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+			
 		public override string description { get {
 			return """
 Read the contents of a file (and the outline).
@@ -76,7 +67,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public ReadFile(OLLMchat.Client client, OLLMfiles.ProjectManager? project_manager = null)
+		public ReadFile(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			this.project_manager = project_manager;

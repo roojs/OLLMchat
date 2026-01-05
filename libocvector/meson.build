@@ -83,7 +83,7 @@ lib_build_rpath = ':'.join([
 ocvector_base_lib = library('ocvector',
   dependencies: [ocvector_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep],
   sources: ocvector_src + faiss_wrapper_src,
-  link_with: [],  # Explicitly separate C/C++ deps from Vala deps
+  link_with: [ollmchat_base_lib],  # Need to link with ollmchat_base_lib because CodebaseSearchTool extends OLLMchat.Tool.BaseTool (similar to libollmchatgtk)
   link_args: ['-lblas', '-llapack', '-lgomp'],  # Add BLAS, LAPACK, and OpenMP directly to linker
   vala_header: 'ocvector.h',
   vala_vapi: 'ocvector-meson.vapi',  # Use different name so our custom_target can use 'ocvector.vapi'

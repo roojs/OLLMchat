@@ -76,9 +76,8 @@ Examples:
 	
 	public override OLLMchat.Settings.Config2 load_config()
 	{
-		// Register ocvector types before loading config
-		// Use unified tool config registration
-		OLLMvector.Tool.CodebaseSearchTool.register_config();
+		// Register all tool config types before loading config
+		OLLMchat.Tool.BaseTool.register_config();
 		
 		// Call base implementation
 		return base_load_config();

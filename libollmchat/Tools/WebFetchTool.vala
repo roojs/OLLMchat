@@ -26,9 +26,17 @@ namespace OLLMchat.Tools
 	 * converted to base64. The tool automatically detects content types and applies
 	 * appropriate conversions.
 	 */
-	public class WebFetchTool : OLLMchat.Tool.Interface
+	public class WebFetchTool : OLLMchat.Tool.BaseTool
 	{
+		/**
+		 * ProjectManager instance for accessing project context.
+		 * Optional - set to null if not available.
+		 */
+		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+		
 		public override string name { get { return "web_fetch"; } }
+		
+		public override string title { get { return "Web Fetch Tool"; } }
 		
 		public override string description { get {
 			return """
@@ -49,10 +57,13 @@ The tool requires permission to access the domain of the URL being fetched.""";
 @param format {string} [optional] The output format: "markdown", "raw", or "base64". Default is "markdown". Note: Binary content (images, PDFs, etc.) is always returned as base64 regardless of the format parameter.""";
 		} }
 		
-		public WebFetchTool(OLLMchat.Client client)
+		public WebFetchTool(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
+			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

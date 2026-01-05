@@ -49,19 +49,30 @@ namespace OLLMvector {
         /**
          * Creates a new BackgroundScan instance.
          *
-         * @param embedding_client The OLLMchat.Client instance for LLM calls and embeddings.
-         * @param vector_db The OLLMvector.Database instance for vector storage (FAISS).
-         * @param sql_db The SQ.Database instance for metadata storage.
+         * @param tool The CodebaseSearchTool instance (provides embedding_client, vector_db, and project_manager.db).
          * @param git_provider The Git provider instance (each thread needs its own instance for thread safety).
          */
-        public BackgroundScan (OLLMchat.Client embedding_client,
-                               Database vector_db,
-                               SQ.Database sql_db,
+        public BackgroundScan (Tool.CodebaseSearchTool tool,
                                OLLMfiles.GitProviderBase git_provider) 
 		{
-            this.embedding_client = embedding_client;
-            this.vector_db = vector_db;
-            this.sql_db = sql_db;
+            // Extract dependencies from tool instance
+            var embedding_client = tool.embedding_client;
+            var vector_db = tool.vector_db;
+            var project_manager = tool.project_manager;
+            
+            if (embedding_client == null) {
+                GLib.error("BackgroundScan: CodebaseSearchTool.embedding_client is null");
+            }
+            if (vector_db == null) {
+                GLib.error("BackgroundScan: CodebaseSearchTool.vector_db is null");
+            }
+            if (project_manager == null) {
+                GLib.error("BackgroundScan: CodebaseSearchTool.project_manager is null");
+            }
+            
+            this.embedding_client = (!)embedding_client;
+            this.vector_db = (!)vector_db;
+            this.sql_db = (!)project_manager.db;
             this.git_provider = git_provider;
 
             this.main_context = GLib.MainContext.default ();

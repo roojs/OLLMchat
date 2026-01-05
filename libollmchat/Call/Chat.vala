@@ -72,7 +72,7 @@ namespace OLLMchat.Call
 			set { } // Fake setter for serialization
 		}
 		
-		public Gee.HashMap<string, Tool.Interface>? tools { 
+		public Gee.HashMap<string, Tool.BaseTool>? tools { 
 			get { return this.client.tools; }
 			set { } // Fake setter for serialization
 		}

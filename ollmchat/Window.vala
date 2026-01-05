@@ -378,18 +378,9 @@ namespace OLLMchat
 				});
 			});
 			
-			// Add tools to base client (Manager creates base_client, so we access it via history_manager)
-			this.history_manager.base_client.addTool(
-					new OLLMtools.ReadFile(this.history_manager.base_client, this.project_manager));
-			this.history_manager.base_client.addTool(
-					new OLLMtools.EditMode(this.history_manager.base_client, this.project_manager));
-			this.history_manager.base_client.addTool(
-					new OLLMtools.RunCommand(this.history_manager.base_client, 
-						GLib.Environment.get_home_dir(), this.project_manager));
-			this.history_manager.base_client.addTool(
-					new OLLMtools.WebFetchTool(this.history_manager.base_client, this.project_manager));
-			this.history_manager.base_client.addTool(
-					new OLLMtools.GoogleSearchTool(this.history_manager.base_client, this.project_manager));
+			// Register all tools with base client (Phase 2: after dependencies ready)
+			// This discovers all tool classes and creates instances with the provided dependencies
+			Tool.BaseTool.register_all_tools(this.history_manager.base_client, this.project_manager);
 			
 			// Also add tools to current session's client (EmptySession was created before tools were added)
 			// Reuse the same tool instances from base_client to preserve state (like active property)
@@ -496,12 +487,9 @@ namespace OLLMchat
 			}
 			
 			// Setup tool configs with default values if they don't exist (saves automatically if created)
-			OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);
-			OLLMtools.GoogleSearchTool.setup_tool_config(config);
-			OLLMtools.ReadFile.setup_tool_config(config);
-			OLLMtools.EditMode.setup_tool_config(config);
-			OLLMtools.RunCommand.setup_tool_config(config);
-			OLLMtools.WebFetchTool.setup_tool_config(config);
+			// This discovers all tools and calls setup_tool_config() on each
+			// Simple tools use the default implementation, complex tools use their overrides
+			Tool.BaseTool.setup_all_tool_configs(config);
 			
 			// Get and validate tool config (validation sets is_valid flags and disables tool if needed)
 			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
@@ -513,95 +501,60 @@ namespace OLLMchat
 				return;
 			}
 			
-			// Get embed and analysis ModelUsage from tool config (already validated)
-			var embed_usage = tool_config.embed;
-			var analysis_usage = tool_config.analysis;
+			// Get the tool from registry (already registered via register_all_tools at line 383)
+			var tool = client.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
 			
-			// Create embed client from tool config (connection already validated)
-			var embed_connection = config.connections.get(embed_usage.connection);
-			var embed_client = new Client(embed_connection) {
-				config = config,
-				model = embed_usage.model
-			};
-			
-			// Ensure embed_client has config set (should be set by create_client, but verify)
-			if (embed_client.config == null) {
-				string error_msg = "Embed client created without config";
+			// Initialize vector database (embedding_client should already be set up in constructor)
+			try {
+				yield tool.init_databases(this.app.data_dir);
+			} catch (GLib.Error e) {
+				string error_msg = "Failed to initialize vector database: " + e.message;
 				GLib.warning("Codebase search tool disabled: %s", error_msg);
 				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
 				this.tool_error_banner.revealed = true;
 				return;
 			}
 			
-			try {
-				// Get dimension and create vector database
-				var vector_db_path = GLib.Path.build_filename(this.app.data_dir, "codedb.faiss.vectors");
-				var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
-				var vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
-				
-				// Create BackgroundScan instance for background file indexing
-				// Uses the same vector_db and embed_client, and the ProjectManager's database
-				// Pass a new GitProvider instance (libgit2 is not thread-safe, each thread needs its own instance)
-				// Check if indexer is disabled via command-line option
-				if (!OllmchatApplication.opt_disable_indexer) {
-					this.background_scan = new OLLMvector.BackgroundScan(
-						embed_client,
-						vector_db,
-						project_manager.db,
-						new OLLMcoder.GitProvider()
-					);
-					
-					// Connect to scan_update signal to update banner
-					this.background_scan.scan_update.connect((queue_size, current_file) => {
-						this.vector_scan_banner.update_scan_status(queue_size, current_file);
-					});
-					
-					// Connect to file_contents_changed signal to trigger background scanning
-					// Only connect when background_scan is available
-					// scanFile handles null project internally
-					this.project_manager.file_contents_changed.connect((file) => {
-						this.background_scan.scanFile(file, this.project_manager.active_project);
-					});
-					
-					// Connect to active_project_changed signal to trigger project scanning
-					// When project changes, scan all files in the project
-					// scanProject handles null project internally
-					this.project_manager.active_project_changed.connect((project) => {
-						this.background_scan.scanProject(project);
-					});
-				} else {
-					GLib.debug("Background semantic search indexing disabled via --disable-indexer");
-				}
-				
-				// Register the tool
-				var tool = new OLLMvector.Tool.CodebaseSearchTool(
-					client,
-					project_manager,
-					vector_db,
-					embed_client
+			// Create BackgroundScan instance for background file indexing
+			// Uses the tool instance which provides embedding_client, vector_db, and project_manager.db
+			// Pass a new GitProvider instance (libgit2 is not thread-safe, each thread needs its own instance)
+			// Check if indexer is disabled via command-line option
+			if (!OllmchatApplication.opt_disable_indexer) {
+				this.background_scan = new OLLMvector.BackgroundScan(
+					tool,
+					new OLLMcoder.GitProvider()
 				);
-				client.addTool(tool);
 				
-				GLib.debug("Codebase search tool registered successfully (name: %s, active: %s)", 
-					tool.name, tool.active.to_string());
+				// Connect to scan_update signal to update banner
+				this.background_scan.scan_update.connect((queue_size, current_file) => {
+					this.vector_scan_banner.update_scan_status(queue_size, current_file);
+				});
 				
-				// Also add to current session's client if it exists
-				if (this.history_manager.session != null && this.history_manager.session.client != null) {
-					// Find the tool we just added to base_client and add it to session's client
-					var tool_name = "codebase_search";
-					if (client.tools.has_key(tool_name)) {
-						this.history_manager.session.client.addTool(client.tools.get(tool_name));
-						GLib.debug("Codebase search tool added to current session (total tools: %d)", 
-							this.history_manager.session.client.tools.size);
-					} else {
-						GLib.warning("Codebase search tool not found in base_client.tools after registration");
-					}
-				}
-			} catch (GLib.Error e) {
-				string error_msg = "Failed to initialize: " + e.message;
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
+				// Connect to file_contents_changed signal to trigger background scanning
+				// Only connect when background_scan is available
+				// scanFile handles null project internally
+				this.project_manager.file_contents_changed.connect((file) => {
+					this.background_scan.scanFile(file, this.project_manager.active_project);
+				});
+				
+				// Connect to active_project_changed signal to trigger project scanning
+				// When project changes, scan all files in the project
+				// scanProject handles null project internally
+				this.project_manager.active_project_changed.connect((project) => {
+					this.background_scan.scanProject(project);
+				});
+			} else {
+				GLib.debug("Background semantic search indexing disabled via --disable-indexer");
+			}
+			
+			GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
+				tool.name, tool.active.to_string());
+			
+			// Also add to current session's client if it exists
+			if (this.history_manager.session != null && this.history_manager.session.client != null) {
+				this.history_manager.session.client.addTool(tool);
+				GLib.debug("Codebase search tool added to current session (total tools: %d)", 
+					this.history_manager.session.client.tools.size);
 			}
 		}
 		

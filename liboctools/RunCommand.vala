@@ -25,26 +25,8 @@ namespace OLLMtools
 	 * use permission caching based on resolved executable realpath.
 	 * Complex commands (with bash operators or multiple &&) always require approval.
 	 */
-	public class RunCommand : OLLMchat.Tool.Interface
+	public class RunCommand : OLLMchat.Tool.BaseTool
 	{
-		/**
-		 * Sets up the run_command tool configuration with default values.
-		 */
-		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
-		{
-			var tool_config = new OLLMchat.Settings.BaseToolConfig();
-			try {
-				tool_config.title = new RunCommand(
-					new OLLMchat.Client(
-						new OLLMchat.Settings.Connection() { url = "http://localhost" }
-					),
-					GLib.Environment.get_home_dir()
-				).description.strip().split("\n")[0];
-			} catch (GLib.Error e) {
-				tool_config.title = "Run a terminal command in the project's root directory and return the output.";
-			}
-			config.tools.set("run_command", tool_config);
-		}
 		
 		// Base description (without directory note)
 		private const string BASE_DESCRIPTION = """
@@ -57,11 +39,15 @@ If you are unsure about the safety of a command, ask the user for confirmation b
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
 		
-		// Base directory for command execution (must exist)
+		// Base directory for command execution (hardcoded to home directory)
 		public string base_directory { get; private set; }
 		
 		public override string name { get { return "run_command"; } }
 		
+		public override string title { get { return "Run Shell Commands Tool"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+			
 		private string _description = "";
 		
 		public override string description { 
@@ -86,22 +72,12 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public RunCommand(OLLMchat.Client client, string base_directory, OLLMfiles.ProjectManager? project_manager = null) throws Error
+		public RunCommand(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			
-			// Validate that base_directory exists
-			var dir = GLib.File.new_for_path(base_directory);
-			if (!dir.query_exists()) {
-				throw new GLib.IOError.NOT_FOUND("Base directory does not exist: " + base_directory);
-			}
-			
-			// Get absolute path
-			try {
-				this.base_directory = dir.resolve_relative_path(".").get_path();
-			} catch (Error e) {
-				throw new GLib.IOError.FAILED("Failed to resolve base directory path: " + e.message);
-			}
+			// Hardcode base_directory to home directory
+			this.base_directory = GLib.Environment.get_home_dir();
 			
 			this.project_manager = project_manager;
 		}

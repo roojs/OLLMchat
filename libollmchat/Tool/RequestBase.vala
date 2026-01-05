@@ -35,7 +35,7 @@ namespace OLLMchat.Tool
 		/**
 		 * Reference to the tool that created this request.
 		 */
-		public Interface tool { get; set; }
+		public BaseTool tool { get; set; }
 		
 		/**
 		 * Chat call context for this tool execution.
