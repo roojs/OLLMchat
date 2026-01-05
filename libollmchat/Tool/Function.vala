@@ -28,9 +28,9 @@ namespace OLLMchat.Tool
 	 */
 	public class Function : Object, Json.Serializable
 	{
-		private Interface tool;
+		private BaseTool tool;
 		
-		public Function(Interface tool)
+		public Function(BaseTool tool)
 		{
 			this.tool = tool;
 		}

@@ -25,7 +25,7 @@ namespace OLLMtools
 	 * with type:startline:endline format are automatically captured. When chat is done,
 	 * all captured changes are applied to the file.
 	 */
-	public class EditMode : OLLMchat.Tool.Interface
+	public class EditMode : OLLMchat.Tool.BaseTool
 	{
 		/**
 		 * Sets up the edit_mode tool configuration with default values.
@@ -78,7 +78,7 @@ When complete_file=true, do not include line numbers in the code block. When com
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public EditMode(OLLMchat.Client client, OLLMfiles.ProjectManager? project_manager = null)
+		public EditMode(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			this.project_manager = project_manager;

@@ -29,7 +29,7 @@ namespace OLLMchat.Tool
 	 * == Example ==
 	 *
 	 * {{{
-	 * public class MyTool : Tool.Interface {
+	 * public class MyTool : Tool.BaseTool {
 	 *     public override string name { get { return "my_tool"; } }
 	 *     public override string description { get { return "Does something useful"; } }
 	 *     public override string parameter_description {
@@ -41,7 +41,7 @@ namespace OLLMchat.Tool
 	 *         }
 	 *     }
 	 *
-	 *     public MyTool(Client client) {
+	 *     public MyTool(Client? client = null) {
 	 *         base(client);
 	 *     }
 	 *
@@ -53,7 +53,7 @@ namespace OLLMchat.Tool
 	 * }
 	 * }}}
 	 */
-	public abstract class Interface : Object, Json.Serializable
+	public abstract class BaseTool : Object, Json.Serializable
 	{
 		public string tool_type { get; set; default = "function"; }
 		
@@ -65,11 +65,11 @@ namespace OLLMchat.Tool
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }
 		
-		public Client client { get; set;  }
+		public Client? client { get; set; default = null; }
 		
 		public bool active { get; set; default = true; }
 
-		protected Interface(Client client)
+		protected BaseTool(Client? client = null)
 		{
 			this.client = client;
 			this.function = new Function(this);

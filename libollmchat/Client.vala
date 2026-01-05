@@ -146,7 +146,7 @@ namespace OLLMchat
 		 *
 		 * @since 1.0
 		 */
-		public Gee.HashMap<string, Tool.Interface> tools { get; set; default = new Gee.HashMap<string, Tool.Interface>(); }
+		public Gee.HashMap<string, Tool.BaseTool> tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }
 		
 		/**
 		 * Current streaming response object (internal use).
@@ -287,7 +287,7 @@ namespace OLLMchat
 		*
 		* @param tool The tool to add
 		*/
-		public void addTool(Tool.Interface tool)
+		public void addTool(Tool.BaseTool tool)
 		{
 			// Ensure tools HashMap is initialized
 			tool.client = this;

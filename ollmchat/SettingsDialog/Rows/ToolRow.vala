@@ -49,13 +49,13 @@ namespace OLLMchat.SettingsDialog.Rows
 		 * Creates a new Tool.
 		 * 
 		 * @param dialog SettingsDialog to access Config2
-		 * @param tool The Tool.Interface object (can be null if Client.tools not available)
+		 * @param tool The Tool.BaseTool object (can be null if Client.tools not available)
 		 * @param config The BaseToolConfig object
 		 * @param tool_name The tool name (used if tool is null)
 		 */
 		public Tool(
 			MainDialog dialog,
-			OLLMchat.Tool.Interface? tool,
+			OLLMchat.Tool.BaseTool? tool,
 			OLLMchat.Settings.BaseToolConfig config,
 			string tool_name
 		)

@@ -44,23 +44,41 @@ namespace OLLMchat.Tools
 				return false;
 			}
 			
+			// Normalize file path
+			var normalized_path = this.normalize_file_path(this.file_path);
+			if (normalized_path == null || normalized_path == "") {
+				return false;
+			}
+			
+			// Set up permission properties for non-project files first
+			this.permission_target_path = normalized_path;
+			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
+			
 			// Build permission question based on parameters
 			string question;
 			if (this.summarize) {
-				question = "Summarize file '" + this.file_path + "'?";
+				question = "Summarize file '" + normalized_path + "'?";
 			} else if (this.read_entire_file) {
-				question = "Read entire file '" + this.file_path + "'?";
+				question = "Read entire file '" + normalized_path + "'?";
 			} else if (this.start_line > 0 && this.end_line > 0) {
-				question = "Read file '" + this.file_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
+				question = "Read file '" + normalized_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
 			} else {
-				question = "Read file '" + this.file_path + "'?";
+				question = "Read file '" + normalized_path + "'?";
 			}
-			
-			// Set permission properties
-			this.permission_target_path = this.file_path;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
 			this.permission_question = question;
 			
+		// Check if file is in active project (skip permission prompt if so)
+		// Files in active project are auto-approved and don't need permission checks
+		var project_manager = ((ReadFile) this.tool).project_manager;
+		if (project_manager.get_file_from_active_project(normalized_path) != null) {
+			// File is in active project - skip permission prompt
+			// Clear permission question to indicate auto-approved
+			this.permission_question = "";
+			// Return false to skip permission check (auto-approved for project files)
+			return false;
+		}
+			
+			// File is not in active project - require permission
 			return true;
 		}
 		

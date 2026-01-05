@@ -25,7 +25,7 @@ namespace OLLMchat.Tools
 	 * with type:startline:endline format are automatically captured. When chat is done,
 	 * all captured changes are applied to the file.
 	 */
-	public class EditMode : OLLMchat.Tool.Interface
+	public class EditMode : OLLMchat.Tool.BaseTool
 	{
 		public override string name { get { return "edit_mode"; } }
 		

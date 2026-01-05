@@ -25,7 +25,7 @@ namespace OLLMvector.Tool
 	 * vector similarity search. It can filter results by language and
 	 * element type (class, method, function, etc.).
 	 */
-	public class CodebaseSearchTool : OLLMchat.Tool.Interface
+	public class CodebaseSearchTool : OLLMchat.Tool.BaseTool
 	{
 		/**
 		 * Registers the codebase search tool configuration type in Config2.
@@ -154,37 +154,74 @@ making it more effective than simple text search for finding relevant code.
 		/**
 		 * Project manager for accessing active project and database.
 		 */
-		public OLLMfiles.ProjectManager project_manager { get; private set; }
+		public OLLMfiles.ProjectManager? project_manager { get; private set; }
 		
 		/**
 		 * Vector database for FAISS search.
+		 * Created lazily when needed (requires async operation).
 		 */
-		public OLLMvector.Database vector_db { get; private set; }
+		public OLLMvector.Database? vector_db { get; private set; }
 		
 		/**
 		 * Embedding client for query vectorization.
+		 * Extracted from client.config if client is not null.
 		 */
-		public OLLMchat.Client embedding_client { get; private set; }
+		public OLLMchat.Client? embedding_client { get; private set; }
 		
 		/**
-		 * Constructor with required dependencies.
+		 * Hardcoded vector database path.
+		 * Uses standard data directory: ~/.local/share/ollmchat/codedb.faiss.vectors
+		 */
+		private string vector_db_path {
+			get {
+				return GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(),
+					".local", "share", "ollmchat", "codedb.faiss.vectors"
+				);
+			}
+		}
+		
+		/**
+		 * Constructor with nullable dependencies.
 		 * 
-		 * @param client LLM client (required by base class)
-		 * @param manager Project manager for accessing active project and database
-		 * @param vector_db Vector database for FAISS search
-		 * @param embedding_client Embedding client for query vectorization (may be same as client)
+		 * For Phase 1 (config registration): client and project_manager can be null.
+		 * For Phase 2 (tool instance creation): client and project_manager are provided.
+		 * 
+		 * Embedding client is extracted from client.config.tools["codebase_search"] if available.
+		 * Vector database is not created in constructor (requires async operation).
+		 * 
+		 * @param client LLM client (nullable for Phase 1)
+		 * @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
 		 */
 		public CodebaseSearchTool(
-			OLLMchat.Client client,
-			OLLMfiles.ProjectManager manager,
-			OLLMvector.Database vector_db,
-			OLLMchat.Client embedding_client
+			OLLMchat.Client? client = null,
+			OLLMfiles.ProjectManager? project_manager = null
 		)
 		{
 			base(client);
-			this.project_manager = manager;
-			this.vector_db = vector_db;
-			this.embedding_client = embedding_client;
+			this.project_manager = project_manager;
+			
+			// Extract embedding_client from client.config if client is not null
+			if (client != null && client.config != null) {
+				// Get tool config and extract embed ModelUsage
+				if (client.config.tools.has_key("codebase_search")) {
+					var tool_config = client.config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+					if (tool_config != null) {
+						var embed_usage = tool_config.embed;
+						if (embed_usage.connection != "" && 
+						    client.config.connections.has_key(embed_usage.connection)) {
+							var embed_connection = client.config.connections.get(embed_usage.connection);
+							this.embedding_client = new OLLMchat.Client(embed_connection) {
+								config = client.config,
+								model = embed_usage.model
+							};
+						}
+					}
+				}
+			}
+			
+			// Note: vector_db is not created in constructor (requires async get_embedding_dimension)
+			// It will be created when needed in Phase 2
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)

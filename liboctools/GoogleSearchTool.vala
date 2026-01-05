@@ -24,7 +24,7 @@ namespace OLLMtools
 	 * This tool performs web searches and returns results in markdown format.
 	 * Requires Google Custom Search API credentials configured in ~/.config/ollmchat/google.json
 	 */
-	public class GoogleSearchTool : OLLMchat.Tool.Interface
+	public class GoogleSearchTool : OLLMchat.Tool.BaseTool
 	{
 		/**
 		 * Registers the Google search tool configuration type in Config2.
@@ -85,7 +85,7 @@ The tool requires permission to access the Google Custom Search API.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public GoogleSearchTool(OLLMchat.Client client, OLLMfiles.ProjectManager? project_manager = null)
+		public GoogleSearchTool(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			this.project_manager = project_manager;

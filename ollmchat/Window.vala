@@ -384,8 +384,7 @@ namespace OLLMchat
 			this.history_manager.base_client.addTool(
 					new OLLMtools.EditMode(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
-					new OLLMtools.RunCommand(this.history_manager.base_client, 
-						GLib.Environment.get_home_dir(), this.project_manager));
+					new OLLMtools.RunCommand(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
 					new OLLMtools.WebFetchTool(this.history_manager.base_client, this.project_manager));
 			this.history_manager.base_client.addTool(
