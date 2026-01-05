@@ -60,7 +60,11 @@ namespace OLLMchat.Tool
 		// Abstract properties that subclasses must implement
 		public abstract string name { get; }
 		public abstract string description { get; }
+		public abstract string title { get; }
 		public abstract string  parameter_description { get; default = ""; }
+		
+		// Abstract method that subclasses must implement
+		public abstract Type config_class();
 		
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }

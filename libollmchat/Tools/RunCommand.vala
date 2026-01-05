@@ -49,6 +49,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		
 		public override string name { get { return "run_command"; } }
 		
+		public override string title { get { return "Run Shell Commands Tool"; } }
+		
 		private string _description = "";
 		
 		public override string description { 
@@ -76,6 +78,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 			
 			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

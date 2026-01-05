@@ -28,19 +28,6 @@ namespace OLLMvector.Tool
 	public class CodebaseSearchTool : OLLMchat.Tool.BaseTool
 	{
 		/**
-		 * Registers the codebase search tool configuration type in Config2.
-		 * 
-		 * This should be called before loading config to register
-		 * "codebase_search" as a CodebaseSearchToolConfig type for deserialization.
-		 */
-		public static void register_config()
-		{
-			// Register the tool config type
-			OLLMchat.Settings.Config2.register_tool_type("codebase_search",
-				 typeof(CodebaseSearchToolConfig));
-		}
-		
-		/**
 		 * Sets up the codebase search tool configuration with default connection.
 		 * 
 		 * Creates a CodebaseSearchToolConfig in `Config2.tools["codebase_search"]` if it doesn't exist.
@@ -61,13 +48,6 @@ namespace OLLMvector.Tool
 				}
 				config.tools.set("codebase_search", tool_config);
 			}
-			
-			// Get description using GType system - create instance via Object.new
-		
-			var dummy_tool = Object.new(typeof(CodebaseSearchTool)) as CodebaseSearchTool;
-			
-			// Read property directly
-			tool_config.title = dummy_tool.description.strip().split("\n")[0];
 		}
 		
 		/**
@@ -118,6 +98,8 @@ namespace OLLMvector.Tool
 		}
 		
 		public override string name { get { return "codebase_search"; } }
+		
+		public override string title { get { return "Sematic Codebase Search Tool"; } }
 		
 		public override string description { get {
 			return """
@@ -223,6 +205,8 @@ making it more effective than simple text search for finding relevant code.
 			// Note: vector_db is not created in constructor (requires async get_embedding_dimension)
 			// It will be created when needed in Phase 2
 		}
+		
+		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

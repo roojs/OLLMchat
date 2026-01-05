@@ -36,6 +36,8 @@ namespace OLLMchat.Tools
 		
 		public override string name { get { return "web_fetch"; } }
 		
+		public override string title { get { return "Web Fetch Tool"; } }
+		
 		public override string description { get {
 			return """
 Fetch content from a URL and return it in the specified format.
@@ -60,6 +62,8 @@ The tool requires permission to access the domain of the URL being fetched.""";
 			base(client);
 			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

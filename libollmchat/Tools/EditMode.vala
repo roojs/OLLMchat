@@ -29,6 +29,8 @@ namespace OLLMchat.Tools
 	{
 		public override string name { get { return "edit_mode"; } }
 		
+		public override string title { get { return "Edit Mode Tool"; } }
+		
 		public override string description { get {
 			return """
 Turn on edit mode for a file.
@@ -64,11 +66,13 @@ When complete_file=true, do not include line numbers in the code block. When com
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public EditMode(OLLMchat.Client client, OLLMfiles.ProjectManager? project_manager = null)
+		public EditMode(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base(client);
 			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

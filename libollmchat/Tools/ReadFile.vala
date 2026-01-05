@@ -34,6 +34,8 @@ namespace OLLMchat.Tools
 		
 		public override string name { get { return "read_file"; } }
 		
+		public override string title { get { return "Read Files Tool"; } }
+		
 		public override string description { get {
 			return """
 Read the contents of a file (and the outline).
@@ -65,6 +67,8 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 			base(client);
 			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

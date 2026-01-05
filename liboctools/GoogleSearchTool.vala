@@ -27,18 +27,6 @@ namespace OLLMtools
 	public class GoogleSearchTool : OLLMchat.Tool.BaseTool
 	{
 		/**
-		 * Registers the Google search tool configuration type in Config2.
-		 * 
-		 * This should be called before loading config to register
-		 * "google_search" as a GoogleSearchToolConfig type for deserialization.
-		 */
-		public static void register_config()
-		{
-			// Register the tool config type
-			OLLMchat.Settings.Config2.register_tool_type("google_search", typeof(Tool.GoogleSearchToolConfig));
-		}
-		
-		/**
 		 * Sets up the Google search tool configuration with default values.
 		 * 
 		 * Creates a GoogleSearchToolConfig in `Config2.tools["google_search"]` if it doesn't exist.
@@ -53,15 +41,11 @@ namespace OLLMtools
 				tool_config = new Tool.GoogleSearchToolConfig();
 				config.tools.set("google_search", tool_config);
 			}
-			
-			// Get description using GType system - create instance via Object.new
-			var dummy_tool = Object.new(typeof(GoogleSearchTool)) as GoogleSearchTool;
-			
-			// Read property directly
-			tool_config.title = dummy_tool.description.strip().split("\n")[0];
 		}
 		
 		public override string name { get { return "google_search"; } }
+		
+		public override string title { get { return "Google Search Tool"; } }
 		
 		public override string description { get {
 			return """
@@ -90,6 +74,8 @@ The tool requires permission to access the Google Custom Search API.""";
 			base(client);
 			this.project_manager = project_manager;
 		}
+		
+		public override Type config_class() { return typeof(Tool.GoogleSearchToolConfig); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
