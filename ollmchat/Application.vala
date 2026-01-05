@@ -57,6 +57,17 @@ namespace OLLMchat
 			
 			// Register tool config types before loading config (Phase 1: config type registration)
 			// Use unified tool config registration to discover and register all tool config types
+			// Ensure all tool classes are registered in GType system before discovery.
+			// We can't think of any other way to do this - GType registration is lazy
+			// and classes won't be in the registry until they're explicitly referenced.
+			// This is the only place with all dependencies available.
+			// Note: OLLMchat.Tools.* classes exist but aren't compiled - use OLLMtools.* instead
+			typeof(OLLMtools.ReadFile).ensure();
+			typeof(OLLMtools.RunCommand).ensure();
+			typeof(OLLMtools.WebFetchTool).ensure();
+			typeof(OLLMtools.EditMode).ensure();
+			typeof(OLLMvector.Tool.CodebaseSearchTool).ensure();
+			typeof(OLLMtools.GoogleSearchTool).ensure();
 			Tool.BaseTool.register_config();
 			
 			// Load config after registrations

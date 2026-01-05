@@ -534,7 +534,7 @@ namespace OLLMchatGtk
 				// Create checkboxes for each tool
 				foreach (var tool in this.manager.session.client.tools.values) {
 					var check_button = new Gtk.CheckButton.with_label(
-						tool.description.strip().split("\n")[0]
+						tool.title
 					);
 					// Bind checkbox active state to tool active property
 					tool.bind_property("active", check_button, "active", BindingFlags.BIDIRECTIONAL | BindingFlags.SYNC_CREATE);

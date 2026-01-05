@@ -553,6 +553,7 @@ namespace OLLMchat.Tool
 				tool_types.add(child_type);
 			}
 			
+			GLib.debug("discover_classes: found %d tool classes", tool_types.size);
 			return tool_types;
 		}
 		
@@ -606,8 +607,10 @@ namespace OLLMchat.Tool
 					"project-manager", project_manager
 				) as Tool.BaseTool;
 				
+				GLib.debug("register_all_tools: registering tool '%s'", tool.name);
 				client.addTool(tool);
 			}
+			GLib.debug("register_all_tools: registered %d tools, client.tools now has %d", tool_classes.size, client.tools.size);
 		}
 	}
 }

@@ -8,7 +8,8 @@
  * with model information including features, tags, sizes, and context windows.
  * 
  * Usage: 
- *   php fetch_ollama.php
+ *   php fetch_ollama.php              # Run continuously (loops every 2-3 minutes)
+ *   php fetch_ollama.php --once      # Run once and exit
  *   php fetch_ollama.php --debug-derivative <model-name>
  *   php fetch_ollama.php --debug-tags <model-slug>
  */
@@ -52,6 +53,44 @@ class OllamaModelScraper {
         libxml_use_internal_errors(true);
     }
     
+    public function getOutputFile(): string {
+        return $this->outputFile;
+    }
+    
+    public function hasWorkToDo(): bool {
+        // Check if there are models that need fetching
+        foreach ($this->models as $slug => $model) {
+            $modelName = $model['name'];
+            $hasOriginalTags = false;
+            if (isset($this->originalModels[$modelName])) {
+                $originalModel = $this->originalModels[$modelName];
+                if (!empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0) {
+                    $hasOriginalTags = true;
+                }
+            }
+            
+            $fileSlug = str_replace('/', '_', $slug);
+            $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
+            
+            if (!file_exists($modelFile) && !$hasOriginalTags) {
+                return true; // Found a model that needs fetching
+            }
+        }
+        
+        // Also check if there are models that need parsing (have HTML but no tags)
+        foreach ($this->models as $slug => $model) {
+            if (empty($model['tags'])) {
+                $fileSlug = str_replace('/', '_', $slug);
+                $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
+                if (file_exists($modelFile)) {
+                    return true; // Found a model that needs parsing
+                }
+            }
+        }
+        
+        return false; // No work to do
+    }
+    
     private function createDirectory(string $path): void {
         if (!is_dir($path)) {
             mkdir($path, 0755, true);
@@ -71,28 +110,54 @@ class OllamaModelScraper {
         $derivatives = 0;
         $fetched = 0;
         $needsFetching = 0;
+        $skippedOriginal = 0;
+        $derivativesFetched = 0;
+        $derivativesNeedsFetching = 0;
         
         foreach ($this->models as $slug => $model) {
+            $isDerivative = isset($this->derivativeModels[$slug]);
+            
             // Check if it's a derivative
-            if (isset($this->derivativeModels[$slug])) {
+            if ($isDerivative) {
                 $derivatives++;
             } else {
                 $baseModels++;
+            }
+            
+            // Check if model already exists in original models and has tags
+            // This matches the logic in fetchModelDetails
+            $modelName = $model['name'];
+            $hasOriginalTags = false;
+            if (isset($this->originalModels[$modelName])) {
+                $originalModel = $this->originalModels[$modelName];
+                if (!empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0) {
+                    $hasOriginalTags = true;
+                    $skippedOriginal++;
+                }
             }
             
             // Check if HTML file exists (has been fetched)
             $fileSlug = str_replace('/', '_', $slug);
             $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
             
-            if (file_exists($modelFile)) {
+            $isFetched = file_exists($modelFile) || $hasOriginalTags;
+            
+            if ($isFetched) {
                 $fetched++;
+                if ($isDerivative) {
+                    $derivativesFetched++;
+                }
             } else {
                 $needsFetching++;
+                if ($isDerivative) {
+                    $derivativesNeedsFetching++;
+                }
             }
         }
         
         $totalOriginal = count($this->originalModels);
         $progress = $totalModels > 0 ? round(($fetched / $totalModels) * 100, 1) : 0;
+        $derivativesProgress = $derivatives > 0 ? round(($derivativesFetched / $derivatives) * 100, 1) : 0;
         
         echo "\n" . str_repeat('=', 60) . "\n";
         echo "STATUS REPORT\n";
@@ -105,6 +170,13 @@ class OllamaModelScraper {
         echo "Fetch status:\n";
         echo "  ├─ Fetched (have HTML):    " . str_pad(number_format($fetched), 10) . " (" . $progress . "%)\n";
         echo "  └─ Needs fetching:         " . str_pad(number_format($needsFetching), 10) . "\n";
+        if ($skippedOriginal > 0) {
+            echo "  └─ From original source:  " . str_pad(number_format($skippedOriginal), 10) . "\n";
+        }
+        echo "\n";
+        echo "Derivatives fetch status:\n";
+        echo "  ├─ Fetched:                " . str_pad(number_format($derivativesFetched), 10) . " (" . $derivativesProgress . "%)\n";
+        echo "  └─ Needs fetching:        " . str_pad(number_format($derivativesNeedsFetching), 10) . "\n";
         echo "\n";
         echo "Models with tags:           " . str_pad(number_format($this->countModelsWithTags()), 10) . "\n";
         echo str_repeat('=', 60) . "\n\n";
@@ -319,11 +391,11 @@ class OllamaModelScraper {
             // Step 4: Parse model detail pages
             $this->parseModelDetails();
             
-            // Step 5: Fetch derivative models for top 5 popular models
-            $this->fetchDerivativeModels();
-            
-            // Step 5a: Fetch minimax derivatives
+            // Step 5a: Fetch minimax derivatives (do this first to ensure they're included)
             $this->fetchDerivativesBySearch('minimax', 'Step 5a: Fetching minimax derivative models', 10, 'minimax');
+            
+            // Step 5: Fetch derivative models for top 50 popular models
+            $this->fetchDerivativeModels();
             
             // Step 5b: Fetch any remaining derivative models that were discovered but not yet fetched
             // (This handles derivatives that were added to the array but not fetched due to limits)
@@ -342,7 +414,45 @@ class OllamaModelScraper {
             $totalOriginal = count($this->originalModels);
             $totalUnique = $stats['total_unique'];
             $modelsWithTags = $stats['with_tags'];
-            $percentage = $totalUnique > 0 ? round(($modelsWithTags / $totalUnique) * 100, 1) : 0;
+            
+            // Count models that need fetching (can't have tags yet)
+            $needsFetching = 0;
+            foreach ($this->models as $slug => $model) {
+                $modelName = $model['name'];
+                $hasOriginalTags = false;
+                if (isset($this->originalModels[$modelName])) {
+                    $originalModel = $this->originalModels[$modelName];
+                    if (!empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0) {
+                        $hasOriginalTags = true;
+                    }
+                }
+                
+                $fileSlug = str_replace('/', '_', $slug);
+                $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
+                
+                if (!file_exists($modelFile) && !$hasOriginalTags) {
+                    $needsFetching++;
+                }
+            }
+            
+            // Also count original models that don't have tags and aren't in scraped models
+            foreach ($this->originalModels as $name => $originalModel) {
+                $hasTags = !empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0;
+                $foundInScraped = false;
+                foreach ($this->models as $slug => $scrapedModel) {
+                    if ($scrapedModel['name'] === $name) {
+                        $foundInScraped = true;
+                        break;
+                    }
+                }
+                if (!$hasTags && !$foundInScraped) {
+                    $needsFetching++;
+                }
+            }
+            
+            // Models that can have tags = total unique - models that need fetching
+            $modelsThatCanHaveTags = $totalUnique - $needsFetching;
+            $percentage = $modelsThatCanHaveTags > 0 ? round(($modelsWithTags / $modelsThatCanHaveTags) * 100, 1) : 0;
             
             // Final status report
             $this->printStatusReport();
@@ -350,10 +460,12 @@ class OllamaModelScraper {
             echo "Completed successfully!\n";
             echo "Total models from original source: {$totalOriginal}\n";
             echo "Total unique models (after merging): {$totalUnique}\n";
+            echo "Models that can have tags: {$modelsThatCanHaveTags}\n";
+            echo "Models that need fetching: {$needsFetching}\n";
             echo "Models from popular page: {$this->popularCount}\n";
             echo "Models from newest page: {$this->newestCount}\n";
             echo "Models with tags (in output): {$modelsWithTags}\n";
-            echo "Completion: {$percentage}%\n";
+            echo "Completion: {$percentage}% (of models that can have tags)\n";
             echo "Output: {$this->outputFile}\n";
             
         } catch (Exception $e) {
@@ -558,14 +670,43 @@ class OllamaModelScraper {
             echo "Step 5b: Fetching remaining model detail pages...\n";
         }
         
+        // Pre-count how many models need fetching
+        $needsFetchingCount = 0;
+        foreach ($this->models as $slug => $model) {
+            $modelName = $model['name'];
+            $shouldSkip = false;
+            
+            // Check if model already exists in original models and has tags
+            if (isset($this->originalModels[$modelName])) {
+                $originalModel = $this->originalModels[$modelName];
+                if (!empty($originalModel['tags']) && is_array($originalModel['tags']) && count($originalModel['tags']) > 0) {
+                    $shouldSkip = true;
+                }
+            }
+            
+            if (!$shouldSkip) {
+                $fileSlug = str_replace('/', '_', $slug);
+                $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
+                if (!file_exists($modelFile)) {
+                    $needsFetchingCount++;
+                }
+            }
+        }
+        
+        echo "  Models that need fetching: {$needsFetchingCount}\n";
+        echo "  Fetch limit per run: " . self::MAX_FETCH_PER_RUN . "\n\n";
+        
         $initialCount = $this->fetchedCount;
         $skipped = 0;
         $skippedOriginal = 0;
+        $skippedNoFile = 0;
         $isDerivative = false;
+        $attempted = 0;
         
         foreach ($this->models as $slug => $model) {
             if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
                 echo "  Reached limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n";
+                echo "  Attempted to fetch: {$attempted} models\n";
                 break;
             }
             
@@ -606,17 +747,20 @@ class OllamaModelScraper {
                 $url = 'https://ollama.com/library/' . $slug . '/tags';
             }
             
+            $attempted++;
             if ($this->fetchUrl($url, $modelFile, false)) {
                 $this->fetchedCount++;
                 if ($isDerivative && !$resetCounter) {
                     echo "    → Fetched derivative: {$model['name']}\n";
                 }
+            } else {
+                $skippedNoFile++;
             }
         }
         
         $newlyFetched = $this->fetchedCount - $initialCount;
         $totalSkipped = $skipped + $skippedOriginal;
-        if ($newlyFetched > 0 || $totalSkipped > 0) {
+        if ($newlyFetched > 0 || $totalSkipped > 0 || $attempted > 0) {
             echo "  Fetched {$newlyFetched} new model detail pages";
             if ($totalSkipped > 0) {
                 $skipParts = [];
@@ -628,6 +772,9 @@ class OllamaModelScraper {
                 }
                 echo " (skipped " . implode(', ', $skipParts) . ")";
             }
+            if ($attempted > 0 && $newlyFetched == 0) {
+                echo " (attempted {$attempted} but none succeeded)";
+            }
             echo "\n";
         } else {
             echo "  All models already fetched (nothing left to fetch)\n";
@@ -638,11 +785,37 @@ class OllamaModelScraper {
     private function parseModelDetails(): void {
         echo "Step 4: Parsing model detail pages...\n";
         
+        // Pre-count how many models need parsing
+        $needsParsing = 0;
+        $alreadyParsed = 0;
+        $noFile = 0;
+        foreach ($this->models as $slug => $model) {
+            if (!empty($model['tags'])) {
+                $alreadyParsed++;
+                continue;
+            }
+            $fileSlug = str_replace('/', '_', $slug);
+            $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
+            if (file_exists($modelFile)) {
+                $needsParsing++;
+            } else {
+                $noFile++;
+            }
+        }
+        
+        echo "  Models needing parsing: {$needsParsing}\n";
+        echo "  Already parsed (have tags): {$alreadyParsed}\n";
+        echo "  No HTML file: {$noFile}\n\n";
+        
         $skipped404 = 0;
+        $parsedSuccessfully = 0;
+        $parseFailed = 0;
+        $skippedAlreadyParsed = 0;
         
         foreach ($this->models as $slug => &$model) {
             // Skip if already parsed (has tags) - prevents duplicate tags when called multiple times
             if (!empty($model['tags'])) {
+                $skippedAlreadyParsed++;
                 continue;
             }
             
@@ -673,11 +846,12 @@ class OllamaModelScraper {
                 $errors = libxml_get_errors();
                 libxml_clear_errors();
                 libxml_use_internal_errors($oldErrors);
-                echo "    Error: Failed to parse HTML";
+                echo "    Error: Failed to parse HTML for {$model['name']}";
                 if (!empty($errors)) {
                     echo " - " . $errors[0]->message;
                 }
                 echo "\n";
+                $parseFailed++;
                 continue;
             }
             
@@ -685,6 +859,8 @@ class OllamaModelScraper {
             libxml_use_internal_errors($oldErrors);
             
             $xpath = new DOMXPath($dom);
+            
+            $tagsBefore = count($model['tags'] ?? []);
             
             try {
                 // Extract downloads
@@ -695,22 +871,37 @@ class OllamaModelScraper {
                 
                 // Extract tags
                 $this->extractTags($xpath, $model, false);
+                
+                $tagsAfter = count($model['tags'] ?? []);
+                if ($tagsAfter > $tagsBefore) {
+                    $parsedSuccessfully++;
+                } else {
+                    $parseFailed++;
+                    echo "    Warning: No tags extracted for {$model['name']} (file exists but parsing found no tags)\n";
+                }
             } catch (Exception $e) {
-                echo "    Warning: Error parsing model details: " . $e->getMessage() . "\n";
+                echo "    Warning: Error parsing model details for {$model['name']}: " . $e->getMessage() . "\n";
+                $parseFailed++;
                 // Continue with next model
             }
         }
         
+        echo "\n  Parsing summary:\n";
+        echo "    Successfully parsed: {$parsedSuccessfully}\n";
+        echo "    Failed to parse: {$parseFailed}\n";
         if ($skipped404 > 0) {
-            echo "  Skipped {$skipped404} models with 404 pages (model not found)\n";
+            echo "    Skipped 404 pages: {$skipped404}\n";
+        }
+        if ($skippedAlreadyParsed > 0) {
+            echo "    Already had tags: {$skippedAlreadyParsed}\n";
         }
         echo "\n";
     }
     
     private function fetchDerivativeModels(): void {
-        echo "Step 5: Fetching derivative models for top 5 popular models...\n";
+        echo "Step 5: Fetching derivative models for top 50 popular models...\n";
         
-        // Get top 5 models by downloads (excluding nulls)
+        // Get top 50 models by downloads (excluding nulls)
         $modelsWithDownloads = array_filter($this->models, function($model) {
             return isset($model['downloads']) && $model['downloads'] !== null;
         });
@@ -722,49 +913,73 @@ class OllamaModelScraper {
             return $bDownloads <=> $aDownloads;
         });
         
-        // Get top 5
-        $top5 = array_slice($modelsWithDownloads, 0, 5, true);
+        // Get top 50
+        $top50 = array_slice($modelsWithDownloads, 0, 50, true);
         
-        if (empty($top5)) {
+        if (empty($top50)) {
             echo "  No models with downloads found, skipping derivative fetch\n\n";
             return;
         }
         
-        echo "  Top 5 models by downloads:\n";
-        foreach ($top5 as $slug => $model) {
-            echo "    - {$model['name']}: " . number_format($model['downloads']) . " downloads\n";
+        // Check which ones need fetching
+        $needsFetching = [];
+        $usingCache = [];
+        foreach ($top50 as $slug => $model) {
+            $searchFile = $this->cacheDir . '/popular-' . $slug . '.html';
+            if ($this->shouldFetch($searchFile)) {
+                $needsFetching[$slug] = $model;
+            } else {
+                $usingCache[$slug] = $model;
+            }
+        }
+        
+        echo "  Top 50 models by downloads:\n";
+        foreach ($top50 as $slug => $model) {
+            $searchFile = $this->cacheDir . '/popular-' . $slug . '.html';
+            $needsFetch = $this->shouldFetch($searchFile);
+            $status = $needsFetch ? " [NEEDS FETCH]" : " [cached]";
+            echo "    - {$model['name']}: " . number_format($model['downloads']) . " downloads{$status}\n";
         }
         echo "\n";
         
-        foreach ($top5 as $slug => $model) {
-            // Check total fetch limit (across both main and derivative models)
-            if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
-                echo "  Reached total limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n";
-                break;
-            }
-            
+        if (count($needsFetching) > 0) {
+            echo "  Models needing search page fetch: " . count($needsFetching) . "\n";
+        }
+        if (count($usingCache) > 0) {
+            echo "  Models using cached search pages: " . count($usingCache) . "\n";
+        }
+        echo "\n";
+        
+        foreach ($top50 as $slug => $model) {
             $modelName = $model['name'];
-            echo "  Fetching derivatives for: {$modelName}\n";
             
-            // Fetch search results for this model
+            // Fetch search results for this model (only if limit not reached and cache is stale)
             $searchUrl = 'https://ollama.com/search?q=' . urlencode($modelName);
             $searchFile = $this->cacheDir . '/popular-' . $slug . '.html';
             
-            if (!$this->shouldFetch($searchFile)) {
-                echo "    Using cached search results\n";
-            } else {
-                if ($this->fetchUrl($searchUrl, $searchFile)) {
-                    echo "    Fetched search results\n";
+            $needsFetch = $this->shouldFetch($searchFile);
+            if ($needsFetch) {
+                // Only fetch if we haven't reached the limit
+                if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
+                    echo "  Processing derivatives for: {$modelName} [using cached search page - fetch limit reached]\n";
                 } else {
-                    echo "    Failed to fetch search results\n";
-                    continue;
+                    echo "  Fetching derivatives for: {$modelName} [fetching search page]\n";
+                    if ($this->fetchUrl($searchUrl, $searchFile)) {
+                        echo "    ✓ Fetched search results\n";
+                    } else {
+                        echo "    ✗ Failed to fetch search results\n";
+                        continue;
+                    }
                 }
+            } else {
+                echo "  Processing derivatives for: {$modelName} [using cached search page]\n";
             }
             
-            // Parse search results to find derivatives
+            // Parse search results to find derivatives (always do this, even if limit reached)
             $derivatives = $this->parseDerivativeSearch($searchFile, $modelName);
             
             // Process and fetch derivatives (limit to 5 per model)
+            // This will only fetch if limit not reached, but will always add to models array
             $this->processAndFetchDerivatives($derivatives, 5);
         }
         
@@ -880,15 +1095,9 @@ class OllamaModelScraper {
     private function fetchDerivativesBySearch(string $searchQuery, string $stepName, int $maxDerivatives = 10, ?string $filterName = null, ?string $cacheFile = null): void {
         echo "{$stepName}: Fetching derivative models for search: {$searchQuery}...\n";
         
-        // Check total fetch limit
-        if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
-            echo "  Reached total limit of " . self::MAX_FETCH_PER_RUN . " fetches per run\n\n";
-            return;
-        }
-        
         echo "  Searching for: {$searchQuery}\n";
         
-        // Fetch search results
+        // Fetch search results (only if limit not reached and cache is stale)
         $searchUrl = 'https://ollama.com/search?q=' . urlencode($searchQuery);
         if ($cacheFile === null) {
             $cacheKey = str_replace([' ', '/'], ['-', '_'], strtolower($searchQuery));
@@ -898,11 +1107,16 @@ class OllamaModelScraper {
         if (!$this->shouldFetch($cacheFile)) {
             echo "    Using cached search results\n";
         } else {
-            if ($this->fetchUrl($searchUrl, $cacheFile)) {
-                echo "    Fetched search results\n";
+            // Only fetch if we haven't reached the limit
+            if ($this->fetchedCount >= self::MAX_FETCH_PER_RUN) {
+                echo "    Using cached search results (fetch limit reached)\n";
             } else {
-                echo "    Failed to fetch search results\n\n";
-                return;
+                if ($this->fetchUrl($searchUrl, $cacheFile)) {
+                    echo "    Fetched search results\n";
+                } else {
+                    echo "    Failed to fetch search results\n\n";
+                    return;
+                }
             }
         }
         
@@ -1643,7 +1857,81 @@ class OllamaModelScraper {
 // Main execution
 try {
     $scraper = new OllamaModelScraper();
-    $scraper->run();
+    
+    // Check for --once flag
+    global $argv;
+    $runOnce = in_array('--once', $argv);
+    
+    if ($runOnce) {
+        // Run once and exit
+        echo "Ollama Model Scraper (run once mode)\n";
+        echo str_repeat('=', 60) . "\n\n";
+        
+        $startTime = time();
+        $timestamp = date('Y-m-d H:i:s');
+        echo "Started at {$timestamp}\n\n";
+        
+        try {
+            $scraper->run();
+            
+            $endTime = time();
+            $duration = $endTime - $startTime;
+            echo "\n" . str_repeat('=', 60) . "\n";
+            echo "Completed in {$duration} seconds\n";
+            echo "Output file written: " . $scraper->getOutputFile() . "\n";
+            echo str_repeat('=', 60) . "\n";
+        } catch (Exception $e) {
+            echo "\nError: " . $e->getMessage() . "\n";
+            exit(1);
+        }
+    } else {
+        // Run in a loop: execute every 2-3 minutes (randomly)
+        $runCount = 0;
+        while (true) {
+            $runCount++;
+            $startTime = time();
+            $timestamp = date('Y-m-d H:i:s');
+            
+            echo "\n" . str_repeat('=', 60) . "\n";
+            echo "RUN #{$runCount} - Started at {$timestamp}\n";
+            echo str_repeat('=', 60) . "\n\n";
+            
+            try {
+                $scraper->run();
+                
+                $endTime = time();
+                $duration = $endTime - $startTime;
+                echo "\nRun #{$runCount} completed in {$duration} seconds\n";
+                echo "Output file written: " . $scraper->getOutputFile() . "\n";
+                
+                // Check if there's any work remaining
+                if (!$scraper->hasWorkToDo()) {
+                    echo "\n" . str_repeat('=', 60) . "\n";
+                    echo "No more work to do - all models fetched and parsed!\n";
+                    echo "Exiting after {$runCount} run(s).\n";
+                    echo str_repeat('=', 60) . "\n";
+                    break; // Exit the loop
+                }
+                
+            } catch (Exception $e) {
+                echo "\nError in run #{$runCount}: " . $e->getMessage() . "\n";
+                // Continue to next run instead of exiting (might be temporary error)
+            }
+            
+            // Calculate random wait time between 2-3 minutes (120-180 seconds)
+            $waitSeconds = rand(120, 180);
+            $waitMinutes = round($waitSeconds / 60, 1);
+            $nextRunTime = date('Y-m-d H:i:s', time() + $waitSeconds);
+            
+            echo "\n" . str_repeat('=', 60) . "\n";
+            echo "Waiting {$waitMinutes} minutes ({$waitSeconds} seconds) before next run\n";
+            echo "Next run scheduled for: {$nextRunTime}\n";
+            echo str_repeat('=', 60) . "\n\n";
+            
+            sleep($waitSeconds);
+        }
+    }
+    
 } catch (Exception $e) {
     echo "Fatal error: " . $e->getMessage() . "\n";
     exit(1);
