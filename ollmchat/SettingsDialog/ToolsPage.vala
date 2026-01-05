@@ -97,7 +97,6 @@ namespace OLLMchat.SettingsDialog
 		{
 			// Get client with tools from parent window's history_manager
 			this.client = (this.dialog.parent as OllmchatWindow).history_manager.base_client;
-			GLib.debug("load_tools: client.tools has %d tools, config.tools has %d entries", this.client.tools.size, this.dialog.app.config.tools.entries.size);
 			
 			// Iterate through Config2.tools to discover all configured tools
 			foreach (var entry in this.dialog.app.config.tools.entries) {
@@ -108,13 +107,9 @@ namespace OLLMchat.SettingsDialog
 				}
 				
 				// Get tool object from Client.tools if available (for metadata) and create tool row
-				var tool = this.client.tools.get(entry.key);
-				if (tool == null) {
-					GLib.debug("load_tools: WARNING - tool '%s' not found in client.tools", entry.key);
-				}
 				var tool_row = new Rows.Tool(
 					this.dialog,
-					tool,
+					this.client.tools.get(entry.key),
 					entry.value,
 					entry.key
 				);
