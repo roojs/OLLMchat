@@ -41,12 +41,6 @@ namespace OLLMchat.Settings
 		public bool enabled { get; set; default = true; }
 
 		/**
-		 * Tool description (stored when config is created).
-		 */
-		public string title = ""; 
-		
-
-		/**
 		 * Default constructor.
 		 */
 		public BaseToolConfig()

@@ -37,6 +37,7 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.dialog.html">dialog</a></li>
+          <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.tool.html">tool</a></li>
           <li class="property"><a href="OLLMchat.SettingsDialog.Rows.Tool.tool_name.html">tool_name</a></li>
           <li class="creation_method">Tool</li>
           <li class="method"><a href="OLLMchat.SettingsDialog.Rows.Tool.load_config.html">load_config</a></li>
@@ -46,7 +47,7 @@
         <h1 class="main_title">Tool</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Tool</span></b> (<span class="main_type"><a href="OLLMchat.SettingsDialog.MainDialog.html" class="class">MainDialog</a></span> dialog, <span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span>? tool, <span class="main_type"><a href="OLLMchat.Settings.BaseToolConfig.html" class="class">BaseToolConfig</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> tool_name)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Tool</span></b> (<span class="main_type"><a href="OLLMchat.SettingsDialog.MainDialog.html" class="class">MainDialog</a></span> dialog, <span class="main_type"><a href="OLLMchat.Tool.BaseTool.html" class="abstract_class">BaseTool</a></span>? tool, <span class="main_type"><a href="OLLMchat.Settings.BaseToolConfig.html" class="class">BaseToolConfig</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> tool_name)
         </div>
         <div class="description">
           <p>Creates a new Tool.</p>
@@ -61,7 +62,7 @@
             <tr>
               <td class="main_parameter_table_name">tool</td>
               <td>
-                <p>The Tool.Interface object (can be null if Client.tools not available) </p>
+                <p>The Tool.BaseTool object (can be null if Client.tools not available) </p>
               </td>
             </tr>
             <tr>

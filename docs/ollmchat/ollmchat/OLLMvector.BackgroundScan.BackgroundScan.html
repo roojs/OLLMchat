@@ -38,28 +38,16 @@
         <h1 class="main_title">BackgroundScan</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">BackgroundScan</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> embedding_client, <span class="main_type"><a href="OLLMvector.Database.html" class="class">Database</a></span> vector_db, <span class="main_type"><a href="SQ.Database.html" class="class">Database</a></span> sql_db, <span class="main_type"><a href="OLLMfiles.GitProviderBase.html" class="class">GitProviderBase</a></span> git_provider)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">BackgroundScan</span></b> (<span class="main_type"><a href="OLLMvector.Tool.CodebaseSearchTool.html" class="class">CodebaseSearchTool</a></span> tool, <span class="main_type"><a href="OLLMfiles.GitProviderBase.html" class="class">GitProviderBase</a></span> git_provider)
         </div>
         <div class="description">
           <p>Creates a new BackgroundScan instance.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">embedding_client</td>
+              <td class="main_parameter_table_name">tool</td>
               <td>
-                <p>The OLLMchat.Client instance for LLM calls and embeddings. </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">vector_db</td>
-              <td>
-                <p>The OLLMvector.Database instance for vector storage (FAISS). </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">sql_db</td>
-              <td>
-                <p>The SQ.Database instance for metadata storage. </p>
+                <p>The CodebaseSearchTool instance (provides embedding_client, vector_db, and project_manager.db). </p>
               </td>
             </tr>
             <tr>

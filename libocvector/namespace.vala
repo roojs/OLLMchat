@@ -120,16 +120,15 @@
  * === Using Background Scanning ===
  * 
  * {{{
- * // Create background scanner
+ * // Create background scanner (requires CodebaseSearchTool instance)
  * var scanner = new OLLMvector.BackgroundScan(
- *     embedding_client,
- *     vector_db,
- *     sql_db
+ *     codebase_search_tool,
+ *     new GitProvider()  // Each thread needs its own instance for thread safety
  * );
  * 
  * // Queue files for indexing (automatically processed in background)
- * scanner.queue_file(file);
- * scanner.queue_folder(folder);
+ * scanner.scanFile(file, project);
+ * scanner.scanProject(project);
  * 
  * // Monitor progress via signal
  * scanner.scan_update.connect((queue_size, current_file) => {

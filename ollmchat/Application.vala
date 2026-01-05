@@ -55,10 +55,9 @@ namespace OLLMchat
 				GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
 			);
 			
-			// Register tool config types before loading config (static registration)
-			// Use unified tool config registration
-			OLLMvector.Tool.CodebaseSearchTool.register_config();
-			OLLMtools.GoogleSearchTool.register_config();
+			// Register tool config types before loading config (Phase 1: config type registration)
+			// Use unified tool config registration to discover and register all tool config types
+			Tool.BaseTool.register_config();
 			
 			// Load config after registrations
 			this.config = this.load_config();

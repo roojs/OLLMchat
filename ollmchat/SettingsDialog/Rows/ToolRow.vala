@@ -38,6 +38,11 @@ namespace OLLMchat.SettingsDialog.Rows
 		public OLLMchat.Settings.BaseToolConfig config { get; construct; }
 		
 		/**
+		 * The tool object (for getting title and other metadata).
+		 */
+		public OLLMchat.Tool.BaseTool? tool { get; construct; }
+		
+		/**
 		 * Reference to SettingsDialog for accessing Config2.
 		 */
 		public MainDialog dialog { get; construct; }
@@ -64,7 +69,8 @@ namespace OLLMchat.SettingsDialog.Rows
 				dialog: dialog,
 				tool_name: tool_name,
 				config: config,
-				title: config.title
+				tool: tool,
+				title: tool != null ? tool.title : tool_name
 			);
 			
 			// Introspect config properties and create widgets

@@ -35,19 +35,18 @@ namespace OLLMvector.Tool
 		 * This method only sets the connection from the default connection. This replaces the separate
 		 * setup_embed_usage() and setup_analysis_usage() methods with a unified setup.
 		 */
-		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
+		public override void setup_tool_config(OLLMchat.Settings.Config2 config)
 		{
-			CodebaseSearchToolConfig tool_config;
 			if (config.tools.has_key("codebase_search")) {
-				tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-			} else {
-				tool_config = new CodebaseSearchToolConfig();
-				var default_connection = config.get_default_connection();
-				if (default_connection != null) {
-					tool_config.setup_defaults(default_connection.url);
-				}
-				config.tools.set("codebase_search", tool_config);
+				return;
 			}
+			
+			var tool_config = new CodebaseSearchToolConfig();
+			var default_connection = config.get_default_connection();
+			if (default_connection != null) {
+				tool_config.setup_defaults(default_connection.url);
+			}
+			config.tools.set("codebase_search", tool_config);
 		}
 		
 		/**
@@ -142,26 +141,19 @@ making it more effective than simple text search for finding relevant code.
 		 * Vector database for FAISS search.
 		 * Created lazily when needed (requires async operation).
 		 */
-		public OLLMvector.Database? vector_db { get; private set; }
+		public OLLMvector.Database? vector_db { get; internal set; }
 		
 		/**
 		 * Embedding client for query vectorization.
 		 * Extracted from client.config if client is not null.
 		 */
-		public OLLMchat.Client? embedding_client { get; private set; }
+		public OLLMchat.Client? embedding_client { get; internal set; }
 		
 		/**
-		 * Hardcoded vector database path.
-		 * Uses standard data directory: ~/.local/share/ollmchat/codedb.faiss.vectors
+		 * Vector database file path.
+		 * Set in init_databases(), used to create the database.
 		 */
-		private string vector_db_path {
-			get {
-				return GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(),
-					".local", "share", "ollmchat", "codedb.faiss.vectors"
-				);
-			}
-		}
+		private string? vector_db_path = null;
 		
 		/**
 		 * Constructor with nullable dependencies.
@@ -171,6 +163,7 @@ making it more effective than simple text search for finding relevant code.
 		 * 
 		 * Embedding client is extracted from client.config.tools["codebase_search"] if available.
 		 * Vector database is not created in constructor (requires async operation).
+		 * Call init_databases() after construction to create the vector database.
 		 * 
 		 * @param client LLM client (nullable for Phase 1)
 		 * @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
@@ -183,27 +176,47 @@ making it more effective than simple text search for finding relevant code.
 			base(client);
 			this.project_manager = project_manager;
 			
-			// Extract embedding_client from client.config if client is not null
-			if (client != null && client.config != null) {
-				// Get tool config and extract embed ModelUsage
-				if (client.config.tools.has_key("codebase_search")) {
-					var tool_config = client.config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-					if (tool_config != null) {
-						var embed_usage = tool_config.embed;
-						if (embed_usage.connection != "" && 
-						    client.config.connections.has_key(embed_usage.connection)) {
-							var embed_connection = client.config.connections.get(embed_usage.connection);
-							this.embedding_client = new OLLMchat.Client(embed_connection) {
-								config = client.config,
-								model = embed_usage.model
-							};
-						}
-					}
-				}
+			// Extract embedding_client from client.config if available
+			if (client == null) {
+				return;
 			}
 			
-			// Note: vector_db is not created in constructor (requires async get_embedding_dimension)
-			// It will be created when needed in Phase 2
+			if (!client.config.tools.has_key("codebase_search")) {
+				return;
+			}
+			
+			var tool_config = client.config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+			if (tool_config.embed.connection == "" || 
+				!client.config.connections.has_key(tool_config.embed.connection)) {
+				return;
+			}
+			
+			this.embedding_client = new OLLMchat.Client(client.config.connections.get(tool_config.embed.connection)) {
+				config = client.config,
+				model = tool_config.embed.model
+			};
+		}
+		
+		/**
+		 * Initializes the vector database by getting dimension and creating the Database instance.
+		 * 
+		 * This method should be called after the tool is constructed and embedding_client is set.
+		 * It performs the async operation to get the embedding dimension and creates the vector_db.
+		 * 
+		 * @param data_dir Data directory for vector database.
+		 * @throws GLib.Error if initialization fails
+		 */
+		public async void init_databases(string data_dir) throws GLib.Error
+		{
+			if (this.vector_db != null) {
+				return; // Already initialized
+			}
+			
+			// Set vector database path
+			this.vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
+			
+			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embedding_client);
+			this.vector_db = new OLLMvector.Database(this.embedding_client, this.vector_db_path, dimension);
 		}
 		
 		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }

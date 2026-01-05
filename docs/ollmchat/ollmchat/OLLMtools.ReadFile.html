@@ -31,8 +31,9 @@
           <li class="virtual_property"><a href="OLLMtools.ReadFile.name.html">name</a></li>
           <li class="virtual_property"><a href="OLLMtools.ReadFile.parameter_description.html">parameter_description</a></li>
           <li class="property"><a href="OLLMtools.ReadFile.project_manager.html">project_manager</a></li>
-          <li class="static_method"><a href="OLLMtools.ReadFile.setup_tool_config.html">setup_tool_config</a></li>
+          <li class="virtual_property"><a href="OLLMtools.ReadFile.title.html">title</a></li>
           <li class="creation_method"><a href="OLLMtools.ReadFile.ReadFile.html">ReadFile</a></li>
+          <li class="virtual_method"><a href="OLLMtools.ReadFile.config_class.html">config_class</a></li>
           <li class="virtual_method"><a href="OLLMtools.ReadFile.deserialize.html">deserialize</a></li>
         </ul>
       </div>
@@ -44,11 +45,11 @@
 
       <map id="OLLMtools.ReadFile" name="OLLMtools.ReadFile">
 <area shape="rect" id="node1" href="OLLMtools.ReadFile.html" title="OLLMtools.ReadFile" alt="" coords="49,197,227,245"/>
-<area shape="rect" id="node2" href="OLLMchat.Tool.Interface.html" title="OLLMchat.Tool.Interface" alt="" coords="32,101,244,149"/>
+<area shape="rect" id="node2" href="OLLMchat.Tool.BaseTool.html" title="OLLMchat.Tool.BaseTool" alt="" coords="31,101,245,149"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">ReadFile</span></b> : <span class="main_type"><a href="OLLMchat.Tool.Interface.html" class="abstract_class">Interface</a></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">ReadFile</span></b> : <span class="main_type"><a href="OLLMchat.Tool.BaseTool.html" class="abstract_class">BaseTool</a></span>
         </div>
         <div class="description">
           <p>Tool for reading file contents with optional line range support.</p>
@@ -78,23 +79,24 @@
             <div class="leaf_brief_description"><span class="brief_description">ProjectManager instance for accessing project context. Optional - set 
                 to null if not available.</span>
             </div></li>
-        </ul>
-        <h3 class="main_title">Static methods:</h3>
-        <ul class="navi_inline">
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMtools.ReadFile.setup_tool_config.html" class="static_method">setup_tool_config</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
+          <li class="virtual_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMtools.ReadFile.title.html" class="virtual_property">title</a></b> { <span class="main_keyword">get</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Sets up the read_file tool configuration with default values.</span>
+            <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMtools.ReadFile.ReadFile.html" class="creation_method">ReadFile</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span>? project_manager = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMtools.ReadFile.ReadFile.html" class="creation_method">ReadFile</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? client = <span class="main_literal">null</span>, <span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span>? project_manager = <span class="main_literal">null</span>)
             </span>
             <div class="leaf_brief_description">
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="struct">Type</span></span> <b><a href="OLLMtools.ReadFile.config_class.html" class="virtual_method">config_class</a></b> ()
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_type"><a href="OLLMchat.Tool.RequestBase.html" class="abstract_class">RequestBase</a></span>? <b><a href="OLLMtools.ReadFile.deserialize.html" class="virtual_method">deserialize</a></b> (<span class="main_type"><span class="class">Node</span></span> parameters_node)
             </span>
             <div class="leaf_brief_description">
@@ -102,33 +104,40 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-437')">All known members inherited from class OLLMchat.Tool.Interface</div>
+          <div class="headline" onclick="toggle_box (this, 'box-content-437')">All known members inherited from class OLLMchat.Tool.BaseTool</div>
           <div class="content" id="box-content-437">
             <div class="column">
               <ul class="navi_inline">
-                <li class="property"><a href="OLLMchat.Tool.Interface.active.html">active</a></li>
-                <li class="property"><a href="OLLMchat.Tool.Interface.client.html">client</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.description.html">description</a></li>
-                <li class="abstract_method"><a href="OLLMchat.Tool.Interface.deserialize.html">deserialize</a></li>
-                <li class="virtual_method"><a href="OLLMchat.Tool.Interface.execute.html">execute</a></li>
+                <li class="property"><a href="OLLMchat.Tool.BaseTool.active.html">active</a></li>
+                <li class="property"><a href="OLLMchat.Tool.BaseTool.client.html">client</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.config_class.html">config_class</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.description.html">description</a></li>
+                <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.deserialize.html">deserialize</a></li>
+                <li class="static_method"><a href="OLLMchat.Tool.BaseTool.discover_classes.html">discover_classes</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tool.BaseTool.execute.html">execute</a></li>
               </ul>
             </div>
             <div class="column">
               <ul class="navi_inline">
-                <li class="method"><a href="OLLMchat.Tool.Interface.find_property.html">find_property</a></li>
-                <li class="property"><a href="OLLMchat.Tool.Interface.function.html">function</a></li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.get_property.html">get_property</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.name.html">name</a></li>
-                <li class="abstract_property"><a href="OLLMchat.Tool.Interface.parameter_description.html">parameter_description</a></li>
-              </ul>
-            </div>
-            <div class="column">
-              <ul class="navi_inline">
-                <li class="method"><a href="OLLMchat.Tool.Interface.parse_parameter_description_string.html">parse_parameter_description_string</a>
+                <li class="method"><a href="OLLMchat.Tool.BaseTool.find_property.html">find_property</a></li>
+                <li class="property"><a href="OLLMchat.Tool.BaseTool.function.html">function</a></li>
+                <li class="method"><a href="OLLMchat.Tool.BaseTool.get_property.html">get_property</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.name.html">name</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.parameter_description.html">parameter_description</a></li>
+                <li class="method"><a href="OLLMchat.Tool.BaseTool.parse_parameter_description_string.html">parse_parameter_description_string</a>
                 </li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.serialize_property.html">serialize_property</a></li>
-                <li class="method"><a href="OLLMchat.Tool.Interface.set_property.html">set_property</a></li>
-                <li class="property"><a href="OLLMchat.Tool.Interface.tool_type.html">tool_type</a></li>
+                <li class="static_method"><a href="OLLMchat.Tool.BaseTool.register_all_tools.html">register_all_tools</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="static_method"><a href="OLLMchat.Tool.BaseTool.register_config.html">register_config</a></li>
+                <li class="method"><a href="OLLMchat.Tool.BaseTool.serialize_property.html">serialize_property</a></li>
+                <li class="method"><a href="OLLMchat.Tool.BaseTool.set_property.html">set_property</a></li>
+                <li class="static_method"><a href="OLLMchat.Tool.BaseTool.setup_all_tool_configs.html">setup_all_tool_configs</a></li>
+                <li class="virtual_method"><a href="OLLMchat.Tool.BaseTool.setup_tool_config.html">setup_tool_config</a></li>
+                <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.title.html">title</a></li>
+                <li class="property"><a href="OLLMchat.Tool.BaseTool.tool_type.html">tool_type</a></li>
               </ul>
             </div>
           </div>

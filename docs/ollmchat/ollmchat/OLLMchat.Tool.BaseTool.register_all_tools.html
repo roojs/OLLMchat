@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>OLLMchat.Tool.BaseTool.register_all_tools &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">OLLMchat.Tool.BaseTool.register_all_tools &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.Tool.html">Tool</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="abstract_class"><a href="OLLMchat.Tool.BaseTool.html">BaseTool</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Tool.BaseTool.active.html">active</a></li>
+          <li class="property"><a href="OLLMchat.Tool.BaseTool.client.html">client</a></li>
+          <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.description.html">description</a></li>
+          <li class="property"><a href="OLLMchat.Tool.BaseTool.function.html">function</a></li>
+          <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.name.html">name</a></li>
+          <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.parameter_description.html">parameter_description</a></li>
+          <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.title.html">title</a></li>
+          <li class="property"><a href="OLLMchat.Tool.BaseTool.tool_type.html">tool_type</a></li>
+          <li class="static_method"><a href="OLLMchat.Tool.BaseTool.discover_classes.html">discover_classes</a></li>
+          <li class="static_method">register_all_tools</li>
+          <li class="static_method"><a href="OLLMchat.Tool.BaseTool.register_config.html">register_config</a></li>
+          <li class="static_method"><a href="OLLMchat.Tool.BaseTool.setup_all_tool_configs.html">setup_all_tool_configs</a></li>
+          <li class="creation_method"><a href="OLLMchat.Tool.BaseTool.BaseTool.html">BaseTool</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.config_class.html">config_class</a></li>
+          <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.deserialize.html">deserialize</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Tool.BaseTool.execute.html">execute</a></li>
+          <li class="method"><a href="OLLMchat.Tool.BaseTool.find_property.html">find_property</a></li>
+          <li class="method"><a href="OLLMchat.Tool.BaseTool.get_property.html">get_property</a></li>
+          <li class="method"><a href="OLLMchat.Tool.BaseTool.parse_parameter_description_string.html">parse_parameter_description_string</a></li>
+          <li class="method"><a href="OLLMchat.Tool.BaseTool.serialize_property.html">serialize_property</a></li>
+          <li class="method"><a href="OLLMchat.Tool.BaseTool.set_property.html">set_property</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Tool.BaseTool.setup_tool_config.html">setup_tool_config</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">register_all_tools</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><span class="static_method">register_all_tools</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_type"><span class="class">Object</span></span>? project_manager)
+        </div>
+        <div class="description">
+          <p>Creates and registers all tool instances with Client (Phase 2: after dependencies ready).</p>
+          <p>This method discovers all tool classes, creates tool instances with the provided dependencies (client, project_manager), and registers 
+            them via Client.addTool(). Must be called after all dependencies are available.</p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">client</td>
+              <td>
+                <p>The LLM client instance </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">project_manager</td>
+              <td>
+                <p>The project manager instance (should be OLLMfiles.ProjectManager, but using Object? for library independence) </p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

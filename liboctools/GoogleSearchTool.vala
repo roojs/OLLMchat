@@ -26,23 +26,6 @@ namespace OLLMtools
 	 */
 	public class GoogleSearchTool : OLLMchat.Tool.BaseTool
 	{
-		/**
-		 * Sets up the Google search tool configuration with default values.
-		 * 
-		 * Creates a GoogleSearchToolConfig in `Config2.tools["google_search"]` if it doesn't exist.
-		 * The config will have empty api_key and engine_id, which the user must configure.
-		 */
-		public static void setup_tool_config(OLLMchat.Settings.Config2 config)
-		{
-			Tool.GoogleSearchToolConfig tool_config;
-			if (config.tools.has_key("google_search")) {
-				tool_config = config.tools.get("google_search") as Tool.GoogleSearchToolConfig;
-			} else {
-				tool_config = new Tool.GoogleSearchToolConfig();
-				config.tools.set("google_search", tool_config);
-			}
-		}
-		
 		public override string name { get { return "google_search"; } }
 		
 		public override string title { get { return "Google Search Tool"; } }

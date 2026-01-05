@@ -93,7 +93,7 @@ public abstract class VectorAppBase : TestAppBase
 		yield this.ensure_config(opt_url, opt_api_key);
 		
 		// Ensure tool config exists
-		OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(this.config);
+		new OLLMvector.Tool.CodebaseSearchTool(null, null).setup_tool_config(this.config);
 		
 		// Get tool config and extract the appropriate ModelUsage
 		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
