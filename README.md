@@ -270,6 +270,18 @@ The project is organized into component directories, each with its own `meson.bu
   - `HistoryBrowser.vala` - History browser component
   - `Message.vala`, `ClipboardManager.vala`, `ClipboardMetadata.vala` - Supporting components
 
+**Main Application (`ollmapp/`):**
+- `ollmapp/` - Main application directory (namespace: `OLLMapp`)
+  - `Application.vala` - Main application class (`OLLMapp.OllmchatApplication`)
+  - `Window.vala` - Main window class (`OLLMapp.OllmchatWindow`)
+  - `SettingsDialog/` - Settings dialog components (namespace: `OLLMapp.SettingsDialog`)
+    - `MainDialog.vala` - Main settings dialog
+    - `ConnectionsPage.vala` - Connection management page
+    - `ModelsPage.vala` - Model management page
+    - `ToolsPage.vala` - Tool configuration page
+    - `Rows/` - Settings row widgets (namespace: `OLLMapp.SettingsDialog.Rows`)
+  - Note: The application uses `OLLMapp` namespace to distinguish it from the `libollmchat` library which uses `OLLMchat` namespace
+
 **Other Directories:**
 - `examples/` - Example programs and test code (each with its own meson.build)
 - `docs/` - Generated documentation (Valadoc) and implementation plans

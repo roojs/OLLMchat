@@ -30,7 +30,7 @@ subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
 subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles, libocvector, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
-subdir('ollmchat')         # Primary application - depends on all libraries
+subdir('ollmapp')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
 subdir('tests')             # Test suite - depends on examples
 
@@ -52,12 +52,11 @@ exec "$EXECUTABLE" "$@"
 
 # List of executables and their paths
 executables_info = [
-  ['ollmchat', 'ollmchat/ollmchat'],
+  ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
   ['oc-test-cli', 'examples/oc-test-cli'],
   ['oc-test-pull', 'examples/oc-test-pull'],
   ['oc-test-fetch', 'examples/oc-test-fetch'],
   ['oc-test-files', 'examples/oc-test-files'],
-  ['ollmchat.bin', 'ollmchat/ollmchat'],  # Wrapper for testing ollama chat with latest code
   ['oc-markdown-test', 'examples/oc-markdown-test'],
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html'],
