@@ -46,6 +46,26 @@ namespace OLLMchat.History
 	{
 		public Call.Chat chat { get; set; }
 		
+		// Permission provider (can be accessed via chat.permission_provider)
+		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
+		
+		/**
+		 * Permission provider for tool execution.
+		 *
+		 * Handles permission requests when tools need to access files or execute commands.
+		 * This is stored on Session but accessed via chat.permission_provider.
+		 * Chat.permission_provider will check this first, then fall back to client.permission_provider.
+		 *
+		 * @since 1.0
+		 */
+		public OLLMchat.ChatPermission.Provider permission_provider {
+			get {
+				if (refactor_permission_provider != null) return refactor_permission_provider;
+				return this.client.permission_provider;
+			}
+			set { refactor_permission_provider = value; }
+		}
+		
 		// Streaming state tracking
 		private Message? current_stream_message = null;
 		private bool current_stream_is_thinking = false;
@@ -78,6 +98,7 @@ namespace OLLMchat.History
 		/**
 		 * Constructor requires a Call.Chat object.
 		 * Client is created from chat.client.
+		 * Sets permission_provider on Chat if Session has one.
 		 *
 		 * @param manager The history manager
 		 * @param chat The chat object (required)
@@ -87,6 +108,10 @@ namespace OLLMchat.History
 			base(manager);
 			this.chat = chat;
 			this.client = chat.client;
+			// Set permission_provider on Chat if Session has one
+			if (this.refactor_permission_provider != null) {
+				chat.permission_provider = this.refactor_permission_provider;
+			}
 		}
 		
 		/**

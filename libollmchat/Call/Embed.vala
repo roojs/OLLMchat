@@ -26,7 +26,18 @@ namespace OLLMchat.Call
 	 */
 	public class Embed : Base
 	{
-		public string model { get; set; }
+		// Real properties with refactor_ prefix (temporary for migration)
+		private string? refactor_model = null;
+		private string? refactor_keep_alive = null;
+		private Call.Options? refactor_options = null;
+		
+		public string model { 
+			get { 
+				if (refactor_model != null) return refactor_model;
+				return this.client.model; 
+			}
+			set { refactor_model = value; }
+		}
 		
 		public string input { get; set; default = ""; }
 		public Gee.ArrayList<string> input_array { get; set; default = new Gee.ArrayList<string>(); }
@@ -34,11 +45,20 @@ namespace OLLMchat.Call
 		public int dimensions { get; set; default = -1; }
 		
 		public string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_keep_alive != null) return refactor_keep_alive;
+				return this.client.keep_alive; 
+			}
+			set { refactor_keep_alive = value; }
 		}
 		
-		public Call.Options options { get; set; }
+		public Call.Options options { 
+			get { 
+				if (refactor_options != null) return refactor_options;
+				return this.client.options; 
+			}
+			set { refactor_options = value; }
+		}
 
 		public Embed(Client client, string model, Call.Options? options = null)
 		{
@@ -48,14 +68,18 @@ namespace OLLMchat.Call
 			}
 			this.url_endpoint = "embed";
 			this.http_method = "POST";
-			this.model = model;
+			this.model = model;  // This will use the setter, which sets refactor_model
 			
 			// Load model options from config if options not provided
-			this.options = options != null
-				? options
-				: (this.client.config.model_options.has_key(model)
-					? this.client.config.model_options.get(model)
-					: new Call.Options());
+			if (options != null) {
+				this.options = options;  // This will use the setter, which sets refactor_options
+			} else {
+				if (this.client.config.model_options.has_key(model)) {
+					this.options = this.client.config.model_options.get(model);
+				} else {
+					this.options = new Call.Options();
+				}
+			}
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

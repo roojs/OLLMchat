@@ -106,9 +106,12 @@ namespace OLLMchat.Tool
 		protected string normalize_file_path(string in_path)
 		{
 			var path = in_path;
+			// Get permission provider from Chat (Chat has its own or falls back to Client)
+			var permission_provider = this.chat_call.permission_provider;
+			
 			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
-			if (!GLib.Path.is_absolute(path) && this.chat_call.client.permission_provider.relative_path != "") {
-				path = GLib.Path.build_filename(this.chat_call.client.permission_provider.relative_path, path);
+			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
+				path = GLib.Path.build_filename(permission_provider.relative_path, path);
 			}
 			// if it's still absolute - return it we might have to fail at this point..
 			// llm should send valid paths, we should not try and solve it.
@@ -159,10 +162,13 @@ namespace OLLMchat.Tool
 			// Check permission if needed
 			if (this.build_perm_question()) {
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
-				GLib.debug("RequestBase.execute: Tool '%s' client=%p, permission_provider=%p (%s)", 
-					this.tool.name, this.chat_call.client, this.chat_call.client.permission_provider, 
-					this.chat_call.client.permission_provider.get_type().name());
-				if (!(yield this.chat_call.client.permission_provider.request(this))) {
+				
+			// Get permission provider from Chat (Chat has its own or falls back to Client)
+			var permission_provider = this.chat_call.permission_provider;
+			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Chat", 
+				this.tool.name, permission_provider, permission_provider.get_type().name());
+				
+				if (!(yield permission_provider.request(this))) {
 					GLib.debug("RequestBase.execute: Permission denied for tool '%s'", this.tool.name);
 					return "ERROR: Permission denied: " + this.permission_question;
 				}

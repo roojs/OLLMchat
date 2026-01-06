@@ -43,14 +43,28 @@ namespace OLLMchat.Call
 	{
 		public string model { get; set; }
 		
+		// Real properties with refactor_ prefix (temporary for migration)
+		private bool? refactor_stream = null;
+		private string? refactor_format = null;
+		private bool? refactor_think = null;
+		private string? refactor_keep_alive = null;
+		private Gee.HashMap<string, Tool.BaseTool>? refactor_tools = null;
+		private Response.Chat? refactor_streaming_response = null;
+		
 		public bool stream { 
-			get { return this.client.stream; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_stream != null) return refactor_stream;
+				return this.client.stream; 
+			}
+			set { refactor_stream = value; }
 		}
 		
 		public string? format { 
-			get { return this.client.format; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_format != null) return refactor_format;
+				return this.client.format; 
+			}
+			set { refactor_format = value; }
 		}
 		
 		/**
@@ -63,19 +77,63 @@ namespace OLLMchat.Call
 		public Call.Options options { get; set; }
 		
 		public bool think { 
-			get { return this.client.think; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_think != null) return refactor_think;
+				return this.client.think; 
+			}
+			set { refactor_think = value; }
 		}
 		
 		public string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_keep_alive != null) return refactor_keep_alive;
+				return this.client.keep_alive; 
+			}
+			set { refactor_keep_alive = value; }
 		}
 		
 		public Gee.HashMap<string, Tool.BaseTool>? tools { 
-			get { return this.client.tools; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_tools != null) return refactor_tools;
+				return this.client.tools; 
+			}
+			set { refactor_tools = value; }
 		}
+		
+		/**
+		 * Current streaming response object (internal use).
+		 *
+		 * Used internally to track the streaming state during chat operations.
+		 * Also accessed by OLLMchatGtk for UI updates. Set to null when not streaming.
+		 */
+		public Response.Chat? streaming_response { 
+			get { 
+				if (refactor_streaming_response != null) return refactor_streaming_response;
+				return this.client.streaming_response; 
+			}
+			set { refactor_streaming_response = value; }
+		}
+		
+		// Permission provider with fallback to Client
+		private OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
+		
+		/**
+		 * Permission provider for tool execution.
+		 *
+		 * Handles permission requests when tools need to access files or execute commands.
+		 * Falls back to client.permission_provider if not set on Chat.
+		 * Session can set this when wrapping Chat for persistence.
+		 *
+		 * @since 1.0
+		 */
+		public OLLMchat.ChatPermission.Provider permission_provider {
+			get {
+				if (refactor_permission_provider != null) return refactor_permission_provider;
+				return this.client.permission_provider;
+			}
+			set { refactor_permission_provider = value; }
+		}
+		
 		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
@@ -107,6 +165,25 @@ namespace OLLMchat.Call
 					this.options = new Call.Options();
 				}
 			}
+		}
+		
+		/**
+		 * Adds a tool to this chat's tools map.
+		 *
+		 * Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
+		 * This method allows callers to add tools directly to Chat (not Client).
+		 *
+		 * @param tool The tool to add
+		 */
+		public void add_tool(Tool.BaseTool tool)
+		{
+			// Initialize tools HashMap if not already set
+			if (refactor_tools == null) {
+				refactor_tools = new Gee.HashMap<string, Tool.BaseTool>();
+			}
+			// Ensure tools HashMap is initialized
+			tool.client = this.client;
+			refactor_tools.set(tool.name, tool);
 		}
 		// this is only called by response - not by the user
 		  
@@ -315,8 +392,13 @@ namespace OLLMchat.Call
 				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
-				if (!this.client.tools.has_key(tool_call.function.name)) {
-					var available_tools_str = string.joinv("', '", this.client.tools.keys.to_array());
+				// Use this.tools (getter handles fallback to client.tools if needed)
+				var tools_map = this.tools;
+				if (tools_map == null || !tools_map.has_key(tool_call.function.name)) {
+					var available_tools_str = "";
+					if (tools_map != null) {
+						available_tools_str = string.joinv("', '", tools_map.keys.to_array());
+					}
 					if (available_tools_str != "") {
 						available_tools_str = "'" + available_tools_str + "'";
 					}
@@ -336,7 +418,7 @@ namespace OLLMchat.Call
 				
 				// Execute the tool with chat as first parameter
 				try {
-					var result = yield this.client.tools
+					var result = yield tools_map
 						.get(tool_call.function.name)
 						.execute(this, tool_call.function.arguments);
 					

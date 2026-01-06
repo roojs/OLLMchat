@@ -26,10 +26,20 @@ namespace OLLMchat.Call
 	 */
 	public class Generate : Base
 	{
-		// Read-only getters that read from client (with fake setters for serialization)
+		// Real properties with refactor_ prefix (temporary for migration)
+		private string? refactor_model = null;
+		private string? refactor_format = null;
+		private bool? refactor_stream = null;
+		private bool? refactor_think = null;
+		private string? refactor_keep_alive = null;
+		private Call.Options? refactor_options = null;
+		
 		public string model { 
-			get { return this.client.model; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_model != null) return refactor_model;
+				return this.client.model; 
+			}
+			set { refactor_model = value; }
 		}
 		
 		public string prompt { get; set; default = ""; }
@@ -37,26 +47,41 @@ namespace OLLMchat.Call
 		public string suffix { get; set; default = ""; }
 		public Gee.ArrayList<string> images { get; set; default = new Gee.ArrayList<string>(); }
 		internal string? format { 
-			get { return this.client.format; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_format != null) return refactor_format;
+				return this.client.format; 
+			}
+			set { refactor_format = value; }
 		}
 		internal bool stream { 
-			get { return this.client.stream; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_stream != null) return refactor_stream;
+				return this.client.stream; 
+			}
+			set { refactor_stream = value; }
 		}
 		internal bool think { 
-			get { return this.client.think; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_think != null) return refactor_think;
+				return this.client.think; 
+			}
+			set { refactor_think = value; }
 		}
 		public bool raw { get; set; default = false; }
 		internal string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_keep_alive != null) return refactor_keep_alive;
+				return this.client.keep_alive; 
+			}
+			set { refactor_keep_alive = value; }
 		}
 		
 		internal Call.Options options { 
-			get { return this.client.options; }
-			set { } // Fake setter for serialization
+			get { 
+				if (refactor_options != null) return refactor_options;
+				return this.client.options; 
+			}
+			set { refactor_options = value; }
 		}
 
 		public Generate(Client client)
