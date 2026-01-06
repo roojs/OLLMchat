@@ -136,10 +136,14 @@ namespace OLLMchat.Tools
 			GLib.debug("RequestEditMode.connect_signals: Connecting signals for file %s (tool.active=%s)", 
 				this.normalized_path, this.tool.active.to_string());
 			
-			// Connect to stream_content signal to capture code blocks as they stream in
-			// Phase 3: stream is on Chat, stream_content signal is on Client
+			// Connect to stream_chunk signal to capture code blocks as they stream in
+			// Replaces stream_content signal - use is_thinking check to filter out thinking content
 			if (this.chat_call.stream) {
-				this.stream_content_id = this.chat_call.client.stream_content.connect((new_text, response) => {
+				this.stream_content_id = this.chat_call.client.stream_chunk.connect((new_text, is_thinking, response) => {
+					// Only process non-thinking content (replaces stream_content signal)
+					if (is_thinking) {
+						return;
+					}
 					// Check if this request is still valid before processing
 					if (this.chat_call == null || this.chat_call.client == null) {
 						return;
@@ -152,23 +156,25 @@ namespace OLLMchat.Tools
 				});
 			}
 			
-			// Connect to message_created signal to detect when message is done and apply changes
-			this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
-				// Check if this request is still valid before processing
-				if (this.chat_call == null || this.chat_call.client == null) {
-					GLib.debug("RequestEditMode: message_created handler called but chat_call/client is null (file=%s)", 
-						this.normalized_path);
-					return;
-				}
-				// Only process if this message belongs to our chat_call
-				if (message.message_interface != this.chat_call) {
-					GLib.debug("RequestEditMode: message_created handler called for different chat_call, skipping (file=%s, message_interface=%p, our_chat_call=%p)", 
-						this.normalized_path, message.message_interface, this.chat_call);
-					return;
-				}
-				this.on_message_created.begin(message, content_interface);
-			});
-			GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
+			// TODO: message_created connection removed per Phase 1.2
+			// Need to replace with direct calls from message creation code
+			// For now, RequestEditMode won't detect when messages are done
+			// this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
+			// 	// Check if this request is still valid before processing
+			// 	if (this.chat_call == null || this.chat_call.client == null) {
+			// 		GLib.debug("RequestEditMode: message_created handler called but chat_call/client is null (file=%s)", 
+			// 			this.normalized_path);
+			// 		return;
+			// 	}
+			// 	// Only process if this message belongs to our chat_call
+			// 	if (message.message_interface != this.chat_call) {
+			// 		GLib.debug("RequestEditMode: message_created handler called for different chat_call, skipping (file=%s, message_interface=%p, our_chat_call=%p)", 
+			// 			this.normalized_path, message.message_interface, this.chat_call);
+			// 		return;
+			// 	}
+			// 	this.on_message_created.begin(message, content_interface);
+			// });
+			// GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
 		}
 		
 		/**
@@ -185,7 +191,7 @@ namespace OLLMchat.Tools
 				return;
 			}
 			
-			// Disconnect stream_content signal
+			// Disconnect stream_chunk signal (replaces stream_content)
 			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.chat_call.client, this.stream_content_id)) {
 				this.chat_call.client.disconnect(this.stream_content_id);
 			}

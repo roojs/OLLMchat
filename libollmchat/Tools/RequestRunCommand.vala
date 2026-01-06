@@ -209,11 +209,13 @@ namespace OLLMchat.Tools
 			}
 			
 			// Send command to UI before requesting permission
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```bash\n$ " + this.command + "\n```"),
-				this.chat_call
-			);
+			var cmd_msg = new OLLMchat.Message(this.chat_call, "ui",
+				"```bash\n$ " + this.command + "\n```");
+			
+			// Add message to session via agent (Chat → Agent → Session)
+			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
+				this.chat_call.agent.session.add_message(cmd_msg);
+			}
 			
 			// Request permission (will always ask for complex commands due to unique path)
 			// Phase 3: permission_provider is on Chat, not Client
@@ -316,13 +318,15 @@ namespace OLLMchat.Tools
 			}
 			 
 			
-		// Send output as second message via message_created
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", 
-					"```txt\n" + output_content.replace("\n```", "\n\\`\\`\\`") + "\n```"
-				),
-				this.chat_call
+		// Send output as second message
+			var output_msg = new OLLMchat.Message(this.chat_call, "ui", 
+				"```txt\n" + output_content.replace("\n```", "\n\\`\\`\\`") + "\n```"
 			);
+			
+			// Add message to session via agent (Chat → Agent → Session)
+			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
+				this.chat_call.agent.session.add_message(output_msg);
+			}
 				
 			// FUTURE: Streaming support - clear current message when done
 			// this.current_tool_message = null;

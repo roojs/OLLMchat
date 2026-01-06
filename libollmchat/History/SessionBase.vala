@@ -125,9 +125,8 @@ namespace OLLMchat.History
 		// Signal handler IDs for disconnection
 		// Manager handlers (for persistence)
 		protected ulong stream_chunk_handler_id = 0;
-		protected ulong message_created_id = 0;
 		// UI relay signals
-		protected ulong chat_send_id = 0;
+		// chat_send_id removed - callers handle state directly after calling send()
 		protected ulong stream_chunk_id = 0;
 		protected ulong stream_content_id = 0;
 		protected ulong stream_start_id = 0;
@@ -198,21 +197,19 @@ namespace OLLMchat.History
 				this.on_stream_chunk(new_text, is_thinking, response);
 			});
 			
-			// Connect message_created signal to handler
-			this.message_created_id = this.client.message_created.connect((message, content_interface) => {
-				this.on_message_created(message, content_interface);
-			});
+			// message_created connection removed - signal no longer exists on Client
+			// Messages are now added directly via session.add_message() which relays to UI via Manager
 			
 			// Connect client signals to relay to UI via Manager
-			this.chat_send_id = this.client.chat_send.connect((chat) => {
-				this.manager.chat_send(chat);
-			});
+			// chat_send connection removed - callers handle state directly after calling send()
 			this.stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
 				this.manager.stream_chunk(new_text, is_thinking, response);
+				// Relay stream_content for non-thinking chunks (replaces stream_content signal)
+				if (!is_thinking) {
+					this.manager.stream_content(new_text, response);
+				}
 			});
-			this.stream_content_id = this.client.stream_content.connect((new_text, response) => {
-				this.manager.stream_content(new_text, response);
-			});
+			// stream_content connection removed - replaced with stream_chunk + is_thinking check above
 			this.stream_start_id = this.client.stream_start.connect(() => {
 				this.manager.stream_start();
 			});
@@ -252,36 +249,26 @@ namespace OLLMchat.History
 			if (this.stream_chunk_handler_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_handler_id)) {
 				this.client.disconnect(this.stream_chunk_handler_id);
 			}
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
-				this.client.disconnect(this.message_created_id);
-			}
 			
 			// Disconnect client signals from UI relay (check if connected first)
-			if (this.chat_send_id != 0 && GLib.SignalHandler.is_connected(this.client, this.chat_send_id)) {
-				this.client.disconnect(this.chat_send_id);
-			}
+			// chat_send_id removed - no longer connecting to this signal
+			// message_created_id removed - signal no longer exists on Client
 			if (this.stream_chunk_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_id)) {
 				this.client.disconnect(this.stream_chunk_id);
 			}
-			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_content_id)) {
-				this.client.disconnect(this.stream_content_id);
-			}
+			// stream_content_id removed - no longer connecting to this signal
 			if (this.stream_start_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_start_id)) {
 				this.client.disconnect(this.stream_start_id);
 			}
 			if (this.tool_message_id != 0 && GLib.SignalHandler.is_connected(this.client, this.tool_message_id)) {
 				this.client.disconnect(this.tool_message_id);
 			}
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
-				this.client.disconnect(this.message_created_id);
-			}
 			
 			// Reset all IDs to 0
 			this.stream_chunk_handler_id = 0;
-			this.message_created_id = 0;
-			this.chat_send_id = 0;
+			// chat_send_id removed - no longer connecting to this signal
 			this.stream_chunk_id = 0;
-			this.stream_content_id = 0;
+			// stream_content_id removed - no longer connecting to this signal
 			this.stream_start_id = 0;
 			this.tool_message_id = 0;
 		}
@@ -299,6 +286,26 @@ namespace OLLMchat.History
 		 * Must be implemented by subclasses.
 		 */
 		protected abstract void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+		
+		/**
+		 * Adds a message to the session and relays it to the UI via Manager signal.
+		 *
+		 * This method is called by tools to add messages directly to the session.
+		 * It adds the message to session.messages array and relays to UI via Manager's add_message signal.
+		 * The session passes itself to the signal so the UI can access session.client and session.chat.
+		 *
+		 * @param message The message to add
+		 */
+		public void add_message(Message message)
+		{
+			// Add message to session.messages array
+		
+			this.messages.add(message);
+			
+			
+			// Relay to UI via Manager's add_message signal - pass this session, not content_interface
+			this.manager.add_message(message, this);
+		}
 		
 		
 		/**

@@ -131,10 +131,12 @@ namespace OLLMchat.Tool
 			// Escape code blocks in body to prevent breaking the outer codeblock
 			var escaped_body = body.replace("\n```", "\n\\`\\`\\`");
 			var message = "```" + type + " " + title + "\n" + escaped_body + "\n```";
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", message),
-				this.chat_call
-			);
+			var ui_msg = new OLLMchat.Message(this.chat_call, "ui", message);
+			
+			// Add message to session via agent (Chat → Agent → Session)
+			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
+				this.chat_call.agent.session.add_message(ui_msg);
+			}
 		}
 		
 		/**

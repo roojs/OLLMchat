@@ -117,7 +117,7 @@ namespace OLLMchatGtk
 				}
 				this.chat_view.append_tool_message(message);
 			});
-			this.manager.message_created.connect(this.on_message_created);
+			this.manager.add_message.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -259,9 +259,11 @@ namespace OLLMchatGtk
 					message_index, total_messages, msg.role, content_preview);
 				 
 				// Display message based on role (only UI-visible messages reach here)
+				// Use manager.session for rendering (load_messages is called when switching sessions)
+				var session = this.manager.session;
 				switch (msg.role) {
 					case "user-sent":
-						this.chat_view.append_user_message(msg.content, msg.message_interface);
+						this.chat_view.append_user_message(msg.content, session);
 						break;
 					case "ui":
 						this.chat_view.append_tool_message(msg);
@@ -269,13 +271,13 @@ namespace OLLMchatGtk
 					case "think-stream":
 						// For think-stream, content is the thinking text
 						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", "", msg.content);
-						this.chat_view.append_complete_assistant_message(stream_msg);
+						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					case "content-stream":
 					case "content-non-stream":
 						// Render streaming/non-streaming messages as assistant messages
 						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content, msg.thinking);
-						this.chat_view.append_complete_assistant_message(stream_msg);
+						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					default:
 						// Should not reach here if is_ui_visible is working correctly
@@ -293,7 +295,7 @@ namespace OLLMchatGtk
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
 		 */
-		private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
+		private void on_message_created(OLLMchat.Message m, OLLMchat.History.SessionBase? session)
 		{
 			// Re-enable scrolling when new messages arrive (not from history loading)
 			// This ensures scrolling works for new messages but stays disabled after loading history
@@ -304,10 +306,16 @@ namespace OLLMchatGtk
 				return;
 			}
 			
+			// Session is required for rendering messages
+			if (session == null) {
+				GLib.warning("ChatWidget.on_message_created: session is null, cannot render message");
+				return;
+			}
+			
 			// Display message based on role (only UI-visible messages reach here)
 			switch (m.role) {
 				case "user-sent":
-					this.chat_view.append_user_message(m.content, m.message_interface);
+					this.chat_view.append_user_message(m.content, session);
 					this.chat_view.show_waiting_indicator();
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
@@ -318,18 +326,18 @@ namespace OLLMchatGtk
 					// Render UI messages using the general renderer (same as assistant messages)
 					// This ensures code blocks are properly rendered as SourceView widgets
 					var ui_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
-					this.chat_view.append_complete_assistant_message(ui_msg);
+					this.chat_view.append_complete_assistant_message(ui_msg, session);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
 					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", "", m.content);
-					this.chat_view.append_complete_assistant_message(stream_msg);
+					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				case "content-stream":
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
 					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
-					this.chat_view.append_complete_assistant_message(stream_msg);
+					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly

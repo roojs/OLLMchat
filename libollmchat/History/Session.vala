@@ -119,7 +119,7 @@ namespace OLLMchat.History
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
 			if (m.role == "done") {
 				// Still relay to Manager for UI (though it will be filtered out there too)
-				this.manager.message_created(m, content_interface);
+				this.manager.add_message(m, this);
 				return;
 			}
 			
@@ -142,8 +142,8 @@ namespace OLLMchat.History
 				this.manager.session_added(this);
 			}
 			
-			// Relay to Manager for UI
-			this.manager.message_created(m, content_interface);
+			// Relay to Manager for UI - pass this session, not content_interface
+			this.manager.add_message(m, this);
 			
 			// Save session
 			this.save_async.begin();
@@ -201,13 +201,12 @@ namespace OLLMchat.History
 					if (!found) {
 						// Ensure message_interface is set
 						response.message.message_interface = this.chat;
-						// Emit message_created signal with Response.Chat as content_interface
-						this.client.message_created(response.message, response);
+						// message_created signal emissions removed - callers handle state directly when creating messages
 						
-						// Emit a "done" message after the real message with summary
+						// Create a "done" message after the real message with summary
 						var summary = response.get_summary();
 						var done_msg = new Message(this.chat, "done", summary);
-						this.client.message_created(done_msg, response);
+						// message_created signal emission removed - callers handle state directly when creating messages
 					}
 				}
 				

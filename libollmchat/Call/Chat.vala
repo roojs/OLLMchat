@@ -81,6 +81,16 @@ namespace OLLMchat.Call
 		 */
 		public OLLMchat.ChatPermission.Provider? permission_provider { get; set; }
 		
+		/**
+		 * Reference to the agent handler that created this chat.
+		 *
+		 * Allows tools to access the session via chat_call.agent.session.
+		 * Set by AgentHandler when creating Chat in send_message_async().
+		 *
+		 * @since 1.2.2
+		 */
+		public Prompt.AgentHandler? agent { get; set; }
+		
 		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
@@ -263,13 +273,13 @@ namespace OLLMchat.Call
 		{
 			// Create dummy user-sent Message with original text BEFORE prompt engine modification
 			var user_sent_msg = new Message(this, "user-sent", new_text);
-			this.client.message_created(user_sent_msg, this);
+			// message_created signal emission removed - callers handle state directly when creating messages
 			
 			// Note: system_content and chat_content should already be set by agent before calling reply()
-			// If system_content is set, create system Message and emit message_created
+			// If system_content is set, create system Message
 			if (this.system_content != "") {
 				var system_msg = new Message(this, "system", this.system_content);
-				this.client.message_created(system_msg, this);
+				// message_created signal emission removed - callers handle state directly when creating messages
 			}
 			
 			// Append the assistant's response from the previous call
@@ -356,14 +366,14 @@ namespace OLLMchat.Call
 						"', however we only have these tools: " + available_tools_str;
 				
 					var error_msg = new Message(this, "ui", err_message);
-					this.client.message_created(error_msg, this);
+					// message_created signal emission removed - callers handle state directly when creating messages
 					this.messages.add(new Message.tool_call_invalid(this, tool_call, err_message));
 					continue;
 				}
 				
 				// Show message that tool is being executed
 				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
-				this.client.message_created(exec_msg, this);
+				// message_created signal emission removed - callers handle state directly when creating messages
 				
 				// Execute the tool with chat as first parameter
 				try {
@@ -379,7 +389,7 @@ namespace OLLMchat.Call
 						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
 							tool_call.function.name, result);
 						var error_msg = new Message(this, "ui", result);
-						this.client.message_created(error_msg, this);
+						// message_created signal emission removed - callers handle state directly when creating messages
 					} else {
 						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
 							tool_call.function.name, result.length, result_summary);
@@ -399,7 +409,7 @@ namespace OLLMchat.Call
 					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
 					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
-					this.client.message_created(error_msg, this);
+					// message_created signal emission removed - callers handle state directly when creating messages
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}
@@ -464,8 +474,7 @@ namespace OLLMchat.Call
 
 		private async Response.Chat execute_non_streaming() throws Error
 		{
-			// Emit signal that we're sending the request
-			this.client.chat_send(this);
+			// chat_send signal emission removed - callers handle state directly after calling send()
 			
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
@@ -499,16 +508,15 @@ namespace OLLMchat.Call
 				var content_msg = new Message(this, "content-non-stream", response_obj.message.content, "");
 				content_msg.message_interface = this;
 				
-				// Emit message_created signal for the content-non-stream message
-				this.client.message_created(content_msg, response_obj);
+				// message_created signal emissions removed - callers handle state directly when creating messages
+				// Messages created: content_msg, response_obj.message, done_msg
 				
-				// Also emit the original assistant message (for API compatibility, but not displayed in UI)
-				this.client.message_created(response_obj.message, response_obj);
+				// Also create the original assistant message (for API compatibility, but not displayed in UI)
+				// response_obj.message is already created
 				
-				// Emit a "done" message after with summary
+				// Create a "done" message after with summary
 				var summary = response_obj.get_summary();
 				var done_msg = new Message(this, "done", summary);
-				this.client.message_created(done_msg, response_obj);
 			}
 			
 			// Check for tool calls and handle them recursively
@@ -521,8 +529,7 @@ namespace OLLMchat.Call
 
 		private async Response.Chat execute_streaming() throws Error
 		{
-			// Emit signal that we're sending the request
-			this.client.chat_send(this);
+			// chat_send signal emission removed - callers handle state directly after calling send()
 			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
@@ -592,12 +599,7 @@ namespace OLLMchat.Call
 			// Process chunk
 			response.addChunk(chunk);
 
-			// Emit stream_content signal for content only (not thinking)
-			if (response.new_content.length > 0) {
-				this.client.stream_content(
-					response.new_content, response 
-				);
-			}
+			// stream_content signal emission removed - replaced with stream_chunk + is_thinking check
 
 		// Emit signal if there's new content (either regular content or thinking)
 		// Also emit when done=true even if no new content, so we can finalize

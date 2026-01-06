@@ -114,35 +114,12 @@ namespace OLLMchat
 		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
 
 		/**
-		 * Emitted when streaming content (not thinking) is received from the chat API.
-		 *
-		 * This signal is emitted only for regular content chunks, not thinking content.
-		 * Tools can connect to this signal to capture streaming messages and build strings,
-		 * including extracting code blocks as they arrive.
-		 *
-		 * @param new_text The new content text chunk received (not thinking)
-		 * @param response The Response.Chat object containing the streaming state
-		 * @since 1.0
-		 */
-		public signal void stream_content(string new_text, Response.Chat response);
-
-		/**
 		 * Emitted when a tool sends a status message during execution.
 		 *
 		 * @param message The Message object from the tool (typically "ui" role)
 		 * @since 1.0
 		 */
 		public signal void tool_message(Message message);
-
-		/**
-		 * Emitted when a chat request is sent to the server.
-		 * This signal is emitted when the request is about to be sent, including
-		 * initial chat requests and automatic continuations after tool execution.
-		 *
-		 * @param chat The Call.Chat object that is being sent
-		 * @since 1.0
-		 */
-		public signal void chat_send(Call.Chat chat);
 
 		/**
 		 * Emitted when the streaming response starts (first chunk received).
@@ -153,17 +130,6 @@ namespace OLLMchat
 		 */
 		public signal void stream_start();
 
-		/**
-		 * Emitted when a message is created in the conversation.
-		 * This signal is the primary driver for message creation events, used for
-		 * both persistence (Manager) and UI display. Messages are created before
-		 * prompt engine modification to preserve original user text.
-		 *
-		 * @param m The Message object that was created
-		 * @param content_interface The ChatContentInterface associated with this message (e.g., Response.Chat for assistant messages)
-		 * @since 1.0
-		 */
-		public signal void message_created(Message m, ChatContentInterface? content_interface);
 
 		public Soup.Session? session = null;
 
@@ -228,7 +194,7 @@ namespace OLLMchat
 			
 			// Create dummy user-sent Message with original text
 			var user_sent_msg = new Message(call, "user-sent", text);
-			this.message_created(user_sent_msg, call);
+			// message_created signal emission removed - callers handle state directly when creating messages
 			
 			// Set chat_content to user text (no prompt generation)
 			call.chat_content = text;

@@ -124,10 +124,10 @@ namespace OLLMchatGtk
 		 * Appends a message to the chat view.
 		 * 
 		 * @param text The message text to display
-		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
+		 * @param session The session that owns this message (provides client and chat)
 		 * @since 1.0
 		 */
-		public void append_user_message(string text, OLLMchat.ChatContentInterface message)
+		public void append_user_message(string text, OLLMchat.History.SessionBase session)
 		{
 			// Debug: Print truncated content
 			string content_preview = text.length > 20 ? text.substring(0, 20) + "..." : text;
@@ -332,9 +332,8 @@ namespace OLLMchatGtk
 		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
 		 * @since 1.0
 		 */
-		public void append_assistant_chunk(string new_text, OLLMchat.ChatContentInterface message)
+		public void append_assistant_chunk(string new_text, OLLMchat.Response.Chat response)
 		{
-			var response = (OLLMchat.Response.Chat) message;
 
 			if (this.is_waiting) {
 				this.clear_waiting_indicator(response);
@@ -620,9 +619,10 @@ namespace OLLMchatGtk
 		 * Used when loading sessions from history.
 		 * 
 		 * @param message The complete Message object to display
+		 * @param session The session that owns this message (provides client and chat)
 		 * @since 1.0
 		 */
-		public void append_complete_assistant_message(OLLMchat.Message message)
+		public void append_complete_assistant_message(OLLMchat.Message message, OLLMchat.History.SessionBase session)
 		{
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
@@ -638,14 +638,14 @@ namespace OLLMchatGtk
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
 
-			// Get Call.Chat from message_interface to create Response.Chat
-			if (!(message.message_interface is OLLMchat.Call.Chat)) {
-				GLib.warning("ChatView.append_complete_assistant_message: message_interface is not Call.Chat");
+			// Get client and chat from session
+			if (session.chat == null) {
+				GLib.warning("ChatView.append_complete_assistant_message: session.chat is null");
 				return;
 			}
-
-			var call = (OLLMchat.Call.Chat) message.message_interface;
-			var client = call.client;
+			
+			var call = session.chat;
+			var client = session.client;
 
 			// Create a minimal Response.Chat for processing
 			var response = new OLLMchat.Response.Chat(client, call);

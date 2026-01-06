@@ -75,11 +75,13 @@ namespace OLLMchat.Tools
 			}
 				
 			// Send request message to UI
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui",
-					"```" + this.tool.name + " - request\n" + this.url + "\n```"),
-				this.chat_call
-			);
+			var request_msg = new OLLMchat.Message(this.chat_call, "ui",
+				"```" + this.tool.name + " - request\n" + this.url + "\n```");
+			
+			// Add message to session via agent (Chat → Agent → Session)
+			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
+				this.chat_call.agent.session.add_message(request_msg);
+			}
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -114,12 +116,14 @@ namespace OLLMchat.Tools
 				var result = this.convert_content(content, content_type);
 				
 				// Send response message to UI (escape code blocks in result)
-				this.chat_call.client.message_created(
-					new OLLMchat.Message(this.chat_call, "ui",
-						"```" + this.tool.name + " - response (" + this.format + ")\n" + 
-							result.replace("\n```", "\n\\`\\`\\`") + "\n```"),
-					this.chat_call
-				);
+				var response_msg = new OLLMchat.Message(this.chat_call, "ui",
+					"```" + this.tool.name + " - response (" + this.format + ")\n" + 
+						result.replace("\n```", "\n\\`\\`\\`") + "\n```");
+				
+				// Add message to session via agent (Chat → Agent → Session)
+				if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
+					this.chat_call.agent.session.add_message(response_msg);
+				}
 				
 				return result;
 			}

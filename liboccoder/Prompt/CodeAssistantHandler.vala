@@ -67,6 +67,7 @@ namespace OLLMcoder.Prompt
 				stream = true,  // Default to streaming
 				think = true,    // Default to thinking
 				// format and keep_alive default to null
+				agent = this     // Set agent reference so tools can access session
 			};
 			
 			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
@@ -84,13 +85,13 @@ namespace OLLMcoder.Prompt
 			// Create messages for UI/persistence (via message_created signal)
 			// System message first (if system_content is set)
 			if (call.system_content != "") {
-				this.client.message_created(
-					new OLLMchat.Message(call, "system", call.system_content), call);
+				// message_created signal emission removed - callers handle state directly when creating messages
+				var system_msg = new OLLMchat.Message(call, "system", call.system_content);
 			}
 			
 			// User-sent message with original text (preserved before prompt engine modification)
-			this.client.message_created(
-				new OLLMchat.Message(call, "user-sent", user_input), call);
+			// message_created signal emission removed - callers handle state directly when creating messages
+			var user_sent_msg = new OLLMchat.Message(call, "user-sent", user_input);
 			
 			// Prepare messages array for API request (required by exec_chat())
 			// System message first (if system_content is set)

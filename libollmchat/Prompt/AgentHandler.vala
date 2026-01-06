@@ -53,9 +53,9 @@ namespace OLLMchat.Prompt
 		 * Signal handler IDs for client signals.
 		 */
 		private ulong stream_chunk_id = 0;
-		private ulong stream_content_id = 0;
+		// stream_content_id removed - replaced with stream_chunk + is_thinking check
 		private ulong stream_start_id = 0;
-		private ulong chat_send_id = 0;
+		// chat_send_id removed - callers handle state directly after calling send()
 		
 		/**
 		 * Signal emitted when a streaming chunk is received.
@@ -91,19 +91,21 @@ namespace OLLMchat.Prompt
 			this.session = session;
 			
 			// Set up signal connections from client to handler
-			this.stream_chunk_id = this.client.stream_chunk.connect(this.handle_stream_chunk);
-			
-			this.stream_content_id = this.client.stream_content.connect((new_text, response) => {
-				this.stream_content(new_text, response);
+			this.stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
+				this.handle_stream_chunk(new_text, is_thinking, response);
+				// Relay stream_content for non-thinking chunks (replaces stream_content signal)
+				if (!is_thinking) {
+					this.stream_content(new_text, response);
+				}
 			});
+			
+			// stream_content connection removed - replaced with stream_chunk + is_thinking check above
 			
 			this.stream_start_id = this.client.stream_start.connect(() => {
 				this.stream_start();
 			});
 			
-			this.chat_send_id = this.client.chat_send.connect((chat) => {
-				this.chat_send(chat);
-			});
+			// chat_send connection removed - callers handle state directly after calling send()
 		}
 		
 		/**
@@ -112,9 +114,9 @@ namespace OLLMchat.Prompt
 		~AgentHandler()
 		{
 			this.client.disconnect(this.stream_chunk_id);
-			this.client.disconnect(this.stream_content_id);
+			// stream_content_id removed - no longer connecting to this signal
 			this.client.disconnect(this.stream_start_id);
-			this.client.disconnect(this.chat_send_id);
+			// chat_send_id removed - no longer connecting to this signal
 		}
 		
 		/**
@@ -155,6 +157,7 @@ namespace OLLMchat.Prompt
 				stream = true,  // Default to streaming
 				think = true,    // Default to thinking
 				// format and keep_alive default to null
+				agent = this     // Set agent reference so tools can access session
 			};
 			
 			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
@@ -169,8 +172,8 @@ namespace OLLMchat.Prompt
 			this.agent.fill(call, user_input);
 			
 			// User-sent message with original text (preserved before prompt engine modification)
-			this.client.message_created(
-				new OLLMchat.Message(call, "user-sent", user_input), call);
+			// message_created signal emission removed - callers handle state directly when creating messages
+			var user_sent_msg = new OLLMchat.Message(call, "user-sent", user_input);
 			
 			// Prepare messages array for API request (required by exec_chat())
 			// Base handler does NOT add system messages - specialized handlers can override
