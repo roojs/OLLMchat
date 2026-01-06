@@ -23,7 +23,7 @@ namespace OLLMchat.History
 	 *
 	 * It uses SQ (SQLite) for database storage of metadata, and JSON files
 	 * for complete session data including all messages. Properties are wrappers
-	 * around this.chat.client.model, etc. Messages come from this.chat.messages
+	 * Messages come from this.chat.messages. Model and other properties are on this.chat (Phase 3: not on client)
 	 * with a flag to include extra info during JSON encoding.
 	 *
 	 * == Example ==
@@ -44,28 +44,6 @@ namespace OLLMchat.History
 	 */
 	public class Session : SessionBase
 	{
-		public Call.Chat chat { get; set; }
-		
-		// Permission provider (can be accessed via chat.permission_provider)
-		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
-		
-		/**
-		 * Permission provider for tool execution.
-		 *
-		 * Handles permission requests when tools need to access files or execute commands.
-		 * This is stored on Session but accessed via chat.permission_provider.
-		 * Chat.permission_provider will check this first, then fall back to client.permission_provider.
-		 *
-		 * @since 1.0
-		 */
-		public OLLMchat.ChatPermission.Provider permission_provider {
-			get {
-				if (refactor_permission_provider != null) return refactor_permission_provider;
-				return this.client.permission_provider;
-			}
-			set { refactor_permission_provider = value; }
-		}
-		
 		// Streaming state tracking
 		private Message? current_stream_message = null;
 		private bool current_stream_is_thinking = false;
@@ -97,8 +75,8 @@ namespace OLLMchat.History
 		
 		/**
 		 * Constructor requires a Call.Chat object.
-		 * Client is created from chat.client.
-		 * Sets permission_provider on Chat if Session has one.
+		 * Updates the base class chat with the provided chat's properties.
+		 * FIXME = chat should not be a property here 
 		 *
 		 * @param manager The history manager
 		 * @param chat The chat object (required)
@@ -106,23 +84,36 @@ namespace OLLMchat.History
 		public Session(Manager manager, Call.Chat chat)
 		{
 			base(manager);
+			// Replace base chat with provided chat
 			this.chat = chat;
 			this.client = chat.client;
+			// Store model from chat (Phase 3: model stored on Session, not Client)
+			this.model = chat.model;
 			// Set permission_provider on Chat if Session has one
 			if (this.refactor_permission_provider != null) {
-				chat.permission_provider = this.refactor_permission_provider;
+				this.chat.permission_provider = this.refactor_permission_provider;
 			}
 		}
 		
 		/**
 		* Handler for message_created signal from this session's client.
 		* Handles message persistence when a message is created.
+		* FIXME = on message created should not be getting a chat? - need to work out why that would happen
 		*/
 		protected override void on_message_created(Message m, ChatContentInterface? content_interface)
 		{
-			// Update chat reference if message_interface is a Chat
+			// Update chat properties if message_interface is a Chat (don't replace the object)
 			if (m.message_interface is Call.Chat) {
-				this.chat = (Call.Chat) m.message_interface;
+				var new_chat = (Call.Chat) m.message_interface;
+				this.chat.model = new_chat.model;
+				this.chat.stream = new_chat.stream;
+				this.chat.format = new_chat.format;
+				this.chat.format_obj = new_chat.format_obj;
+				this.chat.think = new_chat.think;
+				this.chat.keep_alive = new_chat.keep_alive;
+				this.chat.options = new_chat.options;
+				this.chat.fid = new_chat.fid;
+				this.client = new_chat.client;
 			}
 			
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
@@ -411,6 +402,7 @@ namespace OLLMchat.History
 				
 				default:
 					// Return null to exclude property from serialization
+					// Runtime properties (chat, permission_provider, client, manager) are automatically skipped
 					return null;
 			}
 		}
@@ -428,8 +420,11 @@ namespace OLLMchat.History
 		 */
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Set streaming
-			this.client.stream = true;
+			// Phase 3: Streaming is set on Chat, not Client
+			// Ensure chat.stream is true for streaming responses
+			 
+			this.chat.stream = true;
+			
 			
 			// Check if we should use reply() or chat()
 			var streaming_response = (Response.Chat?)this.chat.streaming_response;

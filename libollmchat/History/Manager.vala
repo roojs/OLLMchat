@@ -62,6 +62,9 @@ namespace OLLMchat.History
 		public Gee.HashMap<string, OLLMchat.Prompt.BaseAgent> agents { 
 			get; private set; default = new Gee.HashMap<string, OLLMchat.Prompt.BaseAgent>(); 
 		}
+		public Gee.HashMap<string, Tool.BaseTool> tools { 
+			get; private set; default = new Gee.HashMap<string, Tool.BaseTool>(); 
+		}
 		public Settings.ConnectionModels connection_models { get; private set; }
 		
 		// Signal emitted when a new session is added (for UI updates)
@@ -133,8 +136,8 @@ namespace OLLMchat.History
 				GLib.error("Manager: failed to create base client from default_model");
 			}
 			
-			this.base_client.stream = true;
-			this.base_client.keep_alive = "5m";
+			// Phase 3: Client no longer has stream/keep_alive properties
+			// These are set on Chat objects when they are created
 
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
@@ -148,17 +151,37 @@ namespace OLLMchat.History
 			// Set up title generator with a client configured for title generation
 			var title_client = this.config.create_client("title_model");
 			if (title_client == null) {
-				// Fallback: use base_client's connection and model
+				// Fallback: use base_client's connection
 				title_client = new OLLMchat.Client(this.base_client.connection) {
-					stream = false,
-					config = this.config,
-					model = ""
+					config = this.config
 				};
 			}
-			title_client.stream = false;
+			// Phase 3: Client no longer has stream property
 			
 			this.title_generator = new TitleGenerator(title_client);
 		}
+		
+		/**
+		 * Registers all tools and stores them on Manager.
+		 * 
+		 * Tools are stored on Manager so agents can access them when configuring Chat.
+		 * This is a temporary method - will be fixed properly later.
+		 * 
+		 * @param project_manager Optional project manager (not currently used, tools don't need it)
+		 */
+		public void register_all_tools(Object? project_manager = null)
+		{
+			// Register all tools (Phase 3: tools stored on Manager, added to Chat by agents)
+			// This discovers all tool classes and creates instances
+			// Tools are metadata - they don't need project_manager (handlers do, provided when handlers are created)
+			var tools = OLLMchat.Tool.BaseTool.register_all_tools(this.base_client);
+			
+			// Store tools on Manager so agents can access them when configuring Chat
+			foreach (var entry in tools.entries) {
+				this.tools.set(entry.key, entry.value);
+			}
+		}
+		
 		
 		/**
 		 * Creates a new client instance.
@@ -176,15 +199,9 @@ namespace OLLMchat.History
 			
 			
 			// Share the same connection instance - connections are immutable configuration
+			// Phase 3: Client no longer has model, stream, format, think, keep_alive, options, tools, permission_provider
 			var client = new OLLMchat.Client(source.connection) {
-				stream = source.stream,
-				format = source.format,
-				think = source.think,
-				keep_alive = source.keep_alive,
 				config = source.config,
-				model = source.model,
-				permission_provider = source.permission_provider, // Shared reference - MUST be shared
-				options = source.options.clone(),
 				timeout = source.timeout
 			};
 			
@@ -193,16 +210,8 @@ namespace OLLMchat.History
 				client.available_models.set(entry.key, entry.value);
 			}
 			
-			// Reuse the same tools, just set the client to the new value (leave active the same)
-			foreach (var tool in source.tools.values) {
-				client.addTool(tool);
-			}
-			
-			// Properties NOT copied (and why):
-			// - streaming_response: Session-specific streaming state
-			// - session: Not applicable to new client instance
-			// - tools: Reused above (just set client property)
-			// - options: Will be loaded when Chat is created
+			// Phase 3: Tools are now added to Chat, not Client
+			// Tools will be added to Chat objects when they are created
 			
 			return client;
 		}
@@ -261,14 +270,34 @@ namespace OLLMchat.History
 			// Create client (agents are managed separately, not stored on client)
 			var client = this.new_client();
 			
-			// Copy model from current session if available
-			if (this.session != null &&
-				this.session.client != null &&
-				this.session.client.model != "") {
-				client.model = this.session.client.model;
+			// Get model from current session if available, otherwise use default from config
+			var model = "";
+			if (this.session != null && this.session.model != "") {
+				model = this.session.model;
+			} else if (this.config != null) {
+				model = this.config.get_default_model();
+			}
+			if (model == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Cannot create session: no model available");
 			}
 			
-			var session = new Session(this, new Call.Chat(client, client.model));
+			// Get options from config if available
+			var options = new Call.Options();
+		
+			 
+			var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
+			if (default_usage != null) {
+				options = default_usage.options;
+			}
+			
+			var call = new Call.Chat(client, model) {
+				stream = true,  // Default to streaming for new sessions
+				think = true,
+			};
+			call.options = options;
+			
+			var session = new Session(this, call);
+			session.model = model;  // Store model on session
 			session.agent_name = agent_name;
 			this.sessions.add(session);
 			this.session_added(session);

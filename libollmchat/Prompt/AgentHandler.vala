@@ -30,13 +30,24 @@ namespace OLLMchat.Prompt
 	{
 		/**
 		 * The agent that created this handler.
+		 * 
+		 * Protected so subclasses can access it.
 		 */
-		private BaseAgent agent;
+		protected BaseAgent agent;
 		
 		/**
 		 * The client instance for this request.
+		 * 
+		 * Protected so subclasses can access it.
 		 */
-		private OLLMchat.Client client;
+		protected OLLMchat.Client client;
+		
+		/**
+		 * Reference to Session for accessing Manager and tools (Phase 3: tools stored on Manager).
+		 * 
+		 * Protected so subclasses can access it.
+		 */
+		public History.SessionBase session;
 		
 		/**
 		 * Signal handler IDs for client signals.
@@ -71,11 +82,13 @@ namespace OLLMchat.Prompt
 		 * 
 		 * @param agent The agent that created this handler
 		 * @param client The client instance for this request
+		 * @param session The session instance (for accessing Manager and tools)
 		 */
-		public AgentHandler(BaseAgent agent, OLLMchat.Client client)
+		public AgentHandler(BaseAgent agent, OLLMchat.Client client, History.SessionBase session)
 		{
 			this.agent = agent;
 			this.client = client;
+			this.session = session;
 			
 			// Set up signal connections from client to handler
 			this.stream_chunk_id = this.client.stream_chunk.connect(this.handle_stream_chunk);
@@ -127,11 +140,29 @@ namespace OLLMchat.Prompt
 		 */
 		public virtual async void send_message_async(string user_input, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			// Create and prepare Chat object
-			var call = new OLLMchat.Call.Chat(this.client, this.client.model);
-			call.cancellable = cancellable;
+			// Get model from session (Phase 3: model stored on Session, not Client)
+			var model = this.session.model;
+			if (model == "" && this.client.config != null) {
+				model = this.client.config.get_default_model();
+			}
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Model is required. Set session.model or client.config.");
+			}
 			
-			// Configure tools for this chat
+			// Create and prepare Chat object with real properties (Phase 3: use defaults, no Client properties)
+			var call = new OLLMchat.Call.Chat(this.client, model) {
+				cancellable = cancellable,
+				stream = true,  // Default to streaming
+				think = true,    // Default to thinking
+				// format and keep_alive default to null
+			};
+			
+			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
+			// Copy tools from Manager to Chat
+			foreach (var tool in this.session.manager.tools.values) {
+				call.add_tool(tool);
+			}
+			// Agent can also configure/filter tools if needed
 			this.agent.configure_tools(call);
 			
 			// Generate prompts and set on chat (sets chat_content, may set system_content)
@@ -152,7 +183,7 @@ namespace OLLMchat.Prompt
 			
 			// Handle final reply - emit stream_chunk with empty chunk and done response
 			// This allows UI to know the response is complete
-			if (this.client.stream) {
+			if (call.stream) {
 				this.handle_stream_chunk("", false, response);
 			}
 		}

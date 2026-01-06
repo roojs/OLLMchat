@@ -55,12 +55,30 @@ namespace OLLMchat.History
 		 * Sets the client for this placeholder.
 		 *
 		 * Called after construction from database to set up the client.
+		 * Updates the chat with the new client and model from database.
+		 * FIXME  - will be removed
 		 *
 		 * @param client The client to set
 		 */
 		internal void set_client(Client client)
 		{
 			this.client = client;
+			// Update chat with client and model from database
+			if (this.model != "") {
+				// Update chat properties instead of replacing
+				this.chat.model = this.model;
+				// Get options from config if available
+				Call.Options? options = null;
+				if (this.manager.config != null) {
+					var default_usage = this.manager.config.usage.get("default_model") as Settings.ModelUsage;
+					if (default_usage != null) {
+						options = default_usage.options;
+					}
+				}
+				if (options != null) {
+					this.chat.options = options;
+				}
+			}
 		}
 		
 		/**
@@ -77,28 +95,49 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
-			// a) Create a new Session with chat
-			var client = this.manager.new_client();
-			// Use the placeholder's model (stored from database) instead of client.model
-			// which might be empty. Set it on the client first.
+			// Use the placeholder's model (stored from database)
 			if (this.model == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
 			}
-			client.model = this.model;
-			var real_session = new Session(this.manager, new Call.Chat(client, this.model));
 			
-			// copy the tools
-			// Copy properties from placeholder to real session
-			real_session.id = this.id;
-            real_session.fid = this.fid;
-			real_session.updated_at_timestamp = this.updated_at_timestamp;
-			real_session.title = this.title;
-			real_session.model = this.model;
-			real_session.agent_name = this.agent_name;
-			real_session.total_messages = this.total_messages;
-			real_session.total_tokens = this.total_tokens;
-			real_session.duration_seconds = this.duration_seconds;
-			real_session.child_chats = this.child_chats;
+			// Update existing chat with settings instead of creating new one
+			var client = this.manager.new_client();
+			this.client = client;
+			this.chat.model = this.model;
+			
+			// Get options from config if available
+			Call.Options? options = null;
+			if (this.manager.config != null) {
+				var default_usage = this.manager.config.usage.get("default_model") as Settings.ModelUsage;
+				if (default_usage != null) {
+					options = default_usage.options;
+				}
+			}
+			if (options == null) {
+				options = new Call.Options();
+			}
+			this.chat.options = options;
+			this.chat.stream = true;
+			this.chat.think = false;
+			
+			// Copy tools from Manager to Chat (Phase 3: tools stored on Manager)
+			foreach (var tool in this.manager.tools.values) {
+				this.chat.add_tool(tool);
+			}
+			
+			// a) Create a new Session using the updated chat with properties initialized
+			var real_session = new Session(this.manager, this.chat) {
+				id = this.id,
+				fid = this.fid,
+				updated_at_timestamp = this.updated_at_timestamp,
+				title = this.title,
+				model = this.model,
+				agent_name = this.agent_name,
+				total_messages = this.total_messages,
+				total_tokens = this.total_tokens,
+				duration_seconds = this.duration_seconds,
+				child_chats = this.child_chats
+			};
 			
 			// b) Load the JSON file into a SessionJson
 			// Build full file path

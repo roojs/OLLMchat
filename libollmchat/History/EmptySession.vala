@@ -27,15 +27,15 @@ namespace OLLMchat.History
 	 */
 	public class EmptySession : SessionBase
 	{
-		public Call.Chat? chat {
-			get { return null; }
-			set { } // Ignore attempts to set chat
-		}
-		
 		public EmptySession(Manager manager)
 		{
 			base(manager);
-			this.client = manager.new_client();
+			// Base constructor already creates chat, client, and sets model
+			// Just update chat properties for EmptySession defaults
+			if (this.model != "" && this.model != "placeholder") {
+				this.chat.model = this.model;
+				this.chat.think = true;  // Default to thinking for new chats
+			}
 		}
 		
 		public override string fid {
@@ -69,18 +69,14 @@ namespace OLLMchat.History
 			// Create client for new session, copying from EmptySession's client
 			var new_client = this.manager.new_client(this.client);
 			
-			// Create chat with new client
-			var chat = new Call.Chat(new_client, new_client.model);
+			// Update existing chat with new client instead of creating new chat
+			this.client = new_client;
 			
-			// Convert EmptySession to real Session
-			var real_session = new Session(this.manager, chat);
-			
-			// Copy agent_name from EmptySession
-			real_session.agent_name = this.agent_name;
-			
-			// Set timestamp immediately so the session appears at the top of the sorted history list
-			var now = new DateTime.now_local();
-			real_session.updated_at_timestamp = now.to_unix();
+			// Convert EmptySession to real Session using updated chat
+			var real_session = new Session(this.manager, this.chat) {
+				agent_name = this.agent_name,
+				updated_at_timestamp = (new DateTime.now_local()).to_unix()
+			};
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
@@ -88,7 +84,7 @@ namespace OLLMchat.History
 			// Add session to manager.sessions and emit session_added signal immediately
 			// This ensures the history widget updates right away
 			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, new_client.model);
+				real_session.fid, real_session.agent_name, chat.model);
 			this.manager.sessions.add(real_session);
 			this.manager.session_added(real_session);
 			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");

@@ -26,39 +26,17 @@ namespace OLLMchat.Call
 	 */
 	public class Embed : Base
 	{
-		// Real properties with refactor_ prefix (temporary for migration)
-		private string? refactor_model = null;
-		private string? refactor_keep_alive = null;
-		private Call.Options? refactor_options = null;
-		
-		public string model { 
-			get { 
-				if (refactor_model != null) return refactor_model;
-				return this.client.model; 
-			}
-			set { refactor_model = value; }
-		}
+		// Real properties (Phase 3: fallback logic removed)
+		public string model { get; set; }
 		
 		public string input { get; set; default = ""; }
 		public Gee.ArrayList<string> input_array { get; set; default = new Gee.ArrayList<string>(); }
 		public bool truncate { get; set; default = false; }
 		public int dimensions { get; set; default = -1; }
 		
-		public string? keep_alive { 
-			get { 
-				if (refactor_keep_alive != null) return refactor_keep_alive;
-				return this.client.keep_alive; 
-			}
-			set { refactor_keep_alive = value; }
-		}
+		public string? keep_alive { get; set; }
 		
-		public Call.Options options { 
-			get { 
-				if (refactor_options != null) return refactor_options;
-				return this.client.options; 
-			}
-			set { refactor_options = value; }
-		}
+		public Call.Options options { get; set; default = new Call.Options(); }
 
 		public Embed(Client client, string model, Call.Options? options = null)
 		{
@@ -68,11 +46,11 @@ namespace OLLMchat.Call
 			}
 			this.url_endpoint = "embed";
 			this.http_method = "POST";
-			this.model = model;  // This will use the setter, which sets refactor_model
+			this.model = model;
 			
 			// Load model options from config if options not provided
 			if (options != null) {
-				this.options = options;  // This will use the setter, which sets refactor_options
+				this.options = options;
 			} else {
 				if (this.client.config.model_options.has_key(model)) {
 					this.options = this.client.config.model_options.get(model);

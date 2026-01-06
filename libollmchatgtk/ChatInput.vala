@@ -433,7 +433,7 @@ namespace OLLMchatGtk
 			this.model_dropdown.set_factory(this.factory.factory);
 			this.model_dropdown.set_list_factory(this.factory.factory);
 
-			// Connect selection change to update client.model, think, and tools
+			// Connect selection change to update session.model, chat.model, chat.think, and tools
 			// Ignore selection changes during model loading to preserve configured values
 			this.model_dropdown.notify["selected"].connect(() => {
 				// Ignore selection changes while loading models
@@ -449,14 +449,15 @@ namespace OLLMchatGtk
 					
 					var model = model_usage.model_obj;
 					
-					// Update client with connection and model
+					// Update session with connection and model (Phase 3: model on Session, not Client)
 					var connection = this.manager.config.connections.get(model_usage.connection);
 					if (connection != null) {
 						this.manager.session.client.connection = connection;
 					}
-					this.manager.session.client.model = model.name;
-					// Set think based on model capability
-					this.manager.session.client.think = model.is_thinking;
+					// Update model and think on Chat (Phase 3: Chat has its own properties)
+					this.manager.session.model = model.name;
+					this.manager.session.chat.model = model.name;
+					this.manager.session.chat.think = model.is_thinking;
 					
 					// Update binding to new model's can_call property for automatic visibility updates
 					this.update_model_widgets_visibility();
@@ -531,8 +532,8 @@ namespace OLLMchatGtk
 					margin_bottom = 10
 				};
 
-				// Create checkboxes for each tool
-				foreach (var tool in this.manager.session.client.tools.values) {
+				// Create checkboxes for each tool (Phase 3: tools are on Chat, not Client)
+				foreach (var tool in this.manager.session.chat.tools.values) {
 					var check_button = new Gtk.CheckButton.with_label(
 						tool.title
 					);
@@ -559,20 +560,20 @@ namespace OLLMchatGtk
 		 */
 		public async void update_models()
 		{
-			GLib.debug("update_models: client.model='%s'", this.manager.session.client.model);
+			GLib.debug("update_models: session.model='%s'", this.manager.session.model);
 			this.is_loading_models = true;
 			try {
 				// Refresh ConnectionModels - this will load models from all working connections
 				yield this.manager.connection_models.refresh();
 				
-				// Set selection to match client.model and update client state
+				// Set selection to match session.model and update session state (Phase 3: model on Session, not Client)
 				// This will trigger the notify signal, but we're ignoring it during loading
 				bool model_found = false;
 				OLLMchat.Response.Model? current_model_obj = null;
-				if (this.manager.session.client.model != "") {
+				if (this.manager.session.model != "") {
 					var model_usage = this.manager.connection_models.find_model(
 						this.manager.session.client.connection.url,
-						this.manager.session.client.model
+						this.manager.session.model
 					);
 					
 					if (model_usage != null) {
@@ -581,12 +582,12 @@ namespace OLLMchatGtk
 						if (position != Gtk.INVALID_LIST_POSITION) {
 							this.model_dropdown.selected = position;
 							current_model_obj = model_usage.model_obj;
-							// Update client.think based on selected model (do this directly, not via signal)
-							this.manager.session.client.think = model_usage.model_obj.is_thinking;
-							// Update tools button visibility based on model's can_call property
-							this.update_model_widgets_visibility();
-							model_found = true;
+							// Update Chat.think based on selected model (Phase 3: Chat has its own properties)
+							this.manager.session.chat.think = current_model_obj.is_thinking;
 						}
+						// Update tools button visibility based on model's can_call property
+						this.update_model_widgets_visibility();
+						model_found = true;
 					}
 				}
 				

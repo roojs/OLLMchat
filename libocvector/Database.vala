@@ -80,10 +80,7 @@ namespace OLLMvector
 		 */
 		public static async uint64 get_embedding_dimension(OLLMchat.Client ollama) throws GLib.Error
 		{
-			if (ollama.model == "") {
-				throw new GLib.IOError.FAILED("Ollama client model is not set");
-			}
-			
+			// Phase 3: model is not on Client, embed() gets model from config and will throw if not available
 			var test_response = yield ollama.embed("test");
 			if (test_response == null || test_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
@@ -102,9 +99,7 @@ namespace OLLMvector
 		public Database(OLLMchat.Client ollama, string filename, uint64 dimension) throws GLib.Error
 		{
 			this.ollama = ollama;
-			if (this.ollama.model == "") {
-				throw new GLib.IOError.FAILED("Ollama client model is not set");
-			}
+			// Phase 3: model is not on Client, embed() gets model from config
 			this.filename = filename;
 			
 			// Create Index immediately with the provided dimension

@@ -156,7 +156,8 @@ namespace OLLMtools
 				this.normalized_path, this.tool.active.to_string());
 			
 			// Connect to stream_content signal to capture code blocks as they stream in
-			if (this.chat_call.client.stream) {
+			// Phase 3: stream is on Chat, not Client
+			if (this.chat_call.stream) {
 				this.stream_content_id = this.chat_call.client.stream_content.connect((new_text, response) => {
 					// Check if this request is still valid before processing
 					if (this.chat_call == null || this.chat_call.client == null) {
@@ -437,7 +438,8 @@ namespace OLLMtools
 			
 			// If not streaming, process the full content at once
 			// If streaming, we should have already captured everything via stream_content
-			if (!this.chat_call.client.stream && response.message != null && response.message.content != "") {
+			// Phase 3: stream is on Chat, not Client
+			if (!this.chat_call.stream && response.message != null && response.message.content != "") {
 				var parts = response.message.content.split("\n");
 				for (int i = 0; i < parts.length; i++) {
 					this.add_text(parts[i]);
@@ -573,7 +575,8 @@ namespace OLLMtools
 			// Files in active project are auto-approved and don't need permission checks
 			if (!is_in_project) {
 				// Check if permission status has changed (e.g., revoked by signal handler)
-				if (!this.chat_call.client.permission_provider.check_permission(this)) {
+				// Phase 3: permission_provider is on Chat, not Client
+				if (this.chat_call.permission_provider == null || !this.chat_call.permission_provider.check_permission(this)) {
 					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 				}
 			}

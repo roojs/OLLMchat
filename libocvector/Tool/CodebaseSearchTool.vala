@@ -191,9 +191,9 @@ making it more effective than simple text search for finding relevant code.
 				return;
 			}
 			
+			// Phase 3: model is not on Client, embed() gets model from config
 			this.embedding_client = new OLLMchat.Client(client.config.connections.get(tool_config.embed.connection)) {
-				config = client.config,
-				model = tool_config.embed.model
+				config = client.config
 			};
 		}
 		

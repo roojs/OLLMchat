@@ -33,7 +33,7 @@ namespace OLLMchat.Call
 		public GLib.Cancellable? cancellable { get; set; default = null; }
 		public Response.Base? streaming_response { get; set; default = null; }
 
-		protected Base(Client client) 
+		protected Base(Client? client) 
 		{
 			base(client);
 		}

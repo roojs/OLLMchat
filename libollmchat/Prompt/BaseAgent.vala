@@ -81,9 +81,10 @@ namespace OLLMchat.Prompt
 		 * BaseAgent cannot reference AgentHandler directly due to build order constraints.
 		 * 
 		 * @param client The client instance for this request
+		 * @param session The session instance (for accessing Manager and tools)
 		 * @return A new handler instance (AgentHandler)
 		 */
-		public virtual Object create_handler(OLLMchat.Client client)
+		public virtual Object create_handler(OLLMchat.Client client, History.SessionBase session)
 		{
 			// This must be overridden - AgentHandler is defined after BaseAgent
 			assert_not_reached();
@@ -235,15 +236,19 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Configures tools for the chat call.
-		 * Default implementation does nothing - tools are already set on client.
-		 * Subclasses can override to filter or configure which tools are available.
+		 * 
+		 * Phase 3: Tools are stored on Manager, not Client. Agents should get tools
+		 * from Manager and add them to Chat via call.add_tool().
+		 * 
+		 * Default implementation does nothing. Subclasses should override to add
+		 * tools from Manager to the Chat call.
 		 * 
 		 * @param call The Chat call to configure tools for
 		 */
 		public virtual void configure_tools(OLLMchat.Call.Chat call)
 		{
-			// Default implementation: tools are already configured on client
-			// Subclasses can override to filter or configure tools
+			// Default implementation: no tools added
+			// Subclasses should override to add tools from Manager to Chat
 		}
 	}
 }

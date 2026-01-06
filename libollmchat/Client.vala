@@ -25,42 +25,46 @@ namespace OLLMchat
 	 * HTTP requests, streaming responses, and function calling. Manages tool
 	 * registration and execution with permission checking.
 	 *
-	 * == Basic Usage ==
+	* == Basic Usage ==
+	*
+	* {{{
+	* var connection = new Settings.Connection() {
+	*     url = "http://127.0.0.1:11434/api"
+	* };
+	* var client = new Client(connection);
+	* var chat = new Call.Chat(client, "llama3.2") {
+	*     stream = true
+	* };
+	* chat.messages.add(new Message(chat, "user", "Hello!"));
+	* var response = yield chat.exec_chat();
+	* }}}
 	 *
-	 * {{{
-	 * var connection = new Settings.Connection() {
-	 *     url = "http://127.0.0.1:11434/api"
-	 * };
-	 * var client = new Client(connection) {
-	 *     model = "llama3.2",
-	 *     stream = true
-	 * };
-	 *
-	 * var response = yield client.chat("Hello!");
-	 * }}}
-	 *
-	 * == Tool Integration ==
-	 *
-	 * {{{
-	 * // Add tools before chatting
-	 * var read_file = new Tools.ReadFile(client);
-	 * client.addTool(read_file);
-	 *
-	 * // Tools are automatically called when the model requests them
-	 * var response = yield client.chat("Read README.md");
-	 * }}}
-	 *
-	 * == Streaming ==
-	 *
-	 * {{{
-	 * client.stream = true;
-	 * client.message_created.connect((msg, content) => {
-	 *     if (msg.is_content && msg.is_stream) {
-	 *         // Process incremental content
-	 *         print(content.chat_content);
-	 *     }
-	 * });
-	 * }}}
+ * == Tool Integration ==
+ *
+ * {{{
+ * // Add tools to Chat before chatting
+ * var read_file = new Tools.ReadFile(client);
+ * var chat = new Call.Chat(client, "llama3.2");
+ * chat.add_tool(read_file);
+ *
+ * // Tools are automatically called when the model requests them
+ * chat.messages.add(new Message(chat, "user", "Read README.md"));
+ * var response = yield chat.exec_chat();
+ * }}}
+ *
+ * == Streaming ==
+ *
+ * {{{
+ * var chat = new Call.Chat(client, "llama3.2") {
+ *     stream = true
+ * };
+ * chat.message_created.connect((msg, content) => {
+ *     if (msg.is_content && msg.is_stream) {
+ *         // Process incremental content
+ *         print(content.chat_content);
+ *     }
+ * });
+ * }}}
 	 */
 	public class Client : Object
 	{
@@ -82,104 +86,6 @@ namespace OLLMchat
 		 */
 		public Settings.Config2? config { get; set; }
 		
-		/**
-		 * Model name to use for chat requests.
-		 *
-		 * Set by caller after constructor from Config2's usage map if needed.
-		 *
-		 * @since 1.0
-		 */
-		public string model { get; set; default = ""; }
-
-		
-		/**
-		 * Whether to stream responses from the API.
-		 *
-		 * When true, responses are streamed incrementally as they are generated.
-		 * When false, the complete response is returned after generation finishes.
-		 * Defaults to false. See the Ollama API documentation for details.
-		 *
-		 * @since 1.0
-		 */
-		public bool stream { get; set; default = false; }
-		
-		/**
-		 * Format to return a response in.
-		 *
-		 * Can be "json" to force JSON output, or a JSON schema object for structured output.
-		 * Set to null to use the model's default format.
-		 * See the Ollama API documentation for details.
-		 *
-		 * @since 1.0
-		 */
-		public string? format { get; set; }
-		
-		/**
-		 * Whether to return separate thinking output in addition to content.
-		 *
-		 * When true, returns thinking content separately from regular content.
-		 * Can be a boolean (true/false) or a string ("high", "medium", "low") for supported models.
-		 * Defaults to false. See the Ollama API documentation for details.
-		 *
-		 * @since 1.0
-		 */
-		public bool think { get; set; default = false; }
-		
-		/**
-		 * Model keep-alive duration.
-		 *
-		 * Controls how long the model stays loaded in memory after use.
-		 * Can be a duration string (e.g., "5m", "10s") or a number in seconds.
-		 * Set to "0" to unload immediately after use.
-		 * See the Ollama API documentation for details.
-		 *
-		 * @since 1.0
-		 */
-		public string? keep_alive { get; set; }
-		
-		/**
-		 * Map of available tools (functions) that the model can call during chat.
-		 *
-		 * Tools are indexed by their name. The model can request to call these tools
-		 * during conversation, and they will be executed with permission checking.
-		 * See the Ollama API documentation for details on tools parameter.
-		 *
-		 * @since 1.0
-		 */
-		public Gee.HashMap<string, Tool.BaseTool> tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }
-		
-		/**
-		 * Current streaming response object (internal use).
-		 *
-		 * Used internally to track the streaming state during chat operations.
-		 * Also accessed by OLLMchatGtk for UI updates. Set to null when not streaming.
-		 *
-		 * @since 1.0
-		 */
-		public Response.Chat? streaming_response { get; set; default = null; }
-		
-		
-		/**
-		 * Permission provider for tool execution.
-		 *
-		 * Handles permission requests when tools need to access files or execute commands.
-		 * Defaults to a Dummy provider that logs requests.
-		 *
-		 * @since 1.0
-		 */
-		public OLLMchat.ChatPermission.Provider permission_provider { get; set; default = new OLLMchat.ChatPermission.Dummy(); }
-	
-		/**
-		 * Runtime options for text generation.
-		 *
-		 * Contains all runtime parameters that can be passed to Ollama API.
-		 * Default values (-1 for numbers, empty string for strings) indicate no value set,
-		 * and the option will not be included in API requests.
-		 * See the Ollama API documentation for details on the options parameter.
-		 *
-		 * @since 1.0
-		 */
-		public Call.Options options { get; set; default = new Call.Options(); }
 		
 		/**
 		 * HTTP request timeout in seconds.
@@ -271,19 +177,6 @@ namespace OLLMchat
 		public Gee.HashMap<string, Response.Model> available_models { get; private set; 
 			default = new Gee.HashMap<string, Response.Model>(); }
 
-		/**
-		* Adds a tool to the client's tools map.
-		*
-		* Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
-		*
-		* @param tool The tool to add
-		*/
-		public void addTool(Tool.BaseTool tool)
-		{
-			// Ensure tools HashMap is initialized
-			tool.client = this;
-			this.tools.set(tool.name,  tool);
-		}
 
 		/**
 		 * Executes a pre-prepared Chat object.
@@ -309,6 +202,7 @@ namespace OLLMchat
 		 * 
 		 * Note: This method does NOT handle system messages - that's the agent's job.
 		 * This is a minimal implementation for backward compatibility only.
+		 * Requires model to be available via Config2.get_default_model() or will throw an error.
 		 * 
 		 * @param text The user's input text
 		 * @param cancellable Optional cancellable for cancelling the request
@@ -316,9 +210,20 @@ namespace OLLMchat
 		 */
 		public async Response.Chat chat(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Create chat call
-			var call = new Call.Chat(this, this.model) {
-				cancellable = cancellable
+			// Legacy method: get model from config if available
+			string model = "";
+			if (this.config != null) {
+				model = this.config.get_default_model();
+			}
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model. Set config and default_model, or use Call.Chat directly.");
+			}
+			
+			// Create chat call with defaults (Phase 3: no Client properties)
+			var call = new Call.Chat(this, model) {
+				cancellable = cancellable,
+				stream = true,  // Default to non-streaming for legacy method
+				think = true
 			};
 			
 			// Create dummy user-sent Message with original text
@@ -488,7 +393,28 @@ namespace OLLMchat
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			var call = new Call.Embed(this, this.model, new Call.Options()) {
+			// Legacy method: get model from config if available
+			string model = "";
+			if (this.config != null) {
+				model = this.config.get_default_model();
+			}
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model. Set config and default_model, or use Call.Embed directly.");
+			}
+			
+			// Get options from config if available
+			Call.Options? options = null;
+			if (this.config != null) {
+				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
+				if (default_usage != null) {
+					options = default_usage.options;
+				}
+			}
+			if (options == null) {
+				options = new Call.Options();
+			}
+			
+			var call = new Call.Embed(this, model, options) {
 				cancellable = cancellable,
 				input = input,
 				dimensions = dimensions,
@@ -520,7 +446,28 @@ namespace OLLMchat
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			var call = new Call.Embed(this, this.model, new Call.Options()) {
+			// Legacy method: get model from config if available
+			string model = "";
+			if (this.config != null) {
+				model = this.config.get_default_model();
+			}
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model. Set config and default_model, or use Call.Embed directly.");
+			}
+			
+			// Get options from config if available
+			Call.Options? options = null;
+			if (this.config != null) {
+				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
+				if (default_usage != null) {
+					options = default_usage.options;
+				}
+			}
+			if (options == null) {
+				options = new Call.Options();
+			}
+			
+			var call = new Call.Embed(this, model, options) {
 				cancellable = cancellable,
 				input_array = input_array,
 				dimensions = dimensions,
@@ -550,10 +497,35 @@ namespace OLLMchat
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
+			// Legacy method: get model from config if available
+			string model = "";
+			if (this.config != null) {
+				model = this.config.get_default_model();
+			}
+			if (model == "") {
+				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model. Set config and default_model, or use Call.Generate directly.");
+			}
+			
+			// Get options from config if available
+			Call.Options? options = null;
+			if (this.config != null) {
+				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
+				if (default_usage != null) {
+					options = default_usage.options;
+				}
+			}
+			if (options == null) {
+				options = new Call.Options();
+			}
+			
 			var call = new Call.Generate(this) {
 				cancellable = cancellable,
 				prompt = prompt,
-				system = system
+				system = system,
+				model = model,
+				stream = false,
+				think = false,
+				options = options
 			};
 			
 			var result = yield call.exec_generate();

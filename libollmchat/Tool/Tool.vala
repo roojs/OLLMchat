@@ -582,35 +582,43 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
-		 * Creates and registers all tool instances with Client (Phase 2: after dependencies ready).
+		 * Creates all tool instances (Phase 3: tools moved from Client to Chat).
 		 *
-		 * This method discovers all tool classes, creates tool instances with the
-		 * provided dependencies (client, project_manager), and registers them via
-		 * Client.addTool(). Must be called after all dependencies are available.
+		 * This method discovers all tool classes and creates tool instances.
+		 * Tools are metadata/descriptors - they don't need project_manager.
+		 * Tool handlers (created when tools execute) need project_manager, which
+		 * should be provided when creating handlers, not when creating tools.
+		 * 
+		 * The caller is responsible for storing the tools (e.g., on Manager) and
+		 * adding them to Chat objects via Chat.add_tool() when Chat is created.
+		 * 
+		 * Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.)
+		 * adds tools directly to Chat.
 		 *
 		 * @param client The LLM client instance
-		 * @param project_manager The project manager instance (should be OLLMfiles.ProjectManager, but using Object? for library independence)
+		 * @return Map of tool name to tool instance
 		 */
-		public static void register_all_tools(Client client, Object? project_manager)
+		public static Gee.HashMap<string, BaseTool> register_all_tools(Client client)
 		{
 			var tool_classes = discover_classes();
+			var tools_map = new Gee.HashMap<string, BaseTool>();
 			
 			foreach (var tool_type in tool_classes) {
 				// Use Object.new() to create tool instance with constructor parameters
-				// Standard signature: (Client? client = null, ProjectManager? project_manager = null)
-				// Special cases handled in constructors:
-				// - RunCommand: base_directory hardcoded to home dir
-				// - CodebaseSearchTool: Database location hardcoded, embedding_client extracted from client.config internally
+				// Standard signature: (Client? client = null)
+				// Tools are metadata - they don't need project_manager
+				// Tool handlers need project_manager, provided when handlers are created
 				var tool = Object.new(
 					tool_type,
-					"client", client,
-					"project-manager", project_manager
+					"client", client
 				) as Tool.BaseTool;
 				
-				GLib.debug("register_all_tools: registering tool '%s'", tool.name);
-				client.addTool(tool);
+				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
+				tools_map.set(tool.name, tool);
 			}
-			GLib.debug("register_all_tools: registered %d tools, client.tools now has %d", tool_classes.size, client.tools.size);
+			
+			GLib.debug("register_all_tools: created %d tools", tool_classes.size);
+			return tools_map;
 		}
 	}
 }

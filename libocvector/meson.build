@@ -115,6 +115,19 @@ ocvector_base_lib = library('ocvector',
   install: true
 )
 
+# Delete ocvector-meson.vapi to avoid conflicts when generating custom VAPI
+ocvector_meson_vapi_deleted = custom_target('ocvector-meson-vapi-deleted',
+  output: 'ocvector-meson-vapi-deleted.marker',
+  input: [],
+  command: [
+    find_program('sh'),
+    '-c',
+    'rm -f ' + meson.current_build_dir() / 'ocvector-meson.vapi' + ' && touch @OUTPUT@'
+  ],
+  depends: [ocvector_base_lib],  # Ensure library is built first (so meson VAPI exists to delete)
+  build_by_default: true
+)
+
 # Manually generate ocvector.vapi with correct command line order
 ocvector_vapi = custom_target('ocvector-vapi',
   output: 'ocvector.vapi',
@@ -124,13 +137,13 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '-C', '--debug',
     '--target-glib=auto',
     # Put build directories FIRST so we use local VAPIs instead of installed ones
-    # Note: Don't include current build dir to avoid picking up ocvector-meson.vapi
+    '--vapidir', meson.current_source_dir() / '../vapi',  # Source VAPIs first (fiass.vapi, tree-sitter.vapi)
+    '--vapidir', meson.current_source_dir() / '../../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
-    '--vapidir', meson.current_source_dir() / '../vapi',  # For fiass.vapi - check source dir first
-    '--vapidir', meson.current_source_dir() / '../../vapi',  # For fiass.vapi
+    '--vapidir', meson.current_build_dir(),  # Can include now since ocvector-meson.vapi is deleted
     '--vapidir', '/usr/share/vala/vapi',  # System VAPI directory (last, so local takes priority)
     '--pkg', 'posix',
     '--pkg', 'sqlite3',
@@ -147,12 +160,11 @@ ocvector_vapi = custom_target('ocvector-vapi',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
     '--pkg', 'gee-0.8',
-    '--library', 'ocvector',
     '--header', meson.current_build_dir() / 'ocvector.h',  # Use header from library
     '--vapi', '@OUTPUT@',
     '@INPUT@'
   ],
-  depends: [ocvector_base_lib],  # Ensure library is built first (so header exists)
+  depends: [ocvector_base_lib, ocvector_meson_vapi_deleted],  # Ensure library is built and meson VAPI is deleted
   build_by_default: true,
   install: true,
   install_dir: get_option('datadir') / 'vala' / 'vapi'
@@ -165,6 +177,7 @@ ocvector_vapi = custom_target('ocvector-vapi',
 # include it in sources to avoid conflicts when linking with the library directly.
 ocvector_vapi_dep = declare_dependency(
   link_args: ['-L' + meson.current_build_dir(), '-locvector'],
+  sources: [ocvector_vapi[0]],  # Include VAPI file to ensure it's built first
   dependencies: [ocsqlite_vapi_dep, ocagent_vapi_dep, ollmchat_vapi_dep, ocfiles_vapi_dep]
 )
 

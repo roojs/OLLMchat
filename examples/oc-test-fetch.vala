@@ -138,7 +138,6 @@ Examples:
 		
 		var client = new OLLMchat.Client(connection);
 		client.config = dummy_config;
-		client.permission_provider = new OLLMchat.ChatPermission.Dummy();
 		
 		// Create WebFetchTool
 		var tool = new OLLMtools.WebFetchTool(client);
@@ -151,7 +150,9 @@ Examples:
 		
 		// Create a dummy chat call context (needed for execute)
 		// Pass explicit options to avoid accessing config.model_options
-		var dummy_chat_call = new OLLMchat.Call.Chat(client, "dummy", new OLLMchat.Call.Options());
+		var dummy_chat_call = new OLLMchat.Call.Chat(client, "dummy", new OLLMchat.Call.Options()) {
+			permission_provider = new OLLMchat.ChatPermission.Dummy()
+		};
 		request.chat_call = dummy_chat_call;
 		
 		// Execute the request (Dummy provider will auto-approve)

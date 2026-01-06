@@ -174,9 +174,13 @@
 					throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 				}
 				
-				// Override model if provided
+				// Override model if provided (set on default_usage, not client)
+				// Phase 3: model is not on Client, it's on Session/Chat
 				if (opt_model != null) {
-					client.model = opt_model;
+					var default_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+					if (default_usage != null) {
+						default_usage.model = opt_model;
+					}
 				}
 			} else {
 				// Config not loaded - check if URL provided

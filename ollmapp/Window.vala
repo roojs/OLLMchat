@@ -378,15 +378,9 @@ namespace OLLMapp
 				});
 			});
 			
-			// Register all tools with base client (Phase 2: after dependencies ready)
-			// This discovers all tool classes and creates instances with the provided dependencies
-			OLLMchat.Tool.BaseTool.register_all_tools(this.history_manager.base_client, this.project_manager);
-			
-			// Also add tools to current session's client (EmptySession was created before tools were added)
-			// Reuse the same tool instances from base_client to preserve state (like active property)
-			foreach (var tool in this.history_manager.base_client.tools.values) {
-				this.history_manager.session.client.addTool(tool);
-			}
+			// Register all tools (Phase 3: tools stored on Manager, added to Chat by agents)
+			// This is a temporary method - will be fixed properly later
+			this.history_manager.register_all_tools(this.project_manager);
 
 			
 			// Register CodeAssistant agent
@@ -416,7 +410,7 @@ namespace OLLMapp
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
 			
-			// Create ChatView permission provider and set it on the base client
+			// Create ChatView permission provider and set it on the session (Phase 3: permission_provider on Session, not Client)
 			var permission_provider = new OLLMchatGtk.Tools.Permission(
 				this.chat_widget,
 				GLib.Path.build_filename(
@@ -424,11 +418,8 @@ namespace OLLMapp
 				)) {
 				application = this.app as GLib.Application,
 			};
-			this.history_manager.base_client.permission_provider = permission_provider;
-			// Also set on session's client (session was created before permission provider was set)
-			if (this.history_manager.session != null && this.history_manager.session.client != null) {
-				this.history_manager.session.client.permission_provider = permission_provider;
-			}
+			// Set on session (will be set on Chat when Chat is created)
+			this.history_manager.session.permission_provider = permission_provider;
 			
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
@@ -499,8 +490,8 @@ namespace OLLMapp
 				return;
 			}
 			
-			// Get the tool from registry (already registered via register_all_tools at line 383)
-			var tool = client.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
+			// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
+			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
 			
 			// Initialize vector database (embedding_client should already be set up in constructor)
 			try {
@@ -548,12 +539,11 @@ namespace OLLMapp
 			GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
 				tool.name, tool.active.to_string());
 			
-			// Also add to current session's client if it exists
-			if (this.history_manager.session != null && this.history_manager.session.client != null) {
-				this.history_manager.session.client.addTool(tool);
-				GLib.debug("Codebase search tool added to current session (total tools: %d)", 
-					this.history_manager.session.client.tools.size);
-			}
+			// Phase 3: Tools are stored on Manager
+			// Add tool to Manager - it will be copied to Chat when Chat is created in Session
+			this.history_manager.tools.set(tool.name, tool);
+			GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
+				this.history_manager.tools.size);
 		}
 		
 		/**

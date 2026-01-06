@@ -378,15 +378,14 @@ namespace OLLMchatGtk
 			// Copy model and agent from current session
 			var empty_session = new OLLMchat.History.EmptySession(this.manager);
 			
-			// Copy model and agent from current session if available
-			if (this.manager.session != null && this.manager.session.client != null) {
-				if (this.manager.session.client.model != "") {
-					empty_session.client.model = this.manager.session.client.model;
-				}
-				if (this.manager.session.agent_name != "") {
-					empty_session.agent_name = this.manager.session.agent_name;
-					// Agent is managed separately, not stored on client
-				}
+			// Copy model and agent from current session (Phase 3: model on Session, not Client)
+			// Manager always initializes session in constructor, so no null check needed
+			if (this.manager.session.model != "") {
+				empty_session.model = this.manager.session.model;
+			}
+			if (this.manager.session.agent_name != "") {
+				empty_session.agent_name = this.manager.session.agent_name;
+				// Agent is managed separately, not stored on client
 			}
 			
 			// Switch to the EmptySession (this clears the chat)

@@ -148,9 +148,13 @@ Examples:
 				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 			}
 			
-			// Override model if provided
+			// Override model if provided (set on default_usage, not client)
+			// Phase 3: model is not on Client, it's on Session/Chat
 			if (opt_model != null) {
-				client.model = opt_model;
+				var default_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+				if (default_usage != null) {
+					default_usage.model = opt_model;
+				}
 			}
 		} else {
 			// Config not loaded - check if URL provided
@@ -220,21 +224,37 @@ Examples:
 			}
 		}
 		
-		// Setup client for streaming
-		client.stream = true;
-		client.permission_provider = new OLLMchat.ChatPermission.Dummy();
+		// Get model from config
+		var default_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+		if (default_usage == null || default_usage.model == "") {
+			throw new GLib.IOError.NOT_FOUND("default_model not configured");
+		}
+		string model = default_usage.model;
+		
+		// Get options from config
+		var options = default_usage.options ?? new OLLMchat.Call.Options();
+		
+		// Create Chat object with streaming enabled
+		var chat = new OLLMchat.Call.Chat(client, model, options) {
+			stream = true,
+			permission_provider = new OLLMchat.ChatPermission.Dummy()
+		};
+		
+		// Connect to client signals for streaming output
 		client.stream_chunk.connect((new_text, is_thinking, response) => {
 			stdout.write(new_text.data);
 			stdout.flush();
 		});
 		
-		// Add ReadFile tool
-		client.addTool(new OLLMtools.ReadFile(client));
+		// Add ReadFile tool to Chat
+		chat.add_tool(new OLLMtools.ReadFile(client));
 		
 		stdout.printf("Query: %s\n\n", query);
 		stdout.printf("Response:\n");
 		
-		var response = yield client.chat(query);
+		// Add user message and execute chat
+		chat.messages.add(new OLLMchat.Message(chat, "user", query));
+		var response = yield chat.exec_chat();
 		
 		stdout.printf("\n\n--- Complete Response ---\n");
 		if (response.thinking != "") {

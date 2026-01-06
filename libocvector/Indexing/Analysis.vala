@@ -46,8 +46,7 @@ namespace OLLMvector.Indexing
 		{
 			this.client = client;
 			this.sql_db = sql_db;
-			// Enable streaming so we can see progress during analysis
-			this.client.stream = true;
+			// Note: Streaming is now set on Chat objects, not Client (Phase 3)
 		}
 		
 		/**
@@ -314,14 +313,14 @@ namespace OLLMvector.Indexing
 					var analysis_usage = tool_config.analysis;
 					var analysis_connection = this.client.config.connections.get(analysis_usage.connection);
 					
+					// Phase 3: model is not on Client, will be set when creating Chat
 					var analysis_client = new OLLMchat.Client(analysis_connection) {
-						config = this.client.config,
-						model = analysis_usage.model
+						config = this.client.config
 					};
 					
-					var chat = new OLLMchat.Call.Chat(analysis_client, analysis_usage.model, analysis_usage.options);
-					// Enable streaming on the client (same as constructor does for this.client)
-					chat.client.stream = true;
+					var chat = new OLLMchat.Call.Chat(analysis_client, analysis_usage.model, analysis_usage.options) {
+						stream = true  // Enable streaming (Phase 2: migrate to real properties)
+					};
 					
 					chat.system_content = this.cached_template.system_message;
 					chat.chat_content = user_message;

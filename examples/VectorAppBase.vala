@@ -127,9 +127,9 @@ public abstract class VectorAppBase : TestAppBase
 		var connection = this.config.connections.get(usage.connection);
 		
 		// Create client directly from ModelUsage
+		// Phase 3: model is not on Client, it's on Session/Chat
 		var client = new OLLMchat.Client(connection) {
-			config = this.config,
-			model = usage.model
+			config = this.config
 		};
 		
 		return client;

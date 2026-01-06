@@ -503,9 +503,12 @@ namespace OLLMchat.Settings
 		 * Creates a Client instance configured from a usage entry.
 		 *
 		 * Gets the ModelUsage for the given name, finds the connection specified
-		 * in ModelUsage.connection URL, and creates a Client with the connection,
-		 * model, and config. Returns null if the usage entry doesn't exist or
+		 * in ModelUsage.connection URL, and creates a Client with the connection
+		 * and config. Returns null if the usage entry doesn't exist or
 		 * the specified connection is not found.
+		 *
+		 * Note: Model is no longer stored on Client (Phase 3). Use create_chat() to
+		 * create Chat objects with the model from the usage entry.
 		 *
 		 * @param name The usage key name (e.g., "default_model", "title_model")
 		 * @return A new Client instance configured from the usage entry, or null if not found or connection invalid
@@ -524,10 +527,9 @@ namespace OLLMchat.Settings
 			}
 			
 
-			// Create client with connection, model, and config
-			return new OLLMchat.Client( this.connections.get(model_usage_obj.connection)) {
-				config = this,
-				model = model_usage_obj.model
+			// Create client with connection and config (Phase 3: model removed from Client)
+			return new OLLMchat.Client(this.connections.get(model_usage_obj.connection)) {
+				config = this
 			};
 		}
 
@@ -538,7 +540,7 @@ namespace OLLMchat.Settings
 		 * and creates a Chat object with the client, model, and options from the ModelUsage.
 		 * Returns null if the usage entry doesn't exist or the client cannot be created.
 		 *
-		 * The caller can then set properties on chat.client (e.g., chat.client.stream = true).
+		 * The caller can then set properties on chat (e.g., chat.stream = true). (Phase 3: properties are on Chat, not Client)
 		 *
 		 * @param name The usage key name (e.g., "default_model", "ocvector.analysis")
 		 * @return A new Chat instance configured from the usage entry, or null if not found or client invalid
@@ -556,7 +558,11 @@ namespace OLLMchat.Settings
 			}
 
 			// Create chat with client, model, and options from ModelUsage
-			return new OLLMchat.Call.Chat(client, model_usage_obj.model, model_usage_obj.options);
+			// Phase 3: Client no longer has these properties, use defaults
+			return new OLLMchat.Call.Chat(client, model_usage_obj.model, model_usage_obj.options) {
+				stream = false,  // Default to non-streaming
+				think = false
+			};
 		}
 
 		/**

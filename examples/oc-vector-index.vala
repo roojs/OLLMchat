@@ -178,6 +178,9 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
+		// Get tool config to access model names
+		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
+		
 		if (this.config.loaded) {
 			yield this.ensure_config();
 			embed_client = yield this.tool_config_client("embed");
@@ -191,9 +194,10 @@ Examples:
 			this.save_config();
 		}
 		
+		// Phase 3: model is not on Client, get from tool_config
 		stdout.printf("Analysis Model: %s\n" +
 		              "Embed Model: %s\n\n",
-		              analysis_client.model, embed_client.model);
+		              tool_config.analysis.model, tool_config.embed.model);
 		
 		// Get dimension first, then create Database with it
 		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);

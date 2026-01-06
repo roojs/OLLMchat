@@ -160,6 +160,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/ProjectDropdown.vala',
     '../liboccoder/FileDropdown.vala',
     '../liboccoder/SourceView.vala',
+    '../liboccoder/Prompt/CodeAssistantHandler.vala',  # Must come before CodeAssistant (CodeAssistant uses CodeAssistantHandler)
     '../liboccoder/Prompt/CodeAssistant.vala',
     '../liboccoder/Prompt/CodeAssistantProvider.vala',
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)

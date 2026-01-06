@@ -26,63 +26,20 @@ namespace OLLMchat.Call
 	 */
 	public class Generate : Base
 	{
-		// Real properties with refactor_ prefix (temporary for migration)
-		private string? refactor_model = null;
-		private string? refactor_format = null;
-		private bool? refactor_stream = null;
-		private bool? refactor_think = null;
-		private string? refactor_keep_alive = null;
-		private Call.Options? refactor_options = null;
-		
-		public string model { 
-			get { 
-				if (refactor_model != null) return refactor_model;
-				return this.client.model; 
-			}
-			set { refactor_model = value; }
-		}
+		// Real properties (Phase 3: fallback logic removed)
+		public string model { get; set; }
 		
 		public string prompt { get; set; default = ""; }
 		public string system { get; set; default = ""; }
 		public string suffix { get; set; default = ""; }
 		public Gee.ArrayList<string> images { get; set; default = new Gee.ArrayList<string>(); }
-		internal string? format { 
-			get { 
-				if (refactor_format != null) return refactor_format;
-				return this.client.format; 
-			}
-			set { refactor_format = value; }
-		}
-		internal bool stream { 
-			get { 
-				if (refactor_stream != null) return refactor_stream;
-				return this.client.stream; 
-			}
-			set { refactor_stream = value; }
-		}
-		internal bool think { 
-			get { 
-				if (refactor_think != null) return refactor_think;
-				return this.client.think; 
-			}
-			set { refactor_think = value; }
-		}
+		internal string? format { get; set; }
+		internal bool stream { get; set; default = false; }
+		internal bool think { get; set; default = false; }
 		public bool raw { get; set; default = false; }
-		internal string? keep_alive { 
-			get { 
-				if (refactor_keep_alive != null) return refactor_keep_alive;
-				return this.client.keep_alive; 
-			}
-			set { refactor_keep_alive = value; }
-		}
+		internal string? keep_alive { get; set; }
 		
-		internal Call.Options options { 
-			get { 
-				if (refactor_options != null) return refactor_options;
-				return this.client.options; 
-			}
-			set { refactor_options = value; }
-		}
+		internal Call.Options options { get; set; default = new Call.Options(); }
 
 		public Generate(Client client)
 		{

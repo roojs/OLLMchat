@@ -44,7 +44,13 @@ namespace OLLMchat.History
 		public async string to_title(SessionBase session)
 		{
 			// If model is empty, return default title
-			if (this.client.model == "") {
+			// Phase 3: Client no longer has model property
+			// TitleGenerator should use Config2.create_chat() or get model from config
+			var model = "";
+			if (this.client.config != null) {
+				model = this.client.config.get_default_model();
+			}
+			if (model == "") {
 				return this.get_default_title(session);
 			}
 			

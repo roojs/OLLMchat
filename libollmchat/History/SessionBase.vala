@@ -29,6 +29,29 @@ namespace OLLMchat.History
 	{
 		public int64 id { get; set; default = -1; }
 		public Client client { get; protected set; }
+		public Call.Chat? chat { get; set; }
+		
+		// Permission provider for tool execution (default: reject everything)
+		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
+		
+		/**
+		 * Permission provider for tool execution.
+		 *
+		 * Handles permission requests when tools need to access files or execute commands.
+		 * Defaults to a reject-all provider if not set.
+		 *
+		 * @since 1.0
+		 */
+		public OLLMchat.ChatPermission.Provider? permission_provider {
+			get { return refactor_permission_provider; }
+			set { 
+				refactor_permission_provider = value;
+				// Also set on Chat if it exists
+				if (this.chat != null) {
+					this.chat.permission_provider = value;
+				}
+			}
+		}
 		
 		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
 		public string title { get; set; default = ""; }
@@ -36,13 +59,8 @@ namespace OLLMchat.History
 		public int unread_count { get; set; default = 0; }
 		public bool is_active { get; protected set; default = false; }
 		
-		// Wrapper properties around client
-		//fixme have to set th emodel correctly when we init theclient..
-		private string _model  = "";
-		public string model {
-			get { return this.client != null ? this.client.model : this._model; }
-			set { if (this.client != null) { this.client.model = value; } else { this._model = value; } }	
-		}
+		// Model property - stored on Session since Client no longer has model (Phase 3)
+		public string model { get; set; default = ""; }
 		
 		// Display properties for UI
 		public string display_title {
@@ -127,6 +145,36 @@ namespace OLLMchat.History
 		protected SessionBase(Manager manager)
 		{
 			this.manager = manager;
+			
+			// Create client for this session
+			this.client = manager.new_client();
+			
+			// Get model from config or use default
+			var model = manager.config.get_default_model();
+			model = model == "" ? "placeholder" : model;
+		 
+			
+			// Create chat with default properties
+			this.chat = new Call.Chat(this.client, model) {
+				stream = true,  // Default to streaming
+				think = false
+			};
+			// Get options from config if available and update chat
+			// usage.get() can return null if key doesn't exist, and cast can return null if wrong type
+			var default_usage = manager.config.usage.get("default_model") as Settings.ModelUsage;
+			this.chat.options = default_usage != null ? default_usage.options : new Call.Options();
+
+			// Copy tools from Manager to Chat (Phase 3: tools stored on Manager)
+			foreach (var tool in manager.tools.values) {
+				this.chat.add_tool(tool);
+			}
+			
+			// Store model on session
+			this.model = model;
+			
+			// Initialize permission provider to default (Dummy allows READ, denies WRITE/EXECUTE)
+			this.refactor_permission_provider = new OLLMchat.ChatPermission.Dummy();
+			this.chat.permission_provider = this.refactor_permission_provider;
 		}
 		
 		/**

@@ -204,9 +204,10 @@ namespace OLLMcoder.Prompt
 		 * Returns a CodeAssistantHandler which handles system message regeneration
 		 * on each call to include current context.
 		 */
-		public override Object create_handler(OLLMchat.Client client)
+		public override Object create_handler(OLLMchat.Client client, OLLMchat.History.SessionBase session)
 		{
-			return new CodeAssistantHandler(this, client);
+			// CodeAssistantHandler is in the same namespace
+			return new CodeAssistantHandler(this, client, session);
 		}
 		
 		/**

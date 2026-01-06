@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>SQ.Database &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">SQ.Database &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="SQ.html">SQ</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="class">Database</li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="property"><a href="SQ.Database.filename.html">filename</a></li>
+          <li class="property"><a href="SQ.Database.is_dirty.html">is_dirty</a></li>
+          <li class="creation_method"><a href="SQ.Database.Database.html">Database</a></li>
+          <li class="method"><a href="SQ.Database.backupDB.html">backupDB</a></li>
+          <li class="method"><a href="SQ.Database.exec.html">exec</a></li>
+          <li class="field"><a href="SQ.Database.db.html">db</a></li>
+          <li class="field"><a href="SQ.Database.db_mutex.html">db_mutex</a></li>
+          <li class="field"><a href="SQ.Database.schema_cache.html">schema_cache</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">Database</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Object Hierarchy:</h2>
+        <img class="main_diagram" usemap="#SQ.Database" alt="Object hierarchy for Database" src="img/SQ.Database.png"/>
+
+      <map id="SQ.Database" name="SQ.Database">
+<area shape="rect" id="node1" href="SQ.Database.html" title="SQ.Database" alt="" coords="5,5,121,53"/>
+</map>
+
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Database</span></b>
+        </div>
+        <div class="description">
+          <p>Manages SQLite database connections with in-memory storage and file backup.</p>
+          <p>The Database class provides a wrapper around SQLite that uses an in-memory database for performance, with the ability to backup to and 
+            restore from a file. It maintains a schema cache to avoid repeated schema queries.</p>
+          <p>The database is configured for serialized access mode, allowing safe multi-threaded access.</p>
+          <p>Thread safety is ensured via a mutex that protects all database operations, allowing safe concurrent access from multiple threads (e.g., 
+            main thread and background async query threads).</p>
+        </div><br/>
+        <div class="namespace_note"><b>Namespace:</b> <a href="SQ.html">SQ</a>
+        </div>
+        <div class="package_note"><b>Package:</b> <a href="index.htm">ollmchat</a>
+        </div>
+        <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Properties:</h3>
+        <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="SQ.Database.filename.html" class="property">filename</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">The filename used for backup and restore operations.</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="SQ.Database.is_dirty.html" class="property">is_dirty</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Whether the database has unsaved changes (dirty flag).</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Creation methods:</h3>
+        <ul class="navi_inline">
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="SQ.Database.Database.html" class="creation_method">Database</a></b> (<span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">bool</span></span> autosave = <span class="main_literal">false</span>)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates a new Database instance.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Methods:</h3>
+        <ul class="navi_inline">
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="SQ.Database.backupDB.html" class="method">backupDB</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Backs up the in-memory database to the file.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="SQ.Database.exec.html" class="method">exec</a></b> (<span class="main_basic_type"><span class="class">string</span></span> q)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Executes a raw SQL query.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Fields:</h3>
+        <ul class="navi_inline">
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Database</span></span> <b><a href="SQ.Database.db.html" class="field">db</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">The underlying SQLite database connection.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="struct">Mutex</span></span> <b><a href="SQ.Database.db_mutex.html" class="field">db_mutex</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Mutex to protect database operations from concurrent access. All 
+                operations that use `db` must lock this mutex first.</span>
+            </div></li>
+          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="SQ.Schema.html" class="class">Schema</a></span>&gt;&gt; <b><a href="SQ.Database.schema_cache.html" class="field">schema_cache</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Cache of table schemas to avoid repeated PRAGMA queries.</span>
+            </div></li>
+        </ul>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>
