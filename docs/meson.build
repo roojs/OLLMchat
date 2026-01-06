@@ -125,6 +125,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ChatPermission/Dummy.vala',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
     '../libollmchat/Prompt/BaseAgent.vala',  # Must come before History/Manager.vala (Manager uses Prompt.BaseAgent)
+    '../libollmchat/Prompt/AgentHandler.vala',  # Must come after BaseAgent (AgentHandler references BaseAgent)
     '../libollmchat/Prompt/JustAsk.vala',
     '../libollmchat/History/namespace.vala',  # History namespace documentation
     '../libollmchat/History/Manager.vala',

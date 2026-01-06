@@ -26,6 +26,7 @@ occoder_src = files([
   'ProjectDropdown.vala',
   'FileDropdown.vala',
   'SourceView.vala',
+  'Prompt/CodeAssistantHandler.vala',  # Must come before CodeAssistant (CodeAssistant uses CodeAssistantHandler)
   'Prompt/CodeAssistant.vala',
   'Prompt/CodeAssistantProvider.vala',
 ])

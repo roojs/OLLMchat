@@ -135,12 +135,12 @@ namespace OLLMchat.History
 			
 			this.base_client.stream = true;
 			this.base_client.keep_alive = "5m";
-			this.base_client.prompt_assistant = new Prompt.JustAsk();
 
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
 			// which tries to get "just-ask" from this.agents
-			this.agents.set("just-ask", this.base_client.prompt_assistant );
+			var just_ask_agent = new Prompt.JustAsk();
+			this.agents.set("just-ask", just_ask_agent);
 
 			this.session = new EmptySession(this);
 			this.session.activate(); // contects signals alhtough to nowhere..
@@ -183,7 +183,6 @@ namespace OLLMchat.History
 				keep_alive = source.keep_alive,
 				config = source.config,
 				model = source.model,
-				prompt_assistant = copy_from != null ? source.prompt_assistant : this.agents.get("just-ask"),
 				permission_provider = source.permission_provider, // Shared reference - MUST be shared
 				options = source.options.clone(),
 				timeout = source.timeout
@@ -259,9 +258,8 @@ namespace OLLMchat.History
 				agent_name = this.session.agent_name;
 			}
 			
-			// Create client with the agent
+			// Create client (agents are managed separately, not stored on client)
 			var client = this.new_client();
-			client.prompt_assistant = this.agents.get(agent_name);
 			
 			// Copy model from current session if available
 			if (this.session != null &&
@@ -279,6 +277,20 @@ namespace OLLMchat.History
 			// via on_chat_send handler which will update sessions_by_fid
 			
 			return session;
+		}
+		
+		/**
+		 * Gets the active agent for the current session.
+		 * 
+		 * Returns the agent based on the current session's agent_name.
+		 * The client for the agent should be obtained from the session separately.
+		 * 
+		 * @return The active agent, or null if not found
+		 */
+		public OLLMchat.Prompt.BaseAgent? get_active_agent()
+		{
+			return this.agents.get(this.session.agent_name == "" ? "just-ask"
+				 : this.session.agent_name);
 		}
 		
 		/**

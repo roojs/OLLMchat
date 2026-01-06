@@ -158,15 +158,6 @@ namespace OLLMchat
 		 */
 		public Response.Chat? streaming_response { get; set; default = null; }
 		
-		/**
-		 * Prompt generator for agent-based conversations.
-		 *
-		 * Used to generate system and user prompts for chat requests.
-		 * Defaults to a basic BaseAgent instance.
-		 *
-		 * @since 1.0
-		 */
-		public Prompt.BaseAgent prompt_assistant { get; set; default = new Prompt.BaseAgent(); }
 		
 		/**
 		 * Permission provider for tool execution.
@@ -294,6 +285,35 @@ namespace OLLMchat
 			this.tools.set(tool.name,  tool);
 		}
 
+		/**
+		 * Executes a pre-prepared Chat object.
+		 * 
+		 * The Chat object should already have its messages array prepared
+		 * by the agent/handler. This method simply executes the chat request.
+		 * 
+		 * @param call The pre-prepared Chat object to execute
+		 * @return The Response from executing the chat call
+		 */
+		public async Response.Chat chat_execute(Call.Chat call) throws Error
+		{
+			// Client does NOT modify messages array - use what agent prepared
+			return yield call.exec_chat();
+		}
+
+		/**
+		 * Legacy chat method for backward compatibility.
+		 * 
+		 * Creates a basic Chat object with the user text and executes it.
+		 * No prompt generation is performed - the text is used as-is.
+		 * For agent-based conversations, use AgentHandler instead.
+		 * 
+		 * Note: This method does NOT handle system messages - that's the agent's job.
+		 * This is a minimal implementation for backward compatibility only.
+		 * 
+		 * @param text The user's input text
+		 * @param cancellable Optional cancellable for cancelling the request
+		 * @return The Response from executing the chat call
+		 */
 		public async Response.Chat chat(string text, GLib.Cancellable? cancellable = null) throws Error
 		{
 			// Create chat call
@@ -301,18 +321,17 @@ namespace OLLMchat
 				cancellable = cancellable
 			};
 			
-			// Create dummy user-sent Message with original text BEFORE prompt engine modification
+			// Create dummy user-sent Message with original text
 			var user_sent_msg = new Message(call, "user-sent", text);
 			this.message_created(user_sent_msg, call);
 			
-			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
-			this.prompt_assistant.fill(call, text);
+			// Set chat_content to user text (no prompt generation)
+			call.chat_content = text;
 			
-			// If system_content is set, create system Message and emit message_created
-			if (call.system_content != "") {
-				var system_msg = new Message(call, "system", call.system_content);
-				this.message_created(system_msg, call);
-			}
+			// Prepare messages array for API request (required by exec_chat())
+			// Agent/handler should prepare system messages - this is just for backward compatibility
+			// Add the user message with chat_content (for API request)
+			call.messages.add(new Message(call, "user", call.chat_content));
 			
 			var result = yield call.exec_chat();
 

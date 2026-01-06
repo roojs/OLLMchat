@@ -44,6 +44,9 @@ namespace OLLMcoder.Prompt
 		/**
 		 * Constructor.
 		 * 
+		 * Automatically sets shell from SHELL environment variable, falling back to /usr/bin/bash.
+		 * The shell property is public and can be overridden after construction if needed.
+		 * 
 		 * @param project_manager The ProjectManager instance (required)
 		 */
 		public CodeAssistant(OLLMfiles.ProjectManager project_manager)
@@ -52,6 +55,8 @@ namespace OLLMcoder.Prompt
 			this.title = "Coding Assistant";
 			this.project_manager = project_manager;
 			this.provider = new CodeAssistantProvider(project_manager);
+			// Set shell from environment variable, with fallback
+			this.shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash";
 		}
 		
 		/**
@@ -191,6 +196,17 @@ namespace OLLMcoder.Prompt
 			result += "</additional_data>";
 			
 			return result;
+		}
+		
+		/**
+		 * Creates a handler for a specific request.
+		 * 
+		 * Returns a CodeAssistantHandler which handles system message regeneration
+		 * on each call to include current context.
+		 */
+		public override Object create_handler(OLLMchat.Client client)
+		{
+			return new CodeAssistantHandler(this, client);
 		}
 		
 		/**

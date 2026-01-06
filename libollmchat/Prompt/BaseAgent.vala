@@ -75,6 +75,21 @@ namespace OLLMchat.Prompt
 		}
 		
 		/**
+		 * Creates a handler for a specific request.
+		 * 
+		 * This method must be overridden in subclasses or by code that has access to AgentHandler.
+		 * BaseAgent cannot reference AgentHandler directly due to build order constraints.
+		 * 
+		 * @param client The client instance for this request
+		 * @return A new handler instance (AgentHandler)
+		 */
+		public virtual Object create_handler(OLLMchat.Client client)
+		{
+			// This must be overridden - AgentHandler is defined after BaseAgent
+			assert_not_reached();
+		}
+		
+		/**
 		 * Signal for workspace path (can be used by all agent types).
 		 */
 		public signal string get_workspace_path();
@@ -216,6 +231,19 @@ namespace OLLMchat.Prompt
 		protected virtual string generate_user_prompt(string user_input) throws GLib.Error
 		{
 			return user_input;
+		}
+		
+		/**
+		 * Configures tools for the chat call.
+		 * Default implementation does nothing - tools are already set on client.
+		 * Subclasses can override to filter or configure which tools are available.
+		 * 
+		 * @param call The Chat call to configure tools for
+		 */
+		public virtual void configure_tools(OLLMchat.Call.Chat call)
+		{
+			// Default implementation: tools are already configured on client
+			// Subclasses can override to filter or configure tools
 		}
 	}
 }

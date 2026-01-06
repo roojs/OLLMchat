@@ -225,8 +225,11 @@ namespace OLLMchat.Call
 		/**
 		 * Sets up this Chat as a reply to a previous conversation and executes it.
 		 * Appends the previous assistant response and new user message to the messages array, then calls exec_chat().
+		 * 
+		 * Note: The Chat object should already have system_content and chat_content set
+		 * by the agent before calling this method. This method does NOT call prompt_assistant.
 		 *
-		 * @param new_text The new user message text
+		 * @param new_text The new user message text (original text, before prompt modification)
 		 * @param previous_response The previous Response from the assistant
 		 * @return The Response from executing the chat call
 		 */
@@ -236,9 +239,7 @@ namespace OLLMchat.Call
 			var user_sent_msg = new Message(this, "user-sent", new_text);
 			this.client.message_created(user_sent_msg, this);
 			
-			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
-			this.client.prompt_assistant.fill(this, new_text);
-			
+			// Note: system_content and chat_content should already be set by agent before calling reply()
 			// If system_content is set, create system Message and emit message_created
 			if (this.system_content != "") {
 				var system_msg = new Message(this, "system", this.system_content);
@@ -255,7 +256,8 @@ namespace OLLMchat.Call
 					 previous_response.message.thinking));
 			}
 
-			// Append the new user message with modified chat_content (for API request)
+			// Append the new user message with chat_content (for API request)
+			// Note: chat_content should already be set by agent (may be modified from original text)
 			// Note: "user-sent" message was already created via signal with original text
 			var user_message = new Message(this, "user", this.chat_content);
 			this.messages.add(user_message);
@@ -395,19 +397,20 @@ namespace OLLMchat.Call
 		}
 
 		
+		/**
+		 * Executes the chat request.
+		 * 
+		 * Uses the pre-prepared messages array. The agent/handler must prepare the messages
+		 * array before calling this method. Throws an error if the messages array is empty.
+		 * 
+		 * The client does NOT modify the messages array - it uses what the agent prepared.
+		 */
 		public async Response.Chat exec_chat() throws Error
 		{
-			// System and user messages are now created earlier via message_created signal
-			// But we still need to add API-compatible messages to messages array for the request
-			// Add system message if system_content is set (for API request)
-			if (this.system_content != "") {
-				this.messages.add(new Message(this, "system", this.system_content));
+			// Agent/handler must prepare the messages array before calling exec_chat()
+			if (this.messages.size == 0) {
+				throw new OllamaError.INVALID_ARGUMENT("Chat messages array is empty. Agent/handler must prepare messages before calling exec_chat().");
 			}
-			
-			// Add the user message with modified chat_content (for API request)
-			// Note: "user-sent" message was already created via signal with original text
-			var user_message = new Message(this, "user", this.chat_content);
-			this.messages.add(user_message);
 			
 			// Debug: output messages being sent
 			GLib.debug("Chat.exec_chat: Sending %d message(s):", this.messages.size);

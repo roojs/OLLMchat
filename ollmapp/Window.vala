@@ -390,9 +390,7 @@ namespace OLLMapp
 
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(this.project_manager) {
-				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
-			};
+			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(this.project_manager);
 			this.history_manager.agents.set(code_assistant.name, code_assistant);
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md
@@ -700,8 +698,7 @@ namespace OLLMapp
 				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
 				  
 				this.history_manager.session.agent_name = agent.name;
-				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
-				this.history_manager.session.client.prompt_assistant = agent;
+				// Agent is managed separately, not stored on client
 				
 				// Emit agent_activated signal for UI updates (Window listens to this)
 				this.history_manager.agent_activated(agent);

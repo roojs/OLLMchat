@@ -144,11 +144,8 @@ namespace OLLMchat.History
 				real_session.agent_name = json_session.agent_name;
 			}
 			
-			// Set the agent on the client based on the session's agent_name
-			var agent = this.manager.agents.get(real_session.agent_name);
-			if (agent != null) {
-				real_session.client.prompt_assistant = agent;
-			}
+			// Agent is managed separately, not stored on client
+			// Agent selection is handled via agent_name in session
 			
 			// c) Copy messages from SessionJson into Session
 			// First, restore all messages to session.messages (including special types)

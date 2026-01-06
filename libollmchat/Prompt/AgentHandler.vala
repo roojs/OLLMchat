@@ -1,0 +1,161 @@
+/*
+ * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA  02110-1301  USA
+ */
+
+namespace OLLMchat.Prompt
+{
+	/**
+	 * Base handler for agent requests.
+	 * 
+	 * Created per message/request and manages the lifecycle of a single request.
+	 * Wraps the client and handles signal relaying for that specific request.
+	 * 
+	 * This is the default handler for simple agents (like JustAsk) that don't need
+	 * special system message handling. For agents that need system message regeneration
+	 * (like CodeAssistant), use a specialized handler.
+	 */
+	public class AgentHandler : Object
+	{
+		/**
+		 * The agent that created this handler.
+		 */
+		private BaseAgent agent;
+		
+		/**
+		 * The client instance for this request.
+		 */
+		private OLLMchat.Client client;
+		
+		/**
+		 * Signal handler IDs for client signals.
+		 */
+		private ulong stream_chunk_id = 0;
+		private ulong stream_content_id = 0;
+		private ulong stream_start_id = 0;
+		private ulong chat_send_id = 0;
+		
+		/**
+		 * Signal emitted when a streaming chunk is received.
+		 */
+		public signal void stream_chunk(string new_text, bool is_thinking, OLLMchat.Response.Chat response);
+		
+		/**
+		 * Signal emitted when streaming content (not thinking) is received.
+		 */
+		public signal void stream_content(string new_text, OLLMchat.Response.Chat response);
+		
+		/**
+		 * Signal emitted when a chat request is sent to the server.
+		 */
+		public signal void chat_send(OLLMchat.Call.Chat chat);
+		
+		/**
+		 * Signal emitted when streaming starts.
+		 */
+		public signal void stream_start();
+		
+		/**
+		 * Constructor.
+		 * 
+		 * @param agent The agent that created this handler
+		 * @param client The client instance for this request
+		 */
+		public AgentHandler(BaseAgent agent, OLLMchat.Client client)
+		{
+			this.agent = agent;
+			this.client = client;
+			
+			// Set up signal connections from client to handler
+			this.stream_chunk_id = this.client.stream_chunk.connect(this.handle_stream_chunk);
+			
+			this.stream_content_id = this.client.stream_content.connect((new_text, response) => {
+				this.stream_content(new_text, response);
+			});
+			
+			this.stream_start_id = this.client.stream_start.connect(() => {
+				this.stream_start();
+			});
+			
+			this.chat_send_id = this.client.chat_send.connect((chat) => {
+				this.chat_send(chat);
+			});
+		}
+		
+		/**
+		 * Destructor - automatically disconnects all client signal connections.
+		 */
+		~AgentHandler()
+		{
+			this.client.disconnect(this.stream_chunk_id);
+			this.client.disconnect(this.stream_content_id);
+			this.client.disconnect(this.stream_start_id);
+			this.client.disconnect(this.chat_send_id);
+		}
+		
+		/**
+		 * Handles a streaming chunk from the client and relays it via signal.
+		 * 
+		 * Made protected so subclasses can access it.
+		 */
+		protected void handle_stream_chunk(string chunk, bool is_thinking, OLLMchat.Response.Chat response)
+		{
+			this.stream_chunk(chunk, is_thinking, response);
+		}
+		
+		/**
+		 * Sends a message asynchronously with streaming support.
+		 * 
+		 * Base implementation for simple agents that don't need system message handling.
+		 * For agents that need system message regeneration (like CodeAssistant),
+		 * override this method in a specialized handler.
+		 * 
+		 * @param user_input The user's input text
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public virtual async void send_message_async(string user_input, GLib.Cancellable? cancellable = null) throws GLib.Error
+		{
+			// Create and prepare Chat object
+			var call = new OLLMchat.Call.Chat(this.client, this.client.model);
+			call.cancellable = cancellable;
+			
+			// Configure tools for this chat
+			this.agent.configure_tools(call);
+			
+			// Generate prompts and set on chat (sets chat_content, may set system_content)
+			this.agent.fill(call, user_input);
+			
+			// User-sent message with original text (preserved before prompt engine modification)
+			this.client.message_created(
+				new OLLMchat.Message(call, "user-sent", user_input), call);
+			
+			// Prepare messages array for API request (required by exec_chat())
+			// Base handler does NOT add system messages - specialized handlers can override
+			// Add the user message with chat_content (for API request)
+			call.messages.add(new OLLMchat.Message(call, "user", call.chat_content));
+			
+			// Execute chat
+			// Signals are already connected and will relay automatically
+			var response = yield call.exec_chat();
+			
+			// Handle final reply - emit stream_chunk with empty chunk and done response
+			// This allows UI to know the response is complete
+			if (this.client.stream) {
+				this.handle_stream_chunk("", false, response);
+			}
+		}
+	}
+}
+

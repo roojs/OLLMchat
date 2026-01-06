@@ -167,6 +167,15 @@ namespace OLLMchat.Prompt
 			
 			return result;
 		}
+		
+		/**
+		 * Creates a handler for a specific request.
+		 */
+		public override Object create_handler(OLLMchat.Client client)
+		{
+			return new AgentHandler(this, client);
+		}
+		
 	}
 }
 

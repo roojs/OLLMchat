@@ -35,6 +35,14 @@ namespace OLLMchat.Prompt
 			this.title = "Just Ask";
 		}
 		
+		/**
+		 * Creates a handler for a specific request.
+		 */
+		public override Object create_handler(OLLMchat.Client client)
+		{
+			return new AgentHandler(this, client);
+		}
+		
 		// Default BaseAgent behavior already passes through user input
 		// No need to override generate_system_prompt() or generate_user_prompt()
 	}

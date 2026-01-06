@@ -38,6 +38,7 @@ ollmchat_ollama_src = files([
   'Settings/AvailableModel.vala',
   'Settings/AvailableModels.vala',
   'Prompt/BaseAgent.vala',  # Must come before Client.vala (Client uses Prompt.BaseAgent)
+  'Prompt/AgentHandler.vala',  # Must come after BaseAgent (AgentHandler references BaseAgent)
   'Prompt/JustAsk.vala',
   'Call/Base.vala',
   'Call/Version.vala',

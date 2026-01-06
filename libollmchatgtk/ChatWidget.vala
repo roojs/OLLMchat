@@ -385,7 +385,7 @@ namespace OLLMchatGtk
 				}
 				if (this.manager.session.agent_name != "") {
 					empty_session.agent_name = this.manager.session.agent_name;
-					empty_session.client.prompt_assistant = this.manager.agents.get(this.manager.session.agent_name);
+					// Agent is managed separately, not stored on client
 				}
 			}
 			
