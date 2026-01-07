@@ -44,7 +44,6 @@
           <li class="virtual_method"><a href="OLLMchat.History.Session.saveToDB.html">saveToDB</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.save_async.html">save_async</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.send.html">send</a></li>
-          <li class="virtual_method"><a href="OLLMchat.History.Session.send_message.html">send_message</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.serialize_property.html">serialize_property</a></li>
           <li class="virtual_method"><a href="OLLMchat.History.Session.write.html">write</a></li>
         </ul>
@@ -53,23 +52,21 @@
         <h1 class="main_title">Session</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Session</span></b> (<span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> manager, <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> chat)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Session</span></b> (<span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span> manager)
         </div>
         <div class="description">
-          <p>Constructor requires a Call.Chat object. Updates the base class chat with the provided chat's properties. FIXME = chat should not be a 
-            property here</p>
+          <p>Constructor for Session.</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>Chat is created per request by AgentHandler, not stored on Session. </p>
+            </div>
+          </div>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">manager</td>
               <td>
                 <p>The history manager </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">chat</td>
-              <td>
-                <p>The chat object (required) </p>
               </td>
             </tr>
           </table>

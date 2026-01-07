@@ -23,7 +23,7 @@ namespace OLLMchat.History
 	 *
 	 * It uses SQ (SQLite) for database storage of metadata, and JSON files
 	 * for complete session data including all messages. Properties are wrappers
-	 * Messages come from this.chat.messages. Model and other properties are on this.chat (Phase 3: not on client)
+	 * Messages come from session.messages. Model and other properties are on Session (Chat is created per request by AgentHandler)
 	 * with a flag to include extra info during JSON encoding.
 	 *
 	 * == Example ==
@@ -67,39 +67,25 @@ namespace OLLMchat.History
 			}
 		}	
 		
-		/**
-		 * Constructor requires a Call.Chat object.
-		 * Updates the base class chat with the provided chat's properties.
-		 * FIXME = chat should not be a property here 
-		 *
-		 * @param manager The history manager
-		 * @param chat The chat object (required)
-		 */
-		public Session(Manager manager, Call.Chat chat)
-		{
-			base(manager);
-			// Replace base chat with provided chat
-			this.chat = chat;
-			// Note: client is set from manager, not from chat (Phase 3: Chat no longer has client)
-			// Store model from chat (Phase 3: model stored on Session, not Client)
-			this.model = chat.model;
-			// Set permission_provider on Chat if Session has one
-			if (this.refactor_permission_provider != null) {
-				this.chat.permission_provider = this.refactor_permission_provider;
-			}
-			
-			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
-			// If chat has a fid, use it (for backward compatibility), otherwise generate new one
-			if (chat.fid != "") {
-				this.fid = chat.fid;
-			} else {
-				var now = new DateTime.now_local();
-				this.fid = now.format("%Y-%m-%d-%H-%M-%S");
-			}
-			
-			// Set agent handler when session is created (if agent_name is set)
-			// Agent will be set later if agent_name is set after construction
-		}
+	/**
+	 * Constructor for Session.
+	 * 
+	 * Note: Chat is created per request by AgentHandler, not stored on Session.
+	 *
+	 * @param manager The history manager
+	 */
+	public Session(Manager manager)
+	{
+		base(manager);
+		// Model is set by Manager after construction
+		
+		// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+		var now = new DateTime.now_local();
+		this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+		
+		// Set agent handler when session is created (if agent_name is set)
+		// Agent will be set later if agent_name is set after construction
+	}
 		
 		/**
 		* Handler for message_created signal from this session's client.
@@ -113,28 +99,17 @@ namespace OLLMchat.History
 			// Support both old pattern (this.chat) and new pattern (refactor_get_chat() or from message)
 			if (m.message_interface is Call.Chat) {
 				var new_chat = (Call.Chat) m.message_interface;
-				// Get current chat using alternative access pattern (supports both old and new)
-				var current_chat = this.refactor_get_chat();
-				if (current_chat != null) {
-					// Update properties on current chat (supports both old and new patterns)
-					current_chat.model = new_chat.model;
-					current_chat.stream = new_chat.stream;
-					current_chat.format = new_chat.format;
-					current_chat.format_obj = new_chat.format_obj;
-					current_chat.think = new_chat.think;
-					current_chat.keep_alive = new_chat.keep_alive;
-					current_chat.options = new_chat.options;
-				}
-				// Also update this.chat if it exists (old pattern, kept for backward compatibility)
-				if (this.chat != null) {
-					this.chat.model = new_chat.model;
-					this.chat.stream = new_chat.stream;
-					this.chat.format = new_chat.format;
-					this.chat.format_obj = new_chat.format_obj;
-					this.chat.think = new_chat.think;
-					this.chat.keep_alive = new_chat.keep_alive;
-					this.chat.options = new_chat.options;
-				}
+			// Update properties on agent's chat if available (Chat is created per request by AgentHandler)
+			if (this.agent != null && this.agent.chat != null) {
+				var current_chat = this.agent.chat;
+				current_chat.model = new_chat.model;
+				current_chat.stream = new_chat.stream;
+				current_chat.format = new_chat.format;
+				current_chat.format_obj = new_chat.format_obj;
+				current_chat.think = new_chat.think;
+				current_chat.keep_alive = new_chat.keep_alive;
+				current_chat.options = new_chat.options;
+			}
 				// Note: fid is no longer copied from chat - it's owned by Session
 				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
 			}
@@ -142,7 +117,7 @@ namespace OLLMchat.History
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
 			if (m.role == "done") {
 				// Still relay to Manager for UI (though it will be filtered out there too)
-				this.manager.add_message(m, this);
+				this.manager.message_added(m, this);
 				return;
 			}
 			
@@ -166,7 +141,7 @@ namespace OLLMchat.History
 			}
 			
 			// Relay to Manager for UI - pass this session, not content_interface
-			this.manager.add_message(m, this);
+			this.manager.message_added(m, this);
 			
 			// Save session
 			this.save_async.begin();
@@ -188,8 +163,7 @@ namespace OLLMchat.History
 			}
 			
 			// Get Chat using alternative access pattern (supports both old and new patterns)
-			// Use refactor_get_chat() which handles both this.chat (old) and this.agent.chat (new)
-			var chat = this.refactor_get_chat();
+			// Get chat from agent (Chat is created per request by AgentHandler)
 			
 			// Capture streaming output
 			if (new_text.length > 0) {
@@ -197,8 +171,8 @@ namespace OLLMchat.History
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					// Use chat from alternative access pattern, or fallback to this.chat
-					this.current_stream_message = new Message(chat ?? this.chat, stream_role, new_text);
+					// Use chat from alternative access pattern
+					this.current_stream_message = new Message(this.agent.chat, stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
 				} else {
@@ -210,8 +184,8 @@ namespace OLLMchat.History
 			// When response is done, finalize streaming
 			if (response.done) {
 				// Create "end-stream" message to signal renderer
-				// Use chat from alternative access pattern, or fallback to this.chat
-				var end_stream_msg = new Message(chat ?? this.chat, "end-stream", "");
+				// Use chat from alternative access pattern
+				var end_stream_msg = new Message(this.agent.chat, "end-stream", "");
 				this.messages.add(end_stream_msg);
 				
 				// Finalize current stream message
@@ -230,15 +204,13 @@ namespace OLLMchat.History
 					}
 					if (!found) {
 						// Ensure message_interface is set (use chat from alternative access pattern)
-						var chat_for_message = chat ?? this.chat;
-						if (chat_for_message != null) {
-							response.message.message_interface = chat_for_message;
-						}
+						response.message.message_interface = this.agent.chat;
+						
 						// message_created signal emissions removed - callers handle state directly when creating messages
 						
 						// Create a "done" message after the real message with summary
 						var summary = response.get_summary();
-						var done_msg = new Message(chat_for_message ?? this.chat, "done", summary);
+						var done_msg = new Message(this.agent.chat, "done", summary);
 						// message_created signal emission removed - callers handle state directly when creating messages
 					}
 				}
@@ -439,45 +411,6 @@ namespace OLLMchat.History
 			}
 		}
 		
-		/**
-		 * Sends a message using this session's client.
-		 *
-		 * Sets streaming mode and either continues an existing conversation with reply()
-		 * or starts a new conversation with chat().
-		 *
-		 * @param text The message text to send
-		 * @param cancellable Optional cancellable for canceling the request
-		 * @return The response from the chat API
-		 * @throws Error if the request fails
-		 */
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
-		{
-			// Phase 3: Streaming is set on Chat, not Client
-			// Ensure chat.stream is true for streaming responses
-			 
-			this.chat.stream = true;
-			
-			
-			// Check if we should use reply() or chat()
-			var streaming_response = (Response.Chat?)this.chat.streaming_response;
-			if (streaming_response != null &&
-				streaming_response.done &&
-				streaming_response.call != null) {
-				// Use reply to continue conversation
-				this.chat.cancellable = cancellable;
-				return yield streaming_response.reply(text);
-			}
-			
-			// First message - use regular chat()
-			var response = yield this.client.chat(this.model, text, null, cancellable);
-			
-			// Store cancellable reference
-			if (response.call != null) {
-				response.call.cancellable = cancellable;
-			}
-			
-			return response;
-		}
 		
 		/**
 		 * Loads the session data if needed.
@@ -498,8 +431,9 @@ namespace OLLMchat.History
 		 */
 		public override void cancel_current_request()
 		{
-			if (this.chat.cancellable != null) {
-				this.chat.cancellable.cancel();
+			// Cancel via agent's chat if available
+			if (this.agent.chat.cancellable != null) {
+				this.agent.chat.cancellable.cancel();
 			}
 		}
 		
@@ -561,7 +495,7 @@ namespace OLLMchat.History
 			
 			// Create new handler from agent
 			var new_handler = base_agent.create_handler(this.client, this) as OLLMchat.Prompt.AgentHandler;
-			new_handler.chat = this.chat;
+			// Note: Chat is created per request by AgentHandler, not stored here
 			this.agent = new_handler;
 			 
 			

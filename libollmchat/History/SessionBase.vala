@@ -29,7 +29,6 @@ namespace OLLMchat.History
 	{
 		public int64 id { get; set; default = -1; }
 		public Client client { get; protected set; }
-		public Call.Chat? chat { get; set; }
 		
 		// Permission provider for tool execution (default: reject everything)
 		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
@@ -39,6 +38,7 @@ namespace OLLMchat.History
 		 *
 		 * Handles permission requests when tools need to access files or execute commands.
 		 * Defaults to a reject-all provider if not set.
+		 * FIXME ? agent should have a permsision provider not chat.
 		 *
 		 * @since 1.0
 		 */
@@ -46,11 +46,10 @@ namespace OLLMchat.History
 			get { return refactor_permission_provider; }
 			set { 
 				refactor_permission_provider = value;
-				// Also set on Chat if it exists (support both old and new patterns)
-				var chat = this.refactor_get_chat();
-				if (chat != null) {
-					chat.permission_provider = value;
-				}
+				// Also set on Chat if agent is set (Chat is created per request by AgentHandler)
+				
+				this.agent.chat.permission_provider = value;
+				
 			}
 		}
 		
@@ -62,6 +61,10 @@ namespace OLLMchat.History
 		
 		// Model property - stored on Session since Client no longer has model (Phase 3)
 		public string model { get; set; default = ""; }
+		
+		// ModelUsage property - stores full model configuration (connection, model, options)
+		// Options are overlaid from config.model_options when activate_model() is called
+		public Settings.ModelUsage? model_usage { get; protected set; default = null; }
 		
 		// Display properties for UI
 		public string display_title {
@@ -140,43 +143,6 @@ namespace OLLMchat.History
 		// Agent handler reference - set when session is created or AgentHandler is changed
 		public OLLMchat.Prompt.AgentHandler? agent { get; set; }
 		
-		/**
-		 * Gets the Chat instance for this session.
-		 * 
-		 * This method provides an alternative access pattern for Chat, supporting
-		 * both the old pattern (this.chat) and new patterns (via agent or message).
-		 * 
-		 * Priority order:
-		 * 1. this.chat (if set) - old pattern, kept for backward compatibility
-		 * 2. this.agent.chat (if agent is set) - new pattern via AgentHandler
-		 * 3. null (if neither is available)
-		 * 
-		 * FIXME this is temporary and will be removed when we finsih 
-		 * users should access session.agent.chat - if they really need to do stuff.
-		 * 
-		 * NOTE: This is temporary Phase 4 migration code to support both old (this.chat)
-		 * and new (this.agent.chat) patterns during the transition. Do NOT use this in
-		 * new code - use this.agent.chat directly instead. This method will be removed
-		 * in Phase 6 cleanup when this.chat is removed.
-		 * 
-		 * @return The Chat instance, or null if not available
-		 */
-		public Call.Chat? refactor_get_chat()
-		{
-			// Priority 1: Use this.chat if available (old pattern, kept for backward compatibility)
-			if (this.chat != null) {
-				return this.chat;
-			}
-			
-			// Priority 2: Use agent.chat if agent is set (new pattern via AgentHandler)
-			if (this.agent != null && this.agent.chat != null) {
-				return this.agent.chat;
-			}
-			
-			// No Chat available
-			return null;
-		}
-		
 		
 		// Abstract properties that depend on chat
 		public abstract string display_info { owned get; }
@@ -198,27 +164,54 @@ namespace OLLMchat.History
 			model = model == "" ? "placeholder" : model;
 		 
 			
-			// Create chat with default properties
-			this.chat = new Call.Chat(this.client.connection, model) {
-				stream = true,  // Default to streaming
-				think = false
-			};
-			// Get options from config if available and update chat
-			// usage.get() can return null if key doesn't exist, and cast can return null if wrong type
-			var default_usage = manager.config.usage.get("default_model") as Settings.ModelUsage;
-			this.chat.options = default_usage != null ? default_usage.options : new Call.Options();
-
-			// Copy tools from Manager to Chat (Phase 3: tools stored on Manager)
-			foreach (var tool in manager.tools.values) {
-				this.chat.add_tool(tool);
-			}
-			
 			// Store model on session
 			this.model = model;
 			
 			// Initialize permission provider to default (Dummy allows READ, denies WRITE/EXECUTE)
 			this.refactor_permission_provider = new OLLMchat.ChatPermission.Dummy();
-			this.chat.permission_provider = this.refactor_permission_provider;
+			
+			// Note: Chat is created per request by AgentHandler, not stored on Session
+		}
+		
+		/**
+		 * Activates a model for this session.
+		 * 
+		 * Stores the ModelUsage and overlays options from config.model_options if available.
+		 * Updates the session's model property and connection.
+		 * 
+		 * @param model_usage The ModelUsage to activate (connection, model, options)
+		 */
+		public void activate_model(Settings.ModelUsage model_usage)
+		{
+			// Clone the ModelUsage to avoid modifying the original
+			var usage = new Settings.ModelUsage() {
+				connection = model_usage.connection,
+				model = model_usage.model,
+				model_obj = model_usage.model_obj
+			};
+			
+			// Start with options from the ModelUsage
+			usage.options = model_usage.options.clone();
+			
+			// Overlay options from config.model_options if available (config options take precedence)
+			if (this.manager.config.model_options.has_key(model_usage.model)) {
+				var config_options = this.manager.config.model_options.get(model_usage.model);
+				// Config options override ModelUsage options
+				usage.options = config_options.clone();
+			}
+			
+			// Store the ModelUsage
+			this.model_usage = usage;
+			
+			// Update model property for backward compatibility
+			this.model = model_usage.model;
+			
+			// Update connection on client if available
+			var connection = this.manager.config.connections.get(model_usage.connection);
+			//connection urls are validated on load we dont have connections in config 
+			// in theory the lists the user sess should not include inacvtive conenctions
+			this.client.connection = connection;
+			
 		}
 		
 		/**
@@ -348,8 +341,8 @@ namespace OLLMchat.History
 			this.messages.add(message);
 			
 			
-			// Relay to UI via Manager's add_message signal - pass this session, not content_interface
-			this.manager.add_message(message, this);
+			// Relay to UI via Manager's message_added signal - pass this session, not content_interface
+			this.manager.message_added(message, this);
 		}
 		
 		
@@ -405,17 +398,6 @@ namespace OLLMchat.History
 		 * @throws Error if loading fails
 		 */
 		public abstract async SessionBase? load() throws Error;
-		
-		/**
-		 * Sends a message using this session's client.
-		 * Must be implemented by subclasses.
-		 *
-		 * @param text The message text to send
-		 * @param cancellable Optional cancellable for canceling the request
-		 * @return The response from the chat API
-		 * @throws Error if the request fails
-		 */
-		public abstract async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error;
 		
 		/**
 		 * Sends a Message object to this session.

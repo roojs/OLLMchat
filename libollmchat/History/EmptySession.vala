@@ -30,12 +30,7 @@ namespace OLLMchat.History
 		public EmptySession(Manager manager)
 		{
 			base(manager);
-			// Base constructor already creates chat, client, and sets model
-			// Just update chat properties for EmptySession defaults
-			if (this.model != "" && this.model != "placeholder") {
-				this.chat.model = this.model;
-				this.chat.think = true;  // Default to thinking for new chats
-			}
+			// Chat is created per request by AgentHandler, not stored on Session
 		}
 		
 		public override string display_info {
@@ -74,9 +69,8 @@ namespace OLLMchat.History
 			// FIXME remove client
 			this.client = new_client;
 			
-			// Convert EmptySession to real Session using updated chat
-			// FIXME - agent needs making ? sesison should get old agent, not old chat
-			var real_session = new Session(this.manager, this.chat) {
+			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
+			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
 				updated_at_timestamp = (new DateTime.now_local()).to_unix()
 			};
@@ -87,7 +81,7 @@ namespace OLLMchat.History
 			// Add session to manager.sessions and emit session_added signal immediately
 			// This ensures the history widget updates right away
 			GLib.debug("[EmptySession.send] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, chat.model);
+				real_session.fid, real_session.agent_name, real_session.model);
 			this.manager.sessions.append(real_session);
 			// FIXME - is this needed now?
 			this.manager.session_added(real_session);
@@ -100,45 +94,6 @@ namespace OLLMchat.History
 			yield real_session.send(message, cancellable);
 		}
 		
-		/**
-		 * Converts EmptySession to a real Session when a message is sent.
-		 *
-		 * Creates a new Session, copies client properties, replaces this EmptySession
-		 * in the manager, and then calls send_message() on the new Session.
-		 */
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
-		{
-			// Create client for new session, copying from EmptySession's client
-			var new_client = this.manager.new_client(this.client);
-			
-			// Update existing chat with new client instead of creating new chat
-			this.client = new_client;
-			
-			// Convert EmptySession to real Session using updated chat
-			var real_session = new Session(this.manager, this.chat) {
-				agent_name = this.agent_name,
-				updated_at_timestamp = (new DateTime.now_local()).to_unix()
-			};
-			
-			// Replace EmptySession with real Session in manager
-			this.manager.session = real_session;
-			
-			// Add session to manager.sessions and emit session_added signal immediately
-			// This ensures the history widget updates right away
-			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, chat.model);
-			this.manager.sessions.append(real_session);
-			// FIXME = might not be needed as sesison list gets updated by store
-			this.manager.session_added(real_session);
-			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");
-			
-			
-			real_session.activate();
-			this.manager.session_activated(real_session);
-			
-			// Now call send_message on the real session
-			return yield real_session.send_message(text, cancellable);
-		}
 		
 		public override async SessionBase? load() throws Error
 		{

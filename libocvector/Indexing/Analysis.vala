@@ -341,7 +341,7 @@ namespace OLLMvector.Indexing
 					// Execute LLM call (streaming enabled, plain text response)
 					OLLMchat.Response.Chat? response = null;
 					try {
-						response = yield chat.exec_chat();
+						response = yield chat.send(chat.messages, null);
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {
@@ -350,10 +350,10 @@ namespace OLLMvector.Indexing
 					}
 					
 					// Wait for streaming to complete if needed
-					// (exec_chat() already waits, but response.done indicates completion)
+					// (send() already waits, but response.done indicates completion)
 					if (response != null && !response.done) {
 						GLib.debug("Waiting for streaming response to complete...");
-						// In practice, exec_chat() should return with done=true, but just in case
+						// In practice, send() should return with done=true, but just in case
 					}
 					
 					if (response == null || response.message == null || response.message.content == null) {

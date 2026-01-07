@@ -447,17 +447,8 @@ namespace OLLMchatGtk
 						return;
 					}
 					
-					var model = model_usage.model_obj;
-					
-					// Update session with connection and model (Phase 3: model on Session, not Client)
-					var connection = this.manager.config.connections.get(model_usage.connection);
-					if (connection != null) {
-						this.manager.session.client.connection = connection;
-					}
-					// Update model and think on Chat (Phase 3: Chat has its own properties)
-					this.manager.session.model = model.name;
-					this.manager.session.chat.model = model.name;
-					this.manager.session.chat.think = model.is_thinking;
+					// Activate model on session (stores ModelUsage with options overlaid from config)
+					this.manager.session.activate_model(model_usage);
 					
 					// Update binding to new model's can_call property for automatic visibility updates
 					this.update_model_widgets_visibility();
@@ -469,7 +460,7 @@ namespace OLLMchatGtk
 					if (this.tools_button_binding != null) {
 						this.tools_button_binding.unbind();
 					}
-					this.tools_button_binding = model.bind_property(
+					this.tools_button_binding = model_usage.model_obj.bind_property(
 						"can-call",
 						this.tools_menu_button,
 						"visible",
@@ -532,8 +523,8 @@ namespace OLLMchatGtk
 					margin_bottom = 10
 				};
 
-				// Create checkboxes for each tool (Phase 3: tools are on Chat, not Client)
-				foreach (var tool in this.manager.session.chat.tools.values) {
+				// Create checkboxes for each tool (tools are on Manager)
+				foreach (var tool in this.manager.tools.values) {
 					var check_button = new Gtk.CheckButton.with_label(
 						tool.title
 					);
@@ -582,8 +573,7 @@ namespace OLLMchatGtk
 						if (position != Gtk.INVALID_LIST_POSITION) {
 							this.model_dropdown.selected = position;
 							current_model_obj = model_usage.model_obj;
-							// Update Chat.think based on selected model (Phase 3: Chat has its own properties)
-							this.manager.session.chat.think = current_model_obj.is_thinking;
+							// Model properties are set on Session, Chat is created per request
 						}
 						// Update tools button visibility based on model's can_call property
 						this.update_model_widgets_visibility();

@@ -638,13 +638,19 @@ namespace OLLMchatGtk
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
 
-			// Get client and chat from session
-			if (session.chat == null) {
-				GLib.warning("ChatView.append_complete_assistant_message: session.chat is null");
-				return;
+			// Get client and chat from message or session
+			// FIXME - we want to get rid of this message_interface klduget
+			var call = message.message_interface as OLLMchat.Call.Chat;
+			if (call == null) {
+				// Fallback: try to get chat from session's agent
+				if (session.agent != null && session.agent.chat != null) {
+					call = session.agent.chat;
+				} else {
+					GLib.warning("ChatView.append_complete_assistant_message: cannot get Chat from message or session");
+					return;
+				}
 			}
-			
-			var call = session.chat;
+			// FIXME = need to get connection from elsewhere? sesison?
 			var client = session.client;
 
 			// Create a minimal Response.Chat for processing

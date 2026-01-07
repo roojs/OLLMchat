@@ -95,26 +95,6 @@ namespace OLLMchat.Call
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
-		// Session ID field to track which history session this chat belongs to
-		// Delegates to chat.agent.session.fid when agent is set, otherwise uses generated fallback
-		// Phase 2: fid ownership moved to Session, but Chat.fid kept for backward compatibility
-		// TODO: Remove in Phase 6 cleanup
-		private string _fid_refactor = "";
-		public string fid {
-			get {
-				// If agent is set and has a session, delegate to session.fid
-				if (this.agent != null && this.agent.session != null) {
-					return this.agent.session.fid;
-				}
-				// Otherwise use generated fallback value
-				return _fid_refactor;
-			}
-			set {
-				// Store in fallback (used when agent is not set)
-				_fid_refactor = value;
-			}
-		}
-		
 		public Chat(Settings.Connection connection, string model, Call.Options? options = null)
 		{
 			base(connection);
@@ -124,10 +104,7 @@ namespace OLLMchat.Call
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
 			this.model = model;
-			// Generate fid fallback from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
-			// This is used when agent is not set (for backward compatibility)
-			var now = new DateTime.now_local();
-			this._fid_refactor = now.format("%Y-%m-%d-%H-%M-%S");
+			// FID is owned by Session, not Chat (Chat is created per request by AgentHandler)
 			
 			// Load model options from config if options not provided
 			if (options != null) {
@@ -492,39 +469,6 @@ namespace OLLMchat.Call
 			return yield this.execute_non_streaming();
 		}
 
-		/**
-		 * Executes the chat request.
-		 * 
-		 * Uses the pre-prepared messages array. The agent/handler must prepare the messages
-		 * array before calling this method. Throws an error if the messages array is empty.
-		 * 
-		 * The client does NOT modify the messages array - it uses what the agent prepared.
-		 */
-		public async Response.Chat exec_chat() throws Error
-		{
-			// Agent/handler must prepare the messages array before calling exec_chat()
-			if (this.messages.size == 0) {
-				throw new OllamaError.INVALID_ARGUMENT("Chat messages array is empty. Agent/handler must prepare messages before calling exec_chat().");
-			}
-			
-			// Debug: output messages being sent
-			GLib.debug("Chat.exec_chat: Sending %d message(s):", this.messages.size);
-			for (int i = 0; i < this.messages.size; i++) {
-				var msg = this.messages[i];
-				GLib.debug("  Message %d: role='%s', content='%s'%s", 
-					i + 1, 
-					msg.role, 
-					msg.content,
-					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
-			}
-			
-			if (this.stream) {
-				//this.streaming_response = new Response(this.client);
-				return yield this.execute_streaming();
-			}
-
-			return yield this.execute_non_streaming();
-		}
 
 		private async Response.Chat execute_non_streaming() throws Error
 		{

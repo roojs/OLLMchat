@@ -33,7 +33,6 @@
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.SessionBase.agent.html">agent</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.agent_name.html">agent_name</a></li>
-          <li class="property"><a href="OLLMchat.History.SessionBase.chat.html">chat</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.child_chats.html">child_chats</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.client.html">client</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.display_date.html">display_date</a></li>
@@ -46,6 +45,7 @@
           <li class="property"><a href="OLLMchat.History.SessionBase.manager.html">manager</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.messages.html">messages</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.model.html">model</a></li>
+          <li class="property"><a href="OLLMchat.History.SessionBase.model_usage.html">model_usage</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.permission_provider.html">permission_provider</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.title.html">title</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.total_messages.html">total_messages</a></li>
@@ -55,6 +55,7 @@
           <li class="creation_method"><a href="OLLMchat.History.SessionBase.SessionBase.html">SessionBase</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.activate.html">activate</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.activate_agent.html">activate_agent</a></li>
+          <li class="method"><a href="OLLMchat.History.SessionBase.activate_model.html">activate_model</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.add_message.html">add_message</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.cancel_current_request.html">cancel_current_request</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.deactivate.html">deactivate</a></li>
@@ -63,11 +64,9 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_message_created.html">on_message_created</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_stream_chunk.html">on_stream_chunk</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
-          <li class="method"><a href="OLLMchat.History.SessionBase.refactor_get_chat.html">refactor_get_chat</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.save_async.html">save_async</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.send.html">send</a></li>
-          <li class="abstract_method"><a href="OLLMchat.History.SessionBase.send_message.html">send_message</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.to_path.html">to_path</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.write.html">write</a></li>
@@ -133,10 +132,6 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.History.SessionBase.chat.html" class="property">chat</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.History.SessionBase.child_chats.html" class="property">child_chats</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -185,6 +180,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span>? <b><a href="OLLMchat.History.SessionBase.model_usage.html" class="property">model_usage</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">protected</span> <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description">
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.ChatPermission.Provider.html" class="abstract_class">Provider</a></span>? <b><a href="OLLMchat.History.SessionBase.permission_provider.html" class="property">permission_provider</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Permission provider for tool execution.</span>
@@ -228,6 +227,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Activates an agent for this session.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.activate_model.html" class="method">activate_model</a></b> (<span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span> model_usage)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Activates a model for this session.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.add_message.html" class="method">add_message</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Adds a message to the session and relays it to the UI via Manager 
@@ -267,10 +270,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Read session from JSON file. Must be implemented by subclasses.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.History.SessionBase.refactor_get_chat.html" class="method">refactor_get_chat</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the Chat instance for this session.</span>
-            </div></li>
           <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.saveToDB.html" class="abstract_method">saveToDB</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Save session to SQLite database. Must be implemented by subclasses.
@@ -284,11 +283,6 @@
           <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.send.html" class="abstract_method">send</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Sends a Message object to this session.</span>
-            </div></li>
-          <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.History.SessionBase.send_message.html" class="abstract_method">send_message</a></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Sends a message using this session's client. Must be implemented by 
-                subclasses.</span>
             </div></li>
           <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.History.SessionBase.serialize_property.html" class="abstract_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>

@@ -62,22 +62,7 @@ namespace OLLMchat.History
 		internal void set_client(Client client)
 		{
 			this.client = client;
-			// Update chat with client and model from database
-			if (this.model != "") {
-				// Update chat properties instead of replacing
-				this.chat.model = this.model;
-				// Get options from config if available
-				Call.Options? options = null;
-				if (this.manager.config != null) {
-					var default_usage = this.manager.config.usage.get("default_model") as Settings.ModelUsage;
-					if (default_usage != null) {
-						options = default_usage.options;
-					}
-				}
-				if (options != null) {
-					this.chat.options = options;
-				}
-			}
+			// Model is already set from database
 		}
 		
 		/**
@@ -99,33 +84,12 @@ namespace OLLMchat.History
 				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
 			}
 			
-			// Update existing chat with settings instead of creating new one
+			// Update client
 			var client = this.manager.new_client();
 			this.client = client;
-			this.chat.model = this.model;
 			
-			// Get options from config if available
-			Call.Options? options = null;
-			if (this.manager.config != null) {
-				var default_usage = this.manager.config.usage.get("default_model") as Settings.ModelUsage;
-				if (default_usage != null) {
-					options = default_usage.options;
-				}
-			}
-			if (options == null) {
-				options = new Call.Options();
-			}
-			this.chat.options = options;
-			this.chat.stream = true;
-			this.chat.think = false;
-			
-			// Copy tools from Manager to Chat (Phase 3: tools stored on Manager)
-			foreach (var tool in this.manager.tools.values) {
-				this.chat.add_tool(tool);
-			}
-			
-			// a) Create a new Session using the updated chat with properties initialized
-			var real_session = new Session(this.manager, this.chat) {
+			// a) Create a new Session (Chat is created per request by AgentHandler)
+			var real_session = new Session(this.manager) {
 				id = this.id,
 				fid = this.fid,
 				updated_at_timestamp = this.updated_at_timestamp,
@@ -187,26 +151,11 @@ namespace OLLMchat.History
 			
 			// c) Copy messages from SessionJson into Session
 			// First, restore all messages to session.messages (including special types)
+			// Chat is created per request by AgentHandler, not stored on Session
+			// Messages are stored in session.messages and will be used when Chat is created
 			foreach (var msg in json_session.messages) {
-				msg.message_interface = real_session.chat;
+				// message_interface will be set when Chat is created by AgentHandler
 				real_session.messages.add(msg);
-			}
-
-			// Filter messages to populate chat.messages with only API-compatible messages
-			// Filter out special session message types: "think-stream", "content-stream", "user-sent", "ui", "end-stream"
-			// Only include standard roles: "system", "user", "assistant", "tool"
-			foreach (var msg in real_session.messages) {
-				switch (msg.role) {
-					case "system":
-					case "user":
-					case "assistant":
-					case "tool":
-						real_session.chat.messages.add(msg);
-						break;
-					default:
-						// Skip non-standard roles
-						break;
-				}
 			}
 			
 			// d) Find the index of this placeholder in manager.sessions
@@ -250,11 +199,6 @@ namespace OLLMchat.History
 		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
 			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages - load() must be called first");
-		}
-		
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
-		{
-			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages");
 		}
 		
 		public override void cancel_current_request() { }  // No-op: SessionPlaceholder has no active requests

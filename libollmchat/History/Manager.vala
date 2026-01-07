@@ -83,17 +83,13 @@ namespace OLLMchat.History
 		public signal void stream_content(string new_text, Response.Chat response);
 		public signal void stream_start();
 		public signal void tool_message(OLLMchat.Message message);
-		// Old implementation - to be removed in Phase 6
 		
-		public signal void add_message(Message m, SessionBase? session);  
 		/**
 		 * Emitted when a new message is added to a session.
 		 * 
-		 * This is the signal for the new flow (Phase 3+):
+		 * This is the signal for the new flow:
 		 * - Session.send() adds message to session and emits this signal
 		 * - UI connects to this signal to update the display
-		 * 
-		 * Replaces the old `add_message` signal which will be removed in Phase 6.
 		 * 
 		 * @param message The message that was added
 		 * @param session The session the message was added to (may be null for messages not yet associated with a session)
@@ -304,7 +300,7 @@ namespace OLLMchat.History
 			};
 			call.options = options;
 			
-			var session = new Session(this, call);
+			var session = new Session(this);
 			session.model = model;  // Store model on session
 			session.agent_name = agent_name;
 			this.sessions.append(session);

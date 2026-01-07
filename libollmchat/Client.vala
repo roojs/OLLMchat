@@ -156,7 +156,7 @@ namespace OLLMchat
 		public async Response.Chat chat_execute(Call.Chat call) throws Error
 		{
 			// Client does NOT modify messages array - use what agent prepared
-			return yield call.exec_chat();
+			return yield call.send(call.messages, call.cancellable);
 		}
 
 		/**
@@ -200,12 +200,12 @@ namespace OLLMchat
 			// Set chat_content to user text (no prompt generation)
 			call.chat_content = text;
 			
-			// Prepare messages array for API request (required by exec_chat())
+			// Prepare messages array for API request
 			// Agent/handler should prepare system messages - this is just for backward compatibility
 			// Add the user message with chat_content (for API request)
 			call.messages.add(new Message(call, "user", call.chat_content));
 			
-			var result = yield call.exec_chat();
+			var result = yield call.send(call.messages, cancellable);
 
 			return result;
 		}

@@ -254,7 +254,7 @@ Examples:
 		
 		// Add user message and execute chat
 		chat.messages.add(new OLLMchat.Message(chat, "user", query));
-		var response = yield chat.exec_chat();
+		var response = yield chat.send(chat.messages, null);
 		
 		stdout.printf("\n\n--- Complete Response ---\n");
 		if (response.thinking != "") {
