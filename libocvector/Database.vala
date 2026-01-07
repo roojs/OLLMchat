@@ -80,8 +80,12 @@ namespace OLLMvector
 		 */
 		public static async uint64 get_embedding_dimension(OLLMchat.Client ollama) throws GLib.Error
 		{
-			// Phase 3: model is not on Client, embed() gets model from config and will throw if not available
-			var test_response = yield ollama.embed("test");
+			// Phase 3: model is not on Client, need to get model from config
+			var model = ollama.config.get_default_model();
+			if (model == "") {
+				throw new GLib.IOError.FAILED("No default model configured for embeddings");
+			}
+			var test_response = yield ollama.embed(model, "test");
 			if (test_response == null || test_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
 			}
@@ -164,7 +168,11 @@ namespace OLLMvector
 				return;
 			}
 			
-			var first_response = yield this.ollama.embed(texts[0]);
+			var model = this.ollama.config.get_default_model();
+			if (model == "") {
+				throw new GLib.IOError.FAILED("No default model configured for embeddings");
+			}
+			var first_response = yield this.ollama.embed(model, texts[0]);
 			if (first_response == null || first_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embed for first document");
 			}
@@ -181,7 +189,7 @@ namespace OLLMvector
 			
 			// Add remaining vectors
 			for (int i = 1; i < texts.length; i++) {
-				var response = yield this.ollama.embed(texts[i]);
+				var response = yield this.ollama.embed(model, texts[i]);
 				if (response == null || response.embeddings.size == 0) {
 					throw new GLib.IOError.FAILED("Failed to get embed for document " + i.to_string());
 				}
@@ -197,7 +205,11 @@ namespace OLLMvector
 		public async SearchResultWithDocument[] search(string query, uint64 k = 5) throws Error
 		{
 			GLib.debug("Sending search query to embedder: %s", query);
-			var response = yield this.ollama.embed(query);
+			var model = this.ollama.config.get_default_model();
+			if (model == "") {
+				throw new GLib.IOError.FAILED("No default model configured for embeddings");
+			}
+			var response = yield this.ollama.embed(model, query);
 			if (response == null || response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embed");
 			}

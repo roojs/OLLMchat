@@ -27,7 +27,6 @@ namespace OLLMchat.History
 	 */
 	public class SessionPlaceholder : SessionBase
 	{
-		public override string fid { get; set; }
 		
 		public override string display_info {
 			owned get {
@@ -211,14 +210,18 @@ namespace OLLMchat.History
 			}
 			
 			// d) Find the index of this placeholder in manager.sessions
-			var index = this.manager.sessions.index_of(this);
-			 
-			
-			// e) Replace the placeholder with the real session in manager.sessions
-			this.manager.sessions[index] = real_session;
+			uint index;
+			if (!this.manager.sessions.find(this, out index)) {
+				// Placeholder not found, just append the real session
+				this.manager.sessions.append(real_session);
+			} else {
+				// e) Replace the placeholder with the real session in manager.sessions
+				this.manager.sessions.replace_at(index, real_session);
+			}
 			
 			// Emit session_replaced signal for UI updates
-			this.manager.session_replaced(index, real_session);
+			// FIXME = is this needed anymore ? = since the UI uses the store.
+			this.manager.session_replaced((int)index, real_session);
 			
 			return real_session;
 		}
@@ -234,6 +237,20 @@ namespace OLLMchat.History
 		public override async void write() throws Error { }  // No-op: SessionPlaceholder is never written
 		
 		public override async void read() throws Error { }  // No-op: SessionPlaceholder doesn't read itself (use load() instead)
+		
+		/**
+		 * Sends a Message object to this session.
+		 * 
+		 * SessionPlaceholder cannot send messages - it must be loaded first.
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
+		{
+			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages - load() must be called first");
+		}
 		
 		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
 		{

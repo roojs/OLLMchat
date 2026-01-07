@@ -103,7 +103,11 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Generate embeddings for all elements in the file at once
-			var embed_response = yield this.client.embed_array(documents);
+			var model = this.client.config.get_default_model();
+			if (model == "") {
+				throw new GLib.IOError.FAILED("No default model configured for embeddings");
+			}
+			var embed_response = yield this.client.embed_array(model, documents);
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embeddings for file");
 			}

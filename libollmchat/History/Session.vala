@@ -48,12 +48,6 @@ namespace OLLMchat.History
 		private Message? current_stream_message = null;
 		private bool current_stream_is_thinking = false;
 		
-		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
-		// Computed property that returns chat.fid
-		public override string fid {
-			get { return this.chat.fid; }
-			set {}
-		}
 			
 		public override string display_info {
 			owned get {
@@ -93,6 +87,18 @@ namespace OLLMchat.History
 			if (this.refactor_permission_provider != null) {
 				this.chat.permission_provider = this.refactor_permission_provider;
 			}
+			
+			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+			// If chat has a fid, use it (for backward compatibility), otherwise generate new one
+			if (chat.fid != "") {
+				this.fid = chat.fid;
+			} else {
+				var now = new DateTime.now_local();
+				this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			}
+			
+			// Set agent handler when session is created (if agent_name is set)
+			// Agent will be set later if agent_name is set after construction
 		}
 		
 		/**
@@ -112,7 +118,7 @@ namespace OLLMchat.History
 				this.chat.think = new_chat.think;
 				this.chat.keep_alive = new_chat.keep_alive;
 				this.chat.options = new_chat.options;
-				this.chat.fid = new_chat.fid;
+				// Note: fid is no longer copied from chat - it's owned by Session
 				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
 			}
 			
@@ -138,7 +144,7 @@ namespace OLLMchat.History
 			
 			// Ensure session is tracked in Manager
 			if (!this.manager.sessions.contains(this)) {
-				this.manager.sessions.add(this);
+				this.manager.sessions.append(this);
 				this.manager.session_added(this);
 			}
 			
@@ -436,12 +442,11 @@ namespace OLLMchat.History
 			}
 			
 			// First message - use regular chat()
-			var response = yield this.client.chat(text, cancellable);
+			var response = yield this.client.chat(this.model, text, null, cancellable);
 			
 			// Store cancellable reference
-			if (response.call != null && response.call is Call.Chat) {
-				var chat = (Call.Chat) response.call;
-				chat.cancellable = cancellable;
+			if (response.call != null) {
+				response.call.cancellable = cancellable;
 			}
 			
 			return response;
@@ -468,6 +473,73 @@ namespace OLLMchat.History
 		{
 			if (this.chat.cancellable != null) {
 				this.chat.cancellable.cancel();
+			}
+		}
+		
+		/**
+		 * Ensures the agent handler is set on this session.
+		 * Creates the handler from agent_name if it doesn't exist.
+		 * 
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		private void ensure_agent_handler() throws Error
+		{
+			// If agent handler already exists, nothing to do
+			if (this.agent != null) {
+				return;
+			}
+			
+			// Get agent name (default to "just-ask" if not set)
+			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;
+			
+			// Get agent from manager
+			var base_agent = this.manager.agents.get(agent_name);
+			if (base_agent == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create handler from agent
+			var handler_obj = base_agent.create_handler(this.client, this);
+			if (handler_obj == null || !(handler_obj is Prompt.AgentHandler)) {
+				throw new OllamaError.INVALID_ARGUMENT("Failed to create handler for agent '%s'", agent_name);
+			}
+			
+			// Set agent handler on session
+			this.agent = (Prompt.AgentHandler) handler_obj;
+		}
+		
+		/**
+		 * Sends a Message object to this session.
+		 * 
+		 * This is the new method for sending messages. Adds Message to session history
+		 * and delegates to AgentHandler if message.role == "user".
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Add to session history
+			this.messages.add(message);
+			
+			// Emit message_added signal to notify UI (new flow: Session.send() → Manager.message_added() → UI)
+			// This is the explicit signal for the new flow, replacing the old add_message signal
+			this.manager.message_added(message, this);
+			
+			// If not user message, we're done
+			if (message.role != "user") {
+				return;
+			}
+			
+			// User message - ensure agent handler is set (create if needed)
+			this.ensure_agent_handler();
+			
+			// Session has reference to AgentHandler
+			if (this.agent != null) {
+				yield this.agent.send_async(message, cancellable);
+			} else {
+				throw new OllamaError.INVALID_ARGUMENT("No agent available for session");
 			}
 		}
 		

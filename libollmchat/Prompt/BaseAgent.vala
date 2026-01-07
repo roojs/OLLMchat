@@ -214,10 +214,12 @@ namespace OLLMchat.Prompt
 		/**
 		 * Generates the complete system prompt for the agent.
 		 * Default implementation returns empty string.
+		 * 
+		 * Made public so AgentHandler can call it directly.
 		 *
 		 * @return Complete system prompt string
 		 */
-		protected virtual string generate_system_prompt() throws GLib.Error
+		public virtual string generate_system_prompt() throws GLib.Error
 		{
 			return "";
 		}
@@ -249,6 +251,27 @@ namespace OLLMchat.Prompt
 		{
 			// Default implementation: no tools added
 			// Subclasses should override to add tools from Manager to Chat
+		}
+		
+		/**
+		 * Generates the system message for the agent.
+		 * 
+		 * TODO: Implement properly - should generate system prompt with current context.
+		 * For CodeAssistant, this should include open files, workspace, etc.
+		 * For simple agents, this can return empty string.
+		 * 
+		 * This method should not throw errors - if system message generation fails,
+		 * it should return empty string and the conversation will continue without a system message.
+		 * 
+		 * @param handler The AgentHandler instance (can access session, client, etc.)
+		 * @return System message content, or empty string if no system message needed
+		 */
+		public virtual string system_message(OLLMchat.Prompt.AgentHandler handler)
+		{
+			// Placeholder implementation - returns empty string
+			// Subclasses should override to generate system prompt with current context
+			// Should not throw errors - return empty string if generation fails
+			return "";
 		}
 	}
 }

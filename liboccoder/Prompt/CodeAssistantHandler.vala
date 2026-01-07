@@ -40,6 +40,62 @@ namespace OLLMcoder.Prompt
 		}
 		
 		/**
+		 * Sends a Message object asynchronously with streaming support.
+		 * 
+		 * For CodeAssistant, this regenerates the system prompt on each call
+		 * to include current context. Overrides base implementation to build
+		 * complex system prompt with current context.
+		 * 
+		 * @param message The message object to send (the user message that was just added to session)
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send_async(OLLMchat.Message message, GLib.Cancellable? cancellable = null) throws GLib.Error
+		{
+			// Build full message history from this.session
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			
+			// Build system prompt at this point in time with current context
+			// CodeAssistant regenerates system prompt on each call to include current context
+			// Use agent.system_message() to get system prompt with current context
+			// This regenerates the system prompt with current context (open files, workspace, etc.)
+			// Pass this handler so agent can access session, client, etc.
+			string system_content = this.agent.system_message(this);
+			if (system_content != "") {
+				messages.add(new OLLMchat.Message(this.chat, "system", system_content));
+			}
+			
+			// Filter and add messages from this.session.messages (full conversation history)
+			// Filter to get API-compatible messages (system, user, assistant, tool)
+			// Exclude non-API message types (user-sent, ui, etc.)
+			foreach (var msg in this.session.messages) {
+				// Filter: only include API-compatible message roles
+				if (msg.role == "system" || msg.role == "user" 
+					|| msg.role == "assistant" || msg.role == "tool") {
+					messages.add(msg);
+				}
+				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
+				// (these are for UI/persistence only)
+			}
+			
+			// Model and options should not be set here - this is too late in the flow and breaks the chain.
+			// They should be set when the chat is created in the constructor or when session properties change,
+			// not at the last step before sending a message. See 1.2.7 cleanup plan for decision on where
+			// model/options get set properly.
+			
+			// Update cancellable for this request
+			this.chat.cancellable = cancellable;
+			
+			// Send full message array using new send() method
+			var response = yield this.chat.send(messages, cancellable);
+			
+			// Process response and add assistant messages to session via session.send()
+			// This is handled via streaming callbacks/handlers - the response will be processed
+			// through the client's stream_chunk signal which is connected to handle_stream_chunk()
+			// The final assistant message will be added to session via on_stream_chunk() or similar
+		}
+		
+		/**
 		 * Sends a message asynchronously with streaming support.
 		 * 
 		 * For CodeAssistant, this regenerates the system prompt on each call

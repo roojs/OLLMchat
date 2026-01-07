@@ -45,6 +45,7 @@
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.get_widget.html">get_widget</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.get_working_directory.html">get_working_directory</a></li>
           <li class="method"><a href="OLLMchat.Prompt.BaseAgent.load_section.html">load_section</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.system_message.html">system_message</a></li>
           <li class="signal"><a href="OLLMchat.Prompt.BaseAgent.get_workspace_path.html">get_workspace_path</a></li>
         </ul>
       </div>
@@ -52,10 +53,11 @@
         <h1 class="main_title">generate_system_prompt</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">generate_system_prompt</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">generate_system_prompt</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Generates the complete system prompt for the agent. Default implementation returns empty string.</p>
+          <p>Made public so AgentHandler can call it directly.</p>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

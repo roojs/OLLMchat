@@ -52,14 +52,20 @@
         <h1 class="main_title">embed_array</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Embed.html" class="class">Embed</a></span> <b><span class="method">embed_array</span></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; input_array, <span class="main_basic_type"><span class="struct">int</span></span> dimensions = <span class="main_literal">-1</span>, <span class="main_basic_type"><span class="struct">bool</span></span> truncate = <span class="main_literal">false</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Embed.html" class="class">Embed</a></span> <b><span class="method">embed_array</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; input_array, <span class="main_basic_type"><span class="struct">int</span></span> dimensions = <span class="main_literal">-1</span>, <span class="main_basic_type"><span class="struct">bool</span></span> truncate = <span class="main_literal">false</span>, <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span>? options = <span class="main_literal">null</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Generates embeddings for an array of input texts.</p>
-          <p>Creates vector embeddings representing the input texts using the configured model. Returns a single Response.Embed object containing the 
+          <p>Creates vector embeddings representing the input texts using the specified model. Returns a single Response.Embed object containing the 
             embeddings and metadata.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">model</td>
+              <td>
+                <p>The model name to use for generating embeddings </p>
+              </td>
+            </tr>
             <tr>
               <td class="main_parameter_table_name">input_array</td>
               <td>
@@ -76,6 +82,12 @@
               <td class="main_parameter_table_name">truncate</td>
               <td>
                 <p>Optional whether to truncate inputs that exceed context window (default: false) </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">options</td>
+              <td>
+                <p>Optional Call.Options for the embed request </p>
               </td>
             </tr>
             <tr>

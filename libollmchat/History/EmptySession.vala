@@ -38,11 +38,6 @@ namespace OLLMchat.History
 			}
 		}
 		
-		public override string fid {
-			get { return ""; }
-			set { }
-		}
-		
 		public override string display_info {
 			owned get { return "New Chat"; }
 		}
@@ -56,6 +51,53 @@ namespace OLLMchat.History
 		public override async void read() throws Error
 		{
 			throw new GLib.IOError.NOT_SUPPORTED("EmptySession cannot be read from file");
+		}
+		
+		/**
+		 * Sends a Message object to this session.
+		 * 
+		 * Converts EmptySession to a real Session when a message is sent.
+		 * Creates a new Session, copies client properties, replaces this EmptySession
+		 * in the manager, and then calls send() on the new Session.
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Create client for new session, copying from EmptySession's client
+			// FIXME remove client later
+			var new_client = this.manager.new_client(this.client);
+			
+			// Update existing chat with new client instead of creating new chat
+			// FIXME remove client
+			this.client = new_client;
+			
+			// Convert EmptySession to real Session using updated chat
+			// FIXME - agent needs making ? sesison should get old agent, not old chat
+			var real_session = new Session(this.manager, this.chat) {
+				agent_name = this.agent_name,
+				updated_at_timestamp = (new DateTime.now_local()).to_unix()
+			};
+			
+			// Replace EmptySession with real Session in manager
+			this.manager.session = real_session;
+			
+			// Add session to manager.sessions and emit session_added signal immediately
+			// This ensures the history widget updates right away
+			GLib.debug("[EmptySession.send] Converting to Session: fid=%s, agent=%s, model=%s", 
+				real_session.fid, real_session.agent_name, chat.model);
+			this.manager.sessions.append(real_session);
+			// FIXME - is this needed now?
+			this.manager.session_added(real_session);
+			GLib.debug("[EmptySession.send] Session added to manager.sessions and session_added emitted");
+			
+			real_session.activate();
+			this.manager.session_activated(real_session);
+			
+			// Now call send() on the real session
+			yield real_session.send(message, cancellable);
 		}
 		
 		/**
@@ -85,7 +127,8 @@ namespace OLLMchat.History
 			// This ensures the history widget updates right away
 			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
 				real_session.fid, real_session.agent_name, chat.model);
-			this.manager.sessions.add(real_session);
+			this.manager.sessions.append(real_session);
+			// FIXME = might not be needed as sesison list gets updated by store
 			this.manager.session_added(real_session);
 			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");
 			

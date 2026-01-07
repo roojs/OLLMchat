@@ -46,14 +46,7 @@ namespace OLLMchat.History
 	public class Manager : Object
 	{
 		public string history_dir { get; private set; }
-		public Gee.ArrayList<SessionBase> sessions { 
-			get; 
-			private set; 
-			default = new Gee.ArrayList<SessionBase>((a, b) => {
-				return a.id == b.id;
-				 
-			});
-		}
+		public SessionList sessions {  get;  private set;  default = new SessionList(); }
 		public SQ.Database db { get; private set; }
 		public TitleGenerator title_generator { get; private set; }
 		public Client base_client { get; private set; }
@@ -90,7 +83,22 @@ namespace OLLMchat.History
 		public signal void stream_content(string new_text, Response.Chat response);
 		public signal void stream_start();
 		public signal void tool_message(OLLMchat.Message message);
-		public signal void add_message(Message m, SessionBase? session);
+		// Old implementation - to be removed in Phase 6
+		
+		public signal void add_message(Message m, SessionBase? session);  
+		/**
+		 * Emitted when a new message is added to a session.
+		 * 
+		 * This is the signal for the new flow (Phase 3+):
+		 * - Session.send() adds message to session and emits this signal
+		 * - UI connects to this signal to update the display
+		 * 
+		 * Replaces the old `add_message` signal which will be removed in Phase 6.
+		 * 
+		 * @param message The message that was added
+		 * @param session The session the message was added to (may be null for messages not yet associated with a session)
+		 */
+		public signal void message_added(Message message, SessionBase? session);
 		
 		 
 		/**
@@ -299,11 +307,8 @@ namespace OLLMchat.History
 			var session = new Session(this, call);
 			session.model = model;  // Store model on session
 			session.agent_name = agent_name;
-			this.sessions.add(session);
+			this.sessions.append(session);
 			this.session_added(session);
-			
-			// When the first chat is created, it will have a fid and will be tracked
-			// via on_chat_send handler which will update sessions_by_fid
 			
 			return session;
 		}
@@ -328,7 +333,7 @@ namespace OLLMchat.History
 		 */
 		public void load_sessions()
 		{
-			this.sessions.clear();
+			this.sessions.remove_all();
 			
 			// Prepare property names and values for Object.new_with_properties
 			// We pass manager so SessionPlaceholder can access it during construction
@@ -343,9 +348,33 @@ namespace OLLMchat.History
 			
 			// Add placeholders to sessions list and set manager
 			foreach (var placeholder in placeholder_list) {
-				this.sessions.add(placeholder);
+				this.sessions.append(placeholder);
 			}
 		}
+		
+		/**
+		 * Sends a message to a session identified by fid.
+		 * 
+		 * This is the new entry point for UI to send messages. UI creates Message objects
+		 * and calls this method, which routes to session.send().
+		 * 
+		 * @param fid The session identifier (file ID)
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if session not found or send fails
+		 */
+		public async void send(string fid, Message message, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Find session by fid using SessionList fid_map lookup
+			var session = this.sessions.get_by_fid(fid);
+			if (session == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Session with fid '%s' not found", fid);
+			}
+			
+			// Delegate to session
+			yield session.send(message, cancellable);
+		}
+		
 		
 	}
 }

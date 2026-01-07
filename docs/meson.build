@@ -129,6 +129,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Prompt/JustAsk.vala',
     '../libollmchat/History/namespace.vala',  # History namespace documentation
     '../libollmchat/History/Manager.vala',
+    '../libollmchat/History/SessionList.vala',  # Must come after Manager (Manager uses SessionList)
     '../libollmchat/History/SessionBase.vala',
     '../libollmchat/History/Session.vala',
     '../libollmchat/History/EmptySession.vala',

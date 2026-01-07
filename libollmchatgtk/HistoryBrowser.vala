@@ -29,7 +29,6 @@ namespace OLLMchatGtk
 	public class HistoryBrowser : Gtk.Box
 	{
 		private OLLMchat.History.Manager manager;
-		private GLib.ListStore session_store;
 		private Gtk.SortListModel sorted_store;
 		private Gtk.ListView list_view;
 		private Gtk.ScrolledWindow scrolled_window;
@@ -62,14 +61,9 @@ namespace OLLMchatGtk
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			this.manager = manager;
 			
-			// Create ListStore for SessionBase objects (Session or SessionPlaceholder)
-			this.session_store = new GLib.ListStore(typeof(OLLMchat.History.SessionBase));
-			
-			// Create CustomSorter that sorts by updated_at_timestamp DESC (most recent first)
-		 
-			
-			// Create SortListModel that wraps the session_store and sorts by updated_at_timestamp DESC
-			this.sorted_store = new Gtk.SortListModel(this.session_store,
+			// Use manager.sessions directly as ListModel (SessionList implements GLib.ListModel)
+			// Create SortListModel that wraps manager.sessions and sorts by updated_at_timestamp DESC
+			this.sorted_store = new Gtk.SortListModel(this.manager.sessions,
 				new Gtk.CustomSorter((a, b) => {
 					var aa = a as OLLMchat.History.SessionBase;
 					var bb = b as OLLMchat.History.SessionBase;
@@ -124,10 +118,12 @@ namespace OLLMchatGtk
 			// Add ScrolledWindow to this Box
 			this.append(this.scrolled_window);
 			
-			// Connect to Manager's session_added signal
+			// Connect to Manager's session_added signal (for selection/scrolling)
+			// FIXME  we can listen to the store now
 			this.manager.session_added.connect(this.on_session_added);
 			
-			// Connect to Manager's session_replaced signal
+			// Connect to Manager's session_replaced signal (for maintaining selection)
+			// FIXME - can we listen to the store now?
 			this.manager.session_replaced.connect(this.on_session_replaced);
 			
 			// Load sessions asynchronously
@@ -231,15 +227,11 @@ namespace OLLMchatGtk
 			
 			// Use Idle to defer loading to avoid blocking UI
 			Idle.add(() => {
-				// Load sessions from database
+				// Load sessions from database (populates manager.sessions directly)
 				this.manager.load_sessions();
 				
-				// Add all sessions to ListStore (Session and SessionPlaceholder, but not EmptySession)
-				foreach (var session in this.manager.sessions) {
-					// Exclude EmptySession from the list
-					this.session_store.append(session);
-					
-				}
+				// Sessions are now in manager.sessions, which is used directly by the ListView
+				// No need to copy - SessionList implements ListModel
 				
 				callback();
 				return false;
@@ -251,22 +243,17 @@ namespace OLLMchatGtk
 		/**
 		 * Handler for Manager's session_added signal.
 		 * 
+		 * Called when a new session is added to manager.sessions.
+		 * Since we're using manager.sessions directly, the ListView will automatically update.
+		 * We just need to select the new session and scroll to top.
+		 * 
 		 * @param session The session that was added
 		 */
 		private void on_session_added(OLLMchat.History.SessionBase session)
 		{
-			this.session_store.insert(0, session);
-			// EmptySession is never added to manager.sessions, so we don't need to filter it
-			// Use Idle to defer adding to listview, giving time for title to be set
+			// Use Idle to defer selection, giving time for title to be set
 			Idle.add(() => {
-				// Insert at beginning (most recent first)
-				
-				
-				// Find position in sorted_store (should be 0 since it's the most recent)
-			 
-				 
-				
-				// Set selection to the new session and scroll to top
+				// Set selection to the new session (should be at position 0 after sorting)
 				this.changing_selection = true;
 				var selection = this.list_view.model as Gtk.SingleSelection;
 				selection.selected = 0;
@@ -277,30 +264,28 @@ namespace OLLMchatGtk
 				this.changing_selection = false;
 				return false;
 			});
-			
 		}
 		
 		/**
 		 * Handler for Manager's session_replaced signal.
+		 * 
+		 * Called when a session is replaced in manager.sessions.
+		 * Since we're using manager.sessions directly, the ListView will automatically update.
+		 * We just need to maintain the current selection.
 		 * 
 		 * @param index The index in manager.sessions where the replacement occurred
 		 * @param session The new session that replaced the old one
 		 */
 		private void on_session_replaced(int index, OLLMchat.History.SessionBase session)
 		{
-			// Save the currently selected session ID before replacing
-			 
-			
 			// Set flag to prevent selection_changed from firing
 			this.changing_selection = true;
-			var position = (this.list_view.model as Gtk.SingleSelection).selected;
+			var selection = this.list_view.model as Gtk.SingleSelection;
+			var position = selection.selected;
 
-			// Replace the session in the store
-			this.session_store.remove(index);
-			this.session_store.insert(index, session);
-			 
-			(this.list_view.model as Gtk.SingleSelection).selected = position;
-					 
+			// Selection is maintained automatically since the item at the same index was replaced
+			// The sorted_store will update automatically via ListModel signals
+			
 			// Clear the flag
 			this.changing_selection = false;
 		}

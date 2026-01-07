@@ -184,7 +184,11 @@ namespace OLLMvector.Search
 			
 			// Step 2: Query vectorization (convert text to embeddings)
 			GLib.debug("Vectorizing query: %s", normalized_query);
-			var embed_response = yield this.embedding_client.embed(normalized_query);
+			var model = this.embedding_client.config.get_default_model();
+			if (model == "") {
+				throw new GLib.IOError.FAILED("No default model configured for embeddings");
+			}
+			var embed_response = yield this.embedding_client.embed(model, normalized_query);
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embedding");
 			}

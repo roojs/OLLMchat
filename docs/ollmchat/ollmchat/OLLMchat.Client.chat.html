@@ -52,7 +52,7 @@
         <h1 class="main_title">chat</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><span class="method">chat</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><span class="method">chat</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model, <span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span>? options = <span class="main_literal">null</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Legacy chat method for backward compatibility.</p>
@@ -61,15 +61,27 @@
           <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
             <div class="main_block_content">
               <p>This method does NOT handle system messages - that's the agent's job. This is a minimal implementation for backward compatibility 
-                only. Requires model to be available via Config2.get_default_model() or will throw an error. </p>
+                only. </p>
             </div>
           </div>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
+              <td class="main_parameter_table_name">model</td>
+              <td>
+                <p>The model name to use for the chat </p>
+              </td>
+            </tr>
+            <tr>
               <td class="main_parameter_table_name">text</td>
               <td>
                 <p>The user's input text </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">options</td>
+              <td>
+                <p>Optional Call.Options for the chat request </p>
               </td>
             </tr>
             <tr>

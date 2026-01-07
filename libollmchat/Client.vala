@@ -185,13 +185,9 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model parameter.");
 			}
-			
-			if (options == null) {
-				options = new Call.Options();
-			}
-			
+			var send_opts = options == null ? new Call.Options() : options; 
 			// Create chat call with defaults (Phase 3: no Client properties)
-			var call = new Call.Chat(this.connection, model, options) {
+			var call = new Call.Chat(this.connection, model, send_opts) {
 				cancellable = cancellable,
 				stream = true,  // Default to non-streaming for legacy method
 				think = true
@@ -371,12 +367,8 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model parameter.");
 			}
-			
-			if (options == null) {
-				options = new Call.Options();
-			}
-			
-			var call = new Call.Embed(this.connection, model, options) {
+			var send_opts = options == null ? new Call.Options() : options;
+			var call = new Call.Embed(this.connection, model, send_opts) {
 				cancellable = cancellable,
 				input = input,
 				dimensions = dimensions,
@@ -415,12 +407,8 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model parameter.");
 			}
-			
-			if (options == null) {
-				options = new Call.Options();
-			}
-			
-			var call = new Call.Embed(this.connection, model, options) {
+			var send_opts = options == null ? new Call.Options() : options;
+			var call = new Call.Embed(this.connection, model, send_opts) {
 				cancellable = cancellable,
 				input_array = input_array,
 				dimensions = dimensions,
@@ -457,11 +445,7 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model parameter.");
 			}
-			
-			if (options == null) {
-				options = new Call.Options();
-			}
-			
+			var send_opts = options == null ? new Call.Options() : options;
 			var call = new Call.Generate(this.connection) {
 				cancellable = cancellable,
 				prompt = prompt,
@@ -469,7 +453,7 @@ namespace OLLMchat
 				model = model,
 				stream = false,
 				think = false,
-				options = options
+				options = send_opts
 			};
 			
 			var result = yield call.exec_generate();

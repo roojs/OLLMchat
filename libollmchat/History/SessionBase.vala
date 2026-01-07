@@ -132,8 +132,14 @@ namespace OLLMchat.History
 		protected ulong stream_start_id = 0;
 		protected ulong tool_message_id = 0;
 		
+		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
+		// Owned by Session, not Chat
+		public string fid { get; protected set; }
+		
+		// Agent handler reference - set when session is created or AgentHandler is changed
+		public OLLMchat.Prompt.AgentHandler? agent { get; set; }
+		
 		// Abstract properties that depend on chat
-		public abstract string fid { get; set; }
 		public abstract string display_info { owned get; }
 		
 		/**
@@ -371,6 +377,18 @@ namespace OLLMchat.History
 		 * @throws Error if the request fails
 		 */
 		public abstract async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error;
+		
+		/**
+		 * Sends a Message object to this session.
+		 * 
+		 * This is the new method for sending messages. Adds Message to session history
+		 * and delegates to AgentHandler if message.role == "user".
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public abstract async void send(Message message, GLib.Cancellable? cancellable = null) throws Error;
 		
 		/**
 		 * Cancels the current request if one is active.

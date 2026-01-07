@@ -70,6 +70,7 @@ ollmchat_ollama_src = files([
   'ChatPermission/Provider.vala',
   'ChatPermission/Dummy.vala',
   'History/Manager.vala',
+  'History/SessionList.vala',
   'History/SessionBase.vala',
   'History/Session.vala',
   'History/EmptySession.vala',

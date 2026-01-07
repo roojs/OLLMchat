@@ -52,7 +52,7 @@
         <h1 class="main_title">generate</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Generate.html" class="class">Generate</a></span> <b><span class="method">generate</span></b> (<span class="main_basic_type"><span class="class">string</span></span> prompt, <span class="main_basic_type"><span class="class">string</span></span> system = <span class="main_literal">""</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Generate.html" class="class">Generate</a></span> <b><span class="method">generate</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model, <span class="main_basic_type"><span class="class">string</span></span> prompt, <span class="main_basic_type"><span class="class">string</span></span> system = <span class="main_literal">""</span>, <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span>? options = <span class="main_literal">null</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Generates a response for the provided prompt.</p>
@@ -60,6 +60,12 @@
             response scenarios.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">model</td>
+              <td>
+                <p>The model name to use for generation </p>
+              </td>
+            </tr>
             <tr>
               <td class="main_parameter_table_name">prompt</td>
               <td>
@@ -70,6 +76,12 @@
               <td class="main_parameter_table_name">system</td>
               <td>
                 <p>Optional system prompt </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">options</td>
+              <td>
+                <p>Optional Call.Options for the generate request </p>
               </td>
             </tr>
             <tr>

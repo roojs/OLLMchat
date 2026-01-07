@@ -96,8 +96,24 @@ namespace OLLMchat.Call
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
 		// Session ID field to track which history session this chat belongs to
-		// Generated in constructor - will always be set
-		public string fid = "";
+		// Delegates to chat.agent.session.fid when agent is set, otherwise uses generated fallback
+		// Phase 2: fid ownership moved to Session, but Chat.fid kept for backward compatibility
+		// TODO: Remove in Phase 6 cleanup
+		private string _fid_refactor = "";
+		public string fid {
+			get {
+				// If agent is set and has a session, delegate to session.fid
+				if (this.agent != null && this.agent.session != null) {
+					return this.agent.session.fid;
+				}
+				// Otherwise use generated fallback value
+				return _fid_refactor;
+			}
+			set {
+				// Store in fallback (used when agent is not set)
+				_fid_refactor = value;
+			}
+		}
 		
 		public Chat(Settings.Connection connection, string model, Call.Options? options = null)
 		{
@@ -108,9 +124,10 @@ namespace OLLMchat.Call
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
 			this.model = model;
-			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+			// Generate fid fallback from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+			// This is used when agent is not set (for backward compatibility)
 			var now = new DateTime.now_local();
-			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			this._fid_refactor = now.format("%Y-%m-%d-%H-%M-%S");
 			
 			// Load model options from config if options not provided
 			if (options != null) {
@@ -433,6 +450,48 @@ namespace OLLMchat.Call
 		}
 
 		
+		/**
+		 * Sends messages to the chat API.
+		 * 
+		 * Takes messages array as argument and resets all state when called.
+		 * This method is independent from exec_chat() and has its own complete implementation.
+		 * 
+		 * @param messages The messages array to send
+		 * @param cancellable Optional cancellation token
+		 * @return The Response from executing the chat call
+		 */
+		public async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
+		{
+			if (messages.size == 0) {
+				throw new OllamaError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
+			}
+			
+			// Reset state
+			this.streaming_response = null;
+			this.cancellable = cancellable;
+			
+			// Store provided messages in this.messages (for serialization/access)
+			this.messages = messages;
+			
+			// Debug: output messages being sent
+			GLib.debug("Chat.send: Sending %d message(s):", this.messages.size);
+			for (int i = 0; i < this.messages.size; i++) {
+				var msg = this.messages[i];
+				GLib.debug("  Message %d: role='%s', content='%s'%s", 
+					i + 1, 
+					msg.role, 
+					msg.content,
+					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
+			}
+			
+			// Execute with streaming or non-streaming (duplicate logic from exec_chat, do NOT call exec_chat)
+			if (this.stream) {
+				return yield this.execute_streaming();
+			}
+			
+			return yield this.execute_non_streaming();
+		}
+
 		/**
 		 * Executes the chat request.
 		 * 

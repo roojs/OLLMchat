@@ -78,7 +78,7 @@ namespace OLLMchat.History
 					"Respond with ONLY the title, no explanation or quotes.";
 				
 				// Use generate API to get title
-				var response = yield this.client.generate(prompt);
+				var response = yield this.client.generate(model, prompt);
 				
 				// Extract and clean the title
 				var title = response.response.strip();
