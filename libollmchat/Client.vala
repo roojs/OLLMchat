@@ -199,6 +199,12 @@ namespace OLLMchat
 		 */
 		public uint timeout { get; set; default = 300; }
 
+		/**
+		 * Optional ConnectionModels instance for looking up model information.
+		 * Set by Manager when creating clients. Temporary solution until Client is removed.
+		 */
+		public Settings.ConnectionModels? connection_models { get; set; default = null; }
+
 		public Client(Settings.Connection connection)
 		{
 			this.connection = connection;
@@ -289,7 +295,6 @@ namespace OLLMchat
 		*/
 		public void addTool(Tool.BaseTool tool)
 		{
-			// Ensure tools HashMap is initialized
 			tool.client = this;
 			this.tools.set(tool.name,  tool);
 		}

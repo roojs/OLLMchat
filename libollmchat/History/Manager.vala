@@ -136,6 +136,7 @@ namespace OLLMchat.History
 			this.base_client.stream = true;
 			this.base_client.keep_alive = "5m";
 			this.base_client.prompt_assistant = new Prompt.JustAsk();
+			this.base_client.connection_models = this.connection_models;
 
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
@@ -193,6 +194,9 @@ namespace OLLMchat.History
 			foreach (var entry in source.available_models.entries) {
 				client.available_models.set(entry.key, entry.value);
 			}
+			
+			// Set connection_models reference (shared instance from Manager)
+			client.connection_models = this.connection_models;
 			
 			// Reuse the same tools, just set the client to the new value (leave active the same)
 			foreach (var tool in source.tools.values) {

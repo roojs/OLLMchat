@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.Client.keep_alive &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.Client.connection_models &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.Client.keep_alive &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.Client.connection_models &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -30,9 +30,9 @@
           <li class="property"><a href="OLLMchat.Client.available_models.html">available_models</a></li>
           <li class="property"><a href="OLLMchat.Client.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.Client.connection.html">connection</a></li>
-          <li class="property"><a href="OLLMchat.Client.connection_models.html">connection_models</a></li>
+          <li class="property">connection_models</li>
           <li class="property"><a href="OLLMchat.Client.format.html">format</a></li>
-          <li class="property">keep_alive</li>
+          <li class="property"><a href="OLLMchat.Client.keep_alive.html">keep_alive</a></li>
           <li class="property"><a href="OLLMchat.Client.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.Client.options.html">options</a></li>
           <li class="property"><a href="OLLMchat.Client.permission_provider.html">permission_provider</a></li>
@@ -63,17 +63,14 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">keep_alive</h1>
+        <h1 class="main_title">connection_models</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><span class="property">keep_alive</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.ConnectionModels.html" class="class">ConnectionModels</a></span>? <b><span class="property">connection_models</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Model keep-alive duration.</p>
-          <p>Controls how long the model stays loaded in memory after use. Can be a duration string (e.g., "5m", "10s") or a number in seconds. Set to
-            "0" to unload immediately after use. See the Ollama API documentation for details.</p>
-          <h2 class="main_title">Since:</h2>
-          <p>1.0</p>
+          <p>Optional ConnectionModels instance for looking up model information. Set by Manager when creating clients. Temporary solution until 
+            Client is removed.</p>
         </div>
       </div>
     </div><br/>
