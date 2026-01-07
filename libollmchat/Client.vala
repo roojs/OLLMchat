@@ -186,6 +186,7 @@ namespace OLLMchat
 			}
 			
 			// Create chat call with defaults (Phase 3: no Client properties)
+			// TODO (1.2.7): Consider adding options from config if available (similar to embed() and generate())
 			var call = new Call.Chat(this.connection, model) {
 				cancellable = cancellable,
 				stream = true,  // Default to non-streaming for legacy method

@@ -174,6 +174,7 @@ namespace OLLMchat.Prompt
 			// User-sent message with original text (preserved before prompt engine modification)
 			// message_created signal emission removed - callers handle state directly when creating messages
 			var user_sent_msg = new OLLMchat.Message(call, "user-sent", user_input);
+			this.session.add_message(user_sent_msg);
 			
 			// Prepare messages array for API request (required by exec_chat())
 			// Base handler does NOT add system messages - specialized handlers can override

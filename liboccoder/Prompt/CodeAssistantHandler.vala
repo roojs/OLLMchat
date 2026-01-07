@@ -87,11 +87,13 @@ namespace OLLMcoder.Prompt
 			if (call.system_content != "") {
 				// message_created signal emission removed - callers handle state directly when creating messages
 				var system_msg = new OLLMchat.Message(call, "system", call.system_content);
+				this.session.add_message(system_msg);
 			}
 			
 			// User-sent message with original text (preserved before prompt engine modification)
 			// message_created signal emission removed - callers handle state directly when creating messages
 			var user_sent_msg = new OLLMchat.Message(call, "user-sent", user_input);
+			this.session.add_message(user_sent_msg);
 			
 			// Prepare messages array for API request (required by exec_chat())
 			// System message first (if system_content is set)
