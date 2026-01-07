@@ -86,7 +86,7 @@ namespace OLLMchat.History
 			base(manager);
 			// Replace base chat with provided chat
 			this.chat = chat;
-			this.client = chat.client;
+			// Note: client is set from manager, not from chat (Phase 3: Chat no longer has client)
 			// Store model from chat (Phase 3: model stored on Session, not Client)
 			this.model = chat.model;
 			// Set permission_provider on Chat if Session has one
@@ -113,7 +113,7 @@ namespace OLLMchat.History
 				this.chat.keep_alive = new_chat.keep_alive;
 				this.chat.options = new_chat.options;
 				this.chat.fid = new_chat.fid;
-				this.client = new_chat.client;
+				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
 			}
 			
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history

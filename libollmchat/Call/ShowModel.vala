@@ -29,9 +29,9 @@ namespace OLLMchat.Call
 		public string model { get; set; default = ""; }
 		public bool verbose { get; set; default = false; }
 
-		public ShowModel(Client client, string model_name) throws OllamaError
+		public ShowModel(Settings.Connection connection, string model_name) throws OllamaError
 		{
-			base(client);
+			base(connection);
 			if (model_name == "") {
 				throw new OllamaError.FAILED("Model name cannot be empty");
 			}
@@ -61,7 +61,7 @@ namespace OLLMchat.Call
 				model_obj.name = this.model;
 			}
 			GLib.debug("show_model '%s' - parameters: '%s'", this.model, model_obj.parameters ?? "(null)");
-			model_obj.client = this.client;
+			// Note: client no longer set on response objects
 			return model_obj;
 		}
 	}

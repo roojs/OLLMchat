@@ -152,7 +152,7 @@ namespace OLLMchat.Prompt
 			}
 			
 			// Create and prepare Chat object with real properties (Phase 3: use defaults, no Client properties)
-			var call = new OLLMchat.Call.Chat(this.client, model) {
+			var call = new OLLMchat.Call.Chat(this.client.connection, model) {
 				cancellable = cancellable,
 				stream = true,  // Default to streaming
 				think = true,    // Default to thinking

@@ -32,13 +32,12 @@ namespace OLLMchat
 	 */
 	public class OllamaBase : Object, Json.Serializable
 	{
-		public Client? client { get; protected set; }
-		public Settings.Connection connection; // future base property.
+		public Settings.Connection? connection { get; protected set; }
 		public string chat_content { get; set; default = ""; }
 
-		protected OllamaBase(Client? client = null)
+		protected OllamaBase(Settings.Connection? connection = null)
 		{
-			this.client = client;
+			this.connection = connection;
 		}
 
 		public unowned ParamSpec? find_property(string name)
@@ -60,8 +59,8 @@ namespace OLLMchat
 
 		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			// Block client from serialization - it's an internal reference, not API data
-			if (property_name == "client") {
+			// Block connection from serialization - it's an internal reference, not API data
+			if (property_name == "connection") {
 				return null;
 			}
 			return default_serialize_property(property_name, value, pspec);

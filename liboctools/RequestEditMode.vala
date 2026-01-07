@@ -157,14 +157,15 @@ namespace OLLMtools
 			
 			// Connect to stream_chunk signal to capture code blocks as they stream in
 			// Replaces stream_content signal - use is_thinking check to filter out thinking content
-			if (this.chat_call.stream) {
-				this.stream_content_id = this.chat_call.client.stream_chunk.connect((new_text, is_thinking, response) => {
+			// Tools access Client via tool.client (BaseTool has client property)
+			if (this.chat_call.stream && this.tool.client != null) {
+				this.stream_content_id = this.tool.client.stream_chunk.connect((new_text, is_thinking, response) => {
 					// Only process non-thinking content (replaces stream_content signal)
 					if (is_thinking) {
 						return;
 					}
 					// Check if this request is still valid before processing
-					if (this.chat_call == null || this.chat_call.client == null) {
+					if (this.chat_call == null || this.tool.client == null) {
 						return;
 					}
 					// Only process if this response belongs to our chat_call
@@ -206,19 +207,19 @@ namespace OLLMtools
 		 */
 		public void disconnect_signals()
 		{
-			if (this.chat_call == null || this.chat_call.client == null) {
+			if (this.chat_call == null || this.tool.client == null) {
 				return;
 			}
 			
 			// Disconnect stream_chunk signal (replaces stream_content)
-			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.chat_call.client, this.stream_content_id)) {
-				this.chat_call.client.disconnect(this.stream_content_id);
+			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.tool.client, this.stream_content_id)) {
+				this.tool.client.disconnect(this.stream_content_id);
 			}
 			this.stream_content_id = 0;
 			
 			// Disconnect message_created signal
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.chat_call.client, this.message_created_id)) {
-				this.chat_call.client.disconnect(this.message_created_id);
+			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.tool.client, this.message_created_id)) {
+				this.tool.client.disconnect(this.message_created_id);
 			}
 			this.message_created_id = 0;
 			
@@ -233,7 +234,7 @@ namespace OLLMtools
 		public void process_streaming_content(string new_text)
 		{
 			// Check if request is still valid
-			if (this.chat_call == null || this.chat_call.client == null) {
+			if (this.chat_call == null) {
 				return;
 			}
 			
@@ -409,8 +410,8 @@ namespace OLLMtools
 		private async void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
 			// Check if request is still valid
-			if (this.chat_call == null || this.chat_call.client == null) {
-				GLib.debug("RequestEditMode.on_message_created: chat_call/client is null, skipping (file=%s)", 
+			if (this.chat_call == null) {
+				GLib.debug("RequestEditMode.on_message_created: chat_call is null, skipping (file=%s)", 
 					this.normalized_path);
 				return;
 			}
@@ -433,11 +434,6 @@ namespace OLLMtools
 			}
 			
 			var response = content_interface as OLLMchat.Response.Chat;
-			
-			// Double-check chat_call is still valid before accessing client
-			if (this.chat_call == null || this.chat_call.client == null) {
-				return;
-			}
 			
 			GLib.debug("RequestEditMode.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
 				this.normalized_path, this.changes.size);

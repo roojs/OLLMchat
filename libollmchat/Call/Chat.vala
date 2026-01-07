@@ -99,9 +99,9 @@ namespace OLLMchat.Call
 		// Generated in constructor - will always be set
 		public string fid = "";
 		
-		public Chat(Client client, string model, Call.Options? options = null)
+		public Chat(Settings.Connection connection, string model, Call.Options? options = null)
 		{
-			base(client);
+			base(connection);
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
@@ -117,10 +117,8 @@ namespace OLLMchat.Call
 				this.options = options;
 				return;
 			} 
-			if (this.client.config.model_options.has_key(model)) {
-				this.options = this.client.config.model_options.get(model);
-				return;
-			} 
+			// Note: When using connection directly, config is not available
+			// Caller should provide options if needed
 			this.options = new Call.Options();
 			
 		}
@@ -141,7 +139,7 @@ namespace OLLMchat.Call
 				this.tools = new Gee.HashMap<string, Tool.BaseTool>();
 			}
 			// Ensure tools HashMap is initialized
-			tool.client = this.client;
+			// Note: tool.client is no longer set (tools use connection directly)
 			this.tools.set(tool.name, tool);
 		}
 		// this is only called by response - not by the user
@@ -168,10 +166,7 @@ namespace OLLMchat.Call
 					if (this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.model) 
-						|| !this.client.available_models.get(this.model).can_call) {
-						return null;
-					}
+					// Note: available_models check removed - tools are always serialized if present
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();
@@ -483,8 +478,7 @@ namespace OLLMchat.Call
 				throw new OllamaError.FAILED("Invalid JSON response");
 			}
 
-			// Emit stream_start signal when response is received (non-streaming)
-			this.client.stream_start();
+			// Note: stream_start signal removed - handled by caller if needed
 
 			var generator = new Json.Generator();
 			generator.set_root(root);
@@ -494,7 +488,7 @@ namespace OLLMchat.Call
 				throw new OllamaError.FAILED("Failed to parse response");
 			}
 
-			response_obj.client = this.client;
+			// Note: client no longer set on response objects
 			response_obj.call = this;
 			response_obj.done = true; // Non-streaming responses are always done
 			
@@ -533,13 +527,13 @@ namespace OLLMchat.Call
 			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.client, this);
+				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.client.connection.soup_message(this.http_method, url, request_body);
+			var message = this.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Request URL: %s", url);
 			GLib.debug("Request Body: %s", request_body);
@@ -587,14 +581,11 @@ namespace OLLMchat.Call
 		{
 			// Ensure streaming_response exists (should be initialized in execute_streaming, but double-check)
 			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.client, this);
+				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
 
-			// Emit stream_start signal on first chunk (when message is null, this is the first chunk)
-			if (response.message == null) {
-				this.client.stream_start();
-			}
+			// Note: stream_start signal removed - handled by caller if needed
 
 			// Process chunk
 			response.addChunk(chunk);
@@ -609,12 +600,7 @@ namespace OLLMchat.Call
 				!response.done) {
 				return;
 			}
-			this.client.stream_chunk(
-					response.new_thinking.length > 0 ? response.new_thinking : 
-						(response.new_content.length > 0 ? response.new_content : ""), 
-					response.new_thinking.length > 0 ? true : 
-						(response.new_content.length > 0 ? false : response.is_thinking),
-					response);
+			// Note: stream_chunk signal removed - handled by caller if needed
 		}
 	}
 }

@@ -33,52 +33,50 @@ namespace OLLMchat.Call
 		public GLib.Cancellable? cancellable { get; set; default = null; }
 		public Response.Base? streaming_response { get; set; default = null; }
 
-		protected Base(Client? client) 
-		{
-			base(client);
+	protected Base(Settings.Connection? connection = null)
+	{
+		base(connection);
+	}
+
+	protected string build_url()
+	{
+		if (this.connection == null) {
+			return "";
+		}
+		var base_url = this.connection.url;
+		if (!base_url.has_suffix("/")) {
+			base_url += "/";
+		}
+		return base_url + this.url_endpoint;
+	}
+
+	protected async Bytes send_request(bool needs_body) throws Error
+	{
+		if (this.connection == null) {
+			throw new OllamaError.INVALID_ARGUMENT("Connection is null");
 		}
 
-		protected string build_url()
-		{
-			if (this.client == null) {
-				return "";
-			}
-			var base_url = this.client.connection.url;
-			if (!base_url.has_suffix("/")) {
-				base_url += "/";
-			}
-			return base_url + this.url_endpoint;
+		var url = this.build_url();
+		
+		// Soup is initialized when Connection is created, never null
+		// Timeout is already set on soup (via connection.timeout property)
+		
+		var message = this.connection.soup_message(this.http_method, url);
+
+		if (needs_body && this.http_method == "POST") {
+			this.set_request_body(message);
 		}
 
-		protected async Bytes send_request(bool needs_body) throws Error
-		{
-			if (this.client == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Client is null");
-			}
+		GLib.debug("Request URL: %s", url);
 
-			var url = this.build_url();
-			if (this.client.session == null) {
-				this.client.session = new Soup.Session();
-			}
-			// Set/update timeout for long-running LLM requests
-			this.client.session.timeout = this.client.timeout;
-			
-			var message = this.client.connection.soup_message(this.http_method, url);
+		var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 
-			if (needs_body && this.http_method == "POST") {
-				this.set_request_body(message);
-			}
-
-			GLib.debug("Request URL: %s", url);
-
-			var bytes = yield this.client.session.send_and_read_async(message, GLib.Priority.DEFAULT, null);
-
-			if (message.status_code != 200) {
-				throw new OllamaError.FAILED(@"HTTP error: $(message.status_code)");
-			}
-
-			return bytes;
+		if (message.status_code != 200) {
+			throw new OllamaError.FAILED(@"HTTP error: $(message.status_code)");
 		}
+
+		return bytes;
+	}
 
 		protected string get_request_body()
 		{
@@ -92,7 +90,7 @@ namespace OLLMchat.Call
 		{
 			switch (property_name) {
 				case "chat-content":
-				case "client":
+				case "connection":
 				case "cancellable":
 				case "streaming-response":
 					// Exclude these properties from serialization
@@ -115,16 +113,12 @@ namespace OLLMchat.Call
 	{
 		// Use send_async() to get InputStream for true streaming
 		// In Vala's libsoup-3.0 bindings, send_async() is already async and returns InputStream directly
-		// Reuse client's session to maintain TCP connection
+		// Soup is initialized when Connection is created, never null
+		// Timeout is already set on soup (via connection.timeout property)
 		
-		if (this.client.session == null) {
-			this.client.session = new Soup.Session();
-		}
-		// Set/update timeout for long-running LLM requests
-		this.client.session.timeout = this.client.timeout;
 		InputStream? input_stream = null;
 		try {
-			input_stream = yield this.client.session.send_async(
+			input_stream = yield this.connection.soup.send_async(
 					message, GLib.Priority.DEFAULT, this.cancellable);
 		} catch (GLib.IOError e) {
 			if (e.code == GLib.IOError.CANCELLED) {
@@ -286,7 +280,6 @@ namespace OLLMchat.Call
 				if (item_obj == null) {
 					continue;
 				}
-				item_obj.client = this.client;
 				
 				// For ps() API responses: if model property is set but name is empty, set name from model
 				// This ensures name is always set for consistency

@@ -233,7 +233,7 @@ namespace OLLMapp.SettingsDialog
 			);
 			
 			// Create Pull call
-			var pull_call = new OLLMchat.Call.Pull(client, model_name) {
+			var pull_call = new OLLMchat.Call.Pull(connection, model_name) {
 				stream = true
 			};
 			

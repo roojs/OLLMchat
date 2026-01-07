@@ -26,9 +26,9 @@ namespace OLLMchat.Call
 	 */
 	public class Version : Base
 	{
-		public Version(Client client)
+		public Version(Settings.Connection connection)
 		{
-			base(client);
+			base(connection);
 			this.url_endpoint = "version";
 			this.http_method = "GET";
 		}

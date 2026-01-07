@@ -103,9 +103,9 @@ namespace OLLMchat.Response
 			);
 		}
 
-		public Chat(Client client, Call.Chat call)
+		public Chat(Settings.Connection? connection, Call.Chat call)
 		{
-			base(client);
+			base(connection);
 			this.call = call;
 		}
 

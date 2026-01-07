@@ -648,7 +648,7 @@ namespace OLLMchatGtk
 			var client = session.client;
 
 			// Create a minimal Response.Chat for processing
-			var response = new OLLMchat.Response.Chat(client, call);
+			var response = new OLLMchat.Response.Chat(client.connection, call);
 			response.message = message;
 			response.done = true;
 

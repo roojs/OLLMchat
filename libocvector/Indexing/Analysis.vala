@@ -318,7 +318,7 @@ namespace OLLMvector.Indexing
 						config = this.client.config
 					};
 					
-					var chat = new OLLMchat.Call.Chat(analysis_client, analysis_usage.model, analysis_usage.options) {
+					var chat = new OLLMchat.Call.Chat(analysis_client.connection, analysis_usage.model, analysis_usage.options) {
 						stream = true  // Enable streaming (Phase 2: migrate to real properties)
 					};
 					
@@ -331,7 +331,7 @@ namespace OLLMvector.Indexing
 					
 					// Connect to stream_chunk signal to capture and print partial content (including thinking)
 					ulong stream_chunk_id = 0;
-					stream_chunk_id = chat.client.stream_chunk.connect((new_text, is_thinking, response) => {
+					stream_chunk_id = analysis_client.stream_chunk.connect((new_text, is_thinking, response) => {
 						// Print the partial content as it arrives (both thinking and regular content)
 						// Use stdout and flush immediately so output appears on command line in real-time
 						stdout.printf("%s", new_text);
@@ -345,7 +345,7 @@ namespace OLLMvector.Indexing
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {
-							chat.client.disconnect(stream_chunk_id);
+							analysis_client.disconnect(stream_chunk_id);
 						}
 					}
 					

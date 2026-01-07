@@ -290,7 +290,7 @@ namespace OLLMchat.History
 				options = default_usage.options;
 			}
 			
-			var call = new Call.Chat(client, model) {
+			var call = new Call.Chat(client.connection, model) {
 				stream = true,  // Default to streaming for new sessions
 				think = true,
 			};

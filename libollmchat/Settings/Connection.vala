@@ -72,10 +72,38 @@ namespace OLLMchat.Settings
 		public Gee.ArrayList<string> hidden_models { get; set; default = new Gee.ArrayList<string>(); }
 
 		/**
+		 * HTTP session for making requests.
+		 * 
+		 * Shared across all Clients using this Connection (connection pooling).
+		 * Initialized in constructor.
+		 * Non-serialized field (runtime state, not saved to config).
+		 * 
+		 * @since 1.2.3
+		 */
+		public Soup.Session soup;
+
+		/**
+		 * HTTP request timeout in seconds.
+		 * 
+		 * Default is 300 seconds (5 minutes) to accommodate long-running LLM requests.
+		 * Set to 0 for no timeout (not recommended).
+		 * Aliases soup.timeout - reading/writing this property reads/writes soup.timeout.
+		 * Non-serialized property (runtime state, not saved to config).
+		 * 
+		 * @since 1.2.3
+		 */
+		public uint timeout {
+			get { return this.soup.timeout; }
+			set { this.soup.timeout = value; }
+		}
+
+		/**
 		 * Default constructor.
 		 */
 		public Connection()
 		{
+			this.soup = new Soup.Session();
+			this.timeout = 300; // Default timeout
 		}
 
 		/**
@@ -124,6 +152,10 @@ namespace OLLMchat.Settings
 						json_array.add_string_element(model);
 					}
 					return array_node;
+				case "soup":
+				case "timeout":
+					// Exclude runtime properties from serialization
+					return null;
 			}
 			return default_serialize_property(property_name, value, pspec);
 		}

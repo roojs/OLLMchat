@@ -235,7 +235,7 @@ Examples:
 		var options = default_usage.options ?? new OLLMchat.Call.Options();
 		
 		// Create Chat object with streaming enabled
-		var chat = new OLLMchat.Call.Chat(client, model, options) {
+		var chat = new OLLMchat.Call.Chat(client.connection, model, options) {
 			stream = true,
 			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};

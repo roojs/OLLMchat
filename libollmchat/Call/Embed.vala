@@ -38,9 +38,9 @@ namespace OLLMchat.Call
 		
 		public Call.Options options { get; set; default = new Call.Options(); }
 
-		public Embed(Client client, string model, Call.Options? options = null)
+		public Embed(Settings.Connection connection, string model, Call.Options? options = null)
 		{
-			base(client);
+			base(connection);
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
@@ -52,11 +52,9 @@ namespace OLLMchat.Call
 			if (options != null) {
 				this.options = options;
 			} else {
-				if (this.client.config.model_options.has_key(model)) {
-					this.options = this.client.config.model_options.get(model);
-				} else {
-					this.options = new Call.Options();
-				}
+				// Note: When using connection directly, config is not available
+				// Caller should provide options if needed
+				this.options = new Call.Options();
 			}
 		}
 
@@ -168,7 +166,7 @@ namespace OLLMchat.Call
 			if (embed_obj == null) {
 				throw new OllamaError.FAILED("Failed to deserialize embed response");
 			}
-			embed_obj.client = this.client;
+			// Note: client no longer set on response objects
 			
 			// Normalize all embeddings before returning
 			foreach (var embedding in embed_obj.embeddings) {

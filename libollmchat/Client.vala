@@ -186,7 +186,7 @@ namespace OLLMchat
 			}
 			
 			// Create chat call with defaults (Phase 3: no Client properties)
-			var call = new Call.Chat(this, model) {
+			var call = new Call.Chat(this.connection, model) {
 				cancellable = cancellable,
 				stream = true,  // Default to non-streaming for legacy method
 				think = true
@@ -211,7 +211,7 @@ namespace OLLMchat
 
 		public async Gee.ArrayList<Response.Model> models() throws Error
 		{
-			var call = new Call.Models(this);
+			var call = new Call.Models(this.connection);
 			var result = yield call.exec_models();
 			// in theory we should make a list of models that we have and delete if they are
 			// not there anymore..
@@ -228,7 +228,7 @@ namespace OLLMchat
 
 		public async Gee.ArrayList<Response.Model> ps() throws Error
 		{
-			var call = new Call.Ps(this);
+			var call = new Call.Ps(this.connection);
 			var result = yield call.exec_models();
 			return result;
 		}
@@ -252,7 +252,7 @@ namespace OLLMchat
 			this.timeout = 10;  // 10 seconds - version check should be quick
 			
 			try {
-				var call = new OLLMchat.Call.Version(this) {
+				var call = new OLLMchat.Call.Version(this.connection) {
 					cancellable = cancellable
 				};
 				var result = yield call.exec_version();
@@ -287,7 +287,7 @@ namespace OLLMchat
 				model = this.available_models.get(model_name);
 			} else {
 				// Create new model instance
-				model = new Response.Model(this);
+				model = new Response.Model(this.connection);
 				model.name = model_name;
 				this.available_models.set(model_name, model);
 			}
@@ -299,7 +299,7 @@ namespace OLLMchat
 			}
 			
 			// Not in cache, fetch from API
-			var result = yield new Call.ShowModel(this, model_name).exec_show();
+			var result = yield new Call.ShowModel(this.connection, model_name).exec_show();
 			
 			// Update model with API result
 			model.updateFrom(result);
@@ -380,7 +380,7 @@ namespace OLLMchat
 				options = new Call.Options();
 			}
 			
-			var call = new Call.Embed(this, model, options) {
+			var call = new Call.Embed(this.connection, model, options) {
 				cancellable = cancellable,
 				input = input,
 				dimensions = dimensions,
@@ -433,7 +433,7 @@ namespace OLLMchat
 				options = new Call.Options();
 			}
 			
-			var call = new Call.Embed(this, model, options) {
+			var call = new Call.Embed(this.connection, model, options) {
 				cancellable = cancellable,
 				input_array = input_array,
 				dimensions = dimensions,
@@ -484,7 +484,7 @@ namespace OLLMchat
 				options = new Call.Options();
 			}
 			
-			var call = new Call.Generate(this) {
+			var call = new Call.Generate(this.connection) {
 				cancellable = cancellable,
 				prompt = prompt,
 				system = system,

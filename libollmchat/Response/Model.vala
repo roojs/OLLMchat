@@ -123,9 +123,9 @@ namespace OLLMchat.Response
 			}
 		}
 
-		public Model(Client? client = null)
+		public Model(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

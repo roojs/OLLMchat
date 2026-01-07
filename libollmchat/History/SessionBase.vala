@@ -154,7 +154,7 @@ namespace OLLMchat.History
 		 
 			
 			// Create chat with default properties
-			this.chat = new Call.Chat(this.client, model) {
+			this.chat = new Call.Chat(this.client.connection, model) {
 				stream = true,  // Default to streaming
 				think = false
 			};

@@ -36,9 +36,9 @@ namespace OLLMchat.Call
 		 */
 		public signal void progress_chunk(Response.Pull response);
 
-		public Pull(Client client, string model_name)
+		public Pull(Settings.Connection connection, string model_name)
 		{
-			base(client);
+			base(connection);
 			if (model_name == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Model name cannot be empty");
 			}
@@ -59,7 +59,7 @@ namespace OLLMchat.Call
 		{
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.client.connection.soup_message(this.http_method, url, request_body);
+			var message = this.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Pull request URL: %s", url);
 			GLib.debug("Pull request Body: %s", request_body);
@@ -76,7 +76,7 @@ namespace OLLMchat.Call
 						return;
 					}
 					
-					response.client = this.client;
+					// Note: client no longer set on response objects
 					this.progress_chunk(response);
 				});
 			} catch (GLib.IOError e) {

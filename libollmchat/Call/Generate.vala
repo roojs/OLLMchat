@@ -41,9 +41,9 @@ namespace OLLMchat.Call
 		
 		internal Call.Options options { get; set; default = new Call.Options(); }
 
-		public Generate(Client client)
+		public Generate(Settings.Connection connection)
 		{
-			base(client);
+			base(connection);
 			this.url_endpoint = "generate";
 			this.http_method = "POST";
 		}
@@ -121,7 +121,7 @@ namespace OLLMchat.Call
 			if (generate_obj == null) {
 				throw new OllamaError.FAILED("Failed to deserialize generate response");
 			}
-			generate_obj.client = this.client;
+			// Note: client no longer set on response objects
 			return generate_obj;
 		}
 	}
