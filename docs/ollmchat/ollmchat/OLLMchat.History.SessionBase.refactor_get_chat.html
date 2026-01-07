@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.History.SessionBase.updated_at_timestamp &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.History.SessionBase.refactor_get_chat &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.History.SessionBase.updated_at_timestamp &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.History.SessionBase.refactor_get_chat &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -51,7 +51,7 @@
           <li class="property"><a href="OLLMchat.History.SessionBase.total_messages.html">total_messages</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.total_tokens.html">total_tokens</a></li>
           <li class="property"><a href="OLLMchat.History.SessionBase.unread_count.html">unread_count</a></li>
-          <li class="property">updated_at_timestamp</li>
+          <li class="property"><a href="OLLMchat.History.SessionBase.updated_at_timestamp.html">updated_at_timestamp</a></li>
           <li class="creation_method"><a href="OLLMchat.History.SessionBase.SessionBase.html">SessionBase</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.activate.html">activate</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.activate_agent.html">activate_agent</a></li>
@@ -63,7 +63,7 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_message_created.html">on_message_created</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_stream_chunk.html">on_stream_chunk</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
-          <li class="method"><a href="OLLMchat.History.SessionBase.refactor_get_chat.html">refactor_get_chat</a></li>
+          <li class="method">refactor_get_chat</li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.save_async.html">save_async</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.send.html">send</a></li>
@@ -79,10 +79,29 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">updated_at_timestamp</h1>
+        <h1 class="main_title">refactor_get_chat</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><span class="property">updated_at_timestamp</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><span class="method">refactor_get_chat</span></b> ()
+        </div>
+        <div class="description">
+          <p>Gets the Chat instance for this session.</p>
+          <p>This method provides an alternative access pattern for Chat, supporting both the old pattern (this.chat) and new patterns (via agent or 
+            message).</p>
+          <p>Priority order: 1. this.chat (if set) - old pattern, kept for backward compatibility 2. this.agent.chat (if agent is set) - new pattern 
+            via AgentHandler 3. null (if neither is available)</p>
+          <p>FIXME this is temporary and will be removed when we finsih users should access session.agent.chat - if they really need to do stuff.</p>
+          <p>NOTE: This is temporary Phase 4 migration code to support both old (this.chat) and new (this.agent.chat) patterns during the transition. 
+            Do NOT use this in new code - use this.agent.chat directly instead. This method will be removed in Phase 6 cleanup when this.chat is 
+            removed.</p>
+          <h2 class="main_title">Returns:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td>
+                <p>The Chat instance, or null if not available </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

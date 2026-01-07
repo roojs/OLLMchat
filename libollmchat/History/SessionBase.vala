@@ -46,9 +46,10 @@ namespace OLLMchat.History
 			get { return refactor_permission_provider; }
 			set { 
 				refactor_permission_provider = value;
-				// Also set on Chat if it exists
-				if (this.chat != null) {
-					this.chat.permission_provider = value;
+				// Also set on Chat if it exists (support both old and new patterns)
+				var chat = this.refactor_get_chat();
+				if (chat != null) {
+					chat.permission_provider = value;
 				}
 			}
 		}
@@ -138,6 +139,44 @@ namespace OLLMchat.History
 		
 		// Agent handler reference - set when session is created or AgentHandler is changed
 		public OLLMchat.Prompt.AgentHandler? agent { get; set; }
+		
+		/**
+		 * Gets the Chat instance for this session.
+		 * 
+		 * This method provides an alternative access pattern for Chat, supporting
+		 * both the old pattern (this.chat) and new patterns (via agent or message).
+		 * 
+		 * Priority order:
+		 * 1. this.chat (if set) - old pattern, kept for backward compatibility
+		 * 2. this.agent.chat (if agent is set) - new pattern via AgentHandler
+		 * 3. null (if neither is available)
+		 * 
+		 * FIXME this is temporary and will be removed when we finsih 
+		 * users should access session.agent.chat - if they really need to do stuff.
+		 * 
+		 * NOTE: This is temporary Phase 4 migration code to support both old (this.chat)
+		 * and new (this.agent.chat) patterns during the transition. Do NOT use this in
+		 * new code - use this.agent.chat directly instead. This method will be removed
+		 * in Phase 6 cleanup when this.chat is removed.
+		 * 
+		 * @return The Chat instance, or null if not available
+		 */
+		public Call.Chat? refactor_get_chat()
+		{
+			// Priority 1: Use this.chat if available (old pattern, kept for backward compatibility)
+			if (this.chat != null) {
+				return this.chat;
+			}
+			
+			// Priority 2: Use agent.chat if agent is set (new pattern via AgentHandler)
+			if (this.agent != null && this.agent.chat != null) {
+				return this.agent.chat;
+			}
+			
+			// No Chat available
+			return null;
+		}
+		
 		
 		// Abstract properties that depend on chat
 		public abstract string display_info { owned get; }

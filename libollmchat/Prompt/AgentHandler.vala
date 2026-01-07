@@ -185,6 +185,13 @@ namespace OLLMchat.Prompt
 			// Build full message history from this.session
 			var messages = new Gee.ArrayList<Message>();
 			
+			// Build system prompt at this point in time (simple implementation in base, CodeAssistantHandler overrides)
+			// BaseAgent.generate_system_prompt() returns empty string by default, so this does nothing for basic agents
+			string system_content = this.agent.generate_system_prompt();
+			if (system_content != "") {
+				messages.add(new Message(this.chat, "system", system_content));
+			}
+			
 			// Filter and add messages from this.session.messages (full conversation history)
 			// Filter to get API-compatible messages (system, user, assistant, tool)
 			// Exclude non-API message types (user-sent, ui, etc.)

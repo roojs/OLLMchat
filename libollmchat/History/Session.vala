@@ -104,20 +104,37 @@ namespace OLLMchat.History
 		/**
 		* Handler for message_created signal from this session's client.
 		* Handles message persistence when a message is created.
+		* FIXME = needs making logical after we remove get_chat
 		* FIXME = on message created should not be getting a chat? - need to work out why that would happen
 		*/
 		protected override void on_message_created(Message m, ChatContentInterface? content_interface)
 		{
 			// Update chat properties if message_interface is a Chat (don't replace the object)
+			// Support both old pattern (this.chat) and new pattern (refactor_get_chat() or from message)
 			if (m.message_interface is Call.Chat) {
 				var new_chat = (Call.Chat) m.message_interface;
-				this.chat.model = new_chat.model;
-				this.chat.stream = new_chat.stream;
-				this.chat.format = new_chat.format;
-				this.chat.format_obj = new_chat.format_obj;
-				this.chat.think = new_chat.think;
-				this.chat.keep_alive = new_chat.keep_alive;
-				this.chat.options = new_chat.options;
+				// Get current chat using alternative access pattern (supports both old and new)
+				var current_chat = this.refactor_get_chat();
+				if (current_chat != null) {
+					// Update properties on current chat (supports both old and new patterns)
+					current_chat.model = new_chat.model;
+					current_chat.stream = new_chat.stream;
+					current_chat.format = new_chat.format;
+					current_chat.format_obj = new_chat.format_obj;
+					current_chat.think = new_chat.think;
+					current_chat.keep_alive = new_chat.keep_alive;
+					current_chat.options = new_chat.options;
+				}
+				// Also update this.chat if it exists (old pattern, kept for backward compatibility)
+				if (this.chat != null) {
+					this.chat.model = new_chat.model;
+					this.chat.stream = new_chat.stream;
+					this.chat.format = new_chat.format;
+					this.chat.format_obj = new_chat.format_obj;
+					this.chat.think = new_chat.think;
+					this.chat.keep_alive = new_chat.keep_alive;
+					this.chat.options = new_chat.options;
+				}
 				// Note: fid is no longer copied from chat - it's owned by Session
 				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
 			}
@@ -160,6 +177,7 @@ namespace OLLMchat.History
 		/**
 		* Handler for stream_chunk signal from this session's client.
 		* Handles unread tracking and session saving.
+		* FIXME = needs making logical after we remove get_chat
 		*/
 		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
@@ -169,13 +187,18 @@ namespace OLLMchat.History
 				this.notify_property("unread_count");
 			}
 			
+			// Get Chat using alternative access pattern (supports both old and new patterns)
+			// Use refactor_get_chat() which handles both this.chat (old) and this.agent.chat (new)
+			var chat = this.refactor_get_chat();
+			
 			// Capture streaming output
 			if (new_text.length > 0) {
 				// Check if stream type has changed
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					this.current_stream_message = new Message(this.chat, stream_role, new_text);
+					// Use chat from alternative access pattern, or fallback to this.chat
+					this.current_stream_message = new Message(chat ?? this.chat, stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
 				} else {
@@ -187,7 +210,8 @@ namespace OLLMchat.History
 			// When response is done, finalize streaming
 			if (response.done) {
 				// Create "end-stream" message to signal renderer
-				var end_stream_msg = new Message(this.chat, "end-stream", "");
+				// Use chat from alternative access pattern, or fallback to this.chat
+				var end_stream_msg = new Message(chat ?? this.chat, "end-stream", "");
 				this.messages.add(end_stream_msg);
 				
 				// Finalize current stream message
@@ -205,13 +229,16 @@ namespace OLLMchat.History
 						}
 					}
 					if (!found) {
-						// Ensure message_interface is set
-						response.message.message_interface = this.chat;
+						// Ensure message_interface is set (use chat from alternative access pattern)
+						var chat_for_message = chat ?? this.chat;
+						if (chat_for_message != null) {
+							response.message.message_interface = chat_for_message;
+						}
 						// message_created signal emissions removed - callers handle state directly when creating messages
 						
 						// Create a "done" message after the real message with summary
 						var summary = response.get_summary();
-						var done_msg = new Message(this.chat, "done", summary);
+						var done_msg = new Message(chat_for_message ?? this.chat, "done", summary);
 						// message_created signal emission removed - callers handle state directly when creating messages
 					}
 				}

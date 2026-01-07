@@ -123,13 +123,13 @@
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.on_message_created.html" class="virtual_method">on_message_created</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> m, <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? content_interface)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Handler for message_created signal from this session's client. Handles
-                message persistence when a message is created. FIXME = on message created should not be getting a chat? - need to work out why that 
-                would happen</span>
+                message persistence when a message is created. FIXME = needs making logical after we remove get_chat FIXME = on message created should
+                not be getting a chat? - need to work out why that would happen</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">override</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.on_stream_chunk.html" class="virtual_method">on_stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Handler for stream_chunk signal from this session's client. Handles 
-                unread tracking and session saving.</span>
+                unread tracking and session saving. FIXME = needs making logical after we remove get_chat</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.Session.read.html" class="virtual_method">read</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
@@ -200,6 +200,7 @@
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_stream_chunk.html">on_stream_chunk</a></li>
                 <li class="property"><a href="OLLMchat.History.SessionBase.permission_provider.html">permission_provider</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
+                <li class="method"><a href="OLLMchat.History.SessionBase.refactor_get_chat.html">refactor_get_chat</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.save_async.html">save_async</a></li>
                 <li class="abstract_method"><a href="OLLMchat.History.SessionBase.send.html">send</a></li>
