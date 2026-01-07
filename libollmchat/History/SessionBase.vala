@@ -397,6 +397,17 @@ namespace OLLMchat.History
 		public abstract void cancel_current_request();
 		
 		/**
+		 * Activates an agent for this session.
+		 * 
+		 * Handles agent changes by creating a new AgentHandler and copying
+		 * any necessary state from the old AgentHandler to the new one.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent activation fails
+		 */
+		public abstract void activate_agent(string agent_name) throws Error;
+		
+		/**
 		 * Handle JSON property mapping and custom deserialization.
 		 * Must be implemented by subclasses.
 		 */

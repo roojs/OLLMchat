@@ -53,7 +53,7 @@ namespace OLLMchat.Prompt
 		 * Chat instance created in constructor and reused for all requests.
 		 * Can be updated if model, options, or other properties change.
 		 */
-		protected OLLMchat.Call.Chat chat;
+		public OLLMchat.Call.Chat chat;
 		
 		/**
 		 * Signal handler IDs for client signals.

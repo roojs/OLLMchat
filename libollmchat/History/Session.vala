@@ -509,6 +509,41 @@ namespace OLLMchat.History
 		}
 		
 		/**
+		 * Activates an agent for this session.
+		 * 
+		 * Handles agent changes by creating a new AgentHandler. Messages are already
+		 * stored in session.messages, so the new AgentHandler will have access to
+		 * the full conversation history when building message arrays.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Save reference to old AgentHandler (if exists)
+			var old_handler = this.agent;
+			
+			// Update agent_name on session
+			this.agent_name = agent_name;
+			
+			// Get agent from manager
+			var base_agent = this.manager.agents.get(agent_name);
+			if (base_agent == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create new handler from agent
+			var new_handler = base_agent.create_handler(this.client, this) as OLLMchat.Prompt.AgentHandler;
+			new_handler.chat = this.chat;
+			this.agent = new_handler;
+			 
+			
+			// Trigger agent_activated signal for UI updates
+			// Manager emits this signal, which Window listens to for widget management
+			this.manager.agent_activated(base_agent);
+		}
+		
+		/**
 		 * Sends a Message object to this session.
 		 * 
 		 * This is the new method for sending messages. Adds Message to session history

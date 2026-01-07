@@ -259,6 +259,23 @@ namespace OLLMchat.History
 		
 		public override void cancel_current_request() { }  // No-op: SessionPlaceholder has no active requests
 		
+		/**
+		 * Activates an agent for this placeholder session.
+		 * 
+		 * For SessionPlaceholder, this just updates the agent_name property.
+		 * The AgentHandler will be created when load() is called to convert
+		 * this placeholder to a real Session.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Verify agent exists in manager
+			// you cant activate an agent on the placeholder
+			// when it's moved into the window it becomdes a session - 
+		}
+		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			value = Value(pspec.value_type);

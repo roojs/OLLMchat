@@ -148,6 +148,43 @@ namespace OLLMchat.History
 		
 		public override void cancel_current_request() { }  // No-op: EmptySession has no chat, so nothing to cancel
 		
+		/**
+		 * Activates an agent for this empty session.
+		 * 
+		 * Creates the AgentHandler for the specified agent. The handler will be
+		 * available when the session converts to a real Session.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Save reference to old AgentHandler (if exists)
+			
+			// Update agent_name on session
+			if (this.agent_name == agent_name) {
+				return;
+			}
+			// Get agent from manager
+			var base_agent = this.manager.agents.get(agent_name);
+			if (base_agent == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create handler from agent
+			var handler = base_agent.create_handler(this.client, this) as Prompt.AgentHandler;
+			
+			handler.chat = this.agent.chat; 
+			
+			// Set new agent handler on session
+			this.agent = handler;
+			this.agent_name = agent_name;
+
+			
+			// Trigger agent_activated signal for UI updates
+			this.manager.agent_activated(base_agent);
+		}
+		
 		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after conversion
 		
 		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: EmptySession doesn't handle stream_chunk

@@ -679,19 +679,22 @@ namespace OLLMapp
 			this.agent_dropdown.set_list_factory(factory);
 			this.agent_dropdown.selected = selected_index;
 			
-			// Connect selection change to update session's agent_name and client
+			// Connect selection change to activate agent via Manager
 			this.agent_dropdown.notify["selected"].connect(() => {
 				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
 				
 				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
-				  
-				this.history_manager.session.agent_name = agent.name;
-				// Agent is managed separately, not stored on client
 				
-				// Emit agent_activated signal for UI updates (Window listens to this)
-				this.history_manager.agent_activated(agent);
+				// Use Manager.activate_agent() to handle agent change
+				// This routes to session.activate_agent() which handles AgentHandler creation/copying
+				// and then triggers agent_activated signal for UI updates
+				try {
+					this.history_manager.activate_agent(this.history_manager.session.fid, agent.name);
+				} catch (Error e) {
+					GLib.warning("Failed to activate agent '%s': %s", agent.name, e.message);
+				}
 			});
 			
 			// Connect to session_activated signal to update when session changes
