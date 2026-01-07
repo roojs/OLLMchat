@@ -353,26 +353,20 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Sends a message to a session identified by fid.
+		 * Sends a message to a session.
 		 * 
 		 * This is the new entry point for UI to send messages. UI creates Message objects
 		 * and calls this method, which routes to session.send().
 		 * 
-		 * @param fid The session identifier (file ID)
-		 * @param message The message object to send
+		 * @param session The session to send the message to
+		 * @param user_message The message object to send
 		 * @param cancellable Optional cancellable for canceling the request
-		 * @throws Error if session not found or send fails
+		 * @throws Error if send fails
 		 */
-		public async void send(string fid, Message message, GLib.Cancellable? cancellable = null) throws Error
+		public async void send(SessionBase session, Message user_message, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Find session by fid using SessionList fid_map lookup
-			var session = this.sessions.get_by_fid(fid);
-			if (session == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Session with fid '%s' not found", fid);
-			}
-			
 			// Delegate to session
-			yield session.send(message, cancellable);
+			yield session.send(user_message, cancellable);
 		}
 		
 		/**

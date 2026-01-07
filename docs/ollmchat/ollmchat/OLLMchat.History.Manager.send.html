@@ -68,22 +68,22 @@
         <h1 class="main_title">send</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">send</span></b> (<span class="main_basic_type"><span class="class">string</span></span> fid, <span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">send</span></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session, <span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> user_message, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
-          <p>Sends a message to a session identified by fid.</p>
+          <p>Sends a message to a session.</p>
           <p>This is the new entry point for UI to send messages. UI creates Message objects and calls this method, which routes to session.send().
           </p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">fid</td>
+              <td class="main_parameter_table_name">session</td>
               <td>
-                <p>The session identifier (file ID) </p>
+                <p>The session to send the message to </p>
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">message</td>
+              <td class="main_parameter_table_name">user_message</td>
               <td>
                 <p>The message object to send </p>
               </td>
@@ -100,7 +100,7 @@
             <tr>
               <td class="main_parameter_table_name">Error</td>
               <td>
-                <p>if session not found or send fails </p>
+                <p>if send fails </p>
               </td>
             </tr>
           </table>

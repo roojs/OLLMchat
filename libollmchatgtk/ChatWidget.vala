@@ -117,7 +117,8 @@ namespace OLLMchatGtk
 				}
 				this.chat_view.append_tool_message(message);
 			});
-			this.manager.add_message.connect(this.on_message_created);
+			// Phase 5: Use new message_added signal (preferred) instead of old add_message signal
+			this.manager.message_added.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -506,9 +507,14 @@ namespace OLLMchatGtk
 			var cancellable = new GLib.Cancellable();
 			
 			try {
-				// Use session.send_message() - EmptySession will convert to Session on first message
-				// Session.send_message() handles streaming, reply() vs chat(), and cancellable
-				yield this.manager.session.send_message(text, cancellable);
+				// Phase 5: Use new pattern - create Message object and call manager.send(session, message)
+				// This is the preferred method. EmptySession will convert to Session on first message.
+				// Create Message object with "user" role
+				// Note: message_interface will be set by Session when message is added
+				var user_message = new OLLMchat.Message(null, "user", text);
+				
+				// Call manager.send() - this routes to session.send() which handles everything
+				yield this.manager.send(this.manager.session, user_message, cancellable);
 				
 				// Response is handled by streaming callback
 			} catch (GLib.IOError e) {
