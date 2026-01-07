@@ -168,26 +168,30 @@ namespace OLLMchat
 		 * 
 		 * Note: This method does NOT handle system messages - that's the agent's job.
 		 * This is a minimal implementation for backward compatibility only.
-		 * Requires model to be available via Config2.get_default_model() or will throw an error.
 		 * 
+		 * @param model The model name to use for the chat
 		 * @param text The user's input text
+		 * @param options Optional Call.Options for the chat request
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return The Response from executing the chat call
 		 */
-		public async Response.Chat chat(string text, GLib.Cancellable? cancellable = null) throws Error
+		public async Response.Chat chat(
+			string model,
+			string text,
+			Call.Options? options = null,
+			GLib.Cancellable? cancellable = null
+		) throws Error
 		{
-			// Legacy method: get model from config if available
-			string model = "";
-			if (this.config != null) {
-				model = this.config.get_default_model();
-			}
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model. Set config and default_model, or use Call.Chat directly.");
+				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model parameter.");
+			}
+			
+			if (options == null) {
+				options = new Call.Options();
 			}
 			
 			// Create chat call with defaults (Phase 3: no Client properties)
-			// TODO (1.2.7): Consider adding options from config if available (similar to embed() and generate())
-			var call = new Call.Chat(this.connection, model) {
+			var call = new Call.Chat(this.connection, model, options) {
 				cancellable = cancellable,
 				stream = true,  // Default to non-streaming for legacy method
 				think = true
@@ -343,40 +347,31 @@ namespace OLLMchat
 		/**
 		 * Generates embeddings for the input text.
 		 *
-		 * Creates vector embeddings representing the input text using the configured model.
+		 * Creates vector embeddings representing the input text using the specified model.
 		 * Returns a single Response.Embed object containing the embeddings and metadata.
 		 *
+		 * @param model The model name to use for generating embeddings
 		 * @param input The text to generate embeddings for
 		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
 		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
+		 * @param options Optional Call.Options for the embed request
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return Response.Embed object with embeddings and timing information
 		 * @since 1.0
 		 */
 		public async Response.Embed embed(
-		string input,
+			string model,
+			string input,
 			int dimensions = -1,
 			bool truncate = false,
+			Call.Options? options = null,
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			// Legacy method: get model from config if available
-			string model = "";
-			if (this.config != null) {
-				model = this.config.get_default_model();
-			}
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model. Set config and default_model, or use Call.Embed directly.");
+				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model parameter.");
 			}
 			
-			// Get options from config if available
-			Call.Options? options = null;
-			if (this.config != null) {
-				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
-				if (default_usage != null) {
-					options = default_usage.options;
-				}
-			}
 			if (options == null) {
 				options = new Call.Options();
 			}
@@ -396,40 +391,31 @@ namespace OLLMchat
 		/**
 		 * Generates embeddings for an array of input texts.
 		 *
-		 * Creates vector embeddings representing the input texts using the configured model.
+		 * Creates vector embeddings representing the input texts using the specified model.
 		 * Returns a single Response.Embed object containing the embeddings and metadata.
 		 *
+		 * @param model The model name to use for generating embeddings
 		 * @param input_array The array of texts to generate embeddings for
 		 * @param dimensions Optional number of dimensions to generate embeddings for (default: -1, not set)
 		 * @param truncate Optional whether to truncate inputs that exceed context window (default: false)
+		 * @param options Optional Call.Options for the embed request
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return Response.Embed object with embeddings and timing information
 		 * @since 1.0
 		 */
 		public async Response.Embed embed_array(
+			string model,
 			Gee.ArrayList<string> input_array,
 			int dimensions = -1,
 			bool truncate = false,
+			Call.Options? options = null,
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			// Legacy method: get model from config if available
-			string model = "";
-			if (this.config != null) {
-				model = this.config.get_default_model();
-			}
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model. Set config and default_model, or use Call.Embed directly.");
+				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model parameter.");
 			}
 			
-			// Get options from config if available
-			Call.Options? options = null;
-			if (this.config != null) {
-				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
-				if (default_usage != null) {
-					options = default_usage.options;
-				}
-			}
 			if (options == null) {
 				options = new Call.Options();
 			}
@@ -452,35 +438,26 @@ namespace OLLMchat
 		 * Uses the /api/generate endpoint to generate a response without maintaining
 		 * conversation history. This is useful for simple prompt-response scenarios.
 		 *
+		 * @param model The model name to use for generation
 		 * @param prompt The text prompt to generate a response for
 		 * @param system Optional system prompt
+		 * @param options Optional Call.Options for the generate request
 		 * @param cancellable Optional cancellable for cancelling the request
 		 * @return Response.Generate object with the generated response and metadata
 		 * @since 1.0
 		 */
 		public async Response.Generate generate(
+			string model,
 			string prompt,
 			string system = "",
+			Call.Options? options = null,
 			GLib.Cancellable? cancellable = null
 		) throws Error
 		{
-			// Legacy method: get model from config if available
-			string model = "";
-			if (this.config != null) {
-				model = this.config.get_default_model();
-			}
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model. Set config and default_model, or use Call.Generate directly.");
+				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model parameter.");
 			}
 			
-			// Get options from config if available
-			Call.Options? options = null;
-			if (this.config != null) {
-				var default_usage = this.config.usage.get("default_model") as Settings.ModelUsage;
-				if (default_usage != null) {
-					options = default_usage.options;
-				}
-			}
 			if (options == null) {
 				options = new Call.Options();
 			}
