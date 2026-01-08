@@ -23,11 +23,10 @@ namespace OLLMvector
 	 * OLLMvector.Tool.CodebaseSearchTool.register_config();
 	 * OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);
 	 * 
-	 * // Get embedding dimension
-	 * var dimension = yield OLLMvector.Database.get_embedding_dimension(embedding_client);
-	 * 
-	 * // Create database
-	 * var db = new OLLMvector.Database(embedding_client, "/path/to/index.faiss", dimension);
+	 * // Get dimension first, then create database
+	 * var temp_db = new OLLMvector.Database(config, "/path/to/index.faiss", OLLMvector.Database.DISABLE_INDEX);
+	 * var dimension = yield temp_db.embed_dimension();
+	 * var db = new OLLMvector.Database(config, "/path/to/index.faiss", dimension);
 	 * 
 	 * // Add documents (automatically generates embeddings)
 	 * yield db.add_documents({"document 1", "document 2"});
@@ -39,11 +38,15 @@ namespace OLLMvector
 	 * db.save_index();
 	 * }}}
 	 */
-	public class Database : Object
+	public class Database : VectorBase
 	{
-			
+		/**
+		 * Sentinel value to indicate index should not be created in constructor.
+		 * Use this when creating a temporary Database instance just to check dimension.
+		 */
+		public const int DISABLE_INDEX = -1;
+		
 		internal Index? index = null;
-		private OLLMchat.Client ollama;
 		private string filename;
 		// TODO: needs to store metadata mapping: vector_id -> (file_path, start_line, end_line, element_type, element_name)
 		// Code snippets will be read from filesystem when needed, not stored here
@@ -81,48 +84,56 @@ namespace OLLMvector
 		}
 		
 		/**
-		 * Gets the embedding dimension from the client by doing a test embed.
+		 * Constructor.
 		 * 
-		 * @param ollama The OLLMchat client for embeddings
-		 * @return The embedding dimension
+		 * @param config The Config2 instance containing tool configuration
+		 * @param filename Path to the FAISS index file
+		 * @param dimension The embedding dimension (use embed_dimension() to obtain this), or DISABLE_INDEX to skip index creation
 		 */
-		public static async uint64 get_embedding_dimension(OLLMchat.Client ollama) throws GLib.Error
+		public Database(OLLMchat.Settings.Config2 config, string filename, int dimension) throws GLib.Error
 		{
-			// Phase 3: model is not on Client, need to get model from config
-			var model = ollama.config.get_default_model();
-			if (model == "") {
-				throw new GLib.IOError.FAILED("No default model configured for embeddings");
-			}
-			var test_response = yield ollama.embed(model, "test");
-			if (test_response == null || test_response.embeddings.size == 0) {
-				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
-			}
+			base(config);
+			this.filename = filename;
 			
-			return (uint64)test_response.embeddings[0].size;
+			// Index constructor will load from file if it exists, or create new if it doesn't
+			if (dimension == DISABLE_INDEX) {
+				return;
+			}
+			this.index = new Index(this.filename, dimension);
 		}
 		
 		/**
-		 * Constructor.
+		 * Gets the embedding dimension by doing a test embed.
 		 * 
-		 * @param ollama The OLLMchat client for embeddings
-		 * @param filename Path to the FAISS index file
-		 * @param dimension The embedding dimension (use get_dimension() to obtain this)
+		 * Uses the base class connection method to get the embedding connection and model.
+		 * This is an instance method that can be called when dimension is not yet known.
+		 * 
+		 * @return The embedding dimension
 		 */
-		public Database(OLLMchat.Client ollama, string filename, uint64 dimension) throws GLib.Error
+		public async int embed_dimension() throws GLib.Error
 		{
-			this.ollama = ollama;
-			// Phase 3: model is not on Client, embed() gets model from config
-			this.filename = filename;
+			var connection = yield this.connection("embed");
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var embed_call = new OLLMchat.Call.Embed(
+				connection,
+				tool_config.embed.model,
+				tool_config.embed.options
+			) {
+				input = "test"
+			};
 			
-			// Create Index immediately with the provided dimension
-			// Index constructor will load from file if it exists, or create new if it doesn't
-			this.index = new Index(this.filename, dimension);
+			var test_response = yield embed_call.exec_embed();
+			if (test_response.embeddings.size == 0) {
+				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
+			}
+			
+			return (int)test_response.embeddings[0].size;
 		}
 		
 		/**
 		 * The embedding dimension.
 		 */
-		public uint64 dimension {
+		public int dimension {
 			get { return this.index.dimension; }
 		}
 		
@@ -133,16 +144,6 @@ namespace OLLMvector
 			get { return this.index.get_total_vectors(); }
 		}
 		
-		private void ensure_index(uint64 dim) throws GLib.Error
-		{
-			// Index should always exist after constructor, but check dimension matches
-			if (this.index.dimension != dim) {
-				throw new GLib.IOError.FAILED(
-					"Dimension mismatch: index has %llu, requested %llu".printf(
-						this.index.dimension, dim));
-			}
-		}
-		
 		
 		/**
 		 * Adds vectors in batch to the FAISS index.
@@ -151,8 +152,16 @@ namespace OLLMvector
 		 */
 		public void add_vectors_batch(FloatArray vectors) throws GLib.Error
 		{
-			// Auto-initialize index if needed (dimension comes from vectors.width)
-			this.ensure_index(vectors.width);
+			// Check dimension matches
+			if (this.index.dimension != vectors.width) {
+				throw new GLib.IOError.FAILED(
+					"Dimension mismatch: index has %d, requested %d".printf(
+						this.index.dimension,
+						vectors.width
+					)
+				);
+			}
+			
 			this.index.add_vectors(vectors);
 		}
 		
@@ -160,7 +169,7 @@ namespace OLLMvector
 		{
 			var float_array = new float[embed.size];
 			for (int i = 0; i < embed.size; i++) {
-				var val = embed[i];
+				var val = embed.get(i);
 				if (val == null) {
 					throw new GLib.IOError.FAILED("Null value in embed vector");
 				}
@@ -176,17 +185,30 @@ namespace OLLMvector
 				return;
 			}
 			
-			var model = this.ollama.config.get_default_model();
-			if (model == "") {
-				throw new GLib.IOError.FAILED("No default model configured for embeddings");
-			}
-			var first_response = yield this.ollama.embed(model, texts[0]);
-			if (first_response == null || first_response.embeddings.size == 0) {
+			var connection = yield this.connection("embed");
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var embed_call = new OLLMchat.Call.Embed(
+				connection,
+				tool_config.embed.model,
+				tool_config.embed.options
+			) {
+				input = texts[0]
+			};
+			
+			var first_response = yield embed_call.exec_embed();
+			if (first_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embed for first document");
 			}
 			
-			// Ensure index is initialized with correct dimension
-			this.ensure_index((uint64)first_response.embeddings[0].size);
+			// Check dimension matches
+			if (this.index.dimension != (int)first_response.embeddings[0].size) {
+				throw new GLib.IOError.FAILED(
+					"Dimension mismatch: index has %d, requested %d".printf(
+						this.index.dimension,
+						(int)first_response.embeddings[0].size
+					)
+				);
+			}
 			
 			// Build FloatArray with known width (all vectors have fixed width)
 			var vector_batch = FloatArray(this.dimension);
@@ -197,9 +219,18 @@ namespace OLLMvector
 			
 			// Add remaining vectors
 			for (int i = 1; i < texts.length; i++) {
-				var response = yield this.ollama.embed(model, texts[i]);
-				if (response == null || response.embeddings.size == 0) {
-					throw new GLib.IOError.FAILED("Failed to get embed for document " + i.to_string());
+				embed_call = new OLLMchat.Call.Embed(
+					connection,
+					tool_config.embed.model,
+					tool_config.embed.options
+				) {
+					input = texts[i]
+				};
+				var response = yield embed_call.exec_embed();
+				if (response.embeddings.size == 0) {
+					throw new GLib.IOError.FAILED(
+						"Failed to get embed for document " + i.to_string()
+					);
 				}
 				
 				vector_batch.add(this.embed_to_floats(response.embeddings[0]));
@@ -213,18 +244,31 @@ namespace OLLMvector
 		public async SearchResultWithDocument[] search(string query, uint64 k = 5) throws Error
 		{
 			GLib.debug("Sending search query to embedder: %s", query);
-			var model = this.ollama.config.get_default_model();
-			if (model == "") {
-				throw new GLib.IOError.FAILED("No default model configured for embeddings");
-			}
-			var response = yield this.ollama.embed(model, query);
-			if (response == null || response.embeddings.size == 0) {
+			
+			var connection = yield this.connection("embed");
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var embed_call = new OLLMchat.Call.Embed(
+				connection,
+				tool_config.embed.model,
+				tool_config.embed.options
+			) {
+				input = query
+			};
+			
+			var response = yield embed_call.exec_embed();
+			if (response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embed");
 			}
 			
-			// Ensure index is initialized with correct dimension
-			// (This can happen if search is called before add_documents)
-			this.ensure_index((uint64)response.embeddings[0].size);
+			// Check dimension matches
+			if (this.index.dimension != (int)response.embeddings[0].size) {
+				throw new GLib.IOError.FAILED(
+					"Dimension mismatch: index has %d, requested %d".printf(
+						this.index.dimension,
+						(int)response.embeddings[0].size
+					)
+				);
+			}
 			
 			// Extract the first embed vector and convert to float[]
 			var results = this.index.search(
@@ -251,10 +295,6 @@ namespace OLLMvector
 		 */
 		public void save_index() throws Error
 		{
-			if (this.index == null) {
-				return;
-			}
-			
 			// Use Index.save_to_file() which handles thread-safety
 			this.index.save_to_file(this.filename);
 			

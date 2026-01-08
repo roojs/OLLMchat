@@ -165,11 +165,18 @@ making it more effective than simple text search for finding relevant code.
 				return; // Already initialized
 			}
 			
+			if (this.client == null || this.client.config == null) {
+				throw new GLib.IOError.FAILED("Client or config not available for database initialization");
+			}
+			
 			// Set vector database path
 			this.vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
 			
-			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embedding_client);
-			this.vector_db = new OLLMvector.Database(this.embedding_client, this.vector_db_path, dimension);
+			// Get dimension first, then create database
+			var temp_db = new OLLMvector.Database(this.client.config, 
+				this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+			var dimension = yield temp_db.embed_dimension();
+			this.vector_db = new OLLMvector.Database(this.client.config, this.vector_db_path, dimension);
 		}
 		
 		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }

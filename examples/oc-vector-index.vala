@@ -202,9 +202,11 @@ Examples:
 		              "Embed Model: %s\n\n",
 		              tool_config.analysis.model, tool_config.embed.model);
 		
-		// Get dimension first, then create Database with it
-		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
-		var vector_db = new OLLMvector.Database(embed_client, this.vector_db_path, dimension);
+		// Get dimension first, then create database
+		var temp_db = new OLLMvector.Database(this.config, 
+			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+		var dimension = yield temp_db.embed_dimension();
+		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
 		
 		GLib.debug("Using vector database: %s", this.vector_db_path);
 		

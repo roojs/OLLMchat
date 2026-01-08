@@ -246,15 +246,11 @@ namespace OLLMvector.Indexing
 			// Use the static VectorMetadata.reset_database method to do the actual reset
 			OLLMvector.VectorMetadata.reset_database(this.sql_db, vector_db_path);
 			
-			// Get embed connection using base class method
-			var embed_conn = yield this.connection("embed");
-			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-			var embed_client = new OLLMchat.Client(embed_conn) {
-				config = this.config
-			};
-			
-			var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
-			this.vector_db = new OLLMvector.Database(embed_client, vector_db_path, dimension);
+		// Get dimension first, then create database
+			var temp_db = new OLLMvector.Database(this.config, vector_db_path,
+				 OLLMvector.Database.DISABLE_INDEX);
+			var dimension = yield temp_db.embed_dimension();
+			this.vector_db = new OLLMvector.Database(this.config, vector_db_path, dimension);
 		}
 	}
 

@@ -27,13 +27,14 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="constant"><a href="OLLMvector.Database.DISABLE_INDEX.html">DISABLE_INDEX</a></li>
           <li class="property"><a href="OLLMvector.Database.dimension.html">dimension</a></li>
           <li class="property"><a href="OLLMvector.Database.vector_count.html">vector_count</a></li>
           <li class="static_method"><a href="OLLMvector.Database.check_required_models_available.html">check_required_models_available</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.get_embedding_dimension.html">get_embedding_dimension</a></li>
           <li class="creation_method"><a href="OLLMvector.Database.Database.html">Database</a></li>
           <li class="method"><a href="OLLMvector.Database.add_documents.html">add_documents</a></li>
           <li class="method"><a href="OLLMvector.Database.add_vectors_batch.html">add_vectors_batch</a></li>
+          <li class="method"><a href="OLLMvector.Database.embed_dimension.html">embed_dimension</a></li>
           <li class="method"><a href="OLLMvector.Database.save_index.html">save_index</a></li>
           <li class="method"><a href="OLLMvector.Database.search.html">search</a></li>
         </ul>
@@ -45,11 +46,12 @@
         <img class="main_diagram" usemap="#OLLMvector.Database" alt="Object hierarchy for Database" src="img/OLLMvector.Database.png"/>
 
       <map id="OLLMvector.Database" name="OLLMvector.Database">
-<area shape="rect" id="node1" href="OLLMvector.Database.html" title="OLLMvector.Database" alt="" coords="5,101,195,149"/>
+<area shape="rect" id="node1" href="OLLMvector.Database.html" title="OLLMvector.Database" alt="" coords="14,197,203,245"/>
+<area shape="rect" id="node2" href="OLLMvector.VectorBase.html" title="OLLMvector.VectorBase" alt="" coords="5,101,212,149"/>
 </map>
 
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Database</span></b> : <span class="main_type"><span class="class">Object</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">class</span> <b><span class="class">Database</span></b> : <span class="main_type"><a href="OLLMvector.VectorBase.html" class="abstract_class">VectorBase</a></span>
         </div>
         <div class="description">
           <p>Vector database with embedding generation and FAISS storage.</p>
@@ -58,7 +60,7 @@
           <p>The database requires configuration of model usage types before use: - "ocvector.embed": Embedding model for converting text to vectors
           </p>
           <h2>Usage Example </h2>
-          <p><pre class="main_source"><code><span class="main_comment">// Register tool config type</span><br/>OLLMvector.Tool.CodebaseSearchTool.register_config();<br/>OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);<br/><br/><span class="main_comment">// Get embedding dimension</span><br/><span class="main_keyword">var</span> dimension = <span class="main_keyword">yield</span> OLLMvector.Database.get_embedding_dimension(embedding_client);<br/><br/><span class="main_comment">// Create database</span><br/><span class="main_keyword">var</span> db = <span class="main_keyword">new</span> OLLMvector.Database(embedding_client, <span class="main_literal">"/path/to/index.faiss"</span>, dimension);<br/><br/><span class="main_comment">// Add documents (automatically generates embeddings)</span><br/><span class="main_keyword">yield</span> db.add_documents({<span class="main_literal">"document 1"</span>, <span class="main_literal">"document 2"</span>});<br/><br/><span class="main_comment">// Search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> db.search(<span class="main_literal">"query text"</span>, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index</span><br/>db.save_index();</code></pre>
+          <p><pre class="main_source"><code><span class="main_comment">// Register tool config type</span><br/>OLLMvector.Tool.CodebaseSearchTool.register_config();<br/>OLLMvector.Tool.CodebaseSearchTool.setup_tool_config(config);<br/><br/><span class="main_comment">// Get dimension first, then create database</span><br/><span class="main_keyword">var</span> temp_db = <span class="main_keyword">new</span> OLLMvector.Database(config, <span class="main_literal">"/path/to/index.faiss"</span>, OLLMvector.Database.DISABLE_INDEX);<br/><span class="main_keyword">var</span> dimension = <span class="main_keyword">yield</span> temp_db.embed_dimension();<br/><span class="main_keyword">var</span> db = <span class="main_keyword">new</span> OLLMvector.Database(config, <span class="main_literal">"/path/to/index.faiss"</span>, dimension);<br/><br/><span class="main_comment">// Add documents (automatically generates embeddings)</span><br/><span class="main_keyword">yield</span> db.add_documents({<span class="main_literal">"document 1"</span>, <span class="main_literal">"document 2"</span>});<br/><br/><span class="main_comment">// Search</span><br/><span class="main_keyword">var</span> results = <span class="main_keyword">yield</span> db.search(<span class="main_literal">"query text"</span>, k: <span class="main_literal">10</span>);<br/><br/><span class="main_comment">// Save index</span><br/>db.save_index();</code></pre>
           </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMvector.html">OLLMvector</a>
@@ -66,9 +68,17 @@
         <div class="package_note"><b>Package:</b> <a href="index.htm">ollmchat</a>
         </div>
         <h2 class="main_title">Content:</h2>
+        <h3 class="main_title">Constants:</h3>
+        <ul class="navi_inline">
+          <li class="constant"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">const</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMvector.Database.DISABLE_INDEX.html" class="constant">DISABLE_INDEX</a></b>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Sentinel value to indicate index should not be created in constructor.
+                Use this when creating a temporary Database instance just to check dimension.</span>
+            </div></li>
+        </ul>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.Database.dimension.html" class="property">dimension</a></b> { <span class="main_keyword">get</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMvector.Database.dimension.html" class="property">dimension</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">The embedding dimension.</span>
             </div></li>
@@ -84,15 +94,10 @@
             <div class="leaf_brief_description"><span class="brief_description">Checks if the required models for codebase search are available on the
                 server.</span>
             </div></li>
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="struct">uint64</span></span> <b><a href="OLLMvector.Database.get_embedding_dimension.html" class="static_method">get_embedding_dimension</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets the embedding dimension from the client by doing a test embed.
-              </span>
-            </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Database.Database.html" class="creation_method">Database</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama, <span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">uint64</span></span> dimension) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Database.Database.html" class="creation_method">Database</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">int</span></span> dimension) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor.</span>
             </div></li>
@@ -107,6 +112,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Adds vectors in batch to the FAISS index.</span>
             </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMvector.Database.embed_dimension.html" class="method">embed_dimension</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Gets the embedding dimension by doing a test embed.</span>
+            </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Database.save_index.html" class="method">save_index</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Saves the index to the file specified in constructor.</span>
@@ -118,8 +127,27 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-335')">All known members inherited from class GLib.Object</div>
+          <div class="headline" onclick="toggle_box (this, 'box-content-335')">All known members inherited from class OLLMvector.VectorBase</div>
           <div class="content" id="box-content-335">
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="field"><a href="OLLMvector.VectorBase.config.html">config</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+                <li class="method"><a href="OLLMvector.VectorBase.connection.html">connection</a></li>
+              </ul>
+            </div>
+            <div class="column">
+              <ul class="navi_inline">
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="headline" onclick="toggle_box (this, 'box-content-336')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-336">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
