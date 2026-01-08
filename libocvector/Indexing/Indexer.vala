@@ -140,8 +140,12 @@ namespace OLLMvector.Indexing
 			var analysis = new Analysis(this.analysis_client, this.sql_db);
 			tree = yield analysis.analyze_tree(tree);
 			
+			// Get config from embed_client (Indexer already has access via embed_client.config)
+			if (this.embed_client.config == null) {
+				throw new GLib.IOError.FAILED("embed_client.config is null - cannot create VectorBuilder");
+			}
 			var vector_builder = new VectorBuilder(
-				this.embed_client, this.vector_db, this.sql_db);
+				this.embed_client.config, this.vector_db, this.sql_db);
 			yield vector_builder.process_file(tree);
 			
 			file.last_vector_scan = new DateTime.now_local().to_unix();

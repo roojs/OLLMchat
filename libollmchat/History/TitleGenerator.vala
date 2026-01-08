@@ -25,37 +25,41 @@ namespace OLLMchat.History
 	 */
 	public class TitleGenerator : Object
 	{
-		private OLLMchat.Client client;
+		private History.Manager manager;
 		
-		public TitleGenerator(OLLMchat.Client client)
+		public TitleGenerator(History.Manager manager)
 		{
-			this.client = client;
+			this.manager = manager;
 		}
 		
 		/**
 		 * Generate a title from a chat conversation.
 		 *
 		 * Extracts the first user message and generates a concise title.
-		 * If client is not set or model is not available, returns a default title.
+		 * If title_model is not configured or model is not available, returns a default title.
 		 *
 		 * @param session The SessionBase object containing the conversation messages
 		 * @return Generated title string
 		 */
 		public async string to_title(SessionBase session)
 		{
-			// If model is empty, return default title
-			// Phase 3: Client no longer has model property
-			// TitleGenerator should use Config2.create_chat() or get model from config
-			var model = "";
-			if (this.client.config != null) {
-				model = this.client.config.get_default_model();
-			}
-			if (model == "") {
+			// Return early if title_model is not configured or invalid
+			if (!this.manager.config.usage.has_key("title_model")) {
 				return this.get_default_title(session);
 			}
 			
-			// Find first user-sent message from session.messages (not chat.messages)
-			// because "user-sent" messages are only in session.messages
+			var title_model_usage = this.manager.config.usage.get("title_model") as Settings.ModelUsage;
+			var model = title_model_usage.model;
+			
+			if (model == ""
+					 || title_model_usage.connection == "" 
+					|| !this.manager.config.connections.has_key(title_model_usage.connection)) {
+				return this.get_default_title(session);
+			}
+			
+			var connection = this.manager.config.connections.get(title_model_usage.connection);
+			
+			// Find first user-sent message
 			string first_message = "";
 			foreach (var msg in session.messages) {
 				if (msg.role != "user-sent") {
@@ -65,32 +69,22 @@ namespace OLLMchat.History
 				break;
 			}
 			
-			// Exit early if no user-sent message found
+			// Return early if no user-sent message found
 			if (first_message == "") {
 				return this.get_default_title(session);
 			}
 			
-			// Try to generate title, fall back to default on error
+			// Generate title
 			try {
-				// Build prompt for title generation
 				var prompt = "Generate a concise title (maximum 8 words) for this chat conversation based on the first user message:\n\n" +
 					"\"" + first_message + "\"\n\n" +
 					"Respond with ONLY the title, no explanation or quotes.";
 				
-				// Use generate API to get title
-				var response = yield this.client.generate(model, prompt);
+				var client = new OLLMchat.Client(connection);
+				var response = yield client.generate(model, prompt);
 				
-				// Extract and clean the title
-				var title = response.response.strip();
-				// Remove quotes if present
-				if (title.has_prefix("\"") && title.has_suffix("\"")) {
-					title = title.substring(1, title.length - 2);
-				}
-				if (title.has_prefix("'") && title.has_suffix("'")) {
-					title = title.substring(1, title.length - 2);
-				}
-				
-				return title.strip();
+				// Extract title (prompt explicitly says "no explanation or quotes")
+				return response.response.strip();
 			} catch (Error e) {
 				GLib.warning("Title generation failed: %s", e.message);
 				return this.get_default_title(session);

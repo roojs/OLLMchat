@@ -146,24 +146,17 @@ namespace OLLMchat.History
 			// Register JustAsk agent (always available as default)
 			// MUST be registered before creating EmptySession, as EmptySession calls new_client()
 			// which tries to get "just-ask" from this.agents
-			var just_ask_agent = new Prompt.JustAsk();
-			this.agents.set("just-ask", just_ask_agent);
+		var just_ask_agent = new Prompt.JustAsk();
+		this.agents.set("just-ask", just_ask_agent);
 
-			this.session = new EmptySession(this);
-			this.session.activate(); // contects signals alhtough to nowhere..
-			
-			// Set up title generator with a client configured for title generation
-			var title_client = this.config.create_client("title_model");
-			if (title_client == null) {
-				// Fallback: use base_client's connection
-				title_client = new OLLMchat.Client(this.base_client.connection) {
-					config = this.config
-				};
-			}
-			// Phase 3: Client no longer has stream property
-			
-			this.title_generator = new TitleGenerator(title_client);
-		}
+		this.session = new EmptySession(this);
+		//FIXME = tjos emeds removing
+		this.session.activate(); // contects signals alhtough to nowhere..
+		
+		// Set up title generator with manager reference
+		// TitleGenerator will handle missing title_model configuration by returning default titles
+		this.title_generator = new TitleGenerator(this);
+	}
 		
 		/**
 		 * Registers all tools and stores them on Manager.
