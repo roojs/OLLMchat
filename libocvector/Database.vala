@@ -62,14 +62,22 @@ namespace OLLMvector
 		 */
 		public static async bool check_required_models_available(OLLMchat.Settings.Config2 config)
 		{
-			// Use the validated tool config
-			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
+			// Inline validation logic
+			if (!config.tools.has_key("codebase_search")) {
+				return false;
+			}
+			var tool_config = config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			if (!tool_config.enabled) {
 				return false;
 			}
-			
-			// If tool config is enabled, models are already validated
-			return tool_config.embed.is_valid && tool_config.analysis.is_valid;
+			// Validate both embed and analysis
+			if (!(yield tool_config.embed.verify_model(config))) {
+				return false;
+			}
+			if (!(yield tool_config.analysis.verify_model(config))) {
+				return false;
+			}
+			return true;
 		}
 		
 		/**

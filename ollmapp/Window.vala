@@ -480,13 +480,14 @@ namespace OLLMapp
 			// Simple tools use the default implementation, complex tools use their overrides
 			OLLMchat.Tool.BaseTool.setup_all_tool_configs(config);
 			
-			// Get and validate tool config (validation sets is_valid flags and disables tool if needed)
-			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
+			// Inline enabled check
+			if (!config.tools.has_key("codebase_search")) {
+				// tool disabled
+				return;
+			}
+			var tool_config = config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			if (!tool_config.enabled) {
-				string error_msg = "codebase_search tool configuration is invalid or disabled";
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
+				// tool disabled
 				return;
 			}
 			

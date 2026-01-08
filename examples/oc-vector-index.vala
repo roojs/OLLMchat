@@ -178,8 +178,11 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
-		// Get tool config to access model names
-		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
+		// Inline tool config access
+		if (!this.config.tools.has_key("codebase_search")) {
+			GLib.error("Codebase search tool config not found");
+		}
+		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 		
 		if (this.config.loaded) {
 			yield this.ensure_config();
@@ -206,8 +209,7 @@ Examples:
 		GLib.debug("Using vector database: %s", this.vector_db_path);
 		
 		var indexer = new OLLMvector.Indexing.Indexer(
-			analysis_client,
-			embed_client,
+			this.config,
 			vector_db,
 			sql_db,
 			manager

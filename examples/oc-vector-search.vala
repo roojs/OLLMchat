@@ -244,7 +244,7 @@ Examples:
 		var search = new OLLMvector.Search.Search(
 			vector_db,
 			sql_db,
-			embed_client,
+			this.config,
 			search_folder,
 			query,
 			(uint64)opt_max_results,

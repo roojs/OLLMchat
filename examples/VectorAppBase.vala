@@ -95,8 +95,15 @@ public abstract class VectorAppBase : TestAppBase
 		// Ensure tool config exists
 		new OLLMvector.Tool.CodebaseSearchTool(null, null).setup_tool_config(this.config);
 		
-		// Get tool config and extract the appropriate ModelUsage
-		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
+		// Inline tool config access and validation
+		if (!this.config.tools.has_key("codebase_search")) {
+			throw new GLib.IOError.FAILED("Codebase search tool config not found");
+		}
+		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+		if (!tool_config.enabled) {
+			throw new GLib.IOError.FAILED("Codebase search tool is disabled");
+		}
+		
 		OLLMchat.Settings.ModelUsage usage;
 		switch (model_type) {
 			case "embed":

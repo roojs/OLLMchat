@@ -30,23 +30,21 @@ namespace OLLMvector.Indexing
 	 * for code elements using LLM. Skips LLM analysis for simple elements (enum types
 	 * without documentation, simple properties, enum values, fields without docs).
 	 */
-	public class Analysis : Object
+	public class Analysis : VectorBase
 	{
-		private OLLMchat.Client client;
 		private SQ.Database sql_db;
 		private PromptTemplate? cached_template = null;
 		
 		/**
 		 * Constructor.
 		 * 
-		 * @param client The OLLMchat client for LLM API calls
+		 * @param config The Config2 instance containing tool configuration
 		 * @param sql_db The SQLite database for syncing after file processing
 		 */
-		public Analysis(OLLMchat.Client client, SQ.Database sql_db)
+		public Analysis(OLLMchat.Settings.Config2 config, SQ.Database sql_db)
 		{
-			this.client = client;
+			base(config);
 			this.sql_db = sql_db;
-			// Note: Streaming is now set on Chat objects, not Client (Phase 3)
 		}
 		
 		/**
@@ -304,19 +302,16 @@ namespace OLLMvector.Indexing
 			
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					// Get tool config and create chat from analysis ModelUsage
-					var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.client.config);
-					if (!tool_config.enabled || !tool_config.analysis.is_valid) {
-						throw new GLib.IOError.FAILED("Codebase analysis tool is not configured or enabled correctly.");
-					}
-					
-					var analysis_usage = tool_config.analysis;
-					var analysis_connection = this.client.config.connections.get(analysis_usage.connection);
+					// Get analysis connection using base class method
+					var analysis_conn = yield this.connection("analysis");
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 					
 					// Phase 3: model is not on Client, will be set when creating Chat
-					var analysis_client = new OLLMchat.Client(analysis_connection) {
-						config = this.client.config
+					var analysis_client = new OLLMchat.Client(analysis_conn) {
+						config = this.config
 					};
+					
+					var analysis_usage = tool_config.analysis;
 					
 					var chat = new OLLMchat.Call.Chat(analysis_client.connection, analysis_usage.model, analysis_usage.options) {
 						stream = true  // Enable streaming (Phase 2: migrate to real properties)

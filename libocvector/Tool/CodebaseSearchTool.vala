@@ -49,53 +49,6 @@ namespace OLLMvector.Tool
 			config.tools.set("codebase_search", tool_config);
 		}
 		
-		/**
-		 * Gets and validates the codebase search tool configuration.
-		 * 
-		 * Returns the CodebaseSearchToolConfig from `Config2.tools["codebase_search"]` if it exists.
-		 * Validates that:
-		 * - Tool config exists
-		 * - Embed and analysis ModelUsage have connection and model set
-		 * - Connections exist in config
-		 * - Models are available on the servers
-		 * 
-		 * If validation fails, sets `is_valid = false` on the ModelUsage objects,
-		 * disables the tool, and logs warnings. If config doesn't exist, returns a disabled tool_config.
-		 * 
-		 * @param config The Config2 instance
-		 * @return The CodebaseSearchToolConfig instance from tools map, or a disabled one if not found
-		 */
-		public static async CodebaseSearchToolConfig get_tool_config(
-			OLLMchat.Settings.Config2 config)
-		{
-			if (!config.tools.has_key("codebase_search")) {
-				var tool_config = new CodebaseSearchToolConfig();
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-			
-			// Validate embed ModelUsage (verify_model checks connection and model availability)
-			var embed_usage = tool_config.embed;
-			if (!(yield embed_usage.verify_model(config))) {
-				GLib.warning("Codebase search tool: Embed model verification failed");
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			// Validate analysis ModelUsage (verify_model checks connection and model availability)
-			var analysis_usage = tool_config.analysis;
-			if (!(yield analysis_usage.verify_model(config))) {
-				GLib.warning("Codebase search tool: Analysis model verification failed");
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			// All validation passed
-			return tool_config;
-		}
-		
 		public override string name { get { return "codebase_search"; } }
 		
 		public override string title { get { return "Sematic Codebase Search Tool"; } }

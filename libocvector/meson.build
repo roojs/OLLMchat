@@ -46,6 +46,9 @@ ocvector_src = files([
   'Index.vala',      # FAISS integration
   'Database.vala',  # Vector database with embeddings
   
+  # Base class
+  'VectorBase.vala',  # Base class for vector operations with tool config access
+  
   # Code structure classes
   'VectorMetadata.vala',  # Vector metadata storage (SQL database)
   

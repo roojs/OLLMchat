@@ -125,13 +125,6 @@ namespace OLLMvector.Tool
 			get { return (this.tool as OLLMvector.Tool.CodebaseSearchTool).vector_db; }
 		}
 		
-		/**
-		 * Embedding client from tool.
-		 */
-		private OLLMchat.Client embedding_client {
-			get { return (this.tool as OLLMvector.Tool.CodebaseSearchTool).embedding_client; }
-		}
-		
 		protected override bool build_perm_question()
 		{
 			// Codebase search is read-only and doesn't require permission prompts
@@ -230,10 +223,11 @@ namespace OLLMvector.Tool
 			);
 			
 			// Step 4: Create and execute search (exactly as oc-vector-search.vala does)
+			// Get config from session manager (not from client to avoid dependency)
 			var search = new OLLMvector.Search.Search(
 				this.vector_db,
 				sql_db,
-				this.embedding_client,
+				this.chat_call.agent.session.manager.config,
 				active_project,
 				this.query,
 				(uint64)this.max_results,

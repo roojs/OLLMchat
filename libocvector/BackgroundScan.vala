@@ -406,7 +406,10 @@ namespace OLLMvector {
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
-                    this.indexer = new Indexing.Indexer (this.embedding_client, this.embedding_client, this.vector_db, this.sql_db, this.worker_project_manager);
+                    if (this.embedding_client.config == null) {
+                        GLib.error("BackgroundScan: embedding_client.config is null");
+                    }
+                    this.indexer = new Indexing.Indexer (this.embedding_client.config, this.vector_db, this.sql_db, this.worker_project_manager);
                 }
 
                 // Perform indexing.  Indexer.index_file() is async.
