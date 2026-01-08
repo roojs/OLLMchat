@@ -32,7 +32,9 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMchat.Prompt.AgentHandler.AgentHandler.html">AgentHandler</a></li>
-          <li class="method">handle_stream_chunk</li>
+          <li class="virtual_method">handle_stream_chunk</li>
+          <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.handle_stream_started.html">handle_stream_started</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.handle_tool_message.html">handle_tool_message</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.send_async.html">send_async</a></li>
           <li class="signal"><a href="OLLMchat.Prompt.AgentHandler.chat_send.html">chat_send</a></li>
           <li class="signal"><a href="OLLMchat.Prompt.AgentHandler.stream_chunk.html">stream_chunk</a></li>
@@ -48,11 +50,10 @@
         <h1 class="main_title">handle_stream_chunk</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><span class="method">handle_stream_chunk</span></b> (<span class="main_basic_type"><span class="class">string</span></span> chunk, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">handle_stream_chunk</span></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
         </div>
         <div class="description">
-          <p>Handles a streaming chunk from the client and relays it via signal.</p>
-          <p>Made protected so subclasses can access it.</p>
+          <p>Called by Chat when a streaming chunk is received. Agent handler should relay to Session.</p>
         </div>
       </div>
     </div><br/>

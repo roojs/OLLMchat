@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.Tool.RequestBase.chat_call &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.Tool.RequestBase.agent &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.Tool.RequestBase.chat_call &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.Tool.RequestBase.agent &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -31,7 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property">chat_call</li>
+          <li class="property">agent</li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_operation.html">permission_operation</a></li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_question.html">permission_question</a></li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_target_path.html">permission_target_path</a></li>
@@ -49,13 +49,14 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">chat_call</h1>
+        <h1 class="main_title">agent</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> <b><span class="property">chat_call</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span>? <b><span class="property">agent</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Chat call context for this tool execution.</p>
+          <p>Reference to the agent handler for this tool request. Tools use this to communicate with the UI via the agent. Tools access chat_call via
+            agent.chat.</p>
         </div>
       </div>
     </div><br/>

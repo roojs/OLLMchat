@@ -51,6 +51,9 @@
           <li class="method"><a href="OLLMchat.Call.Chat.send.html">send</a></li>
           <li class="virtual_method"><a href="OLLMchat.Call.Chat.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.toolsReply.html">toolsReply</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.stream_chunk.html">stream_chunk</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.stream_start.html">stream_start</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.tool_message.html">tool_message</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -173,6 +176,23 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Executes tool calls from a response and continues the conversation 
                 automatically.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Signals:</h3>
+        <ul class="navi_inline">
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.stream_chunk.html" class="signal">stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a streaming chunk is received from the chat API.</span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.stream_start.html" class="signal">stream_start</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when the streaming response starts (first chunk received). 
+                This signal is emitted when the first chunk of the response is processed, indicating that the server has started sending data back.
+              </span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.tool_message.html" class="signal">tool_message</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a tool sends a status message during execution.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>

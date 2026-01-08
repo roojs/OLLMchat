@@ -95,6 +95,33 @@ namespace OLLMchat.Call
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
+		/**
+		 * Emitted when a streaming chunk is received from the chat API.
+		 *
+		 * @param new_text The new text chunk received
+		 * @param is_thinking Whether this chunk is thinking content (true) or regular content (false)
+		 * @param response The Response object containing the streaming state
+		 * @since 1.0
+		 */
+		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+
+		/**
+		 * Emitted when the streaming response starts (first chunk received).
+		 * This signal is emitted when the first chunk of the response is processed,
+		 * indicating that the server has started sending data back.
+		 *
+		 * @since 1.0
+		 */
+		public signal void stream_start();
+
+		/**
+		 * Emitted when a tool sends a status message during execution.
+		 *
+		 * @param message The Message object from the tool (typically "ui" role)
+		 * @since 1.0
+		 */
+		public signal void tool_message(Message message);
+		
 		public Chat(Settings.Connection connection, string model)
 		{
 			base(connection);
@@ -349,6 +376,12 @@ namespace OLLMchat.Call
 				
 					var error_msg = new Message(this, "ui", err_message);
 					// message_created signal emission removed - callers handle state directly when creating messages
+					// Always emit signal (for non-agent usage and any other listeners)
+					this.tool_message(error_msg);
+					// If Chat has agent reference, also call agent method directly
+					if (this.agent != null) {
+						this.agent.handle_tool_message(error_msg);
+					}
 					this.messages.add(new Message.tool_call_invalid(this, tool_call, err_message));
 					continue;
 				}
@@ -356,6 +389,12 @@ namespace OLLMchat.Call
 				// Show message that tool is being executed
 				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
 				// message_created signal emission removed - callers handle state directly when creating messages
+				// Always emit signal (for non-agent usage and any other listeners)
+				this.tool_message(exec_msg);
+				// If Chat has agent reference, also call agent method directly
+				if (this.agent != null) {
+					this.agent.handle_tool_message(exec_msg);
+				}
 				
 				// Execute the tool with chat as first parameter
 				try {
@@ -372,6 +411,12 @@ namespace OLLMchat.Call
 							tool_call.function.name, result);
 						var error_msg = new Message(this, "ui", result);
 						// message_created signal emission removed - callers handle state directly when creating messages
+						// Always emit signal (for non-agent usage and any other listeners)
+						this.tool_message(error_msg);
+						// If Chat has agent reference, also call agent method directly
+						if (this.agent != null) {
+							this.agent.handle_tool_message(error_msg);
+						}
 					} else {
 						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
 							tool_call.function.name, result.length, result_summary);
@@ -392,6 +437,12 @@ namespace OLLMchat.Call
 						tool_call.function.name, tool_call.id, e.message);
 					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
 					// message_created signal emission removed - callers handle state directly when creating messages
+					// Always emit signal (for non-agent usage and any other listeners)
+					this.tool_message(error_msg);
+					// If Chat has agent reference, also call agent method directly
+					if (this.agent != null) {
+						this.agent.handle_tool_message(error_msg);
+					}
 					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
 				}
 			}
@@ -581,12 +632,22 @@ namespace OLLMchat.Call
 			}
 			var response = (Response.Chat?)this.streaming_response;
 
-			// Note: stream_start signal removed - handled by caller if needed
+			// Check if this is the first chunk (message is null before first chunk is processed)
+			bool is_first_chunk = (response.message == null);
 
 			// Process chunk
 			response.addChunk(chunk);
 
-			// stream_content signal emission removed - replaced with stream_chunk + is_thinking check
+			// Emit stream_start signal on first chunk
+			if (is_first_chunk) {
+				// Always emit signal (for non-agent usage and any other listeners)
+				this.stream_start();
+				
+				// If Chat has agent reference, also call agent method directly
+				if (this.agent != null) {
+					this.agent.handle_stream_started();
+				}
+			}
 
 		// Emit signal if there's new content (either regular content or thinking)
 		// Also emit when done=true even if no new content, so we can finalize
@@ -596,7 +657,18 @@ namespace OLLMchat.Call
 				!response.done) {
 				return;
 			}
-			// Note: stream_chunk signal removed - handled by caller if needed
+			
+			// Determine if this chunk is thinking content
+			bool is_thinking = response.new_thinking.length > 0;
+			string new_text = is_thinking ? response.new_thinking : response.new_content;
+			
+			// Always emit signal (for non-agent usage and any other listeners)
+			this.stream_chunk(new_text, is_thinking, response);
+			
+			// If Chat has agent reference, also call agent method directly
+			if (this.agent != null) {
+				this.agent.handle_stream_chunk(new_text, is_thinking, response);
+			}
 		}
 	}
 }

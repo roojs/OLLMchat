@@ -148,12 +148,20 @@ Examples:
 		request.url = url;
 		request.format = format;
 		
-		// Create a dummy chat call context (needed for execute)
-		// Pass explicit options to avoid accessing config.model_options
-		var dummy_chat_call = new OLLMchat.Call.Chat(client.connection, "dummy") {
-			permission_provider = new OLLMchat.ChatPermission.Dummy()
-		};
-		request.chat_call = dummy_chat_call;
+		// Create a dummy agent handler for testing
+		// Create dummy manager and session
+		var dummy_manager = new OLLMchat.History.Manager(this);
+		var dummy_session = new OLLMchat.History.EmptySession(dummy_manager);
+		
+		// Create dummy agent and handler
+		var dummy_agent = new OLLMchat.Prompt.JustAsk();
+		var dummy_handler = new OLLMchat.Prompt.AgentHandler(dummy_agent, client, dummy_session);
+		
+		// Set permission provider on chat
+		dummy_handler.chat.permission_provider = new OLLMchat.ChatPermission.Dummy();
+		
+		// Set agent on request
+		request.agent = dummy_handler;
 		
 		// Execute the request (Dummy provider will auto-approve)
 		// Output result

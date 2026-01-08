@@ -463,7 +463,7 @@ namespace OLLMchat.Tool
 		 * Public method that creates a Request and delegates execution to it.
 		 *
 		 * Converts parameters to Json.Node, calls deserialize() to create a Request object,
-		 * then sets tool and chat_call properties, and calls its execute() method.
+		 * then sets tool and agent properties, and calls its execute() method.
 		 *
 		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
@@ -481,9 +481,10 @@ namespace OLLMchat.Tool
 				return "ERROR: Failed to create request object";
 			}
 			
-			// Set tool and chat_call (not in JSON, set after deserialization)
+			// Set tool and agent (not in JSON, set after deserialization)
 			request.tool = this;
-			request.chat_call = chat_call;
+			// Set agent property (from chat_call, set after deserialization)
+			request.agent = chat_call.agent;
 			
 			return yield request.execute();
 		}

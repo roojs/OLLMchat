@@ -31,7 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMchat.Tool.RequestBase.chat_call.html">chat_call</a></li>
+          <li class="property"><a href="OLLMchat.Tool.RequestBase.agent.html">agent</a></li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_operation.html">permission_operation</a></li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_question.html">permission_question</a></li>
           <li class="property"><a href="OLLMchat.Tool.RequestBase.permission_target_path.html">permission_target_path</a></li>
@@ -99,9 +99,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Tool.RequestBase.chat_call.html" class="property">chat_call</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span>? <b><a href="OLLMchat.Tool.RequestBase.agent.html" class="property">agent</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Chat call context for this tool execution.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Reference to the agent handler for this tool request. Tools use this 
+                to communicate with the UI via the agent. Tools access chat_call via agent.chat.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.ChatPermission.Operation.html" class="enum">Operation</a></span> <b><a href="OLLMchat.Tool.RequestBase.permission_operation.html" class="property">permission_operation</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">protected</span> <span class="main_keyword">set</span>; }
             </span>
@@ -125,7 +126,7 @@
           <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <b><a href="OLLMchat.Tool.RequestBase.RequestBase.html" class="creation_method">RequestBase</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Default constructor. Request objects are created via 
-                Json.gobject_deserialize from parameters JSON. Tool and chat_call are set after deserialization.</span>
+                Json.gobject_deserialize from parameters JSON. Tool and agent are set after deserialization.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>

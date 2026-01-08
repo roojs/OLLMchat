@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.History.SessionBase.on_stream_chunk &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.History.SessionBase.handle_stream_chunk &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.History.SessionBase.on_stream_chunk &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.History.SessionBase.handle_stream_chunk &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -60,9 +60,11 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.cancel_current_request.html">cancel_current_request</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.deactivate.html">deactivate</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.deserialize_property.html">deserialize_property</a></li>
+          <li class="virtual_method">handle_stream_chunk</li>
+          <li class="method"><a href="OLLMchat.History.SessionBase.handle_stream_started.html">handle_stream_started</a></li>
+          <li class="method"><a href="OLLMchat.History.SessionBase.handle_tool_message.html">handle_tool_message</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.load.html">load</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_message_created.html">on_message_created</a></li>
-          <li class="abstract_method">on_stream_chunk</li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.save_async.html">save_async</a></li>
@@ -70,22 +72,24 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.History.SessionBase.to_path.html">to_path</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.write.html">write</a></li>
-          <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_handler_id.html">stream_chunk_handler_id</a></li>
-          <li class="field"><a href="OLLMchat.History.SessionBase.stream_chunk_id.html">stream_chunk_id</a></li>
-          <li class="field"><a href="OLLMchat.History.SessionBase.stream_content_id.html">stream_content_id</a></li>
-          <li class="field"><a href="OLLMchat.History.SessionBase.stream_start_id.html">stream_start_id</a></li>
-          <li class="field"><a href="OLLMchat.History.SessionBase.tool_message_id.html">tool_message_id</a></li>
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">on_stream_chunk</h1>
+        <h1 class="main_title">handle_stream_chunk</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><span class="abstract_method">on_stream_chunk</span></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><span class="virtual_method">handle_stream_chunk</span></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
         </div>
         <div class="description">
-          <p>Handler for stream_chunk signal from this session's client. Handles unread tracking and session saving. Must be implemented by 
-            subclasses.</p>
+          <p>Called by AgentHandler when a streaming chunk is received. Session relays to Manager signals (Manager doesn't process, just relays to 
+            UI).</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>Manager signals are just a relay point - Manager doesn't need to process these events, it just forwards them to UI components that 
+                are connected to Manager signals. </p>
+            </div>
+          </div>
+          <p>Subclasses can override to add persistence handling before relaying to Manager.</p>
         </div>
       </div>
     </div><br/>

@@ -113,12 +113,10 @@ namespace OLLMchat.Tools
 					this.end_line
 				);
 			} 
-			var ui_msg = new OLLMchat.Message(this.chat_call, "ui", message);
+			var ui_msg = new OLLMchat.Message(this.agent.chat, "ui", message);
 			
 			// Add message to session via agent (Chat → Agent → Session)
-			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
-				this.chat_call.agent.session.add_message(ui_msg);
-			}
+			this.agent.session.add_message(ui_msg);
 			
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 				throw new GLib.IOError.FAILED(@"File not found or is not a regular file: $file_path");

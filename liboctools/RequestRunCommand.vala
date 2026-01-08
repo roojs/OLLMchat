@@ -213,7 +213,7 @@ namespace OLLMtools
 			
 			// Request permission (will always ask for complex commands due to unique path)
 			// Phase 3: permission_provider is on Chat, not Client
-			if (this.chat_call.permission_provider == null || !(yield this.chat_call.permission_provider.request(this))) {
+			if (this.agent.chat.permission_provider == null || !(yield this.agent.chat.permission_provider.request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
 			}
 			

@@ -33,14 +33,16 @@ namespace OLLMchat.Tool
 	public abstract class RequestBase : Object, Json.Serializable
 	{
 		/**
-		 * Reference to the tool that created this request.
-		 */
+		* Reference to the tool that created this request.
+		*/
 		public BaseTool tool { get; set; }
 		
 		/**
-		 * Chat call context for this tool execution.
-		 */
-		public Call.Chat chat_call { get; set; }
+		* Reference to the agent handler for this tool request.
+		* Tools use this to communicate with the UI via the agent.
+		* Tools access chat_call via agent.chat.
+		*/
+		public Prompt.AgentHandler? agent { get; set; }
 		
 		/**
 		 * Permission question text.
@@ -60,7 +62,7 @@ namespace OLLMchat.Tool
 		/**
 		 * Default constructor.
 		 * Request objects are created via Json.gobject_deserialize from parameters JSON.
-		 * Tool and chat_call are set after deserialization.
+		 * Tool and agent are set after deserialization.
 		 */
 		protected RequestBase()
 		{
@@ -85,10 +87,10 @@ namespace OLLMchat.Tool
 
 		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Exclude tool and chat_call from deserialization (they're set after deserialization)
+			// Exclude tool and agent from deserialization (they're set after deserialization)
 			switch (property_name) {
 				case "tool":
-				case "chat-call":
+				case "agent":
 					value = Value(pspec.value_type);
 					return true;
 				
@@ -107,10 +109,10 @@ namespace OLLMchat.Tool
 		{
 			var path = in_path;
 			// Get permission provider from Chat (Chat has its own or falls back to Client)
-			var permission_provider = this.chat_call.permission_provider;
+			var permission_provider = this.agent.chat.permission_provider;
 			
 			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
-			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
+			if (!GLib.Path.is_absolute(path) && permission_provider != null && permission_provider.relative_path != "") {
 				path = GLib.Path.build_filename(permission_provider.relative_path, path);
 			}
 			// if it's still absolute - return it we might have to fail at this point..
@@ -131,12 +133,10 @@ namespace OLLMchat.Tool
 			// Escape code blocks in body to prevent breaking the outer codeblock
 			var escaped_body = body.replace("\n```", "\n\\`\\`\\`");
 			var message = "```" + type + " " + title + "\n" + escaped_body + "\n```";
-			var ui_msg = new OLLMchat.Message(this.chat_call, "ui", message);
+			var ui_msg = new OLLMchat.Message(this.agent.chat, "ui", message);
 			
 			// Add message to session via agent (Chat → Agent → Session)
-			if (this.chat_call.agent != null && this.chat_call.agent.session != null) {
-				this.chat_call.agent.session.add_message(ui_msg);
-			}
+			this.agent.session.add_message(ui_msg);
 		}
 		
 		/**
@@ -166,7 +166,11 @@ namespace OLLMchat.Tool
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
 				
 			// Get permission provider from Chat (Chat has its own or falls back to Client)
-			var permission_provider = this.chat_call.permission_provider;
+			var permission_provider = this.agent.chat.permission_provider;
+			if (permission_provider == null) {
+				GLib.debug("RequestBase.execute: Tool '%s' has no permission provider available", this.tool.name);
+				return "ERROR: No permission provider available";
+			}
 			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Chat", 
 				this.tool.name, permission_provider, permission_provider.get_type().name());
 				

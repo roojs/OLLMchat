@@ -227,7 +227,7 @@ namespace OLLMvector.Tool
 			var search = new OLLMvector.Search.Search(
 				this.vector_db,
 				sql_db,
-				this.chat_call.agent.session.manager.config,
+				this.agent.session.manager.config,
 				active_project,
 				this.query,
 				(uint64)this.max_results,

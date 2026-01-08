@@ -150,11 +150,10 @@ namespace OLLMchat.History
 		}
 			
 		/**
-		* Handler for stream_chunk signal from this session's client.
-		* Handles unread tracking and session saving.
-		* FIXME = needs making logical after we remove get_chat
-		*/
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		 * Called by AgentHandler when a streaming chunk is received.
+		 * Handles persistence and relays to Manager signals.
+		 */
+		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
 			// If session is inactive, increment unread count
 			if (!this.is_active) {
@@ -162,16 +161,12 @@ namespace OLLMchat.History
 				this.notify_property("unread_count");
 			}
 			
-			// Get Chat using alternative access pattern (supports both old and new patterns)
-			// Get chat from agent (Chat is created per request by AgentHandler)
-			
 			// Capture streaming output
 			if (new_text.length > 0) {
 				// Check if stream type has changed
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					// Use chat from alternative access pattern
 					this.current_stream_message = new Message(this.agent.chat, stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
@@ -183,42 +178,54 @@ namespace OLLMchat.History
 			
 			// When response is done, finalize streaming
 			if (response.done) {
-				// Create "end-stream" message to signal renderer
-				// Use chat from alternative access pattern
-				var end_stream_msg = new Message(this.agent.chat, "end-stream", "");
-				this.messages.add(end_stream_msg);
-				
-				// Finalize current stream message
-				this.current_stream_message = null;
-				this.current_stream_is_thinking = false;
-				
-				// Emit message_created for final assistant message if it exists and hasn't been emitted yet
-				if (response.message != null && response.message.is_llm) {
-					// Check if this message is already in our list (avoid duplicates)
-					bool found = false;
-					foreach (var existing_msg in this.messages) {
-						if (existing_msg == response.message) {
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						// Ensure message_interface is set (use chat from alternative access pattern)
-						response.message.message_interface = this.agent.chat;
-						
-						// message_created signal emissions removed - callers handle state directly when creating messages
-						
-						// Create a "done" message after the real message with summary
-						var summary = response.get_summary();
-						var done_msg = new Message(this.agent.chat, "done", summary);
-						// message_created signal emission removed - callers handle state directly when creating messages
-					}
-				}
-				
+				this.finalize_streaming(response);
+			}
+			
+			// Relay to Manager signals (base class handles this)
+			base.handle_stream_chunk(new_text, is_thinking, response);
+		}
+		
+		/**
+		 * Finalizes streaming when response is done.
+		 */
+		private void finalize_streaming(Response.Chat response)
+		{
+			// Create "end-stream" message to signal renderer
+			var end_stream_msg = new Message(this.agent.chat, "end-stream", "");
+			this.messages.add(end_stream_msg);
+			
+			// Finalize current stream message
+			this.current_stream_message = null;
+			this.current_stream_is_thinking = false;
+			
+			if (response.message == null || !response.message.is_llm) {
 				this.save_async.begin();
 				this.notify_property("display_info");
 				this.notify_property("title");
+				return;
 			}
+			// Add final assistant message if it exists and hasn't been added yet
+				// Check if this message is already in our list (avoid duplicates)
+			bool found = false;
+			foreach (var existing_msg in this.messages) {
+				if (existing_msg == response.message) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				// Ensure message_interface is set
+				response.message.message_interface = this.agent.chat;
+				
+				// Create a "done" message after the real message with summary
+				var summary = response.get_summary();
+				var done_msg = new Message(this.agent.chat, "done", summary);
+			}
+			
+			
+			this.save_async.begin();
+			this.notify_property("display_info");
+			this.notify_property("title");
 		}
 			
 		/**

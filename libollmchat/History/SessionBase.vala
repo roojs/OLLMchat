@@ -126,15 +126,8 @@ namespace OLLMchat.History
 		// Note: construct properties must be public in Vala
 		public Manager manager { get; construct set; }
 		
-		// Signal handler IDs for disconnection
-		// Manager handlers (for persistence)
-		protected ulong stream_chunk_handler_id = 0;
-		// UI relay signals
-		// chat_send_id removed - callers handle state directly after calling send()
-		protected ulong stream_chunk_id = 0;
-		protected ulong stream_content_id = 0;
-		protected ulong stream_start_id = 0;
-		protected ulong tool_message_id = 0;
+		// Signal handler IDs removed - agent usage now uses direct method calls from Chat
+		// Note: Persistence may need to be handled differently (connect to Chat signals instead of Client signals)
 		
 		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
 		// Owned by Session, not Chat
@@ -229,38 +222,9 @@ namespace OLLMchat.History
 				return;
 			}
 
-			
-			// Connect client signals to Manager handlers (for persistence)
-			this.stream_chunk_handler_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				this.on_stream_chunk(new_text, is_thinking, response);
-			});
-			
-			// message_created connection removed - signal no longer exists on Client
-			// Messages are now added directly via session.add_message() which relays to UI via Manager
-			
-			// Connect client signals to relay to UI via Manager
-			// chat_send connection removed - callers handle state directly after calling send()
-			this.stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				this.manager.stream_chunk(new_text, is_thinking, response);
-				// Relay stream_content for non-thinking chunks (replaces stream_content signal)
-				if (!is_thinking) {
-					this.manager.stream_content(new_text, response);
-				}
-			});
-			// stream_content connection removed - replaced with stream_chunk + is_thinking check above
-			this.stream_start_id = this.client.stream_start.connect(() => {
-				this.manager.stream_start();
-			});
-			this.tool_message_id = this.client.tool_message.connect((message) => {
-				GLib.debug("SessionBase.tool_message handler: Received tool_message from client (role=%s, content='%.50s', manager=%p, session=%p)", 
-					message.role, message.content, this.manager, this);
-				if (this.manager == null) {
-					GLib.debug("SessionBase.tool_message handler: ERROR - manager is null!");
-					return;
-				}
-				this.manager.tool_message(message);
-				GLib.debug("SessionBase.tool_message handler: Relayed to manager.tool_message signal");
-			});
+			// Signal connections removed - agent usage now uses direct method calls from Chat
+			// Chat always emits signals, and when agent is set, Chat also calls agent methods directly
+			// AgentHandler relays to Session via direct method calls, Session relays to Manager signals
 		}
 		
 		/**
@@ -269,46 +233,12 @@ namespace OLLMchat.History
 		 */
 		public void deactivate()
 		{
-			// Check if already deactivated (stream_chunk_handler_id will be 0 if not connected)
-			if (this.stream_chunk_handler_id == 0) {
-				return;
-			}
-			
 			if (!this.is_active) {
 				return;
 			}
 			this.is_active = false;
 
-			if (this.client == null) {
-				return;
-			}
-
-			// Disconnect client signals from Manager handlers (check if connected first)
-			if (this.stream_chunk_handler_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_handler_id)) {
-				this.client.disconnect(this.stream_chunk_handler_id);
-			}
-			
-			// Disconnect client signals from UI relay (check if connected first)
-			// chat_send_id removed - no longer connecting to this signal
-			// message_created_id removed - signal no longer exists on Client
-			if (this.stream_chunk_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_id)) {
-				this.client.disconnect(this.stream_chunk_id);
-			}
-			// stream_content_id removed - no longer connecting to this signal
-			if (this.stream_start_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_start_id)) {
-				this.client.disconnect(this.stream_start_id);
-			}
-			if (this.tool_message_id != 0 && GLib.SignalHandler.is_connected(this.client, this.tool_message_id)) {
-				this.client.disconnect(this.tool_message_id);
-			}
-			
-			// Reset all IDs to 0
-			this.stream_chunk_handler_id = 0;
-			// chat_send_id removed - no longer connecting to this signal
-			this.stream_chunk_id = 0;
-			// stream_content_id removed - no longer connecting to this signal
-			this.stream_start_id = 0;
-			this.tool_message_id = 0;
+			// Signal disconnections removed - agent usage now uses direct method calls from Chat
 		}
 		
 		/**
@@ -319,11 +249,37 @@ namespace OLLMchat.History
 		protected abstract void on_message_created(Message m, ChatContentInterface? content_interface);
 		
 		/**
-		 * Handler for stream_chunk signal from this session's client.
-		 * Handles unread tracking and session saving.
-		 * Must be implemented by subclasses.
+		 * Called by AgentHandler when streaming starts.
+		 * Session relays to Manager signals.
 		 */
-		protected abstract void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+		public void handle_stream_started()
+		{
+			this.manager.stream_start();
+		}
+		
+		/**
+		 * Called by AgentHandler when a streaming chunk is received.
+		 * Session relays to Manager signals (Manager doesn't process, just relays to UI).
+		 * 
+		 * Note: Manager signals are just a relay point - Manager doesn't need to process
+		 * these events, it just forwards them to UI components that are connected to Manager signals.
+		 * 
+		 * Subclasses can override to add persistence handling before relaying to Manager.
+		 */
+		public virtual void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		{
+			// Relay directly to Manager signals (Manager is just a relay point, no processing needed)
+			this.manager.stream_chunk(new_text, is_thinking, response);
+		}
+		
+		/**
+		 * Called by AgentHandler when a tool sends a status message.
+		 * Session relays to Manager signals.
+		 */
+		public void handle_tool_message(Message message)
+		{
+			this.manager.tool_message(message);
+		}
 		
 		/**
 		 * Adds a message to the session and relays it to the UI via Manager signal.

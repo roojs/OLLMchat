@@ -155,26 +155,8 @@ namespace OLLMtools
 			GLib.debug("RequestEditMode.connect_signals: Connecting signals for file %s (tool.active=%s)", 
 				this.normalized_path, this.tool.active.to_string());
 			
-			// Connect to stream_chunk signal to capture code blocks as they stream in
-			// Replaces stream_content signal - use is_thinking check to filter out thinking content
-			// Tools access Client via tool.client (BaseTool has client property)
-			if (this.chat_call.stream && this.tool.client != null) {
-				this.stream_content_id = this.tool.client.stream_chunk.connect((new_text, is_thinking, response) => {
-					// Only process non-thinking content (replaces stream_content signal)
-					if (is_thinking) {
-						return;
-					}
-					// Check if this request is still valid before processing
-					if (this.chat_call == null || this.tool.client == null) {
-						return;
-					}
-					// Only process if this response belongs to our chat_call
-					if (response.call != this.chat_call) {
-						return;
-					}
-					this.process_streaming_content(new_text);
-				});
-			}
+			// Note: Signal connections removed - tools should use direct method calls via agent handler.
+			// Streaming is handled via agent.handle_stream_chunk() which tools can register callbacks with.
 			
 			// TODO: message_created connection removed per Phase 1.2
 			// Need to replace with direct calls from message creation code
@@ -207,11 +189,7 @@ namespace OLLMtools
 		 */
 		public void disconnect_signals()
 		{
-			if (this.chat_call == null || this.tool.client == null) {
-				return;
-			}
-			
-			// Disconnect stream_chunk signal (replaces stream_content)
+			// Note: Signal disconnections removed - no longer using signals
 			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.tool.client, this.stream_content_id)) {
 				this.tool.client.disconnect(this.stream_content_id);
 			}
@@ -233,11 +211,6 @@ namespace OLLMtools
 		 */
 		public void process_streaming_content(string new_text)
 		{
-			// Check if request is still valid
-			if (this.chat_call == null) {
-				return;
-			}
-			
 			// Only process if tool is active
 			if (!this.tool.active) {
 				return;
@@ -409,13 +382,6 @@ namespace OLLMtools
 		 */
 		private async void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
 		{
-			// Check if request is still valid
-			if (this.chat_call == null) {
-				GLib.debug("RequestEditMode.on_message_created: chat_call is null, skipping (file=%s)", 
-					this.normalized_path);
-				return;
-			}
-			
 			GLib.debug("RequestEditMode.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
 				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
 			
@@ -441,7 +407,7 @@ namespace OLLMtools
 			// If not streaming, process the full content at once
 			// If streaming, we should have already captured everything via stream_content
 			// Phase 3: stream is on Chat, not Client
-			if (!this.chat_call.stream && response.message != null && response.message.content != "") {
+			if (!this.agent.chat.stream && response.message != null && response.message.content != "") {
 				var parts = response.message.content.split("\n");
 				for (int i = 0; i < parts.length; i++) {
 					this.add_text(parts[i]);
@@ -513,18 +479,10 @@ namespace OLLMtools
 		/**
 		 * Sends a message to continue the conversation and disconnects signals.
 		 * This method should be called on both success and error paths to ensure signals are always disconnected.
-		 * Uses chat_call.reply() to continue the conversation with the LLM's response.
+		 * Uses agent.chat.reply() to continue the conversation with the LLM's response.
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
-			if (this.chat_call == null) {
-				this.disconnect_signals();
-				active_requests.remove(this);
-				GLib.debug("RequestEditMode.reply_with_errors: Removed request from active_requests (remaining=%zu, file=%s)", 
-					active_requests.size, this.normalized_path);
-				return;
-			}
-			
 			// Disconnect signals first - we're done processing new content
 			this.disconnect_signals();
 			
@@ -540,7 +498,7 @@ namespace OLLMtools
 			// the final chunk processing completes first, then reply() sets is_streaming_active=true before
 			// the continuation response starts streaming.
 			GLib.Idle.add(() => {
-				this.chat_call.reply.begin(
+				this.agent.chat.reply.begin(
 					reply_text,
 					response,
 					(obj, res) => {
@@ -576,9 +534,9 @@ namespace OLLMtools
 			// Only check permission if file is NOT in active project
 			// Files in active project are auto-approved and don't need permission checks
 			if (!is_in_project) {
-				// Check if permission status has changed (e.g., revoked by signal handler)
-				// Phase 3: permission_provider is on Chat, not Client
-				if (this.chat_call.permission_provider == null || !this.chat_call.permission_provider.check_permission(this)) {
+			// Check if permission status has changed (e.g., revoked by signal handler)
+			// Phase 3: permission_provider is on Chat, not Client
+			if (this.agent.chat.permission_provider == null || !this.agent.chat.permission_provider.check_permission(this)) {
 					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 				}
 			}

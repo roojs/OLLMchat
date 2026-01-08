@@ -55,13 +55,7 @@ namespace OLLMchat.Prompt
 		 */
 		public OLLMchat.Call.Chat chat;
 		
-		/**
-		 * Signal handler IDs for client signals.
-		 */
-		private ulong stream_chunk_id = 0;
-		// stream_content_id removed - replaced with stream_chunk + is_thinking check
-		private ulong stream_start_id = 0;
-		// chat_send_id removed - callers handle state directly after calling send()
+		// Signal handler IDs removed - agent usage now uses direct method calls
 		
 		/**
 		 * Signal emitted when a streaming chunk is received.
@@ -125,43 +119,45 @@ namespace OLLMchat.Prompt
 			// Agent can also configure/filter tools if needed
 			this.agent.configure_tools(this.chat);
 			
-			// Set up signal connections from client to handler
-			this.stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				this.handle_stream_chunk(new_text, is_thinking, response);
-				// Relay stream_content for non-thinking chunks (replaces stream_content signal)
-				if (!is_thinking) {
-					this.stream_content(new_text, response);
-				}
-			});
-			
-			// stream_content connection removed - replaced with stream_chunk + is_thinking check above
-			
-			this.stream_start_id = this.client.stream_start.connect(() => {
-				this.stream_start();
-			});
-			
-			// chat_send connection removed - callers handle state directly after calling send()
+			// Signal connections removed - agent usage now uses direct method calls from Chat
 		}
 		
 		/**
-		 * Destructor - automatically disconnects all client signal connections.
+		 * Destructor - signal disconnections removed (no longer connecting to client signals).
 		 */
 		~AgentHandler()
 		{
-			this.client.disconnect(this.stream_chunk_id);
-			// stream_content_id removed - no longer connecting to this signal
-			this.client.disconnect(this.stream_start_id);
-			// chat_send_id removed - no longer connecting to this signal
+			// Signal disconnections removed - agent usage now uses direct method calls from Chat
 		}
 		
 		/**
-		 * Handles a streaming chunk from the client and relays it via signal.
-		 * 
-		 * Made protected so subclasses can access it.
+		 * Called by Chat when streaming starts.
+		 * Agent handler should relay to Session.
 		 */
-		protected void handle_stream_chunk(string chunk, bool is_thinking, OLLMchat.Response.Chat response)
+		public virtual void handle_stream_started()
 		{
-			this.stream_chunk(chunk, is_thinking, response);
+			// Relay to session (agent is always connected to session)
+			this.session.handle_stream_started();
+		}
+		
+		/**
+		 * Called by Chat when a streaming chunk is received.
+		 * Agent handler should relay to Session.
+		 */
+		public virtual void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		{
+			// Relay to session (agent is always connected to session)
+			this.session.handle_stream_chunk(new_text, is_thinking, response);
+		}
+		
+		/**
+		 * Called by Chat when a tool sends a status message.
+		 * Agent handler should relay to Session.
+		 */
+		public virtual void handle_tool_message(Message message)
+		{
+			// Relay to session (agent is always connected to session)
+			this.session.handle_tool_message(message);
 		}
 		
 		/**
@@ -212,8 +208,8 @@ namespace OLLMchat.Prompt
 			
 			// Process response and add assistant messages to session via session.send()
 			// This is handled via streaming callbacks/handlers - the response will be processed
-			// through the client's stream_chunk signal which is connected to handle_stream_chunk()
-			// The final assistant message will be added to session via on_stream_chunk() or similar
+			// through Chat's direct method calls to agent.handle_stream_chunk() which relays to
+			// session.handle_stream_chunk() for persistence and UI updates
 		}
 		
 	}
