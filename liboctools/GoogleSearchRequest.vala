@@ -160,12 +160,8 @@ namespace OLLMtools
 				return false;
 			}
 			
-			// Set permission properties
-			this.permission_target_path = "https://www.googleapis.com/";
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
-			this.permission_question = "Search Google for: " + this.query + "?";
-			
-			return true;
+			// Google search does not require permission - return false to skip permission check
+			return false;
 		}
 		
 		protected override async string execute_request() throws Error
