@@ -229,17 +229,15 @@ Examples:
 		if (default_usage == null || default_usage.model == "") {
 			throw new GLib.IOError.NOT_FOUND("default_model not configured");
 		}
-		string model = default_usage.model;
 		
 		// Get options from config
-		var options = default_usage.options ?? new OLLMchat.Call.Options();
 		
 		// Create Chat object with streaming enabled
-		var chat = new OLLMchat.Call.Chat(client.connection, model, options) {
+		var chat = new OLLMchat.Call.Chat(client.connection, default_usage.model) {
 			stream = true,
 			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};
-		
+		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;
 		// Connect to client signals for streaming output
 		client.stream_chunk.connect((new_text, is_thinking, response) => {
 			stdout.write(new_text.data);

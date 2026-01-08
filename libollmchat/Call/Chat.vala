@@ -95,7 +95,7 @@ namespace OLLMchat.Call
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
-		public Chat(Settings.Connection connection, string model, Call.Options? options = null)
+		public Chat(Settings.Connection connection, string model)
 		{
 			base(connection);
 			if (model == "") {
@@ -106,15 +106,8 @@ namespace OLLMchat.Call
 			this.model = model;
 			// FID is owned by Session, not Chat (Chat is created per request by AgentHandler)
 			
-			// Load model options from config if options not provided
-			if (options != null) {
-				this.options = options;
-				return;
-			} 
-			// Note: When using connection directly, config is not available
-			// Caller should provide options if needed
+			// Always initialize with empty options - callers should set options after construction
 			this.options = new Call.Options();
-			
 		}
 	
 		

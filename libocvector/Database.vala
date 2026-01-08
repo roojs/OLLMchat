@@ -116,10 +116,10 @@ namespace OLLMvector
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model,
-				tool_config.embed.options
+				tool_config.embed.model
 			) {
-				input = "test"
+				input = "test",
+				options = tool_config.embed.options
 			};
 			
 			var test_response = yield embed_call.exec_embed();
@@ -189,12 +189,12 @@ namespace OLLMvector
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model,
-				tool_config.embed.options
+				tool_config.embed.model
 			) {
-				input = texts[0]
+				input = texts[0],
+				options = tool_config.embed.options
 			};
-			
+				
 			var first_response = yield embed_call.exec_embed();
 			if (first_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embed for first document");
@@ -221,10 +221,10 @@ namespace OLLMvector
 			for (int i = 1; i < texts.length; i++) {
 				embed_call = new OLLMchat.Call.Embed(
 					connection,
-					tool_config.embed.model,
-					tool_config.embed.options
+					tool_config.embed.model
 				) {
-					input = texts[i]
+					input = texts[i],
+					options = tool_config.embed.options
 				};
 				var response = yield embed_call.exec_embed();
 				if (response.embeddings.size == 0) {
@@ -249,10 +249,10 @@ namespace OLLMvector
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model,
-				tool_config.embed.options
+				tool_config.embed.model
 			) {
-				input = query
+				input = query,
+				options = tool_config.embed.options
 			};
 			
 			var response = yield embed_call.exec_embed();

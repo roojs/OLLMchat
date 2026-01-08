@@ -559,9 +559,10 @@ namespace OLLMchat.Settings
 
 			// Create chat with connection, model, and options from ModelUsage
 			// Phase 3: Client no longer has these properties, use defaults
-			return new OLLMchat.Call.Chat(client.connection, model_usage_obj.model, model_usage_obj.options) {
+			return new OLLMchat.Call.Chat(client.connection, model_usage_obj.model) {
 				stream = false,  // Default to non-streaming
-				think = false
+				think = false,
+				options = model_usage_obj.options
 			};
 		}
 

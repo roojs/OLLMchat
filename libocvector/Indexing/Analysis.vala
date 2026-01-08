@@ -311,10 +311,12 @@ namespace OLLMvector.Indexing
 						config = this.config
 					};
 					
-					var analysis_usage = tool_config.analysis;
 					
-					var chat = new OLLMchat.Call.Chat(analysis_client.connection, analysis_usage.model, analysis_usage.options) {
-						stream = true  // Enable streaming (Phase 2: migrate to real properties)
+					var chat = new OLLMchat.Call.Chat(
+							analysis_conn,
+							tool_config.analysis.model) {
+						stream = true,  // Enable streaming (Phase 2: migrate to real properties)
+						options = tool_config.analysis.options
 					};
 					
 					chat.system_content = this.cached_template.system_message;

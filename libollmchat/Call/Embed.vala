@@ -38,7 +38,7 @@ namespace OLLMchat.Call
 		
 		public Call.Options options { get; set; default = new Call.Options(); }
 
-		public Embed(Settings.Connection connection, string model, Call.Options? options = null)
+		public Embed(Settings.Connection connection, string model)
 		{
 			base(connection);
 			if (model == "") {
@@ -48,14 +48,8 @@ namespace OLLMchat.Call
 			this.http_method = "POST";
 			this.model = model;
 			
-			// Load model options from config if options not provided
-			if (options != null) {
-				this.options = options;
-			} else {
-				// Note: When using connection directly, config is not available
-				// Caller should provide options if needed
-				this.options = new Call.Options();
-			}
+			// Always initialize with empty options - callers should set options after construction
+			this.options = new Call.Options();
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

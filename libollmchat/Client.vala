@@ -185,14 +185,13 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model parameter.");
 			}
-			var send_opts = options == null ? new Call.Options() : options; 
 			// Create chat call with defaults (Phase 3: no Client properties)
-			var call = new Call.Chat(this.connection, model, send_opts) {
+			var call = new Call.Chat(this.connection, model) {
 				cancellable = cancellable,
 				stream = true,  // Default to non-streaming for legacy method
 				think = true
 			};
-			
+			call.options =  options == null ? new Call.Options() : options; 
 			// Create dummy user-sent Message with original text
 			var user_sent_msg = new Message(call, "user-sent", text);
 			// message_created signal emission removed - callers handle state directly when creating messages
@@ -367,13 +366,13 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model parameter.");
 			}
-			var send_opts = options == null ? new Call.Options() : options;
-			var call = new Call.Embed(this.connection, model, send_opts) {
+			var call = new Call.Embed(this.connection, model) {
 				cancellable = cancellable,
 				input = input,
 				dimensions = dimensions,
 				truncate = truncate
 			};
+			call.options = options == null ? new Call.Options() : options;
 			
 			var result = yield call.exec_embed();
 			
@@ -407,15 +406,15 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model parameter.");
 			}
-			var send_opts = options == null ? new Call.Options() : options;
-			var call = new Call.Embed(this.connection, model, send_opts) {
+			var call = new Call.Embed(this.connection, model) {
 				cancellable = cancellable,
 				input_array = input_array,
 				dimensions = dimensions,
 				truncate = truncate
 			};
+			call.options = options == null ? new Call.Options() : options;
 			
-			var result = yield call.exec_embed();
+		var result = yield call.exec_embed();
 			
 			return result;
 		}
@@ -445,16 +444,15 @@ namespace OLLMchat
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model parameter.");
 			}
-			var send_opts = options == null ? new Call.Options() : options;
 			var call = new Call.Generate(this.connection) {
 				cancellable = cancellable,
 				prompt = prompt,
 				system = system,
 				model = model,
 				stream = false,
-				think = false,
-				options = send_opts
+				think = false
 			};
+			call.options = options == null ? new Call.Options() : options;
 			
 			var result = yield call.exec_generate();
 			

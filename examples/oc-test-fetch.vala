@@ -150,7 +150,7 @@ Examples:
 		
 		// Create a dummy chat call context (needed for execute)
 		// Pass explicit options to avoid accessing config.model_options
-		var dummy_chat_call = new OLLMchat.Call.Chat(client.connection, "dummy", new OLLMchat.Call.Options()) {
+		var dummy_chat_call = new OLLMchat.Call.Chat(client.connection, "dummy") {
 			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};
 		request.chat_call = dummy_chat_call;
