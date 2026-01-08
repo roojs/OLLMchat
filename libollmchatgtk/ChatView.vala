@@ -650,11 +650,11 @@ namespace OLLMchatGtk
 					return;
 				}
 			}
-			// FIXME = need to get connection from elsewhere? sesison?
-			var client = session.client;
+			// Get connection from default_model_usage
+			var connection = session.manager.config.connections.get(session.manager.default_model_usage.connection);
 
 			// Create a minimal Response.Chat for processing
-			var response = new OLLMchat.Response.Chat(client.connection, call);
+			var response = new OLLMchat.Response.Chat(connection, call);
 			response.message = message;
 			response.done = true;
 

@@ -306,12 +306,6 @@ namespace OLLMvector.Indexing
 					var analysis_conn = yield this.connection("analysis");
 					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 					
-					// Phase 3: model is not on Client, will be set when creating Chat
-					var analysis_client = new OLLMchat.Client(analysis_conn) {
-						config = this.config
-					};
-					
-					
 					var chat = new OLLMchat.Call.Chat(
 							analysis_conn,
 							tool_config.analysis.model) {
@@ -322,13 +316,13 @@ namespace OLLMvector.Indexing
 					chat.system_content = this.cached_template.system_message;
 					chat.chat_content = user_message;
 					
-					// Streaming is enabled on client (set in constructor) so we can see progress
+					// Streaming is enabled on chat (set in constructor) so we can see progress
 					// The response will still have complete content when done=true
 					// We're requesting plain text format (format=null means text, not JSON)
 					
 					// Connect to stream_chunk signal to capture and print partial content (including thinking)
 					ulong stream_chunk_id = 0;
-					stream_chunk_id = analysis_client.stream_chunk.connect((new_text, is_thinking, response) => {
+					stream_chunk_id = chat.stream_chunk.connect((new_text, is_thinking, response) => {
 						// Print the partial content as it arrives (both thinking and regular content)
 						// Use stdout and flush immediately so output appears on command line in real-time
 						stdout.printf("%s", new_text);
@@ -342,7 +336,7 @@ namespace OLLMvector.Indexing
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {
-							analysis_client.disconnect(stream_chunk_id);
+							chat.disconnect(stream_chunk_id);
 						}
 					}
 					

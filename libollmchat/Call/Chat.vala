@@ -33,7 +33,7 @@ namespace OLLMchat.Call
 	 * call.messages.add(new Message(call, "user", "Hello!"));
 	 *
 	 * // Execute chat (handles tool calls automatically)
-	 * var response = yield call.exec_chat();
+	 * var response = yield call.send(call.messages);
 	 *
 	 * // Access response content
 	 * print(response.message.content);
@@ -229,7 +229,7 @@ namespace OLLMchat.Call
 					return new_node;
 				
 				case "messages":
-					// Serialize the message array built in exec_chat()
+					// Serialize the message array built in send()
 					var node = new Json.Node(Json.NodeType.ARRAY);
 					node.init_array(new Json.Array());
 					var array = node.get_array();
@@ -269,7 +269,7 @@ namespace OLLMchat.Call
  
 		/**
 		 * Sets up this Chat as a reply to a previous conversation and executes it.
-		 * Appends the previous assistant response and new user message to the messages array, then calls exec_chat().
+		 * Appends the previous assistant response and new user message to the messages array, then calls send().
 		 * 
 		 * Note: The Chat object should already have system_content and chat_content set
 		 * by the agent before calling this method. This method does NOT call prompt_assistant.
@@ -475,7 +475,7 @@ namespace OLLMchat.Call
 		 * Sends messages to the chat API.
 		 * 
 		 * Takes messages array as argument and resets all state when called.
-		 * This method is independent from exec_chat() and has its own complete implementation.
+		 * This method replaces the old exec_chat() method and has its own complete implementation.
 		 * 
 		 * @param messages The messages array to send
 		 * @param cancellable Optional cancellation token
@@ -505,7 +505,7 @@ namespace OLLMchat.Call
 					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
 			}
 			
-			// Execute with streaming or non-streaming (duplicate logic from exec_chat, do NOT call exec_chat)
+			// Execute with streaming or non-streaming
 			if (this.stream) {
 				return yield this.execute_streaming();
 			}

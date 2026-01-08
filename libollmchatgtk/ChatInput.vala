@@ -562,8 +562,9 @@ namespace OLLMchatGtk
 				bool model_found = false;
 				OLLMchat.Response.Model? current_model_obj = null;
 				if (this.manager.session.model != "") {
+					var default_connection = this.manager.config.connections.get(this.manager.default_model_usage.connection);
 					var model_usage = this.manager.connection_models.find_model(
-						this.manager.session.client.connection.url,
+						default_connection.url,
 						this.manager.session.model
 					);
 					

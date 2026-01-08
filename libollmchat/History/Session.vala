@@ -467,7 +467,7 @@ namespace OLLMchat.History
 			}
 			
 			// Create handler from agent
-			var handler_obj = base_agent.create_handler(this.client, this);
+			var handler_obj = base_agent.create_handler(this);
 			if (handler_obj == null || !(handler_obj is Prompt.AgentHandler)) {
 				throw new OllamaError.INVALID_ARGUMENT("Failed to create handler for agent '%s'", agent_name);
 			}
@@ -501,7 +501,7 @@ namespace OLLMchat.History
 			}
 			
 			// Create new handler from agent
-			var new_handler = base_agent.create_handler(this.client, this) as OLLMchat.Prompt.AgentHandler;
+			var new_handler = base_agent.create_handler(this) as OLLMchat.Prompt.AgentHandler;
 			// Note: Chat is created per request by AgentHandler, not stored here
 			this.agent = new_handler;
 			 

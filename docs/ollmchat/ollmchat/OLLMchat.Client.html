@@ -28,7 +28,6 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Client.available_models.html">available_models</a></li>
-          <li class="property"><a href="OLLMchat.Client.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.Client.connection.html">connection</a></li>
           <li class="property"><a href="OLLMchat.Client.timeout.html">timeout</a></li>
           <li class="creation_method"><a href="OLLMchat.Client.Client.html">Client</a></li>
@@ -42,9 +41,6 @@
           <li class="method"><a href="OLLMchat.Client.ps.html">ps</a></li>
           <li class="method"><a href="OLLMchat.Client.show_model.html">show_model</a></li>
           <li class="method"><a href="OLLMchat.Client.version.html">version</a></li>
-          <li class="signal"><a href="OLLMchat.Client.stream_chunk.html">stream_chunk</a></li>
-          <li class="signal"><a href="OLLMchat.Client.stream_start.html">stream_start</a></li>
-          <li class="signal"><a href="OLLMchat.Client.tool_message.html">tool_message</a></li>
           <li class="field"><a href="OLLMchat.Client.session.html">session</a></li>
         </ul>
       </div>
@@ -66,10 +62,10 @@
           <p>Provides methods for chat, model management, and tool integration. Handles HTTP requests, streaming responses, and function calling. 
             Manages tool registration and execution with permission checking.</p>
           <h2>Basic Usage </h2>
-          <p><pre class="main_source"><code><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span><br/>};<br/><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection);<br/><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>) {<br/>    stream = <span class="main_literal">true</span><br/>};<br/>chat.messages.add(<span class="main_keyword">new</span> Message(chat, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> chat.exec_chat();</code></pre>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span><br/>};<br/><span class="main_keyword">var</span> client = <span class="main_keyword">new</span> Client(connection);<br/><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>) {<br/>    stream = <span class="main_literal">true</span><br/>};<br/>chat.messages.add(<span class="main_keyword">new</span> Message(chat, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> chat.send(chat.messages);</code></pre>
           </p>
           <h2>Tool Integration </h2>
-          <p><pre class="main_source"><code><span class="main_comment">// Add tools to Chat before chatting</span><br/><span class="main_keyword">var</span> read_file = <span class="main_keyword">new</span> Tools.ReadFile(client);<br/><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>chat.add_tool(read_file);<br/><br/><span class="main_comment">// Tools are automatically called when the model requests them</span><br/>chat.messages.add(<span class="main_keyword">new</span> Message(chat, <span class="main_literal">"user"</span>, <span class="main_literal">"Read README.md"</span>));<br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> chat.exec_chat();</code></pre>
+          <p><pre class="main_source"><code><span class="main_comment">// Add tools to Chat before chatting</span><br/><span class="main_keyword">var</span> read_file = <span class="main_keyword">new</span> Tools.ReadFile(client);<br/><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>chat.add_tool(read_file);<br/><br/><span class="main_comment">// Tools are automatically called when the model requests them</span><br/>chat.messages.add(<span class="main_keyword">new</span> Message(chat, <span class="main_literal">"user"</span>, <span class="main_literal">"Read README.md"</span>));<br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> chat.send(chat.messages);</code></pre>
           </p>
           <h2>Streaming </h2>
           <p><pre class="main_source"><code><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>) {<br/>    stream = <span class="main_literal">true</span><br/>};<br/>chat.message_created.connect((msg, content) =&gt; {<br/>    <span class="main_keyword">if</span> (msg.is_content &amp;&amp; msg.is_stream) {<br/>        <span class="main_comment">// Process incremental content</span><br/>        print(content.chat_content);<br/>    }<br/>});</code></pre>
@@ -85,10 +81,6 @@
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Response.Model.html" class="class">Model</a></span>&gt; <b><a href="OLLMchat.Client.available_models.html" class="property">available_models</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Available models loaded from the server, keyed by model name.</span>
-            </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span>? <b><a href="OLLMchat.Client.config.html" class="property">config</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Configuration settings (Config2 instance).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.Connection.html" class="class">Connection</a></span> <b><a href="OLLMchat.Client.connection.html" class="property">connection</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -150,23 +142,6 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Client.version.html" class="method">version</a></b> (<span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Gets the version of the Ollama server.</span>
-            </div></li>
-        </ul>
-        <h3 class="main_title">Signals:</h3>
-        <ul class="navi_inline">
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Client.stream_chunk.html" class="signal">stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when a streaming chunk is received from the chat API.</span>
-            </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Client.stream_start.html" class="signal">stream_start</a></b> ()
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when the streaming response starts (first chunk received). 
-                This signal is emitted when the first chunk of the response is processed, indicating that the server has started sending data back.
-              </span>
-            </div></li>
-          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Client.tool_message.html" class="signal">tool_message</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Emitted when a tool sends a status message during execution.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Fields:</h3>

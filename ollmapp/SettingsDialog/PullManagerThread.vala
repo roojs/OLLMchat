@@ -218,9 +218,6 @@ namespace OLLMapp.SettingsDialog
 			// progress is calculated from completed/total, so no need to set it
 			
 			// Create client for this connection
-			var client = new OLLMchat.Client(connection) {
-				config = this.app.config
-			};
 			
 			// Notify start (dispatch to main thread)
 			this.emit_status_updated(

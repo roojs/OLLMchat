@@ -143,10 +143,12 @@ Examples:
 		
 		// Shortest if first - config loaded
 		if (this.config.loaded) {
-			client = this.config.create_client("default_model");
-			if (client == null) {
+			var model_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+			if (model_usage == null || model_usage.connection == "" || 
+				!this.config.connections.has_key(model_usage.connection)) {
 				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 			}
+			client = new OLLMchat.Client(this.config.connections.get(model_usage.connection));
 			
 			// Override model if provided (set on default_usage, not client)
 			// Phase 3: model is not on Client, it's on Session/Chat
@@ -210,10 +212,12 @@ Examples:
 			}
 		 
 			// Create client from usage
-			client = this.config.create_client("default_model");
-			if (client == null) {
-				throw new GLib.IOError.FAILED("Failed to create client");
+			var model_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+			if (model_usage == null || model_usage.connection == "" || 
+				!this.config.connections.has_key(model_usage.connection)) {
+				throw new GLib.IOError.FAILED("Failed to create client: default_model not configured");
 			}
+			client = new OLLMchat.Client(this.config.connections.get(model_usage.connection));
 			
 			// Save config since we created it
 			try {
@@ -238,8 +242,8 @@ Examples:
 			permission_provider = new OLLMchat.ChatPermission.Dummy()
 		};
 		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;
-		// Connect to client signals for streaming output
-		client.stream_chunk.connect((new_text, is_thinking, response) => {
+		// Connect to chat signals for streaming output
+		chat.stream_chunk.connect((new_text, is_thinking, response) => {
 			stdout.write(new_text.data);
 			stdout.flush();
 		});

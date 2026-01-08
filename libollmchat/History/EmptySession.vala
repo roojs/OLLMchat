@@ -61,14 +61,6 @@ namespace OLLMchat.History
 		 */
 		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Create client for new session, copying from EmptySession's client
-			// FIXME remove client later
-			var new_client = this.manager.new_client(this.client);
-			
-			// Update existing chat with new client instead of creating new chat
-			// FIXME remove client
-			this.client = new_client;
-			
 			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
@@ -127,7 +119,7 @@ namespace OLLMchat.History
 			}
 			
 			// Create handler from agent
-			var handler = base_agent.create_handler(this.client, this) as Prompt.AgentHandler;
+			var handler = base_agent.create_handler(this) as Prompt.AgentHandler;
 			
 			handler.chat = this.agent.chat; 
 			

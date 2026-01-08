@@ -137,7 +137,6 @@ Examples:
 		var dummy_config = new OLLMchat.Settings.Config2();
 		
 		var client = new OLLMchat.Client(connection);
-		client.config = dummy_config;
 		
 		// Create WebFetchTool
 		var tool = new OLLMtools.WebFetchTool(client);
@@ -151,11 +150,17 @@ Examples:
 		// Create a dummy agent handler for testing
 		// Create dummy manager and session
 		var dummy_manager = new OLLMchat.History.Manager(this);
+		// Verify model usage (may fail for test setups, but that's okay)
+		try {
+			yield dummy_manager.ensure_model_usage();
+		} catch (GLib.Error e) {
+			GLib.warning("Test setup: model verification failed (this may be expected): %s", e.message);
+		}
 		var dummy_session = new OLLMchat.History.EmptySession(dummy_manager);
 		
 		// Create dummy agent and handler
 		var dummy_agent = new OLLMchat.Prompt.JustAsk();
-		var dummy_handler = new OLLMchat.Prompt.AgentHandler(dummy_agent, client, dummy_session);
+		var dummy_handler = new OLLMchat.Prompt.AgentHandler(dummy_agent, dummy_session);
 		
 		// Set permission provider on chat
 		dummy_handler.chat.permission_provider = new OLLMchat.ChatPermission.Dummy();

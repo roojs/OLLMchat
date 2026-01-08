@@ -171,9 +171,9 @@ namespace OLLMchat.Prompt
 		/**
 		 * Creates a handler for a specific request.
 		 */
-		public override Object create_handler(OLLMchat.Client client, History.SessionBase session)
+		public override Object create_handler(History.SessionBase session)
 		{
-			return new AgentHandler(this, client, session);
+			return new AgentHandler(this, session);
 		}
 		
 	}

@@ -80,11 +80,10 @@ namespace OLLMchat.Prompt
 		 * This method must be overridden in subclasses or by code that has access to AgentHandler.
 		 * BaseAgent cannot reference AgentHandler directly due to build order constraints.
 		 * 
-		 * @param client The client instance for this request
 		 * @param session The session instance (for accessing Manager and tools)
 		 * @return A new handler instance (AgentHandler)
 		 */
-		public virtual Object create_handler(OLLMchat.Client client, History.SessionBase session)
+		public virtual Object create_handler(History.SessionBase session)
 		{
 			// This must be overridden - AgentHandler is defined after BaseAgent
 			assert_not_reached();

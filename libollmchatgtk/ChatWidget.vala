@@ -528,7 +528,8 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.connection.url + ".";
+						var default_connection = this.manager.config.connections.get(this.manager.default_model_usage.connection);
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + default_connection.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";

@@ -36,11 +36,11 @@ namespace OLLMchat.Prompt
 		protected BaseAgent agent;
 		
 		/**
-		 * The client instance for this request.
+		 * Connection for this request (obtained from manager.base_client).
 		 * 
 		 * Protected so subclasses can access it.
 		 */
-		protected OLLMchat.Client client;
+		protected OLLMchat.Settings.Connection connection;
 		
 		/**
 		 * Reference to Session for accessing Manager and tools (Phase 3: tools stored on Manager).
@@ -81,13 +81,11 @@ namespace OLLMchat.Prompt
 		 * Constructor.
 		 * 
 		 * @param agent The agent that created this handler
-		 * @param client The client instance for this request
 		 * @param session The session instance (for accessing Manager and tools)
 		 */
-		public AgentHandler(BaseAgent agent, OLLMchat.Client client, History.SessionBase session)
+		public AgentHandler(BaseAgent agent, History.SessionBase session)
 		{
 			this.agent = agent;
-			this.client = client;
 			this.session = session;
 			
 			// Get model and options from session.model_usage
@@ -98,13 +96,15 @@ namespace OLLMchat.Prompt
 			// Use ModelUsage from session (already has options overlaid from config)
 			var model = mu.model;
 			var options = mu.options.clone();
-			// Get connection from manager
-			var connection = this.session.manager.config.connections.get(mu.connection);
+			// Get connection from model_usage (preferred) or default_model_usage
+			if (mu.connection != "" && this.session.manager.config.connections.has_key(mu.connection)) {
+				this.connection = this.session.manager.config.connections.get(mu.connection);
+			}
 			  
 			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change
-			this.chat = new OLLMchat.Call.Chat(connection, model) {
+			this.chat = new OLLMchat.Call.Chat(this.connection, model) {
 				stream = true,
 				think = true,
 				options = options,

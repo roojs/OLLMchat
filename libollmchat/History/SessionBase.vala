@@ -28,7 +28,6 @@ namespace OLLMchat.History
 	public abstract class SessionBase : Object, Json.Serializable
 	{
 		public int64 id { get; set; default = -1; }
-		public Client client { get; protected set; }
 		
 		// Permission provider for tool execution (default: reject everything)
 		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
@@ -149,9 +148,6 @@ namespace OLLMchat.History
 		{
 			this.manager = manager;
 			
-			// Create client for this session
-			this.client = manager.new_client();
-			
 			// Get model from config or use default
 			var model = manager.config.get_default_model();
 			model = model == "" ? "placeholder" : model;
@@ -199,11 +195,8 @@ namespace OLLMchat.History
 			// Update model property for backward compatibility
 			this.model = model_usage.model;
 			
-			// Update connection on client if available
-			var connection = this.manager.config.connections.get(model_usage.connection);
-			//connection urls are validated on load we dont have connections in config 
-			// in theory the lists the user sess should not include inacvtive conenctions
-			this.client.connection = connection;
+			// Connection is accessed via manager.base_client.connection when needed
+			// No need to store connection on session - AgentHandler gets it from manager
 			
 		}
 		
@@ -218,9 +211,6 @@ namespace OLLMchat.History
 			}
 			this.is_active = true;
 			this.unread_count = 0; // Clear unread count when activated
-			if (this.client == null) {
-				return;
-			}
 
 			// Signal connections removed - agent usage now uses direct method calls from Chat
 			// Chat always emits signals, and when agent is set, Chat also calls agent methods directly
@@ -286,7 +276,7 @@ namespace OLLMchat.History
 		 *
 		 * This method is called by tools to add messages directly to the session.
 		 * It adds the message to session.messages array and relays to UI via Manager's add_message signal.
-		 * The session passes itself to the signal so the UI can access session.client and session.chat.
+		 * The session passes itself to the signal so the UI can access session.chat.
 		 *
 		 * @param message The message to add
 		 */

@@ -2,12 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8"/>
-    <title>OLLMchat.History.Manager.base_client &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <title>OLLMchat.History.Manager.ensure_model_usage &ndash; ollmchat &ndash; Vala Binding Reference</title>
     <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
     </script>
   </head>
   <body>
-    <div class="site_header">OLLMchat.History.Manager.base_client &ndash; ollmchat Reference Manual</div>
+    <div class="site_header">OLLMchat.History.Manager.ensure_model_usage &ndash; ollmchat Reference Manual</div>
     <div class="site_body">
       <div class="site_navigation">
         <ul class="navi_main">
@@ -32,10 +32,10 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.History.Manager.agents.html">agents</a></li>
-          <li class="property">base_client</li>
           <li class="property"><a href="OLLMchat.History.Manager.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.connection_models.html">connection_models</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.default_model_usage.html">default_model_usage</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.session.html">session</a></li>
           <li class="property"><a href="OLLMchat.History.Manager.sessions.html">sessions</a></li>
@@ -44,9 +44,9 @@
           <li class="creation_method"><a href="OLLMchat.History.Manager.Manager.html">Manager</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.activate_agent.html">activate_agent</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.create_new_session.html">create_new_session</a></li>
+          <li class="method">ensure_model_usage</li>
           <li class="method"><a href="OLLMchat.History.Manager.get_active_agent.html">get_active_agent</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.load_sessions.html">load_sessions</a></li>
-          <li class="method"><a href="OLLMchat.History.Manager.new_client.html">new_client</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.register_all_tools.html">register_all_tools</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.send.html">send</a></li>
           <li class="method"><a href="OLLMchat.History.Manager.switch_to_session.html">switch_to_session</a></li>
@@ -64,10 +64,29 @@
         </ul>
       </div>
       <div class="site_content">
-        <h1 class="main_title">base_client</h1>
+        <h1 class="main_title">ensure_model_usage</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> <b><span class="property">base_client</span></b> { <span class="main_keyword">get</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">ensure_model_usage</span></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        </div>
+        <div class="description">
+          <p>Ensures that the default_model_usage is valid and the model exists on the server.</p>
+          <p>Verifies that the model specified in default_model_usage is available on the connection. This should be called after Manager is created 
+            to ensure the model can be used.</p>
+          <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
+            <div class="main_block_content">
+              <p>Empty servers (servers without models) should be handled in bootstrap flow (see 1.4.1-bootstrap empty server). </p>
+            </div>
+          </div>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">Error</td>
+              <td>
+                <p>if the model cannot be verified or does not exist </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

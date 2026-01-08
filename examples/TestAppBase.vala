@@ -169,10 +169,12 @@
 			
 			// Shortest if first - config loaded
 			if (config.loaded) {
-				client = config.create_client("default_model");
-				if (client == null) {
+				var model_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+				if (model_usage == null || model_usage.connection == "" || 
+					!config.connections.has_key(model_usage.connection)) {
 					throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 				}
+				client = new OLLMchat.Client(config.connections.get(model_usage.connection));
 				
 				// Override model if provided (set on default_usage, not client)
 				// Phase 3: model is not on Client, it's on Session/Chat
@@ -236,10 +238,12 @@
 				}
 			 
 				// Create client from usage
-				client = config.create_client("default_model");
-				if (client == null) {
-					throw new GLib.IOError.FAILED("Failed to create client");
+				var model_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+				if (model_usage == null || model_usage.connection == "" || 
+					!config.connections.has_key(model_usage.connection)) {
+					throw new GLib.IOError.FAILED("Failed to create client: default_model not configured");
 				}
+				client = new OLLMchat.Client(config.connections.get(model_usage.connection));
 				
 				// Save config since we created it
 				try {

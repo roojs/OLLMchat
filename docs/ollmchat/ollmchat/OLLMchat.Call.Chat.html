@@ -78,7 +78,7 @@
             Manages the conversation flow and tool call recursion. Automatically executes tools when the model requests them and continues the 
             conversation with tool results.</p>
           <h2>Example </h2>
-          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.messages.add(<span class="main_keyword">new</span> Message(call, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><br/><span class="main_comment">// Execute chat (handles tool calls automatically)</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> call.exec_chat();<br/><br/><span class="main_comment">// Access response content</span><br/>print(response.message.content);</code></pre>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.messages.add(<span class="main_keyword">new</span> Message(call, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><br/><span class="main_comment">// Execute chat (handles tool calls automatically)</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> call.send(call.messages);<br/><br/><span class="main_comment">// Access response content</span><br/>print(response.message.content);</code></pre>
           </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Call.html">OLLMchat.Call</a>
@@ -162,7 +162,7 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.reply.html" class="method">reply</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> previous_response) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Sets up this Chat as a reply to a previous conversation and executes 
-                it. Appends the previous assistant response and new user message to the messages array, then calls exec_chat().</span>
+                it. Appends the previous assistant response and new user message to the messages array, then calls send().</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.send.html" class="method">send</a></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; messages, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

@@ -264,8 +264,11 @@ namespace OLLMapp
 				
 				// Save config
 				config.save();
-				// Connection already verified in bootstrap dialog, so call initialize_client directly
-				this.initialize_client.begin(config);
+				// Update app config to match bootstrap config
+				this.app.config = config;
+				// Connection verified in bootstrap dialog, but model still needs verification
+				// Use initialize_unverified_client to handle model verification
+				this.initialize_unverified_client.begin(config);
 			});
 			
 			this.bootstrap_dialog.present(this);
@@ -273,15 +276,15 @@ namespace OLLMapp
 		
 		/**
 		 * Initializes the client and sets up the UI.
-		 * Tests connection first, then calls initialize_client.
-		 * Shows warning dialog if connection fails (with option to configure).
-		 * Loops until connection succeeds or user cancels.
+		 * Tests connection first, then verifies model, then calls initialize_client.
+		 * Shows warning dialog if connection or model fails (with option to configure).
+		 * Loops until both connection and model succeed or user cancels.
 		 * 
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 */
 		private async void initialize_unverified_client(OLLMchat.Settings.Config2 config)
 		{
-			// Loop until connection succeeds
+			// Loop until both connection and model succeed
 			while (true) {
 				// Check all connections and get first working one
 				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(this);
@@ -305,8 +308,8 @@ namespace OLLMapp
 					signal_id = this.settings_dialog.closed.connect(() => {
 						// Disconnect signal to avoid multiple connections
 						this.settings_dialog.disconnect(signal_id);
-						// Re-check connection after settings dialog closes
-						this.initialize_unverified_client.begin(config);
+						// Config already updated in memory by settings dialog, just re-check
+						this.initialize_unverified_client.begin(this.app.config);
 					});
 					
 					// Show settings dialog and switch to connections tab
@@ -316,24 +319,57 @@ namespace OLLMapp
 					return;
 				}
 				
-				// Found a working connection - break out of loop
-				break;
+				// Found a working connection - now verify model
+				// Create history manager to check model
+				this.history_manager = new OLLMchat.History.Manager(this.app);
+				
+				try {
+					yield this.history_manager.ensure_model_usage();
+					// Model verified - break out of loop
+					break;
+				} catch (GLib.Error e) {
+					// Model verification failed - show warning dialog with option to configure
+					var response = yield this.show_connection_error_dialog(
+						"Default model verification failed: " + e.message
+					);
+					
+					if (response != "settings") {
+						// User closed dialog without configuring - exit
+						return;
+					}
+					
+					// User clicked Configure - show settings dialog
+					// Connect to closed signal to re-check model after settings dialog closes
+					ulong signal_id = 0;
+					signal_id = this.settings_dialog.closed.connect(() => {
+						// Disconnect signal to avoid multiple connections
+						this.settings_dialog.disconnect(signal_id);
+						// Config already updated in memory by settings dialog, just re-check
+						this.initialize_unverified_client.begin(this.app.config);
+					});
+					
+					// Show settings dialog and switch to models tab
+					this.show_settings_dialog("models");
+					
+					// Wait for settings dialog to close (will trigger re-check via signal)
+					return;
+				}
 			}
 			
-			// Connection verified, proceed with initialization
+			// Both connection and model verified, proceed with initialization
 			yield this.initialize_client(config);
 		}
 
 		/**
 		 * Initializes the client and sets up the UI.
-		 * Assumes connection has already been verified.
+		 * Assumes connection and model have already been verified.
 		 * 
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 */
 		private async void initialize_client(OLLMchat.Settings.Config2 config)
 		{
-			// Create history manager (it will create base_client from config)
-			this.history_manager = new OLLMchat.History.Manager(this.app);
+			// History manager already created in initialize_unverified_client
+			// (model verification creates it)
 			
 			// Check all connections and set is_working flags before refreshing models
 			
@@ -445,7 +481,6 @@ namespace OLLMapp
 			// This ensures config is fully loaded and ready
 			GLib.Idle.add(() => {
 				this.initialize_codebase_search_tool.begin(
-					this.history_manager.base_client,
 					this.project_manager
 				);
 				return false; // Don't repeat
@@ -459,7 +494,6 @@ namespace OLLMapp
 		 * then creates vector database and registers the tool.
 		 */
 		private async void initialize_codebase_search_tool(
-			OLLMchat.Client client,
 			OLLMfiles.ProjectManager project_manager
 		)
 		{
@@ -494,9 +528,9 @@ namespace OLLMapp
 			// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
 			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
 			
-			// Initialize vector database (embedding_client should already be set up in constructor)
+			// Initialize vector database (embedding_client will be set up lazily)
 			try {
-				yield tool.init_databases(this.app.data_dir);
+				yield tool.init_databases(config, this.app.data_dir);
 			} catch (GLib.Error e) {
 				string error_msg = "Failed to initialize vector database: " + e.message;
 				GLib.warning("Codebase search tool disabled: %s", error_msg);
@@ -512,7 +546,8 @@ namespace OLLMapp
 			if (!OllmchatApplication.opt_disable_indexer) {
 				this.background_scan = new OLLMvector.BackgroundScan(
 					tool,
-					new OLLMcoder.GitProvider()
+					new OLLMcoder.GitProvider(),
+					config
 				);
 				
 				// Connect to scan_update signal to update banner

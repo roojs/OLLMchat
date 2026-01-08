@@ -59,24 +59,16 @@
         <h1 class="main_title">register_all_tools</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Tool.BaseTool.html" class="abstract_class">BaseTool</a></span>&gt; <b><span class="static_method">register_all_tools</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Tool.BaseTool.html" class="abstract_class">BaseTool</a></span>&gt; <b><span class="static_method">register_all_tools</span></b> ()
         </div>
         <div class="description">
           <p>Creates all tool instances (Phase 3: tools moved from Client to Chat).</p>
-          <p>This method discovers all tool classes and creates tool instances. Tools are metadata/descriptors - they don't need project_manager. Tool
-            handlers (created when tools execute) need project_manager, which should be provided when creating handlers, not when creating tools.</p>
+          <p>This method discovers all tool classes and creates tool instances. Tools are metadata/descriptors - they don't need Client or 
+            project_manager. Tool handlers (created when tools execute) need project_manager, which should be provided when creating handlers, not 
+            when creating tools. Tools get config from agent.session.manager.config when executing.</p>
           <p>The caller is responsible for storing the tools (e.g., on Manager) and adding them to Chat objects via Chat.add_tool() when Chat is 
             created.</p>
           <p>Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.) adds tools directly to Chat.</p>
-          <h2 class="main_title">Parameters:</h2>
-          <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">client</td>
-              <td>
-                <p>The LLM client instance </p>
-              </td>
-            </tr>
-          </table>
           <h2 class="main_title">Returns:</h2>
           <table class="main_parameter_table">
             <tr>

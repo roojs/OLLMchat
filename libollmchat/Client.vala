@@ -36,7 +36,7 @@ namespace OLLMchat
 	*     stream = true
 	* };
 	* chat.messages.add(new Message(chat, "user", "Hello!"));
-	* var response = yield chat.exec_chat();
+	* var response = yield chat.send(chat.messages);
 	* }}}
 	 *
  * == Tool Integration ==
@@ -49,7 +49,7 @@ namespace OLLMchat
  *
  * // Tools are automatically called when the model requests them
  * chat.messages.add(new Message(chat, "user", "Read README.md"));
- * var response = yield chat.exec_chat();
+ * var response = yield chat.send(chat.messages);
  * }}}
  *
  * == Streaming ==
@@ -77,15 +77,6 @@ namespace OLLMchat
 		 */
 		public Settings.Connection connection { get; set; }
 		
-		/**
-		 * Configuration settings (Config2 instance).
-		 *
-		 * Contains all configuration including connections, model_options, and usage map.
-		 *
-		 * @since 1.0
-		 */
-		public Settings.Config2? config { get; set; }
-		
 		
 		/**
 		 * HTTP request timeout in seconds.
@@ -103,32 +94,6 @@ namespace OLLMchat
 
 
 
-		/**
-		 * Emitted when a streaming chunk is received from the chat API.
-		 *
-		 * @param new_text The new text chunk received
-		 * @param is_thinking Whether this chunk is thinking content (true) or regular content (false)
-		 * @param response The Response object containing the streaming state
-		 * @since 1.0
-		 */
-		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
-
-		/**
-		 * Emitted when a tool sends a status message during execution.
-		 *
-		 * @param message The Message object from the tool (typically "ui" role)
-		 * @since 1.0
-		 */
-		public signal void tool_message(Message message);
-
-		/**
-		 * Emitted when the streaming response starts (first chunk received).
-		 * This signal is emitted when the first chunk of the response is processed,
-		 * indicating that the server has started sending data back.
-		 *
-		 * @since 1.0
-		 */
-		public signal void stream_start();
 
 
 		public Soup.Session? session = null;

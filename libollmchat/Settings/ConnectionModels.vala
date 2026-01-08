@@ -114,9 +114,7 @@ namespace OLLMchat.Settings
 		 */
 		private async bool refresh_connection(Connection connection) throws GLib.Error
 		{
-			var client = new OLLMchat.Client(connection) {
-				config = this.config
-			};
+			var client = new OLLMchat.Client(connection);
 			// Fetch all model details (this populates client.available_models with detailed info)
 			yield client.fetch_all_model_details();
 			

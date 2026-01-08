@@ -264,6 +264,9 @@ namespace OLLMapp.SettingsDialog
 			this.check_all_connections.begin();
 			
 			this.app.config.save();
+			
+			// Emit changed signal to notify components that config has been updated
+			this.app.config.changed();
 		}
 
 		/**

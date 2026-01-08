@@ -51,21 +51,6 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Sets the client for this placeholder.
-		 *
-		 * Called after construction from database to set up the client.
-		 * Updates the chat with the new client and model from database.
-		 * FIXME  - will be removed
-		 *
-		 * @param client The client to set
-		 */
-		internal void set_client(Client client)
-		{
-			this.client = client;
-			// Model is already set from database
-		}
-		
-		/**
 		 * Converts this(a placeholder)int a real Session by loading it from JSON.
 		 *
 		 * This method:
@@ -83,10 +68,6 @@ namespace OLLMchat.History
 			if (this.model == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
 			}
-			
-			// Update client
-			var client = this.manager.new_client();
-			this.client = client;
 			
 			// a) Create a new Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {

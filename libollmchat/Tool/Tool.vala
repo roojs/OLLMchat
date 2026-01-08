@@ -69,6 +69,7 @@ namespace OLLMchat.Tool
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }
 		
+		// FIXME to be removed
 		public Client? client { get; set; default = null; }
 		
 		public bool active { get; set; default = true; }
@@ -586,9 +587,10 @@ namespace OLLMchat.Tool
 		 * Creates all tool instances (Phase 3: tools moved from Client to Chat).
 		 *
 		 * This method discovers all tool classes and creates tool instances.
-		 * Tools are metadata/descriptors - they don't need project_manager.
+		 * Tools are metadata/descriptors - they don't need Client or project_manager.
 		 * Tool handlers (created when tools execute) need project_manager, which
 		 * should be provided when creating handlers, not when creating tools.
+		 * Tools get config from agent.session.manager.config when executing.
 		 * 
 		 * The caller is responsible for storing the tools (e.g., on Manager) and
 		 * adding them to Chat objects via Chat.add_tool() when Chat is created.
@@ -596,23 +598,20 @@ namespace OLLMchat.Tool
 		 * Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.)
 		 * adds tools directly to Chat.
 		 *
-		 * @param client The LLM client instance
 		 * @return Map of tool name to tool instance
 		 */
-		public static Gee.HashMap<string, BaseTool> register_all_tools(Client client)
+		public static Gee.HashMap<string, BaseTool> register_all_tools()
 		{
 			var tool_classes = discover_classes();
 			var tools_map = new Gee.HashMap<string, BaseTool>();
 			
 			foreach (var tool_type in tool_classes) {
-				// Use Object.new() to create tool instance with constructor parameters
-				// Standard signature: (Client? client = null)
-				// Tools are metadata - they don't need project_manager
+				// Use Object.new() to create tool instance without parameters
+				// Standard signature: (Client? client = null) - pass null since tools don't need Client
+				// Tools are metadata - they don't need Client or project_manager
 				// Tool handlers need project_manager, provided when handlers are created
-				var tool = Object.new(
-					tool_type,
-					"client", client
-				) as Tool.BaseTool;
+				// Tools get config from agent.session.manager.config when executing
+				var tool = Object.new(tool_type) as Tool.BaseTool;
 				
 				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
 				tools_map.set(tool.name, tool);

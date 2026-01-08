@@ -185,12 +185,9 @@ namespace OLLMvector.Search
 			
 			// Get model from tool config (already validated above)
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-			var model = tool_config.embed.model;
 			
-			var client = new OLLMchat.Client(connection) {
-				config = this.config
-			};
-			var embed_response = yield client.embed(model, normalized_query);
+			var client = new OLLMchat.Client(connection);
+			var embed_response = yield client.embed(tool_config.embed.model, normalized_query);
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embedding");
 			}

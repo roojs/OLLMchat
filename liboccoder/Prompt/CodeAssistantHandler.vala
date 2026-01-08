@@ -31,12 +31,11 @@ namespace OLLMcoder.Prompt
 		 * Constructor.
 		 * 
 		 * @param agent The CodeAssistant agent that created this handler
-		 * @param client The client instance for this request
 		 * @param session The session instance (for accessing Manager and tools)
 		 */
-		public CodeAssistantHandler(OLLMchat.Prompt.BaseAgent agent, OLLMchat.Client client, OLLMchat.History.SessionBase session)
+		public CodeAssistantHandler(OLLMchat.Prompt.BaseAgent agent, OLLMchat.History.SessionBase session)
 		{
-			base(agent, client, session);
+			base(agent, session);
 		}
 		
 		/**

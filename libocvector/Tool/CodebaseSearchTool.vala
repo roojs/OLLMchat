@@ -129,25 +129,8 @@ making it more effective than simple text search for finding relevant code.
 			base(client);
 			this.project_manager = project_manager;
 			
-			// Extract embedding_client from client.config if available
-			if (client == null) {
-				return;
-			}
-			
-			if (!client.config.tools.has_key("codebase_search")) {
-				return;
-			}
-			
-			var tool_config = client.config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-			if (tool_config.embed.connection == "" || 
-				!client.config.connections.has_key(tool_config.embed.connection)) {
-				return;
-			}
-			
-			// Phase 3: model is not on Client, embed() gets model from config
-			this.embedding_client = new OLLMchat.Client(client.config.connections.get(tool_config.embed.connection)) {
-				config = client.config
-			};
+			// Embedding client will be extracted lazily when config is available
+			// (e.g., in init_databases or when tool is used with Manager context)
 		}
 		
 		/**
@@ -156,27 +139,39 @@ making it more effective than simple text search for finding relevant code.
 		 * This method should be called after the tool is constructed and embedding_client is set.
 		 * It performs the async operation to get the embedding dimension and creates the vector_db.
 		 * 
+		 * @param config Config2 instance for database initialization
 		 * @param data_dir Data directory for vector database.
 		 * @throws GLib.Error if initialization fails
 		 */
-		public async void init_databases(string data_dir) throws GLib.Error
+		public async void init_databases(OLLMchat.Settings.Config2 config, string data_dir) throws GLib.Error
 		{
 			if (this.vector_db != null) {
 				return; // Already initialized
 			}
 			
-			if (this.client == null || this.client.config == null) {
-				throw new GLib.IOError.FAILED("Client or config not available for database initialization");
+			// Extract embedding_client from config if not already set
+			if (this.embedding_client == null) {
+				if (!config.tools.has_key("codebase_search")) {
+					throw new GLib.IOError.FAILED("codebase_search tool config not found");
+				}
+				
+				var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+				if (tool_config.embed.connection == "" || 
+					!config.connections.has_key(tool_config.embed.connection)) {
+					throw new GLib.IOError.FAILED("codebase_search embed connection not configured");
+				}
+				
+				this.embedding_client = new OLLMchat.Client(config.connections.get(tool_config.embed.connection));
 			}
 			
 			// Set vector database path
 			this.vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
 			
 			// Get dimension first, then create database
-			var temp_db = new OLLMvector.Database(this.client.config, 
+			var temp_db = new OLLMvector.Database(config, 
 				this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
 			var dimension = yield temp_db.embed_dimension();
-			this.vector_db = new OLLMvector.Database(this.client.config, this.vector_db_path, dimension);
+			this.vector_db = new OLLMvector.Database(config, this.vector_db_path, dimension);
 		}
 		
 		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }
