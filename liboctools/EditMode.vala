@@ -69,9 +69,9 @@ When complete_file=true, do not include line numbers in the code block. When com
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public EditMode(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
+		public EditMode(OLLMfiles.ProjectManager? project_manager = null)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 		}
 		

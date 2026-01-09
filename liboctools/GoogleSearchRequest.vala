@@ -186,7 +186,7 @@ namespace OLLMtools
 			}
 			
 			// Ensure tool config exists (creates with empty values if needed)
-			new GoogleSearchTool(null, null).setup_tool_config(this.agent.session.manager.config);
+			new GoogleSearchTool(null).setup_tool_config(this.agent.session.manager.config);
 			
 			// Get tool config (guaranteed to exist after setup_tool_config)
 			var tool_config = this.agent.session.manager.config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;

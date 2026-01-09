@@ -139,7 +139,7 @@ Examples:
 		var client = new OLLMchat.Client(connection);
 		
 		// Create WebFetchTool
-		var tool = new OLLMtools.WebFetchTool(client);
+		var tool = new OLLMtools.WebFetchTool();
 		
 		// Create RequestWebFetch manually
 		var request = new OLLMtools.RequestWebFetch();
@@ -161,9 +161,6 @@ Examples:
 		// Create dummy agent and handler
 		var dummy_agent = new OLLMchat.Prompt.JustAsk();
 		var dummy_handler = new OLLMchat.Prompt.AgentHandler(dummy_agent, dummy_session);
-		
-		// Set permission provider on chat
-		dummy_handler.chat.permission_provider = new OLLMchat.ChatPermission.Dummy();
 		
 		// Set agent on request
 		request.agent = dummy_handler;

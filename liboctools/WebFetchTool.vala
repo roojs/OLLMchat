@@ -59,9 +59,9 @@ The tool requires permission to access the domain of the URL being fetched.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public WebFetchTool(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
+		public WebFetchTool(OLLMfiles.ProjectManager? project_manager = null)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 		}
 		

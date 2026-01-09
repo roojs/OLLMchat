@@ -72,16 +72,6 @@ namespace OLLMchat.Call
 		public Response.Chat? streaming_response { get; set; default = null; }
 		
 		/**
-		 * Permission provider for tool execution.
-		 *
-		 * Handles permission requests when tools need to access files or execute commands.
-		 * Session can set this when wrapping Chat for persistence.
-		 *
-		 * @since 1.0
-		 */
-		public OLLMchat.ChatPermission.Provider? permission_provider { get; set; }
-		
-		/**
 		 * Reference to the agent handler that created this chat.
 		 *
 		 * Allows tools to access the session via chat_call.agent.session.
@@ -122,6 +112,69 @@ namespace OLLMchat.Call
 		 */
 		public signal void tool_message(Message message);
 		
+		/**
+		 * Emitted when a tool call is detected and needs to be executed.
+		 * 
+		 * For non-agent usage: Connect to this signal to handle tool execution.
+		 * 
+		 * The handler is responsible for:
+		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call.function.arguments)`
+		 * 2. Create tool reply message: `new Message.tool_reply(chat, tool_call.id, tool_call.function.name, result)`
+		 * 3. Append it to return_messages: `return_messages.add(tool_reply)`
+		 * 
+		 * Chat will collect all tool reply messages and send them automatically.
+		 * 
+		 * For agent usage: This signal is not used - agent.execute_tools() is called directly by Chat.toolsReply().
+		 * 
+		 * @param tool_call The tool call that needs to be executed
+		 * @param return_messages Array to append tool reply messages to
+		 */
+		public signal void tool_call_requested(Response.ToolCall tool_call, Gee.ArrayList<Message> return_messages);
+		
+		/**
+		 * Creates a new Chat instance for sending messages to the chat API.
+		 * 
+		 * The constructor initializes basic properties. Most properties should be
+		 * set after construction, including options, stream, think, tools, and agent.
+		 * 
+		 * == Example ==
+		 * 
+		 * {{{
+		 * // Create connection
+		 * var connection = new Settings.Connection() {
+		 *     name = "Local Ollama",
+		 *     url = "http://127.0.0.1:11434/api"
+		 * };
+		 * 
+		 * // Create chat with properties set via object initializer
+		 * var chat = new Call.Chat(connection, "llama3.2") {
+		 *     stream = true,
+		 *     think = true,
+		 *     agent = agent_handler
+		 * };
+		 * 
+		 * // Create and assign Options object
+		 * chat.options = new Call.Options() {
+		 *     temperature = 0.7,
+		 *     top_p = 0.9
+		 * };
+		 * 
+		 * // Or assign existing Options object
+		 * chat.options = existing_options;
+		 * 
+		 * // Add tools
+		 * foreach (var tool in manager.tools.values) {
+		 *     chat.add_tool(tool);
+		 * }
+		 * 
+		 * // Send messages
+		 * var response = yield chat.send(messages);
+		 * }}}
+		 * 
+		 * @param connection The connection settings for the API endpoint
+		 * @param model The model name to use for chat
+		 * @throws OllamaError.INVALID_ARGUMENT if model is empty
+		 */
 		public Chat(Settings.Connection connection, string model)
 		{
 			base(connection);
@@ -351,115 +404,47 @@ namespace OLLMchat.Call
 				return response;
 			}
 			
-			// Add the assistant message with tool_calls to the conversation
-			this.messages.add(response.message);
 			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
 			
-			// Execute each tool call and add tool reply messages directly
+			if (this.agent != null) {
+				// Agent usage (normal flow): delegate to agent handler (agent executes tools and returns messages)
+				var tool_reply_messages = yield this.agent.execute_tools(response.message.tool_calls);
+				
+				// Build messages array: assistant message with tool_calls + tool reply messages
+				var messages_to_send = new Gee.ArrayList<Message>();
+				messages_to_send.add(response.message); // Assistant message with tool_calls
+				foreach (var reply_msg in tool_reply_messages) {
+					messages_to_send.add(reply_msg); // Tool reply messages
+				}
+				
+				// Append all messages and send
+				var next_response = yield this.send_append(messages_to_send);
+				
+				// Recursively handle tool calls if the next response also has them and is done
+				if (next_response.done && 
+					next_response.message.tool_calls.size > 0) {
+					return yield this.toolsReply(next_response);
+				}
+				
+				return next_response;
+			}
+			
+			// Non-agent usage (external code using Chat directly): emit signal for each tool call
+			// Signal handler is responsible for executing tools and appending tool reply messages
+			// Our code always has agent set, so this path is only for external users
+			
+			// Build messages array: assistant message + tool replies (handler will append tool replies)
+			var messages_to_send = new Gee.ArrayList<Message>();
+			messages_to_send.add(response.message); // Assistant message with tool_calls
+			
+			// Emit signal for each tool call - handler executes tools and appends tool reply messages to messages_to_send
+			// Signal handlers run synchronously, so they can modify messages_to_send
 			foreach (var tool_call in response.message.tool_calls) {
-				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
-					tool_call.function.name, tool_call.id);
-				
-				// Use this.tools (Phase 3: tools are on Chat, not Client)
-				var tools_map = this.tools;
-				if (tools_map == null || !tools_map.has_key(tool_call.function.name)) {
-					var available_tools_str = "";
-					if (tools_map != null) {
-						available_tools_str = string.joinv("', '", tools_map.keys.to_array());
-					}
-					if (available_tools_str != "") {
-						available_tools_str = "'" + available_tools_str + "'";
-					}
-					
-					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
-						"', however we only have these tools: " + available_tools_str;
-				
-					var error_msg = new Message(this, "ui", err_message);
-					// message_created signal emission removed - callers handle state directly when creating messages
-					// Always emit signal (for non-agent usage and any other listeners)
-					this.tool_message(error_msg);
-					// If Chat has agent reference, also call agent method directly
-					if (this.agent != null) {
-						this.agent.handle_tool_message(error_msg);
-					}
-					this.messages.add(new Message.tool_call_invalid(this, tool_call, err_message));
-					continue;
-				}
-				
-				// Show message that tool is being executed
-				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
-				// message_created signal emission removed - callers handle state directly when creating messages
-				// Always emit signal (for non-agent usage and any other listeners)
-				this.tool_message(exec_msg);
-				// If Chat has agent reference, also call agent method directly
-				if (this.agent != null) {
-					this.agent.handle_tool_message(exec_msg);
-				}
-				
-				// Execute the tool with chat as first parameter
-				try {
-					var result = yield tools_map
-						.get(tool_call.function.name)
-						.execute(this, tool_call.function.arguments);
-					
-					// Log result summary (truncate if too long)
-					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
-					
-					// Check if result is an error and display it in UI
-					if (result.has_prefix("ERROR:")) {
-						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
-							tool_call.function.name, result);
-						var error_msg = new Message(this, "ui", result);
-						// message_created signal emission removed - callers handle state directly when creating messages
-						// Always emit signal (for non-agent usage and any other listeners)
-						this.tool_message(error_msg);
-						// If Chat has agent reference, also call agent method directly
-						if (this.agent != null) {
-							this.agent.handle_tool_message(error_msg);
-						}
-					} else {
-						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
-							tool_call.function.name, result.length, result_summary);
-					}
-					
-					// Create tool reply message
-					var tool_reply = new Message.tool_reply(
-						this, tool_call.id, 
-						tool_call.function.name,
-						result
-					);
-					GLib.debug("Chat.toolsReply: Created tool reply message: role='%s', tool_call_id='%s', name='%s', content length=%zu, content='%s'",
-						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length,
-						tool_reply.content.length > 200 ? tool_reply.content.substring(0, 200) + "..." : tool_reply.content);
-					this.messages.add(tool_reply);
-				} catch (Error e) {
-					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
-						tool_call.function.name, tool_call.id, e.message);
-					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
-					// message_created signal emission removed - callers handle state directly when creating messages
-					// Always emit signal (for non-agent usage and any other listeners)
-					this.tool_message(error_msg);
-					// If Chat has agent reference, also call agent method directly
-					if (this.agent != null) {
-						this.agent.handle_tool_message(error_msg);
-					}
-					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
-				}
+				this.tool_call_requested(tool_call, messages_to_send);
 			}
 			
-			// Automatically continue the conversation by sending tool results back to the server
-			GLib.debug("Chat.toolsReply: Tools executed, automatically continuing conversation");
-			
-			// Reset streaming_response for the continuation so we get a fresh response
-			this.streaming_response = null;
-			
-			// Execute the chat call with tool results in the conversation history
-			Response.Chat next_response;
-			if (this.stream) {
-				next_response = yield this.execute_streaming();
-			} else {
-				next_response = yield this.execute_non_streaming();
-			}
+			// Append all messages and send (same logic as agent path)
+			var next_response = yield this.send_append(messages_to_send);
 			
 			// Recursively handle tool calls if the next response also has them and is done
 			if (next_response.done && 
@@ -470,6 +455,28 @@ namespace OLLMchat.Call
 			return next_response;
 		}
 
+		
+		/**
+		 * Appends new messages to existing messages and sends them.
+		 * 
+		 * Convenience method for continuing conversations after tool execution.
+		 * Appends the provided messages to this.messages and then calls send().
+		 * 
+		 * @param new_messages Messages to append to existing messages
+		 * @param cancellable Optional cancellation token
+		 * @return The Response from executing the chat call
+		 * @throws Error if send fails
+		 */
+		public async Response.Chat send_append(Gee.ArrayList<Message> new_messages, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Append new messages to existing messages
+			foreach (var msg in new_messages) {
+				this.messages.add(msg);
+			}
+			
+			// Send using existing send() method
+			return yield this.send(this.messages, cancellable);
+		}
 		
 		/**
 		 * Sends messages to the chat API.

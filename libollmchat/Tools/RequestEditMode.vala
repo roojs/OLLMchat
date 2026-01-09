@@ -445,9 +445,9 @@ namespace OLLMchat.Tools
 			
 			// Only check permission if file is NOT in active project
 			// Files in active project are auto-approved and don't need permission checks
-			// Phase 3: permission_provider is on Chat, not Client
-			if (file == null && this.agent.chat.permission_provider != null && 
-				!this.agent.chat.permission_provider.check_permission(this)) {
+			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
+			if (file == null && 
+				!this.agent.session.manager.permission_provider.check_permission(this)) {
 				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
 			

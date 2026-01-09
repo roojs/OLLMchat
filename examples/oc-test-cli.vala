@@ -238,8 +238,7 @@ Examples:
 		
 		// Create Chat object with streaming enabled
 		var chat = new OLLMchat.Call.Chat(client.connection, default_usage.model) {
-			stream = true,
-			permission_provider = new OLLMchat.ChatPermission.Dummy()
+			stream = true
 		};
 		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;
 		// Connect to chat signals for streaming output
@@ -249,7 +248,7 @@ Examples:
 		});
 		
 		// Add ReadFile tool to Chat
-		chat.add_tool(new OLLMtools.ReadFile(client));
+		chat.add_tool(new OLLMtools.ReadFile());
 		
 		stdout.printf("Query: %s\n\n", query);
 		stdout.printf("Response:\n");

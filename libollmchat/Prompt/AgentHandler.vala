@@ -95,7 +95,6 @@ namespace OLLMchat.Prompt
 			
 			// Use ModelUsage from session (already has options overlaid from config)
 			var model = mu.model;
-			var options = mu.options.clone();
 			// Get connection from model_usage (preferred) or default_model_usage
 			if (mu.connection != "" && this.session.manager.config.connections.has_key(mu.connection)) {
 				this.connection = this.session.manager.config.connections.get(mu.connection);
@@ -107,7 +106,7 @@ namespace OLLMchat.Prompt
 			this.chat = new OLLMchat.Call.Chat(this.connection, model) {
 				stream = true,
 				think = true,
-				options = options,
+				options = mu.options,  // No cloning - Chat just references the Options object
 				agent = this  // Set agent reference so tools can access session
 			};
 			
@@ -161,6 +160,108 @@ namespace OLLMchat.Prompt
 		}
 		
 		/**
+		 * Executes all tool calls and returns tool reply messages.
+		 * 
+		 * Called by Chat when tool calls are detected. Agent handler manages
+		 * tool execution flow including:
+		 * - Iterating through all tool calls
+		 * - Tool lookup and validation
+		 * - UI messages (execution start, errors)
+		 * - Tool execution
+		 * - Creating tool reply messages
+		 * - Error handling (creates tool_call_fail message on error, continues with next tool)
+		 * 
+		 * @param tool_calls The list of tool calls to execute
+		 * @return Array of tool reply messages (tool_reply or tool_call_fail messages)
+		 */
+		public virtual async Gee.ArrayList<Message> execute_tools(Gee.ArrayList<Response.ToolCall> tool_calls)
+		{
+			var reply_messages = new Gee.ArrayList<Message>();
+			
+			foreach (var tool_call in tool_calls) {
+				GLib.debug("Executing tool '%s' (id='%s')",
+					tool_call.function.name, tool_call.id);
+				
+				// Get tool from chat.tools (tools defaults to empty HashMap, never null)
+				if (!this.chat.tools.has_key(tool_call.function.name)) {
+					var available_tools_str = "";
+					if (this.chat.tools.size > 0) {
+						available_tools_str = "'" + string.joinv("', '", this.chat.tools.keys.to_array()) + "'";
+					}
+					
+					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
+						"', however we only have these tools: " + available_tools_str;
+					
+					var error_msg = new Message(this.chat, "ui", err_message);
+					this.handle_tool_message(error_msg);
+					reply_messages.add(new Message.tool_call_invalid(this.chat, tool_call, err_message));
+					continue; // Continue to next tool call
+				}
+				
+				var tool = this.chat.tools.get(tool_call.function.name);
+				
+				// Show message that tool is being executed
+				var exec_msg = new Message(this.chat, "ui", "Executing tool: `" + tool_call.function.name + "`");
+				this.handle_tool_message(exec_msg);
+				
+				try {
+					// Execute the tool - tool.execute() will set request.agent = chat_call.agent
+					var result = yield tool.execute(this.chat, tool_call.function.arguments);
+					
+					// Log result summary (truncate if too long)
+					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
+					
+					// Check if result is an error and display it in UI
+					if (result.has_prefix("ERROR:")) {
+						GLib.debug("Tool '%s' returned error result: %s",
+							tool_call.function.name, result);
+						var error_msg = new Message(this.chat, "ui", result);
+						this.handle_tool_message(error_msg);
+					} else {
+						GLib.debug("Tool '%s' executed successfully, result length: %zu, preview: %s",
+							tool_call.function.name, result.length, result_summary);
+					}
+					
+					// Create tool reply message
+					var tool_reply = new Message.tool_reply(
+						this.chat, tool_call.id, 
+						tool_call.function.name,
+						result
+					);
+					GLib.debug("Created tool reply message: role='%s', tool_call_id='%s', name='%s', content length=%zu",
+						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length);
+					reply_messages.add(tool_reply);
+				} catch (Error e) {
+					GLib.debug("Error executing tool '%s' (id='%s'): %s", 
+						tool_call.function.name, tool_call.id, e.message);
+					var error_msg = new Message(this.chat, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
+					this.handle_tool_message(error_msg);
+					reply_messages.add(new Message.tool_call_fail(this.chat, tool_call, e));
+					continue; // Continue to next tool call
+				}
+			}
+			
+			return reply_messages;
+		}
+		
+		/**
+		 * Rebuilds tools for this agent's Chat instance.
+		 * 
+		 * Called when tool configuration changes. Clears existing tools from Chat
+		 * and re-adds them from Manager, allowing agent to reconfigure/filter.
+		 * 
+		 * This ensures Chat always has the latest tool configuration.
+		 */
+		public void rebuild_tools()
+		{
+			// Rebuild tools from Manager (they may have updated config/active state)
+			this.chat.tools = this.session.manager.tools;
+			
+			// Agent can reconfigure/filter tools if needed
+			this.agent.configure_tools(this.chat);
+		}
+		
+		/**
 		 * Sends a Message object asynchronously with streaming support.
 		 * 
 		 * This is the new method for sending messages. Builds full message history from
@@ -195,10 +296,6 @@ namespace OLLMchat.Prompt
 				// (these are for UI/persistence only)
 			}
 			
-			// Model and options should not be set here - this is too late in the flow and breaks the chain.
-			// They should be set when the chat is created in the constructor or when session properties change,
-			// not at the last step before sending a message. See 1.2.7 cleanup plan for decision on where
-			// model/options get set properly.
 			
 			// Update cancellable for this request
 			this.chat.cancellable = cancellable;

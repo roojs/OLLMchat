@@ -29,29 +29,6 @@ namespace OLLMchat.History
 	{
 		public int64 id { get; set; default = -1; }
 		
-		// Permission provider for tool execution (default: reject everything)
-		internal OLLMchat.ChatPermission.Provider? refactor_permission_provider = null;
-		
-		/**
-		 * Permission provider for tool execution.
-		 *
-		 * Handles permission requests when tools need to access files or execute commands.
-		 * Defaults to a reject-all provider if not set.
-		 * FIXME ? agent should have a permsision provider not chat.
-		 *
-		 * @since 1.0
-		 */
-		public OLLMchat.ChatPermission.Provider? permission_provider {
-			get { return refactor_permission_provider; }
-			set { 
-				refactor_permission_provider = value;
-				// Also set on Chat if agent is set (Chat is created per request by AgentHandler)
-				
-				this.agent.chat.permission_provider = value;
-				
-			}
-		}
-		
 		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
 		public string title { get; set; default = ""; }
 		public string agent_name { get; set; default = "just-ask"; }
@@ -156,10 +133,8 @@ namespace OLLMchat.History
 			// Store model on session
 			this.model = model;
 			
-			// Initialize permission provider to default (Dummy allows READ, denies WRITE/EXECUTE)
-			this.refactor_permission_provider = new OLLMchat.ChatPermission.Dummy();
-			
 			// Note: Chat is created per request by AgentHandler, not stored on Session
+			// Note: Permission provider is on Manager, accessed via agent.session.manager.permission_provider
 		}
 		
 		/**
@@ -189,16 +164,27 @@ namespace OLLMchat.History
 				usage.options = config_options.clone();
 			}
 			
-			// Store the ModelUsage
-			this.model_usage = usage;
+		// Store the ModelUsage
+		this.model_usage = usage;
+		
+		// Update model property for backward compatibility
+		this.model = model_usage.model;
+		
+		// Update Chat properties if agent exists (agent always exists when activate_model is called)
+		if (this.agent != null && this.agent.chat != null) {
+			// Update model
+			this.agent.chat.model = usage.model;
 			
-			// Update model property for backward compatibility
-			this.model = model_usage.model;
+			// Update connection
+			if (usage.connection != "" && this.manager.config.connections.has_key(usage.connection)) {
+				this.agent.chat.connection = this.manager.config.connections.get(usage.connection);
+			}
 			
-			// Connection is accessed via manager.base_client.connection when needed
-			// No need to store connection on session - AgentHandler gets it from manager
-			
+			// Update options (no cloning - Chat just references the Options object)
+			this.agent.chat.options = usage.options;
 		}
+		
+	}
 		
 		/**
 		 * Activates this session, connecting client signals to relay to UI.

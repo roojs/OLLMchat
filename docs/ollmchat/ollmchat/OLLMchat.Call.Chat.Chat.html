@@ -38,7 +38,6 @@
           <li class="property"><a href="OLLMchat.Call.Chat.messages.html">messages</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.options.html">options</a></li>
-          <li class="property"><a href="OLLMchat.Call.Chat.permission_provider.html">permission_provider</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.stream.html">stream</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.streaming_response.html">streaming_response</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.system_content.html">system_content</a></li>
@@ -49,10 +48,12 @@
           <li class="virtual_method"><a href="OLLMchat.Call.Chat.deserialize_property.html">deserialize_property</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.reply.html">reply</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.send.html">send</a></li>
+          <li class="method"><a href="OLLMchat.Call.Chat.send_append.html">send_append</a></li>
           <li class="virtual_method"><a href="OLLMchat.Call.Chat.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.toolsReply.html">toolsReply</a></li>
           <li class="signal"><a href="OLLMchat.Call.Chat.stream_chunk.html">stream_chunk</a></li>
           <li class="signal"><a href="OLLMchat.Call.Chat.stream_start.html">stream_start</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.tool_call_requested.html">tool_call_requested</a></li>
           <li class="signal"><a href="OLLMchat.Call.Chat.tool_message.html">tool_message</a></li>
         </ul>
       </div>
@@ -61,6 +62,38 @@
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
         <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Chat</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Connection.html" class="class">Connection</a></span> connection, <span class="main_basic_type"><span class="class">string</span></span> model)
+        </div>
+        <div class="description">
+          <p>Creates a new Chat instance for sending messages to the chat API.</p>
+          <p>The constructor initializes basic properties. Most properties should be set after construction, including options, stream, think, tools, 
+            and agent.</p>
+          <h2>Example </h2>
+          <p><pre class="main_source"><code><span class="main_comment">// Create connection</span><br/><span class="main_keyword">var</span> connection = <span class="main_keyword">new</span> Settings.Connection() {<br/>    name = <span class="main_literal">"Local Ollama"</span>,<br/>    url = <span class="main_literal">"http://127.0.0.1:11434/api"</span><br/>};<br/><br/><span class="main_comment">// Create chat with properties set via object initializer</span><br/><span class="main_keyword">var</span> chat = <span class="main_keyword">new</span> Call.Chat(connection, <span class="main_literal">"llama3.2"</span>) {<br/>    stream = <span class="main_literal">true</span>,<br/>    think = <span class="main_literal">true</span>,<br/>    agent = agent_handler<br/>};<br/><br/><span class="main_comment">// Create and assign Options object</span><br/>chat.options = <span class="main_keyword">new</span> Call.Options() {<br/>    temperature = <span class="main_literal">0.7</span>,<br/>    top_p = <span class="main_literal">0.9</span><br/>};<br/><br/><span class="main_comment">// Or assign existing Options object</span><br/>chat.options = existing_options;<br/><br/><span class="main_comment">// Add tools</span><br/><span class="main_keyword">foreach</span> (<span class="main_keyword">var</span> tool <span class="main_keyword">in</span> manager.tools.values) {<br/>    chat.add_tool(tool);<br/>}<br/><br/><span class="main_comment">// Send messages</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> chat.send(messages);</code></pre>
+          </p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">connection</td>
+              <td>
+                <p>The connection settings for the API endpoint </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">model</td>
+              <td>
+                <p>The model name to use for chat </p>
+              </td>
+            </tr>
+          </table>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">OllamaError.INVALID_ARGUMENT</td>
+              <td>
+                <p>if model is empty </p>
+              </td>
+            </tr>
+          </table>
         </div>
       </div>
     </div><br/>

@@ -216,11 +216,8 @@ namespace OLLMchat.Tools
 			this.agent.session.add_message(cmd_msg);
 			
 			// Request permission (will always ask for complex commands due to unique path)
-			// Phase 3: permission_provider is on Chat, not Client
-			if (this.agent.chat.permission_provider == null) {
-				return "ERROR: No permission provider available";
-			}
-			if (!(yield this.agent.chat.permission_provider.request(this))) {
+			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
+			if (!(yield this.agent.session.manager.permission_provider.request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
 			}
 			

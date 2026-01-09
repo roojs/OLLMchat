@@ -32,7 +32,7 @@ namespace OLLMchat
 	 */
 	public class OllamaBase : Object, Json.Serializable
 	{
-		public Settings.Connection? connection { get; protected set; }
+		public Settings.Connection? connection { get; set; }
 		public string chat_content { get; set; default = ""; }
 
 		protected OllamaBase(Settings.Connection? connection = null)

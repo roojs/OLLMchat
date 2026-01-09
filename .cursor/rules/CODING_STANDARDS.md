@@ -40,6 +40,8 @@ Options:
 
 **IMPORTANT:** Avoid simple aliased variables and trivial aliases. If a variable is just an alias for a property or method result that's used once or trivially, inline it instead.
 
+**EXCEPTION:** Long property chains (4+ properties deep) may be aliased into a local variable for readability. This exception applies when accessing deeply nested properties like `agent.session.manager.permission_provider`.
+
 **Bad:**
 ```vala
 var width = this.scrolled_window.get_width();
@@ -95,6 +97,15 @@ private void perform_search(string search_text)
     var search_settings = new GtkSource.SearchSettings();
     search_settings.case_sensitive = this.case_sensitive_checkbox.active;
     this.search_context = new GtkSource.SearchContext(this.current_buffer, search_settings);
+}
+```
+
+**Also Good (exception for long property chains - 4+ properties deep):**
+```vala
+// Long property chain (4+ properties) - OK to alias for readability
+var permission_provider = this.agent.session.manager.permission_provider;
+if (permission_provider.check_permission(path, Operation.READ)) {
+    // ... use permission_provider multiple times ...
 }
 ```
 

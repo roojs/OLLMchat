@@ -32,9 +32,11 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="creation_method"><a href="OLLMchat.Prompt.AgentHandler.AgentHandler.html">AgentHandler</a></li>
+          <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.execute_tools.html">execute_tools</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.handle_stream_chunk.html">handle_stream_chunk</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.handle_stream_started.html">handle_stream_started</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.handle_tool_message.html">handle_tool_message</a></li>
+          <li class="method"><a href="OLLMchat.Prompt.AgentHandler.rebuild_tools.html">rebuild_tools</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.AgentHandler.send_async.html">send_async</a></li>
           <li class="signal"><a href="OLLMchat.Prompt.AgentHandler.chat_send.html">chat_send</a></li>
           <li class="signal"><a href="OLLMchat.Prompt.AgentHandler.stream_chunk.html">stream_chunk</a></li>
@@ -100,6 +102,10 @@
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">async</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; <b><a href="OLLMchat.Prompt.AgentHandler.execute_tools.html" class="virtual_method">execute_tools</a></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span>&gt; tool_calls)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Executes all tool calls and returns tool reply messages.</span>
+            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Prompt.AgentHandler.handle_stream_chunk.html" class="virtual_method">handle_stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Called by Chat when a streaming chunk is received. Agent handler 
@@ -114,6 +120,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Called by Chat when a tool sends a status message. Agent handler 
                 should relay to Session.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Prompt.AgentHandler.rebuild_tools.html" class="method">rebuild_tools</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Rebuilds tools for this agent's Chat instance.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Prompt.AgentHandler.send_async.html" class="virtual_method">send_async</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>

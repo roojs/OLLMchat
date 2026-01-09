@@ -108,11 +108,12 @@ namespace OLLMchat.Tool
 		protected string normalize_file_path(string in_path)
 		{
 			var path = in_path;
-			// Get permission provider from Chat (Chat has its own or falls back to Client)
-			var permission_provider = this.agent.chat.permission_provider;
+			// Get permission provider from Manager (shared across all sessions)
+			// Permission provider always exists (defaults to Dummy provider)
+			var permission_provider = this.agent.session.manager.permission_provider;
 			
 			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
-			if (!GLib.Path.is_absolute(path) && permission_provider != null && permission_provider.relative_path != "") {
+			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
 				path = GLib.Path.build_filename(permission_provider.relative_path, path);
 			}
 			// if it's still absolute - return it we might have to fail at this point..
@@ -165,13 +166,9 @@ namespace OLLMchat.Tool
 			if (this.build_perm_question()) {
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
 				
-			// Get permission provider from Chat (Chat has its own or falls back to Client)
-			var permission_provider = this.agent.chat.permission_provider;
-			if (permission_provider == null) {
-				GLib.debug("RequestBase.execute: Tool '%s' has no permission provider available", this.tool.name);
-				return "ERROR: No permission provider available";
-			}
-			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Chat", 
+			// Get permission provider from Manager (shared across all sessions)
+			var permission_provider = this.agent.session.manager.permission_provider;
+			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Manager", 
 				this.tool.name, permission_provider, permission_provider.get_type().name());
 				
 				if (!(yield permission_provider.request(this))) {

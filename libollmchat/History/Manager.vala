@@ -60,6 +60,17 @@ namespace OLLMchat.History
 		}
 		public Settings.ConnectionModels connection_models { get; private set; }
 		
+		/**
+		 * Permission provider for tool execution.
+		 *
+		 * Handles permission requests when tools need to access files or execute commands.
+		 * Set by Window when creating the manager. Shared across all sessions.
+		 *
+		 * @since 1.2.7.9
+		 */
+		public OLLMchat.ChatPermission.Provider permission_provider { get; set;
+			 default = new OLLMchat.ChatPermission.Dummy(); }
+		
 		// Signal emitted when a new session is added (for UI updates)
 		public signal void session_added(SessionBase session);
 		

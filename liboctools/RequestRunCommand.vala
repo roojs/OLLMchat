@@ -212,8 +212,8 @@ namespace OLLMtools
 			this.send_ui("bash", "", "$ " + this.command);
 			
 			// Request permission (will always ask for complex commands due to unique path)
-			// Phase 3: permission_provider is on Chat, not Client
-			if (this.agent.chat.permission_provider == null || !(yield this.agent.chat.permission_provider.request(this))) {
+			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
+			if (!(yield this.agent.session.manager.permission_provider.request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
 			}
 			

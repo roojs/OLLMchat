@@ -190,15 +190,8 @@ namespace OLLMtools
 		public void disconnect_signals()
 		{
 			// Note: Signal disconnections removed - no longer using signals
-			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.tool.client, this.stream_content_id)) {
-				this.tool.client.disconnect(this.stream_content_id);
-			}
+			// Legacy code removed - tool.client property no longer exists
 			this.stream_content_id = 0;
-			
-			// Disconnect message_created signal
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.tool.client, this.message_created_id)) {
-				this.tool.client.disconnect(this.message_created_id);
-			}
 			this.message_created_id = 0;
 			
 			GLib.debug("RequestEditMode.disconnect_signals: Disconnected signals (file=%s, still in active_requests=%s)", 
@@ -535,8 +528,8 @@ namespace OLLMtools
 			// Files in active project are auto-approved and don't need permission checks
 			if (!is_in_project) {
 			// Check if permission status has changed (e.g., revoked by signal handler)
-			// Phase 3: permission_provider is on Chat, not Client
-			if (this.agent.chat.permission_provider == null || !this.agent.chat.permission_provider.check_permission(this)) {
+			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
+			if (!this.agent.session.manager.permission_provider.check_permission(this)) {
 					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 				}
 			}

@@ -69,14 +69,10 @@ namespace OLLMchat.Tool
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }
 		
-		// FIXME to be removed
-		public Client? client { get; set; default = null; }
-		
 		public bool active { get; set; default = true; }
 
-		protected BaseTool(Client? client = null)
+		protected BaseTool()
 		{
-			this.client = client;
 			this.function = new Function(this);
 			
 			// Parse parameter description in two passes:
@@ -440,7 +436,6 @@ namespace OLLMchat.Tool
 				case "function":
 					return Json.gobject_serialize(this.function);
 					
-				case "client":
 				case "active":
 					// Exclude these properties from serialization
 					return null;
@@ -607,7 +602,6 @@ namespace OLLMchat.Tool
 			
 			foreach (var tool_type in tool_classes) {
 				// Use Object.new() to create tool instance without parameters
-				// Standard signature: (Client? client = null) - pass null since tools don't need Client
 				// Tools are metadata - they don't need Client or project_manager
 				// Tool handlers need project_manager, provided when handlers are created
 				// Tools get config from agent.session.manager.config when executing

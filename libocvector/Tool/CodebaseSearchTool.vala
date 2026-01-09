@@ -122,11 +122,10 @@ making it more effective than simple text search for finding relevant code.
 		 * @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
 		 */
 		public CodebaseSearchTool(
-			OLLMchat.Client? client = null,
 			OLLMfiles.ProjectManager? project_manager = null
 		)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 			
 			// Embedding client will be extracted lazily when config is available

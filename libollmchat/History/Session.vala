@@ -85,6 +85,9 @@ namespace OLLMchat.History
 		
 		// Set agent handler when session is created (if agent_name is set)
 		// Agent will be set later if agent_name is set after construction
+		
+		// Connect to config changed signal to update Chat when config changes
+		this.manager.config.changed.connect(this.on_config_changed);
 	}
 		
 		/**
@@ -502,17 +505,51 @@ namespace OLLMchat.History
 			
 			// Create new handler from agent
 			var new_handler = base_agent.create_handler(this) as OLLMchat.Prompt.AgentHandler;
-			// Note: Chat is created per request by AgentHandler, not stored here
-			this.agent = new_handler;
-			 
 			
-			// Trigger agent_activated signal for UI updates
-			// Manager emits this signal, which Window listens to for widget management
-			this.manager.agent_activated(base_agent);
+			// Copy chat from old agent to new agent and connect agent property
+			if (old_handler != null) {
+				// Copy the chat instance from old agent
+				new_handler.chat = old_handler.chat;
+				// Connect the agent property to the new handler
+				new_handler.chat.agent = new_handler;
+			}
+			
+			this.agent = new_handler;
+			
+			
+		// Trigger agent_activated signal for UI updates
+		// Manager emits this signal, which Window listens to for widget management
+		this.manager.agent_activated(base_agent);
+	}
+	
+	/**
+	 * Handler for config.changed signal.
+	 * 
+	 * Updates Chat's model and options when config changes.
+	 * Config changes may update model_options, which affects model_usage.options.
+	 * Also rebuilds tools when tool configuration changes.
+	 */
+	private void on_config_changed()
+	{
+		// Update Chat properties from model_usage when config changes
+		// Agent always exists when config changes, so no null check needed
+		if (this.agent != null) {
+			this.agent.chat.model = this.model_usage.model;
+			
+			// Update connection
+			if (this.model_usage.connection != "" && this.manager.config.connections.has_key(this.model_usage.connection)) {
+				this.agent.chat.connection = this.manager.config.connections.get(this.model_usage.connection);
+			}
+			
+			this.agent.chat.options = this.model_usage.options;
+			
+			// Rebuild tools when tool configuration changes (ensures Chat has latest tool config/active state)
+			this.agent.rebuild_tools();
 		}
-		
-		/**
-		 * Sends a Message object to this session.
+	}
+	
+	/**
+	 * Sends a Message object to this session.
 		 * 
 		 * This is the new method for sending messages. Adds Message to session history
 		 * and delegates to AgentHandler if message.role == "user".
