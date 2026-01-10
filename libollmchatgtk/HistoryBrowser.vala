@@ -158,13 +158,14 @@ namespace OLLMchatGtk
 			// Model and reply count label (left side, small, grey)
 			var info_label = new Gtk.Label("") {
 				halign = Gtk.Align.START,
-				hexpand = true,
+				hexpand = false,  // Don't expand - only take needed space
 				css_classes = {"list-chat-model", "caption", "dim-label"}
 			};
 			
-			// Create unread label (visibility controlled by CSS)
+			// Create unread label (visibility controlled by property binding)
 			var unread_label = new Gtk.Label("unread") {
 				halign = Gtk.Align.START,
+				hexpand = false,  // Don't expand - only take needed space
 				css_classes = {"list-chat-unread", "caption"}
 			};
 			
@@ -172,18 +173,26 @@ namespace OLLMchatGtk
 			var spinner = new Gtk.Spinner() {
 				halign = Gtk.Align.CENTER,
 				visible = false,  // Hidden by default
-				spinning = false
+				spinning = false,
+				hexpand = false  // Don't expand
+			};
+			
+			// Spacer to push date to the right
+			var spacer = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
+				hexpand = true  // Expand to fill available space
 			};
 			
 			// Date label (right side, small, grey)
 			var date_label = new Gtk.Label("") {
 				halign = Gtk.Align.END,
+				hexpand = false,  // Don't expand - only take needed space
 				css_classes = {"list-chat-date", "caption", "dim-label"}
 			};
 			
 			secondary_box.append(info_label);
-			secondary_box.append(unread_label);  // Add unread label after info_label, before date_label
-			secondary_box.append(spinner);  // Add spinner between unread_label and date_label
+			secondary_box.append(unread_label);  // Add unread label after info_label
+			secondary_box.append(spinner);  // Add spinner after unread_label
+			secondary_box.append(spacer);  // Spacer pushes date to the right
 			secondary_box.append(date_label);
 			
 			row_box.append(title_label);
@@ -236,6 +245,9 @@ namespace OLLMchatGtk
 			
 			// Bind css_classes to row_box widget classes
 			session.bind_property("css_classes", row_box, "css-classes", BindingFlags.SYNC_CREATE);
+			
+			// Bind has_unread to unread_label visibility (replaces CSS visibility which GTK doesn't support)
+			session.bind_property("has_unread", unread_label, "visible", BindingFlags.SYNC_CREATE);
 			
 			// Bind is_running to spinner visibility and spinning state
 			session.bind_property("is_running", spinner, "visible", BindingFlags.SYNC_CREATE);

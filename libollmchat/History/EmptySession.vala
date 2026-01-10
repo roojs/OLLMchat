@@ -104,6 +104,7 @@ namespace OLLMchat.History
 		public override void activate_agent(string agent_name) throws Error
 		{
 			// Save reference to old AgentHandler (if exists)
+			var old_agent = this.agent;
 			
 			// Update agent_name on session
 			if (this.agent_name == agent_name) {
@@ -118,7 +119,10 @@ namespace OLLMchat.History
 			// Create agent from factory
 			var agent = agent_factory.create_agent(this);
 			
-			agent.replace_chat(this.agent.chat()); 
+			// Copy chat from old agent to new agent if old agent exists
+			if (old_agent != null) {
+				agent.replace_chat(old_agent.chat());
+			}
 			
 			// Set new agent on session
 			this.agent = agent;

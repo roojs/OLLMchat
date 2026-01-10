@@ -33,6 +33,12 @@ namespace OLLMchat.History
 		public string title { get; set; default = ""; }
 		public string agent_name { get; set; default = "just-ask"; }
 		public int unread_count { get; set; default = 0; }
+		
+		// Computed property for binding to widget visibility
+		public bool has_unread {
+			get { return this.unread_count > 0; }
+		}
+		
 		public bool is_active { get; protected set; default = false; }
 		public bool is_running { get; protected set; default = false; }
 		
@@ -211,7 +217,7 @@ namespace OLLMchat.History
 			}
 			this.is_active = true;
 			this.unread_count = 0; // Clear unread count when activated
-			// Note: unread_count auto-property automatically emits property change notification
+			this.notify_property("has_unread");  // Notify has_unread when crossing from >0 to 0
 			this.notify_property("css_classes");  // Notify css_classes change when unread_count cleared
 
 			// Signal connections removed - agent usage now uses direct method calls from Chat

@@ -99,7 +99,8 @@ namespace OLLMchat.Agent
 			if (usage.connection != "" && this.session.manager.config.connections.has_key(usage.connection)) {
 				this.connection = this.session.manager.config.connections.get(usage.connection);
 			}
-			  
+			
+			GLib.debug("Agent.Base constructor: Final connection=%p, model='%s'", this.connection, model);
 			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change

@@ -320,42 +320,39 @@ namespace OLLMapp
 				}
 				
 				// Found a working connection - now verify model
+				GLib.debug("Window.vala: Found working connection '%s', creating history manager", working_conn.url);
 				// Create history manager to check model
 				this.history_manager = new OLLMchat.History.Manager(this.app);
 				
+				// Update default_model_usage to use the working connection if the current one is not working
+				// This ensures verify_model() uses the working connection, not a down one
+				if (this.history_manager.default_model_usage != null) {
+					var current_conn = config.connections.get(this.history_manager.default_model_usage.connection);
+					if (current_conn == null || !current_conn.is_working) {
+						GLib.debug("Window.vala: default_model_usage connection '%s' is not working, updating to working connection '%s'", 
+							this.history_manager.default_model_usage.connection, working_conn.url);
+						this.history_manager.default_model_usage.connection = working_conn.url;
+					}
+				}
+				
+				GLib.debug("Window.vala: History manager created, calling ensure_model_usage()");
+				
+				// Try to verify model, but don't block initialization if it fails
+				// User can select a model later if the default one isn't available
 				try {
 					yield this.history_manager.ensure_model_usage();
-					// Model verified - break out of loop
-					break;
+					GLib.debug("Window.vala: Model verified, breaking loop to call initialize_client()");
 				} catch (GLib.Error e) {
-					// Model verification failed - show warning dialog with option to configure
-					var response = yield this.show_connection_error_dialog(
-						"Default model verification failed: " + e.message
-					);
-					
-					if (response != "settings") {
-						// User closed dialog without configuring - exit
-						return;
-					}
-					
-					// User clicked Configure - show settings dialog
-					// Connect to closed signal to re-check model after settings dialog closes
-					ulong signal_id = 0;
-					signal_id = this.settings_dialog.closed.connect(() => {
-						// Disconnect signal to avoid multiple connections
-						this.settings_dialog.disconnect(signal_id);
-						// Config already updated in memory by settings dialog, just re-check
-						this.initialize_unverified_client.begin(this.app.config);
-					});
-					
-					// Show settings dialog and switch to models tab
-					this.show_settings_dialog("models");
-					
-					// Wait for settings dialog to close (will trigger re-check via signal)
-					return;
+					// Model verification failed - log warning but continue initialization
+					// The user can select a different model later via the UI
+					GLib.warning("Window.vala: Model verification failed: %s. Continuing initialization - user can select model later.", e.message);
 				}
+				
+				// Break out of loop and proceed with initialization regardless of model verification
+				break;
 			}
-			
+			GLib.debug("call initalize client()");
+
 			// Both connection and model verified, proceed with initialization
 			yield this.initialize_client(config);
 		}
@@ -525,6 +522,10 @@ namespace OLLMapp
 			
 			// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
 			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
+			
+			// Initialize tool dependencies (tools are registered before project_manager is created)
+			tool.init_dependencies(project_manager);
+
 			
 			// Initialize vector database (embedding_client will be set up lazily)
 			try {
@@ -711,9 +712,9 @@ namespace OLLMapp
 			this.agent_dropdown.model = agent_store;
 			this.agent_dropdown.set_factory(list_factory);
 			this.agent_dropdown.set_list_factory(list_factory);
-			this.agent_dropdown.selected = selected_index;
 			
-			// Connect selection change to activate agent via Manager
+			// Connect selection change to activate agent via Manager (before setting selected)
+			// This ensures the signal handler is connected when we set the initial selection
 			this.agent_dropdown.notify["selected"].connect(() => {
 				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
@@ -724,12 +725,26 @@ namespace OLLMapp
 				// Use Manager.activate_agent() to handle agent change
 				// This routes to session.activate_agent() which handles AgentHandler creation/copying
 				// and then triggers agent_activated signal for UI updates
+				// For EmptySession (fid is empty), call session.activate_agent() directly
 				try {
-					this.history_manager.activate_agent(this.history_manager.session.fid, factory.name);
+					var session = this.history_manager.session;
+					if (session.fid == null || session.fid == "") {
+						// EmptySession doesn't have a fid - call activate_agent directly
+						session.activate_agent(factory.name);
+					} else {
+						// Real session - use Manager.activate_agent() which looks up by fid
+						this.history_manager.activate_agent(session.fid, factory.name);
+					}
 				} catch (Error e) {
 					GLib.warning("Failed to activate agent '%s': %s", factory.name, e.message);
 				}
 			});
+			
+			// Set selected index after connecting signal (triggers initial agent activation)
+			this.agent_dropdown.selected = selected_index;
+			
+			GLib.debug("setup_agent_dropdown: Dropdown configured with %u items, selected index: %u", 
+				agent_store.get_n_items(), selected_index);
 			
 			// Connect to session_activated signal to update when session changes
 			this.history_manager.session_activated.connect((session) => {

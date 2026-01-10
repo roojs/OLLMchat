@@ -146,9 +146,11 @@ namespace OLLMchat.History
 		{
 			// If session is inactive, increment unread count
 			// This prevents inactive sessions from updating the UI with streaming output
-			// Note: unread_count auto-property automatically emits property change notification
 			if (!this.is_active) {
 				this.unread_count++;
+				if (this.unread_count == 1) {
+					this.notify_property("has_unread");  // Notify has_unread when crossing from 0 to >0
+				}
 				this.notify_property("css_classes");  // Notify css_classes change when unread_count changes
 			}
 			

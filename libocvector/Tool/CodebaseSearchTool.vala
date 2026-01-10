@@ -133,6 +133,21 @@ making it more effective than simple text search for finding relevant code.
 		}
 		
 		/**
+		 * Initializes tool dependencies after creation.
+		 * 
+		 * Called after tool is created via Object.new() to set dependencies
+		 * that weren't available during registration.
+		 * 
+		 * @param project_manager Project manager instance (nullable)
+		 */
+		public void init_dependencies(OLLMfiles.ProjectManager? project_manager = null)
+		{
+			if (project_manager != null) {
+				this.project_manager = project_manager;
+			}
+		}
+		
+		/**
 		 * Initializes the vector database by getting dimension and creating the Database instance.
 		 * 
 		 * This method should be called after the tool is constructed and embedding_client is set.
