@@ -128,6 +128,26 @@ namespace OLLMchat.Tool
 
 		protected BaseTool()
 		{
+			// Call init() to ensure proper initialization
+			this.init();
+		}
+		
+		/**
+		 * Initialization method that ensures tools are properly initialized.
+		 * 
+		 * This method is called:
+		 * - In the constructor (for normal instantiation)
+		 * - After Object.new() calls (for tools created with named parameters)
+		 * 
+		 * Ensures tools created via Object.new() are properly initialized even
+		 * when constructors might not be called correctly.
+		 */
+		public void init()
+		{
+			if (this.function != null) {
+				return; // Already initialized
+			}
+			
 			this.function = new Function(this);
 			
 			// Parse parameter description in two passes:
@@ -576,7 +596,9 @@ namespace OLLMchat.Tool
 				// Create tool instance without parameters - works because constructors are nullable
 				// Call setup_tool_config() on the instance
 				// Simple tools will use the default implementation, complex tools will use their overrides
-				(Object.new(tool_type) as Tool.BaseTool).setup_tool_config(config);
+				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
+				tool.setup_tool_config(config);
 			}
 		}
 		
@@ -627,6 +649,7 @@ namespace OLLMchat.Tool
 				// Create tool instance without parameters - works because constructors are nullable
 				// Constructors handle null values gracefully (for Phase 1, we only need config_class())
 				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
 				
 				// Register config type with Config2
 				Settings.Config2.register_tool_type(tool.name, tool.config_class());
@@ -661,6 +684,7 @@ namespace OLLMchat.Tool
 				// Tool handlers need project_manager, provided when handlers are created
 				// Tools get config from agent.session.manager.config when executing
 				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
 				
 				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
 				tools_map.set(tool.name, tool);

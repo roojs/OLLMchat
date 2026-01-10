@@ -233,7 +233,27 @@ namespace OLLMchat.Call
 					if (this.tools.size == 0) {
 						return null;
 					}
-					// Note: available_models check removed - tools are always serialized if present
+					
+					// Check if model supports tools using ConnectionModels
+					// Access via agent.session.manager.connection_models (Phase 3: no Client)
+					bool model_supports_tools = true;
+					
+					if (this.agent != null) {
+						var model_usage = this.agent.session.manager.connection_models.find_model(
+							this.connection.url, 
+							this.model
+						);
+						
+						if (model_usage != null) {
+							model_supports_tools = model_usage.model_obj.can_call;
+						}
+					}
+					
+					// Only exclude tools if we know the model explicitly doesn't support them
+					if (!model_supports_tools) {
+						return null;
+					}
+					
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();

@@ -155,17 +155,8 @@ namespace OLLMtools
 		
 		protected override bool build_perm_question()
 		{
-			// Validate required parameter
-			if (this.query == "") {
-				return false;
-			}
-			
-			// Set permission properties
-			this.permission_target_path = "https://www.googleapis.com/";
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
-			this.permission_question = "Search Google for: " + this.query + "?";
-			
-			return true;
+			// Permission check removed - Google Search no longer requires permission
+			return false;
 		}
 		
 		protected override async string execute_request() throws Error

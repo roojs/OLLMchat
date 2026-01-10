@@ -32,7 +32,6 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Tool.BaseTool.active.html">active</a></li>
-          <li class="property"><a href="OLLMchat.Tool.BaseTool.client.html">client</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.description.html">description</a></li>
           <li class="property"><a href="OLLMchat.Tool.BaseTool.function.html">function</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.name.html">name</a></li>
@@ -60,13 +59,13 @@
         <h1 class="main_title">init</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><span class="method">init</span></b> ()
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">init</span></b> ()
         </div>
         <div class="description">
-          <p>Initializes the tool instance.</p>
-          <p>This method must be called to ensure the tool is properly set up. It creates the function instance and parses the parameter description. 
-            Called automatically by the constructor, but should also be called after Object.new() with named parameters since constructors may not be 
-            called in that case.</p>
+          <p>Initialization method that ensures tools are properly initialized.</p>
+          <p>This method is called: - In the constructor (for normal instantiation) - After Object.new() calls (for tools created with named 
+            parameters)</p>
+          <p>Ensures tools created via Object.new() are properly initialized even when constructors might not be called correctly.</p>
         </div>
       </div>
     </div><br/>
