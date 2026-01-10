@@ -27,37 +27,53 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Client.available_models.html">available_models</a></li>
+          <li class="property"><a href="OLLMchat.Client.config.html">config</a></li>
           <li class="property"><a href="OLLMchat.Client.connection.html">connection</a></li>
+          <li class="property"><a href="OLLMchat.Client.connection_models.html">connection_models</a></li>
+          <li class="property"><a href="OLLMchat.Client.format.html">format</a></li>
+          <li class="property"><a href="OLLMchat.Client.keep_alive.html">keep_alive</a></li>
+          <li class="property"><a href="OLLMchat.Client.model.html">model</a></li>
+          <li class="property"><a href="OLLMchat.Client.options.html">options</a></li>
+          <li class="property"><a href="OLLMchat.Client.permission_provider.html">permission_provider</a></li>
+          <li class="property"><a href="OLLMchat.Client.prompt_assistant.html">prompt_assistant</a></li>
+          <li class="property"><a href="OLLMchat.Client.stream.html">stream</a></li>
+          <li class="property"><a href="OLLMchat.Client.streaming_response.html">streaming_response</a></li>
+          <li class="property"><a href="OLLMchat.Client.think.html">think</a></li>
+          <li class="property"><a href="OLLMchat.Client.timeout.html">timeout</a></li>
+          <li class="property"><a href="OLLMchat.Client.tools.html">tools</a></li>
           <li class="creation_method"><a href="OLLMchat.Client.Client.html">Client</a></li>
+          <li class="method"><a href="OLLMchat.Client.addTool.html">addTool</a></li>
           <li class="method"><a href="OLLMchat.Client.chat.html">chat</a></li>
-          <li class="method"><a href="OLLMchat.Client.chat_execute.html">chat_execute</a></li>
           <li class="method">embed</li>
           <li class="method"><a href="OLLMchat.Client.embed_array.html">embed_array</a></li>
+          <li class="method"><a href="OLLMchat.Client.fetch_all_model_details.html">fetch_all_model_details</a></li>
           <li class="method"><a href="OLLMchat.Client.generate.html">generate</a></li>
           <li class="method"><a href="OLLMchat.Client.models.html">models</a></li>
           <li class="method"><a href="OLLMchat.Client.ps.html">ps</a></li>
           <li class="method"><a href="OLLMchat.Client.show_model.html">show_model</a></li>
           <li class="method"><a href="OLLMchat.Client.version.html">version</a></li>
+          <li class="signal"><a href="OLLMchat.Client.chat_send.html">chat_send</a></li>
+          <li class="signal"><a href="OLLMchat.Client.message_created.html">message_created</a></li>
+          <li class="signal"><a href="OLLMchat.Client.stream_chunk.html">stream_chunk</a></li>
+          <li class="signal"><a href="OLLMchat.Client.stream_content.html">stream_content</a></li>
+          <li class="signal"><a href="OLLMchat.Client.stream_start.html">stream_start</a></li>
+          <li class="signal"><a href="OLLMchat.Client.tool_message.html">tool_message</a></li>
+          <li class="field"><a href="OLLMchat.Client.session.html">session</a></li>
         </ul>
       </div>
       <div class="site_content">
         <h1 class="main_title">embed</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Embed.html" class="class">Embed</a></span> <b><span class="method">embed</span></b> (<span class="main_basic_type"><span class="class">string</span></span> model, <span class="main_basic_type"><span class="class">string</span></span> input, <span class="main_basic_type"><span class="struct">int</span></span> dimensions = <span class="main_literal">-1</span>, <span class="main_basic_type"><span class="struct">bool</span></span> truncate = <span class="main_literal">false</span>, <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span>? options = <span class="main_literal">null</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Embed.html" class="class">Embed</a></span> <b><span class="method">embed</span></b> (<span class="main_basic_type"><span class="class">string</span></span> input, <span class="main_basic_type"><span class="struct">int</span></span> dimensions = <span class="main_literal">-1</span>, <span class="main_basic_type"><span class="struct">bool</span></span> truncate = <span class="main_literal">false</span>, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Generates embeddings for the input text.</p>
-          <p>Creates vector embeddings representing the input text using the specified model. Returns a single Response.Embed object containing the 
+          <p>Creates vector embeddings representing the input text using the configured model. Returns a single Response.Embed object containing the 
             embeddings and metadata.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
-            <tr>
-              <td class="main_parameter_table_name">model</td>
-              <td>
-                <p>The model name to use for generating embeddings </p>
-              </td>
-            </tr>
             <tr>
               <td class="main_parameter_table_name">input</td>
               <td>
@@ -74,12 +90,6 @@
               <td class="main_parameter_table_name">truncate</td>
               <td>
                 <p>Optional whether to truncate inputs that exceed context window (default: false) </p>
-              </td>
-            </tr>
-            <tr>
-              <td class="main_parameter_table_name">options</td>
-              <td>
-                <p>Optional Call.Options for the embed request </p>
               </td>
             </tr>
             <tr>

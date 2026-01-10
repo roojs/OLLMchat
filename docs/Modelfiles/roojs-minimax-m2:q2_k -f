@@ -1,0 +1,65 @@
+FROM MichelRosselli/minimax-m2:q2_k
+
+# Remove all inherited templates
+TEMPLATE ""
+
+# Start fresh
+SYSTEM "You are a helpful assistant."
+
+TEMPLATE """<|start|>system<|message|>You are ChatGPT, a large language model trained by OpenAI.
+Knowledge cutoff: 2024-06
+Current date: {{ .CurrentDate }}
+{{- if .Tools }}
+
+# Available Tools
+{{- range .Tools }}
+{{- if .Function.Description }}
+// {{ .Function.Description }}
+{{- end }}
+type {{ .Function.Name }} = (_: {
+{{- range $name, $prop := .Function.Parameters.Properties }}
+  // {{ $prop.Description }}
+  {{ $name }}: {{ $prop.Type }},
+{{- end }}
+}) => any;
+{{- end }}
+
+When you need to use a tool, respond ONLY with valid JSON in this format:
+{"tool_calls": [{"type": "function", "function": {"name": "tool_name", "arguments": "{\"arg\": \"value\"}"}}]}
+Do not include any other text or commentary.
+{{- end }}
+
+You should think step by step before answering.
+<|end|>
+{{- /* Iterate through all messages */ -}}
+{{- range .Messages }}
+  {{- if eq .Role "user" }}
+<|start|>user<|message|>{{ .Content }}<|end|>
+  {{- else if eq .Role "assistant" }}
+    {{- /* Assistant message with content but no tools */ -}}
+    {{- if and .Content (not .ToolCalls) }}
+<|start|>assistant<|message|>{{ .Content }}<|end|>
+    {{- end }}
+    {{- /* Assistant message with tool calls */ -}}
+    {{- if .ToolCalls }}
+      {{- range .ToolCalls }}
+<|start|>assistant<|message|>{
+  "tool_calls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "{{ .Function.Name }}",
+        "arguments": "{{ .Function.Arguments }}"
+      }
+    }
+  ]
+}<|end|>
+      {{- end }}
+    {{- end }}
+  {{- else if eq .Role "tool" }}
+    {{- /* Tool result from system */ -}}
+<|start|>tool<|message|>{{ .Content }}<|end|>
+  {{- end }}
+{{- end }}
+{{- /* Prompt for next response */ -}}
+<|start|>assistant<|message|>"""

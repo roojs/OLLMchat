@@ -89,7 +89,6 @@ namespace OLLMchat.Tool
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "parameters":
-				
 					var param_node = Json.gobject_serialize(this.parameters);
 					param_node.get_object().set_string_member("type", this.parameters.x_type);
 					return param_node;
