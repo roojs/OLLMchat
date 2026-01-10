@@ -118,10 +118,9 @@ namespace OLLMchat.Settings
 		 */
 		public void init()
 		{
-			if (this.soup == null) {
-				this.soup = new Soup.Session();
-				this.timeout = 300; // Default timeout
-			}
+			this.soup = new Soup.Session();
+			this.timeout = 300; // Default timeout
+		
 		}
 
 		/**
