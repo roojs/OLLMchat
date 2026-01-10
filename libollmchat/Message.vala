@@ -39,7 +39,7 @@ namespace OLLMchat
 	 *
 	 * {{{
 	 * // Create a user message
-	 * var msg = new Message(call, "user-sent", "Hello!");
+	 * var msg = new Message("user-sent", "Hello!");
 	 *
 	 * // Check message type
 	 * if (msg.is_user && msg.is_ui_visible) {
@@ -47,7 +47,7 @@ namespace OLLMchat
 	 * }
 	 *
 	 * // Create streaming content message
-	 * var content_msg = new Message(call, "content-stream", "");
+	 * var content_msg = new Message("content-stream", "");
 	 * content_msg.chat_content = "Partial response...";
 	 * }}}
 	 */
@@ -136,16 +136,14 @@ namespace OLLMchat
 		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set; default = new Gee.ArrayList<Response.ToolCall>(); }
 		public string tool_call_id { get; set; default = ""; }
 		public string name { get; set; default = ""; }
-		public ChatContentInterface message_interface;
 		
 		// History info (only included when include_history_info is true)
 		public bool include_history_info { get; set; default = false; }
 		public string timestamp { get; set; default = ""; }  // Format: Y-m-d H:i:s
 		public bool hidden { get; set; default = false; }
 
-		public Message(ChatContentInterface? message_interface = null, string role, string content, string thinking = "")
+		public Message(string role, string content, string thinking = "")
 		{
-			this.message_interface = message_interface;
 			this.role = role;
 			this.content = content;
 			this.thinking = thinking;
@@ -155,14 +153,12 @@ namespace OLLMchat
 		 * Constructor for tool response messages.
 		 * Used to send tool execution results back to OLLMchat.
 		 *
-		 * @param message_interface The message interface
 		 * @param tool_call_id The ID of the tool call this response corresponds to
 		 * @param name The name of the tool function that was executed
 		 * @param content The result content from the tool execution
 		 */
-		public Message.tool_reply(ChatContentInterface? message_interface = null, string tool_call_id, string name, string content)
+		public Message.tool_reply(string tool_call_id, string name, string content)
 		{
-			this.message_interface = message_interface;
 			this.role = "tool";
 			this.tool_call_id = tool_call_id;
 			this.name = name;
@@ -174,13 +170,11 @@ namespace OLLMchat
 		 * Constructor for tool call failure messages.
 		 * Used when tool execution fails with an error.
 		 *
-		 * @param message_interface The message interface
 		 * @param tool_call The tool call that failed
 		 * @param e The error that occurred during execution
 		c */
-		public Message.tool_call_fail(ChatContentInterface? message_interface = null, Response.ToolCall tool_call, Error e)
+		public Message.tool_call_fail(Response.ToolCall tool_call, Error e)
 		{
-			this.message_interface = message_interface;
 			this.role = "tool";
 			this.tool_call_id = tool_call.id;
 			this.name = tool_call.function.name;
@@ -191,19 +185,17 @@ namespace OLLMchat
 		 * Constructor for invalid tool call messages.
 		 * Used when a tool is not found or not available.
 		 *
-		 * @param message_interface The message interface
 		 * @param tool_call The tool call that is invalid
 		 * @param err_message The error message to send to the LLM
 		 */
-		public Message.tool_call_invalid(ChatContentInterface? message_interface = null, Response.ToolCall tool_call, string err_message)
+		public Message.tool_call_invalid(Response.ToolCall tool_call, string err_message)
 		{
-			this.message_interface = message_interface;
 			this.role = "tool";
 			this.tool_call_id = tool_call.id;
 			this.name = tool_call.function.name;
 			this.content = err_message;
 			
-			// Emit message_created signal (message_interface is always a Chat for tool-related messages)
+			// Emit message_created signal
 			// Note: UI message is already emitted in toolsReply(), so this is just for the tool message itself
 		}
 		
@@ -211,12 +203,10 @@ namespace OLLMchat
 		 * Constructor for assistant messages with tool calls.
 		 * Used when Ollama requests tool execution (tool call request from Ollama).
 		 *
-		 * @param message_interface The message interface
 		 * @param tool_calls The list of tool calls requested by the assistant
 		 */
-		public Message.with_tools(ChatContentInterface? message_interface = null, Gee.ArrayList<Response.ToolCall> tool_calls)
+		public Message.with_tools(Gee.ArrayList<Response.ToolCall> tool_calls)
 		{
-			this.message_interface = message_interface;
 			this.role = "assistant";
 			this.tool_calls = tool_calls;
 		}

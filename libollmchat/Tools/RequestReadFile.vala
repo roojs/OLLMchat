@@ -116,7 +116,7 @@ namespace OLLMchat.Tools
 			
 			// Add message via agent interface
 			this.agent.add_message(
-				new OLLMchat.Message(this.agent.chat(), "ui", message)
+				new OLLMchat.Message("ui", message)
 			);
 			
 			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {

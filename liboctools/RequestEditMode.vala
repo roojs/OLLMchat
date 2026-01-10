@@ -373,7 +373,7 @@ namespace OLLMtools
 		/**
 		 * Called when a message is created. Processes final content and applies changes when "done" message is received.
 		 */
-		private async void on_message_created(OLLMchat.Message message, OLLMchat.ChatContentInterface? content_interface)
+		private async void on_message_created(OLLMchat.Message message)
 		{
 			GLib.debug("RequestEditMode.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
 				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
@@ -384,15 +384,12 @@ namespace OLLMtools
 				return;
 			}
 			
-			// content_interface should be Response.Chat for assistant messages
-			if (content_interface == null || !(content_interface is OLLMchat.Response.Chat)) {
-				GLib.debug("RequestEditMode.on_message_created: Invalid content_interface (null=%s, is_Response.Chat=%s)", 
-					(content_interface == null).to_string(), 
-					(content_interface != null && content_interface is OLLMchat.Response.Chat).to_string());
+			// Get Response.Chat from agent.chat().streaming_response
+			var response = this.agent.chat().streaming_response;
+			if (response == null) {
+				GLib.debug("RequestEditMode.on_message_created: streaming_response is null (file=%s)", this.normalized_path);
 				return;
 			}
-			
-			var response = content_interface as OLLMchat.Response.Chat;
 			
 			GLib.debug("RequestEditMode.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
 				this.normalized_path, this.changes.size);

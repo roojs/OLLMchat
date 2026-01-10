@@ -130,7 +130,6 @@ namespace OLLMchat.Response
 			switch (property_name) {
 				case "message":
 					this.message = Json.gobject_deserialize(typeof(Message), property_node) as Message;
-					this.message.message_interface = this;
 					value = Value(typeof(string));
 					value.set_string("");
 					return true;
@@ -209,7 +208,6 @@ namespace OLLMchat.Response
 			var message_node = new Json.Node(Json.NodeType.OBJECT);
 			message_node.set_object(message_obj);
 			var msg = Json.gobject_deserialize(typeof(Message), message_node) as Message;
-			msg.message_interface = this;
 			
 			// If message is null, this is the first chunk - use the deserialized object directly
 			if (this.message == null) {

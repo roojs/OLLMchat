@@ -129,7 +129,7 @@ namespace OLLMchat.History
 			this.manager.agent_activated(agent_factory);
 		}
 		
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after conversion
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after conversion
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{

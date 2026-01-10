@@ -238,7 +238,7 @@ namespace OLLMchat.History
 		 * Handles message persistence and relays to Manager.
 		 * Must be implemented by subclasses.
 		 */
-		protected abstract void on_message_created(Message m, ChatContentInterface? content_interface);
+		protected abstract void on_message_created(Message m);
 		
 		/**
 		 * Called by AgentHandler when streaming starts.

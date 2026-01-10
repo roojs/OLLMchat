@@ -135,7 +135,6 @@ namespace OLLMchat.History
 			// Chat is created per request by AgentHandler, not stored on Session
 			// Messages are stored in session.messages and will be used when Chat is created
 			foreach (var msg in json_session.messages) {
-				// message_interface will be set when Chat is created by AgentHandler
 				real_session.messages.add(msg);
 			}
 			
@@ -152,7 +151,7 @@ namespace OLLMchat.History
 			return real_session;
 		}
 		
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after load()
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after load()
 		
 		public override void saveToDB() { }  // No-op: SessionPlaceholder is never saved (already in DB)
 		

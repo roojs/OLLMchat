@@ -78,7 +78,6 @@ namespace OLLMchat.Tools
 			// Add message via agent interface
 			this.agent.add_message(
 				new OLLMchat.Message(
-					this.agent.chat(),
 					"ui",
 					"```" + this.tool.name + " - request\n" + this.url + "\n```"
 				)
@@ -120,7 +119,6 @@ namespace OLLMchat.Tools
 				// Add message via agent interface
 				this.agent.add_message(
 					new OLLMchat.Message(
-						this.agent.chat(),
 						"ui",
 						"```" + this.tool.name + " - response (" + this.format + ")\n" +
 							result.replace("\n```", "\n\\`\\`\\`") + "\n```"

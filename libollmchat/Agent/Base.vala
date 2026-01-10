@@ -193,16 +193,16 @@ namespace OLLMchat.Agent
 					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
 						"', however we only have these tools: " + available_tools_str;
 					
-					var error_msg = new Message(this.chat_call, "ui", err_message);
+					var error_msg = new Message("ui", err_message);
 					this.handle_tool_message(error_msg);
-					reply_messages.add(new Message.tool_call_invalid(this.chat_call, tool_call, err_message));
+					reply_messages.add(new Message.tool_call_invalid(tool_call, err_message));
 					continue; // Continue to next tool call
 				}
 				
 				var tool = this.chat_call.tools.get(tool_call.function.name);
 				
 				// Show message that tool is being executed
-				var exec_msg = new Message(this.chat_call, "ui", "Executing tool: `" + tool_call.function.name + "`");
+				var exec_msg = new Message("ui", "Executing tool: `" + tool_call.function.name + "`");
 				this.handle_tool_message(exec_msg);
 				
 				try {
@@ -216,7 +216,7 @@ namespace OLLMchat.Agent
 					if (result.has_prefix("ERROR:")) {
 						GLib.debug("Tool '%s' returned error result: %s",
 							tool_call.function.name, result);
-						var error_msg = new Message(this.chat_call, "ui", result);
+						var error_msg = new Message("ui", result);
 						this.handle_tool_message(error_msg);
 					} else {
 						GLib.debug("Tool '%s' executed successfully, result length: %zu, preview: %s",
@@ -225,7 +225,7 @@ namespace OLLMchat.Agent
 					
 					// Create tool reply message
 					var tool_reply = new Message.tool_reply(
-						this.chat_call, tool_call.id, 
+						tool_call.id, 
 						tool_call.function.name,
 						result
 					);
@@ -235,9 +235,9 @@ namespace OLLMchat.Agent
 				} catch (Error e) {
 					GLib.debug("Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
-					var error_msg = new Message(this.chat_call, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
+					var error_msg = new Message("ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.handle_tool_message(error_msg);
-					reply_messages.add(new Message.tool_call_fail(this.chat_call, tool_call, e));
+					reply_messages.add(new Message.tool_call_fail(tool_call, e));
 					continue; // Continue to next tool call
 				}
 			}

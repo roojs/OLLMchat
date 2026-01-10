@@ -271,13 +271,13 @@ namespace OLLMchatGtk
 						break;
 					case "think-stream":
 						// For think-stream, content is the thinking text
-						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", "", msg.content);
+						var stream_msg = new OLLMchat.Message("assistant", "", msg.content);
 						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					case "content-stream":
 					case "content-non-stream":
 						// Render streaming/non-streaming messages as assistant messages
-						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content, msg.thinking);
+						var stream_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
 						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					default:
@@ -326,18 +326,18 @@ namespace OLLMchatGtk
 				case "ui":
 					// Render UI messages using the general renderer (same as assistant messages)
 					// This ensures code blocks are properly rendered as SourceView widgets
-					var ui_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
+					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
 					this.chat_view.append_complete_assistant_message(ui_msg, session);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
-					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", "", m.content);
+					var stream_msg = new OLLMchat.Message("assistant", "", m.content);
 					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				case "content-stream":
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
-					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
+					var stream_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
 					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				default:
@@ -510,8 +510,8 @@ namespace OLLMchatGtk
 				// Phase 5: Use new pattern - create Message object and call manager.send(session, message)
 				// This is the preferred method. EmptySession will convert to Session on first message.
 				// Create Message object with "user" role
-				// Note: message_interface will be set by Session when message is added
-				var user_message = new OLLMchat.Message(null, "user", text);
+				// Note: Message is added to Session
+				var user_message = new OLLMchat.Message("user", text);
 				
 				// Call manager.send() - this routes to session.send() which handles everything
 				yield this.manager.send(this.manager.session, user_message, cancellable);

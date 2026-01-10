@@ -61,7 +61,7 @@ namespace OLLMcoder
 			// Pass this agent so factory can access session, client, etc.
 			string system_content = this.factory.system_message(this);
 			if (system_content != "") {
-				messages.add(new OLLMchat.Message(this.chat_call, "system", system_content));
+				messages.add(new OLLMchat.Message("system", system_content));
 			}
 			
 			// Filter and add messages from this.session.messages (full conversation history)

@@ -42,18 +42,16 @@ namespace OLLMchatGtk
 		/**
 		 * Creates a new GTK Message instance.
 		 * 
-		 * @param message_interface The message interface
 		 * @param role The message role
 		 * @param content The message content
 		 * @param thinking Optional thinking content
 		 * @param widget Optional widget to display with the message
 		 */
-		public Message(OLLMchat.ChatContentInterface message_interface, 
-			string role, 
+		public Message(string role, 
 			string content,
 			 Gtk.Widget widget = null)
 		{
-			base(message_interface, role, content, "");
+			base(role, content, "");
 			this.widget = widget;
 			this.is_ui_visible = false;
 			this.is_hidden = true;

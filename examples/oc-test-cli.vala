@@ -254,7 +254,7 @@ Examples:
 		stdout.printf("Response:\n");
 		
 		// Add user message and execute chat
-		chat.messages.add(new OLLMchat.Message(chat, "user", query));
+		chat.messages.add(new OLLMchat.Message("user", query));
 		var response = yield chat.send(chat.messages, null);
 		
 		stdout.printf("\n\n--- Complete Response ---\n");

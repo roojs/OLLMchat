@@ -54,7 +54,6 @@
           <li class="field"><a href="OLLMchat.Message.is_tool.html">is_tool</a></li>
           <li class="field"><a href="OLLMchat.Message.is_ui_visible.html">is_ui_visible</a></li>
           <li class="field"><a href="OLLMchat.Message.is_user.html">is_user</a></li>
-          <li class="field"><a href="OLLMchat.Message.message_interface.html">message_interface</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -79,7 +78,7 @@
             displayed)</p>
           <p>Role changes automatically set flags (is_user, is_llm, is_content, etc.) for easy filtering and UI display decisions.</p>
           <h2>Example </h2>
-          <p><pre class="main_source"><code><span class="main_comment">// Create a user message</span><br/><span class="main_keyword">var</span> msg = <span class="main_keyword">new</span> Message(call, <span class="main_literal">"user-sent"</span>, <span class="main_literal">"Hello!"</span>);<br/><br/><span class="main_comment">// Check message type</span><br/><span class="main_keyword">if</span> (msg.is_user &amp;&amp; msg.is_ui_visible) {<br/>    <span class="main_comment">// Display in UI</span><br/>}<br/><br/><span class="main_comment">// Create streaming content message</span><br/><span class="main_keyword">var</span> content_msg = <span class="main_keyword">new</span> Message(call, <span class="main_literal">"content-stream"</span>, <span class="main_literal">""</span>);<br/>content_msg.chat_content = <span class="main_literal">"Partial response..."</span>;</code></pre>
+          <p><pre class="main_source"><code><span class="main_comment">// Create a user message</span><br/><span class="main_keyword">var</span> msg = <span class="main_keyword">new</span> Message(<span class="main_literal">"user-sent"</span>, <span class="main_literal">"Hello!"</span>);<br/><br/><span class="main_comment">// Check message type</span><br/><span class="main_keyword">if</span> (msg.is_user &amp;&amp; msg.is_ui_visible) {<br/>    <span class="main_comment">// Display in UI</span><br/>}<br/><br/><span class="main_comment">// Create streaming content message</span><br/><span class="main_keyword">var</span> content_msg = <span class="main_keyword">new</span> Message(<span class="main_literal">"content-stream"</span>, <span class="main_literal">""</span>);<br/>content_msg.chat_content = <span class="main_literal">"Partial response..."</span>;</code></pre>
           </p>
         </div>
         <div class="box">
@@ -146,26 +145,26 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.html" class="creation_method">Message</a></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? message_interface = <span class="main_literal">null</span>, <span class="main_basic_type"><span class="class">string</span></span> role, <span class="main_basic_type"><span class="class">string</span></span> content, <span class="main_basic_type"><span class="class">string</span></span> thinking = <span class="main_literal">""</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.html" class="creation_method">Message</a></b> (<span class="main_basic_type"><span class="class">string</span></span> role, <span class="main_basic_type"><span class="class">string</span></span> content, <span class="main_basic_type"><span class="class">string</span></span> thinking = <span class="main_literal">""</span>)
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_call_fail.html" class="creation_method">Message.tool_call_fail</a></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? message_interface = <span class="main_literal">null</span>, <span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_type"><span class="class">Error</span></span> e)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_call_fail.html" class="creation_method">Message.tool_call_fail</a></b> (<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_type"><span class="class">Error</span></span> e)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor for tool call failure messages. Used when tool execution 
                 fails with an error.</span>
             </div></li>
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_call_invalid.html" class="creation_method">Message.tool_call_invalid</a></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? message_interface = <span class="main_literal">null</span>, <span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_basic_type"><span class="class">string</span></span> err_message)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_call_invalid.html" class="creation_method">Message.tool_call_invalid</a></b> (<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_basic_type"><span class="class">string</span></span> err_message)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor for invalid tool call messages. Used when a tool is not 
                 found or not available.</span>
             </div></li>
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_reply.html" class="creation_method">Message.tool_reply</a></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? message_interface = <span class="main_literal">null</span>, <span class="main_basic_type"><span class="class">string</span></span> tool_call_id, <span class="main_basic_type"><span class="class">string</span></span> name, <span class="main_basic_type"><span class="class">string</span></span> content)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.tool_reply.html" class="creation_method">Message.tool_reply</a></b> (<span class="main_basic_type"><span class="class">string</span></span> tool_call_id, <span class="main_basic_type"><span class="class">string</span></span> name, <span class="main_basic_type"><span class="class">string</span></span> content)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor for tool response messages. Used to send tool execution 
                 results back to OLLMchat.</span>
             </div></li>
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.with_tools.html" class="creation_method">Message.with_tools</a></b> (<span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span>? message_interface = <span class="main_literal">null</span>, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span>&gt; tool_calls)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Message.Message.with_tools.html" class="creation_method">Message.with_tools</a></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span>&gt; tool_calls)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor for assistant messages with tool calls. Used when Ollama 
                 requests tool execution (tool call request from Ollama).</span>
@@ -226,10 +225,6 @@
             <div class="leaf_brief_description">
             </div></li>
           <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Message.is_user.html" class="field">is_user</a></b>
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span> <b><a href="OLLMchat.Message.message_interface.html" class="field">message_interface</a></b>
             </span>
             <div class="leaf_brief_description">
             </div></li>

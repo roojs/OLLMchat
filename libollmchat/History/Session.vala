@@ -96,26 +96,10 @@ namespace OLLMchat.History
 		* FIXME = needs making logical after we remove get_chat
 		* FIXME = on message created should not be getting a chat? - need to work out why that would happen
 		*/
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface)
+		protected override void on_message_created(Message m)
 		{
-			// Update chat properties if message_interface is a Chat (don't replace the object)
-			// Support both old pattern (this.chat) and new pattern (refactor_get_chat() or from message)
-			if (m.message_interface is Call.Chat) {
-				var new_chat = (Call.Chat) m.message_interface;
-			// Update properties on agent's chat if available (Chat is created per request by AgentHandler)
-				if (this.agent != null && this.agent.chat() != null) {
-					var current_chat = this.agent.chat();
-					current_chat.model = new_chat.model;
-					current_chat.stream = new_chat.stream;
-					current_chat.format = new_chat.format;
-					current_chat.format_obj = new_chat.format_obj;
-					current_chat.think = new_chat.think;
-					current_chat.keep_alive = new_chat.keep_alive;
-					current_chat.options = new_chat.options;
-				}
-				// Note: fid is no longer copied from chat - it's owned by Session
-				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
-			}
+			// Chat properties are already set on agent.chat() when the chat is created
+			// No need to update from message_interface or content_interface
 			
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
 			if (m.role == "done") {
@@ -174,7 +158,7 @@ namespace OLLMchat.History
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					this.current_stream_message = new Message(this.agent.chat(), stream_role, new_text);
+					this.current_stream_message = new Message(stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
 				} else {
@@ -201,7 +185,7 @@ namespace OLLMchat.History
 		private void finalize_streaming(Response.Chat response)
 		{
 			// Create "end-stream" message to signal renderer
-			var end_stream_msg = new Message(this.agent.chat(), "end-stream", "");
+			var end_stream_msg = new Message("end-stream", "");
 			this.messages.add(end_stream_msg);
 			
 			// Finalize current stream message
@@ -214,24 +198,10 @@ namespace OLLMchat.History
 				this.notify_property("title");
 				return;
 			}
-			// Add final assistant message if it exists and hasn't been added yet
-				// Check if this message is already in our list (avoid duplicates)
-			bool found = false;
-			foreach (var existing_msg in this.messages) {
-				if (existing_msg == response.message) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				// Ensure message_interface is set
-				response.message.message_interface = this.agent.chat();
-			}
-			
 			// Create a "done" message to signal completion (for tools like RequestEditMode)
 			// Note: The response body is in response.message (already persisted above)
 			// The "done" message is just a completion marker with no content needed
-			var done_msg = new Message(this.agent.chat(), "done", "");
+			var done_msg = new Message("done", "");
 			// Add to messages to trigger message_created signal (Session will skip persisting it)
 			this.messages.add(done_msg);
 			// Relay to Manager to trigger message_created signal for tools
@@ -241,7 +211,7 @@ namespace OLLMchat.History
 			// This will be stored in messages array and displayed when loading history
 			// Summary is now always meaningful (never empty), so always create the UI message
 			var summary = response.get_summary();
-			var metrics_msg = new Message(this.agent.chat(), "ui", summary);
+			var metrics_msg = new Message("ui", summary);
 			this.messages.add(metrics_msg);
 			// Relay to Manager for UI (metrics should be displayed)
 			this.manager.message_added(metrics_msg, this);

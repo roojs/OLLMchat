@@ -30,7 +30,7 @@ namespace OLLMchat.Call
 	 *
 	 * {{{
 	 * var call = new Call.Chat(client, "llama3.2");
-	 * call.messages.add(new Message(call, "user", "Hello!"));
+	 * call.messages.add(new Message("user", "Hello!"));
 	 *
 	 * // Execute chat (handles tool calls automatically)
 	 * var response = yield call.send(call.messages);
@@ -119,7 +119,7 @@ namespace OLLMchat.Call
 		 * 
 		 * The handler is responsible for:
 		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call.function.arguments)`
-		 * 2. Create tool reply message: `new Message.tool_reply(chat, tool_call.id, tool_call.function.name, result)`
+		 * 2. Create tool reply message: `new Message.tool_reply(tool_call.id, tool_call.function.name, result)`
 		 * 3. Append it to return_messages: `return_messages.add(tool_reply)`
 		 * 
 		 * Chat will collect all tool reply messages and send them automatically.
@@ -310,8 +310,6 @@ namespace OLLMchat.Call
 				var element_node = array.get_element(i);
 				var msg_obj = Json.gobject_deserialize(typeof(Message), element_node) as Message;
 				
-				// Set message_interface to this Chat
-				msg_obj.message_interface = this;
 				messages.add(msg_obj);
 			}
 			
@@ -334,13 +332,13 @@ namespace OLLMchat.Call
 		public async Response.Chat reply(string new_text, Response.Chat previous_response) throws Error
 		{
 			// Create dummy user-sent Message with original text BEFORE prompt engine modification
-			var user_sent_msg = new Message(this, "user-sent", new_text);
+			var user_sent_msg = new Message("user-sent", new_text);
 			// message_created signal emission removed - callers handle state directly when creating messages
 			
 			// Note: system_content and chat_content should already be set by agent before calling reply()
 			// If system_content is set, create system Message
 			if (this.system_content != "") {
-				var system_msg = new Message(this, "system", this.system_content);
+				var system_msg = new Message("system", this.system_content);
 				// message_created signal emission removed - callers handle state directly when creating messages
 			}
 			
@@ -350,14 +348,14 @@ namespace OLLMchat.Call
 				this.messages.add(previous_response.message);
 			} else {
 				this.messages.add(
-					new Message(this, "assistant", previous_response.message.content,
+					new Message("assistant", previous_response.message.content,
 					 previous_response.message.thinking));
 			}
 
 			// Append the new user message with chat_content (for API request)
 			// Note: chat_content should already be set by agent (may be modified from original text)
 			// Note: "user-sent" message was already created via signal with original text
-			var user_message = new Message(this, "user", this.chat_content);
+			var user_message = new Message("user", this.chat_content);
 			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
@@ -545,13 +543,6 @@ namespace OLLMchat.Call
 			// Note: client no longer set on response objects
 			response_obj.call = this;
 			response_obj.done = true; // Non-streaming responses are always done
-			
-			// Ensure message_interface is set on response message (needed for Session to update chat properties)
-			// Note: Non-streaming responses are handled by the caller (Session/Agent layer)
-			// The response.message will be persisted via Session.on_message_created() if needed
-			if (response_obj.message.is_llm) {
-				response_obj.message.message_interface = this;
-			}
 			
 			// Check for tool calls and handle them recursively
 			if (response_obj.message.tool_calls.size > 0) {
