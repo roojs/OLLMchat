@@ -34,6 +34,7 @@
           <li class="property"><a href="OLLMchat.Settings.Connection.api_key.html">api_key</a></li>
           <li class="property"><a href="OLLMchat.Settings.Connection.hidden_models.html">hidden_models</a></li>
           <li class="property"><a href="OLLMchat.Settings.Connection.is_default.html">is_default</a></li>
+          <li class="property"><a href="OLLMchat.Settings.Connection.models.html">models</a></li>
           <li class="property"><a href="OLLMchat.Settings.Connection.name.html">name</a></li>
           <li class="property"><a href="OLLMchat.Settings.Connection.timeout.html">timeout</a></li>
           <li class="property"><a href="OLLMchat.Settings.Connection.url.html">url</a></li>
@@ -42,6 +43,7 @@
           <li class="virtual_method"><a href="OLLMchat.Settings.Connection.deserialize_property.html">deserialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.find_property.html">find_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.get_property.html">get_property</a></li>
+          <li class="method"><a href="OLLMchat.Settings.Connection.load_models.html">load_models</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.Connection.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.set_property.html">set_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.soup_message.html">soup_message</a></li>
@@ -92,6 +94,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Whether this is the default connection</span>
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Response.Model.html" class="class">Model</a></span>&gt; <b><a href="OLLMchat.Settings.Connection.models.html" class="property">models</a></b> { <span class="main_keyword">get</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Models loaded from the server, keyed by model name.</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Settings.Connection.name.html" class="property">name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Connection alias/name (e.g., "Local Ollama", "OpenAI", "Remote 
@@ -131,6 +137,11 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="struct">Value</span></span> <b><a href="OLLMchat.Settings.Connection.get_property.html" class="method">get_property</a></b> (<span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>
             <div class="leaf_brief_description">
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Connection.load_models.html" class="method">load_models</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Loads all available models from the server and stores them in models.
+              </span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Settings.Connection.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>

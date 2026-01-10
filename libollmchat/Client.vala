@@ -78,37 +78,11 @@ namespace OLLMchat
 		public Settings.Connection connection { get; set; }
 		
 		
-		/**
-		 * HTTP request timeout in seconds.
-		 * Default is 300 seconds (5 minutes) to accommodate long-running LLM requests.
-		 * Set to 0 for no timeout (not recommended).
-		 *
-		 * @since 1.0
-		 */
-		public uint timeout { get; set; default = 300; }
 
 		public Client(Settings.Connection connection)
 		{
 			this.connection = connection;
 		}
-
-
-
-
-
-		public Soup.Session? session = null;
-
-		/**
-		* Available models loaded from the server, keyed by model name.
-		*
-		* This map is populated by calling fetch_all_model_details().
-		*
-		* @since 1.0
-		*/
-		public Gee.HashMap<string, Response.Model> available_models { get; private set; 
-			default = new Gee.HashMap<string, Response.Model>(); }
-
-
 		/**
 		 * Executes a pre-prepared Chat object.
 		 * 
@@ -178,16 +152,6 @@ namespace OLLMchat
 		{
 			var call = new Call.Models(this.connection);
 			var result = yield call.exec_models();
-			// in theory we should make a list of models that we have and delete if they are
-			// not there anymore..
-			// Populate available_models with the models from the list
-			foreach (var model in result) {
-				if (this.available_models.has_key(model.name)) {
-					continue;
-				}
-				this.available_models.set(model.name, model);
-			}
-			
 			return result;
 		}
 
@@ -213,8 +177,8 @@ namespace OLLMchat
 		public async string version(GLib.Cancellable? cancellable = null) throws Error
 		{
 			// Save original timeout and set short timeout for version check
-			var original_timeout = this.timeout;
-			this.timeout = 10;  // 10 seconds - version check should be quick
+			var original_timeout = this.connection.timeout;
+			this.connection.timeout = 10;  // 10 seconds - version check should be quick
 			
 			try {
 				var call = new OLLMchat.Call.Version(this.connection) {
@@ -224,19 +188,14 @@ namespace OLLMchat
 				return result;
 			} finally {
 				// Restore original timeout
-				this.timeout = original_timeout;
+				this.connection.timeout = original_timeout;
 			}
 		}
 
 
 
 		/**
-		* Gets detailed information about a specific model including capabilities and stores it in available_models.
-		*
-		* If the model already exists in available_models, it will be updated with the new data using updateFrom().
-		* Otherwise, the new model will be added to available_models.
-		*
-		* Checks cache first, and saves to cache after fetching from API.
+		* Gets detailed information about a specific model including capabilities.
 		*
 		* @param model_name The name of the model to get details for
 		* @return Model object with full details including capabilities
@@ -244,65 +203,9 @@ namespace OLLMchat
 		*/
 		public async Response.Model show_model(string model_name) throws Error
 		{
-			//GLib.debug("show_model: %s", model_name);
-			
-			// Check if model already exists in available_models
-			Response.Model model;
-			if (this.available_models.has_key(model_name)) {
-				model = this.available_models.get(model_name);
-			} else {
-				// Create new model instance
-				model = new Response.Model(this.connection);
-				model.name = model_name;
-				this.available_models.set(model_name, model);
-			}
-			
-			// Try to load from cache first
-			if (model.load_from_cache()) {
-				//GLib.debug("show_model: Loaded model '%s' from cache, parameters: '%s'", model_name, model.parameters ?? "(null)");
-				return model;
-			}
-			
-			// Not in cache, fetch from API
-			var result = yield new Call.ShowModel(this.connection, model_name).exec_show();
-			
-			// Update model with API result
-			model.updateFrom(result);
-			
-			// Save to cache
-			model.save_to_cache();
-			
-			return model;
+			return yield new Call.ShowModel(this.connection, model_name).exec_show();
 		}
 
-		/**
-		* Fetches detailed information for all available models and populates available_models.
-		*
-		* This method calls models() to get the list of models, then calls show_model()
-		* for each model to get full details including capabilities. The results are
-		* stored in available_models HashMap keyed by model name.
-		*
-		* @since 1.0
-		*/
-		public async void fetch_all_model_details() throws Error
-		{
-			
-			var models_list = yield this.models();
-			//this.available_models.clear(); // why clear this.models sets it?
-			
-			foreach (var model in models_list) {
-				try {
-					var detailed_model = yield this.show_model(model.name);
-					// Preserve size from the initial models() call if show_model didn't return it
-					if (detailed_model.size == 0 && model.size != 0) {
-						detailed_model.size = model.size;
-					}
-				} catch (Error e) {
-					GLib.warning("Failed to get details for model %s: %s", model.name, e.message);
-					// Skip this model on error
-				}
-			}
-		}
 
 		/**
 		 * Generates embeddings for the input text.

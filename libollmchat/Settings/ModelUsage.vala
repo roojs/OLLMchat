@@ -89,10 +89,9 @@ namespace OLLMchat.Settings
 			}
 			
 			try {
-				var client = new OLLMchat.Client(connection_obj);
-				yield client.models();
+				yield connection_obj.load_models();
 				
-				this.is_valid = client.available_models.has_key(this.model);
+				this.is_valid = connection_obj.models.has_key(this.model);
 				return this.is_valid;
 			} catch (GLib.Error e) {
 				this.is_valid = false;
