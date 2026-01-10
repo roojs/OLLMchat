@@ -298,6 +298,11 @@ namespace OLLMcoder
 			var result = "<user_info>\n";
 			result += "OS Version: " + this.get_os_version() + "\n";
 			
+			// Add current date
+			var now = new DateTime.now_local();
+			var date_str = now.format("%Y-%m-%d");
+			result += "Current Date: " + date_str + "\n";
+			
 			var workspace_path = this.get_workspace_path();
 			if (workspace_path != "") {
 				result += "Workspace Path: " + workspace_path + "\n";
