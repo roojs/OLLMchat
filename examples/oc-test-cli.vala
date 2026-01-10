@@ -22,8 +22,6 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 	private static string? opt_url = null;
 	private static string? opt_api_key = null;
 	private static string? opt_model = null;
-	private static string? opt_stats = null;
-	private static bool opt_list_models = false;
 	
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
@@ -33,8 +31,6 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 		{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
 		{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
 		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
-		{ "stats", 0, 0, OptionArg.STRING, ref opt_stats, "Output statistics from last message to file", "FILE" },
-		{ "list-models", 0, 0, OptionArg.NONE, ref opt_list_models, "List available models and exit", null },
 		{ null }
 	};
 	
@@ -66,8 +62,6 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 		opt_url = null;
 		opt_api_key = null;
 		opt_model = null;
-		opt_stats = null;
-		opt_list_models = false;
 		
 		string[] args = command_line.get_arguments();
 		var opt_context = new OptionContext("OLLMchat Test CLI");
@@ -92,22 +86,6 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 			});
 		}
 		
-		// Handle --list-models early (before query processing)
-		if (opt_list_models) {
-			this.hold();
-			this.list_models.begin(command_line, (obj, res) => {
-				try {
-					this.list_models.end(res);
-				} catch (Error e) {
-					command_line.printerr("Error: %s\n", e.message);
-				} finally {
-					this.release();
-					this.quit();
-				}
-			});
-			return 0;
-		}
-		
 		// Get remaining arguments as the query
 		string query = "";
 		if (args.length > 1) {
@@ -129,8 +107,6 @@ Options:
   --url=URL           Ollama server URL (required if config not found)
   --api-key=KEY       API key (optional)
   -m, --model=MODEL    Model name (overrides config)
-  --stats=FILE         Output statistics from last message to file
-  --list-models        List available models and exit
 
 Examples:
   $(args[0]) \"What is the capital of France?\"
@@ -242,21 +218,7 @@ Examples:
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to save config: %s", e.message);
 			}
-			
-			// Mark connection as working so ConnectionModels will process it
-			connection.is_working = true;
 		}
-		
-		// Create and initialize ConnectionModels for model information lookup
-		var connection_models = new OLLMchat.Settings.ConnectionModels(this.config);
-		// Refresh to load model details (needed for tool capability checks)
-		try {
-			yield connection_models.refresh();
-		} catch (GLib.Error e) {
-			GLib.warning("Failed to refresh connection models: %s", e.message);
-		}
-		// Assign to client so Chat can use it for model capability checks
-		client.connection_models = connection_models;
 		
 		// Setup client for streaming
 		client.stream = true;
@@ -282,82 +244,6 @@ Examples:
 		stdout.printf("Done: %s\n", response.done.to_string());
 		if (response.done_reason != null) {
 			stdout.printf("Done Reason: %s\n", response.done_reason);
-		}
-		
-		// Handle --stats option
-		if (opt_stats != null && opt_stats != "") {
-			this.write_stats(response, opt_stats);
-		}
-	}
-	
-	private async void list_models(ApplicationCommandLine command_line) throws Error
-	{
-		OLLMchat.Client client;
-		
-		// Create client connection
-		if (this.config.loaded) {
-			client = this.config.create_client("default_model");
-			if (client == null) {
-				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
-			}
-		} else {
-			// Config not loaded - check if URL provided
-			if (opt_url == null || opt_url == "") {
-				command_line.printerr("Error: Config not found and --url not provided.\n");
-				command_line.printerr("Please set up the server first or provide --url option.\n");
-				throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
-			}
-			
-			// Create connection from command line args
-			var connection = new OLLMchat.Settings.Connection() {
-				name = "CLI",
-				url = opt_url,
-				api_key = opt_api_key ?? "",
-				is_default = true
-			};
-			
-			// Add connection to config
-			this.config.connections.set(opt_url, connection);
-			
-			// Test connection
-			var test_client = new OLLMchat.Client(connection);
-			try {
-				yield test_client.version();
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
-			}
-			
-			client = test_client;
-		}
-		
-		// List models
-		var models = yield client.models();
-		foreach (var model in models) {
-			stdout.printf("%s\n", model.name);
-		}
-	}
-	
-	private void write_stats(OLLMchat.Response.Chat response, string file_path) throws Error
-	{
-		var file = File.new_for_path(file_path);
-		
-		// Serialize response to JSON (no pretty printing)
-		var json_node = Json.gobject_serialize(response);
-		var generator = new Json.Generator();
-		generator.pretty = false;  // No pretty printing
-		generator.set_root(json_node);
-		var json_str = generator.to_data(null);
-		
-		try {
-			file.replace_contents(
-				json_str.data,
-				null,
-				false,
-				FileCreateFlags.NONE,
-				null
-			);
-		} catch (Error e) {
-			throw new GLib.IOError.FAILED("Failed to write stats to file: %s", e.message);
 		}
 	}
 }

@@ -36,7 +36,7 @@ namespace OLLMtools
 			
 		public override string description { get {
 			return """
-Fetch content from web pages on the internet are return it in the specified format.
+Fetch content from a URL and return it in the specified format.
 
 This tool automatically detects the content type and applies appropriate conversions:
 - HTML content can be converted to markdown or returned as raw HTML

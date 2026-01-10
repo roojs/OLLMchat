@@ -72,24 +72,10 @@ namespace OLLMchat.Tool
 		public Client? client { get; set; default = null; }
 		
 		public bool active { get; set; default = true; }
-		
-		private bool initialized = false;
 
-		/**
-		 * Initializes the tool instance.
-		 * 
-		 * This method must be called to ensure the tool is properly set up.
-		 * It creates the function instance and parses the parameter description.
-		 * Called automatically by the constructor, but should also be called
-		 * after Object.new() with named parameters since constructors may not
-		 * be called in that case.
-		 */
-		protected void init()
+		protected BaseTool(Client? client = null)
 		{
-			if (this.initialized) {
-				return;
-			}
-			
+			this.client = client;
 			this.function = new Function(this);
 			
 			// Parse parameter description in two passes:
@@ -158,14 +144,6 @@ namespace OLLMchat.Tool
 			if (current_decl != "" && current_decl.has_prefix("@param")) {
 				this.parse_parameter_description_string(current_decl, type_definitions);
 			}
-			
-			this.initialized = true;
-		}
-
-		protected BaseTool(Client? client = null)
-		{
-			this.client = client;
-			this.init();
 		}
 		
 		private enum ParseState
@@ -465,7 +443,7 @@ namespace OLLMchat.Tool
 				case "active":
 					// Exclude these properties from serialization
 					return null;
-				// exculd nem etc..
+					// exculd nem etc..
 				default:
 					return null;
 			}
@@ -546,10 +524,7 @@ namespace OLLMchat.Tool
 				// Create tool instance without parameters - works because constructors are nullable
 				// Call setup_tool_config() on the instance
 				// Simple tools will use the default implementation, complex tools will use their overrides
-				var tool = Object.new(tool_type) as Tool.BaseTool;
-				// Ensure tool is initialized (Object.new() may not call constructor)
-				tool.init();
-				tool.setup_tool_config(config);
+				(Object.new(tool_type) as Tool.BaseTool).setup_tool_config(config);
 			}
 		}
 		
@@ -601,9 +576,6 @@ namespace OLLMchat.Tool
 				// Constructors handle null values gracefully (for Phase 1, we only need config_class())
 				var tool = Object.new(tool_type) as Tool.BaseTool;
 				
-				// Ensure tool is initialized (Object.new() may not call constructor)
-				tool.init();
-				
 				// Register config type with Config2
 				Settings.Config2.register_tool_type(tool.name, tool.config_class());
 			}
@@ -635,11 +607,10 @@ namespace OLLMchat.Tool
 					"project-manager", project_manager
 				) as Tool.BaseTool;
 				
-				// Ensure tool is initialized (Object.new() with named parameters may not call constructor)
-				tool.init();
-				
+				GLib.debug("register_all_tools: registering tool '%s'", tool.name);
 				client.addTool(tool);
 			}
+			GLib.debug("register_all_tools: registered %d tools, client.tools now has %d", tool_classes.size, client.tools.size);
 		}
 	}
 }

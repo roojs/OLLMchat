@@ -132,17 +132,8 @@ namespace OLLMchat.Call
 					if (this.tools.size == 0) {
 						return null;
 					}
-					// Use ConnectionModels to look up model info (via client.connection_models)
-					bool model_supports_tools = true;
-					 
-					var model_usage = this.client.connection_models.find_model(
-							this.client.connection.url, this.model);
-					 
-					model_supports_tools = model_usage.model_obj.can_call;
-					 
-					 
-					// Only exclude tools if we know the model explicitly doesn't support them
-					if (!model_supports_tools) {
+					if (!this.client.available_models.has_key(this.model) 
+						|| !this.client.available_models.get(this.model).can_call) {
 						return null;
 					}
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
@@ -155,7 +146,6 @@ namespace OLLMchat.Call
 						}
 						var tool_node = Json.gobject_serialize(tool);
 						var tool_obj = tool_node.get_object();
-						
 						// Add "type" field for Ollama API compatibility (tool-type is excluded from serialization)
 						tool_obj.set_string_member("type", tool.tool_type);
 						tools_array.add_element(tool_node);
