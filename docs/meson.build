@@ -124,9 +124,11 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ChatPermission/Provider.vala',
     '../libollmchat/ChatPermission/Dummy.vala',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
-    '../libollmchat/Prompt/BaseAgent.vala',  # Must come before History/Manager.vala (Manager uses Prompt.BaseAgent)
-    '../libollmchat/Prompt/AgentHandler.vala',  # Must come after BaseAgent (AgentHandler references BaseAgent)
-    '../libollmchat/Prompt/JustAsk.vala',
+    '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
+    '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
+    '../libollmchat/Agent/Base.vala',  # Must come after Factory (Base references Factory)
+    '../libollmchat/Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
+    '../libollmchat/Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
     '../libollmchat/Agent/Base.vala',  # Must come after Factory (Base references Factory)
@@ -166,9 +168,8 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/ProjectDropdown.vala',
     '../liboccoder/FileDropdown.vala',
     '../liboccoder/SourceView.vala',
-    '../liboccoder/Prompt/CodeAssistantHandler.vala',  # Must come before CodeAssistant (CodeAssistant uses CodeAssistantHandler)
-    '../liboccoder/Prompt/CodeAssistant.vala',
-    '../liboccoder/Prompt/CodeAssistantProvider.vala',
+    '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
+    '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)

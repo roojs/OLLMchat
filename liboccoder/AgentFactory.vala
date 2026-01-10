@@ -373,7 +373,7 @@ namespace OLLMcoder
 		 * Returns an Agent which handles system message regeneration
 		 * on each call to include current context.
 		 */
-		public override Object create_agent(OLLMchat.History.SessionBase session)
+		public override OLLMchat.Agent.Base create_agent(OLLMchat.History.SessionBase session)
 		{
 			// Agent is in the same namespace
 			return new Agent(this, session);

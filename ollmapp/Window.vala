@@ -98,12 +98,12 @@ namespace OLLMapp
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			
-		// Create agent dropdown (will be set up in setup_agent_dropdown)
-		// Use expression for BaseAgent.title (will be replaced in setup_agent_dropdown)
-		this.agent_dropdown = new Gtk.DropDown(null, 
-			new Gtk.PropertyExpression(typeof(OLLMchat.Prompt.BaseAgent), null, "title")) {
-			hexpand = false
-		};
+			// Create agent dropdown (will be set up in setup_agent_dropdown)
+			// Use expression for BaseAgent.title (will be replaced in setup_agent_dropdown)
+			this.agent_dropdown = new Gtk.DropDown(null, 
+				new Gtk.PropertyExpression(typeof(OLLMchat.Agent.Factory), null, "title")) {
+				hexpand = false
+			};
 			this.header_bar.pack_start(this.agent_dropdown);
 			
 			// Create settings button with spinner
@@ -420,8 +420,8 @@ namespace OLLMapp
 
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(this.project_manager);
-			this.history_manager.agents.set(code_assistant.name, code_assistant);
+			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
+			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md
 			// Register clipboard metadata for file reference paste support
@@ -589,7 +589,7 @@ namespace OLLMapp
 		 * - Adds widget to tab_view if not already present
 		 * - Shows widget and updates WindowPane visibility
 		 */
-		private void on_agent_activated(OLLMchat.Prompt.BaseAgent agent)
+		private void on_agent_activated(OLLMchat.Agent.Factory factory)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -601,20 +601,20 @@ namespace OLLMapp
 				this.current_agent_widget = null;
 			}
 			
-			// Get widget from agent asynchronously
-			agent.get_widget.begin((obj, res) => {
-				var widget_obj = agent.get_widget.end(res);
-				this.handle_agent_widget(agent, widget_obj);
+			// Get widget from factory asynchronously
+			factory.get_widget.begin((obj, res) => {
+				var widget_obj = factory.get_widget.end(res);
+				this.handle_agent_widget(factory, widget_obj);
 			});
 		}
 		
 		/**
 		 * Handles the agent widget after it's been retrieved.
 		 * 
-		 * @param agent The agent that provided the widget
+		 * @param factory The factory that provided the widget
 		 * @param widget_obj The widget object (may be null)
 		 */
-		private void handle_agent_widget(OLLMchat.Prompt.BaseAgent agent, Object? widget_obj)
+		private void handle_agent_widget(OLLMchat.Agent.Factory factory, Object? widget_obj)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -630,14 +630,14 @@ namespace OLLMapp
 			// Cast to Gtk.Widget
 			var widget = widget_obj as Gtk.Widget;
 			if (widget == null) {
-				GLib.warning("Agent %s returned non-widget object from get_widget()", agent.name);
+				GLib.warning("Agent %s returned non-widget object from get_widget()", factory.name);
 				this.window_pane.intended_pane_visible = false;
 				this.window_pane.schedule_pane_update();
 				return;
 			}
 			
 			// Widget ID management
-			var widget_id = agent.name + "-widget";
+			var widget_id = factory.name + "-widget";
 			
 			// Set widget name if not already set (before calling WindowPane method)
 			if (widget.name == null || widget.name == "") {
@@ -665,22 +665,22 @@ namespace OLLMapp
 			}
 			
 			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Prompt.BaseAgent));
+			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
 			
 			// Add all registered agents to the store and set selection during load
 			uint selected_index = 0;
 			uint i = 0;
-			foreach (var agent in this.history_manager.agents.values) {
-				agent_store.append(agent);
-				if (agent.name == this.history_manager.session.agent_name) {
+			foreach (var factory in this.history_manager.agent_factories.values) {
+				agent_store.append(factory);
+				if (factory.name == this.history_manager.session.agent_name) {
 					selected_index = i;
 				}
 				i++;
 			}
 			
 			// Create factory for agent dropdown
-			var factory = new Gtk.SignalListItemFactory();
-			factory.setup.connect((item) => {
+			var list_factory = new Gtk.SignalListItemFactory();
+			list_factory.setup.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null) {
 					return;
@@ -693,24 +693,24 @@ namespace OLLMapp
 				list_item.child = label;
 			});
 			
-			factory.bind.connect((item) => {
+			list_factory.bind.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null || list_item.item == null) {
 					return;
 				}
 				
-				var agent = list_item.item as OLLMchat.Prompt.BaseAgent;
+				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
-				if (label != null && agent != null) {
-					label.label = agent.title;
+				if (label != null && agent_factory != null) {
+					label.label = agent_factory.title;
 				}
 			});
 			
 			// Set up dropdown with agents
 			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory(factory);
-			this.agent_dropdown.set_list_factory(factory);
+			this.agent_dropdown.set_factory(list_factory);
+			this.agent_dropdown.set_list_factory(list_factory);
 			this.agent_dropdown.selected = selected_index;
 			
 			// Connect selection change to activate agent via Manager
@@ -719,15 +719,15 @@ namespace OLLMapp
 					return;
 				}
 				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
+				var factory = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Agent.Factory;
 				
 				// Use Manager.activate_agent() to handle agent change
 				// This routes to session.activate_agent() which handles AgentHandler creation/copying
 				// and then triggers agent_activated signal for UI updates
 				try {
-					this.history_manager.activate_agent(this.history_manager.session.fid, agent.name);
+					this.history_manager.activate_agent(this.history_manager.session.fid, factory.name);
 				} catch (Error e) {
-					GLib.warning("Failed to activate agent '%s': %s", agent.name, e.message);
+					GLib.warning("Failed to activate agent '%s': %s", factory.name, e.message);
 				}
 			});
 			
@@ -740,7 +740,7 @@ namespace OLLMapp
 				}
 				
 				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
+					if (((OLLMchat.Agent.Factory)store.get_item(j)).name != session.agent_name) {
 						continue;
 					}
 					this.agent_dropdown.selected = j;

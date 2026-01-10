@@ -159,11 +159,11 @@ Examples:
 		var dummy_session = new OLLMchat.History.EmptySession(dummy_manager);
 		
 		// Create dummy agent and handler
-		var dummy_agent = new OLLMchat.Prompt.JustAsk();
-		var dummy_handler = new OLLMchat.Prompt.AgentHandler(dummy_agent, dummy_session);
+		var factory = new OLLMchat.Agent.JustAskFactory();
+		var agent = new OLLMchat.Agent.JustAsk(factory, dummy_session);
 		
 		// Set agent on request
-		request.agent = dummy_handler;
+		request.agent = agent;
 		
 		// Execute the request (Dummy provider will auto-approve)
 		// Output result

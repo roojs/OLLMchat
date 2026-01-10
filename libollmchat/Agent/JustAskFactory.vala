@@ -38,7 +38,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Creates an agent instance for a specific request.
 		 */
-		public override Object create_agent(History.SessionBase session)
+		public override Base create_agent(History.SessionBase session)
 		{
 			return new JustAsk(this, session);
 		}

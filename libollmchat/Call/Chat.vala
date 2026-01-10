@@ -79,7 +79,7 @@ namespace OLLMchat.Call
 		 *
 		 * @since 1.2.2
 		 */
-		public Prompt.AgentHandler? agent { get; set; }
+		public Agent.Base? agent { get; set; }
 		
 		public string system_content { get; set; default = ""; }
 

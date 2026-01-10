@@ -42,7 +42,7 @@ namespace OLLMchat.Tool
 		* Tools use this to communicate with the UI via the agent.
 		* Tools access chat_call via agent.chat.
 		*/
-		public Prompt.AgentHandler? agent { get; set; }
+		public Agent.Base? agent { get; set; }
 		
 		/**
 		 * Permission question text.

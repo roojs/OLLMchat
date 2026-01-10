@@ -464,19 +464,13 @@ namespace OLLMchat.History
 			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;
 			
 			// Get agent from manager
-			var base_agent = this.manager.agents.get(agent_name);
-			if (base_agent == null) {
+			var factory = this.manager.agent_factories.get(agent_name);
+			if (factory == null) {
 				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
-			// Create handler from agent
-			var handler_obj = base_agent.create_handler(this);
-			if (handler_obj == null || !(handler_obj is Prompt.AgentHandler)) {
-				throw new OllamaError.INVALID_ARGUMENT("Failed to create handler for agent '%s'", agent_name);
-			}
-			
-			// Set agent handler on session
-			this.agent = (Prompt.AgentHandler) handler_obj;
+			// Create handler from factory
+			this.agent = factory.create_agent(this);
 		}
 		
 		/**
@@ -492,34 +486,34 @@ namespace OLLMchat.History
 		public override void activate_agent(string agent_name) throws Error
 		{
 			// Save reference to old AgentHandler (if exists)
-			var old_handler = this.agent;
+			var old_agent = this.agent;
 			
 			// Update agent_name on session
 			this.agent_name = agent_name;
 			
 			// Get agent from manager
-			var base_agent = this.manager.agents.get(agent_name);
-			if (base_agent == null) {
+			var factory = this.manager.agent_factories.get(agent_name);
+			if (factory == null) {
 				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
-			// Create new handler from agent
-			var new_handler = base_agent.create_handler(this) as OLLMchat.Prompt.AgentHandler;
+			// Create new handler from factory
+			var agent = factory.create_agent(this);
 			
 			// Copy chat from old agent to new agent and connect agent property
-			if (old_handler != null) {
+			if (old_agent != null) {
 				// Copy the chat instance from old agent
-				new_handler.chat = old_handler.chat;
+				agent.chat = old_agent.chat;
 				// Connect the agent property to the new handler
-				new_handler.chat.agent = new_handler;
+				agent.chat.agent = agent;
 			}
 			
-			this.agent = new_handler;
+			this.agent = agent;
 			
 			
 		// Trigger agent_activated signal for UI updates
 		// Manager emits this signal, which Window listens to for widget management
-		this.manager.agent_activated(base_agent);
+		this.manager.agent_activated(factory);
 	}
 	
 	/**

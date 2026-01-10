@@ -52,8 +52,8 @@ namespace OLLMchat.History
 		public Settings.ModelUsage? default_model_usage { get; private set; }
 		public Settings.Config2 config { get; private set; }
 		public SessionBase session { get; internal set; }
-		public Gee.HashMap<string, OLLMchat.Prompt.BaseAgent> agents { 
-			get; private set; default = new Gee.HashMap<string, OLLMchat.Prompt.BaseAgent>(); 
+		public Gee.HashMap<string, OLLMchat.Agent.Factory> agent_factories { 
+			get; private set; default = new Gee.HashMap<string, OLLMchat.Agent.Factory>(); 
 		}
 		public Gee.HashMap<string, Tool.BaseTool> tools { 
 			get; private set; default = new Gee.HashMap<string, Tool.BaseTool>(); 
@@ -86,7 +86,7 @@ namespace OLLMchat.History
 		public signal void session_activated(SessionBase session);
 		
 		// Signal emitted when an agent is activated (for UI updates)
-		public signal void agent_activated(Prompt.BaseAgent agent);
+		public signal void agent_activated(Agent.Factory agent);
 		
 		// Signals that relay client signals to UI (from active session)
 		public signal void chat_send(Call.Chat chat);
@@ -156,8 +156,8 @@ namespace OLLMchat.History
 			// These are set on Chat objects when they are created
 
 			// Register JustAsk agent (always available as default)
-			var just_ask_agent = new Prompt.JustAsk();
-			this.agents.set("just-ask", just_ask_agent);
+			var just_ask_agent = new Agent.JustAskFactory();
+			this.agent_factories.set("just-ask", just_ask_agent);
 
 			this.session = new EmptySession(this);
 			//FIXME = tjos emeds removing
@@ -296,9 +296,9 @@ namespace OLLMchat.History
 		 * 
 		 * @return The active agent, or null if not found
 		 */
-		public OLLMchat.Prompt.BaseAgent? get_active_agent()
+		public OLLMchat.Agent.Factory? get_active_agent()
 		{
-			return this.agents.get(this.session.agent_name == "" ? "just-ask"
+			return this.agent_factories.get(this.session.agent_name == "" ? "just-ask"
 				 : this.session.agent_name);
 		}
 		

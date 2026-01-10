@@ -81,7 +81,7 @@ namespace OLLMchat.Agent
 		 * @param session The session instance (for accessing Manager and tools)
 		 * @return A new agent instance (extends Base)
 		 */
-		public virtual Object create_agent(History.SessionBase session)
+		public virtual Base create_agent(History.SessionBase session)
 		{
 			// This must be overridden
 			assert_not_reached();

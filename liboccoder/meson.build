@@ -26,11 +26,8 @@ occoder_src = files([
   'ProjectDropdown.vala',
   'FileDropdown.vala',
   'SourceView.vala',
-  'Prompt/CodeAssistantHandler.vala',  # Must come before CodeAssistant (CodeAssistant uses CodeAssistantHandler)
-  'Prompt/CodeAssistant.vala',
-  'Prompt/CodeAssistantProvider.vala',
-  'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
   'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
+  'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
 ])
 
 # Build rpath for libraries to find each other in build directory
@@ -53,7 +50,7 @@ occoder_base_lib = library('occoder',
   vala_vapi: 'occoder-meson.vapi',  # Use different name so our custom_target can use 'occoder.vapi'
   build_rpath: lib_build_rpath,
   include_directories: [
-    include_directories('..' / 'libollmchat'),  # For C headers (build directory) - needed for Prompt.BaseAgent
+    include_directories('..' / 'libollmchat'),  # For C headers (build directory) - needed for Agent.Factory
     include_directories('..' / 'libocvector'),   # For C headers (build directory)
     include_directories('..' / 'libocfiles')     # For C headers (build directory)
   ],

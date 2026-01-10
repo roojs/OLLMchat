@@ -112,24 +112,24 @@ namespace OLLMchat.History
 			if (this.agent_name == agent_name) {
 				return;
 			}
-			// Get agent from manager
-			var base_agent = this.manager.agents.get(agent_name);
-			if (base_agent == null) {
+			// Get agent factory from manager
+			var agent_factory = this.manager.agent_factories.get(agent_name);
+			if (agent_factory == null) {
 				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
-			// Create handler from agent
-			var handler = base_agent.create_handler(this) as Prompt.AgentHandler;
+			// Create agent from factory
+			var agent = agent_factory.create_agent(this);
 			
-			handler.chat = this.agent.chat; 
+			agent.chat = this.agent.chat; 
 			
-			// Set new agent handler on session
-			this.agent = handler;
+			// Set new agent on session
+			this.agent = agent;
 			this.agent_name = agent_name;
 
 			
 			// Trigger agent_activated signal for UI updates
-			this.manager.agent_activated(base_agent);
+			this.manager.agent_activated(agent_factory);
 		}
 		
 		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after conversion

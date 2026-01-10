@@ -110,7 +110,7 @@ namespace OLLMchat.History
 		public string fid { get; protected set; }
 		
 		// Agent handler reference - set when session is created or AgentHandler is changed
-		public OLLMchat.Prompt.AgentHandler? agent { get; set; }
+		public OLLMchat.Agent.Base? agent { get; set; }
 		
 		
 		// Abstract properties that depend on chat
