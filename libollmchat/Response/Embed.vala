@@ -35,9 +35,9 @@ namespace OLLMchat.Response
 		public int64 load_duration { get; set; default = 0; }
 		public int prompt_eval_count { get; set; default = 0; }
 
-		public Embed(Client? client = null)
+		public Embed(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

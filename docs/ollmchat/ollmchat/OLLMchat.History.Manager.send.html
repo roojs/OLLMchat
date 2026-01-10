@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>OLLMchat.History.Manager.send &ndash; ollmchat &ndash; Vala Binding Reference</title>
+    <link href="../style.css" rel="stylesheet" type="text/css"/><script src="../scripts.js" type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div class="site_header">OLLMchat.History.Manager.send &ndash; ollmchat Reference Manual</div>
+    <div class="site_body">
+      <div class="site_navigation">
+        <ul class="navi_main">
+          <li class="package_index"><a href="../index.html">Packages</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="package"><a href="index.htm">ollmchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.html">OLLMchat</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="namespace"><a href="OLLMchat.History.html">History</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="class"><a href="OLLMchat.History.Manager.html">Manager</a></li>
+        </ul>
+        <hr class="navi_hr"/>
+        <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.History.Manager.agent_factories.html">agent_factories</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.config.html">config</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.connection_models.html">connection_models</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.db.html">db</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.default_model_usage.html">default_model_usage</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.history_dir.html">history_dir</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.permission_provider.html">permission_provider</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.session.html">session</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.sessions.html">sessions</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.title_generator.html">title_generator</a></li>
+          <li class="property"><a href="OLLMchat.History.Manager.tools.html">tools</a></li>
+          <li class="creation_method"><a href="OLLMchat.History.Manager.Manager.html">Manager</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.activate_agent.html">activate_agent</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.create_new_session.html">create_new_session</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.ensure_model_usage.html">ensure_model_usage</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.get_active_agent.html">get_active_agent</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.load_sessions.html">load_sessions</a></li>
+          <li class="method"><a href="OLLMchat.History.Manager.register_all_tools.html">register_all_tools</a></li>
+          <li class="method">send</li>
+          <li class="method"><a href="OLLMchat.History.Manager.switch_to_session.html">switch_to_session</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.agent_activated.html">agent_activated</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.chat_send.html">chat_send</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.message_added.html">message_added</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.session_activated.html">session_activated</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.session_removed.html">session_removed</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.stream_chunk.html">stream_chunk</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.stream_content.html">stream_content</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.stream_start.html">stream_start</a></li>
+          <li class="signal"><a href="OLLMchat.History.Manager.tool_message.html">tool_message</a></li>
+        </ul>
+      </div>
+      <div class="site_content">
+        <h1 class="main_title">send</h1>
+        <hr class="main_hr"/>
+        <h2 class="main_title">Description:</h2>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">send</span></b> (<span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session, <span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> user_message, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        </div>
+        <div class="description">
+          <p>Sends a message to a session.</p>
+          <p>This is the new entry point for UI to send messages. UI creates Message objects and calls this method, which routes to session.send().
+          </p>
+          <h2 class="main_title">Parameters:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">session</td>
+              <td>
+                <p>The session to send the message to </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">user_message</td>
+              <td>
+                <p>The message object to send </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">cancellable</td>
+              <td>
+                <p>Optional cancellable for canceling the request </p>
+              </td>
+            </tr>
+          </table>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">Error</td>
+              <td>
+                <p>if send fails </p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div><br/>
+    <div class="site_footer">Generated by <a href="https://docs.vala.dev"><kbd>valadoc</kbd></a>
+    </div>
+  </body>
+</html>

@@ -39,20 +39,20 @@ namespace OLLMvector.Indexing
 	 */
 	public class VectorBuilder : Object
 	{
-		private OLLMchat.Client client;
+		private OLLMchat.Settings.Config2 config;
 		private OLLMvector.Database database;
 		private SQ.Database sql_db;
 		
 		/**
 		 * Constructor.
 		 * 
-		 * @param client The OLLMchat client for embeddings API
+		 * @param config The Config2 instance containing embed_model usage entry
 		 * @param database The vector database for FAISS storage
 		 * @param sql_db The SQLite database for metadata storage
 		 */
-		public VectorBuilder(OLLMchat.Client client, Database database, SQ.Database sql_db)
+		public VectorBuilder(OLLMchat.Settings.Config2 config, Database database, SQ.Database sql_db)
 		{
-			this.client = client;
+			this.config = config;
 			this.database = database;
 			this.sql_db = sql_db;
 			
@@ -102,8 +102,30 @@ namespace OLLMvector.Indexing
 				GLib.debug("Document %d for embedding:\n%s", i + 1, documents[i]);
 			}
 			
-			// Generate embeddings for all elements in the file at once
-			var embed_response = yield this.client.embed_array(documents);
+			// Return early if embed_model is not configured or invalid
+			if (!this.config.usage.has_key("embed_model")) {
+				throw new GLib.IOError.FAILED("No embed_model configured for embeddings");
+			}
+			
+			var embed_model_usage = this.config.usage.get("embed_model") as OLLMchat.Settings.ModelUsage;
+			var model = embed_model_usage.model;
+			
+			if (model == "" || embed_model_usage.connection == "" || !this.config.connections.has_key(embed_model_usage.connection)) {
+				throw new GLib.IOError.FAILED("Invalid embed_model configuration");
+			}
+			
+			var connection = this.config.connections.get(embed_model_usage.connection);
+			
+			// Create client from connection (no config - Manager owns config)
+			var client = new OLLMchat.Client(connection);
+			// Pass model and options from embed_model usage entry
+			var embed_response = yield client.embed_array(
+				model, 
+				documents,
+				-1,  // dimensions (default)
+				false,  // truncate (default)
+				embed_model_usage.options  // Use options from embed_model usage entry
+			);
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embeddings for file");
 			}

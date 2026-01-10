@@ -25,12 +25,12 @@ namespace OLLMchat.Call
 	 */
 	public class Ps : Base
 	{
-		public Ps(Client client)
-		{
-			base(client);
-			this.url_endpoint = "ps";
-			this.http_method = "GET";
-		}
+	public Ps(Settings.Connection connection)
+	{
+		base(connection);
+		this.url_endpoint = "ps";
+		this.http_method = "GET";
+	}
 
 		public async Gee.ArrayList<Response.Model> exec_models() throws Error
 		{

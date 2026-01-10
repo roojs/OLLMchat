@@ -93,10 +93,17 @@ public abstract class VectorAppBase : TestAppBase
 		yield this.ensure_config(opt_url, opt_api_key);
 		
 		// Ensure tool config exists
-		new OLLMvector.Tool.CodebaseSearchTool(null, null).setup_tool_config(this.config);
+		new OLLMvector.Tool.CodebaseSearchTool(null).setup_tool_config(this.config);
 		
-		// Get tool config and extract the appropriate ModelUsage
-		var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.config);
+		// Inline tool config access and validation
+		if (!this.config.tools.has_key("codebase_search")) {
+			throw new GLib.IOError.FAILED("Codebase search tool config not found");
+		}
+		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+		if (!tool_config.enabled) {
+			throw new GLib.IOError.FAILED("Codebase search tool is disabled");
+		}
+		
 		OLLMchat.Settings.ModelUsage usage;
 		switch (model_type) {
 			case "embed":
@@ -127,10 +134,8 @@ public abstract class VectorAppBase : TestAppBase
 		var connection = this.config.connections.get(usage.connection);
 		
 		// Create client directly from ModelUsage
-		var client = new OLLMchat.Client(connection) {
-			config = this.config,
-			model = usage.model
-		};
+		// Phase 3: model is not on Client, it's on Session/Chat
+		var client = new OLLMchat.Client(connection);
 		
 		return client;
 	}

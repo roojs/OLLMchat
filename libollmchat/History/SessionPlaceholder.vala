@@ -27,7 +27,6 @@ namespace OLLMchat.History
 	 */
 	public class SessionPlaceholder : SessionBase
 	{
-		public override string fid { get; set; }
 		
 		public override string display_info {
 			owned get {
@@ -52,18 +51,6 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Sets the client for this placeholder.
-		 *
-		 * Called after construction from database to set up the client.
-		 *
-		 * @param client The client to set
-		 */
-		internal void set_client(Client client)
-		{
-			this.client = client;
-		}
-		
-		/**
 		 * Converts this(a placeholder)int a real Session by loading it from JSON.
 		 *
 		 * This method:
@@ -77,28 +64,24 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
-			// a) Create a new Session with chat
-			var client = this.manager.new_client();
-			// Use the placeholder's model (stored from database) instead of client.model
-			// which might be empty. Set it on the client first.
+			// Use the placeholder's model (stored from database)
 			if (this.model == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
 			}
-			client.model = this.model;
-			var real_session = new Session(this.manager, new Call.Chat(client, this.model));
 			
-			// copy the tools
-			// Copy properties from placeholder to real session
-			real_session.id = this.id;
-            real_session.fid = this.fid;
-			real_session.updated_at_timestamp = this.updated_at_timestamp;
-			real_session.title = this.title;
-			real_session.model = this.model;
-			real_session.agent_name = this.agent_name;
-			real_session.total_messages = this.total_messages;
-			real_session.total_tokens = this.total_tokens;
-			real_session.duration_seconds = this.duration_seconds;
-			real_session.child_chats = this.child_chats;
+			// a) Create a new Session (Chat is created per request by AgentHandler)
+			var real_session = new Session(this.manager) {
+				id = this.id,
+				fid = this.fid,
+				updated_at_timestamp = this.updated_at_timestamp,
+				title = this.title,
+				model = this.model,
+				agent_name = this.agent_name,
+				total_messages = this.total_messages,
+				total_tokens = this.total_tokens,
+				duration_seconds = this.duration_seconds,
+				child_chats = this.child_chats
+			};
 			
 			// b) Load the JSON file into a SessionJson
 			// Build full file path
@@ -144,52 +127,31 @@ namespace OLLMchat.History
 				real_session.agent_name = json_session.agent_name;
 			}
 			
-			// Set the agent on the client based on the session's agent_name
-			var agent = this.manager.agents.get(real_session.agent_name);
-			if (agent != null) {
-				real_session.client.prompt_assistant = agent;
-			}
+			// Agent is managed separately, not stored on client
+			// Agent selection is handled via agent_name in session
 			
 			// c) Copy messages from SessionJson into Session
 			// First, restore all messages to session.messages (including special types)
+			// Chat is created per request by AgentHandler, not stored on Session
+			// Messages are stored in session.messages and will be used when Chat is created
 			foreach (var msg in json_session.messages) {
-				msg.message_interface = real_session.chat;
 				real_session.messages.add(msg);
-			}
-
-			// Filter messages to populate chat.messages with only API-compatible messages
-			// Filter out special session message types: "think-stream", "content-stream", "user-sent", "ui", "end-stream"
-			// Only include standard roles: "system", "user", "assistant", "tool"
-			foreach (var msg in real_session.messages) {
-				switch (msg.role) {
-					case "system":
-					case "user":
-					case "assistant":
-					case "tool":
-						real_session.chat.messages.add(msg);
-						break;
-					default:
-						// Skip non-standard roles
-						break;
-				}
 			}
 			
 			// d) Find the index of this placeholder in manager.sessions
-			var index = this.manager.sessions.index_of(this);
-			 
-			
-			// e) Replace the placeholder with the real session in manager.sessions
-			this.manager.sessions[index] = real_session;
-			
-			// Emit session_replaced signal for UI updates
-			this.manager.session_replaced(index, real_session);
+			uint index;
+			if (!this.manager.sessions.find(this, out index)) {
+				// Placeholder not found, just append the real session
+				this.manager.sessions.append(real_session);
+			} else {
+				// e) Replace the placeholder with the real session in manager.sessions
+				this.manager.sessions.replace_at(index, real_session);
+			}
 			
 			return real_session;
 		}
 		
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after load()
-		
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: SessionPlaceholder doesn't handle signals
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after load()
 		
 		public override void saveToDB() { }  // No-op: SessionPlaceholder is never saved (already in DB)
 		
@@ -199,12 +161,38 @@ namespace OLLMchat.History
 		
 		public override async void read() throws Error { }  // No-op: SessionPlaceholder doesn't read itself (use load() instead)
 		
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
+		/**
+		 * Sends a Message object to this session.
+		 * 
+		 * SessionPlaceholder cannot send messages - it must be loaded first.
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
-			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages");
+			throw new GLib.IOError.NOT_SUPPORTED("SessionPlaceholder cannot send messages - load() must be called first");
 		}
 		
 		public override void cancel_current_request() { }  // No-op: SessionPlaceholder has no active requests
+		
+		/**
+		 * Activates an agent for this placeholder session.
+		 * 
+		 * For SessionPlaceholder, this just updates the agent_name property.
+		 * The AgentHandler will be created when load() is called to convert
+		 * this placeholder to a real Session.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Verify agent exists in manager
+			// you cant activate an agent on the placeholder
+			// when it's moved into the window it becomdes a session - 
+		}
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{

@@ -57,7 +57,7 @@
           <li class="method"><a href="OLLMchat.Response.Model.load_from_cache.html">load_from_cache</a></li>
           <li class="method"><a href="OLLMchat.Response.Model.save_to_cache.html">save_to_cache</a></li>
           <li class="virtual_method"><a href="OLLMchat.Response.Model.serialize_property.html">serialize_property</a></li>
-          <li class="method"><a href="OLLMchat.Response.Model.updateFrom.html">updateFrom</a></li>
+          <li class="method"><a href="OLLMchat.Response.Model.update_from_list_model.html">update_from_list_model</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -93,27 +93,27 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>&gt; <b><a href="OLLMchat.Response.Model.capabilities.html" class="property">capabilities</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">List of supported features/capabilities.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Model.context_length.html" class="property">context_length</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Context length (maximum tokens the model can process).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.digest.html" class="property">digest</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model digest/hash identifier.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Model.eval_count.html" class="property">eval_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Evaluation count (runtime, from ps() API).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.eval_duration.html" class="property">eval_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Evaluation duration in nanoseconds (runtime, from ps() API).</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Response.Model.expires_at.html" class="property">expires_at</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.expires_at.html" class="property">expires_at</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Expiration timestamp (runtime, from ps() API).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Response.Model.is_thinking.html" class="property">is_thinking</a></b> { <span class="main_keyword">get</span>; }
             </span>
@@ -121,15 +121,15 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.load_duration.html" class="property">load_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Load duration in nanoseconds (runtime, from ps() API).</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Response.Model.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Model identifier from ps() API response.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Model identifier from show API response.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.modified_at.html" class="property">modified_at</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Last modified timestamp in ISO 8601 format.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Response.Model.name.html" class="property">name</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
@@ -151,28 +151,29 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int</span></span> <b><a href="OLLMchat.Response.Model.prompt_eval_count.html" class="property">prompt_eval_count</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Prompt evaluation count (runtime, from ps() API).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.prompt_eval_duration.html" class="property">prompt_eval_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Prompt evaluation duration in nanoseconds (runtime, from ps() API).
+              </span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.size.html" class="property">size</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model size in bytes.</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.size_vram.html" class="property">size_vram</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model size in VRAM (runtime, from ps() API).</span>
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">int64</span></span> <b><a href="OLLMchat.Response.Model.total_duration.html" class="property">total_duration</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Total duration in nanoseconds (runtime, from ps() API).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Response.Model.Model.html" class="creation_method">Model</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? client = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Response.Model.Model.html" class="creation_method">Model</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Connection.html" class="class">Connection</a></span>? connection = <span class="main_literal">null</span>)
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -187,10 +188,9 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Gets the cache file path for this model.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Response.Model.load_from_cache.html" class="method">load_from_cache</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Model</span></span>? <b><a href="OLLMchat.Response.Model.load_from_cache.html" class="method">load_from_cache</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Loads model details from cache if available and updates this model 
-                using updateFrom().</span>
+            <div class="leaf_brief_description"><span class="brief_description">Loads model details from cache if available.</span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Response.Model.save_to_cache.html" class="method">save_to_cache</a></b> ()
             </span>
@@ -200,11 +200,9 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Response.Model.updateFrom.html" class="method">updateFrom</a></b> (<span class="main_type"><span class="class">Model</span></span> source)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Response.Model.update_from_list_model.html" class="method">update_from_list_model</a></b> (<span class="main_type"><span class="class">Model</span></span> source)
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Updates this model's properties from a show API response. Only updates
-                fields that come from the show API endpoint: - modified_at - capabilities - context_length (if present in show response) - parameters 
-                (if present in show response)</span>
+            <div class="leaf_brief_description"><span class="brief_description">Updates this model's properties from another model.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
@@ -233,7 +231,7 @@
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.OllamaBase.chat_content.html">chat_content</a></li>
-                <li class="property"><a href="OLLMchat.OllamaBase.client.html">client</a></li>
+                <li class="property"><a href="OLLMchat.OllamaBase.connection.html">connection</a></li>
                 <li class="virtual_method"><a href="OLLMchat.OllamaBase.deserialize_property.html">deserialize_property</a></li>
               </ul>
             </div>

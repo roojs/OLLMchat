@@ -178,6 +178,12 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
+		// Inline tool config access
+		if (!this.config.tools.has_key("codebase_search")) {
+			GLib.error("Codebase search tool config not found");
+		}
+		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+		
 		if (this.config.loaded) {
 			yield this.ensure_config();
 			embed_client = yield this.tool_config_client("embed");
@@ -191,19 +197,21 @@ Examples:
 			this.save_config();
 		}
 		
+		// Phase 3: model is not on Client, get from tool_config
 		stdout.printf("Analysis Model: %s\n" +
 		              "Embed Model: %s\n\n",
-		              analysis_client.model, embed_client.model);
+		              tool_config.analysis.model, tool_config.embed.model);
 		
-		// Get dimension first, then create Database with it
-		var dimension = yield OLLMvector.Database.get_embedding_dimension(embed_client);
-		var vector_db = new OLLMvector.Database(embed_client, this.vector_db_path, dimension);
+		// Get dimension first, then create database
+		var temp_db = new OLLMvector.Database(this.config, 
+			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+		var dimension = yield temp_db.embed_dimension();
+		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
 		
 		GLib.debug("Using vector database: %s", this.vector_db_path);
 		
 		var indexer = new OLLMvector.Indexing.Indexer(
-			analysis_client,
-			embed_client,
+			this.config,
 			vector_db,
 			sql_db,
 			manager

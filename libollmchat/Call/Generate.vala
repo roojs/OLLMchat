@@ -26,42 +26,24 @@ namespace OLLMchat.Call
 	 */
 	public class Generate : Base
 	{
-		// Read-only getters that read from client (with fake setters for serialization)
-		public string model { 
-			get { return this.client.model; }
-			set { } // Fake setter for serialization
-		}
+		// Real properties (Phase 3: fallback logic removed)
+		public string model { get; set; }
 		
 		public string prompt { get; set; default = ""; }
 		public string system { get; set; default = ""; }
 		public string suffix { get; set; default = ""; }
 		public Gee.ArrayList<string> images { get; set; default = new Gee.ArrayList<string>(); }
-		internal string? format { 
-			get { return this.client.format; }
-			set { } // Fake setter for serialization
-		}
-		internal bool stream { 
-			get { return this.client.stream; }
-			set { } // Fake setter for serialization
-		}
-		internal bool think { 
-			get { return this.client.think; }
-			set { } // Fake setter for serialization
-		}
+		internal string? format { get; set; }
+		internal bool stream { get; set; default = false; }
+		internal bool think { get; set; default = false; }
 		public bool raw { get; set; default = false; }
-		internal string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
-		}
+		internal string? keep_alive { get; set; }
 		
-		internal Call.Options options { 
-			get { return this.client.options; }
-			set { } // Fake setter for serialization
-		}
+		internal Call.Options options { get; set; default = new Call.Options(); }
 
-		public Generate(Client client)
+		public Generate(Settings.Connection connection)
 		{
-			base(client);
+			base(connection);
 			this.url_endpoint = "generate";
 			this.http_method = "POST";
 		}
@@ -139,7 +121,7 @@ namespace OLLMchat.Call
 			if (generate_obj == null) {
 				throw new OllamaError.FAILED("Failed to deserialize generate response");
 			}
-			generate_obj.client = this.client;
+			// Note: client no longer set on response objects
 			return generate_obj;
 		}
 	}

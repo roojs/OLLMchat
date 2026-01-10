@@ -30,24 +30,21 @@ namespace OLLMvector.Indexing
 	 * for code elements using LLM. Skips LLM analysis for simple elements (enum types
 	 * without documentation, simple properties, enum values, fields without docs).
 	 */
-	public class Analysis : Object
+	public class Analysis : VectorBase
 	{
-		private OLLMchat.Client client;
 		private SQ.Database sql_db;
 		private PromptTemplate? cached_template = null;
 		
 		/**
 		 * Constructor.
 		 * 
-		 * @param client The OLLMchat client for LLM API calls
+		 * @param config The Config2 instance containing tool configuration
 		 * @param sql_db The SQLite database for syncing after file processing
 		 */
-		public Analysis(OLLMchat.Client client, SQ.Database sql_db)
+		public Analysis(OLLMchat.Settings.Config2 config, SQ.Database sql_db)
 		{
-			this.client = client;
+			base(config);
 			this.sql_db = sql_db;
-			// Enable streaming so we can see progress during analysis
-			this.client.stream = true;
 		}
 		
 		/**
@@ -305,34 +302,27 @@ namespace OLLMvector.Indexing
 			
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					// Get tool config and create chat from analysis ModelUsage
-					var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(this.client.config);
-					if (!tool_config.enabled || !tool_config.analysis.is_valid) {
-						throw new GLib.IOError.FAILED("Codebase analysis tool is not configured or enabled correctly.");
-					}
+					// Get analysis connection using base class method
+					var analysis_conn = yield this.connection("analysis");
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 					
-					var analysis_usage = tool_config.analysis;
-					var analysis_connection = this.client.config.connections.get(analysis_usage.connection);
-					
-					var analysis_client = new OLLMchat.Client(analysis_connection) {
-						config = this.client.config,
-						model = analysis_usage.model
+					var chat = new OLLMchat.Call.Chat(
+							analysis_conn,
+							tool_config.analysis.model) {
+						stream = true,  // Enable streaming (Phase 2: migrate to real properties)
+						options = tool_config.analysis.options
 					};
-					
-					var chat = new OLLMchat.Call.Chat(analysis_client, analysis_usage.model, analysis_usage.options);
-					// Enable streaming on the client (same as constructor does for this.client)
-					chat.client.stream = true;
 					
 					chat.system_content = this.cached_template.system_message;
 					chat.chat_content = user_message;
 					
-					// Streaming is enabled on client (set in constructor) so we can see progress
+					// Streaming is enabled on chat (set in constructor) so we can see progress
 					// The response will still have complete content when done=true
 					// We're requesting plain text format (format=null means text, not JSON)
 					
 					// Connect to stream_chunk signal to capture and print partial content (including thinking)
 					ulong stream_chunk_id = 0;
-					stream_chunk_id = chat.client.stream_chunk.connect((new_text, is_thinking, response) => {
+					stream_chunk_id = chat.stream_chunk.connect((new_text, is_thinking, response) => {
 						// Print the partial content as it arrives (both thinking and regular content)
 						// Use stdout and flush immediately so output appears on command line in real-time
 						stdout.printf("%s", new_text);
@@ -342,19 +332,19 @@ namespace OLLMvector.Indexing
 					// Execute LLM call (streaming enabled, plain text response)
 					OLLMchat.Response.Chat? response = null;
 					try {
-						response = yield chat.exec_chat();
+						response = yield chat.send(chat.messages, null);
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {
-							chat.client.disconnect(stream_chunk_id);
+							chat.disconnect(stream_chunk_id);
 						}
 					}
 					
 					// Wait for streaming to complete if needed
-					// (exec_chat() already waits, but response.done indicates completion)
+					// (send() already waits, but response.done indicates completion)
 					if (response != null && !response.done) {
 						GLib.debug("Waiting for streaming response to complete...");
-						// In practice, exec_chat() should return with done=true, but just in case
+						// In practice, send() should return with done=true, but just in case
 					}
 					
 					if (response == null || response.message == null || response.message.content == null) {

@@ -26,6 +26,9 @@ namespace OLLMchat.Tool
 	 * class is built from Tool's properties on construction. Parameter descriptions
 	 * use a special syntax with @type, @property, and @param directives.
 	 *
+	 * Tools require an Agent.Interface instance to access chat, permission_provider,
+	 * and add_message(). For agentic usage (with session), use Agent.Base.
+	 *
 	 * == Example ==
 	 *
 	 * {{{
@@ -52,6 +55,58 @@ namespace OLLMchat.Tool
 	 *     }
 	 * }
 	 * }}}
+	 *
+	 * == Non-Agentic Usage ==
+	 *
+	 * For non-agentic usage (without session), you can create a simple dummy agent
+	 * that implements Agent.Interface:
+	 *
+	 * {{{
+	 * public class DummyAgent : Object, Agent.Interface
+	 * {
+	 *     private Call.Chat chat_call;
+	 *     private ChatPermission.Provider my_permission_provider;
+	 *     private Settings.Config2 my_config;
+	 *     
+	 *     public Call.Chat chat()
+	 *     {
+	 *         return this.chat_call;
+	 *     }
+	 *     
+	 *     public ChatPermission.Provider get_permission_provider()
+	 *     {
+	 *         return this.my_permission_provider;
+	 *     }
+	 *     
+	 *     public Settings.Config2 config()
+	 *     {
+	 *         return this.my_config;
+	 *     }
+	 *     
+	 *     public DummyAgent(Call.Chat chat_call, ChatPermission.Provider permission_provider, Settings.Config2 config)
+	 *     {
+	 *         this.chat_call = chat_call;
+	 *         this.my_permission_provider = permission_provider;
+	 *         this.my_config = config;
+	 *     }
+	 *     
+	 *     public void add_message(Message message)
+	 *     {
+	 *         // For non-agentic usage, add message to chat.messages
+	 *         this.chat_call.messages.add(message);
+	 *         // Also emit tool_message signal for UI updates if needed
+	 *     }
+	 * }
+	 * }}}
+	 *
+	 * Then create the dummy agent and set it on the request:
+	 *
+	 * {{{
+	 * var permission_provider = new ChatPermission.Dummy(); // or your custom provider
+	 * var config = new Settings.Config2(); // or load from file
+	 * var dummy_agent = new DummyAgent(chat_call, permission_provider, config);
+	 * request.agent = dummy_agent;
+	 * }}}
 	 */
 	public abstract class BaseTool : Object, Json.Serializable
 	{
@@ -69,13 +124,30 @@ namespace OLLMchat.Tool
 		// Function instance built from Tool's properties
 		public Function? function { get; set; default = null; }
 		
-		public Client? client { get; set; default = null; }
-		
 		public bool active { get; set; default = true; }
 
-		protected BaseTool(Client? client = null)
+		protected BaseTool()
 		{
-			this.client = client;
+			// Call init() to ensure proper initialization
+			this.init();
+		}
+		
+		/**
+		 * Initialization method that ensures tools are properly initialized.
+		 * 
+		 * This method is called:
+		 * - In the constructor (for normal instantiation)
+		 * - After Object.new() calls (for tools created with named parameters)
+		 * 
+		 * Ensures tools created via Object.new() are properly initialized even
+		 * when constructors might not be called correctly.
+		 */
+		public void init()
+		{
+			if (this.function != null) {
+				return; // Already initialized
+			}
+			
 			this.function = new Function(this);
 			
 			// Parse parameter description in two passes:
@@ -439,7 +511,6 @@ namespace OLLMchat.Tool
 				case "function":
 					return Json.gobject_serialize(this.function);
 					
-				case "client":
 				case "active":
 					// Exclude these properties from serialization
 					return null;
@@ -463,7 +534,7 @@ namespace OLLMchat.Tool
 		 * Public method that creates a Request and delegates execution to it.
 		 *
 		 * Converts parameters to Json.Node, calls deserialize() to create a Request object,
-		 * then sets tool and chat_call properties, and calls its execute() method.
+		 * then sets tool and agent properties, and calls its execute() method.
 		 *
 		 * @param chat_call The chat call context for this tool execution
 		 * @param parameters The parameters from the Ollama function call
@@ -481,9 +552,10 @@ namespace OLLMchat.Tool
 				return "ERROR: Failed to create request object";
 			}
 			
-			// Set tool and chat_call (not in JSON, set after deserialization)
+			// Set tool and agent (not in JSON, set after deserialization)
 			request.tool = this;
-			request.chat_call = chat_call;
+			// Set agent property (from chat_call, set after deserialization)
+			request.agent = chat_call.agent;
 			
 			return yield request.execute();
 		}
@@ -524,7 +596,9 @@ namespace OLLMchat.Tool
 				// Create tool instance without parameters - works because constructors are nullable
 				// Call setup_tool_config() on the instance
 				// Simple tools will use the default implementation, complex tools will use their overrides
-				(Object.new(tool_type) as Tool.BaseTool).setup_tool_config(config);
+				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
+				tool.setup_tool_config(config);
 			}
 		}
 		
@@ -575,6 +649,7 @@ namespace OLLMchat.Tool
 				// Create tool instance without parameters - works because constructors are nullable
 				// Constructors handle null values gracefully (for Phase 1, we only need config_class())
 				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
 				
 				// Register config type with Config2
 				Settings.Config2.register_tool_type(tool.name, tool.config_class());
@@ -582,35 +657,41 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
-		 * Creates and registers all tool instances with Client (Phase 2: after dependencies ready).
+		 * Creates all tool instances (Phase 3: tools moved from Client to Chat).
 		 *
-		 * This method discovers all tool classes, creates tool instances with the
-		 * provided dependencies (client, project_manager), and registers them via
-		 * Client.addTool(). Must be called after all dependencies are available.
+		 * This method discovers all tool classes and creates tool instances.
+		 * Tools are metadata/descriptors - they don't need Client or project_manager.
+		 * Tool handlers (created when tools execute) need project_manager, which
+		 * should be provided when creating handlers, not when creating tools.
+		 * Tools get config from agent.session.manager.config when executing.
+		 * 
+		 * The caller is responsible for storing the tools (e.g., on Manager) and
+		 * adding them to Chat objects via Chat.add_tool() when Chat is created.
+		 * 
+		 * Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.)
+		 * adds tools directly to Chat.
 		 *
-		 * @param client The LLM client instance
-		 * @param project_manager The project manager instance (should be OLLMfiles.ProjectManager, but using Object? for library independence)
+		 * @return Map of tool name to tool instance
 		 */
-		public static void register_all_tools(Client client, Object? project_manager)
+		public static Gee.HashMap<string, BaseTool> register_all_tools()
 		{
 			var tool_classes = discover_classes();
+			var tools_map = new Gee.HashMap<string, BaseTool>();
 			
 			foreach (var tool_type in tool_classes) {
-				// Use Object.new() to create tool instance with constructor parameters
-				// Standard signature: (Client? client = null, ProjectManager? project_manager = null)
-				// Special cases handled in constructors:
-				// - RunCommand: base_directory hardcoded to home dir
-				// - CodebaseSearchTool: Database location hardcoded, embedding_client extracted from client.config internally
-				var tool = Object.new(
-					tool_type,
-					"client", client,
-					"project-manager", project_manager
-				) as Tool.BaseTool;
+				// Use Object.new() to create tool instance without parameters
+				// Tools are metadata - they don't need Client or project_manager
+				// Tool handlers need project_manager, provided when handlers are created
+				// Tools get config from agent.session.manager.config when executing
+				var tool = Object.new(tool_type) as Tool.BaseTool;
+				tool.init(); // Ensure tool is properly initialized
 				
-				GLib.debug("register_all_tools: registering tool '%s'", tool.name);
-				client.addTool(tool);
+				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
+				tools_map.set(tool.name, tool);
 			}
-			GLib.debug("register_all_tools: registered %d tools, client.tools now has %d", tool_classes.size, client.tools.size);
+			
+			GLib.debug("register_all_tools: created %d tools", tool_classes.size);
+			return tools_map;
 		}
 	}
 }

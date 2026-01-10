@@ -27,13 +27,14 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="constant"><a href="OLLMvector.Database.DISABLE_INDEX.html">DISABLE_INDEX</a></li>
           <li class="property"><a href="OLLMvector.Database.dimension.html">dimension</a></li>
           <li class="property"><a href="OLLMvector.Database.vector_count.html">vector_count</a></li>
           <li class="static_method"><a href="OLLMvector.Database.check_required_models_available.html">check_required_models_available</a></li>
-          <li class="static_method"><a href="OLLMvector.Database.get_embedding_dimension.html">get_embedding_dimension</a></li>
           <li class="creation_method">Database</li>
           <li class="method"><a href="OLLMvector.Database.add_documents.html">add_documents</a></li>
           <li class="method"><a href="OLLMvector.Database.add_vectors_batch.html">add_vectors_batch</a></li>
+          <li class="method"><a href="OLLMvector.Database.embed_dimension.html">embed_dimension</a></li>
           <li class="method"><a href="OLLMvector.Database.save_index.html">save_index</a></li>
           <li class="method"><a href="OLLMvector.Database.search.html">search</a></li>
         </ul>
@@ -42,16 +43,16 @@
         <h1 class="main_title">Database</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Database</span></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> ollama, <span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">uint64</span></span> dimension) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">Database</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> filename, <span class="main_basic_type"><span class="struct">int</span></span> dimension) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Constructor.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
-              <td class="main_parameter_table_name">ollama</td>
+              <td class="main_parameter_table_name">config</td>
               <td>
-                <p>The OLLMchat client for embeddings </p>
+                <p>The Config2 instance containing tool configuration </p>
               </td>
             </tr>
             <tr>
@@ -63,7 +64,7 @@
             <tr>
               <td class="main_parameter_table_name">dimension</td>
               <td>
-                <p>The embedding dimension (use get_dimension() to obtain this) </p>
+                <p>The embedding dimension (use embed_dimension() to obtain this), or DISABLE_INDEX to skip index creation </p>
               </td>
             </tr>
           </table>

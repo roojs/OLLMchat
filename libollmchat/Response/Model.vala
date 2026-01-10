@@ -31,43 +31,149 @@ namespace OLLMchat.Response
 		 *
 		 * When setting Client.model, always use this property (model.name), not model.model.
 		 * This ensures consistency across all model sources (models(), ps(), show_model()).
+		 *
+		 * This property comes from the list API (models() endpoint). When updating from show API,
+		 * use update_from_list_model() to preserve the name from the list API.
+		 */
+		/**
+		 * Model name/identifier. This is the primary identifier for the model.
+		 *
+		 * When setting Client.model, always use this property (model.name), not model.model.
+		 * This ensures consistency across all model sources (models(), ps(), show_model()).
+		 *
+		 * This property comes from the list API (models() endpoint). When updating from show API,
+		 * use update_from_list_model() to preserve the name from the list API.
 		 */
 		public string name { get; set; default = ""; }
+		
+		/**
+		 * Last modified timestamp in ISO 8601 format.
+		 *
+		 * Available from both list API and show API. Show API takes precedence when updating.
+		 */
 		public string modified_at { get; set; default = ""; }
+		
+		/**
+		 * Model size in bytes.
+		 *
+		 * Available from the list API (models() endpoint). When updating from show API,
+		 * use update_from_list_model() to preserve the size from the list API.
+		 */
 		public int64 size { get; set; default = 0; }
+		
+		/**
+		 * Model digest/hash identifier.
+		 *
+		 * Available from the list API (models() endpoint). When updating from show API,
+		 * use update_from_list_model() to preserve the digest from the list API.
+		 */
 		public string digest { get; set; default = ""; }
+		
+		/**
+		 * List of supported features/capabilities.
+		 *
+		 * Available from the show API (show_model() endpoint). Common values include:
+		 * "completion", "vision", "tools", "thinking", etc.
+		 */
 		public Gee.ArrayList<string> capabilities { get;  set; default = new Gee.ArrayList<string>(); }
 
+		/**
+		 * Model size in VRAM (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int64 size_vram { get; set; default = 0; }
+		
+		/**
+		 * Total duration in nanoseconds (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int64 total_duration { get; set; default = 0; }
+		
+		/**
+		 * Load duration in nanoseconds (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int64 load_duration { get; set; default = 0; }
+		
+		/**
+		 * Prompt evaluation count (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int prompt_eval_count { get; set; default = 0; }
+		
+		/**
+		 * Prompt evaluation duration in nanoseconds (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int64 prompt_eval_duration { get; set; default = 0; }
+		
+		/**
+		 * Evaluation count (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int eval_count { get; set; default = 0; }
+		
+		/**
+		 * Evaluation duration in nanoseconds (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Not available from list API or show API.
+		 */
 		public int64 eval_duration { get; set; default = 0; }
 		/**
-		 * Model identifier from ps() API response. 
+		 * Model identifier from show API response.
 		 *
 		 * Note: For setting Client.model, always use model.name instead of this property
-		 * to ensure consistency. This property may be null or differ from name in some contexts.
+		 * to ensure consistency. This property may be empty or differ from name in some contexts.
+		 *
+		 * This property comes from the show API (show_model() endpoint). The name property
+		 * comes from the list API (models() endpoint) and is the primary identifier.
 		 */
-		public string? model { get; set; } 
-		public string? expires_at { get; set; }
+		public string model { get; set; default = ""; }
+		
+		/**
+		 * Expiration timestamp (runtime, from ps() API).
+		 *
+		 * Available from the ps() API when a model is currently loaded/running.
+		 * Indicates when the model will expire/be unloaded if keep_alive is set.
+		 * Not available from list API or show API.
+		 */
+		public string expires_at { get; set; default = ""; }
+		
+		/**
+		 * Context length (maximum tokens the model can process).
+		 *
+		 * Available from the show API (show_model() endpoint). This is typically found
+		 * in the model_info object as "{model_name}.context_length" in the API response.
+		 */
 		public int context_length { get; set; default = 0; }
 		/**
-		 * Model parameters string from show API response.
+		 * Model parameter settings serialized as text.
 		 *
-		 * Contains default parameter values in format like "temperature 0.7\nnum_ctx 2048"
-		 * When set, automatically fills this.options with parsed values.
+		 * Available from the show API (show_model() endpoint). Contains default parameter
+		 * values in format like "temperature 0.7\nnum_ctx 2048". When set, automatically
+		 * fills this.options with parsed values.
 		 */
 		private string _parameters = "";
 		public string parameters {
 			get { return this._parameters; }
 			set {
 				this._parameters = value;
-//				GLib.debug("Model.parameters set for '%s': '%s'", this.name, value ?? "(null)");
+//				GLib.debug("Model.parameters set for '%s': '%s'", this.name, value);
 				// Automatically fill options from parameters when set
-				if (value != null && value != "") {
+				if (value != "") {
 					this.options.fill_from_model(this);
 				}
 			}
@@ -123,9 +229,9 @@ namespace OLLMchat.Response
 			}
 		}
 
-		public Model(Client? client = null)
+		public Model(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
@@ -187,46 +293,61 @@ namespace OLLMchat.Response
 		}
 		
 		/**
-		 * Updates this model's properties from a show API response.
-		 * Only updates fields that come from the show API endpoint:
-		 * - modified_at
-		 * - capabilities
-		 * - context_length (if present in show response)
-		 * - parameters (if present in show response)
+		 * Updates this model's properties from another model.
+		 * 
+		 * Updates fields based on what's available in the source:
+		 * - From show API: modified_at, capabilities, context_length, parameters, model
+		 * - From list API: size, digest, modified_at (if not already set from show API), name
 		 *
-		 * Does NOT update fields from models() API (name, size, digest) or
-		 * runtime fields from ps() API (size_vram, durations, counts).
+		 * This method handles both show API responses (with capabilities/parameters/model) and
+		 * list API responses (with size/digest/name). It intelligently merges data, preserving
+		 * show API data when present and falling back to list API data when needed.
 		 *
-		 * @param source The model from show API response to copy properties from
+		 * @param source The model to copy properties from (can be from show API or list API)
 		 */
-		public void updateFrom(Model source)
+		public void update_from_list_model(Model source)
 		{
 			this.freeze_notify();
-			// Only update fields that come from show API
-			this.modified_at = source.modified_at;
 			
-			// Freeze notifications to batch property changes
- 			
-			// Update capabilities by clearing and adding, rather than replacing
-			this.capabilities.clear();
-			foreach (var cap in source.capabilities) {
-				this.capabilities.add(cap);
+			// Update name (from list API, preserve if already set)
+			// Note: name comes from list API, model property comes from show API
+			this.name = source.name;
+			
+			
+			// Update modified_at (show API takes precedence, but use list API if not set)
+			if (source.modified_at != "") {
+				this.modified_at = source.modified_at;
 			}
-			// Notify computed properties that depend on capabilities
-			//this.notify_property("capabilities");
-
-			this.notify_property("is-thinking");
-			this.notify_property("can-call");
 			
-			// Update context_length if present in show response
+			// Update capabilities (only from show API - list API doesn't have this)
+			if (source.capabilities.size > 0) {
+				this.capabilities.clear();
+				foreach (var cap in source.capabilities) {
+					this.capabilities.add(cap);
+				}
+			}
+			
+			// Update context_length (only from show API)
 			if (source.context_length > 0) {
 				this.context_length = source.context_length;
 			}
 			
-			// Update parameters if present in show response
-			// This will automatically trigger fill_from_model via the setter
-			if (source.parameters != null && source.parameters != "") {
+			// Update parameters (only from show API)
+			if (source.parameters != "") {
 				this.parameters = source.parameters;
+			}
+			
+			// Note: model property comes from show API, so we don't copy it from list API
+			// The detailed model (this) already has model property from show API response
+			
+			// Update size (from list API, preserve if already set)
+			if (this.size == 0 && source.size != 0) {
+				this.size = source.size;
+			}
+			
+			// Update digest (from list API, preserve if already set)
+			if (this.digest == "" && source.digest != "") {
+				this.digest = source.digest;
 			}
 			
 			this.thaw_notify();
@@ -261,45 +382,41 @@ namespace OLLMchat.Response
 		}
 
 		/**
-		* Loads model details from cache if available and updates this model using updateFrom().
+		* Loads model details from cache if available.
 		*
-		* @return true if cache was loaded successfully, false otherwise
+		* @return Model object if cache was loaded successfully, null otherwise
 		*/
-		public bool load_from_cache()
+		public Model? load_from_cache()
 		{
 			if (this.name == "") {
-				return false;
+				return null;
 			}
 			
 			var cache_path = this.get_cache_path();
 			var cache_file = File.new_for_path(cache_path);
 			
 			if (!cache_file.query_exists()) {
-				return false;
+				return null;
 			}
 			
 			try {
-				var parser = new Json.Parser();
-				parser.load_from_file(cache_path);
-				var root = parser.get_root();
-				if (root == null) {
-					return false;
+				string contents;
+				if (!GLib.FileUtils.get_contents(cache_path, out contents)) {
+					return null;
 				}
 				
-				var generator = new Json.Generator();
-				generator.set_root(root);
-				var json_str = generator.to_data(null);
-				var cached_model = Json.gobject_from_data(typeof(Model), json_str, -1) as Model;
+				var cached_model = Json.gobject_from_data(typeof(Model), contents, -1) as Model;
 				if (cached_model == null) {
-					return false;
+					return null;
 				}
 				
-				// Update this model with cached data
-				this.updateFrom(cached_model);
-				return true;
+				// Set connection on cached model
+				cached_model.connection = this.connection;
+				
+				return cached_model;
 			} catch (Error e) {
 				GLib.debug("Failed to load model from cache: %s", e.message);
-				return false;
+				return null;
 			}
 		}
 

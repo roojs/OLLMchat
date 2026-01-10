@@ -124,10 +124,10 @@ namespace OLLMchatGtk
 		 * Appends a message to the chat view.
 		 * 
 		 * @param text The message text to display
-		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
+		 * @param session The session that owns this message (provides client and chat)
 		 * @since 1.0
 		 */
-		public void append_user_message(string text, OLLMchat.ChatContentInterface message)
+		public void append_user_message(string text, OLLMchat.History.SessionBase session)
 		{
 			// Debug: Print truncated content
 			string content_preview = text.length > 20 ? text.substring(0, 20) + "..." : text;
@@ -332,9 +332,8 @@ namespace OLLMchatGtk
 		 * @param message The ChatContentInterface object (ChatResponse for assistant messages)
 		 * @since 1.0
 		 */
-		public void append_assistant_chunk(string new_text, OLLMchat.ChatContentInterface message)
+		public void append_assistant_chunk(string new_text, OLLMchat.Response.Chat response)
 		{
-			var response = (OLLMchat.Response.Chat) message;
 
 			if (this.is_waiting) {
 				this.clear_waiting_indicator(response);
@@ -378,21 +377,97 @@ namespace OLLMchatGtk
 		/**
 		* Processes new chunk from message.content using state machine.
 		* Splits content into complete lines vs incomplete line and processes accordingly.
+		* Refactored to use direct methods internally.
 		*/
 		private void process_new_chunk(string new_text, OLLMchat.Response.Chat response)
 		{
+			// Extract is_thinking from response and delegate to direct method
+			this.process_new_chunk_direct(new_text, response.is_thinking);
+		}
+		
+		/**
+		* Appends text to current markdown content based on current state.
+		* Refactored to use direct methods internally.
+		*/
+		private void process_add_text(string text, OLLMchat.Response.Chat response)
+		{
+			// Extract is_thinking from response and delegate to direct method
+			this.process_add_text_direct(text, response.is_thinking);
+		}
+		
+		/**
+		* Processes a newline, delegating to state-specific handlers.
+		* Refactored to use direct methods internally.
+		*/
+		private void process_new_line(OLLMchat.Response.Chat response)
+		{
+			// Extract is_thinking from response and delegate to direct method
+			this.process_new_line_direct(response.is_thinking);
+		}
+		
+		
+		/**
+		* Handles newline when in THINKING state.
+		* Refactored to use direct methods internally.
+		*/
+		private void process_new_line_thinking(OLLMchat.Response.Chat response)
+		{
+			// Extract is_thinking from response and delegate to direct method
+			this.process_new_line_thinking_direct(response.is_thinking);
+		}
+		
+		/**
+		* Handles newline when in CONTENT state.
+		* Refactored to use direct methods internally.
+		*/
+		private void process_new_line_content(OLLMchat.Response.Chat response)
+		{
+			// Delegate to direct method (doesn't need is_thinking parameter)
+			this.process_new_line_content_direct();
+		}
+		/**
+		* Starts a new block based on current state.
+		* Refactored to use direct methods internally.
+		*/
+		private void start_block(OLLMchat.Response.Chat response)
+		{
+			// Extract is_thinking from response and delegate to direct method
+			this.start_block_direct(response.is_thinking);
+		}
+		
+		/**
+		* Ends the current block based on state.
+		* Refactored to use direct methods internally.
+		*/
+		private void end_block(OLLMchat.Response.Chat response)
+		{
+			// Extract is_thinking from response and delegate to direct method
+			// Use current is_thinking state for formatting (not response.is_thinking)
+			this.end_block_direct(this.is_thinking);
+		}
+		
+		/**
+		* Direct version of process_new_chunk that doesn't require Response.Chat.
+		* Processes new chunk from message content using state machine.
+		* Splits content into complete lines vs incomplete line and processes accordingly.
+		* 
+		* @param new_text The new text chunk to process
+		* @param is_thinking Whether this chunk is thinking content
+		*/
+		private void process_new_chunk_direct(string new_text, bool is_thinking)
+		{
 			// Check if state changed (thinking vs content)
 			// If state changed, end the current block
-			if (this.is_thinking != response.is_thinking) {
-				// End the current block if we're in one (end_block uses current is_thinking for formatting)
+			if (this.is_thinking != is_thinking) {
+				// End the current block if we're in one (end_block_direct uses current is_thinking for formatting)
 				if (this.content_state != ContentState.NONE) {
-					this.end_block(response);
+					this.end_block_direct(this.is_thinking);
 					// Add extra line breaks to visually separate the old block from the new one
 					// With box model, Render will create new TextView on next add()
 				}
 				// Update thinking state AFTER ending block (so block is formatted with old status)
-				this.is_thinking = response.is_thinking;
-				// New text will start a new block when process_add_text is called
+				this.is_thinking = is_thinking;
+				// New text will start a new block when process_add_text_direct is called
 			}
 					
 			// Process the incoming text - split into lines
@@ -400,21 +475,25 @@ namespace OLLMchatGtk
 			
 			// Process all complete lines (with newlines)
 			for (int i = 0; i < lines.length - 1; i++) {
-				this.process_add_text(lines[i], response);
-				this.process_new_line(response);
+				this.process_add_text_direct(lines[i], is_thinking);
+				this.process_new_line_direct(is_thinking);
 			}
 			
 			// Process remaining incomplete line (no newline)
 			string remaining_text = lines[lines.length - 1];
 			if (remaining_text != "") {
-				this.process_add_text(remaining_text, response);
+				this.process_add_text_direct(remaining_text, is_thinking);
 			}
 		}
 		
 		/**
+		* Direct version of process_add_text that doesn't require Response.Chat.
 		* Appends text to current markdown content based on current state.
+		* 
+		* @param text The text to append (does not contain newlines)
+		* @param is_thinking Whether this text is thinking content
 		*/
-		private void process_add_text(string text, OLLMchat.Response.Chat response)
+		private void process_add_text_direct(string text, bool is_thinking)
 		{
 			// Append text to last_line (text does not contain newlines)
 			this.last_line += text;
@@ -429,8 +508,8 @@ namespace OLLMchatGtk
 					
 				case ContentState.NONE:
 					// Start a new markdown block
-					this.content_state = response.is_thinking ? ContentState.THINKING : ContentState.CONTENT;
-					this.start_block(response);
+					this.content_state = is_thinking ? ContentState.THINKING : ContentState.CONTENT;
+					this.start_block_direct(is_thinking);
 					// Send text to renderer
 					this.renderer.add(text);
 					// No need to update end_mark anymore (box model handles it)
@@ -439,17 +518,20 @@ namespace OLLMchatGtk
 		}
 		
 		/**
+		* Direct version of process_new_line that doesn't require Response.Chat.
 		* Processes a newline, delegating to state-specific handlers.
+		* 
+		* @param is_thinking Whether we're currently in thinking mode
 		*/
-		private void process_new_line(OLLMchat.Response.Chat response)
+		private void process_new_line_direct(bool is_thinking)
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
-					this.process_new_line_thinking(response);
+					this.process_new_line_thinking_direct(is_thinking);
 					break;
 					
 				case ContentState.CONTENT:
-					this.process_new_line_content(response);
+					this.process_new_line_content_direct();
 					break;
 					
 				case ContentState.NONE:
@@ -461,17 +543,19 @@ namespace OLLMchatGtk
 			this.last_line = "";
 		}
 		
-		
 		/**
+		* Direct version of process_new_line_thinking that doesn't require Response.Chat.
 		* Handles newline when in THINKING state.
+		* 
+		* @param is_thinking Whether we're currently in thinking mode
 		*/
-		private void process_new_line_thinking(OLLMchat.Response.Chat response)
+		private void process_new_line_thinking_direct(bool is_thinking)
 		{
 			// Check if thinking state changed to not thinking
-			if (!response.is_thinking) {
-				// End thinking block (end_block will reset content_state to NONE)
+			if (!is_thinking) {
+				// End thinking block (end_block_direct will reset content_state to NONE)
 				this.renderer.add("\n");
-				this.end_block(response);
+				this.end_block_direct(this.is_thinking);
 				return;
 			}
 			
@@ -482,18 +566,23 @@ namespace OLLMchatGtk
 		}
 		
 		/**
+		* Direct version of process_new_line_content that doesn't require Response.Chat.
 		* Handles newline when in CONTENT state.
 		*/
-		private void process_new_line_content(OLLMchat.Response.Chat response)
+		private void process_new_line_content_direct()
 		{
 			// Code blocks are now automatically handled by Render/RenderSourceView
 			// Just add newline - Render will detect and handle code blocks
 			this.renderer.add("\n");
 		}
+		
 		/**
+		* Direct version of start_block that doesn't require Response.Chat.
 		* Starts a new block based on current state.
+		* 
+		* @param is_thinking Whether this block is thinking content
 		*/
-		private void start_block(OLLMchat.Response.Chat response)
+		private void start_block_direct(bool is_thinking)
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
@@ -505,7 +594,7 @@ namespace OLLMchatGtk
 					// Note: default_state is set AFTER renderer.start() because we need a buffer
 					// to create the TextTag. The default_state will be used for future TextViews
 					// created after code blocks, not the current one.
-					if (this.is_thinking) {
+					if (is_thinking) {
 						// Create span state for thinking with both color (#767676) and italic
 						var style_state = this.renderer.current_state.add_state();
 						style_state.style.foreground = "#767676";
@@ -523,9 +612,6 @@ namespace OLLMchatGtk
 					this.last_chunk_start = 0;
 					return;
 					
-					
-					
-						
 				case ContentState.NONE:
 					// Nothing to start
 					return;
@@ -533,9 +619,12 @@ namespace OLLMchatGtk
 		}
 		
 		/**
+		* Direct version of end_block that doesn't require Response.Chat.
 		* Ends the current block based on state.
+		* 
+		* @param is_thinking Whether we're currently in thinking mode (used for formatting)
 		*/
-		private void end_block(OLLMchat.Response.Chat response)
+		private void end_block_direct(bool is_thinking)
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
@@ -569,9 +658,49 @@ namespace OLLMchatGtk
 		}
 		
 		/**
+		 * Direct version of finalize_assistant_message that doesn't require Response.Chat.
 		 * Finalizes the current assistant message.
 		 * 
 		 * Ensures the final chunk is rendered and resets tracking state.
+		 * Performance metrics are not displayed here - they should be in the messages array
+		 * as "ui" role messages and will be displayed via append_tool_message().
+		 * 
+		 * @since 1.0
+		 */
+		private void finalize_assistant_message_direct()
+		{
+			if (!this.is_assistant_message) {
+				return;
+			}
+
+			// End current block if we're in one
+			if (this.content_state != ContentState.NONE) {
+				this.end_block_direct(this.is_thinking);
+			}
+
+			// Add final newline
+			var buffer = this.get_current_buffer();
+			if (buffer != null) {
+				Gtk.TextIter end_iter;
+				buffer.get_end_iter(out end_iter);
+				buffer.insert(ref end_iter, "\n", -1);
+			}
+
+			// Reset state
+			this.is_assistant_message = false;
+			this.last_chunk_start = 0;
+			this.content_state = ContentState.NONE;
+		}
+		
+		/**
+		 * Finalizes the current assistant message.
+		 * 
+		 * Ensures the final chunk is rendered and resets tracking state.
+		 * 
+		 * For streaming responses, performance metrics are now stored as "ui" messages
+		 * in the messages array (see Session.finalize_streaming()). For backward compatibility,
+		 * this method still displays metrics from response if provided, but metrics should
+		 * already be in the messages array for history loading.
 		 * 
 		 * @since 1.0
 		 */
@@ -583,30 +712,18 @@ namespace OLLMchatGtk
 
 			// End current block if we're in one
 			if (this.content_state != ContentState.NONE) {
-				if (response != null) {
-					this.end_block(response);
-				}
+				this.end_block_direct(this.is_thinking);
 			}
 
-			// Display performance metrics if response is available and done
-			if (response != null && response.done && response.eval_duration > 0) {
-				var summary = response.get_summary();
-				if (summary != "") {
-					var metrics_msg = new OLLMchat.Message(
-						response.call,
-						"ui",
-						summary
-					);
-					this.append_tool_message(metrics_msg);
-				}
-			} else {
-				// Add final newline if no summary
-				var buffer = this.get_current_buffer();
-				if (buffer != null) {
-					Gtk.TextIter end_iter;
-					buffer.get_end_iter(out end_iter);
-					buffer.insert(ref end_iter, "\n", -1);
-				}
+			// Note: Performance metrics are now stored as "ui" messages in Session.finalize_streaming()
+			// and displayed via the message_created signal flow (ChatWidget.on_message_created()),
+			// so we don't need to display them here anymore.
+			// Add final newline
+			var buffer = this.get_current_buffer();
+			if (buffer != null) {
+				Gtk.TextIter end_iter;
+				buffer.get_end_iter(out end_iter);
+				buffer.insert(ref end_iter, "\n", -1);
 			}
 
 			// Reset state
@@ -620,9 +737,10 @@ namespace OLLMchatGtk
 		 * Used when loading sessions from history.
 		 * 
 		 * @param message The complete Message object to display
+		 * @param session The session that owns this message (provides client and chat)
 		 * @since 1.0
 		 */
-		public void append_complete_assistant_message(OLLMchat.Message message)
+		public void append_complete_assistant_message(OLLMchat.Message message, OLLMchat.History.SessionBase session)
 		{
 			// Debug: Print truncated content
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
@@ -632,53 +750,41 @@ namespace OLLMchatGtk
 			
 			// Finalize any ongoing assistant message
 			if (this.is_assistant_message) {
-				this.finalize_assistant_message();
+				this.finalize_assistant_message_direct();
 			}
 
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
 
-			// Get Call.Chat from message_interface to create Response.Chat
-			if (!(message.message_interface is OLLMchat.Call.Chat)) {
-				GLib.warning("ChatView.append_complete_assistant_message: message_interface is not Call.Chat");
-				return;
-			}
-
-			var call = (OLLMchat.Call.Chat) message.message_interface;
-			var client = call.client;
-
-			// Create a minimal Response.Chat for processing
-			var response = new OLLMchat.Response.Chat(client, call);
-			response.message = message;
-			response.done = true;
+			// Work directly with Message object - no Chat/Response.Chat needed
+			// Determine thinking state from message.thinking content
+			bool is_thinking = message.thinking != "";
 
 			// Initialize assistant message state
 			this.is_assistant_message = true;
 			this.last_chunk_start = 0;
 			this.content_state = ContentState.NONE;
-			// Don't call renderer.start() here - let start_block() handle it
+			this.is_thinking = is_thinking;
+			// Don't call renderer.start() here - let start_block_direct() handle it
 			// so default_state can be set before TextView creation
 
 			// Process thinking content first if present
 			if (message.thinking != "") {
-				this.is_thinking = true;
-				response.is_thinking = true;
-				this.process_new_chunk(message.thinking, response);
+				this.process_new_chunk_direct(message.thinking, true);  // true = is_thinking
 				// Ensure thinking block is finalized
 				if (this.content_state != ContentState.NONE) {
-					this.end_block(response);
+					this.end_block_direct(true);  // true = is_thinking
 				}
 			}
 
 			// Process regular content
 			if (message.content != "") {
 				this.is_thinking = false;
-				response.is_thinking = false;
-				this.process_new_chunk(message.content, response);
+				this.process_new_chunk_direct(message.content, false);  // false = is_thinking
 			}
 
-			// Finalize the message
-			this.finalize_assistant_message(response);
+			// Finalize the message (no response needed - metrics will be in messages array as "ui" messages after Step 1b)
+			this.finalize_assistant_message_direct();
 		}
 
 		/**

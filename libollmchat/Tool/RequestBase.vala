@@ -33,14 +33,19 @@ namespace OLLMchat.Tool
 	public abstract class RequestBase : Object, Json.Serializable
 	{
 		/**
-		 * Reference to the tool that created this request.
-		 */
+		* Reference to the tool that created this request.
+		*/
 		public BaseTool tool { get; set; }
 		
 		/**
-		 * Chat call context for this tool execution.
-		 */
-		public Call.Chat chat_call { get; set; }
+		* Reference to the agent for this tool request.
+		* 
+		* For agentic usage: This is the Base agent (implements Agent.Interface).
+		* For non-agentic usage: This is a dummy agent implementation (implements Agent.Interface).
+		* 
+		* Tools access resources via this.agent.chat(), this.agent.get_permission_provider(), this.agent.add_message().
+		*/
+		public Agent.Interface? agent { get; set; }
 		
 		/**
 		 * Permission question text.
@@ -60,7 +65,7 @@ namespace OLLMchat.Tool
 		/**
 		 * Default constructor.
 		 * Request objects are created via Json.gobject_deserialize from parameters JSON.
-		 * Tool and chat_call are set after deserialization.
+		 * Tool and agent are set after deserialization.
 		 */
 		protected RequestBase()
 		{
@@ -85,10 +90,10 @@ namespace OLLMchat.Tool
 
 		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Exclude tool and chat_call from deserialization (they're set after deserialization)
+			// Exclude tool and agent from deserialization (they're set after deserialization)
 			switch (property_name) {
 				case "tool":
-				case "chat-call":
+				case "agent":
 					value = Value(pspec.value_type);
 					return true;
 				
@@ -106,9 +111,13 @@ namespace OLLMchat.Tool
 		protected string normalize_file_path(string in_path)
 		{
 			var path = in_path;
+			// Get permission provider via agent interface
+			// Permission provider always exists (defaults to Dummy provider)
+			var permission_provider = this.agent.get_permission_provider();
+			
 			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
-			if (!GLib.Path.is_absolute(path) && this.chat_call.client.permission_provider.relative_path != "") {
-				path = GLib.Path.build_filename(this.chat_call.client.permission_provider.relative_path, path);
+			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
+				path = GLib.Path.build_filename(permission_provider.relative_path, path);
 			}
 			// if it's still absolute - return it we might have to fail at this point..
 			// llm should send valid paths, we should not try and solve it.
@@ -125,13 +134,15 @@ namespace OLLMchat.Tool
 		 */
 		protected void send_ui(string type, string title, string body)
 		{
-			// Escape code blocks in body to prevent breaking the outer codeblock
-			var escaped_body = body.replace("\n```", "\n\\`\\`\\`");
-			var message = "```" + type + " " + title + "\n" + escaped_body + "\n```";
-			this.chat_call.client.message_created(
-				new OLLMchat.Message(this.chat_call, "ui", message),
-				this.chat_call
-			);
+		// Escape code blocks in body to prevent breaking the outer codeblock
+		// Add message via agent interface
+		this.agent.add_message(
+			new OLLMchat.Message(
+				"ui",
+				"```" + type + " " + title + "\n" +
+					body.replace("\n```", "\n\\`\\`\\`") + "\n```"
+			)
+		);
 		}
 		
 		/**
@@ -159,10 +170,13 @@ namespace OLLMchat.Tool
 			// Check permission if needed
 			if (this.build_perm_question()) {
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
-				GLib.debug("RequestBase.execute: Tool '%s' client=%p, permission_provider=%p (%s)", 
-					this.tool.name, this.chat_call.client, this.chat_call.client.permission_provider, 
-					this.chat_call.client.permission_provider.get_type().name());
-				if (!(yield this.chat_call.client.permission_provider.request(this))) {
+				
+			// Get permission provider via agent interface
+			var permission_provider = this.agent.get_permission_provider();
+			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Manager", 
+				this.tool.name, permission_provider, permission_provider.get_type().name());
+				
+				if (!(yield permission_provider.request(this))) {
 					GLib.debug("RequestBase.execute: Permission denied for tool '%s'", this.tool.name);
 					return "ERROR: Permission denied: " + this.permission_question;
 				}

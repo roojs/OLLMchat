@@ -98,7 +98,7 @@
  * var search = new OLLMvector.Search.Search(
  *     vector_db,
  *     sql_db,
- *     embedding_client,
+ *     config,
  *     active_project,
  *     "find authentication logic",
  *     10,  // max_results

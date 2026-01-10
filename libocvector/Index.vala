@@ -38,7 +38,7 @@ namespace OLLMvector
 		/**
 		 * Vector dimension (width of each vector).
 		 */
-		public uint64 width;
+		public int width;
 		/**
 		 * Number of vectors stored.
 		 */
@@ -49,7 +49,7 @@ namespace OLLMvector
 		 * 
 		 * @param width The dimension of each vector
 		 */
-		public FloatArray(uint64 width)
+		public FloatArray(int width)
 		{
 			this.data = {};
 			this.width = width;
@@ -75,7 +75,7 @@ namespace OLLMvector
 				
 			// Resize array to accommodate new vector
 			int current_size = this.data.length;
-			this.data.resize(current_size + (int)this.width);
+			this.data.resize(current_size + this.width);
 			
 			// Copy vector data to the end of the flat array
 			for (int i = 0; i < this.width; i++) {
@@ -148,7 +148,7 @@ namespace OLLMvector
 		 * 
 		 * All vectors added to the index must have this dimension.
 		 */
-		public uint64 dimension { get; internal set; }
+		public int dimension { get; internal set; }
 		private bool normalized = false;
 		private string filename;
 		
@@ -167,7 +167,7 @@ namespace OLLMvector
 		 * @param dim The dimension of vectors (must match if loading existing index)
 		 * @throws Error if index file exists but dimension doesn't match, or if index creation/loading fails
 		 */
-		public Index(string filename, uint64 dim) throws Error
+		public Index(string filename, int dim) throws Error
 		{
 			this.filename = filename;
 			
@@ -180,20 +180,20 @@ namespace OLLMvector
 					throw new GLib.IOError.FAILED("Failed to load FAISS index from " + this.filename);
 				}
 				
-				// Get dimension from loaded index
+				// Get dimension from loaded index (FAISS returns int, cast to int)
 				int loaded_dim = Faiss.index_d(loaded_index);
 				if (loaded_dim < 0) {
 					throw new GLib.IOError.FAILED("Failed to get dimension from loaded FAISS index");
 				}
 				
 				// Verify dimension matches
-				if ((uint64)loaded_dim != dim) {
+				if (loaded_dim != dim) {
 					throw new GLib.IOError.FAILED(
-						"Dimension mismatch: file has %llu, requested %llu".printf(
-							(uint64)loaded_dim, dim));
+						"Dimension mismatch: file has %d, requested %d".printf(
+							loaded_dim, dim));
 				}
 				
-				this.dimension = (uint64)loaded_dim;
+				this.dimension = loaded_dim;
 				this.index = (owned)loaded_index;
 				return;
 			}
@@ -203,6 +203,7 @@ namespace OLLMvector
 			
 			// Create IndexHNSWFlat with M=16 (good balance of speed/recall/memory)
 			// M=16 gives ~6% memory overhead, good performance for 500k vectors
+			// Cast to int64 only when calling FAISS API
 			Faiss.IndexHNSW hnsw_index;
 			if (Faiss.index_hnsw_flat_new(out hnsw_index, (int64)dim, 16) != 0) {
 				throw new GLib.IOError.FAILED("Failed to create FAISS HNSW index");
@@ -371,13 +372,13 @@ namespace OLLMvector
 			this.index = (owned)new_index;
 		}
 		
-		internal uint64 get_dimension_from_index() throws Error
+		internal int get_dimension_from_index() throws Error
 		{
 			int dim = Faiss.index_d(this.index);
 			if (dim < 0) {
 				throw new GLib.IOError.FAILED("Failed to get dimension from FAISS index");
 			}
-			return (uint64)dim;
+			return dim;
 		}
 	}
 

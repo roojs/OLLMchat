@@ -28,21 +28,20 @@ namespace OLLMchat.History
 	public abstract class SessionBase : Object, Json.Serializable
 	{
 		public int64 id { get; set; default = -1; }
-		public Client client { get; protected set; }
 		
 		public int64 updated_at_timestamp { get; set; default = 0; }  // Unix timestamp
 		public string title { get; set; default = ""; }
 		public string agent_name { get; set; default = "just-ask"; }
 		public int unread_count { get; set; default = 0; }
 		public bool is_active { get; protected set; default = false; }
+		public bool is_running { get; protected set; default = false; }
 		
-		// Wrapper properties around client
-		//fixme have to set th emodel correctly when we init theclient..
-		private string _model  = "";
-		public string model {
-			get { return this.client != null ? this.client.model : this._model; }
-			set { if (this.client != null) { this.client.model = value; } else { this._model = value; } }	
-		}
+		// Model property - stored on Session since Client no longer has model (Phase 3)
+		public string model { get; set; default = ""; }
+		
+		// ModelUsage property - stores full model configuration (connection, model, options)
+		// Options are overlaid from config.model_options when activate_model() is called
+		public Settings.ModelUsage? model_usage { get; protected set; default = null; }
 		
 		// Display properties for UI
 		public string display_title {
@@ -85,6 +84,19 @@ namespace OLLMchat.History
 			}
 		}
 		
+		// CSS classes for styling session rows in history browser
+		// Not serialized - computed property based on session state
+		public string[] css_classes {
+			owned get {
+				var classes = new string[] {};
+				if (this.unread_count > 0) {
+					classes += "oc-has-unread";
+				}
+				return classes;
+			}
+			set { }  // Empty setter - read-only computed property
+		}
+		
 		// Metadata flattened on session (not separate class)
 		public int total_messages { get; set; default = 0; }
 		public int64 total_tokens { get; set; default = 0; }
@@ -104,19 +116,18 @@ namespace OLLMchat.History
 		// Note: construct properties must be public in Vala
 		public Manager manager { get; construct set; }
 		
-		// Signal handler IDs for disconnection
-		// Manager handlers (for persistence)
-		protected ulong stream_chunk_handler_id = 0;
-		protected ulong message_created_id = 0;
-		// UI relay signals
-		protected ulong chat_send_id = 0;
-		protected ulong stream_chunk_id = 0;
-		protected ulong stream_content_id = 0;
-		protected ulong stream_start_id = 0;
-		protected ulong tool_message_id = 0;
+		// Signal handler IDs removed - agent usage now uses direct method calls from Chat
+		// Note: Persistence may need to be handled differently (connect to Chat signals instead of Client signals)
+		
+		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
+		// Owned by Session, not Chat
+		public string fid { get; protected set; }
+		
+		// Agent handler reference - set when session is created or AgentHandler is changed
+		public OLLMchat.Agent.Base? agent { get; set; }
+		
 		
 		// Abstract properties that depend on chat
-		public abstract string fid { get; set; }
 		public abstract string display_info { owned get; }
 		
 		/**
@@ -127,7 +138,67 @@ namespace OLLMchat.History
 		protected SessionBase(Manager manager)
 		{
 			this.manager = manager;
+			
+			// Get model from config or use default
+			var model = manager.config.get_default_model();
+			model = model == "" ? "placeholder" : model;
+		 
+			
+			// Store model on session
+			this.model = model;
+			
+			// Note: Chat is created per request by AgentHandler, not stored on Session
+			// Note: Permission provider is on Manager, accessed via agent.session.manager.permission_provider
 		}
+		
+		/**
+		 * Activates a model for this session.
+		 * 
+		 * Stores the ModelUsage and overlays options from config.model_options if available.
+		 * Updates the session's model property and connection.
+		 * 
+		 * @param model_usage The ModelUsage to activate (connection, model, options)
+		 */
+		public void activate_model(Settings.ModelUsage model_usage)
+		{
+			// Clone the ModelUsage to avoid modifying the original
+			var usage = new Settings.ModelUsage() {
+				connection = model_usage.connection,
+				model = model_usage.model,
+				model_obj = model_usage.model_obj
+			};
+			
+			// Start with options from the ModelUsage
+			usage.options = model_usage.options.clone();
+			
+			// Overlay options from config.model_options if available (config options take precedence)
+			if (this.manager.config.model_options.has_key(model_usage.model)) {
+				var config_options = this.manager.config.model_options.get(model_usage.model);
+				// Config options override ModelUsage options
+				usage.options = config_options.clone();
+			}
+			
+		// Store the ModelUsage
+		this.model_usage = usage;
+		
+		// Update model property for backward compatibility
+		this.model = model_usage.model;
+		
+		// Update Chat properties if agent exists (agent always exists when activate_model is called)
+		if (this.agent != null && this.agent.chat() != null) {
+			// Update model
+			this.agent.chat().model = usage.model;
+			
+			// Update connection
+			if (usage.connection != "" && this.manager.config.connections.has_key(usage.connection)) {
+				this.agent.chat().connection = this.manager.config.connections.get(usage.connection);
+			}
+			
+			// Update options (no cloning - Chat just references the Options object)
+			this.agent.chat().options = usage.options;
+		}
+		
+	}
 		
 		/**
 		 * Activates this session, connecting client signals to relay to UI.
@@ -140,44 +211,12 @@ namespace OLLMchat.History
 			}
 			this.is_active = true;
 			this.unread_count = 0; // Clear unread count when activated
-			if (this.client == null) {
-				return;
-			}
+			// Note: unread_count auto-property automatically emits property change notification
+			this.notify_property("css_classes");  // Notify css_classes change when unread_count cleared
 
-			
-			// Connect client signals to Manager handlers (for persistence)
-			this.stream_chunk_handler_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				this.on_stream_chunk(new_text, is_thinking, response);
-			});
-			
-			// Connect message_created signal to handler
-			this.message_created_id = this.client.message_created.connect((message, content_interface) => {
-				this.on_message_created(message, content_interface);
-			});
-			
-			// Connect client signals to relay to UI via Manager
-			this.chat_send_id = this.client.chat_send.connect((chat) => {
-				this.manager.chat_send(chat);
-			});
-			this.stream_chunk_id = this.client.stream_chunk.connect((new_text, is_thinking, response) => {
-				this.manager.stream_chunk(new_text, is_thinking, response);
-			});
-			this.stream_content_id = this.client.stream_content.connect((new_text, response) => {
-				this.manager.stream_content(new_text, response);
-			});
-			this.stream_start_id = this.client.stream_start.connect(() => {
-				this.manager.stream_start();
-			});
-			this.tool_message_id = this.client.tool_message.connect((message) => {
-				GLib.debug("SessionBase.tool_message handler: Received tool_message from client (role=%s, content='%.50s', manager=%p, session=%p)", 
-					message.role, message.content, this.manager, this);
-				if (this.manager == null) {
-					GLib.debug("SessionBase.tool_message handler: ERROR - manager is null!");
-					return;
-				}
-				this.manager.tool_message(message);
-				GLib.debug("SessionBase.tool_message handler: Relayed to manager.tool_message signal");
-			});
+			// Signal connections removed - agent usage now uses direct method calls from Chat
+			// Chat always emits signals, and when agent is set, Chat also calls agent methods directly
+			// AgentHandler relays to Session via direct method calls, Session relays to Manager signals
 		}
 		
 		/**
@@ -186,56 +225,12 @@ namespace OLLMchat.History
 		 */
 		public void deactivate()
 		{
-			// Check if already deactivated (stream_chunk_handler_id will be 0 if not connected)
-			if (this.stream_chunk_handler_id == 0) {
-				return;
-			}
-			
 			if (!this.is_active) {
 				return;
 			}
 			this.is_active = false;
 
-			if (this.client == null) {
-				return;
-			}
-
-			// Disconnect client signals from Manager handlers (check if connected first)
-			if (this.stream_chunk_handler_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_handler_id)) {
-				this.client.disconnect(this.stream_chunk_handler_id);
-			}
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
-				this.client.disconnect(this.message_created_id);
-			}
-			
-			// Disconnect client signals from UI relay (check if connected first)
-			if (this.chat_send_id != 0 && GLib.SignalHandler.is_connected(this.client, this.chat_send_id)) {
-				this.client.disconnect(this.chat_send_id);
-			}
-			if (this.stream_chunk_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_chunk_id)) {
-				this.client.disconnect(this.stream_chunk_id);
-			}
-			if (this.stream_content_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_content_id)) {
-				this.client.disconnect(this.stream_content_id);
-			}
-			if (this.stream_start_id != 0 && GLib.SignalHandler.is_connected(this.client, this.stream_start_id)) {
-				this.client.disconnect(this.stream_start_id);
-			}
-			if (this.tool_message_id != 0 && GLib.SignalHandler.is_connected(this.client, this.tool_message_id)) {
-				this.client.disconnect(this.tool_message_id);
-			}
-			if (this.message_created_id != 0 && GLib.SignalHandler.is_connected(this.client, this.message_created_id)) {
-				this.client.disconnect(this.message_created_id);
-			}
-			
-			// Reset all IDs to 0
-			this.stream_chunk_handler_id = 0;
-			this.message_created_id = 0;
-			this.chat_send_id = 0;
-			this.stream_chunk_id = 0;
-			this.stream_content_id = 0;
-			this.stream_start_id = 0;
-			this.tool_message_id = 0;
+			// Signal disconnections removed - agent usage now uses direct method calls from Chat
 		}
 		
 		/**
@@ -243,14 +238,63 @@ namespace OLLMchat.History
 		 * Handles message persistence and relays to Manager.
 		 * Must be implemented by subclasses.
 		 */
-		protected abstract void on_message_created(Message m, ChatContentInterface? content_interface);
+		protected abstract void on_message_created(Message m);
 		
 		/**
-		 * Handler for stream_chunk signal from this session's client.
-		 * Handles unread tracking and session saving.
-		 * Must be implemented by subclasses.
+		 * Called by AgentHandler when streaming starts.
+		 * Session relays to Manager signals.
 		 */
-		protected abstract void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+		public void handle_stream_started()
+		{
+			this.manager.stream_start();
+		}
+		
+		/**
+		 * Called by AgentHandler when a streaming chunk is received.
+		 * Session relays to Manager signals (Manager doesn't process, just relays to UI).
+		 * 
+		 * Note: Manager signals are just a relay point - Manager doesn't need to process
+		 * these events, it just forwards them to UI components that are connected to Manager signals.
+		 * 
+		 * Subclasses can override to add persistence handling before relaying to Manager.
+		 */
+		public virtual void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		{
+			// Relay directly to Manager signals (Manager is just a relay point, no processing needed)
+			this.manager.stream_chunk(new_text, is_thinking, response);
+		}
+		
+		/**
+		 * Called by AgentHandler when a tool sends a status message.
+		 * Session relays to Manager signals.
+		 */
+		public void handle_tool_message(Message message)
+		{
+			this.manager.tool_message(message);
+		}
+		
+		/**
+		 * Adds a message to the session and relays it to the UI via Manager signal.
+		 *
+		 * This method is called by tools to add messages directly to the session.
+		 * It adds the message to session.messages array and relays to UI via Manager's add_message signal.
+		 * The session passes itself to the signal so the UI can access session.chat.
+		 *
+		 * @param message The message to add
+		 */
+		public void add_message(Message message)
+		{
+			// Add message to session.messages array
+		
+			this.messages.add(message);
+			
+			
+			// Relay to UI via Manager's message_added signal - pass this session, not content_interface
+			// Only relay if session is active
+			if (this.is_active) {
+				this.manager.message_added(message, this);
+			}
+		}
 		
 		
 		/**
@@ -307,21 +351,33 @@ namespace OLLMchat.History
 		public abstract async SessionBase? load() throws Error;
 		
 		/**
-		 * Sends a message using this session's client.
-		 * Must be implemented by subclasses.
-		 *
-		 * @param text The message text to send
+		 * Sends a Message object to this session.
+		 * 
+		 * This is the new method for sending messages. Adds Message to session history
+		 * and delegates to AgentHandler if message.role == "user".
+		 * 
+		 * @param message The message object to send
 		 * @param cancellable Optional cancellable for canceling the request
-		 * @return The response from the chat API
 		 * @throws Error if the request fails
 		 */
-		public abstract async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error;
+		public abstract async void send(Message message, GLib.Cancellable? cancellable = null) throws Error;
 		
 		/**
 		 * Cancels the current request if one is active.
 		 * Must be implemented by subclasses.
 		 */
 		public abstract void cancel_current_request();
+		
+		/**
+		 * Activates an agent for this session.
+		 * 
+		 * Handles agent changes by creating a new AgentHandler and copying
+		 * any necessary state from the old AgentHandler to the new one.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent activation fails
+		 */
+		public abstract void activate_agent(string agent_name) throws Error;
 		
 		/**
 		 * Handle JSON property mapping and custom deserialization.

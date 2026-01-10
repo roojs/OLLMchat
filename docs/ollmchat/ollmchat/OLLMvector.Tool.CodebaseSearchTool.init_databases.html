@@ -38,7 +38,6 @@
           <li class="property"><a href="OLLMvector.Tool.CodebaseSearchTool.project_manager.html">project_manager</a></li>
           <li class="virtual_property"><a href="OLLMvector.Tool.CodebaseSearchTool.title.html">title</a></li>
           <li class="property"><a href="OLLMvector.Tool.CodebaseSearchTool.vector_db.html">vector_db</a></li>
-          <li class="static_method"><a href="OLLMvector.Tool.CodebaseSearchTool.get_tool_config.html">get_tool_config</a></li>
           <li class="creation_method"><a href="OLLMvector.Tool.CodebaseSearchTool.CodebaseSearchTool.html">CodebaseSearchTool</a></li>
           <li class="virtual_method"><a href="OLLMvector.Tool.CodebaseSearchTool.config_class.html">config_class</a></li>
           <li class="virtual_method"><a href="OLLMvector.Tool.CodebaseSearchTool.deserialize.html">deserialize</a></li>
@@ -50,7 +49,7 @@
         <h1 class="main_title">init_databases</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">init_databases</span></b> (<span class="main_basic_type"><span class="class">string</span></span> data_dir) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><span class="method">init_databases</span></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> data_dir) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Initializes the vector database by getting dimension and creating the Database instance.</p>
@@ -58,6 +57,12 @@
             embedding dimension and creates the vector_db.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">config</td>
+              <td>
+                <p>Config2 instance for database initialization </p>
+              </td>
+            </tr>
             <tr>
               <td class="main_parameter_table_name">data_dir</td>
               <td>

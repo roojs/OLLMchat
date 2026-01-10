@@ -98,12 +98,12 @@ namespace OLLMapp
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			
-		// Create agent dropdown (will be set up in setup_agent_dropdown)
-		// Use expression for BaseAgent.title (will be replaced in setup_agent_dropdown)
-		this.agent_dropdown = new Gtk.DropDown(null, 
-			new Gtk.PropertyExpression(typeof(OLLMchat.Prompt.BaseAgent), null, "title")) {
-			hexpand = false
-		};
+			// Create agent dropdown (will be set up in setup_agent_dropdown)
+			// Use expression for BaseAgent.title (will be replaced in setup_agent_dropdown)
+			this.agent_dropdown = new Gtk.DropDown(null, 
+				new Gtk.PropertyExpression(typeof(OLLMchat.Agent.Factory), null, "title")) {
+				hexpand = false
+			};
 			this.header_bar.pack_start(this.agent_dropdown);
 			
 			// Create settings button with spinner
@@ -264,8 +264,11 @@ namespace OLLMapp
 				
 				// Save config
 				config.save();
-				// Connection already verified in bootstrap dialog, so call initialize_client directly
-				this.initialize_client.begin(config);
+				// Update app config to match bootstrap config
+				this.app.config = config;
+				// Connection verified in bootstrap dialog, but model still needs verification
+				// Use initialize_unverified_client to handle model verification
+				this.initialize_unverified_client.begin(config);
 			});
 			
 			this.bootstrap_dialog.present(this);
@@ -273,15 +276,15 @@ namespace OLLMapp
 		
 		/**
 		 * Initializes the client and sets up the UI.
-		 * Tests connection first, then calls initialize_client.
-		 * Shows warning dialog if connection fails (with option to configure).
-		 * Loops until connection succeeds or user cancels.
+		 * Tests connection first, then verifies model, then calls initialize_client.
+		 * Shows warning dialog if connection or model fails (with option to configure).
+		 * Loops until both connection and model succeed or user cancels.
 		 * 
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 */
 		private async void initialize_unverified_client(OLLMchat.Settings.Config2 config)
 		{
-			// Loop until connection succeeds
+			// Loop until both connection and model succeed
 			while (true) {
 				// Check all connections and get first working one
 				var checking_dialog = new SettingsDialog.CheckingConnectionDialog(this);
@@ -305,8 +308,8 @@ namespace OLLMapp
 					signal_id = this.settings_dialog.closed.connect(() => {
 						// Disconnect signal to avoid multiple connections
 						this.settings_dialog.disconnect(signal_id);
-						// Re-check connection after settings dialog closes
-						this.initialize_unverified_client.begin(config);
+						// Config already updated in memory by settings dialog, just re-check
+						this.initialize_unverified_client.begin(this.app.config);
 					});
 					
 					// Show settings dialog and switch to connections tab
@@ -316,24 +319,57 @@ namespace OLLMapp
 					return;
 				}
 				
-				// Found a working connection - break out of loop
-				break;
+				// Found a working connection - now verify model
+				// Create history manager to check model
+				this.history_manager = new OLLMchat.History.Manager(this.app);
+				
+				try {
+					yield this.history_manager.ensure_model_usage();
+					// Model verified - break out of loop
+					break;
+				} catch (GLib.Error e) {
+					// Model verification failed - show warning dialog with option to configure
+					var response = yield this.show_connection_error_dialog(
+						"Default model verification failed: " + e.message
+					);
+					
+					if (response != "settings") {
+						// User closed dialog without configuring - exit
+						return;
+					}
+					
+					// User clicked Configure - show settings dialog
+					// Connect to closed signal to re-check model after settings dialog closes
+					ulong signal_id = 0;
+					signal_id = this.settings_dialog.closed.connect(() => {
+						// Disconnect signal to avoid multiple connections
+						this.settings_dialog.disconnect(signal_id);
+						// Config already updated in memory by settings dialog, just re-check
+						this.initialize_unverified_client.begin(this.app.config);
+					});
+					
+					// Show settings dialog and switch to models tab
+					this.show_settings_dialog("models");
+					
+					// Wait for settings dialog to close (will trigger re-check via signal)
+					return;
+				}
 			}
 			
-			// Connection verified, proceed with initialization
+			// Both connection and model verified, proceed with initialization
 			yield this.initialize_client(config);
 		}
 
 		/**
 		 * Initializes the client and sets up the UI.
-		 * Assumes connection has already been verified.
+		 * Assumes connection and model have already been verified.
 		 * 
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 */
 		private async void initialize_client(OLLMchat.Settings.Config2 config)
 		{
-			// Create history manager (it will create base_client from config)
-			this.history_manager = new OLLMchat.History.Manager(this.app);
+			// History manager already created in initialize_unverified_client
+			// (model verification creates it)
 			
 			// Check all connections and set is_working flags before refreshing models
 			
@@ -378,22 +414,14 @@ namespace OLLMapp
 				});
 			});
 			
-			// Register all tools with base client (Phase 2: after dependencies ready)
-			// This discovers all tool classes and creates instances with the provided dependencies
-			OLLMchat.Tool.BaseTool.register_all_tools(this.history_manager.base_client, this.project_manager);
-			
-			// Also add tools to current session's client (EmptySession was created before tools were added)
-			// Reuse the same tool instances from base_client to preserve state (like active property)
-			foreach (var tool in this.history_manager.base_client.tools.values) {
-				this.history_manager.session.client.addTool(tool);
-			}
+			// Register all tools (Phase 3: tools stored on Manager, added to Chat by agents)
+			// This is a temporary method - will be fixed properly later
+			this.history_manager.register_all_tools(this.project_manager);
 
 			
 			// Register CodeAssistant agent
-			var code_assistant = new OLLMcoder.Prompt.CodeAssistant(this.project_manager) {
-				shell = GLib.Environment.get_variable("SHELL") ?? "/usr/bin/bash"
-			};
-			this.history_manager.agents.set(code_assistant.name, code_assistant);
+			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
+			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md
 			// Register clipboard metadata for file reference paste support
@@ -418,19 +446,14 @@ namespace OLLMapp
 			// Create chat widget with manager
 			this.chat_widget = new OLLMchatGtk.ChatWidget(this.history_manager);
 			
-			// Create ChatView permission provider and set it on the base client
-			var permission_provider = new OLLMchatGtk.Tools.Permission(
+			// Create ChatView permission provider and set it on the manager (shared across all sessions)
+			this.history_manager.permission_provider = new OLLMchatGtk.Tools.Permission(
 				this.chat_widget,
 				GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(), ".config", "ollmchat"
 				)) {
 				application = this.app as GLib.Application,
 			};
-			this.history_manager.base_client.permission_provider = permission_provider;
-			// Also set on session's client (session was created before permission provider was set)
-			if (this.history_manager.session != null && this.history_manager.session.client != null) {
-				this.history_manager.session.client.permission_provider = permission_provider;
-			}
 			
 			this.chat_widget.error_occurred.connect((error) => {
 				stderr.printf("Error: %s\n", error);
@@ -456,7 +479,6 @@ namespace OLLMapp
 			// This ensures config is fully loaded and ready
 			GLib.Idle.add(() => {
 				this.initialize_codebase_search_tool.begin(
-					this.history_manager.base_client,
 					this.project_manager
 				);
 				return false; // Don't repeat
@@ -470,7 +492,6 @@ namespace OLLMapp
 		 * then creates vector database and registers the tool.
 		 */
 		private async void initialize_codebase_search_tool(
-			OLLMchat.Client client,
 			OLLMfiles.ProjectManager project_manager
 		)
 		{
@@ -491,22 +512,23 @@ namespace OLLMapp
 			// Simple tools use the default implementation, complex tools use their overrides
 			OLLMchat.Tool.BaseTool.setup_all_tool_configs(config);
 			
-			// Get and validate tool config (validation sets is_valid flags and disables tool if needed)
-			var tool_config = yield OLLMvector.Tool.CodebaseSearchTool.get_tool_config(config);
+			// Inline enabled check
+			if (!config.tools.has_key("codebase_search")) {
+				// tool disabled
+				return;
+			}
+			var tool_config = config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			if (!tool_config.enabled) {
-				string error_msg = "codebase_search tool configuration is invalid or disabled";
-				GLib.warning("Codebase search tool disabled: %s", error_msg);
-				this.tool_error_banner.title = "Tool Error: Codebase Search - " + error_msg;
-				this.tool_error_banner.revealed = true;
+				// tool disabled
 				return;
 			}
 			
-			// Get the tool from registry (already registered via register_all_tools at line 383)
-			var tool = client.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
+			// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
+			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
 			
-			// Initialize vector database (embedding_client should already be set up in constructor)
+			// Initialize vector database (embedding_client will be set up lazily)
 			try {
-				yield tool.init_databases(this.app.data_dir);
+				yield tool.init_databases(config, this.app.data_dir);
 			} catch (GLib.Error e) {
 				string error_msg = "Failed to initialize vector database: " + e.message;
 				GLib.warning("Codebase search tool disabled: %s", error_msg);
@@ -522,7 +544,8 @@ namespace OLLMapp
 			if (!OllmchatApplication.opt_disable_indexer) {
 				this.background_scan = new OLLMvector.BackgroundScan(
 					tool,
-					new OLLMcoder.GitProvider()
+					new OLLMcoder.GitProvider(),
+					config
 				);
 				
 				// Connect to scan_update signal to update banner
@@ -550,12 +573,11 @@ namespace OLLMapp
 			GLib.debug("Codebase search tool initialized successfully (name: %s, active: %s)", 
 				tool.name, tool.active.to_string());
 			
-			// Also add to current session's client if it exists
-			if (this.history_manager.session != null && this.history_manager.session.client != null) {
-				this.history_manager.session.client.addTool(tool);
-				GLib.debug("Codebase search tool added to current session (total tools: %d)", 
-					this.history_manager.session.client.tools.size);
-			}
+			// Phase 3: Tools are stored on Manager
+			// Add tool to Manager - it will be copied to Chat when Chat is created in Session
+			this.history_manager.tools.set(tool.name, tool);
+			GLib.debug("Codebase search tool added to Manager (total tools: %d)", 
+				this.history_manager.tools.size);
 		}
 		
 		/**
@@ -567,7 +589,7 @@ namespace OLLMapp
 		 * - Adds widget to tab_view if not already present
 		 * - Shows widget and updates WindowPane visibility
 		 */
-		private void on_agent_activated(OLLMchat.Prompt.BaseAgent agent)
+		private void on_agent_activated(OLLMchat.Agent.Factory factory)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -579,20 +601,20 @@ namespace OLLMapp
 				this.current_agent_widget = null;
 			}
 			
-			// Get widget from agent asynchronously
-			agent.get_widget.begin((obj, res) => {
-				var widget_obj = agent.get_widget.end(res);
-				this.handle_agent_widget(agent, widget_obj);
+			// Get widget from factory asynchronously
+			factory.get_widget.begin((obj, res) => {
+				var widget_obj = factory.get_widget.end(res);
+				this.handle_agent_widget(factory, widget_obj);
 			});
 		}
 		
 		/**
 		 * Handles the agent widget after it's been retrieved.
 		 * 
-		 * @param agent The agent that provided the widget
+		 * @param factory The factory that provided the widget
 		 * @param widget_obj The widget object (may be null)
 		 */
-		private void handle_agent_widget(OLLMchat.Prompt.BaseAgent agent, Object? widget_obj)
+		private void handle_agent_widget(OLLMchat.Agent.Factory factory, Object? widget_obj)
 		{
 			if (this.window_pane == null) {
 				return;
@@ -608,14 +630,14 @@ namespace OLLMapp
 			// Cast to Gtk.Widget
 			var widget = widget_obj as Gtk.Widget;
 			if (widget == null) {
-				GLib.warning("Agent %s returned non-widget object from get_widget()", agent.name);
+				GLib.warning("Agent %s returned non-widget object from get_widget()", factory.name);
 				this.window_pane.intended_pane_visible = false;
 				this.window_pane.schedule_pane_update();
 				return;
 			}
 			
 			// Widget ID management
-			var widget_id = agent.name + "-widget";
+			var widget_id = factory.name + "-widget";
 			
 			// Set widget name if not already set (before calling WindowPane method)
 			if (widget.name == null || widget.name == "") {
@@ -643,22 +665,22 @@ namespace OLLMapp
 			}
 			
 			// Create ListStore for agents
-			var agent_store = new GLib.ListStore(typeof(OLLMchat.Prompt.BaseAgent));
+			var agent_store = new GLib.ListStore(typeof(OLLMchat.Agent.Factory));
 			
 			// Add all registered agents to the store and set selection during load
 			uint selected_index = 0;
 			uint i = 0;
-			foreach (var agent in this.history_manager.agents.values) {
-				agent_store.append(agent);
-				if (agent.name == this.history_manager.session.agent_name) {
+			foreach (var factory in this.history_manager.agent_factories.values) {
+				agent_store.append(factory);
+				if (factory.name == this.history_manager.session.agent_name) {
 					selected_index = i;
 				}
 				i++;
 			}
 			
 			// Create factory for agent dropdown
-			var factory = new Gtk.SignalListItemFactory();
-			factory.setup.connect((item) => {
+			var list_factory = new Gtk.SignalListItemFactory();
+			list_factory.setup.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null) {
 					return;
@@ -671,40 +693,42 @@ namespace OLLMapp
 				list_item.child = label;
 			});
 			
-			factory.bind.connect((item) => {
+			list_factory.bind.connect((item) => {
 				var list_item = item as Gtk.ListItem;
 				if (list_item == null || list_item.item == null) {
 					return;
 				}
 				
-				var agent = list_item.item as OLLMchat.Prompt.BaseAgent;
+				var agent_factory = list_item.item as OLLMchat.Agent.Factory;
 				var label = list_item.get_data<Gtk.Label>("label");
 				
-				if (label != null && agent != null) {
-					label.label = agent.title;
+				if (label != null && agent_factory != null) {
+					label.label = agent_factory.title;
 				}
 			});
 			
 			// Set up dropdown with agents
 			this.agent_dropdown.model = agent_store;
-			this.agent_dropdown.set_factory(factory);
-			this.agent_dropdown.set_list_factory(factory);
+			this.agent_dropdown.set_factory(list_factory);
+			this.agent_dropdown.set_list_factory(list_factory);
 			this.agent_dropdown.selected = selected_index;
 			
-			// Connect selection change to update session's agent_name and client
+			// Connect selection change to activate agent via Manager
 			this.agent_dropdown.notify["selected"].connect(() => {
 				if (this.agent_dropdown.selected == Gtk.INVALID_LIST_POSITION) {
 					return;
 				}
 				
-				var agent = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Prompt.BaseAgent;
-				  
-				this.history_manager.session.agent_name = agent.name;
-				// Update current session's client prompt_assistant (direct assignment, agents are stateless)
-				this.history_manager.session.client.prompt_assistant = agent;
+				var factory = (this.agent_dropdown.model as GLib.ListStore).get_item(this.agent_dropdown.selected) as OLLMchat.Agent.Factory;
 				
-				// Emit agent_activated signal for UI updates (Window listens to this)
-				this.history_manager.agent_activated(agent);
+				// Use Manager.activate_agent() to handle agent change
+				// This routes to session.activate_agent() which handles AgentHandler creation/copying
+				// and then triggers agent_activated signal for UI updates
+				try {
+					this.history_manager.activate_agent(this.history_manager.session.fid, factory.name);
+				} catch (Error e) {
+					GLib.warning("Failed to activate agent '%s': %s", factory.name, e.message);
+				}
 			});
 			
 			// Connect to session_activated signal to update when session changes
@@ -716,7 +740,7 @@ namespace OLLMapp
 				}
 				
 				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Prompt.BaseAgent)store.get_item(j)).name != session.agent_name) {
+					if (((OLLMchat.Agent.Factory)store.get_item(j)).name != session.agent_name) {
 						continue;
 					}
 					this.agent_dropdown.selected = j;

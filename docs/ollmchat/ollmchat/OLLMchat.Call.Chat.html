@@ -31,6 +31,7 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
+          <li class="property"><a href="OLLMchat.Call.Chat.agent.html">agent</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.format.html">format</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.format_obj.html">format_obj</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.keep_alive.html">keep_alive</a></li>
@@ -38,16 +39,22 @@
           <li class="property"><a href="OLLMchat.Call.Chat.model.html">model</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.options.html">options</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.stream.html">stream</a></li>
+          <li class="property"><a href="OLLMchat.Call.Chat.streaming_response.html">streaming_response</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.system_content.html">system_content</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.think.html">think</a></li>
           <li class="property"><a href="OLLMchat.Call.Chat.tools.html">tools</a></li>
           <li class="creation_method"><a href="OLLMchat.Call.Chat.Chat.html">Chat</a></li>
+          <li class="method"><a href="OLLMchat.Call.Chat.add_tool.html">add_tool</a></li>
           <li class="virtual_method"><a href="OLLMchat.Call.Chat.deserialize_property.html">deserialize_property</a></li>
-          <li class="method"><a href="OLLMchat.Call.Chat.exec_chat.html">exec_chat</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.reply.html">reply</a></li>
+          <li class="method"><a href="OLLMchat.Call.Chat.send.html">send</a></li>
+          <li class="method"><a href="OLLMchat.Call.Chat.send_append.html">send_append</a></li>
           <li class="virtual_method"><a href="OLLMchat.Call.Chat.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Call.Chat.toolsReply.html">toolsReply</a></li>
-          <li class="field"><a href="OLLMchat.Call.Chat.fid.html">fid</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.stream_chunk.html">stream_chunk</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.stream_start.html">stream_start</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.tool_call_requested.html">tool_call_requested</a></li>
+          <li class="signal"><a href="OLLMchat.Call.Chat.tool_message.html">tool_message</a></li>
         </ul>
       </div>
       <div class="site_content">
@@ -72,7 +79,7 @@
             Manages the conversation flow and tool call recursion. Automatically executes tools when the model requests them and continues the 
             conversation with tool results.</p>
           <h2>Example </h2>
-          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.messages.add(<span class="main_keyword">new</span> Message(call, <span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><br/><span class="main_comment">// Execute chat (handles tool calls automatically)</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> call.exec_chat();<br/><br/><span class="main_comment">// Access response content</span><br/>print(response.message.content);</code></pre>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>call.messages.add(<span class="main_keyword">new</span> Message(<span class="main_literal">"user"</span>, <span class="main_literal">"Hello!"</span>));<br/><br/><span class="main_comment">// Execute chat (handles tool calls automatically)</span><br/><span class="main_keyword">var</span> response = <span class="main_keyword">yield</span> call.send(call.messages);<br/><br/><span class="main_comment">// Access response content</span><br/>print(response.message.content);</code></pre>
           </p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Call.html">OLLMchat.Call</a>
@@ -82,6 +89,10 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Agent.Base.html" class="class">Base</a></span>? <b><a href="OLLMchat.Call.Chat.agent.html" class="property">agent</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Reference to the agent handler that created this chat.</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><a href="OLLMchat.Call.Chat.format.html" class="property">format</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -111,6 +122,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.Call.Chat.streaming_response.html" class="property">streaming_response</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Current streaming response object (internal use).</span>
+            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Call.Chat.system_content.html" class="property">system_content</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -126,25 +141,34 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Call.Chat.Chat.html" class="creation_method">Chat</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_basic_type"><span class="class">string</span></span> model, <span class="main_type"><a href="OLLMchat.Call.Options.html" class="class">Options</a></span>? options = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMchat.Call.Chat.Chat.html" class="creation_method">Chat</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Connection.html" class="class">Connection</a></span> connection, <span class="main_basic_type"><span class="class">string</span></span> model)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Creates a new Chat instance for sending messages to the chat API.
+              </span>
             </div></li>
         </ul>
         <h3 class="main_title">Methods:</h3>
         <ul class="navi_inline">
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Call.Chat.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.add_tool.html" class="method">add_tool</a></b> (<span class="main_type"><a href="OLLMchat.Tool.BaseTool.html" class="abstract_class">BaseTool</a></span> tool)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Adds a tool to this chat's tools map.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.exec_chat.html" class="method">exec_chat</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Call.Chat.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
             </span>
             <div class="leaf_brief_description">
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.reply.html" class="method">reply</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> previous_response) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Sets up this Chat as a reply to a previous conversation and executes 
-                it. Appends the previous assistant response and new user message to the messages array, then calls exec_chat().</span>
+                it. Appends the previous assistant response and new user message to the messages array, then calls send().</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.send.html" class="method">send</a></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; messages, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Sends messages to the chat API.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> <b><a href="OLLMchat.Call.Chat.send_append.html" class="method">send_append</a></b> (<span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; new_messages, <span class="main_type"><span class="class">Cancellable</span></span>? cancellable = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Appends new messages to existing messages and sends them.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_type"><span class="class">Node</span></span> <b><a href="OLLMchat.Call.Chat.serialize_property.html" class="virtual_method">serialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec)
             </span>
@@ -156,11 +180,25 @@
                 automatically.</span>
             </div></li>
         </ul>
-        <h3 class="main_title">Fields:</h3>
+        <h3 class="main_title">Signals:</h3>
         <ul class="navi_inline">
-          <li class="field"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Call.Chat.fid.html" class="field">fid</a></b>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.stream_chunk.html" class="signal">stream_chunk</a></b> (<span class="main_basic_type"><span class="class">string</span></span> new_text, <span class="main_basic_type"><span class="struct">bool</span></span> is_thinking, <span class="main_type"><a href="OLLMchat.Response.Chat.html" class="class">Chat</a></span> response)
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a streaming chunk is received from the chat API.</span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.stream_start.html" class="signal">stream_start</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when the streaming response starts (first chunk received). 
+                This signal is emitted when the first chunk of the response is processed, indicating that the server has started sending data back.
+              </span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.tool_call_requested.html" class="signal">tool_call_requested</a></b> (<span class="main_type"><a href="OLLMchat.Response.ToolCall.html" class="class">ToolCall</a></span> tool_call, <span class="main_type"><span class="class">ArrayList</span></span>&lt;<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span>&gt; return_messages)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a tool call is detected and needs to be executed.</span>
+            </div></li>
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Call.Chat.tool_message.html" class="signal">tool_message</a></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when a tool sends a status message during execution.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
@@ -200,7 +238,7 @@
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.OllamaBase.chat_content.html">chat_content</a></li>
-                <li class="property"><a href="OLLMchat.OllamaBase.client.html">client</a></li>
+                <li class="property"><a href="OLLMchat.OllamaBase.connection.html">connection</a></li>
                 <li class="virtual_method"><a href="OLLMchat.OllamaBase.deserialize_property.html">deserialize_property</a></li>
               </ul>
             </div>

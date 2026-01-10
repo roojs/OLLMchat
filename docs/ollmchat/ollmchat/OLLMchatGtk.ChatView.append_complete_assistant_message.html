@@ -49,7 +49,7 @@
         <h1 class="main_title">append_complete_assistant_message</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">append_complete_assistant_message</span></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">append_complete_assistant_message</span></b> (<span class="main_type"><a href="OLLMchat.Message.html" class="class">Message</a></span> message, <span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session)
         </div>
         <div class="description">
           <p>Appends a complete assistant message (not streaming). Used when loading sessions from history.</p>
@@ -59,6 +59,12 @@
               <td class="main_parameter_table_name">message</td>
               <td>
                 <p>The complete Message object to display </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">session</td>
+              <td>
+                <p>The session that owns this message (provides client and chat) </p>
               </td>
             </tr>
           </table>

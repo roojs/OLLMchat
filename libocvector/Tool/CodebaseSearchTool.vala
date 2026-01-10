@@ -49,53 +49,6 @@ namespace OLLMvector.Tool
 			config.tools.set("codebase_search", tool_config);
 		}
 		
-		/**
-		 * Gets and validates the codebase search tool configuration.
-		 * 
-		 * Returns the CodebaseSearchToolConfig from `Config2.tools["codebase_search"]` if it exists.
-		 * Validates that:
-		 * - Tool config exists
-		 * - Embed and analysis ModelUsage have connection and model set
-		 * - Connections exist in config
-		 * - Models are available on the servers
-		 * 
-		 * If validation fails, sets `is_valid = false` on the ModelUsage objects,
-		 * disables the tool, and logs warnings. If config doesn't exist, returns a disabled tool_config.
-		 * 
-		 * @param config The Config2 instance
-		 * @return The CodebaseSearchToolConfig instance from tools map, or a disabled one if not found
-		 */
-		public static async CodebaseSearchToolConfig get_tool_config(
-			OLLMchat.Settings.Config2 config)
-		{
-			if (!config.tools.has_key("codebase_search")) {
-				var tool_config = new CodebaseSearchToolConfig();
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-			
-			// Validate embed ModelUsage (verify_model checks connection and model availability)
-			var embed_usage = tool_config.embed;
-			if (!(yield embed_usage.verify_model(config))) {
-				GLib.warning("Codebase search tool: Embed model verification failed");
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			// Validate analysis ModelUsage (verify_model checks connection and model availability)
-			var analysis_usage = tool_config.analysis;
-			if (!(yield analysis_usage.verify_model(config))) {
-				GLib.warning("Codebase search tool: Analysis model verification failed");
-				tool_config.enabled = false;
-				return tool_config;
-			}
-			
-			// All validation passed
-			return tool_config;
-		}
-		
 		public override string name { get { return "codebase_search"; } }
 		
 		public override string title { get { return "Sematic Codebase Search Tool"; } }
@@ -169,32 +122,14 @@ making it more effective than simple text search for finding relevant code.
 		 * @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
 		 */
 		public CodebaseSearchTool(
-			OLLMchat.Client? client = null,
 			OLLMfiles.ProjectManager? project_manager = null
 		)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 			
-			// Extract embedding_client from client.config if available
-			if (client == null) {
-				return;
-			}
-			
-			if (!client.config.tools.has_key("codebase_search")) {
-				return;
-			}
-			
-			var tool_config = client.config.tools.get("codebase_search") as CodebaseSearchToolConfig;
-			if (tool_config.embed.connection == "" || 
-				!client.config.connections.has_key(tool_config.embed.connection)) {
-				return;
-			}
-			
-			this.embedding_client = new OLLMchat.Client(client.config.connections.get(tool_config.embed.connection)) {
-				config = client.config,
-				model = tool_config.embed.model
-			};
+			// Embedding client will be extracted lazily when config is available
+			// (e.g., in init_databases or when tool is used with Manager context)
 		}
 		
 		/**
@@ -203,20 +138,39 @@ making it more effective than simple text search for finding relevant code.
 		 * This method should be called after the tool is constructed and embedding_client is set.
 		 * It performs the async operation to get the embedding dimension and creates the vector_db.
 		 * 
+		 * @param config Config2 instance for database initialization
 		 * @param data_dir Data directory for vector database.
 		 * @throws GLib.Error if initialization fails
 		 */
-		public async void init_databases(string data_dir) throws GLib.Error
+		public async void init_databases(OLLMchat.Settings.Config2 config, string data_dir) throws GLib.Error
 		{
 			if (this.vector_db != null) {
 				return; // Already initialized
 			}
 			
+			// Extract embedding_client from config if not already set
+			if (this.embedding_client == null) {
+				if (!config.tools.has_key("codebase_search")) {
+					throw new GLib.IOError.FAILED("codebase_search tool config not found");
+				}
+				
+				var tool_config = config.tools.get("codebase_search") as CodebaseSearchToolConfig;
+				if (tool_config.embed.connection == "" || 
+					!config.connections.has_key(tool_config.embed.connection)) {
+					throw new GLib.IOError.FAILED("codebase_search embed connection not configured");
+				}
+				
+				this.embedding_client = new OLLMchat.Client(config.connections.get(tool_config.embed.connection));
+			}
+			
 			// Set vector database path
 			this.vector_db_path = GLib.Path.build_filename(data_dir, "codedb.faiss.vectors");
 			
-			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embedding_client);
-			this.vector_db = new OLLMvector.Database(this.embedding_client, this.vector_db_path, dimension);
+			// Get dimension first, then create database
+			var temp_db = new OLLMvector.Database(config, 
+				this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+			var dimension = yield temp_db.embed_dimension();
+			this.vector_db = new OLLMvector.Database(config, this.vector_db_path, dimension);
 		}
 		
 		public override Type config_class() { return typeof(CodebaseSearchToolConfig); }

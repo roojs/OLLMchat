@@ -26,6 +26,7 @@ namespace OLLMchat.Call
 	 */
 	public class Embed : Base
 	{
+		// Real properties (Phase 3: fallback logic removed)
 		public string model { get; set; }
 		
 		public string input { get; set; default = ""; }
@@ -33,16 +34,13 @@ namespace OLLMchat.Call
 		public bool truncate { get; set; default = false; }
 		public int dimensions { get; set; default = -1; }
 		
-		public string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
-		}
+		public string? keep_alive { get; set; }
 		
-		public Call.Options options { get; set; }
+		public Call.Options options { get; set; default = new Call.Options(); }
 
-		public Embed(Client client, string model, Call.Options? options = null)
+		public Embed(Settings.Connection connection, string model)
 		{
-			base(client);
+			base(connection);
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
@@ -50,12 +48,8 @@ namespace OLLMchat.Call
 			this.http_method = "POST";
 			this.model = model;
 			
-			// Load model options from config if options not provided
-			this.options = options != null
-				? options
-				: (this.client.config.model_options.has_key(model)
-					? this.client.config.model_options.get(model)
-					: new Call.Options());
+			// Always initialize with empty options - callers should set options after construction
+			this.options = new Call.Options();
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
@@ -166,7 +160,7 @@ namespace OLLMchat.Call
 			if (embed_obj == null) {
 				throw new OllamaError.FAILED("Failed to deserialize embed response");
 			}
-			embed_obj.client = this.client;
+			// Note: client no longer set on response objects
 			
 			// Normalize all embeddings before returning
 			foreach (var embedding in embed_obj.embeddings) {

@@ -52,10 +52,8 @@ namespace OLLMvector.Indexing
 	 * yield indexer.index_folder(folder, recursive: true);
 	 * }}}
 	 */
-	public class Indexer : Object
+	public class Indexer : VectorBase
 	{
-		private OLLMchat.Client analysis_client;
-		private OLLMchat.Client embed_client;
 		private OLLMvector.Database vector_db;
 		private SQ.Database sql_db;
 		private OLLMfiles.ProjectManager manager;
@@ -72,21 +70,18 @@ namespace OLLMvector.Indexing
 		/**
 		 * Constructor.
 		 * 
-		 * @param analysis_client The OLLMchat client for analysis (LLM summarization)
-		 * @param embed_client The OLLMchat client for embeddings API
+		 * @param config The Config2 instance containing tool configuration
 		 * @param vector_db The vector database for FAISS storage (should have filename set in constructor to auto-save)
 		 * @param sql_db The SQLite database for metadata storage
 		 * @param manager The ProjectManager for file/folder operations
 		 */
 		public Indexer(
-			OLLMchat.Client analysis_client,
-			OLLMchat.Client embed_client,
+			OLLMchat.Settings.Config2 config,
 			OLLMvector.Database vector_db,
 			SQ.Database sql_db,
 			OLLMfiles.ProjectManager manager)
 		{
-			this.analysis_client = analysis_client;
-			this.embed_client = embed_client;
+			base(config);
 			this.vector_db = vector_db;
 			this.sql_db = sql_db;
 			this.manager = manager;
@@ -137,11 +132,12 @@ namespace OLLMvector.Indexing
 				return true;
 			}
 			
-			var analysis = new Analysis(this.analysis_client, this.sql_db);
+			var analysis = new Analysis(this.config, this.sql_db);
 			tree = yield analysis.analyze_tree(tree);
 			
+			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
-				this.embed_client, this.vector_db, this.sql_db);
+				this.config, this.vector_db, this.sql_db);
 			yield vector_builder.process_file(tree);
 			
 			file.last_vector_scan = new DateTime.now_local().to_unix();
@@ -250,9 +246,11 @@ namespace OLLMvector.Indexing
 			// Use the static VectorMetadata.reset_database method to do the actual reset
 			OLLMvector.VectorMetadata.reset_database(this.sql_db, vector_db_path);
 			
-			// Recreate the vector_db object (clears in-memory index)
-			var dimension = yield OLLMvector.Database.get_embedding_dimension(this.embed_client);
-			this.vector_db = new OLLMvector.Database(this.embed_client, vector_db_path, dimension);
+		// Get dimension first, then create database
+			var temp_db = new OLLMvector.Database(this.config, vector_db_path,
+				 OLLMvector.Database.DISABLE_INDEX);
+			var dimension = yield temp_db.embed_dimension();
+			this.vector_db = new OLLMvector.Database(this.config, vector_db_path, dimension);
 		}
 	}
 

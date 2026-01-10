@@ -276,8 +276,8 @@ ocvector_resources = gnome.compile_resources(
 # Note: Does NOT depend on liboccoder - uses base BufferProviderBase instead
 # This allows the indexer to work without GTK dependencies
 oc_vector_index = executable('oc-vector-index',
-  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
-  link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
+  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep],
+  link_with: [ollmchat_base_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
   sources: ['TestAppBase.vala', 'VectorAppBase.vala', 'oc-vector-index.vala', ocvector_resources],
   include_directories: [
     include_directories('../libocvector'),
@@ -296,7 +296,7 @@ oc_vector_index = executable('oc-vector-index',
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',
-    # Don't use --pkg=ocvector when linking with ocvector_base_lib - meson includes ocvector-meson.vapi automatically
+    '--pkg=ocvector',  # Use custom ocvector.vapi (ocvector-meson.vapi is deleted)
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
@@ -313,8 +313,8 @@ oc_vector_index = executable('oc-vector-index',
 # Note: Does NOT depend on liboccoder - uses base BufferProviderBase instead
 # This allows the search tool to work without GTK dependencies
 oc_vector_search = executable('oc-vector-search',
-  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep],
-  link_with: [ocvector_base_lib, ollmchat_base_lib],  # Link with libraries directly
+  dependencies: [test_ollama_deps, ocvector_vapi_dep, ocsqlite_vapi_dep, ocagent_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep],
+  link_with: [ollmchat_base_lib],  # Use ocvector_vapi_dep (link_args) instead of link_with to avoid ocvector-meson.vapi
   sources: ['TestAppBase.vala', 'VectorAppBase.vala', 'oc-vector-search.vala'],
   include_directories: [
     include_directories('../libocvector'),
@@ -333,7 +333,7 @@ oc_vector_search = executable('oc-vector-search',
     '--pkg=fiass',
     '--pkg=ocagent',
     '--pkg=ollmchat',
-    # Don't use --pkg=ocvector when linking with ocvector_base_lib - meson includes ocvector-meson.vapi automatically
+    '--pkg=ocvector',  # Use custom ocvector.vapi (ocvector-meson.vapi is deleted)
     '--pkg=ocfiles',
     '--vapidir', meson.current_source_dir() / '../vapi',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',

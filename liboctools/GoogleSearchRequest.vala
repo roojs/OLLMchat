@@ -155,17 +155,8 @@ namespace OLLMtools
 		
 		protected override bool build_perm_question()
 		{
-			// Validate required parameter
-			if (this.query == "") {
-				return false;
-			}
-			
-			// Set permission properties
-			this.permission_target_path = "https://www.googleapis.com/";
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
-			this.permission_question = "Search Google for: " + this.query + "?";
-			
-			return true;
+			// Permission check removed - Google Search no longer requires permission
+			return false;
 		}
 		
 		protected override async string execute_request() throws Error
@@ -180,11 +171,14 @@ namespace OLLMtools
 				throw new GLib.IOError.INVALID_ARGUMENT("Start parameter must be >= 1");
 			}
 			
+			// Get config via agent interface
+			var config = this.agent.config();
+			
 			// Ensure tool config exists (creates with empty values if needed)
-			new GoogleSearchTool(null, null).setup_tool_config(this.tool.client.config);
+			new GoogleSearchTool(null).setup_tool_config(config);
 			
 			// Get tool config (guaranteed to exist after setup_tool_config)
-			var tool_config = this.tool.client.config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;
+			var tool_config = config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;
 			
 			if (tool_config.api_key == "" || tool_config.engine_id == "") {
 				throw new GLib.IOError.FAILED(

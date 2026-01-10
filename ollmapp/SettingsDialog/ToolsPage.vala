@@ -36,12 +36,12 @@ namespace OLLMapp.SettingsDialog
 		public MainDialog dialog { get; construct; }
 		
 		/**
-		 * Reference to Client instance to access Client.tools registry.
+		 * Reference to History Manager to access Manager.tools registry.
 		 * 
 		 * This is used to discover available tools and get tool metadata.
 		 * Can be null if tools registry is not available.
 		 */
-		public OLLMchat.Client? client { get; set; default = null; }
+		public OLLMchat.History.Manager? history_manager { get; set; default = null; }
 		
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
@@ -89,14 +89,14 @@ namespace OLLMapp.SettingsDialog
 		/**
 		 * Loads all tools from Config2.tools and renders their configurations.
 		 * 
-		 * If Client.tools is available, uses it to get tool metadata (name, description).
+		 * If Manager.tools is available, uses it to get tool metadata (name, description).
 		 * Otherwise, uses tool name from Config2.tools keys directly.
 		 * Only adds tools that aren't already present in the UI (tools stay once loaded).
 		 */
 		public void load_tools()
 		{
-			// Get client with tools from parent window's history_manager
-			this.client = (this.dialog.parent as OllmchatWindow).history_manager.base_client;
+			// Get history_manager with tools from parent window
+			this.history_manager = (this.dialog.parent as OllmchatWindow).history_manager;
 			
 			// Iterate through Config2.tools to discover all configured tools
 			foreach (var entry in this.dialog.app.config.tools.entries) {
@@ -106,10 +106,10 @@ namespace OLLMapp.SettingsDialog
 					continue;
 				}
 				
-				// Get tool object from Client.tools if available (for metadata) and create tool row
+				// Get tool object from Manager.tools if available (for metadata) and create tool row
 				var tool_row = new Rows.Tool(
 					this.dialog,
-					this.client.tools.get(entry.key),
+					this.history_manager != null && this.history_manager.tools.has_key(entry.key) ? this.history_manager.tools.get(entry.key) : null,
 					entry.value,
 					entry.key
 				);

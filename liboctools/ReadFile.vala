@@ -67,9 +67,9 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public ReadFile(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
+		public ReadFile(OLLMfiles.ProjectManager? project_manager = null)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 		}
 		

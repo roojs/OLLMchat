@@ -72,10 +72,49 @@ namespace OLLMchat.Settings
 		public Gee.ArrayList<string> hidden_models { get; set; default = new Gee.ArrayList<string>(); }
 
 		/**
+		 * HTTP session for making requests.
+		 * 
+		 * Shared across all Clients using this Connection (connection pooling).
+		 * Initialized in constructor.
+		 * Non-serialized field (runtime state, not saved to config).
+		 * 
+		 * @since 1.2.3
+		 */
+		public Soup.Session soup;
+
+		/**
+		 * HTTP request timeout in seconds.
+		 * 
+		 * Default is 300 seconds (5 minutes) to accommodate long-running LLM requests.
+		 * Set to 0 for no timeout (not recommended).
+		 * Aliases soup.timeout - reading/writing this property reads/writes soup.timeout.
+		 * Non-serialized property (runtime state, not saved to config).
+		 * 
+		 * @since 1.2.3
+		 */
+		public uint timeout {
+			get { return this.soup.timeout; }
+			set { this.soup.timeout = value; }
+		}
+
+		/**
+		 * Models loaded from the server, keyed by model name.
+		 *
+		 * This map is populated by calling load_models().
+		 * Non-serialized property (runtime cache, not saved to config).
+		 *
+		 * @since 1.2.7.11
+		 */
+		public Gee.HashMap<string, OLLMchat.Response.Model> models { get; private set; 
+			default = new Gee.HashMap<string, OLLMchat.Response.Model>(); }
+
+		/**
 		 * Default constructor.
 		 */
 		public Connection()
 		{
+			this.soup = new Soup.Session();
+			this.timeout = 300; // Default timeout
 		}
 
 		/**
@@ -124,6 +163,11 @@ namespace OLLMchat.Settings
 						json_array.add_string_element(model);
 					}
 					return array_node;
+				case "soup":
+				case "timeout":
+				case "models":
+					// Exclude runtime properties from serialization
+					return null;
 			}
 			return default_serialize_property(property_name, value, pspec);
 		}
@@ -177,8 +221,83 @@ namespace OLLMchat.Settings
 				GLib.debug("SEND: %s", body);
 				message.set_request_body_from_bytes("application/json", new Bytes(body.data));
 			}
-
+			
 			return message;
+		}
+
+		/**
+		 * Loads all available models from the server and stores them in models.
+		 *
+		 * Fetches the list of models, then gets detailed information for each model
+		 * including capabilities. Results are stored in models HashMap.
+		 *
+		 * Replicates the original Client.fetch_all_model_details() behavior:
+		 * calls models() API, then show_model() for each model.
+		 *
+		 * Note: This method does not refresh model details for models that are already
+		 * cached (in-memory or file cache). It only fetches details for new models that
+		 * are not yet cached. This functionality may be needed in the future to refresh
+		 * cached models with updated server data, but is not currently implemented.
+		 *
+		 * @since 1.2.7.11
+		 */
+		public async void load_models() throws Error
+		{
+			// Create a temporary client to use its methods (which don't store state anymore)
+			var client = new OLLMchat.Client(this);
+			
+			// Get list of models from API (replicates original: yield this.models())
+			var models_list = yield client.models();
+			
+			// Track which models are still available
+			var current_model_names = new Gee.HashSet<string>();
+			
+			// For each model, get detailed information including capabilities
+			// Replicates original: yield this.show_model(model.name) for each
+			foreach (var model in models_list) {
+				current_model_names.add(model.name);
+				
+				// Skip if model already exists in cache
+				if (this.models.has_key(model.name)) {
+					continue;
+				}
+				
+				// Try to load from file cache
+				var cached_model = model.load_from_cache();
+				if (cached_model != null) {
+					this.models.set(model.name, cached_model);
+					continue;
+				}
+				
+				// Fetch from API (only this part needs error handling)
+				try {
+					var show_call = new OLLMchat.Call.ShowModel(this, model.name);
+					var detailed_model = yield show_call.exec_show();
+					
+					// Update detailed model with relevant data from list model (size, digest, etc.)
+					detailed_model.update_from_list_model(model);
+					
+					// Save to file cache
+					detailed_model.save_to_cache();
+					
+					// Store in connection.models cache (replaces client.available_models)
+					this.models.set(model.name, detailed_model);
+				} catch (Error e) {
+					GLib.warning("Failed to get details for model %s: %s", model.name, e.message);
+					// Skip this model on error
+				}
+			}
+			
+			// Remove old models from cache that are no longer in the list
+			var models_to_remove = new Gee.ArrayList<string>();
+			foreach (var model_name in this.models.keys) {
+				if (!current_model_names.contains(model_name)) {
+					models_to_remove.add(model_name);
+				}
+			}
+			foreach (var model_name in models_to_remove) {
+				this.models.unset(model_name);
+			}
 		}
 	}
 }

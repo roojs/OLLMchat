@@ -212,7 +212,8 @@ namespace OLLMtools
 			this.send_ui("bash", "", "$ " + this.command);
 			
 			// Request permission (will always ask for complex commands due to unique path)
-			if (!(yield this.chat_call.client.permission_provider.request(this))) {
+			// Get permission provider via agent interface
+			if (!(yield this.agent.get_permission_provider().request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
 			}
 			
@@ -237,14 +238,8 @@ namespace OLLMtools
 			var run_command_tool = (RunCommand) this.tool;
 			var work_dir = run_command_tool.base_directory;
 			
-			// Check if active agent provides a working directory
-			var prompt_assistant = this.chat_call.client.prompt_assistant;
-			if (prompt_assistant != null) {
-				var agent_work_dir = prompt_assistant.get_working_directory();
-				if (agent_work_dir != "") {
-					work_dir = agent_work_dir;
-				}
-			}
+			// Note: Agent working directory access will be handled differently in Phase 3/4
+			// For now, use tool's base_directory
 			
 			// Execute command using shell with working directory
 			// Build command with cd if needed

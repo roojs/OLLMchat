@@ -25,9 +25,9 @@ namespace OLLMchat.Call
 	 */
 	public class Models : Base
 	{
-		public Models(Client client)
+		public Models(Settings.Connection connection)
 		{
-			base(client);
+			base(connection);
 			this.url_endpoint = "tags";
 			this.http_method = "GET";
 		}

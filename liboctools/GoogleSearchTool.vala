@@ -52,9 +52,9 @@ The tool requires permission to access the Google Custom Search API.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public GoogleSearchTool(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
+		public GoogleSearchTool(OLLMfiles.ProjectManager? project_manager = null)
 		{
-			base(client);
+			base();
 			this.project_manager = project_manager;
 		}
 		

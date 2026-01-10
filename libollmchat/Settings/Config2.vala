@@ -51,6 +51,14 @@ namespace OLLMchat.Settings
 	public class Config2 : Object, Json.Serializable
 	{
 		/**
+		 * Emitted when configuration has been updated (typically after preferences dialog closes).
+		 * 
+		 * This signal is useful for components that need to react to configuration
+		 * changes, such as restarting background threads when model settings change.
+		 */
+		public signal void changed();
+		
+		/**
 		 * Map of connection URL → Connection objects
 		 */
 		public Gee.Map<string, Connection> connections { get; set; default = new Gee.HashMap<string, Connection>(); }
@@ -438,6 +446,46 @@ namespace OLLMchat.Settings
 		}
 
 		/**
+		 * Creates a deep copy of this Config2 instance by serializing and deserializing.
+		 * 
+		 * This method creates a completely independent copy that can be safely used
+		 * in a different thread without thread-safety concerns. The cloned config
+		 * will have all the same data but separate Gee.HashMap instances.
+		 * 
+		 * @return A new Config2 instance that is a deep copy of this one
+		 */
+		public Config2 clone()
+		{
+			try {
+				// Serialize this config to JSON
+				var json_node = Json.gobject_serialize(this);
+				var json_generator = new Json.Generator();
+				json_generator.set_root(json_node);
+				json_generator.set_pretty(false);
+				string json_string = json_generator.to_data(null);
+				
+				// Deserialize to create a new instance
+				var cloned_config = Json.gobject_from_data(
+					typeof(Config2),
+					json_string,
+					-1
+				) as Config2;
+				
+				if (cloned_config == null) {
+					GLib.warning("Failed to clone Config2");
+					return new Config2();
+				}
+				
+				// Preserve loaded flag
+				cloned_config.loaded = this.loaded;
+				return cloned_config;
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to clone Config2: %s", e.message);
+				return new Config2();
+			}
+		}
+
+		/**
 		 * Gets the default connection from the connections map.
 		 *
 		 * @return The default connection, or null if no default connection is found
@@ -499,65 +547,6 @@ namespace OLLMchat.Settings
 			return "";
 		}
 
-		/**
-		 * Creates a Client instance configured from a usage entry.
-		 *
-		 * Gets the ModelUsage for the given name, finds the connection specified
-		 * in ModelUsage.connection URL, and creates a Client with the connection,
-		 * model, and config. Returns null if the usage entry doesn't exist or
-		 * the specified connection is not found.
-		 *
-		 * @param name The usage key name (e.g., "default_model", "title_model")
-		 * @return A new Client instance configured from the usage entry, or null if not found or connection invalid
-		 */
-		public OLLMchat.Client? create_client(string name)
-		{
-			var model_usage_obj = this.usage.get(name) as ModelUsage;
-			if (model_usage_obj == null) {
-				return null;
-			}
-
-			// Get connection from ModelUsage
-			if (model_usage_obj.connection == "" || 
-					!this.connections.has_key(model_usage_obj.connection)) {
-				return null;
-			}
-			
-
-			// Create client with connection, model, and config
-			return new OLLMchat.Client( this.connections.get(model_usage_obj.connection)) {
-				config = this,
-				model = model_usage_obj.model
-			};
-		}
-
-		/**
-		 * Creates a Chat instance configured from a usage entry.
-		 *
-		 * Gets the ModelUsage for the given name, creates a Client using create_client(),
-		 * and creates a Chat object with the client, model, and options from the ModelUsage.
-		 * Returns null if the usage entry doesn't exist or the client cannot be created.
-		 *
-		 * The caller can then set properties on chat.client (e.g., chat.client.stream = true).
-		 *
-		 * @param name The usage key name (e.g., "default_model", "ocvector.analysis")
-		 * @return A new Chat instance configured from the usage entry, or null if not found or client invalid
-		 */
-		public OLLMchat.Call.Chat? create_chat(string name)
-		{
-			var model_usage_obj = this.usage.get(name) as ModelUsage;
-			if (model_usage_obj == null) {
-				return null;
-			}
-
-			var client = this.create_client(name);
-			if (client == null) {
-				return null;
-			}
-
-			// Create chat with client, model, and options from ModelUsage
-			return new OLLMchat.Call.Chat(client, model_usage_obj.model, model_usage_obj.options);
-		}
 
 		/**
 		 * Saves configuration to file.

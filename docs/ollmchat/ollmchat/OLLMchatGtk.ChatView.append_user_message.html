@@ -49,7 +49,7 @@
         <h1 class="main_title">append_user_message</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">append_user_message</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><a href="OLLMchat.ChatContentInterface.html" class="interface">ChatContentInterface</a></span> message)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><span class="method">append_user_message</span></b> (<span class="main_basic_type"><span class="class">string</span></span> text, <span class="main_type"><a href="OLLMchat.History.SessionBase.html" class="abstract_class">SessionBase</a></span> session)
         </div>
         <div class="description">
           <p>Appends a message to the chat view.</p>
@@ -62,9 +62,9 @@
               </td>
             </tr>
             <tr>
-              <td class="main_parameter_table_name">message</td>
+              <td class="main_parameter_table_name">session</td>
               <td>
-                <p>The ChatContentInterface object (ChatResponse for assistant messages) </p>
+                <p>The session that owns this message (provides client and chat) </p>
               </td>
             </tr>
           </table>

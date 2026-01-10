@@ -57,23 +57,25 @@
           <li class="method"><a href="OLLMchat.Response.Model.load_from_cache.html">load_from_cache</a></li>
           <li class="method"><a href="OLLMchat.Response.Model.save_to_cache.html">save_to_cache</a></li>
           <li class="virtual_method"><a href="OLLMchat.Response.Model.serialize_property.html">serialize_property</a></li>
-          <li class="method"><a href="OLLMchat.Response.Model.updateFrom.html">updateFrom</a></li>
+          <li class="method"><a href="OLLMchat.Response.Model.update_from_list_model.html">update_from_list_model</a></li>
         </ul>
       </div>
       <div class="site_content">
         <h1 class="main_title">model</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span>? <b><span class="property">model</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="property">model</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Model identifier from ps() API response.</p>
+          <p>Model identifier from show API response.</p>
           <div class="main_notification_block"><span class="main_block_headline">Note:</span> 
             <div class="main_block_content">
-              <p>For setting Client.model, always use model.name instead of this property to ensure consistency. This property may be null or differ 
+              <p>For setting Client.model, always use model.name instead of this property to ensure consistency. This property may be empty or differ 
                 from name in some contexts. </p>
             </div>
           </div>
+          <p>This property comes from the show API (show_model() endpoint). The name property comes from the list API (models() endpoint) and is the 
+            primary identifier.</p>
         </div>
       </div>
     </div><br/>

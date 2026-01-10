@@ -88,12 +88,14 @@ namespace OLLMchat.Response
 		 * Generates a summary string with performance metrics.
 		 *
 		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s"
-		 *         Returns empty string if eval_duration is 0 (no metrics available)
+		 *         Returns "Response completed (metrics not available)" if eval_duration is 0 (no metrics available)
 		 */
 		public string get_summary()
 		{
 			if (this.eval_duration <= 0) {
-				return "";
+				// Return meaningful message when metrics aren't available
+				// This ensures users always see feedback that the response completed
+				return "Response completed (metrics not available)";
 			}
 			return "Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
 				this.total_duration_s,
@@ -103,9 +105,9 @@ namespace OLLMchat.Response
 			);
 		}
 
-		public Chat(Client client, Call.Chat call)
+		public Chat(Settings.Connection? connection, Call.Chat call)
 		{
-			base(client);
+			base(connection);
 			this.call = call;
 		}
 
@@ -128,7 +130,6 @@ namespace OLLMchat.Response
 			switch (property_name) {
 				case "message":
 					this.message = Json.gobject_deserialize(typeof(Message), property_node) as Message;
-					this.message.message_interface = this;
 					value = Value(typeof(string));
 					value.set_string("");
 					return true;
@@ -207,7 +208,6 @@ namespace OLLMchat.Response
 			var message_node = new Json.Node(Json.NodeType.OBJECT);
 			message_node.set_object(message_obj);
 			var msg = Json.gobject_deserialize(typeof(Message), message_node) as Message;
-			msg.message_interface = this;
 			
 			// If message is null, this is the first chunk - use the deserialized object directly
 			if (this.message == null) {

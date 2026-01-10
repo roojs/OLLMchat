@@ -39,9 +39,9 @@ namespace OLLMchat.Response
 		public int eval_count { get; set; default = 0; }
 		public int64 eval_duration { get; set; default = 0; }
 
-		public Generate(Client? client = null)
+		public Generate(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

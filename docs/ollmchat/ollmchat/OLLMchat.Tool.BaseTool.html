@@ -32,7 +32,6 @@
         <hr class="navi_hr"/>
         <ul class="navi_main">
           <li class="property"><a href="OLLMchat.Tool.BaseTool.active.html">active</a></li>
-          <li class="property"><a href="OLLMchat.Tool.BaseTool.client.html">client</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.description.html">description</a></li>
           <li class="property"><a href="OLLMchat.Tool.BaseTool.function.html">function</a></li>
           <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.name.html">name</a></li>
@@ -74,8 +73,17 @@
           <p>This class contains all the implementation logic. Subclasses must implement the abstract properties (name, description, 
             parameter_description). The Function class is built from Tool's properties on construction. Parameter descriptions use a special syntax 
             with @type, @property, and @param directives.</p>
+          <p>Tools require an Agent.Interface instance to access chat, permission_provider, and add_message(). For agentic usage (with session), use 
+            Agent.Base.</p>
           <h2>Example </h2>
           <p><pre class="main_source"><code><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyTool : Tool.BaseTool {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> name { <span class="main_keyword">get</span> { <span class="main_keyword">return</span> <span class="main_literal">"my_tool"</span>; } }<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> description { <span class="main_keyword">get</span> { <span class="main_keyword">return</span> <span class="main_literal">"Does something useful"</span>; } }<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> parameter_description {<br/>        <span class="main_keyword">get</span> {<br/>            <span class="main_keyword">return</span> <span class="main_literal">"""<br/>@param file_path string The path to the file<br/>@param line_number int Optional line number (default: 0)<br/>"""</span>;<br/>        }<br/>    }<br/><br/>    <span class="main_keyword">public</span> MyTool(Client? client = <span class="main_literal">null</span>) {<br/>        <span class="main_keyword">base</span>(client);<br/>    }<br/><br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_keyword">async</span> <span class="main_basic_type">string</span>? execute(Json.Object parameters) {<br/>        <span class="main_keyword">var</span> file_path = parameters.get_string_member(<span class="main_literal">"file_path"</span>);<br/>        <span class="main_comment">// ... tool implementation</span><br/>        <span class="main_keyword">return</span> <span class="main_literal">"Result"</span>;<br/>    }<br/>}</code></pre>
+          </p>
+          <h2>Non-Agentic Usage </h2>
+          <p>For non-agentic usage (without session), you can create a simple dummy agent that implements Agent.Interface:</p>
+          <p><pre class="main_source"><code><span class="main_keyword">public</span> <span class="main_keyword">class</span> DummyAgent : Object, Agent.Interface<br/>{<br/>    <span class="main_keyword">private</span> Call.Chat chat_call;<br/>    <span class="main_keyword">private</span> ChatPermission.Provider my_permission_provider;<br/>    <span class="main_keyword">private</span> Settings.Config<span class="main_literal">2</span> my_config;<br/>    <br/>    <span class="main_keyword">public</span> Call.Chat chat()<br/>    {<br/>        <span class="main_keyword">return</span> <span class="main_keyword">this</span>.chat_call;<br/>    }<br/>    <br/>    <span class="main_keyword">public</span> ChatPermission.Provider get_permission_provider()<br/>    {<br/>        <span class="main_keyword">return</span> <span class="main_keyword">this</span>.my_permission_provider;<br/>    }<br/>    <br/>    <span class="main_keyword">public</span> Settings.Config<span class="main_literal">2</span> config()<br/>    {<br/>        <span class="main_keyword">return</span> <span class="main_keyword">this</span>.my_config;<br/>    }<br/>    <br/>    <span class="main_keyword">public</span> DummyAgent(Call.Chat chat_call, ChatPermission.Provider permission_provider, Settings.Config<span class="main_literal">2</span> config)<br/>    {<br/>        <span class="main_keyword">this</span>.chat_call = chat_call;<br/>        <span class="main_keyword">this</span>.my_permission_provider = permission_provider;<br/>        <span class="main_keyword">this</span>.my_config = config;<br/>    }<br/>    <br/>    <span class="main_keyword">public</span> <span class="main_basic_type">void</span> add_message(Message message)<br/>    {<br/>        <span class="main_comment">// For non-agentic usage, add message to chat.messages</span><br/>        <span class="main_keyword">this</span>.chat_call.messages.add(message);<br/>        <span class="main_comment">// Also emit tool_message signal for UI updates if needed</span><br/>    }<br/>}</code></pre>
+          </p>
+          <p>Then create the dummy agent and set it on the request:</p>
+          <p><pre class="main_source"><code><span class="main_keyword">var</span> permission_provider = <span class="main_keyword">new</span> ChatPermission.Dummy(); <span class="main_comment">// or your custom provider</span><br/><span class="main_keyword">var</span> config = <span class="main_keyword">new</span> Settings.Config<span class="main_literal">2</span>(); <span class="main_comment">// or load from file</span><br/><span class="main_keyword">var</span> dummy_agent = <span class="main_keyword">new</span> DummyAgent(chat_call, permission_provider, config);<br/>request.agent = dummy_agent;</code></pre>
           </p>
         </div>
         <div class="box">
@@ -112,10 +120,6 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? <b><a href="OLLMchat.Tool.BaseTool.client.html" class="property">client</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description">
-            </div></li>
           <li class="abstract_property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Tool.BaseTool.description.html" class="abstract_property">description</a></b> { <span class="main_keyword">get</span>; }
             </span>
             <div class="leaf_brief_description">
@@ -148,10 +152,10 @@
             <div class="leaf_brief_description"><span class="brief_description">Discovers all tool classes that extend Tool.BaseTool via GType 
                 registry.</span>
             </div></li>
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tool.BaseTool.register_all_tools.html" class="static_method">register_all_tools</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span> client, <span class="main_type"><span class="class">Object</span></span>? project_manager)
+          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><span class="abstract_class">BaseTool</span></span>&gt; <b><a href="OLLMchat.Tool.BaseTool.register_all_tools.html" class="static_method">register_all_tools</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Creates and registers all tool instances with Client (Phase 2: after 
-                dependencies ready).</span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates all tool instances (Phase 3: tools moved from Client to Chat).
+              </span>
             </div></li>
           <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tool.BaseTool.register_config.html" class="static_method">register_config</a></b> ()
             </span>
@@ -166,7 +170,7 @@
         </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <b><a href="OLLMchat.Tool.BaseTool.BaseTool.html" class="creation_method">BaseTool</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? client = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <b><a href="OLLMchat.Tool.BaseTool.BaseTool.html" class="creation_method">BaseTool</a></b> ()
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -195,9 +199,10 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tool.BaseTool.init.html" class="method">init</a></b> ()
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tool.BaseTool.init.html" class="method">init</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Initializes the tool instance.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Initialization method that ensures tools are properly initialized.
+              </span>
             </div></li>
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Tool.BaseTool.parse_parameter_description_string.html" class="method">parse_parameter_description_string</a></b> (<span class="main_basic_type"><span class="class">string</span></span> in_desc, <span class="main_type"><span class="class">HashMap</span></span>&lt;<span class="main_basic_type"><span class="class">string</span></span>,<span class="main_type"><a href="OLLMchat.Tool.ParamObject.html" class="class">ParamObject</a></span>&gt; type_definitions)
             </span>

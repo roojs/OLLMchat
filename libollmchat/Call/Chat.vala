@@ -30,10 +30,10 @@ namespace OLLMchat.Call
 	 *
 	 * {{{
 	 * var call = new Call.Chat(client, "llama3.2");
-	 * call.messages.add(new Message(call, "user", "Hello!"));
+	 * call.messages.add(new Message("user", "Hello!"));
 	 *
 	 * // Execute chat (handles tool calls automatically)
-	 * var response = yield call.exec_chat();
+	 * var response = yield call.send(call.messages);
 	 *
 	 * // Access response content
 	 * print(response.message.content);
@@ -43,15 +43,10 @@ namespace OLLMchat.Call
 	{
 		public string model { get; set; }
 		
-		public bool stream { 
-			get { return this.client.stream; }
-			set { } // Fake setter for serialization
-		}
+		// Real properties (Phase 3: fallback logic removed)
+		public bool stream { get; set; default = false; }
 		
-		public string? format { 
-			get { return this.client.format; }
-			set { } // Fake setter for serialization
-		}
+		public string? format { get; set; }
 		
 		/**
 		 * JSON schema object for structured outputs.
@@ -62,51 +57,157 @@ namespace OLLMchat.Call
 		
 		public Call.Options options { get; set; }
 		
-		public bool think { 
-			get { return this.client.think; }
-			set { } // Fake setter for serialization
-		}
+		public bool think { get; set; default = false; }
 		
-		public string? keep_alive { 
-			get { return this.client.keep_alive; }
-			set { } // Fake setter for serialization
-		}
+		public string? keep_alive { get; set; }
 		
-		public Gee.HashMap<string, Tool.BaseTool>? tools { 
-			get { return this.client.tools; }
-			set { } // Fake setter for serialization
-		}
+		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }
+		
+		/**
+		 * Current streaming response object (internal use).
+		 *
+		 * Used internally to track the streaming state during chat operations.
+		 * Also accessed by OLLMchatGtk for UI updates. Set to null when not streaming.
+		 */
+		public Response.Chat? streaming_response { get; set; default = null; }
+		
+		/**
+		 * Reference to the agent handler that created this chat.
+		 *
+		 * Allows tools to access the session via chat_call.agent.session.
+		 * Set by AgentHandler when creating Chat in send_message_async().
+		 *
+		 * @since 1.2.2
+		 */
+		public Agent.Base? agent { get; set; }
+		
 		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
-		// Session ID field to track which history session this chat belongs to
-		// Generated in constructor - will always be set
-		public string fid = "";
+		/**
+		 * Emitted when a streaming chunk is received from the chat API.
+		 *
+		 * @param new_text The new text chunk received
+		 * @param is_thinking Whether this chunk is thinking content (true) or regular content (false)
+		 * @param response The Response object containing the streaming state
+		 * @since 1.0
+		 */
+		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);
+
+		/**
+		 * Emitted when the streaming response starts (first chunk received).
+		 * This signal is emitted when the first chunk of the response is processed,
+		 * indicating that the server has started sending data back.
+		 *
+		 * @since 1.0
+		 */
+		public signal void stream_start();
+
+		/**
+		 * Emitted when a tool sends a status message during execution.
+		 *
+		 * @param message The Message object from the tool (typically "ui" role)
+		 * @since 1.0
+		 */
+		public signal void tool_message(Message message);
 		
-		public Chat(Client client, string model, Call.Options? options = null)
+		/**
+		 * Emitted when a tool call is detected and needs to be executed.
+		 * 
+		 * For non-agent usage: Connect to this signal to handle tool execution.
+		 * 
+		 * The handler is responsible for:
+		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call.function.arguments)`
+		 * 2. Create tool reply message: `new Message.tool_reply(tool_call.id, tool_call.function.name, result)`
+		 * 3. Append it to return_messages: `return_messages.add(tool_reply)`
+		 * 
+		 * Chat will collect all tool reply messages and send them automatically.
+		 * 
+		 * For agent usage: This signal is not used - agent.execute_tools() is called directly by Chat.toolsReply().
+		 * 
+		 * @param tool_call The tool call that needs to be executed
+		 * @param return_messages Array to append tool reply messages to
+		 */
+		public signal void tool_call_requested(Response.ToolCall tool_call, Gee.ArrayList<Message> return_messages);
+		
+		/**
+		 * Creates a new Chat instance for sending messages to the chat API.
+		 * 
+		 * The constructor initializes basic properties. Most properties should be
+		 * set after construction, including options, stream, think, tools, and agent.
+		 * 
+		 * == Example ==
+		 * 
+		 * {{{
+		 * // Create connection
+		 * var connection = new Settings.Connection() {
+		 *     name = "Local Ollama",
+		 *     url = "http://127.0.0.1:11434/api"
+		 * };
+		 * 
+		 * // Create chat with properties set via object initializer
+		 * var chat = new Call.Chat(connection, "llama3.2") {
+		 *     stream = true,
+		 *     think = true,
+		 *     agent = agent_handler
+		 * };
+		 * 
+		 * // Create and assign Options object
+		 * chat.options = new Call.Options() {
+		 *     temperature = 0.7,
+		 *     top_p = 0.9
+		 * };
+		 * 
+		 * // Or assign existing Options object
+		 * chat.options = existing_options;
+		 * 
+		 * // Add tools
+		 * foreach (var tool in manager.tools.values) {
+		 *     chat.add_tool(tool);
+		 * }
+		 * 
+		 * // Send messages
+		 * var response = yield chat.send(messages);
+		 * }}}
+		 * 
+		 * @param connection The connection settings for the API endpoint
+		 * @param model The model name to use for chat
+		 * @throws OllamaError.INVALID_ARGUMENT if model is empty
+		 */
+		public Chat(Settings.Connection connection, string model)
 		{
-			base(client);
+			base(connection);
 			if (model == "") {
 				throw new OllamaError.INVALID_ARGUMENT("Model is required");
 			}
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
 			this.model = model;
-			// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
-			var now = new DateTime.now_local();
-			this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+			// FID is owned by Session, not Chat (Chat is created per request by AgentHandler)
 			
-			// Load model options from config if options not provided
-			if (options != null) {
-				this.options = options;
-			} else {
-				if (this.client.config.model_options.has_key(model)) {
-					this.options = this.client.config.model_options.get(model);
-				} else {
-					this.options = new Call.Options();
-				}
+			// Always initialize with empty options - callers should set options after construction
+			this.options = new Call.Options();
+		}
+	
+		
+		/**
+		 * Adds a tool to this chat's tools map.
+		 *
+		 * Adds the tool to the tools hashmap keyed by tool name. The tool's client is set via constructor.
+		 * This method allows callers to add tools directly to Chat (not Client).
+		 *
+		 * @param tool The tool to add
+		 */
+		public void add_tool(Tool.BaseTool tool)
+		{
+			// Initialize tools HashMap if not already set
+			if (this.tools == null) {
+				this.tools = new Gee.HashMap<string, Tool.BaseTool>();
 			}
+			// Ensure tools HashMap is initialized
+			// Note: tool.client is no longer set (tools use connection directly)
+			this.tools.set(tool.name, tool);
 		}
 		// this is only called by response - not by the user
 		  
@@ -132,10 +233,27 @@ namespace OLLMchat.Call
 					if (this.tools.size == 0) {
 						return null;
 					}
-					if (!this.client.available_models.has_key(this.model) 
-						|| !this.client.available_models.get(this.model).can_call) {
+					
+					// Check if model supports tools using ConnectionModels
+					// Access via agent.session.manager.connection_models (Phase 3: no Client)
+					bool model_supports_tools = true;
+					
+					if (this.agent != null) {
+						var model_usage = this.agent.session.manager.connection_models.find_model(
+							this.connection.url, 
+							this.model
+						);
+						
+						if (model_usage != null) {
+							model_supports_tools = model_usage.model_obj.can_call;
+						}
+					}
+					
+					// Only exclude tools if we know the model explicitly doesn't support them
+					if (!model_supports_tools) {
 						return null;
 					}
+					
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();
@@ -184,7 +302,7 @@ namespace OLLMchat.Call
 					return new_node;
 				
 				case "messages":
-					// Serialize the message array built in exec_chat()
+					// Serialize the message array built in send()
 					var node = new Json.Node(Json.NodeType.ARRAY);
 					node.init_array(new Json.Array());
 					var array = node.get_array();
@@ -212,8 +330,6 @@ namespace OLLMchat.Call
 				var element_node = array.get_element(i);
 				var msg_obj = Json.gobject_deserialize(typeof(Message), element_node) as Message;
 				
-				// Set message_interface to this Chat
-				msg_obj.message_interface = this;
 				messages.add(msg_obj);
 			}
 			
@@ -224,25 +340,26 @@ namespace OLLMchat.Call
  
 		/**
 		 * Sets up this Chat as a reply to a previous conversation and executes it.
-		 * Appends the previous assistant response and new user message to the messages array, then calls exec_chat().
+		 * Appends the previous assistant response and new user message to the messages array, then calls send().
+		 * 
+		 * Note: The Chat object should already have system_content and chat_content set
+		 * by the agent before calling this method. This method does NOT call prompt_assistant.
 		 *
-		 * @param new_text The new user message text
+		 * @param new_text The new user message text (original text, before prompt modification)
 		 * @param previous_response The previous Response from the assistant
 		 * @return The Response from executing the chat call
 		 */
 		public async Response.Chat reply(string new_text, Response.Chat previous_response) throws Error
 		{
 			// Create dummy user-sent Message with original text BEFORE prompt engine modification
-			var user_sent_msg = new Message(this, "user-sent", new_text);
-			this.client.message_created(user_sent_msg, this);
+			var user_sent_msg = new Message("user-sent", new_text);
+			// message_created signal emission removed - callers handle state directly when creating messages
 			
-			// Fill chat call with prompts from prompt_assistant (modifies chat_content)
-			this.client.prompt_assistant.fill(this, new_text);
-			
-			// If system_content is set, create system Message and emit message_created
+			// Note: system_content and chat_content should already be set by agent before calling reply()
+			// If system_content is set, create system Message
 			if (this.system_content != "") {
-				var system_msg = new Message(this, "system", this.system_content);
-				this.client.message_created(system_msg, this);
+				var system_msg = new Message("system", this.system_content);
+				// message_created signal emission removed - callers handle state directly when creating messages
 			}
 			
 			// Append the assistant's response from the previous call
@@ -251,13 +368,14 @@ namespace OLLMchat.Call
 				this.messages.add(previous_response.message);
 			} else {
 				this.messages.add(
-					new Message(this, "assistant", previous_response.message.content,
+					new Message("assistant", previous_response.message.content,
 					 previous_response.message.thinking));
 			}
 
-			// Append the new user message with modified chat_content (for API request)
+			// Append the new user message with chat_content (for API request)
+			// Note: chat_content should already be set by agent (may be modified from original text)
 			// Note: "user-sent" message was already created via signal with original text
-			var user_message = new Message(this, "user", this.chat_content);
+			var user_message = new Message("user", this.chat_content);
 			this.messages.add(user_message);
 
 			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
@@ -304,86 +422,47 @@ namespace OLLMchat.Call
 				return response;
 			}
 			
-			// Add the assistant message with tool_calls to the conversation
-			this.messages.add(response.message);
 			GLib.debug("Chat.toolsReply: Sending tool responses to LLM: %s", response.message.content);
 			
-			// Execute each tool call and add tool reply messages directly
+			if (this.agent != null) {
+				// Agent usage (normal flow): delegate to agent handler (agent executes tools and returns messages)
+				var tool_reply_messages = yield this.agent.execute_tools(response.message.tool_calls);
+				
+				// Build messages array: assistant message with tool_calls + tool reply messages
+				var messages_to_send = new Gee.ArrayList<Message>();
+				messages_to_send.add(response.message); // Assistant message with tool_calls
+				foreach (var reply_msg in tool_reply_messages) {
+					messages_to_send.add(reply_msg); // Tool reply messages
+				}
+				
+				// Append all messages and send
+				var next_response = yield this.send_append(messages_to_send);
+				
+				// Recursively handle tool calls if the next response also has them and is done
+				if (next_response.done && 
+					next_response.message.tool_calls.size > 0) {
+					return yield this.toolsReply(next_response);
+				}
+				
+				return next_response;
+			}
+			
+			// Non-agent usage (external code using Chat directly): emit signal for each tool call
+			// Signal handler is responsible for executing tools and appending tool reply messages
+			// Our code always has agent set, so this path is only for external users
+			
+			// Build messages array: assistant message + tool replies (handler will append tool replies)
+			var messages_to_send = new Gee.ArrayList<Message>();
+			messages_to_send.add(response.message); // Assistant message with tool_calls
+			
+			// Emit signal for each tool call - handler executes tools and appends tool reply messages to messages_to_send
+			// Signal handlers run synchronously, so they can modify messages_to_send
 			foreach (var tool_call in response.message.tool_calls) {
-				GLib.debug("Chat.toolsReply: Executing tool '%s' (id='%s')",
-					tool_call.function.name, tool_call.id);
-				
-				if (!this.client.tools.has_key(tool_call.function.name)) {
-					var available_tools_str = string.joinv("', '", this.client.tools.keys.to_array());
-					if (available_tools_str != "") {
-						available_tools_str = "'" + available_tools_str + "'";
-					}
-					
-					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
-						"', however we only have these tools: " + available_tools_str;
-				
-					var error_msg = new Message(this, "ui", err_message);
-					this.client.message_created(error_msg, this);
-					this.messages.add(new Message.tool_call_invalid(this, tool_call, err_message));
-					continue;
-				}
-				
-				// Show message that tool is being executed
-				var exec_msg = new Message(this, "ui", "Executing tool: `" + tool_call.function.name + "`");
-				this.client.message_created(exec_msg, this);
-				
-				// Execute the tool with chat as first parameter
-				try {
-					var result = yield this.client.tools
-						.get(tool_call.function.name)
-						.execute(this, tool_call.function.arguments);
-					
-					// Log result summary (truncate if too long)
-					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
-					
-					// Check if result is an error and display it in UI
-					if (result.has_prefix("ERROR:")) {
-						GLib.debug("Chat.toolsReply: Tool '%s' returned error result: %s",
-							tool_call.function.name, result);
-						var error_msg = new Message(this, "ui", result);
-						this.client.message_created(error_msg, this);
-					} else {
-						GLib.debug("Chat.toolsReply: Tool '%s' executed successfully, result length: %zu, preview: %s",
-							tool_call.function.name, result.length, result_summary);
-					}
-					
-					// Create tool reply message
-					var tool_reply = new Message.tool_reply(
-						this, tool_call.id, 
-						tool_call.function.name,
-						result
-					);
-					GLib.debug("Chat.toolsReply: Created tool reply message: role='%s', tool_call_id='%s', name='%s', content length=%zu, content='%s'",
-						tool_reply.role, tool_reply.tool_call_id, tool_reply.name, tool_reply.content.length,
-						tool_reply.content.length > 200 ? tool_reply.content.substring(0, 200) + "..." : tool_reply.content);
-					this.messages.add(tool_reply);
-				} catch (Error e) {
-					GLib.debug("Chat.toolsReply: Error executing tool '%s' (id='%s'): %s", 
-						tool_call.function.name, tool_call.id, e.message);
-					var error_msg = new Message(this, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
-					this.client.message_created(error_msg, this);
-					this.messages.add(new Message.tool_call_fail(this, tool_call, e));
-				}
+				this.tool_call_requested(tool_call, messages_to_send);
 			}
 			
-			// Automatically continue the conversation by sending tool results back to the server
-			GLib.debug("Chat.toolsReply: Tools executed, automatically continuing conversation");
-			
-			// Reset streaming_response for the continuation so we get a fresh response
-			this.streaming_response = null;
-			
-			// Execute the chat call with tool results in the conversation history
-			Response.Chat next_response;
-			if (this.stream) {
-				next_response = yield this.execute_streaming();
-			} else {
-				next_response = yield this.execute_non_streaming();
-			}
+			// Append all messages and send (same logic as agent path)
+			var next_response = yield this.send_append(messages_to_send);
 			
 			// Recursively handle tool calls if the next response also has them and is done
 			if (next_response.done && 
@@ -395,22 +474,53 @@ namespace OLLMchat.Call
 		}
 
 		
-		public async Response.Chat exec_chat() throws Error
+		/**
+		 * Appends new messages to existing messages and sends them.
+		 * 
+		 * Convenience method for continuing conversations after tool execution.
+		 * Appends the provided messages to this.messages and then calls send().
+		 * 
+		 * @param new_messages Messages to append to existing messages
+		 * @param cancellable Optional cancellation token
+		 * @return The Response from executing the chat call
+		 * @throws Error if send fails
+		 */
+		public async Response.Chat send_append(Gee.ArrayList<Message> new_messages, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// System and user messages are now created earlier via message_created signal
-			// But we still need to add API-compatible messages to messages array for the request
-			// Add system message if system_content is set (for API request)
-			if (this.system_content != "") {
-				this.messages.add(new Message(this, "system", this.system_content));
+			// Append new messages to existing messages
+			foreach (var msg in new_messages) {
+				this.messages.add(msg);
 			}
 			
-			// Add the user message with modified chat_content (for API request)
-			// Note: "user-sent" message was already created via signal with original text
-			var user_message = new Message(this, "user", this.chat_content);
-			this.messages.add(user_message);
+			// Send using existing send() method
+			return yield this.send(this.messages, cancellable);
+		}
+		
+		/**
+		 * Sends messages to the chat API.
+		 * 
+		 * Takes messages array as argument and resets all state when called.
+		 * This method replaces the old exec_chat() method and has its own complete implementation.
+		 * 
+		 * @param messages The messages array to send
+		 * @param cancellable Optional cancellation token
+		 * @return The Response from executing the chat call
+		 */
+		public async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
+		{
+			if (messages.size == 0) {
+				throw new OllamaError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
+			}
+			
+			// Reset state
+			this.streaming_response = null;
+			this.cancellable = cancellable;
+			
+			// Store provided messages in this.messages (for serialization/access)
+			this.messages = messages;
 			
 			// Debug: output messages being sent
-			GLib.debug("Chat.exec_chat: Sending %d message(s):", this.messages.size);
+			GLib.debug("Chat.send: Sending %d message(s):", this.messages.size);
 			for (int i = 0; i < this.messages.size; i++) {
 				var msg = this.messages[i];
 				GLib.debug("  Message %d: role='%s', content='%s'%s", 
@@ -420,18 +530,18 @@ namespace OLLMchat.Call
 					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
 			}
 			
+			// Execute with streaming or non-streaming
 			if (this.stream) {
-				//this.streaming_response = new Response(this.client);
 				return yield this.execute_streaming();
 			}
-
+			
 			return yield this.execute_non_streaming();
 		}
 
+
 		private async Response.Chat execute_non_streaming() throws Error
 		{
-			// Emit signal that we're sending the request
-			this.client.chat_send(this);
+			// chat_send signal emission removed - callers handle state directly after calling send()
 			
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
@@ -440,8 +550,7 @@ namespace OLLMchat.Call
 				throw new OllamaError.FAILED("Invalid JSON response");
 			}
 
-			// Emit stream_start signal when response is received (non-streaming)
-			this.client.stream_start();
+			// Note: stream_start signal removed - handled by caller if needed
 
 			var generator = new Json.Generator();
 			generator.set_root(root);
@@ -451,31 +560,9 @@ namespace OLLMchat.Call
 				throw new OllamaError.FAILED("Failed to parse response");
 			}
 
-			response_obj.client = this.client;
+			// Note: client no longer set on response objects
 			response_obj.call = this;
 			response_obj.done = true; // Non-streaming responses are always done
-			
-			// Create content-non-stream message for session persistence
-			// Note: message should always be present in non-streaming responses (deserialized from JSON)
-			if (response_obj.message.is_llm) {
-				// Ensure message_interface is set
-				response_obj.message.message_interface = this;
-				
-				// Create content-non-stream message with the full content (non-streaming never has thinking)
-				var content_msg = new Message(this, "content-non-stream", response_obj.message.content, "");
-				content_msg.message_interface = this;
-				
-				// Emit message_created signal for the content-non-stream message
-				this.client.message_created(content_msg, response_obj);
-				
-				// Also emit the original assistant message (for API compatibility, but not displayed in UI)
-				this.client.message_created(response_obj.message, response_obj);
-				
-				// Emit a "done" message after with summary
-				var summary = response_obj.get_summary();
-				var done_msg = new Message(this, "done", summary);
-				this.client.message_created(done_msg, response_obj);
-			}
 			
 			// Check for tool calls and handle them recursively
 			if (response_obj.message.tool_calls.size > 0) {
@@ -487,18 +574,17 @@ namespace OLLMchat.Call
 
 		private async Response.Chat execute_streaming() throws Error
 		{
-			// Emit signal that we're sending the request
-			this.client.chat_send(this);
+			// chat_send signal emission removed - callers handle state directly after calling send()
 			
 			// Initialize streaming_response before starting stream to ensure it's never null
 			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.client, this);
+				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
-			var message = this.client.connection.soup_message(this.http_method, url, request_body);
+			var message = this.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Request URL: %s", url);
 			GLib.debug("Request Body: %s", request_body);
@@ -546,23 +632,25 @@ namespace OLLMchat.Call
 		{
 			// Ensure streaming_response exists (should be initialized in execute_streaming, but double-check)
 			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.client, this);
+				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
 
-			// Emit stream_start signal on first chunk (when message is null, this is the first chunk)
-			if (response.message == null) {
-				this.client.stream_start();
-			}
+			// Check if this is the first chunk (message is null before first chunk is processed)
+			bool is_first_chunk = (response.message == null);
 
 			// Process chunk
 			response.addChunk(chunk);
 
-			// Emit stream_content signal for content only (not thinking)
-			if (response.new_content.length > 0) {
-				this.client.stream_content(
-					response.new_content, response 
-				);
+			// Emit stream_start signal on first chunk
+			if (is_first_chunk) {
+				// Always emit signal (for non-agent usage and any other listeners)
+				this.stream_start();
+				
+				// If Chat has agent reference, also call agent method directly
+				if (this.agent != null) {
+					this.agent.handle_stream_started();
+				}
 			}
 
 		// Emit signal if there's new content (either regular content or thinking)
@@ -573,12 +661,18 @@ namespace OLLMchat.Call
 				!response.done) {
 				return;
 			}
-			this.client.stream_chunk(
-					response.new_thinking.length > 0 ? response.new_thinking : 
-						(response.new_content.length > 0 ? response.new_content : ""), 
-					response.new_thinking.length > 0 ? true : 
-						(response.new_content.length > 0 ? false : response.is_thinking),
-					response);
+			
+			// Determine if this chunk is thinking content
+			bool is_thinking = response.new_thinking.length > 0;
+			string new_text = is_thinking ? response.new_thinking : response.new_content;
+			
+			// Always emit signal (for non-agent usage and any other listeners)
+			this.stream_chunk(new_text, is_thinking, response);
+			
+			// If Chat has agent reference, also call agent method directly
+			if (this.agent != null) {
+				this.agent.handle_stream_chunk(new_text, is_thinking, response);
+			}
 		}
 	}
 }

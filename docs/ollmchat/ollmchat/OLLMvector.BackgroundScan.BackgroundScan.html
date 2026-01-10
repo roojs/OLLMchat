@@ -38,7 +38,7 @@
         <h1 class="main_title">BackgroundScan</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">BackgroundScan</span></b> (<span class="main_type"><a href="OLLMvector.Tool.CodebaseSearchTool.html" class="class">CodebaseSearchTool</a></span> tool, <span class="main_type"><a href="OLLMfiles.GitProviderBase.html" class="class">GitProviderBase</a></span> git_provider)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <b><span class="creation_method">BackgroundScan</span></b> (<span class="main_type"><a href="OLLMvector.Tool.CodebaseSearchTool.html" class="class">CodebaseSearchTool</a></span> tool, <span class="main_type"><a href="OLLMfiles.GitProviderBase.html" class="class">GitProviderBase</a></span> git_provider, <span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
         </div>
         <div class="description">
           <p>Creates a new BackgroundScan instance.</p>
@@ -54,6 +54,13 @@
               <td class="main_parameter_table_name">git_provider</td>
               <td>
                 <p>The Git provider instance (each thread needs its own instance for thread safety). </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="main_parameter_table_name">config</td>
+              <td>
+                <p>Config2 instance for Indexer creation. A deep copy is made for thread safety. Changes to config (when preferences dialog closes) 
+                  will trigger thread restart. </p>
               </td>
             </tr>
           </table>

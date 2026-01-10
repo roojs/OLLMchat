@@ -60,14 +60,7 @@ namespace OLLMchat.Settings
 		 * Response.Model object for display names and filling in details later.
 		 * Not serialized - runtime only.
 		 */
-		public Response.Model? model_obj = null; 
-
-		/**
-		 * Default constructor.
-		 */
-		public ModelUsage()
-		{
-		}
+		public Response.Model? model_obj = null;
 		
 		/**
 		 * Verifies that the model specified in this ModelUsage is available on the connection.
@@ -96,10 +89,9 @@ namespace OLLMchat.Settings
 			}
 			
 			try {
-				var client = new OLLMchat.Client(connection_obj);
-				yield client.models();
+				yield connection_obj.load_models();
 				
-				this.is_valid = client.available_models.has_key(this.model);
+				this.is_valid = connection_obj.models.has_key(this.model);
 				return this.is_valid;
 			} catch (GLib.Error e) {
 				this.is_valid = false;

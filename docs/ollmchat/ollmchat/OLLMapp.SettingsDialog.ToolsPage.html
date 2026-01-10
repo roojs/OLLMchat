@@ -31,8 +31,8 @@
         </ul>
         <hr class="navi_hr"/>
         <ul class="navi_main">
-          <li class="property"><a href="OLLMapp.SettingsDialog.ToolsPage.client.html">client</a></li>
           <li class="property"><a href="OLLMapp.SettingsDialog.ToolsPage.dialog.html">dialog</a></li>
+          <li class="property"><a href="OLLMapp.SettingsDialog.ToolsPage.history_manager.html">history_manager</a></li>
           <li class="creation_method"><a href="OLLMapp.SettingsDialog.ToolsPage.ToolsPage.html">ToolsPage</a></li>
           <li class="method"><a href="OLLMapp.SettingsDialog.ToolsPage.load_configs.html">load_configs</a></li>
           <li class="method"><a href="OLLMapp.SettingsDialog.ToolsPage.load_tools.html">load_tools</a></li>
@@ -68,13 +68,13 @@
         <h2 class="main_title">Content:</h2>
         <h3 class="main_title">Properties:</h3>
         <ul class="navi_inline">
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? <b><a href="OLLMapp.SettingsDialog.ToolsPage.client.html" class="property">client</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Reference to Client instance to access Client.tools registry.</span>
-            </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMapp.SettingsDialog.MainDialog.html" class="class">MainDialog</a></span> <b><a href="OLLMapp.SettingsDialog.ToolsPage.dialog.html" class="property">dialog</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">construct</span>; }
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Reference to parent SettingsDialog (which has the app object)</span>
+            </div></li>
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.History.Manager.html" class="class">Manager</a></span>? <b><a href="OLLMapp.SettingsDialog.ToolsPage.history_manager.html" class="property">history_manager</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Reference to History Manager to access Manager.tools registry.</span>
             </div></li>
         </ul>
         <h3 class="main_title">Creation methods:</h3>
@@ -98,9 +98,9 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-492')">All known members inherited from class
+          <div class="headline" onclick="toggle_box (this, 'box-content-510')">All known members inherited from class
             OLLMapp.SettingsDialog.SettingsPage</div>
-          <div class="content" id="box-content-492">
+          <div class="content" id="box-content-510">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMapp.SettingsDialog.SettingsPage.action_widget.html">action_widget</a></li>
@@ -121,8 +121,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-493')">All known members inherited from class Gtk.Box</div>
-          <div class="content" id="box-content-493">
+          <div class="headline" onclick="toggle_box (this, 'box-content-511')">All known members inherited from class Gtk.Box</div>
+          <div class="content" id="box-content-511">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">append</li>
@@ -155,8 +155,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-494')">All known members inherited from class Gtk.Widget</div>
-          <div class="content" id="box-content-494">
+          <div class="headline" onclick="toggle_box (this, 'box-content-512')">All known members inherited from class Gtk.Widget</div>
+          <div class="content" id="box-content-512">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">action_set_enabled</li>
@@ -399,8 +399,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-495')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-495">
+          <div class="headline" onclick="toggle_box (this, 'box-content-513')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-513">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -466,8 +466,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-496')">All known members inherited from interface Gtk.Accessible</div>
-          <div class="content" id="box-content-496">
+          <div class="headline" onclick="toggle_box (this, 'box-content-514')">All known members inherited from interface Gtk.Accessible</div>
+          <div class="content" id="box-content-514">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_property">accessible_role</li>
@@ -503,8 +503,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-497')">All known members inherited from interface Gtk.Buildable</div>
-          <div class="content" id="box-content-497">
+          <div class="headline" onclick="toggle_box (this, 'box-content-515')">All known members inherited from interface Gtk.Buildable</div>
+          <div class="content" id="box-content-515">
             <div class="column">
               <ul class="navi_inline">
                 <li class="abstract_method">add_child</li>
@@ -530,8 +530,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-498')">All known members inherited from interface Gtk.Orientable</div>
-          <div class="content" id="box-content-498">
+          <div class="headline" onclick="toggle_box (this, 'box-content-516')">All known members inherited from interface Gtk.Orientable</div>
+          <div class="content" id="box-content-516">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">get_orientation</li>

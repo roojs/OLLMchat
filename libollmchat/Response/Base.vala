@@ -30,9 +30,9 @@ namespace OLLMchat.Response
 		protected string id = "";
 		public Message? message { get; set; default = null; }
 
-		protected Base(Client? client = null)
+		protected Base(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 	}
 }

@@ -144,3 +144,20 @@
   background-color: #eee; /* warning-bg-color light theme */
   color: #666; /* warning-fg-color light theme */}
 }
+
+/* Unread count display styling */
+.oc-has-unread {
+  background-color: rgba(255, 0, 0, 0.1);  /* Light red background */
+}
+
+/* Hide unread label by default */
+.list-chat-unread {
+  visibility: hidden;
+  color: red;
+  font-weight: bold;
+}
+
+/* Show unread label when parent has oc-has-unread class */
+.oc-has-unread .list-chat-unread {
+  visibility: visible;
+}

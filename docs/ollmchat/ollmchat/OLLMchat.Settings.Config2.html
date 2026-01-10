@@ -42,8 +42,7 @@
           <li class="static_method"><a href="OLLMchat.Settings.Config2.register_type.html">register_type</a></li>
           <li class="creation_method"><a href="OLLMchat.Settings.Config2.Config2.html">Config2</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.check_connections.html">check_connections</a></li>
-          <li class="method"><a href="OLLMchat.Settings.Config2.create_chat.html">create_chat</a></li>
-          <li class="method"><a href="OLLMchat.Settings.Config2.create_client.html">create_client</a></li>
+          <li class="method"><a href="OLLMchat.Settings.Config2.clone.html">clone</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.Config2.deserialize_property.html">deserialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.find_property.html">find_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.get_default_connection.html">get_default_connection</a></li>
@@ -53,6 +52,7 @@
           <li class="virtual_method"><a href="OLLMchat.Settings.Config2.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.set_property.html">set_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Config2.working_connection.html">working_connection</a></li>
+          <li class="signal"><a href="OLLMchat.Settings.Config2.changed.html">changed</a></li>
           <li class="field"><a href="OLLMchat.Settings.Config2.config_path.html">config_path</a></li>
           <li class="field"><a href="OLLMchat.Settings.Config2.loaded.html">loaded</a></li>
         </ul>
@@ -142,13 +142,10 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Checks version on all connections and updates is_working flag.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span>? <b><a href="OLLMchat.Settings.Config2.create_chat.html" class="method">create_chat</a></b> (<span class="main_basic_type"><span class="class">string</span></span> name)
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><span class="class">Config2</span></span> <b><a href="OLLMchat.Settings.Config2.clone.html" class="method">clone</a></b> ()
             </span>
-            <div class="leaf_brief_description"><span class="brief_description">Creates a Chat instance configured from a usage entry.</span>
-            </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? <b><a href="OLLMchat.Settings.Config2.create_client.html" class="method">create_client</a></b> (<span class="main_basic_type"><span class="class">string</span></span> name)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Creates a Client instance configured from a usage entry.</span>
+            <div class="leaf_brief_description"><span class="brief_description">Creates a deep copy of this Config2 instance by serializing and 
+                deserializing.</span>
             </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type"><span class="struct">bool</span></span> <b><a href="OLLMchat.Settings.Config2.deserialize_property.html" class="virtual_method">deserialize_property</a></b> (<span class="main_basic_type"><span class="class">string</span></span> property_name, <span class="main_keyword">out</span> <span class="main_type"><span class="struct">Value</span></span> value, <span class="main_type"><span class="class">ParamSpec</span></span> pspec, <span class="main_type"><span class="class">Node</span></span> property_node)
             </span>
@@ -185,6 +182,14 @@
           <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.Connection.html" class="class">Connection</a></span>? <b><a href="OLLMchat.Settings.Config2.working_connection.html" class="method">working_connection</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Returns the first working connection based on is_working flag.</span>
+            </div></li>
+        </ul>
+        <h3 class="main_title">Signals:</h3>
+        <ul class="navi_inline">
+          <li class="signal"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">signal</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Settings.Config2.changed.html" class="signal">changed</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Emitted when configuration has been updated (typically after 
+                preferences dialog closes).</span>
             </div></li>
         </ul>
         <h3 class="main_title">Fields:</h3>

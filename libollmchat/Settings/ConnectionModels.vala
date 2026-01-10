@@ -114,11 +114,8 @@ namespace OLLMchat.Settings
 		 */
 		private async bool refresh_connection(Connection connection) throws GLib.Error
 		{
-			var client = new OLLMchat.Client(connection) {
-				config = this.config
-			};
-			// Fetch all model details (this populates client.available_models with detailed info)
-			yield client.fetch_all_model_details();
+			// Load all model details (this populates connection.models with detailed info)
+			yield connection.load_models();
 			
 			// Get existing models for this connection and copy them
 			var models_to_remove = new Gee.ArrayList<ModelUsage>();
@@ -126,8 +123,8 @@ namespace OLLMchat.Settings
 				models_to_remove.add_all(this.connection_map.get(connection.url).values);
 			}
 			
-			// Process each model from available_models (which now has details including capabilities)
-			foreach (var model in client.available_models.values) {
+			// Process each model from connection.models (which now has details including capabilities)
+			foreach (var model in connection.models.values) {
 				// Find and remove from models_to_remove if it exists (model still exists)
 				var existing_model_usage = this.find_model(connection.url, model.name);
 				if (existing_model_usage != null) {

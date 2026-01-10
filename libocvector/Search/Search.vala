@@ -38,7 +38,7 @@ namespace OLLMvector.Search
 	 * var search = new OLLMvector.Search.Search(
 	 *     vector_db,
 	 *     sql_db,
-	 *     embedding_client,
+	 *     config,
 	 *     active_project,
 	 *     "find authentication logic",
 	 *     10,  // max_results
@@ -50,7 +50,7 @@ namespace OLLMvector.Search
 	 * var results = yield search.execute();
 	 * }}}
 	 */
-	public class Search : Object
+	public class Search : VectorBase
 	{
 		/**
 		 * Vector database for FAISS search.
@@ -61,11 +61,6 @@ namespace OLLMvector.Search
 		 * SQL database for metadata and filtering.
 		 */
 		private SQ.Database sql_db;
-		
-		/**
-		 * Embedding client for query vectorization.
-		 */
-		private OLLMchat.Client embedding_client;
 		
 		/**
 		 * Project folder for file operations.
@@ -99,7 +94,7 @@ namespace OLLMvector.Search
 		 * 
 		 * @param vector_db Vector database for FAISS search
 		 * @param sql_db SQL database for metadata and filtering
-		 * @param embedding_client Embedding client for query vectorization
+		 * @param config Configuration for accessing embedding connection and model
 		 * @param folder Project folder for file operations
 		 * @param query Search query text
 		 * @param max_results Maximum number of results (default: 10)
@@ -109,7 +104,7 @@ namespace OLLMvector.Search
 		public Search(
 			OLLMvector.Database vector_db,
 			SQ.Database sql_db,
-			OLLMchat.Client embedding_client,
+			OLLMchat.Settings.Config2 config,
 			OLLMfiles.Folder folder,
 			string query,
 			uint64 max_results = 10,
@@ -117,9 +112,9 @@ namespace OLLMvector.Search
 			string? element_type_filter = null
 		)
 		{
+			base(config);
 			this.vector_db = vector_db;
 			this.sql_db = sql_db;
-			this.embedding_client = embedding_client;
 			this.folder = folder;
 			this.query = query;
 			this.max_results = max_results;
@@ -184,7 +179,15 @@ namespace OLLMvector.Search
 			
 			// Step 2: Query vectorization (convert text to embeddings)
 			GLib.debug("Vectorizing query: %s", normalized_query);
-			var embed_response = yield this.embedding_client.embed(normalized_query);
+			
+			// Get embedding connection using base class method
+			var connection = yield this.connection("embed");
+			
+			// Get model from tool config (already validated above)
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			
+			var client = new OLLMchat.Client(connection);
+			var embed_response = yield client.embed(tool_config.embed.model, normalized_query);
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embedding");
 			}

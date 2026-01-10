@@ -57,7 +57,7 @@ Examples:
 		stdout.printf("Streaming progress updates:\n\n");
 		
 		// Create Pull call
-		var pull_call = new OLLMchat.Call.Pull(client, opt_model) {
+		var pull_call = new OLLMchat.Call.Pull(client.connection, opt_model) {
 			stream = true
 		};
 		

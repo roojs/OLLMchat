@@ -46,9 +46,9 @@ namespace OLLMchat.Response
 		 */
 		public int64 total { get; set; default = 0; }
 		
-		public Pull(Client? client = null)
+		public Pull(Settings.Connection? connection = null)
 		{
-			base(client);
+			base(connection);
 		}
 	}
 }

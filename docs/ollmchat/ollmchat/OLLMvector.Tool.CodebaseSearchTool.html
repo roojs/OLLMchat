@@ -38,7 +38,6 @@
           <li class="property"><a href="OLLMvector.Tool.CodebaseSearchTool.project_manager.html">project_manager</a></li>
           <li class="virtual_property"><a href="OLLMvector.Tool.CodebaseSearchTool.title.html">title</a></li>
           <li class="property"><a href="OLLMvector.Tool.CodebaseSearchTool.vector_db.html">vector_db</a></li>
-          <li class="static_method"><a href="OLLMvector.Tool.CodebaseSearchTool.get_tool_config.html">get_tool_config</a></li>
           <li class="creation_method"><a href="OLLMvector.Tool.CodebaseSearchTool.CodebaseSearchTool.html">CodebaseSearchTool</a></li>
           <li class="virtual_method"><a href="OLLMvector.Tool.CodebaseSearchTool.config_class.html">config_class</a></li>
           <li class="virtual_method"><a href="OLLMvector.Tool.CodebaseSearchTool.deserialize.html">deserialize</a></li>
@@ -105,16 +104,9 @@
                 async operation).</span>
             </div></li>
         </ul>
-        <h3 class="main_title">Static methods:</h3>
-        <ul class="navi_inline">
-          <li class="static_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">static</span> <span class="main_keyword">async</span> <span class="main_type"><a href="OLLMvector.Tool.CodebaseSearchToolConfig.html" class="class">CodebaseSearchToolConfig</a></span> <b><a href="OLLMvector.Tool.CodebaseSearchTool.get_tool_config.html" class="static_method">get_tool_config</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config)
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Gets and validates the codebase search tool configuration.</span>
-            </div></li>
-        </ul>
         <h3 class="main_title">Creation methods:</h3>
         <ul class="navi_inline">
-          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Tool.CodebaseSearchTool.CodebaseSearchTool.html" class="creation_method">CodebaseSearchTool</a></b> (<span class="main_type"><a href="OLLMchat.Client.html" class="class">Client</a></span>? client = <span class="main_literal">null</span>, <span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span>? project_manager = <span class="main_literal">null</span>)
+          <li class="creation_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <b><a href="OLLMvector.Tool.CodebaseSearchTool.CodebaseSearchTool.html" class="creation_method">CodebaseSearchTool</a></b> (<span class="main_type"><a href="OLLMfiles.ProjectManager.html" class="class">ProjectManager</a></span>? project_manager = <span class="main_literal">null</span>)
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Constructor with nullable dependencies.</span>
             </div></li>
@@ -129,7 +121,7 @@
             </span>
             <div class="leaf_brief_description">
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Tool.CodebaseSearchTool.init_databases.html" class="method">init_databases</a></b> (<span class="main_basic_type"><span class="class">string</span></span> data_dir) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMvector.Tool.CodebaseSearchTool.init_databases.html" class="method">init_databases</a></b> (<span class="main_type"><a href="OLLMchat.Settings.Config2.html" class="class">Config2</a></span> config, <span class="main_basic_type"><span class="class">string</span></span> data_dir) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Initializes the vector database by getting dimension and creating the 
                 Database instance.</span>
@@ -142,12 +134,11 @@
         </ul>
         <h3 class="main_title">Inherited Members:</h3>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-342')">All known members inherited from class OLLMchat.Tool.BaseTool</div>
-          <div class="content" id="box-content-342">
+          <div class="headline" onclick="toggle_box (this, 'box-content-360')">All known members inherited from class OLLMchat.Tool.BaseTool</div>
+          <div class="content" id="box-content-360">
             <div class="column">
               <ul class="navi_inline">
                 <li class="property"><a href="OLLMchat.Tool.BaseTool.active.html">active</a></li>
-                <li class="property"><a href="OLLMchat.Tool.BaseTool.client.html">client</a></li>
                 <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.config_class.html">config_class</a></li>
                 <li class="abstract_property"><a href="OLLMchat.Tool.BaseTool.description.html">description</a></li>
                 <li class="abstract_method"><a href="OLLMchat.Tool.BaseTool.deserialize.html">deserialize</a></li>
@@ -182,8 +173,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-343')">All known members inherited from class GLib.Object</div>
-          <div class="content" id="box-content-343">
+          <div class="headline" onclick="toggle_box (this, 'box-content-361')">All known members inherited from class GLib.Object</div>
+          <div class="content" id="box-content-361">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">@get</li>
@@ -249,8 +240,8 @@
           </div>
         </div>
         <div class="box">
-          <div class="headline" onclick="toggle_box (this, 'box-content-344')">All known members inherited from interface Json.Serializable</div>
-          <div class="content" id="box-content-344">
+          <div class="headline" onclick="toggle_box (this, 'box-content-362')">All known members inherited from interface Json.Serializable</div>
+          <div class="content" id="box-content-362">
             <div class="column">
               <ul class="navi_inline">
                 <li class="method">default_deserialize_property</li>

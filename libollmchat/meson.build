@@ -37,8 +37,11 @@ ollmchat_ollama_src = files([
   'Settings/ModelTag.vala',
   'Settings/AvailableModel.vala',
   'Settings/AvailableModels.vala',
-  'Prompt/BaseAgent.vala',  # Must come before Client.vala (Client uses Prompt.BaseAgent)
-  'Prompt/JustAsk.vala',
+  'Agent/Factory.vala',  # Must come before Client.vala (Client uses Agent.Factory)
+  'Agent/Interface.vala',  # Must come before Base (Base implements Interface)
+  'Agent/Base.vala',  # Must come after Factory (Base references Factory)
+  'Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
+  'Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
   'Call/Base.vala',
   'Call/Version.vala',
   'Client.vala',
@@ -69,6 +72,7 @@ ollmchat_ollama_src = files([
   'ChatPermission/Provider.vala',
   'ChatPermission/Dummy.vala',
   'History/Manager.vala',
+  'History/SessionList.vala',
   'History/SessionBase.vala',
   'History/Session.vala',
   'History/EmptySession.vala',

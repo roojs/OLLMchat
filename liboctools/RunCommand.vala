@@ -72,9 +72,9 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public RunCommand(OLLMchat.Client? client = null, OLLMfiles.ProjectManager? project_manager = null)
+		public RunCommand(OLLMfiles.ProjectManager? project_manager = null)
 		{
-			base(client);
+			base();
 			
 			// Hardcode base_directory to home directory
 			this.base_directory = GLib.Environment.get_home_dir();

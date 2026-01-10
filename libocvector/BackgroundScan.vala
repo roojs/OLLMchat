@@ -39,6 +39,8 @@ namespace OLLMvector {
         private Database vector_db;               // OLLMvector.Database (FAISS) - thread-safe via mutex in Index class
         private SQ.Database sql_db;               // SQ.Database for metadata - thread-safe (SERIALIZED mode)
         private OLLMfiles.GitProviderBase git_provider;     // Git provider instance (each thread needs its own instance for thread safety)
+        private OLLMchat.Settings.Config2 config;             // Cloned Config2 instance for Indexer creation (thread-safe copy)
+        private OLLMchat.Settings.Config2 original_config;     // Original config (for monitoring changes on main thread)
 
         // Thread management (main thread creates/manages, background thread uses)
         private GLib.Thread<void*>? worker_thread = null;
@@ -51,9 +53,12 @@ namespace OLLMvector {
          *
          * @param tool The CodebaseSearchTool instance (provides embedding_client, vector_db, and project_manager.db).
          * @param git_provider The Git provider instance (each thread needs its own instance for thread safety).
+         * @param config Config2 instance for Indexer creation. A deep copy is made for thread safety.
+         *                Changes to config (when preferences dialog closes) will trigger thread restart.
          */
         public BackgroundScan (Tool.CodebaseSearchTool tool,
-                               OLLMfiles.GitProviderBase git_provider) 
+                               OLLMfiles.GitProviderBase git_provider,
+                               OLLMchat.Settings.Config2 config) 
 		{
             // Extract dependencies from tool instance
             var embedding_client = tool.embedding_client;
@@ -69,13 +74,76 @@ namespace OLLMvector {
             if (project_manager == null) {
                 GLib.error("BackgroundScan: CodebaseSearchTool.project_manager is null");
             }
+            if (project_manager.db == null) {
+                GLib.error("BackgroundScan: CodebaseSearchTool.project_manager.db is null");
+            }
             
-            this.embedding_client = (!)embedding_client;
-            this.vector_db = (!)vector_db;
-            this.sql_db = (!)project_manager.db;
+            // GLib.error() never returns, so these are guaranteed non-null after the checks above
+            this.embedding_client = embedding_client;
+            this.vector_db = vector_db;
+            this.sql_db = project_manager.db;
             this.git_provider = git_provider;
-
+            
+            // Store original config and clone it for thread-safe use in background thread
+            this.original_config = config;
+            this.config = config.clone();
+            
+            // Connect to config changed signal (emitted when preferences dialog closes)
+            this.original_config.changed.connect(this.on_config_changed);
+            
             this.main_context = GLib.MainContext.default ();
+
+        }
+        
+        /**
+         * Handler for config changed signal (emitted when preferences dialog closes).
+         * Updates cloned config and restarts background thread if it's running.
+         */
+        private void on_config_changed()
+        {
+            // Only restart if thread is currently running
+            if (this.worker_thread != null) {
+                GLib.debug("BackgroundScan: Config changed, restarting background thread");
+                this.restart_thread.begin();
+                return;
+            }
+            
+            // Thread not running - safe to update config immediately
+            this.config = this.original_config.clone();
+            GLib.debug("BackgroundScan: Config changed, config updated (thread not running)");
+        }
+        
+        /**
+         * Restarts the background thread by stopping it and starting it again.
+         * This is called when config changes are detected and thread is running.
+         * Config is cloned after thread stops to ensure thread safety.
+         */
+        private async void restart_thread()
+        {
+            // Stop the current thread
+            if (this.worker_loop != null) {
+                this.worker_loop.quit();
+            }
+            
+            // Wait for thread to finish
+            if (this.worker_thread != null) {
+                this.worker_thread.join();
+                this.worker_thread = null;
+            }
+            
+            // Clear worker context
+            this.worker_context = null;
+            
+            // Now that thread has stopped, safe to clone config
+            this.config = this.original_config.clone();
+            
+            // Clear background thread state so it will be recreated with new config
+            this.indexer = null;
+            
+            // Restart the thread immediately
+            this.ensure_thread();
+            
+            GLib.debug("BackgroundScan: Thread restarted with new config");
         }
 
         /**
@@ -406,7 +474,7 @@ namespace OLLMvector {
 
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
-                    this.indexer = new Indexing.Indexer (this.embedding_client, this.embedding_client, this.vector_db, this.sql_db, this.worker_project_manager);
+                    this.indexer = new Indexing.Indexer (this.config, this.vector_db, this.sql_db, this.worker_project_manager);
                 }
 
                 // Perform indexing.  Indexer.index_file() is async.

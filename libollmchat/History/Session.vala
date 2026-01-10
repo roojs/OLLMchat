@@ -23,7 +23,7 @@ namespace OLLMchat.History
 	 *
 	 * It uses SQ (SQLite) for database storage of metadata, and JSON files
 	 * for complete session data including all messages. Properties are wrappers
-	 * around this.chat.client.model, etc. Messages come from this.chat.messages
+	 * Messages come from session.messages. Model and other properties are on Session (Chat is created per request by AgentHandler)
 	 * with a flag to include extra info during JSON encoding.
 	 *
 	 * == Example ==
@@ -44,18 +44,10 @@ namespace OLLMchat.History
 	 */
 	public class Session : SessionBase
 	{
-		public Call.Chat chat { get; set; }
-		
 		// Streaming state tracking
 		private Message? current_stream_message = null;
 		private bool current_stream_is_thinking = false;
 		
-		// File ID: Format Y-m-d-H-i-s (e.g., "2025-01-15-14-30-45")
-		// Computed property that returns chat.fid
-		public override string fid {
-			get { return this.chat.fid; }
-			set {}
-		}
 			
 		public override string display_info {
 			owned get {
@@ -75,35 +67,44 @@ namespace OLLMchat.History
 			}
 		}	
 		
-		/**
-		 * Constructor requires a Call.Chat object.
-		 * Client is created from chat.client.
-		 *
-		 * @param manager The history manager
-		 * @param chat The chat object (required)
-		 */
-		public Session(Manager manager, Call.Chat chat)
-		{
-			base(manager);
-			this.chat = chat;
-			this.client = chat.client;
-		}
+	/**
+	 * Constructor for Session.
+	 * 
+	 * Note: Chat is created per request by AgentHandler, not stored on Session.
+	 *
+	 * @param manager The history manager
+	 */
+	public Session(Manager manager)
+	{
+		base(manager);
+		// Model is set by Manager after construction
+		
+		// Generate fid from current timestamp (format: YYYY-MM-DD-HH-MM-SS)
+		var now = new DateTime.now_local();
+		this.fid = now.format("%Y-%m-%d-%H-%M-%S");
+		
+		// Set agent handler when session is created (if agent_name is set)
+		// Agent will be set later if agent_name is set after construction
+		
+		// Connect to config changed signal to update Chat when config changes
+		this.manager.config.changed.connect(this.on_config_changed);
+	}
 		
 		/**
 		* Handler for message_created signal from this session's client.
 		* Handles message persistence when a message is created.
+		* FIXME = needs making logical after we remove get_chat
+		* FIXME = on message created should not be getting a chat? - need to work out why that would happen
 		*/
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface)
+		protected override void on_message_created(Message m)
 		{
-			// Update chat reference if message_interface is a Chat
-			if (m.message_interface is Call.Chat) {
-				this.chat = (Call.Chat) m.message_interface;
-			}
+			// Chat properties are already set on agent.chat() when the chat is created
+			// No need to update from message_interface or content_interface
 			
 			// Skip "done" messages - they're just signal messages and shouldn't be persisted to history
 			if (m.role == "done") {
 				// Still relay to Manager for UI (though it will be filtered out there too)
-				this.manager.message_created(m, content_interface);
+				this.manager.message_added(m, this);
 				return;
 			}
 			
@@ -120,14 +121,16 @@ namespace OLLMchat.History
 				this.messages.add(m);
 			}
 			
-			// Ensure session is tracked in Manager
+			// Ensure session is tracked in Manager (SessionList will emit items_changed signal automatically)
 			if (!this.manager.sessions.contains(this)) {
-				this.manager.sessions.add(this);
-				this.manager.session_added(this);
+				this.manager.sessions.append(this);
 			}
 			
-			// Relay to Manager for UI
-			this.manager.message_created(m, content_interface);
+			// Relay to Manager for UI - pass this session, not content_interface
+			// Only relay if session is active (prevents inactive sessions from updating UI)
+			if (this.is_active) {
+				this.manager.message_added(m, this);
+			}
 			
 			// Save session
 			this.save_async.begin();
@@ -136,24 +139,26 @@ namespace OLLMchat.History
 		}
 			
 		/**
-		* Handler for stream_chunk signal from this session's client.
-		* Handles unread tracking and session saving.
-		*/
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
+		 * Called by AgentHandler when a streaming chunk is received.
+		 * Handles persistence and relays to Manager signals.
+		 */
+		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
 			// If session is inactive, increment unread count
+			// This prevents inactive sessions from updating the UI with streaming output
+			// Note: unread_count auto-property automatically emits property change notification
 			if (!this.is_active) {
 				this.unread_count++;
-				this.notify_property("unread_count");
+				this.notify_property("css_classes");  // Notify css_classes change when unread_count changes
 			}
 			
-			// Capture streaming output
+			// Capture streaming output (shared logic for both active and inactive sessions)
 			if (new_text.length > 0) {
 				// Check if stream type has changed
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					this.current_stream_message = new Message(this.chat, stream_role, new_text);
+					this.current_stream_message = new Message(stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
 				} else {
@@ -164,41 +169,59 @@ namespace OLLMchat.History
 			
 			// When response is done, finalize streaming
 			if (response.done) {
-				// Create "end-stream" message to signal renderer
-				var end_stream_msg = new Message(this.chat, "end-stream", "");
-				this.messages.add(end_stream_msg);
-				
-				// Finalize current stream message
-				this.current_stream_message = null;
-				this.current_stream_is_thinking = false;
-				
-				// Emit message_created for final assistant message if it exists and hasn't been emitted yet
-				if (response.message != null && response.message.is_llm) {
-					// Check if this message is already in our list (avoid duplicates)
-					bool found = false;
-					foreach (var existing_msg in this.messages) {
-						if (existing_msg == response.message) {
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						// Ensure message_interface is set
-						response.message.message_interface = this.chat;
-						// Emit message_created signal with Response.Chat as content_interface
-						this.client.message_created(response.message, response);
-						
-						// Emit a "done" message after the real message with summary
-						var summary = response.get_summary();
-						var done_msg = new Message(this.chat, "done", summary);
-						this.client.message_created(done_msg, response);
-					}
-				}
-				
+				this.finalize_streaming(response);
+			}
+			
+			// Only relay to Manager if session is active (inactive sessions don't update UI)
+			if (this.is_active) {
+				// Relay to Manager signals (base class handles this)
+				base.handle_stream_chunk(new_text, is_thinking, response);
+			}
+		}
+		
+		/**
+		 * Finalizes streaming when response is done.
+		 */
+		private void finalize_streaming(Response.Chat response)
+		{
+			// Create "end-stream" message to signal renderer
+			var end_stream_msg = new Message("end-stream", "");
+			this.messages.add(end_stream_msg);
+			
+			// Finalize current stream message
+			this.current_stream_message = null;
+			this.current_stream_is_thinking = false;
+			
+			if (response.message == null || !response.message.is_llm) {
 				this.save_async.begin();
 				this.notify_property("display_info");
 				this.notify_property("title");
+				return;
 			}
+			// Create a "done" message to signal completion (for tools like RequestEditMode)
+			// Note: The response body is in response.message (already persisted above)
+			// The "done" message is just a completion marker with no content needed
+			var done_msg = new Message("done", "");
+			// Add to messages to trigger message_created signal (Session will skip persisting it)
+			this.messages.add(done_msg);
+			// Relay to Manager to trigger message_created signal for tools
+			this.manager.message_added(done_msg, this);
+			
+			// Create a "ui" message with performance metrics summary (for history display)
+			// This will be stored in messages array and displayed when loading history
+			// Summary is now always meaningful (never empty), so always create the UI message
+			var summary = response.get_summary();
+			var metrics_msg = new Message("ui", summary);
+			this.messages.add(metrics_msg);
+			// Relay to Manager for UI (metrics should be displayed)
+			this.manager.message_added(metrics_msg, this);
+			
+			// Set running state to false when response is done
+			this.is_running = false;
+			
+			this.save_async.begin();
+			this.notify_property("display_info");  // Reply count changes when message is added
+			// Note: title notification removed - title only changes in async save_async() if empty
 		}
 			
 		/**
@@ -356,16 +379,17 @@ namespace OLLMchat.History
 		 */
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Note: Vala converts underscores to hyphens when calling serialize_property
 			switch (property_name) {
 				case "fid":
-				case "updated_at_timestamp":
+				case "updated-at-timestamp":
 				case "title":
 				case "model":
-				case "agent_name":
-				case "total_messages":
-				case "total_tokens":
-				case "duration_seconds":
-				case "child_chats":
+				case "agent-name":
+				case "total-messages":
+				case "total-tokens":
+				case "duration-seconds":
+				case "child-chats":
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "messages":
@@ -386,47 +410,14 @@ namespace OLLMchat.History
 				
 				default:
 					// Return null to exclude property from serialization
+					// Excludes runtime/computed properties that shouldn't be persisted:
+					// - Runtime references: agent, manager, chat, permission_provider, client
+					// - Computed properties: is_running, css_classes, display_title, display_info, display_date
+					// - Other non-serializable properties
 					return null;
 			}
 		}
 		
-		/**
-		 * Sends a message using this session's client.
-		 *
-		 * Sets streaming mode and either continues an existing conversation with reply()
-		 * or starts a new conversation with chat().
-		 *
-		 * @param text The message text to send
-		 * @param cancellable Optional cancellable for canceling the request
-		 * @return The response from the chat API
-		 * @throws Error if the request fails
-		 */
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
-		{
-			// Set streaming
-			this.client.stream = true;
-			
-			// Check if we should use reply() or chat()
-			var streaming_response = (Response.Chat?)this.chat.streaming_response;
-			if (streaming_response != null &&
-				streaming_response.done &&
-				streaming_response.call != null) {
-				// Use reply to continue conversation
-				this.chat.cancellable = cancellable;
-				return yield streaming_response.reply(text);
-			}
-			
-			// First message - use regular chat()
-			var response = yield this.client.chat(text, cancellable);
-			
-			// Store cancellable reference
-			if (response.call != null && response.call is Call.Chat) {
-				var chat = (Call.Chat) response.call;
-				chat.cancellable = cancellable;
-			}
-			
-			return response;
-		}
 		
 		/**
 		 * Loads the session data if needed.
@@ -447,8 +438,141 @@ namespace OLLMchat.History
 		 */
 		public override void cancel_current_request()
 		{
-			if (this.chat.cancellable != null) {
-				this.chat.cancellable.cancel();
+			// Cancel via agent's chat if available
+			if (this.agent.chat().cancellable != null) {
+				this.agent.chat().cancellable.cancel();
+			}
+		}
+		
+		/**
+		 * Ensures the agent handler is set on this session.
+		 * Creates the handler from agent_name if it doesn't exist.
+		 * 
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		private void ensure_agent_handler() throws Error
+		{
+			// If agent handler already exists, nothing to do
+			if (this.agent != null) {
+				return;
+			}
+			
+			// Get agent name (default to "just-ask" if not set)
+			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;
+			
+			// Get agent from manager
+			var factory = this.manager.agent_factories.get(agent_name);
+			if (factory == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create handler from factory
+			this.agent = factory.create_agent(this);
+		}
+		
+		/**
+		 * Activates an agent for this session.
+		 * 
+		 * Handles agent changes by creating a new AgentHandler. Messages are already
+		 * stored in session.messages, so the new AgentHandler will have access to
+		 * the full conversation history when building message arrays.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Save reference to old AgentHandler (if exists)
+			var old_agent = this.agent;
+			
+			// Update agent_name on session
+			this.agent_name = agent_name;
+			
+			// Get agent from manager
+			var factory = this.manager.agent_factories.get(agent_name);
+			if (factory == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create new handler from factory
+			var agent = factory.create_agent(this);
+			
+			// Copy chat from old agent to new agent and connect agent property
+			if (old_agent != null) {
+				// Copy the chat instance from old agent
+				agent.replace_chat(old_agent.chat());
+				// Connect the agent property to the new handler
+				agent.chat().agent = agent;
+			}
+			
+			this.agent = agent;
+			
+			
+		// Trigger agent_activated signal for UI updates
+		// Manager emits this signal, which Window listens to for widget management
+		this.manager.agent_activated(factory);
+	}
+	
+	/**
+	 * Handler for config.changed signal.
+	 * 
+	 * Updates Chat's model and options when config changes.
+	 * Config changes may update model_options, which affects model_usage.options.
+	 * Also rebuilds tools when tool configuration changes.
+	 */
+	private void on_config_changed()
+	{
+		// Update Chat properties from model_usage when config changes
+		// Agent always exists when config changes, so no null check needed
+		if (this.agent != null) {
+			this.agent.chat().model = this.model_usage.model;
+			
+			// Update connection
+			if (this.model_usage.connection != "" && this.manager.config.connections.has_key(this.model_usage.connection)) {
+				this.agent.chat().connection = this.manager.config.connections.get(this.model_usage.connection);
+			}
+			
+			this.agent.chat().options = this.model_usage.options;
+			
+			// Rebuild tools when tool configuration changes (ensures Chat has latest tool config/active state)
+			this.agent.rebuild_tools();
+		}
+	}
+	
+	/**
+	 * Sends a Message object to this session.
+		 * 
+		 * This is the new method for sending messages. Adds Message to session history
+		 * and delegates to AgentHandler if message.role == "user".
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
+		 */
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
+		{
+			// Add to session history
+			this.messages.add(message);
+			
+			// Emit message_added signal to notify UI (new flow: Session.send() → Manager.message_added() → UI)
+			// This is the explicit signal for the new flow, replacing the old add_message signal
+			this.manager.message_added(message, this);
+			
+			// If not user message, we're done
+			if (message.role != "user") {
+				return;
+			}
+			
+			// User message - ensure agent handler is set (create if needed)
+			this.ensure_agent_handler();
+			
+			// Session has reference to AgentHandler
+			if (this.agent != null) {
+				yield this.agent.send_async(message, cancellable);
+				// Set running state to true after request starts
+				this.is_running = true;
+			} else {
+				throw new OllamaError.INVALID_ARGUMENT("No agent available for session");
 			}
 		}
 		

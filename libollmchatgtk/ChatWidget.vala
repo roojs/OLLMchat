@@ -117,7 +117,8 @@ namespace OLLMchatGtk
 				}
 				this.chat_view.append_tool_message(message);
 			});
-			this.manager.message_created.connect(this.on_message_created);
+			// Phase 5: Use new message_added signal (preferred) instead of old add_message signal
+			this.manager.message_added.connect(this.on_message_created);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -259,23 +260,25 @@ namespace OLLMchatGtk
 					message_index, total_messages, msg.role, content_preview);
 				 
 				// Display message based on role (only UI-visible messages reach here)
+				// Use manager.session for rendering (load_messages is called when switching sessions)
+				var session = this.manager.session;
 				switch (msg.role) {
 					case "user-sent":
-						this.chat_view.append_user_message(msg.content, msg.message_interface);
+						this.chat_view.append_user_message(msg.content, session);
 						break;
 					case "ui":
 						this.chat_view.append_tool_message(msg);
 						break;
 					case "think-stream":
 						// For think-stream, content is the thinking text
-						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", "", msg.content);
-						this.chat_view.append_complete_assistant_message(stream_msg);
+						var stream_msg = new OLLMchat.Message("assistant", "", msg.content);
+						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					case "content-stream":
 					case "content-non-stream":
 						// Render streaming/non-streaming messages as assistant messages
-						var stream_msg = new OLLMchat.Message(msg.message_interface, "assistant", msg.content, msg.thinking);
-						this.chat_view.append_complete_assistant_message(stream_msg);
+						var stream_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
+						this.chat_view.append_complete_assistant_message(stream_msg, session);
 						break;
 					default:
 						// Should not reach here if is_ui_visible is working correctly
@@ -293,7 +296,7 @@ namespace OLLMchatGtk
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
 		 */
-		private void on_message_created(OLLMchat.Message m, OLLMchat.ChatContentInterface? content_interface)
+		private void on_message_created(OLLMchat.Message m, OLLMchat.History.SessionBase? session)
 		{
 			// Re-enable scrolling when new messages arrive (not from history loading)
 			// This ensures scrolling works for new messages but stays disabled after loading history
@@ -304,10 +307,16 @@ namespace OLLMchatGtk
 				return;
 			}
 			
+			// Session is required for rendering messages
+			if (session == null) {
+				GLib.warning("ChatWidget.on_message_created: session is null, cannot render message");
+				return;
+			}
+			
 			// Display message based on role (only UI-visible messages reach here)
 			switch (m.role) {
 				case "user-sent":
-					this.chat_view.append_user_message(m.content, m.message_interface);
+					this.chat_view.append_user_message(m.content, session);
 					this.chat_view.show_waiting_indicator();
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
@@ -317,19 +326,19 @@ namespace OLLMchatGtk
 				case "ui":
 					// Render UI messages using the general renderer (same as assistant messages)
 					// This ensures code blocks are properly rendered as SourceView widgets
-					var ui_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
-					this.chat_view.append_complete_assistant_message(ui_msg);
+					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(ui_msg, session);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
-					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", "", m.content);
-					this.chat_view.append_complete_assistant_message(stream_msg);
+					var stream_msg = new OLLMchat.Message("assistant", "", m.content);
+					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				case "content-stream":
 				case "content-non-stream":
 					// Render streaming/non-streaming messages as assistant messages
-					var stream_msg = new OLLMchat.Message(m.message_interface, "assistant", m.content, m.thinking);
-					this.chat_view.append_complete_assistant_message(stream_msg);
+					var stream_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(stream_msg, session);
 					break;
 				default:
 					// Should not reach here if is_ui_visible is working correctly
@@ -378,15 +387,14 @@ namespace OLLMchatGtk
 			// Copy model and agent from current session
 			var empty_session = new OLLMchat.History.EmptySession(this.manager);
 			
-			// Copy model and agent from current session if available
-			if (this.manager.session != null && this.manager.session.client != null) {
-				if (this.manager.session.client.model != "") {
-					empty_session.client.model = this.manager.session.client.model;
-				}
-				if (this.manager.session.agent_name != "") {
-					empty_session.agent_name = this.manager.session.agent_name;
-					empty_session.client.prompt_assistant = this.manager.agents.get(this.manager.session.agent_name);
-				}
+			// Copy model and agent from current session (Phase 3: model on Session, not Client)
+			// Manager always initializes session in constructor, so no null check needed
+			if (this.manager.session.model != "") {
+				empty_session.model = this.manager.session.model;
+			}
+			if (this.manager.session.agent_name != "") {
+				empty_session.agent_name = this.manager.session.agent_name;
+				// Agent is managed separately, not stored on client
 			}
 			
 			// Switch to the EmptySession (this clears the chat)
@@ -499,9 +507,14 @@ namespace OLLMchatGtk
 			var cancellable = new GLib.Cancellable();
 			
 			try {
-				// Use session.send_message() - EmptySession will convert to Session on first message
-				// Session.send_message() handles streaming, reply() vs chat(), and cancellable
-				yield this.manager.session.send_message(text, cancellable);
+				// Phase 5: Use new pattern - create Message object and call manager.send(session, message)
+				// This is the preferred method. EmptySession will convert to Session on first message.
+				// Create Message object with "user" role
+				// Note: Message is added to Session
+				var user_message = new OLLMchat.Message("user", text);
+				
+				// Call manager.send() - this routes to session.send() which handles everything
+				yield this.manager.send(this.manager.session, user_message, cancellable);
 				
 				// Response is handled by streaming callback
 			} catch (GLib.IOError e) {
@@ -515,7 +528,8 @@ namespace OLLMchatGtk
 				string error_msg = "";
 				switch (e.code) {
 					case GLib.IOError.CONNECTION_REFUSED:
-						error_msg = "Connection refused. Please ensure the Ollama server is running at " + this.manager.session.client.connection.url + ".";
+						var default_connection = this.manager.config.connections.get(this.manager.default_model_usage.connection);
+						error_msg = "Connection refused. Please ensure the Ollama server is running at " + default_connection.url + ".";
 						break;
 					case GLib.IOError.TIMED_OUT:
 						error_msg = "Request timed out. Please check your network connection and try again.";

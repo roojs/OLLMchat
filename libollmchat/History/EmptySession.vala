@@ -27,20 +27,10 @@ namespace OLLMchat.History
 	 */
 	public class EmptySession : SessionBase
 	{
-		public Call.Chat? chat {
-			get { return null; }
-			set { } // Ignore attempts to set chat
-		}
-		
 		public EmptySession(Manager manager)
 		{
 			base(manager);
-			this.client = manager.new_client();
-		}
-		
-		public override string fid {
-			get { return ""; }
-			set { }
+			// Chat is created per request by AgentHandler, not stored on Session
 		}
 		
 		public override string display_info {
@@ -59,47 +49,40 @@ namespace OLLMchat.History
 		}
 		
 		/**
+		 * Sends a Message object to this session.
+		 * 
 		 * Converts EmptySession to a real Session when a message is sent.
-		 *
 		 * Creates a new Session, copies client properties, replaces this EmptySession
-		 * in the manager, and then calls send_message() on the new Session.
+		 * in the manager, and then calls send() on the new Session.
+		 * 
+		 * @param message The message object to send
+		 * @param cancellable Optional cancellable for canceling the request
+		 * @throws Error if the request fails
 		 */
-		public override async Response.Chat send_message(string text, GLib.Cancellable? cancellable = null) throws Error
+		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Create client for new session, copying from EmptySession's client
-			var new_client = this.manager.new_client(this.client);
-			
-			// Create chat with new client
-			var chat = new Call.Chat(new_client, new_client.model);
-			
-			// Convert EmptySession to real Session
-			var real_session = new Session(this.manager, chat);
-			
-			// Copy agent_name from EmptySession
-			real_session.agent_name = this.agent_name;
-			
-			// Set timestamp immediately so the session appears at the top of the sorted history list
-			var now = new DateTime.now_local();
-			real_session.updated_at_timestamp = now.to_unix();
+			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
+			var real_session = new Session(this.manager) {
+				agent_name = this.agent_name,
+				updated_at_timestamp = (new DateTime.now_local()).to_unix()
+			};
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
 			
-			// Add session to manager.sessions and emit session_added signal immediately
-			// This ensures the history widget updates right away
-			GLib.debug("[EmptySession.send_message] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, new_client.model);
-			this.manager.sessions.add(real_session);
-			this.manager.session_added(real_session);
-			GLib.debug("[EmptySession.send_message] Session added to manager.sessions and session_added emitted");
-			
+			// Add session to manager.sessions (SessionList will emit items_changed signal automatically)
+			GLib.debug("[EmptySession.send] Converting to Session: fid=%s, agent=%s, model=%s", 
+				real_session.fid, real_session.agent_name, real_session.model);
+			this.manager.sessions.append(real_session);
+			GLib.debug("[EmptySession.send] Session added to manager.sessions");
 			
 			real_session.activate();
 			this.manager.session_activated(real_session);
 			
-			// Now call send_message on the real session
-			return yield real_session.send_message(text, cancellable);
+			// Now call send() on the real session
+			yield real_session.send(message, cancellable);
 		}
+		
 		
 		public override async SessionBase? load() throws Error
 		{
@@ -109,9 +92,44 @@ namespace OLLMchat.History
 		
 		public override void cancel_current_request() { }  // No-op: EmptySession has no chat, so nothing to cancel
 		
-		protected override void on_message_created(Message m, ChatContentInterface? content_interface) { }  // No-op: Messages handled by real Session after conversion
+		/**
+		 * Activates an agent for this empty session.
+		 * 
+		 * Creates the AgentHandler for the specified agent. The handler will be
+		 * available when the session converts to a real Session.
+		 * 
+		 * @param agent_name The name of the agent to activate
+		 * @throws Error if agent not found or handler creation fails
+		 */
+		public override void activate_agent(string agent_name) throws Error
+		{
+			// Save reference to old AgentHandler (if exists)
+			
+			// Update agent_name on session
+			if (this.agent_name == agent_name) {
+				return;
+			}
+			// Get agent factory from manager
+			var agent_factory = this.manager.agent_factories.get(agent_name);
+			if (agent_factory == null) {
+				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+			}
+			
+			// Create agent from factory
+			var agent = agent_factory.create_agent(this);
+			
+			agent.replace_chat(this.agent.chat()); 
+			
+			// Set new agent on session
+			this.agent = agent;
+			this.agent_name = agent_name;
+
+			
+			// Trigger agent_activated signal for UI updates
+			this.manager.agent_activated(agent_factory);
+		}
 		
-		protected override void on_stream_chunk(string new_text, bool is_thinking, Response.Chat response) { }  // No-op: EmptySession doesn't handle stream_chunk
+		protected override void on_message_created(Message m) { }  // No-op: Messages handled by real Session after conversion
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
