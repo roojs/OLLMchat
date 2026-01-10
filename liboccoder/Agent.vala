@@ -61,7 +61,7 @@ namespace OLLMcoder
 			// Pass this agent so factory can access session, client, etc.
 			string system_content = this.factory.system_message(this);
 			if (system_content != "") {
-				messages.add(new OLLMchat.Message(this.chat, "system", system_content));
+				messages.add(new OLLMchat.Message(this.chat_call, "system", system_content));
 			}
 			
 			// Filter and add messages from this.session.messages (full conversation history)
@@ -83,10 +83,10 @@ namespace OLLMcoder
 			// model/options get set properly.
 			
 			// Update cancellable for this request
-			this.chat.cancellable = cancellable;
+			this.chat_call.cancellable = cancellable;
 			
 			// Send full message array using new send() method
-			var response = yield this.chat.send(messages, cancellable);
+			var response = yield this.chat_call.send(messages, cancellable);
 			
 			// Process response and add assistant messages to session via session.send()
 			// This is handled via streaming callbacks/handlers - the response will be processed

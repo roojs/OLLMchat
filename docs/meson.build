@@ -126,11 +126,13 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
+    '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
     '../libollmchat/Agent/Base.vala',  # Must come after Factory (Base references Factory)
     '../libollmchat/Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
     '../libollmchat/Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
+    '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
     '../libollmchat/Agent/Base.vala',  # Must come after Factory (Base references Factory)
     '../libollmchat/Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
     '../libollmchat/Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)

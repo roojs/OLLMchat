@@ -52,11 +52,13 @@
         <h1 class="main_title">agent</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Agent.Base.html" class="class">Base</a></span>? <b><span class="property">agent</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Agent.Interface.html" class="interface">Interface</a></span>? <b><span class="property">agent</span></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
         </div>
         <div class="description">
-          <p>Reference to the agent handler for this tool request. Tools use this to communicate with the UI via the agent. Tools access chat_call via
-            agent.chat.</p>
+          <p>Reference to the agent for this tool request.</p>
+          <p>For agentic usage: This is the Base agent (implements Agent.Interface). For non-agentic usage: This is a dummy agent implementation 
+            (implements Agent.Interface).</p>
+          <p>Tools access resources via this.agent.chat(), this.agent.get_permission_provider(), this.agent.add_message().</p>
         </div>
       </div>
     </div><br/>

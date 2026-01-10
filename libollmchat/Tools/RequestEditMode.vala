@@ -331,7 +331,7 @@ namespace OLLMchat.Tools
 			// If not streaming, process the full content at once
 			// If streaming, we should have already captured everything via stream_content
 			// Phase 3: stream is on Chat, not Client
-			if (!this.agent.chat.stream && response.message != null && response.message.content != "") {
+			if (!this.agent.chat().stream && response.message != null && response.message.content != "") {
 				var parts = response.message.content.split("\n");
 				for (int i = 0; i < parts.length; i++) {
 					this.add_text(parts[i]);
@@ -394,7 +394,7 @@ namespace OLLMchat.Tools
 		/**
 		 * Sends a message to continue the conversation and disconnects signals.
 		 * This method should be called on both success and error paths to ensure signals are always disconnected.
-		 * Uses agent.chat.reply() to continue the conversation with the LLM's response.
+		 * Uses agent.chat().reply() to continue the conversation with the LLM's response.
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
@@ -411,7 +411,7 @@ namespace OLLMchat.Tools
 			// the final chunk processing completes first, then reply() sets is_streaming_active=true before
 			// the continuation response starts streaming.
 			GLib.Idle.add(() => {
-				this.agent.chat.reply.begin(
+				this.agent.chat().reply.begin(
 					reply_text,
 					response,
 					(obj, res) => {
@@ -445,9 +445,9 @@ namespace OLLMchat.Tools
 			
 			// Only check permission if file is NOT in active project
 			// Files in active project are auto-approved and don't need permission checks
-			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
+			// Get permission provider via agent interface
 			if (file == null && 
-				!this.agent.session.manager.permission_provider.check_permission(this)) {
+				!this.agent.get_permission_provider().check_permission(this)) {
 				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
 			

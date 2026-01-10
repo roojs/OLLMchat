@@ -223,11 +223,13 @@ namespace OLLMvector.Tool
 			);
 			
 			// Step 4: Create and execute search (exactly as oc-vector-search.vala does)
-			// Get config from session manager (not from client to avoid dependency)
+			// Get config via agent interface
+			var config = this.agent.config();
+			
 			var search = new OLLMvector.Search.Search(
 				this.vector_db,
 				sql_db,
-				this.agent.session.manager.config,
+				config,
 				active_project,
 				this.query,
 				(uint64)this.max_results,

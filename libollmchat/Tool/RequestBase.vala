@@ -38,11 +38,14 @@ namespace OLLMchat.Tool
 		public BaseTool tool { get; set; }
 		
 		/**
-		* Reference to the agent handler for this tool request.
-		* Tools use this to communicate with the UI via the agent.
-		* Tools access chat_call via agent.chat.
+		* Reference to the agent for this tool request.
+		* 
+		* For agentic usage: This is the Base agent (implements Agent.Interface).
+		* For non-agentic usage: This is a dummy agent implementation (implements Agent.Interface).
+		* 
+		* Tools access resources via this.agent.chat(), this.agent.get_permission_provider(), this.agent.add_message().
 		*/
-		public Agent.Base? agent { get; set; }
+		public Agent.Interface? agent { get; set; }
 		
 		/**
 		 * Permission question text.
@@ -108,9 +111,9 @@ namespace OLLMchat.Tool
 		protected string normalize_file_path(string in_path)
 		{
 			var path = in_path;
-			// Get permission provider from Manager (shared across all sessions)
+			// Get permission provider via agent interface
 			// Permission provider always exists (defaults to Dummy provider)
-			var permission_provider = this.agent.session.manager.permission_provider;
+			var permission_provider = this.agent.get_permission_provider();
 			
 			// Use permission provider's normalize_path if accessible, otherwise do basic normalization
 			if (!GLib.Path.is_absolute(path) && permission_provider.relative_path != "") {
@@ -131,13 +134,16 @@ namespace OLLMchat.Tool
 		 */
 		protected void send_ui(string type, string title, string body)
 		{
-			// Escape code blocks in body to prevent breaking the outer codeblock
-			var escaped_body = body.replace("\n```", "\n\\`\\`\\`");
-			var message = "```" + type + " " + title + "\n" + escaped_body + "\n```";
-			var ui_msg = new OLLMchat.Message(this.agent.chat, "ui", message);
-			
-			// Add message to session via agent (Chat → Agent → Session)
-			this.agent.session.add_message(ui_msg);
+		// Escape code blocks in body to prevent breaking the outer codeblock
+		// Add message via agent interface
+		this.agent.add_message(
+			new OLLMchat.Message(
+				this.agent.chat(),
+				"ui",
+				"```" + type + " " + title + "\n" +
+					body.replace("\n```", "\n\\`\\`\\`") + "\n```"
+			)
+		);
 		}
 		
 		/**
@@ -166,8 +172,8 @@ namespace OLLMchat.Tool
 			if (this.build_perm_question()) {
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
 				
-			// Get permission provider from Manager (shared across all sessions)
-			var permission_provider = this.agent.session.manager.permission_provider;
+			// Get permission provider via agent interface
+			var permission_provider = this.agent.get_permission_provider();
 			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Manager", 
 				this.tool.name, permission_provider, permission_provider.get_type().name());
 				

@@ -75,11 +75,14 @@ namespace OLLMchat.Tools
 			}
 				
 			// Send request message to UI
-			var request_msg = new OLLMchat.Message(this.agent.chat, "ui",
-				"```" + this.tool.name + " - request\n" + this.url + "\n```");
-			
-			// Add message to session via agent (Chat → Agent → Session)
-			this.agent.session.add_message(request_msg);
+			// Add message via agent interface
+			this.agent.add_message(
+				new OLLMchat.Message(
+					this.agent.chat(),
+					"ui",
+					"```" + this.tool.name + " - request\n" + this.url + "\n```"
+				)
+			);
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -114,12 +117,15 @@ namespace OLLMchat.Tools
 				var result = this.convert_content(content, content_type);
 				
 				// Send response message to UI (escape code blocks in result)
-				var response_msg = new OLLMchat.Message(this.agent.chat, "ui",
-					"```" + this.tool.name + " - response (" + this.format + ")\n" + 
-						result.replace("\n```", "\n\\`\\`\\`") + "\n```");
-				
-				// Add message to session via agent (Chat → Agent → Session)
-				this.agent.session.add_message(response_msg);
+				// Add message via agent interface
+				this.agent.add_message(
+					new OLLMchat.Message(
+						this.agent.chat(),
+						"ui",
+						"```" + this.tool.name + " - response (" + this.format + ")\n" +
+							result.replace("\n```", "\n\\`\\`\\`") + "\n```"
+					)
+				);
 				
 				return result;
 			}

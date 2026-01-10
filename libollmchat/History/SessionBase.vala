@@ -185,17 +185,17 @@ namespace OLLMchat.History
 		this.model = model_usage.model;
 		
 		// Update Chat properties if agent exists (agent always exists when activate_model is called)
-		if (this.agent != null && this.agent.chat != null) {
+		if (this.agent != null && this.agent.chat() != null) {
 			// Update model
-			this.agent.chat.model = usage.model;
+			this.agent.chat().model = usage.model;
 			
 			// Update connection
 			if (usage.connection != "" && this.manager.config.connections.has_key(usage.connection)) {
-				this.agent.chat.connection = this.manager.config.connections.get(usage.connection);
+				this.agent.chat().connection = this.manager.config.connections.get(usage.connection);
 			}
 			
 			// Update options (no cloning - Chat just references the Options object)
-			this.agent.chat.options = usage.options;
+			this.agent.chat().options = usage.options;
 		}
 		
 	}

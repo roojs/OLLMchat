@@ -26,7 +26,7 @@ namespace OLLMchat.Agent
 	 * special system message handling. For agents that need system message regeneration
 	 * (like CodeAssistant), use a specialized handler.
 	 */
-	public class Base : Object
+	public class Base : Object, Interface
 	{
 		/**
 		 * The factory that created this agent.
@@ -53,7 +53,7 @@ namespace OLLMchat.Agent
 		 * Chat instance created in constructor and reused for all requests.
 		 * Can be updated if model, options, or other properties change.
 		 */
-		public OLLMchat.Call.Chat chat;
+		protected OLLMchat.Call.Chat chat_call;
 		
 		// Signal handler IDs removed - agent usage now uses direct method calls
 		
@@ -70,7 +70,7 @@ namespace OLLMchat.Agent
 		/**
 		 * Signal emitted when a chat request is sent to the server.
 		 */
-		public signal void chat_send(OLLMchat.Call.Chat chat);
+		public signal void chat_send(OLLMchat.Call.Chat chat_call);
 		
 		/**
 		 * Signal emitted when streaming starts.
@@ -103,7 +103,7 @@ namespace OLLMchat.Agent
 			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change
-			this.chat = new OLLMchat.Call.Chat(this.connection, model) {
+			this.chat_call = new OLLMchat.Call.Chat(this.connection, model) {
 				stream = true,
 				think = true,
 				options = usage.options,  // No cloning - Chat just references the Options object
@@ -114,10 +114,10 @@ namespace OLLMchat.Agent
 			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
 			// Copy tools from Manager to Chat
 			foreach (var tool in this.session.manager.tools.values) {
-				this.chat.add_tool(tool);
+				this.chat_call.add_tool(tool);
 			}
 			// Agent can also configure/filter tools if needed
-			this.factory.configure_tools(this.chat);
+			this.factory.configure_tools(this.chat_call);
 			
 			// Signal connections removed - agent usage now uses direct method calls from Chat
 		}
@@ -183,31 +183,31 @@ namespace OLLMchat.Agent
 				GLib.debug("Executing tool '%s' (id='%s')",
 					tool_call.function.name, tool_call.id);
 				
-				// Get tool from chat.tools (tools defaults to empty HashMap, never null)
-				if (!this.chat.tools.has_key(tool_call.function.name)) {
+				// Get tool from chat_call.tools (tools defaults to empty HashMap, never null)
+				if (!this.chat_call.tools.has_key(tool_call.function.name)) {
 					var available_tools_str = "";
-					if (this.chat.tools.size > 0) {
-						available_tools_str = "'" + string.joinv("', '", this.chat.tools.keys.to_array()) + "'";
+					if (this.chat_call.tools.size > 0) {
+						available_tools_str = "'" + string.joinv("', '", this.chat_call.tools.keys.to_array()) + "'";
 					}
 					
 					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
 						"', however we only have these tools: " + available_tools_str;
 					
-					var error_msg = new Message(this.chat, "ui", err_message);
+					var error_msg = new Message(this.chat_call, "ui", err_message);
 					this.handle_tool_message(error_msg);
-					reply_messages.add(new Message.tool_call_invalid(this.chat, tool_call, err_message));
+					reply_messages.add(new Message.tool_call_invalid(this.chat_call, tool_call, err_message));
 					continue; // Continue to next tool call
 				}
 				
-				var tool = this.chat.tools.get(tool_call.function.name);
+				var tool = this.chat_call.tools.get(tool_call.function.name);
 				
 				// Show message that tool is being executed
-				var exec_msg = new Message(this.chat, "ui", "Executing tool: `" + tool_call.function.name + "`");
+				var exec_msg = new Message(this.chat_call, "ui", "Executing tool: `" + tool_call.function.name + "`");
 				this.handle_tool_message(exec_msg);
 				
 				try {
 					// Execute the tool - tool.execute() will set request.agent = chat_call.agent
-					var result = yield tool.execute(this.chat, tool_call.function.arguments);
+					var result = yield tool.execute(this.chat_call, tool_call.function.arguments);
 					
 					// Log result summary (truncate if too long)
 					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
@@ -216,7 +216,7 @@ namespace OLLMchat.Agent
 					if (result.has_prefix("ERROR:")) {
 						GLib.debug("Tool '%s' returned error result: %s",
 							tool_call.function.name, result);
-						var error_msg = new Message(this.chat, "ui", result);
+						var error_msg = new Message(this.chat_call, "ui", result);
 						this.handle_tool_message(error_msg);
 					} else {
 						GLib.debug("Tool '%s' executed successfully, result length: %zu, preview: %s",
@@ -225,7 +225,7 @@ namespace OLLMchat.Agent
 					
 					// Create tool reply message
 					var tool_reply = new Message.tool_reply(
-						this.chat, tool_call.id, 
+						this.chat_call, tool_call.id, 
 						tool_call.function.name,
 						result
 					);
@@ -235,9 +235,9 @@ namespace OLLMchat.Agent
 				} catch (Error e) {
 					GLib.debug("Error executing tool '%s' (id='%s'): %s", 
 						tool_call.function.name, tool_call.id, e.message);
-					var error_msg = new Message(this.chat, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
+					var error_msg = new Message(this.chat_call, "ui", "Error executing tool '" + tool_call.function.name + "': " + e.message);
 					this.handle_tool_message(error_msg);
-					reply_messages.add(new Message.tool_call_fail(this.chat, tool_call, e));
+					reply_messages.add(new Message.tool_call_fail(this.chat_call, tool_call, e));
 					continue; // Continue to next tool call
 				}
 			}
@@ -256,10 +256,10 @@ namespace OLLMchat.Agent
 		public void rebuild_tools()
 		{
 			// Rebuild tools from Manager (they may have updated config/active state)
-			this.chat.tools = this.session.manager.tools;
+			this.chat_call.tools = this.session.manager.tools;
 			
 			// Agent can reconfigure/filter tools if needed
-			this.factory.configure_tools(this.chat);
+			this.factory.configure_tools(this.chat_call);
 		}
 		
 		/**
@@ -295,15 +295,68 @@ namespace OLLMchat.Agent
 			
 			
 			// Update cancellable for this request
-			this.chat.cancellable = cancellable;
+			this.chat_call.cancellable = cancellable;
 			
 			// Send full message array using new send() method
-			var response = yield this.chat.send(messages, cancellable);
+			var response = yield this.chat_call.send(messages, cancellable);
 			
 			// Process response and add assistant messages to session via session.send()
 			// This is handled via streaming callbacks/handlers - the response will be processed
 			// through Chat's direct method calls to agent.handle_stream_chunk() which relays to
 			// session.handle_stream_chunk() for persistence and UI updates
+		}
+		
+		// Implement Agent.Interface
+		/**
+		 * Get the chat instance for this agent.
+		 * 
+		 * @return The chat instance
+		 */
+		public Call.Chat chat()
+		{
+			return this.chat_call;
+		}
+		
+		/**
+		 * Get the permission provider for tool execution.
+		 * 
+		 * @return The permission provider instance
+		 */
+		public ChatPermission.Provider get_permission_provider()
+		{
+			return this.session.manager.permission_provider;
+		}
+		
+		/**
+		 * Get the configuration instance for tool execution.
+		 * 
+		 * @return The config instance from session.manager.config
+		 */
+		public Settings.Config2 config()
+		{
+			return this.session.manager.config;
+		}
+		
+		/**
+		 * Add a UI message to the conversation.
+		 * 
+		 * @param message The message to add
+		 */
+		public void add_message(Message message)
+		{
+			this.session.add_message(message);
+		}
+		
+		/**
+		 * Replace the chat instance with a new one.
+		 * 
+		 * Used by session code to update the chat when switching agents.
+		 * 
+		 * @param new_chat The new chat instance to use
+		 */
+		public void replace_chat(Call.Chat new_chat)
+		{
+			this.chat_call = new_chat;
 		}
 		
 	}

@@ -103,16 +103,16 @@ namespace OLLMchat.History
 			if (m.message_interface is Call.Chat) {
 				var new_chat = (Call.Chat) m.message_interface;
 			// Update properties on agent's chat if available (Chat is created per request by AgentHandler)
-			if (this.agent != null && this.agent.chat != null) {
-				var current_chat = this.agent.chat;
-				current_chat.model = new_chat.model;
-				current_chat.stream = new_chat.stream;
-				current_chat.format = new_chat.format;
-				current_chat.format_obj = new_chat.format_obj;
-				current_chat.think = new_chat.think;
-				current_chat.keep_alive = new_chat.keep_alive;
-				current_chat.options = new_chat.options;
-			}
+				if (this.agent != null && this.agent.chat() != null) {
+					var current_chat = this.agent.chat();
+					current_chat.model = new_chat.model;
+					current_chat.stream = new_chat.stream;
+					current_chat.format = new_chat.format;
+					current_chat.format_obj = new_chat.format_obj;
+					current_chat.think = new_chat.think;
+					current_chat.keep_alive = new_chat.keep_alive;
+					current_chat.options = new_chat.options;
+				}
 				// Note: fid is no longer copied from chat - it's owned by Session
 				// Note: client is not updated from chat (Phase 3: Chat no longer has client)
 			}
@@ -174,7 +174,7 @@ namespace OLLMchat.History
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
 					// Stream type changed or first chunk - create new stream message
 					string stream_role = is_thinking ? "think-stream" : "content-stream";
-					this.current_stream_message = new Message(this.agent.chat, stream_role, new_text);
+					this.current_stream_message = new Message(this.agent.chat(), stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
 				} else {
@@ -201,7 +201,7 @@ namespace OLLMchat.History
 		private void finalize_streaming(Response.Chat response)
 		{
 			// Create "end-stream" message to signal renderer
-			var end_stream_msg = new Message(this.agent.chat, "end-stream", "");
+			var end_stream_msg = new Message(this.agent.chat(), "end-stream", "");
 			this.messages.add(end_stream_msg);
 			
 			// Finalize current stream message
@@ -225,13 +225,13 @@ namespace OLLMchat.History
 			}
 			if (!found) {
 				// Ensure message_interface is set
-				response.message.message_interface = this.agent.chat;
+				response.message.message_interface = this.agent.chat();
 			}
 			
 			// Create a "done" message to signal completion (for tools like RequestEditMode)
 			// Note: The response body is in response.message (already persisted above)
 			// The "done" message is just a completion marker with no content needed
-			var done_msg = new Message(this.agent.chat, "done", "");
+			var done_msg = new Message(this.agent.chat(), "done", "");
 			// Add to messages to trigger message_created signal (Session will skip persisting it)
 			this.messages.add(done_msg);
 			// Relay to Manager to trigger message_created signal for tools
@@ -241,7 +241,7 @@ namespace OLLMchat.History
 			// This will be stored in messages array and displayed when loading history
 			// Summary is now always meaningful (never empty), so always create the UI message
 			var summary = response.get_summary();
-			var metrics_msg = new Message(this.agent.chat, "ui", summary);
+			var metrics_msg = new Message(this.agent.chat(), "ui", summary);
 			this.messages.add(metrics_msg);
 			// Relay to Manager for UI (metrics should be displayed)
 			this.manager.message_added(metrics_msg, this);
@@ -469,8 +469,8 @@ namespace OLLMchat.History
 		public override void cancel_current_request()
 		{
 			// Cancel via agent's chat if available
-			if (this.agent.chat.cancellable != null) {
-				this.agent.chat.cancellable.cancel();
+			if (this.agent.chat().cancellable != null) {
+				this.agent.chat().cancellable.cancel();
 			}
 		}
 		
@@ -530,9 +530,9 @@ namespace OLLMchat.History
 			// Copy chat from old agent to new agent and connect agent property
 			if (old_agent != null) {
 				// Copy the chat instance from old agent
-				agent.chat = old_agent.chat;
+				agent.replace_chat(old_agent.chat());
 				// Connect the agent property to the new handler
-				agent.chat.agent = agent;
+				agent.chat().agent = agent;
 			}
 			
 			this.agent = agent;
@@ -555,14 +555,14 @@ namespace OLLMchat.History
 		// Update Chat properties from model_usage when config changes
 		// Agent always exists when config changes, so no null check needed
 		if (this.agent != null) {
-			this.agent.chat.model = this.model_usage.model;
+			this.agent.chat().model = this.model_usage.model;
 			
 			// Update connection
 			if (this.model_usage.connection != "" && this.manager.config.connections.has_key(this.model_usage.connection)) {
-				this.agent.chat.connection = this.manager.config.connections.get(this.model_usage.connection);
+				this.agent.chat().connection = this.manager.config.connections.get(this.model_usage.connection);
 			}
 			
-			this.agent.chat.options = this.model_usage.options;
+			this.agent.chat().options = this.model_usage.options;
 			
 			// Rebuild tools when tool configuration changes (ensures Chat has latest tool config/active state)
 			this.agent.rebuild_tools();

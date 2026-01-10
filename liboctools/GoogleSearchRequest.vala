@@ -180,16 +180,14 @@ namespace OLLMtools
 				throw new GLib.IOError.INVALID_ARGUMENT("Start parameter must be >= 1");
 			}
 			
-			// Get config from agent.session.manager
-			if (this.agent == null || this.agent.session == null || this.agent.session.manager == null) {
-				throw new GLib.IOError.FAILED("Agent session manager not available");
-			}
+			// Get config via agent interface
+			var config = this.agent.config();
 			
 			// Ensure tool config exists (creates with empty values if needed)
-			new GoogleSearchTool(null).setup_tool_config(this.agent.session.manager.config);
+			new GoogleSearchTool(null).setup_tool_config(config);
 			
 			// Get tool config (guaranteed to exist after setup_tool_config)
-			var tool_config = this.agent.session.manager.config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;
+			var tool_config = config.tools.get("google_search") as OLLMtools.Tool.GoogleSearchToolConfig;
 			
 			if (tool_config.api_key == "" || tool_config.engine_id == "") {
 				throw new GLib.IOError.FAILED(

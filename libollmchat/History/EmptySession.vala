@@ -118,7 +118,7 @@ namespace OLLMchat.History
 			// Create agent from factory
 			var agent = agent_factory.create_agent(this);
 			
-			agent.chat = this.agent.chat; 
+			agent.replace_chat(this.agent.chat()); 
 			
 			// Set new agent on session
 			this.agent = agent;

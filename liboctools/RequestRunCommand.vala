@@ -212,8 +212,8 @@ namespace OLLMtools
 			this.send_ui("bash", "", "$ " + this.command);
 			
 			// Request permission (will always ask for complex commands due to unique path)
-			// Permission provider is on Manager (shared across all sessions, defaults to Dummy)
-			if (!(yield this.agent.session.manager.permission_provider.request(this))) {
+			// Get permission provider via agent interface
+			if (!(yield this.agent.get_permission_provider().request(this))) {
 				return "ERROR: Permission denied: " + this.permission_question;
 			}
 			

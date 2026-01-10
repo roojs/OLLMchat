@@ -26,6 +26,9 @@ namespace OLLMchat.Tool
 	 * class is built from Tool's properties on construction. Parameter descriptions
 	 * use a special syntax with @type, @property, and @param directives.
 	 *
+	 * Tools require an Agent.Interface instance to access chat, permission_provider,
+	 * and add_message(). For agentic usage (with session), use Agent.Base.
+	 *
 	 * == Example ==
 	 *
 	 * {{{
@@ -51,6 +54,58 @@ namespace OLLMchat.Tool
 	 *         return "Result";
 	 *     }
 	 * }
+	 * }}}
+	 *
+	 * == Non-Agentic Usage ==
+	 *
+	 * For non-agentic usage (without session), you can create a simple dummy agent
+	 * that implements Agent.Interface:
+	 *
+	 * {{{
+	 * public class DummyAgent : Object, Agent.Interface
+	 * {
+	 *     private Call.Chat chat_call;
+	 *     private ChatPermission.Provider my_permission_provider;
+	 *     private Settings.Config2 my_config;
+	 *     
+	 *     public Call.Chat chat()
+	 *     {
+	 *         return this.chat_call;
+	 *     }
+	 *     
+	 *     public ChatPermission.Provider get_permission_provider()
+	 *     {
+	 *         return this.my_permission_provider;
+	 *     }
+	 *     
+	 *     public Settings.Config2 config()
+	 *     {
+	 *         return this.my_config;
+	 *     }
+	 *     
+	 *     public DummyAgent(Call.Chat chat_call, ChatPermission.Provider permission_provider, Settings.Config2 config)
+	 *     {
+	 *         this.chat_call = chat_call;
+	 *         this.my_permission_provider = permission_provider;
+	 *         this.my_config = config;
+	 *     }
+	 *     
+	 *     public void add_message(Message message)
+	 *     {
+	 *         // For non-agentic usage, add message to chat.messages
+	 *         this.chat_call.messages.add(message);
+	 *         // Also emit tool_message signal for UI updates if needed
+	 *     }
+	 * }
+	 * }}}
+	 *
+	 * Then create the dummy agent and set it on the request:
+	 *
+	 * {{{
+	 * var permission_provider = new ChatPermission.Dummy(); // or your custom provider
+	 * var config = new Settings.Config2(); // or load from file
+	 * var dummy_agent = new DummyAgent(chat_call, permission_provider, config);
+	 * request.agent = dummy_agent;
 	 * }}}
 	 */
 	public abstract class BaseTool : Object, Json.Serializable
