@@ -88,12 +88,14 @@ namespace OLLMchat.Response
 		 * Generates a summary string with performance metrics.
 		 *
 		 * @return Summary string in format "Total Duration: X.XXs | Tokens In: X Out: X | X.XX t/s"
-		 *         Returns empty string if eval_duration is 0 (no metrics available)
+		 *         Returns "Response completed (metrics not available)" if eval_duration is 0 (no metrics available)
 		 */
 		public string get_summary()
 		{
 			if (this.eval_duration <= 0) {
-				return "";
+				// Return meaningful message when metrics aren't available
+				// This ensures users always see feedback that the response completed
+				return "Response completed (metrics not available)";
 			}
 			return "Total Duration: %.2fs | Tokens In: %d Out: %d | %.2f t/s".printf(
 				this.total_duration_s,

@@ -546,25 +546,11 @@ namespace OLLMchat.Call
 			response_obj.call = this;
 			response_obj.done = true; // Non-streaming responses are always done
 			
-			// Create content-non-stream message for session persistence
-			// Note: message should always be present in non-streaming responses (deserialized from JSON)
+			// Ensure message_interface is set on response message (needed for Session to update chat properties)
+			// Note: Non-streaming responses are handled by the caller (Session/Agent layer)
+			// The response.message will be persisted via Session.on_message_created() if needed
 			if (response_obj.message.is_llm) {
-				// Ensure message_interface is set
 				response_obj.message.message_interface = this;
-				
-				// Create content-non-stream message with the full content (non-streaming never has thinking)
-				var content_msg = new Message(this, "content-non-stream", response_obj.message.content, "");
-				content_msg.message_interface = this;
-				
-				// message_created signal emissions removed - callers handle state directly when creating messages
-				// Messages created: content_msg, response_obj.message, done_msg
-				
-				// Also create the original assistant message (for API compatibility, but not displayed in UI)
-				// response_obj.message is already created
-				
-				// Create a "done" message after with summary
-				var summary = response_obj.get_summary();
-				var done_msg = new Message(this, "done", summary);
 			}
 			
 			// Check for tool calls and handle them recursively

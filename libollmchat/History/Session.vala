@@ -143,7 +143,10 @@ namespace OLLMchat.History
 			}
 			
 			// Relay to Manager for UI - pass this session, not content_interface
-			this.manager.message_added(m, this);
+			// Only relay if session is active (prevents inactive sessions from updating UI)
+			if (this.is_active) {
+				this.manager.message_added(m, this);
+			}
 			
 			// Save session
 			this.save_async.begin();
@@ -158,12 +161,14 @@ namespace OLLMchat.History
 		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
 			// If session is inactive, increment unread count
+			// This prevents inactive sessions from updating the UI with streaming output
+			// Note: unread_count auto-property automatically emits property change notification
 			if (!this.is_active) {
 				this.unread_count++;
-				this.notify_property("unread_count");
+				this.notify_property("css_classes");  // Notify css_classes change when unread_count changes
 			}
 			
-			// Capture streaming output
+			// Capture streaming output (shared logic for both active and inactive sessions)
 			if (new_text.length > 0) {
 				// Check if stream type has changed
 				if (this.current_stream_message == null || this.current_stream_is_thinking != is_thinking) {
@@ -183,8 +188,11 @@ namespace OLLMchat.History
 				this.finalize_streaming(response);
 			}
 			
-			// Relay to Manager signals (base class handles this)
-			base.handle_stream_chunk(new_text, is_thinking, response);
+			// Only relay to Manager if session is active (inactive sessions don't update UI)
+			if (this.is_active) {
+				// Relay to Manager signals (base class handles this)
+				base.handle_stream_chunk(new_text, is_thinking, response);
+			}
 		}
 		
 		/**
@@ -218,16 +226,32 @@ namespace OLLMchat.History
 			if (!found) {
 				// Ensure message_interface is set
 				response.message.message_interface = this.agent.chat;
-				
-				// Create a "done" message after the real message with summary
-				var summary = response.get_summary();
-				var done_msg = new Message(this.agent.chat, "done", summary);
 			}
 			
+			// Create a "done" message to signal completion (for tools like RequestEditMode)
+			// Note: The response body is in response.message (already persisted above)
+			// The "done" message is just a completion marker with no content needed
+			var done_msg = new Message(this.agent.chat, "done", "");
+			// Add to messages to trigger message_created signal (Session will skip persisting it)
+			this.messages.add(done_msg);
+			// Relay to Manager to trigger message_created signal for tools
+			this.manager.message_added(done_msg, this);
+			
+			// Create a "ui" message with performance metrics summary (for history display)
+			// This will be stored in messages array and displayed when loading history
+			// Summary is now always meaningful (never empty), so always create the UI message
+			var summary = response.get_summary();
+			var metrics_msg = new Message(this.agent.chat, "ui", summary);
+			this.messages.add(metrics_msg);
+			// Relay to Manager for UI (metrics should be displayed)
+			this.manager.message_added(metrics_msg, this);
+			
+			// Set running state to false when response is done
+			this.is_running = false;
 			
 			this.save_async.begin();
-			this.notify_property("display_info");
-			this.notify_property("title");
+			this.notify_property("display_info");  // Reply count changes when message is added
+			// Note: title notification removed - title only changes in async save_async() if empty
 		}
 			
 		/**
@@ -385,16 +409,17 @@ namespace OLLMchat.History
 		 */
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			// Note: Vala converts underscores to hyphens when calling serialize_property
 			switch (property_name) {
 				case "fid":
-				case "updated_at_timestamp":
+				case "updated-at-timestamp":
 				case "title":
 				case "model":
-				case "agent_name":
-				case "total_messages":
-				case "total_tokens":
-				case "duration_seconds":
-				case "child_chats":
+				case "agent-name":
+				case "total-messages":
+				case "total-tokens":
+				case "duration-seconds":
+				case "child-chats":
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "messages":
@@ -415,7 +440,10 @@ namespace OLLMchat.History
 				
 				default:
 					// Return null to exclude property from serialization
-					// Runtime properties (chat, permission_provider, client, manager) are automatically skipped
+					// Excludes runtime/computed properties that shouldn't be persisted:
+					// - Runtime references: agent, manager, chat, permission_provider, client
+					// - Computed properties: is_running, css_classes, display_title, display_info, display_date
+					// - Other non-serializable properties
 					return null;
 			}
 		}
@@ -571,6 +599,8 @@ namespace OLLMchat.History
 			// Session has reference to AgentHandler
 			if (this.agent != null) {
 				yield this.agent.send_async(message, cancellable);
+				// Set running state to true after request starts
+				this.is_running = true;
 			} else {
 				throw new OllamaError.INVALID_ARGUMENT("No agent available for session");
 			}

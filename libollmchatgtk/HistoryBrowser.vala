@@ -162,6 +162,19 @@ namespace OLLMchatGtk
 				css_classes = {"list-chat-model", "caption", "dim-label"}
 			};
 			
+			// Create unread label (visibility controlled by CSS)
+			var unread_label = new Gtk.Label("unread") {
+				halign = Gtk.Align.START,
+				css_classes = {"list-chat-unread", "caption"}
+			};
+			
+			// Spinner widget for running state (between info and date)
+			var spinner = new Gtk.Spinner() {
+				halign = Gtk.Align.CENTER,
+				visible = false,  // Hidden by default
+				spinning = false
+			};
+			
 			// Date label (right side, small, grey)
 			var date_label = new Gtk.Label("") {
 				halign = Gtk.Align.END,
@@ -169,15 +182,20 @@ namespace OLLMchatGtk
 			};
 			
 			secondary_box.append(info_label);
+			secondary_box.append(unread_label);  // Add unread label after info_label, before date_label
+			secondary_box.append(spinner);  // Add spinner between unread_label and date_label
 			secondary_box.append(date_label);
 			
 			row_box.append(title_label);
 			row_box.append(secondary_box);
 			
 			// Store widget references
+			list_item.set_data<Gtk.Box>("row_box", row_box);
 			list_item.set_data<Gtk.Label>("title_label", title_label);
 			list_item.set_data<Gtk.Label>("info_label", info_label);
 			list_item.set_data<Gtk.Label>("date_label", date_label);
+			list_item.set_data<Gtk.Label>("unread_label", unread_label);
+			list_item.set_data<Gtk.Spinner>("spinner", spinner);  // Store spinner reference
 			
 			list_item.child = row_box;
 		}
@@ -198,11 +216,15 @@ namespace OLLMchatGtk
 			}
 			
 			// Retrieve widgets
+			var row_box = list_item.get_data<Gtk.Box>("row_box");
 			var title_label = list_item.get_data<Gtk.Label>("title_label");
 			var info_label = list_item.get_data<Gtk.Label>("info_label");
 			var date_label = list_item.get_data<Gtk.Label>("date_label");
+			var unread_label = list_item.get_data<Gtk.Label>("unread_label");
+			var spinner = list_item.get_data<Gtk.Spinner>("spinner");
 			
-			if (title_label == null || info_label == null || date_label == null) {
+			if (row_box == null || title_label == null || info_label == null || 
+			    date_label == null || unread_label == null || spinner == null) {
 				return;
 			}
 			
@@ -211,6 +233,13 @@ namespace OLLMchatGtk
 			session.bind_property("display_title", title_label, "tooltip-text", BindingFlags.SYNC_CREATE);
 			session.bind_property("display_info", info_label, "label", BindingFlags.SYNC_CREATE);
 			session.bind_property("display_date", date_label, "label", BindingFlags.SYNC_CREATE);
+			
+			// Bind css_classes to row_box widget classes
+			session.bind_property("css_classes", row_box, "css-classes", BindingFlags.SYNC_CREATE);
+			
+			// Bind is_running to spinner visibility and spinning state
+			session.bind_property("is_running", spinner, "visible", BindingFlags.SYNC_CREATE);
+			session.bind_property("is_running", spinner, "spinning", BindingFlags.SYNC_CREATE);
 		}
 		
 		

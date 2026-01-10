@@ -34,6 +34,7 @@ namespace OLLMchat.History
 		public string agent_name { get; set; default = "just-ask"; }
 		public int unread_count { get; set; default = 0; }
 		public bool is_active { get; protected set; default = false; }
+		public bool is_running { get; protected set; default = false; }
 		
 		// Model property - stored on Session since Client no longer has model (Phase 3)
 		public string model { get; set; default = ""; }
@@ -81,6 +82,19 @@ namespace OLLMchat.History
 				}
 				return "Just now";
 			}
+		}
+		
+		// CSS classes for styling session rows in history browser
+		// Not serialized - computed property based on session state
+		public string[] css_classes {
+			owned get {
+				var classes = new string[] {};
+				if (this.unread_count > 0) {
+					classes += "oc-has-unread";
+				}
+				return classes;
+			}
+			set { }  // Empty setter - read-only computed property
 		}
 		
 		// Metadata flattened on session (not separate class)
@@ -197,6 +211,8 @@ namespace OLLMchat.History
 			}
 			this.is_active = true;
 			this.unread_count = 0; // Clear unread count when activated
+			// Note: unread_count auto-property automatically emits property change notification
+			this.notify_property("css_classes");  // Notify css_classes change when unread_count cleared
 
 			// Signal connections removed - agent usage now uses direct method calls from Chat
 			// Chat always emits signals, and when agent is set, Chat also calls agent methods directly
@@ -274,7 +290,10 @@ namespace OLLMchat.History
 			
 			
 			// Relay to UI via Manager's message_added signal - pass this session, not content_interface
-			this.manager.message_added(message, this);
+			// Only relay if session is active
+			if (this.is_active) {
+				this.manager.message_added(message, this);
+			}
 		}
 		
 		

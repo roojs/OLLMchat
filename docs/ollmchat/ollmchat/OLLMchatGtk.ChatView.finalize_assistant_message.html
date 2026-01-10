@@ -54,6 +54,9 @@
         <div class="description">
           <p>Finalizes the current assistant message.</p>
           <p>Ensures the final chunk is rendered and resets tracking state.</p>
+          <p>For streaming responses, performance metrics are now stored as "ui" messages in the messages array (see Session.finalize_streaming()). 
+            For backward compatibility, this method still displays metrics from response if provided, but metrics should already be in the messages 
+            array for history loading.</p>
           <h2 class="main_title">Since:</h2>
           <p>1.0</p>
         </div>
