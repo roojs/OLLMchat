@@ -510,9 +510,16 @@ namespace OLLMchat.Settings
 			foreach (var entry in this.connections.entries) {
 				var connection = entry.value;
 				try {
-					var test_client = new OLLMchat.Client(connection);
-					yield test_client.models();
-					connection.is_working = true;
+					// Test connection by calling models endpoint directly with short timeout
+					var original_timeout = connection.timeout;
+					connection.timeout = 10;  // 10 seconds - connection check should be quick
+					try {
+						var models_call = new OLLMchat.Call.Models(connection);
+						yield models_call.exec_models();
+						connection.is_working = true;
+					} finally {
+						connection.timeout = original_timeout;
+					}
 				} catch (Error e) {
 					connection.is_working = false;
 					GLib.debug("Connection %s is not working: %s", connection.url, e.message);

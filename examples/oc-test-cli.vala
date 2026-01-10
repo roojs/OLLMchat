@@ -203,12 +203,16 @@ Examples:
 			
 			// Test connection
 			stdout.printf("Testing connection to %s...\n", opt_url);
-			var test_client = new OLLMchat.Client(connection);
+			var original_timeout = connection.timeout;
+			connection.timeout = 10;  // 10 seconds - connection check should be quick
 			try {
-				var models = yield test_client.models();
+				var models_call = new OLLMchat.Call.Models(connection);
+				var models = yield models_call.exec_models();
 				stdout.printf("Connection successful (found %d models).\n", models.size);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+			} finally {
+				connection.timeout = original_timeout;
 			}
 			
 			// Mark connection as working so ConnectionModels will process it
@@ -231,7 +235,8 @@ Examples:
 			if (default_usage.model != "") {
 				stdout.printf("Verifying model '%s'...\n", default_usage.model);
 				try {
-					yield test_client.show_model(default_usage.model);
+					var show_call = new OLLMchat.Call.ShowModel(connection, default_usage.model);
+					yield show_call.exec_show();
 					stdout.printf("Model found.\n");
 				} catch (GLib.Error e) {
 					throw new GLib.IOError.FAILED("Model '%s' not found: %s", default_usage.model, e.message);
@@ -311,16 +316,16 @@ Examples:
 	
 	private async void list_models(ApplicationCommandLine command_line) throws Error
 	{
-		OLLMchat.Client client;
+		OLLMchat.Settings.Connection connection;
 		
-		// Create client connection
+		// Get connection
 		if (this.config.loaded) {
 			var model_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
 			if (model_usage == null || model_usage.connection == "" || 
 				!this.config.connections.has_key(model_usage.connection)) {
 				throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
 			}
-			client = new OLLMchat.Client(this.config.connections.get(model_usage.connection));
+			connection = this.config.connections.get(model_usage.connection);
 		} else {
 			// Config not loaded - check if URL provided
 			if (opt_url == null || opt_url == "") {
@@ -330,7 +335,7 @@ Examples:
 			}
 			
 			// Create connection from command line args
-			var connection = new OLLMchat.Settings.Connection() {
+			connection = new OLLMchat.Settings.Connection() {
 				name = "CLI",
 				url = opt_url,
 				api_key = opt_api_key ?? "",
@@ -341,18 +346,21 @@ Examples:
 			this.config.connections.set(opt_url, connection);
 			
 			// Test connection
-			var test_client = new OLLMchat.Client(connection);
+			var original_timeout = connection.timeout;
+			connection.timeout = 10;  // 10 seconds - connection check should be quick
 			try {
-				yield test_client.models();
+				var models_call = new OLLMchat.Call.Models(connection);
+				yield models_call.exec_models();
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+			} finally {
+				connection.timeout = original_timeout;
 			}
-			
-			client = test_client;
 		}
 		
 		// List models
-		var models = yield client.models();
+		var models_call = new OLLMchat.Call.Models(connection);
+		var models = yield models_call.exec_models();
 		foreach (var model in models) {
 			stdout.printf("%s\n", model.name);
 		}

@@ -142,14 +142,17 @@ namespace OLLMapp.SettingsDialog
 			row.apply_config(test_connection);
 
 			// Validate connection by testing it
+		try {
+			// Test connection by calling models endpoint directly with short timeout
+			var original_timeout = test_connection.timeout;
+			test_connection.timeout = 10;  // 10 seconds - connection check should be quick
 			try {
-				// NOTE: Client doesn't accept Connection yet - this will fail to compile until Client is updated
-				// TODO: Update Client to accept Connection directly
-				var test_client = new OLLMchat.Client(test_connection);
-
-				// Test connection by calling models endpoint
-				var models = yield test_client.models();
+				var models_call = new OLLMchat.Call.Models(test_connection);
+				var models = yield models_call.exec_models();
 				GLib.debug("Connection verified, found %d models", models.size);
+			} finally {
+				test_connection.timeout = original_timeout;
+			}
 			} catch (Error e) {
 				// Show error message
 				GLib.warning("Failed to verify connection: " + e.message);

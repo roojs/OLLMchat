@@ -205,12 +205,16 @@
 				
 				// Test connection
 				stdout.printf("Testing connection to %s...\n", opt_url);
-				var test_client = new OLLMchat.Client(connection);
+				var original_timeout = connection.timeout;
+				connection.timeout = 10;  // 10 seconds - connection check should be quick
 				try {
-					var models = yield test_client.models();
+					var models_call = new OLLMchat.Call.Models(connection);
+					var models = yield models_call.exec_models();
 					stdout.printf("Connection successful (found %d models).\n", models.size);
 				} catch (GLib.Error e) {
 					throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+				} finally {
+					connection.timeout = original_timeout;
 				}
 			 
 				// Check if default_model exists
@@ -230,13 +234,14 @@
 				if (default_usage.model != "") {
 					stdout.printf("Verifying model '%s'...\n", default_usage.model);
 					try {
-						yield test_client.show_model(default_usage.model);
+						var show_call = new OLLMchat.Call.ShowModel(connection, default_usage.model);
+						yield show_call.exec_show();
 						stdout.printf("Model found.\n");
 					} catch (GLib.Error e) {
 						throw new GLib.IOError.FAILED("Model '%s' not found: %s", default_usage.model, e.message);
 					}
 				}
-			 
+				
 				// Create client from usage
 				var model_usage = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
 				if (model_usage == null || model_usage.connection == "" || 

@@ -199,12 +199,16 @@ namespace OLLMapp.SettingsDialog
 					api_key = api_key
 				};
 
-				// Create temporary client from Connection for testing
-				var test_client = new OLLMchat.Client(connection);
-
-				// Test connection by calling models endpoint
-				var models = yield test_client.models();
-				GLib.debug("Connection verified, found %d models", models.size);
+				// Test connection by calling models endpoint directly with short timeout
+				var original_timeout = connection.timeout;
+				connection.timeout = 10;  // 10 seconds - connection check should be quick
+				try {
+					var models_call = new OLLMchat.Call.Models(connection);
+					var models = yield models_call.exec_models();
+					GLib.debug("Connection verified, found %d models", models.size);
+				} finally {
+					connection.timeout = original_timeout;
+				}
 
 				// Store verified connection
 				this.verified_connection = connection;

@@ -148,6 +148,16 @@ namespace OLLMchat
 			return result;
 		}
 
+		/**
+		* Lists all available models on the Ollama server.
+		*
+		* Retrieves a list of all models that are available for use on the server.
+		* This calls the /api/tags endpoint to get the complete list of installed models.
+		*
+		* @return ArrayList of Response.Model objects representing available models
+		* @throws Error if the request fails or response is invalid
+		* @since 1.0
+		*/
 		public async Gee.ArrayList<Response.Model> models() throws Error
 		{
 			var call = new Call.Models(this.connection);
@@ -155,6 +165,17 @@ namespace OLLMchat
 			return result;
 		}
 
+		/**
+		* Lists currently running models on the Ollama server.
+		*
+		* Shows which models are currently loaded in memory and running.
+		* This is useful for monitoring active model instances and their resource usage.
+		* This calls the /api/ps endpoint to get the list of running models.
+		*
+		* @return ArrayList of Response.Model objects representing currently running models
+		* @throws Error if the request fails or response is invalid
+		* @since 1.0
+		*/
 		public async Gee.ArrayList<Response.Model> ps() throws Error
 		{
 			var call = new Call.Ps(this.connection);
