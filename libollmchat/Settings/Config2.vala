@@ -312,6 +312,8 @@ namespace OLLMchat.Settings
 						// Deserialize each Connection object
 						var connection = Json.gobject_deserialize(typeof(Connection), node) as Connection;
 						if (connection != null) {
+							// Initialize runtime state after deserialization
+							connection.init();
 							this.connections.set(key, connection);
 						}
 					});

@@ -43,6 +43,7 @@
           <li class="virtual_method"><a href="OLLMchat.Settings.Connection.deserialize_property.html">deserialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.find_property.html">find_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.get_property.html">get_property</a></li>
+          <li class="method"><a href="OLLMchat.Settings.Connection.init.html">init</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.load_models.html">load_models</a></li>
           <li class="virtual_method"><a href="OLLMchat.Settings.Connection.serialize_property.html">serialize_property</a></li>
           <li class="method"><a href="OLLMchat.Settings.Connection.set_property.html">set_property</a></li>
@@ -59,8 +60,8 @@
         </div>
         <div class="description">
           <p>HTTP session for making requests.</p>
-          <p>Shared across all Clients using this Connection (connection pooling). Initialized in constructor. Non-serialized field (runtime state, 
-            not saved to config).</p>
+          <p>Shared across all Clients using this Connection (connection pooling). Initialized via init() method (called in constructor and after 
+            deserialization). Non-serialized field (runtime state, not saved to config).</p>
           <h2 class="main_title">Since:</h2>
           <p>1.2.3</p>
         </div>

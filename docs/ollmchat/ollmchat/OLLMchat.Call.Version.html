@@ -53,6 +53,9 @@
         <div class="description">
           <p>API call to get the version of the Ollama server.</p>
           <p>Retrieves the version string from the server to verify connectivity. Used during bootstrap to test the connection.</p>
+          <p>**Note:** This endpoint is Ollama-specific and may not be available on all Ollama-compatible servers. For connection verification, 
+            consider using <a href="OLLMchat.Client.models.html" class="method">Client.models</a> instead, which is more portable across different 
+            server implementations.</p>
         </div><br/>
         <div class="namespace_note"><b>Namespace:</b> <a href="OLLMchat.Call.html">OLLMchat.Call</a>
         </div>

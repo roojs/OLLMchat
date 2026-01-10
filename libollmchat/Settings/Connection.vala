@@ -75,7 +75,7 @@ namespace OLLMchat.Settings
 		 * HTTP session for making requests.
 		 * 
 		 * Shared across all Clients using this Connection (connection pooling).
-		 * Initialized in constructor.
+		 * Initialized via init() method (called in constructor and after deserialization).
 		 * Non-serialized field (runtime state, not saved to config).
 		 * 
 		 * @since 1.2.3
@@ -109,12 +109,27 @@ namespace OLLMchat.Settings
 			default = new Gee.HashMap<string, OLLMchat.Response.Model>(); }
 
 		/**
+		 * Initializes runtime state (soup session).
+		 * 
+		 * Must be called after deserialization from JSON to ensure soup is initialized.
+		 * Called automatically in constructor.
+		 * 
+		 * @since 1.2.3
+		 */
+		public void init()
+		{
+			if (this.soup == null) {
+				this.soup = new Soup.Session();
+				this.timeout = 300; // Default timeout
+			}
+		}
+
+		/**
 		 * Default constructor.
 		 */
 		public Connection()
 		{
-			this.soup = new Soup.Session();
-			this.timeout = 300; // Default timeout
+			this.init();
 		}
 
 		/**

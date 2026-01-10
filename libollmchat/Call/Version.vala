@@ -23,6 +23,11 @@ namespace OLLMchat.Call
 	 *
 	 * Retrieves the version string from the server to verify connectivity.
 	 * Used during bootstrap to test the connection.
+	 *
+	 * **Note:** This endpoint is Ollama-specific and may not be available on all
+	 * Ollama-compatible servers. For connection verification, consider using
+	 * {@link Client.models} instead, which is more portable across different
+	 * server implementations.
 	 */
 	public class Version : Base
 	{
