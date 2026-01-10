@@ -29,6 +29,8 @@ occoder_src = files([
   'Prompt/CodeAssistantHandler.vala',  # Must come before CodeAssistant (CodeAssistant uses CodeAssistantHandler)
   'Prompt/CodeAssistant.vala',
   'Prompt/CodeAssistantProvider.vala',
+  'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
+  'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
 ])
 
 # Build rpath for libraries to find each other in build directory
