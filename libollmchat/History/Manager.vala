@@ -71,16 +71,8 @@ namespace OLLMchat.History
 		public OLLMchat.ChatPermission.Provider permission_provider { get; set;
 			 default = new OLLMchat.ChatPermission.Dummy(); }
 		
-		// Signal emitted when a new session is added (for UI updates)
-		public signal void session_added(SessionBase session);
-		
 		// Signal emitted when a session is removed (for UI updates)
 		public signal void session_removed(SessionBase session);
-		
-		// Signal emitted when a session is replaced (for UI updates)
-		// @param index The index in manager.sessions where the replacement occurred
-		// @param session The new session that replaced the old one
-		public signal void session_replaced(int index, SessionBase session);
 		
 		// Signal emitted when a session is activated
 		public signal void session_activated(SessionBase session);
@@ -282,8 +274,7 @@ namespace OLLMchat.History
 			var session = new Session(this);
 			session.model = model;  // Store model on session
 			session.agent_name = agent_name;
-			this.sessions.append(session);
-			this.session_added(session);
+			this.sessions.append(session);  // SessionList will emit items_changed signal automatically
 			
 			return session;
 		}

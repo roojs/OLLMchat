@@ -137,10 +137,9 @@ namespace OLLMchat.History
 				this.messages.add(m);
 			}
 			
-			// Ensure session is tracked in Manager
+			// Ensure session is tracked in Manager (SessionList will emit items_changed signal automatically)
 			if (!this.manager.sessions.contains(this)) {
 				this.manager.sessions.append(this);
-				this.manager.session_added(this);
 			}
 			
 			// Relay to Manager for UI - pass this session, not content_interface

@@ -70,14 +70,11 @@ namespace OLLMchat.History
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
 			
-			// Add session to manager.sessions and emit session_added signal immediately
-			// This ensures the history widget updates right away
+			// Add session to manager.sessions (SessionList will emit items_changed signal automatically)
 			GLib.debug("[EmptySession.send] Converting to Session: fid=%s, agent=%s, model=%s", 
 				real_session.fid, real_session.agent_name, real_session.model);
 			this.manager.sessions.append(real_session);
-			// FIXME - is this needed now?
-			this.manager.session_added(real_session);
-			GLib.debug("[EmptySession.send] Session added to manager.sessions and session_added emitted");
+			GLib.debug("[EmptySession.send] Session added to manager.sessions");
 			
 			real_session.activate();
 			this.manager.session_activated(real_session);

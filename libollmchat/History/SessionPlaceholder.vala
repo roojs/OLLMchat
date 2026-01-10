@@ -149,10 +149,6 @@ namespace OLLMchat.History
 				this.manager.sessions.replace_at(index, real_session);
 			}
 			
-			// Emit session_replaced signal for UI updates
-			// FIXME = is this needed anymore ? = since the UI uses the store.
-			this.manager.session_replaced((int)index, real_session);
-			
 			return real_session;
 		}
 		
