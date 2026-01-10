@@ -37,8 +37,6 @@
           <li class="creation_method"><a href="OLLMchat.Prompt.BaseAgent.BaseAgent.html">BaseAgent</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.configure_tools.html">configure_tools</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.create_handler.html">create_handler</a></li>
-          <li class="method"><a href="OLLMchat.Prompt.BaseAgent.fill.html">fill</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_system_prompt.html">generate_system_prompt</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_user_info_section.html">generate_user_info_section</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_user_prompt.html">generate_user_prompt</a></li>
           <li class="method"><a href="OLLMchat.Prompt.BaseAgent.get_os_version.html">get_os_version</a></li>
@@ -53,20 +51,18 @@
         <h1 class="main_title">system_message</h1>
         <hr class="main_hr"/>
         <h2 class="main_title">Description:</h2>
-        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">system_message</span></b> (<span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span> handler)
+        <div class="main_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><span class="virtual_method">system_message</span></b> (<span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span>? handler = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
         </div>
         <div class="description">
           <p>Generates the system message for the agent.</p>
-          <p>TODO: Implement properly - should generate system prompt with current context. For CodeAssistant, this should include open files, 
-            workspace, etc. For simple agents, this can return empty string.</p>
-          <p>This method should not throw errors - if system message generation fails, it should return empty string and the conversation will 
-            continue without a system message.</p>
+          <p>Default implementation returns empty string (for simple agents like JustAsk). Subclasses can override to generate system prompt with 
+            current context. For CodeAssistant, this should include open files, workspace, etc.</p>
           <h2 class="main_title">Parameters:</h2>
           <table class="main_parameter_table">
             <tr>
               <td class="main_parameter_table_name">handler</td>
               <td>
-                <p>The AgentHandler instance (can access session, client, etc.) </p>
+                <p>Optional AgentHandler instance (can access session, client, etc.) </p>
               </td>
             </tr>
           </table>
@@ -75,6 +71,15 @@
             <tr>
               <td>
                 <p>System message content, or empty string if no system message needed </p>
+              </td>
+            </tr>
+          </table>
+          <h2 class="main_title">Exceptions:</h2>
+          <table class="main_parameter_table">
+            <tr>
+              <td class="main_parameter_table_name">Error</td>
+              <td>
+                <p>if system message generation fails </p>
               </td>
             </tr>
           </table>

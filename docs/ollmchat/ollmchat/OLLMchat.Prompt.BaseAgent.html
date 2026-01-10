@@ -37,8 +37,6 @@
           <li class="creation_method"><a href="OLLMchat.Prompt.BaseAgent.BaseAgent.html">BaseAgent</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.configure_tools.html">configure_tools</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.create_handler.html">create_handler</a></li>
-          <li class="method"><a href="OLLMchat.Prompt.BaseAgent.fill.html">fill</a></li>
-          <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_system_prompt.html">generate_system_prompt</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_user_info_section.html">generate_user_info_section</a></li>
           <li class="virtual_method"><a href="OLLMchat.Prompt.BaseAgent.generate_user_prompt.html">generate_user_prompt</a></li>
           <li class="method"><a href="OLLMchat.Prompt.BaseAgent.get_os_version.html">get_os_version</a></li>
@@ -67,7 +65,7 @@
           <p>Provides common functionality for loading resource sections based on agent name. Can be used directly as a default implementation that 
             returns empty system prompt and passes through user input.</p>
           <h2>Example </h2>
-          <p><pre class="main_source"><code><span class="main_comment">// Use as default (no modifications)</span><br/><span class="main_keyword">var</span> agent = <span class="main_keyword">new</span> Prompt.BaseAgent();<br/><br/><span class="main_comment">// Fill chat call with prompts</span><br/><span class="main_keyword">var</span> call = <span class="main_keyword">new</span> Call.Chat(client, <span class="main_literal">"llama3.2"</span>);<br/>agent.fill(call, <span class="main_literal">"User question"</span>);<br/><br/><span class="main_comment">// Or create custom agent</span><br/><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyAgent : Prompt.BaseAgent {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">void</span> fill(Call.Chat call, <span class="main_basic_type">string</span> user_input) {<br/>        call.system_content = <span class="main_literal">"You are a helpful assistant."</span>;<br/>        call.chat_content = user_input;<br/>    }<br/>}</code></pre>
+          <p><pre class="main_source"><code><span class="main_comment">// Use as default (no modifications)</span><br/><span class="main_keyword">var</span> agent = <span class="main_keyword">new</span> Prompt.BaseAgent();<br/><br/><span class="main_comment">// Generate system and user prompts</span><br/><span class="main_basic_type">string</span> system_prompt = agent.system_message(<span class="main_literal">null</span>);<br/><span class="main_basic_type">string</span> user_prompt = agent.generate_user_prompt(<span class="main_literal">"User question"</span>);<br/><br/><span class="main_comment">// Or create custom agent</span><br/><span class="main_keyword">public</span> <span class="main_keyword">class</span> MyAgent : Prompt.BaseAgent {<br/>    <span class="main_keyword">public</span> <span class="main_keyword">override</span> <span class="main_basic_type">string</span> system_message(AgentHandler? handler = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> Error {<br/>        <span class="main_keyword">return</span> <span class="main_literal">"You are a helpful assistant."</span>;<br/>    }<br/>}</code></pre>
           </p>
         </div>
         <div class="box">
@@ -127,15 +125,6 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Creates a handler for a specific request.</span>
             </div></li>
-          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.Prompt.BaseAgent.fill.html" class="method">fill</a></b> (<span class="main_type"><a href="OLLMchat.Call.Chat.html" class="class">Chat</a></span> call, <span class="main_basic_type"><span class="class">string</span></span> user_text) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Fills a ChatCall with system and user prompts.</span>
-            </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.BaseAgent.generate_system_prompt.html" class="virtual_method">generate_system_prompt</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
-            </span>
-            <div class="leaf_brief_description"><span class="brief_description">Generates the complete system prompt for the agent. Default 
-                implementation returns empty string.</span>
-            </div></li>
           <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">protected</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.BaseAgent.generate_user_info_section.html" class="virtual_method">generate_user_info_section</a></b> ()
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Generates the user info section for system prompt.</span>
@@ -161,7 +150,7 @@
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Loads a static section from resources.</span>
             </div></li>
-          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.BaseAgent.system_message.html" class="virtual_method">system_message</a></b> (<span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span> handler)
+          <li class="virtual_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">virtual</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.Prompt.BaseAgent.system_message.html" class="virtual_method">system_message</a></b> (<span class="main_type"><a href="OLLMchat.Prompt.AgentHandler.html" class="class">AgentHandler</a></span>? handler = <span class="main_literal">null</span>) <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Generates the system message for the agent.</span>
             </div></li>

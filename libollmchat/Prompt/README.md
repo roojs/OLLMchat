@@ -42,7 +42,7 @@ prompt_gen.get_workspace_path.connect(() => {
 });
 
 // Generate system prompt
-var system_prompt = prompt_gen.generate_system_prompt();
+var system_prompt = prompt_gen.system_message(null);
 
 // Generate user prompt with context
 var user_prompt = prompt_gen.generate_user_prompt("How do I implement feature X?");

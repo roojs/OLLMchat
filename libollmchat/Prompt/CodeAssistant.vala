@@ -45,10 +45,17 @@ namespace OLLMchat.Prompt
 		
 		/**
 		 * Generates the complete system prompt for a code-assistant agent.
-		 *
+		 * 
+		 * Overrides BaseAgent.system_message() to generate system prompt with current context.
+		 * This includes: introduction, communication rules, tool calling,
+		 * search/reading rules, code changes rules, debugging, external APIs,
+		 * user info (OS, workspace, shell), and citation format.
+		 * 
+		 * @param handler Optional AgentHandler instance (can access session, client, etc.)
 		 * @return Complete system prompt string
+		 * @throws Error if system message generation fails
 		 */
-		protected override string generate_system_prompt() throws Error
+		public override string system_message(OLLMchat.Prompt.AgentHandler? handler = null) throws Error
 		{
 			return this.generate_introduction() + "\n\n" +
 				"<communication>\n" +

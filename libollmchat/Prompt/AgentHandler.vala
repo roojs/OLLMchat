@@ -277,8 +277,8 @@ namespace OLLMchat.Prompt
 			var messages = new Gee.ArrayList<Message>();
 			
 			// Build system prompt at this point in time (simple implementation in base, CodeAssistantHandler overrides)
-			// BaseAgent.generate_system_prompt() returns empty string by default, so this does nothing for basic agents
-			string system_content = this.agent.generate_system_prompt();
+			// BaseAgent.system_message() returns empty string by default, so this does nothing for basic agents
+			string system_content = this.agent.system_message(null);
 			if (system_content != "") {
 				messages.add(new Message(this.chat, "system", system_content));
 			}

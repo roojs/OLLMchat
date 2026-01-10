@@ -574,7 +574,6 @@ namespace OLLMchatGtk
 						if (position != Gtk.INVALID_LIST_POSITION) {
 							this.model_dropdown.selected = position;
 							current_model_obj = model_usage.model_obj;
-							// Model properties are set on Session, Chat is created per request
 						}
 						// Update tools button visibility based on model's can_call property
 						this.update_model_widgets_visibility();

@@ -31,15 +31,14 @@ namespace OLLMchat.Prompt
 	 * // Use as default (no modifications)
 	 * var agent = new Prompt.BaseAgent();
 	 *
-	 * // Fill chat call with prompts
-	 * var call = new Call.Chat(client, "llama3.2");
-	 * agent.fill(call, "User question");
+	 * // Generate system and user prompts
+	 * string system_prompt = agent.system_message(null);
+	 * string user_prompt = agent.generate_user_prompt("User question");
 	 *
 	 * // Or create custom agent
 	 * public class MyAgent : Prompt.BaseAgent {
-	 *     public override void fill(Call.Chat call, string user_input) {
-	 *         call.system_content = "You are a helpful assistant.";
-	 *         call.chat_content = user_input;
+	 *     public override string system_message(AgentHandler? handler = null) throws Error {
+	 *         return "You are a helpful assistant.";
 	 *     }
 	 * }
 	 * }}}
@@ -172,18 +171,6 @@ namespace OLLMchat.Prompt
 		}
 		
 		/**
-		 * Fills a ChatCall with system and user prompts.
-		 *
-		 * @param call The ChatCall to fill
-		 * @param user_text The user's input text
-		 */
-		public void fill(OLLMchat.Call.Chat call, string user_text) throws GLib.Error
-		{
-			call.system_content = this.generate_system_prompt();
-			call.chat_content = this.generate_user_prompt(user_text);
-		}
-		
-		/**
 		 * Gets the working directory for command execution.
 		 *
 		 * Agents that have a context-specific working directory (e.g., a selected project)
@@ -208,19 +195,6 @@ namespace OLLMchat.Prompt
 		public virtual async Object? get_widget()
 		{
 			return null;
-		}
-		
-		/**
-		 * Generates the complete system prompt for the agent.
-		 * Default implementation returns empty string.
-		 * 
-		 * Made public so AgentHandler can call it directly.
-		 *
-		 * @return Complete system prompt string
-		 */
-		public virtual string generate_system_prompt() throws GLib.Error
-		{
-			return "";
 		}
 		
 		/**
@@ -255,21 +229,16 @@ namespace OLLMchat.Prompt
 		/**
 		 * Generates the system message for the agent.
 		 * 
-		 * TODO: Implement properly - should generate system prompt with current context.
+		 * Default implementation returns empty string (for simple agents like JustAsk).
+		 * Subclasses can override to generate system prompt with current context.
 		 * For CodeAssistant, this should include open files, workspace, etc.
-		 * For simple agents, this can return empty string.
 		 * 
-		 * This method should not throw errors - if system message generation fails,
-		 * it should return empty string and the conversation will continue without a system message.
-		 * 
-		 * @param handler The AgentHandler instance (can access session, client, etc.)
+		 * @param handler Optional AgentHandler instance (can access session, client, etc.)
 		 * @return System message content, or empty string if no system message needed
+		 * @throws Error if system message generation fails
 		 */
-		public virtual string system_message(OLLMchat.Prompt.AgentHandler handler)
+		public virtual string system_message(OLLMchat.Prompt.AgentHandler? handler = null) throws GLib.Error
 		{
-			// Placeholder implementation - returns empty string
-			// Subclasses should override to generate system prompt with current context
-			// Should not throw errors - return empty string if generation fails
 			return "";
 		}
 	}
