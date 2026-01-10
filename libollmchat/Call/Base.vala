@@ -72,7 +72,19 @@ namespace OLLMchat.Call
 		var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
 
 		if (message.status_code != 200) {
-			throw new OllamaError.FAILED(@"HTTP error: $(message.status_code)");
+			switch (message.status_code) {
+				case 400:
+					throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
+				case 401:
+					throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
+				case 404:
+					throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
+			default:
+				if (message.status_code >= 500) {
+					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
+				}
+				throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
+			}
 		}
 
 		return bytes;
@@ -131,16 +143,16 @@ namespace OLLMchat.Call
 		if (message.status_code != 200) {
 			switch (message.status_code) {
 				case 400:
-					throw new OllamaError.FAILED("Bad request. Please check your request parameters.");
+					throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
 				case 401:
-					throw new OllamaError.FAILED("Unauthorized. Please check your API key.");
+					throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
 				case 404:
-					throw new OllamaError.FAILED("Endpoint not found. Please check the server URL.");
+					throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
 			default:
 				if (message.status_code >= 500) {
-					throw new OllamaError.FAILED(@"Server error ($(message.status_code)). The server may be experiencing issues.");
+					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
 				}
-				throw new OllamaError.FAILED(@"HTTP error: $(message.status_code)");
+				throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
 			}
 		}
 		

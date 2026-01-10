@@ -202,9 +202,9 @@ namespace OLLMapp.SettingsDialog
 				// Create temporary client from Connection for testing
 				var test_client = new OLLMchat.Client(connection);
 
-				// Test connection by calling version endpoint
-				var version = yield test_client.version();
-				GLib.debug("Server version: %s", version);
+				// Test connection by calling models endpoint
+				var models = yield test_client.models();
+				GLib.debug("Connection verified, found %d models", models.size);
 
 				// Store verified connection
 				this.verified_connection = connection;

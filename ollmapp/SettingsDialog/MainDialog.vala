@@ -280,7 +280,7 @@ namespace OLLMapp.SettingsDialog
 				var connection = entry.value;
 				try {
 					var test_client = new OLLMchat.Client(connection);
-					yield test_client.version();
+					yield test_client.models();
 					connection.is_working = true;
 				} catch (Error e) {
 					connection.is_working = false;

@@ -63,8 +63,8 @@ public abstract class VectorAppBase : TestAppBase
 			stdout.printf("Testing connection to %s...\n", opt_url);
 			var test_client = new OLLMchat.Client(connection);
 			try {
-				yield test_client.version();
-				stdout.printf("Connection successful.\n");
+				var models = yield test_client.models();
+				stdout.printf("Connection successful (found %d models).\n", models.size);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
 			}

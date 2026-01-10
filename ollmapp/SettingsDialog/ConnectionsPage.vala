@@ -147,8 +147,9 @@ namespace OLLMapp.SettingsDialog
 				// TODO: Update Client to accept Connection directly
 				var test_client = new OLLMchat.Client(test_connection);
 
-				// Test connection by calling version endpoint
-				GLib.debug("Server version: %s", yield test_client.version());
+				// Test connection by calling models endpoint
+				var models = yield test_client.models();
+				GLib.debug("Connection verified, found %d models", models.size);
 			} catch (Error e) {
 				// Show error message
 				GLib.warning("Failed to verify connection: " + e.message);
