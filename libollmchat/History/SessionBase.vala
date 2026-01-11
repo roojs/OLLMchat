@@ -353,6 +353,9 @@ namespace OLLMchat.History
 				GLib.debug("Stopping running");
 			}
 			
+			// Notify display_info when message count changes (affects reply count in UI)
+			this.notify_property("display_info");
+			
 			// Relay to UI via Manager's message_added signal - pass this session, not content_interface
 			// Only relay if session is active
 			if (this.is_active) {

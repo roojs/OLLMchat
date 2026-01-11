@@ -188,7 +188,6 @@ namespace OLLMchatGtk
 			// Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
 			this.chat_input.set_streaming(false);
-			this.is_streaming_active = false;
 			this.chat_input.sensitive = false;
 			
 			// Switch manager to new session (Manager handles loading, deactivation/activation)
@@ -320,7 +319,6 @@ namespace OLLMchatGtk
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
 					this.chat_input.set_streaming(true);
-					this.is_streaming_active = true;
 					break;
 				case "ui":
 					// Render UI messages using the general renderer (same as assistant messages)
@@ -413,9 +411,9 @@ namespace OLLMchatGtk
 		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
 			// Check if streaming is still active (might have been stopped)
-			if (!this.is_streaming_active) {
+			if (!this.manager.session.is_running) {
 				return;
-			}
+			}	
 
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {
@@ -454,7 +452,6 @@ namespace OLLMchatGtk
 
 			// No tool calls - this is the final response
 			this.chat_input.set_streaming(false);
-			this.is_streaming_active = false;
 			
 			// Clear last_sent_text on successful response
 			this.last_sent_text = null;
@@ -476,7 +473,6 @@ namespace OLLMchatGtk
 
 			// Set streaming state
 			this.chat_input.set_streaming(true);
-			this.is_streaming_active = true;
 
 			// Send chat request asynchronously (EmptySession will convert to Session on first message)
 			// The waiting indicator will be shown when send_starting signal is emitted
@@ -553,7 +549,7 @@ namespace OLLMchatGtk
 		private void handle_error(string error_msg)
 		{
 			// Finalize any ongoing assistant message before showing error
-			if (this.is_streaming_active) {
+			if (this.manager.session.is_running) {
 				this.chat_view.finalize_assistant_message();
 			}
 			
@@ -578,17 +574,13 @@ namespace OLLMchatGtk
 		{
 			// Reset all streaming-related state
 			this.chat_input.set_streaming(false);
-			this.is_streaming_active = false;
 			// Conversation history is preserved in session.chat
 			// Only clear if explicitly requested via clear_chat()
 		}
 
 		private void on_stop_clicked()
 		{
-			// Mark streaming as inactive to prevent callbacks from updating UI
-			this.is_streaming_active = false;
-
-			// Cancel the current request via session
+		// Cancel the current request via session
 			this.manager.session.cancel_current_request();
 
 			// Finalize current message

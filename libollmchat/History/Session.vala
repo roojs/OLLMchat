@@ -163,6 +163,8 @@ namespace OLLMchat.History
 					this.current_stream_message = new Message(stream_role, new_text);
 					this.current_stream_is_thinking = is_thinking;
 					this.messages.add(this.current_stream_message);
+					// Notify display_info when message count changes
+					this.notify_property("display_info");
 				} else {
 					// Same stream type - append to existing message
 					GLib.debug("adding new test to current tream message:" + new_text);
@@ -570,6 +572,8 @@ namespace OLLMchat.History
 			if (message.role != "user") {
 				this.messages.add(message);
 				this.manager.message_added(message, this);
+				// Notify display_info when message count changes
+				this.notify_property("display_info");
 				return;
 			}
 			
@@ -582,6 +586,7 @@ namespace OLLMchat.History
 			
 			// Emit message_added signal for "user-sent" so UI displays it immediately
 			this.manager.message_added(user_sent_msg, this);
+			// Note: display_info notification not needed here - user-sent messages don't affect reply count
 			
 			// Continue to agent processing below (user message is passed to agent, not added here)
 			
