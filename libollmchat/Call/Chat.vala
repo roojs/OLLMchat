@@ -173,13 +173,13 @@ namespace OLLMchat.Call
 		 * 
 		 * @param connection The connection settings for the API endpoint
 		 * @param model The model name to use for chat
-		 * @throws OllamaError.INVALID_ARGUMENT if model is empty
+		 * @throws OllmError.INVALID_ARGUMENT if model is empty
 		 */
 		public Chat(Settings.Connection connection, string model)
 		{
 			base(connection);
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Model is required");
+				throw new OllmError.INVALID_ARGUMENT("Model is required");
 			}
 			this.url_endpoint = "chat";
 			this.http_method = "POST";
@@ -314,7 +314,7 @@ namespace OLLMchat.Call
 					return node;
 				
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 
@@ -510,7 +510,7 @@ namespace OLLMchat.Call
 		public async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
 		{
 			if (messages.size == 0) {
-				throw new OllamaError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
+				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
 			}
 			
 			// Reset state
@@ -548,7 +548,7 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			// Note: stream_start signal removed - handled by caller if needed
@@ -558,7 +558,7 @@ namespace OLLMchat.Call
 			var json_str = generator.to_data(null);
 			var response_obj = Json.gobject_from_data(typeof(Response.Chat), json_str, -1) as Response.Chat;
 			if (response_obj == null) {
-				throw new OllamaError.FAILED("Failed to parse response");
+				throw new OllmError.FAILED("Failed to parse response");
 			}
 
 			// Note: client no longer set on response objects

@@ -37,6 +37,7 @@ ollmchat_ollama_src = files([
   'Settings/ModelTag.vala',
   'Settings/AvailableModel.vala',
   'Settings/AvailableModels.vala',
+  'OllmError.vala',  # Must come early - used by many files
   'Agent/Factory.vala',  # Must come before Client.vala (Client uses Agent.Factory)
   'Agent/Interface.vala',  # Must come before Base (Base implements Interface)
   'Agent/Base.vala',  # Must come after Factory (Base references Factory)
@@ -45,7 +46,6 @@ ollmchat_ollama_src = files([
   'Call/Base.vala',
   'Call/Version.vala',
   'Client.vala',
-  'OllamaBase.vala',
   'Response/Base.vala',
   'Response/CallFunction.vala',
   'Response/Chat.vala',

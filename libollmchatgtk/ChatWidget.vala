@@ -543,12 +543,12 @@ namespace OLLMchatGtk
 						break;
 				}
 				this.handle_error(error_msg);
-			} catch (OLLMchat.OllamaError e) {
+			} catch (OLLMchat.OllmError e) {
 				// Provide specific error messages for different error types
 				string error_msg = "";
-				if (e is OLLMchat.OllamaError.INVALID_ARGUMENT) {
+				if (e is OLLMchat.OllmError.INVALID_ARGUMENT) {
 					error_msg = @"Invalid request: $(e.message). Please check your request parameters.";
-				} else if (e is OLLMchat.OllamaError.FAILED) {
+				} else if (e is OLLMchat.OllmError.FAILED) {
 					error_msg = @"Request failed: $(e.message)";
 				} else {
 					error_msg = @"Error: $(e.message)";

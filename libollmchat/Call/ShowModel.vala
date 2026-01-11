@@ -29,11 +29,11 @@ namespace OLLMchat.Call
 		public string model { get; set; default = ""; }
 		public bool verbose { get; set; default = false; }
 
-		public ShowModel(Settings.Connection connection, string model_name) throws OllamaError
+		public ShowModel(Settings.Connection connection, string model_name) throws OllmError
 		{
 			base(connection);
 			if (model_name == "") {
-				throw new OllamaError.FAILED("Model name cannot be empty");
+				throw new OllmError.FAILED("Model name cannot be empty");
 			}
 			this.model = model_name;
 			this.url_endpoint = "show";
@@ -46,7 +46,7 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			var generator = new Json.Generator();
@@ -54,7 +54,7 @@ namespace OLLMchat.Call
 			var json_str = generator.to_data(null);
 			var model_obj = Json.gobject_from_data(typeof(Response.Model), json_str, -1) as Response.Model;
 			if (model_obj == null) {
-				throw new OllamaError.FAILED("Failed to deserialize model");
+				throw new OllmError.FAILED("Failed to deserialize model");
 			}
 			// Set the name from the request parameter (API response may not include it)
 			if (model_obj.name == "") {

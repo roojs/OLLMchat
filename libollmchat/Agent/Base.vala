@@ -105,8 +105,7 @@ namespace OLLMchat.Agent
 				stream = true,
 				think = true,
 				options = usage.options,  // No cloning - Chat just references the Options object
-			// FIXME phase 2
-				//	agent = this  // Set agent reference so tools can access session
+				agent = this  // Set agent reference so tools can access session
 			};
 			
 			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
@@ -261,22 +260,26 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
-		 * Sends a Message object asynchronously with streaming support.
-		 * 
-		 * This is the new method for sending messages. Builds full message history from
-		 * session.messages, filters to get API-compatible messages, and sends to Chat.
-		 * 
-		 * @param message The message object to send (the user message that was just added to session)
-		 * @param cancellable Optional cancellable for canceling the request
-		 * @throws Error if the request fails
-		 */
+		* Sends a Message object asynchronously with streaming support.
+		* 
+		* This is the new method for sending messages. Builds full message history from
+		* session.messages, filters to get API-compatible messages, and sends to Chat.
+		* 
+		* @param message The message object to send (the user message that was just added to session)
+		* @param cancellable Optional cancellable for canceling the request
+		* @throws Error if the request fails
+		*/
 		public virtual async void send_async(Message message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			// Build full message history from this.session
 			var messages = new Gee.ArrayList<Message>();
 			
-			 // base donest add systme messages - it's just a generic wrapper
-			 // system message are added by real agents.
+			// base donest add systme messages - it's just a generic wrapper
+			// system message are added by real agents.
+			
+			// Add the current "user" message to session.messages (after processing)
+			// This ensures the "user" message is in session.messages for API filtering
+			this.session.messages.add(message);
 			
 			// Filter and add messages from this.session.messages (full conversation history)
 			// Filter to get API-compatible messages (system, user, assistant, tool)
@@ -290,7 +293,6 @@ namespace OLLMchat.Agent
 				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
 				// (these are for UI/persistence only)
 			}
-			
 			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;

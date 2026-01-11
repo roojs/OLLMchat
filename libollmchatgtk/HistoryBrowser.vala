@@ -31,7 +31,7 @@ namespace OLLMchatGtk
 		private OLLMchat.History.Manager manager;
 		private Gtk.SortListModel sorted_store;
 		private Gtk.ListView list_view;
-		private Gtk.ScrolledWindow scrolled_window;
+		public Gtk.ScrolledWindow scrolled_window { get; set; }
 		private bool changing_selection = false;
 		
 		/**

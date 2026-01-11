@@ -260,7 +260,7 @@ namespace OLLMchat.Response
 					return array_node;
 				default:
 					// Let default handler process other properties
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 

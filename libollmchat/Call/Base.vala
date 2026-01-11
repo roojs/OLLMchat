@@ -26,8 +26,10 @@ namespace OLLMchat.Call
 	 * streaming responses and error management. Subclasses must set url_endpoint
 	 * and implement request-specific logic.
 	 */
-	public abstract class Base : OllamaBase
+	public abstract class Base : Object, Json.Serializable
 	{
+		public Settings.Connection? connection { get; set; }
+		public string chat_content { get; set; default = ""; }
 		protected string url_endpoint;
 		protected string http_method = "POST";
 		public GLib.Cancellable? cancellable { get; set; default = null; }
@@ -35,7 +37,24 @@ namespace OLLMchat.Call
 
 	protected Base(Settings.Connection? connection = null)
 	{
-		base(connection);
+		this.connection = connection;
+	}
+
+	public unowned ParamSpec? find_property(string name)
+	{
+		return this.get_class().find_property(name);
+	}
+
+	public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+	{
+		base.set_property(pspec.get_name(), value);
+	}
+
+	public new Value Json.Serializable.get_property(ParamSpec pspec)
+	{
+		Value val = Value(pspec.value_type);
+		base.get_property(pspec.get_name(), ref val);
+		return val;
 	}
 
 	protected string build_url()
@@ -53,7 +72,7 @@ namespace OLLMchat.Call
 	protected async Bytes send_request(bool needs_body) throws Error
 	{
 		if (this.connection == null) {
-			throw new OllamaError.INVALID_ARGUMENT("Connection is null");
+			throw new OllmError.INVALID_ARGUMENT("Connection is null");
 		}
 
 		var url = this.build_url();
@@ -79,16 +98,16 @@ namespace OLLMchat.Call
 						this.parse_error_from_json((string)bytes.get_data(), "Bad request: ");
 					}
 					// Fall through to default error message if parsing failed or no error field found
-					throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
+					throw new OllmError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
 				case 401:
-					throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
+					throw new OllmError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
 				case 404:
-					throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
+					throw new OllmError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
 			default:
 				if (message.status_code >= 500) {
-					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
+					throw new OllmError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
 				}
-				throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
+				throw new OllmError.FAILED("fetch returned " + message.status_code.to_string());
 			}
 		}
 
@@ -103,19 +122,24 @@ namespace OLLMchat.Call
 			return generator.to_data(null);
 		}
 
-		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
-		{
-			switch (property_name) {
-				case "chat-content":
-				case "connection":
-				case "cancellable":
-				case "streaming-response":
-					// Exclude these properties from serialization
-					return null;
-				default:
-					return base.serialize_property(property_name, value, pspec);
-			}
+	public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+	{
+		switch (property_name) {
+			case "chat-content":
+			case "connection":
+			case "cancellable":
+			case "streaming-response":
+				// Exclude these properties from serialization
+				return null;
+			default:
+				return default_serialize_property(property_name, value, pspec);
 		}
+	}
+
+	public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+	{
+		return default_deserialize_property(property_name, out value, pspec, property_node);
+	}
 
 		private void set_request_body(Soup.Message message)
 		{
@@ -126,34 +150,34 @@ namespace OLLMchat.Call
 
 		protected delegate void StreamingChunkCallback(Json.Object chunk);
 
-		private void parse_error_from_json(string json_data, string prefix) throws OllamaError
+		private void parse_error_from_json(string json_data, string prefix) throws OllmError
 		{
 			var parser = new Json.Parser();
 			try {
 				parser.load_from_data(json_data, -1);
 			} catch (Error e) {
 				// If JSON parsing fails, throw an error about it
-				throw new OllamaError.FAILED(@"Failed to parse error response: $(e.message)");
+				throw new OllmError.FAILED(@"Failed to parse error response: $(e.message)");
 			}
 				
 			var root = parser.get_root();
 			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Failed to parse error response: invalid JSON structure");
+				throw new OllmError.FAILED("Failed to parse error response: invalid JSON structure");
 			}
 			
 			var root_obj = root.get_object();
 			if (!root_obj.has_member("error")) {
-				throw new OllamaError.FAILED("Failed to parse error response: no error field found");
+				throw new OllmError.FAILED("Failed to parse error response: no error field found");
 			}
 			
 			var error_message = root_obj.get_string_member("error");
 			if (error_message == "") {
-				throw new OllamaError.FAILED("Failed to parse error response: empty error message");
+				throw new OllmError.FAILED("Failed to parse error response: empty error message");
 			}
-			throw new OllamaError.FAILED(prefix + error_message);
+			throw new OllmError.FAILED(prefix + error_message);
 		}
 
-		private void parse_streaming_error(InputStream? input_stream, string prefix) throws OllamaError
+		private void parse_streaming_error(InputStream? input_stream, string prefix) throws OllmError
 		{
 			if (input_stream == null) {
 				return;
@@ -203,21 +227,21 @@ namespace OLLMchat.Call
 						// Try to parse error message from input stream (for streaming responses)
 						this.parse_streaming_error(input_stream, "Bad request: ");
 						// Fall through to default error message if parsing failed or no error field found
-						throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
+						throw new OllmError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
 					case 401:
-						throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
+						throw new OllmError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
 					case 404:
-						throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
+						throw new OllmError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
 				default:
 					if (message.status_code >= 500) {
-						throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
+						throw new OllmError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
 					}
-					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
+					throw new OllmError.FAILED("fetch returned " + message.status_code.to_string());
 				}
 			}
 			
 			if (input_stream == null) {
-				throw new OllamaError.FAILED("Failed to get response input stream");
+				throw new OllmError.FAILED("Failed to get response input stream");
 			}
 			
 			// Process the stream line by line as data arrives
@@ -331,7 +355,7 @@ namespace OLLMchat.Call
 
 			var root = parser.get_root();
 			if (root == null) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			return root;
@@ -373,12 +397,12 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			var root_obj = root.get_object();
 			if (!root_obj.has_member(field_name)) {
-				throw new OllamaError.FAILED(@"Response missing '$(field_name)' field");
+				throw new OllmError.FAILED(@"Response missing '$(field_name)' field");
 			}
 
 			return this.parse_models_array(root_obj.get_array_member(field_name));

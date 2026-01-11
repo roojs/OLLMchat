@@ -101,7 +101,7 @@ namespace OLLMchat.Call
 					return default_serialize_property(property_name, value, pspec);
 				
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 
@@ -111,7 +111,7 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			var generator = new Json.Generator();
@@ -119,7 +119,7 @@ namespace OLLMchat.Call
 			var json_str = generator.to_data(null);
 			var generate_obj = Json.gobject_from_data(typeof(Response.Generate), json_str, -1) as Response.Generate;
 			if (generate_obj == null) {
-				throw new OllamaError.FAILED("Failed to deserialize generate response");
+				throw new OllmError.FAILED("Failed to deserialize generate response");
 			}
 			// Note: client no longer set on response objects
 			return generate_obj;

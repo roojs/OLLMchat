@@ -115,7 +115,9 @@ namespace OLLMchat.History
 			// Get agent factory from manager
 			var agent_factory = this.manager.agent_factories.get(agent_name);
 			if (agent_factory == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+				GLib.critical("Agent '%s' not found in manager (parameter agent_name='%s', this.agent_name='%s', class=%s)", 
+				              agent_name, agent_name, this.agent_name, this.get_type().name());
+				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
 			// Create agent from factory

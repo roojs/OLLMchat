@@ -63,7 +63,7 @@ namespace OLLMchat.Response
 					array_node.init_array(json_array);
 					return array_node;
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 
@@ -95,7 +95,7 @@ namespace OLLMchat.Response
 					value.set_object(embeddings_list);
 					return true;
 				default:
-					return base.deserialize_property(property_name, out value, pspec, property_node);
+					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
 		}
 	}

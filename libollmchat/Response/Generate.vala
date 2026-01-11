@@ -54,9 +54,9 @@ namespace OLLMchat.Response
 					if (this.done_reason == null || this.done_reason == "") {
 						return null;
 					}
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 	}

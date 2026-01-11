@@ -121,7 +121,7 @@ namespace OLLMchat.Response
 					// Exclude computed properties and call (circular reference) from serialization
 					return null;
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 

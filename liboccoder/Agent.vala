@@ -61,8 +61,16 @@ namespace OLLMcoder
 			// Pass this agent so factory can access session, client, etc.
 			string system_content = this.factory.system_message(this);
 			if (system_content != "") {
-				messages.add(new OLLMchat.Message("system", system_content));
+				var system_msg = new OLLMchat.Message("system", system_content);
+				// Add system message to session.messages for logging/persistence
+				this.session.messages.add(system_msg);
+				// Add to API messages array
+				messages.add(system_msg);
 			}
+			
+			// Add the current "user" message to session.messages (after processing)
+			// This ensures the "user" message is in session.messages for API filtering
+			this.session.messages.add(message);
 			
 			// Filter and add messages from this.session.messages (full conversation history)
 			// Filter to get API-compatible messages (system, user, assistant, tool)

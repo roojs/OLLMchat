@@ -163,6 +163,14 @@ namespace OLLMapp
 			toggle_button.toggled.connect(() => {
 				this.split_view.show_sidebar = toggle_button.active;
 				toggle_button.icon_name = toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
+				// Scroll to top when expanding history sidebar
+				// in theroy history browse might not exist but its so unlikely we dont check
+				if (toggle_button.active) {
+					GLib.Idle.add(() => {
+						this.history_browser.scrolled_window.vadjustment.value = 0;
+						return false;
+					});
+				}
 			});
 
 			// Set split view as toolbar view content

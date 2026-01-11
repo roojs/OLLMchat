@@ -50,12 +50,12 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			var root_obj = root.get_object();
 			if (!root_obj.has_member("version")) {
-				throw new OllamaError.FAILED("Response missing 'version' field");
+				throw new OllmError.FAILED("Response missing 'version' field");
 			}
 
 			return root_obj.get_string_member("version");

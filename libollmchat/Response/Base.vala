@@ -25,14 +25,46 @@ namespace OLLMchat.Response
 	 * All response types extend this class. Responses are automatically deserialized
 	 * from JSON when received from the API.
 	 */
-	public abstract class Base : OllamaBase
+	public abstract class Base : Object, Json.Serializable
 	{
+		public Settings.Connection? connection { get; set; }
 		protected string id = "";
 		public Message? message { get; set; default = null; }
 
 		protected Base(Settings.Connection? connection = null)
 		{
-			base(connection);
+			this.connection = connection;
+		}
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			// Block connection from serialization - it's an internal reference, not API data
+			if (property_name == "connection") {
+				return null;
+			}
+			return default_serialize_property(property_name, value, pspec);
+		}
+
+		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 	}
 }

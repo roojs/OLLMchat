@@ -348,7 +348,7 @@ namespace OLLMchat.History
 			// Find session by fid using SessionList fid_map lookup
 			var session = this.sessions.get_by_fid(fid);
 			if (session == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Session with fid '%s' not found", fid);
+				throw new OllmError.INVALID_ARGUMENT("Session with fid '%s' not found", fid);
 			}
 			
 			// Delegate to session

@@ -122,7 +122,7 @@ namespace OLLMchat
 		) throws Error
 		{
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.chat() requires a model parameter.");
+				throw new OllmError.INVALID_ARGUMENT("Client.chat() requires a model parameter.");
 			}
 			// Create chat call with defaults (Phase 3: no Client properties)
 			var call = new Call.Chat(this.connection, model) {
@@ -199,7 +199,7 @@ namespace OLLMchat
 		{
 			// Save original timeout and set short timeout for version check
 			var original_timeout = this.connection.timeout;
-			this.connection.timeout = 10;  // 10 seconds - version check should be quick
+			this.connection.timeout = 5;  // 5 seconds - version check should be quick
 			
 			try {
 				var call = new OLLMchat.Call.Version(this.connection) {
@@ -253,7 +253,7 @@ namespace OLLMchat
 		) throws Error
 		{
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.embed() requires a model parameter.");
+				throw new OllmError.INVALID_ARGUMENT("Client.embed() requires a model parameter.");
 			}
 			var call = new Call.Embed(this.connection, model) {
 				cancellable = cancellable,
@@ -293,7 +293,7 @@ namespace OLLMchat
 		) throws Error
 		{
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.embed_array() requires a model parameter.");
+				throw new OllmError.INVALID_ARGUMENT("Client.embed_array() requires a model parameter.");
 			}
 			var call = new Call.Embed(this.connection, model) {
 				cancellable = cancellable,
@@ -331,7 +331,7 @@ namespace OLLMchat
 		) throws Error
 		{
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Client.generate() requires a model parameter.");
+				throw new OllmError.INVALID_ARGUMENT("Client.generate() requires a model parameter.");
 			}
 			var call = new Call.Generate(this.connection) {
 				cancellable = cancellable,

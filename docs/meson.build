@@ -90,6 +90,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Settings/ModelTag.vala',
     '../libollmchat/Settings/AvailableModel.vala',
     '../libollmchat/Settings/AvailableModels.vala',
+    '../libollmchat/OllmError.vala',  # Must come early - used by many files
     '../libollmchat/Client.vala',
     '../libollmchat/Call/namespace.vala',  # Call namespace documentation
     '../libollmchat/Call/Base.vala',
@@ -103,7 +104,6 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Call/Pull.vala',
     '../libollmchat/Message.vala',
     '../libollmchat/ChatContentInterface.vala',
-    '../libollmchat/OllamaBase.vala',
     '../libollmchat/Response/namespace.vala',  # Response namespace documentation
     '../libollmchat/Response/Base.vala',
     '../libollmchat/Response/CallFunction.vala',

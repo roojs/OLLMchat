@@ -42,7 +42,7 @@ namespace OLLMchat.Call
 		{
 			base(connection);
 			if (model == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Model is required");
+				throw new OllmError.INVALID_ARGUMENT("Model is required");
 			}
 			this.url_endpoint = "embed";
 			this.http_method = "POST";
@@ -73,7 +73,7 @@ namespace OLLMchat.Call
 					if (this.input == "") {
 						return null;
 					}
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 				case "input-array":
 					// Don't serialize input_array directly - it's handled in "input"
 					return null;
@@ -82,7 +82,7 @@ namespace OLLMchat.Call
 					if (this.dimensions == -1) {
 						return null;
 					}
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 				case "options":
 					// Only serialize options if they have valid values
 					if (!this.options.has_values()) {
@@ -101,7 +101,7 @@ namespace OLLMchat.Call
 					new_node.set_object(new_obj);
 					return new_node;
 				default:
-					return base.serialize_property(property_name, value, pspec);
+					return default_serialize_property(property_name, value, pspec);
 			}
 		}
 
@@ -146,7 +146,7 @@ namespace OLLMchat.Call
 			var root = this.parse_response(bytes);
 
 			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllamaError.FAILED("Invalid JSON response");
+				throw new OllmError.FAILED("Invalid JSON response");
 			}
 
 			var generator = new Json.Generator();
@@ -158,7 +158,7 @@ namespace OLLMchat.Call
 				-1
 			) as Response.Embed;
 			if (embed_obj == null) {
-				throw new OllamaError.FAILED("Failed to deserialize embed response");
+				throw new OllmError.FAILED("Failed to deserialize embed response");
 			}
 			// Note: client no longer set on response objects
 			

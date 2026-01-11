@@ -470,7 +470,9 @@ namespace OLLMchat.History
 			// Get agent from manager
 			var factory = this.manager.agent_factories.get(agent_name);
 			if (factory == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+				GLib.critical("Agent '%s' not found in manager (this.agent_name='%s', class=%s)", 
+				              agent_name, this.agent_name, this.get_type().name());
+				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
 			// Create handler from factory
@@ -498,7 +500,9 @@ namespace OLLMchat.History
 			// Get agent from manager
 			var factory = this.manager.agent_factories.get(agent_name);
 			if (factory == null) {
-				throw new OllamaError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
+				GLib.critical("Agent '%s' not found in manager (parameter agent_name='%s', this.agent_name='%s', class=%s)", 
+				              agent_name, agent_name, this.agent_name, this.get_type().name());
+				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
 			// Create new handler from factory
@@ -558,17 +562,24 @@ namespace OLLMchat.History
 		 */
 		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
-			// Add to session history
-			this.messages.add(message);
-			
-			// Emit message_added signal to notify UI (new flow: Session.send() → Manager.message_added() → UI)
-			// This is the explicit signal for the new flow, replacing the old add_message signal
-			this.manager.message_added(message, this);
-			
-			// If not user message, we're done
+		// Handle non-user messages: add to history and emit signal, then return
 			if (message.role != "user") {
+				this.messages.add(message);
+				this.manager.message_added(message, this);
 				return;
 			}
+			
+			// Handle "user" message: create "user-sent" for UI display
+			// Create "user-sent" message for UI (is_ui_visible = true)
+			var user_sent_msg = new Message("user-sent", message.content);
+			
+			// Add "user-sent" to session.messages
+			this.messages.add(user_sent_msg);
+			
+			// Emit message_added signal for "user-sent" so UI displays it immediately
+			this.manager.message_added(user_sent_msg, this);
+			
+			// Continue to agent processing below (user message is passed to agent, not added here)
 			
 			// User message - ensure agent handler is set (create if needed)
 			this.ensure_agent_handler();
@@ -579,7 +590,7 @@ namespace OLLMchat.History
 				// Set running state to true after request starts
 				this.is_running = true;
 			} else {
-				throw new OllamaError.INVALID_ARGUMENT("No agent available for session");
+				throw new OllmError.INVALID_ARGUMENT("No agent available for session");
 			}
 		}
 		

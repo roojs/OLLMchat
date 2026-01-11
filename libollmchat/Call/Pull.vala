@@ -40,7 +40,7 @@ namespace OLLMchat.Call
 		{
 			base(connection);
 			if (model_name == "") {
-				throw new OllamaError.INVALID_ARGUMENT("Model name cannot be empty");
+				throw new OllmError.INVALID_ARGUMENT("Model name cannot be empty");
 			}
 			this.name = model_name;
 			this.url_endpoint = "pull";
