@@ -87,10 +87,10 @@ namespace Markdown
 		public char unordered_list { get; set; default = '-'; }
 		public char ordered_list { get; set; default = '.'; }
 
-		// Converter properties (public for tag handlers)
+		// Converter properties (internal for tag handlers)
 		public string html;
 		public Writer writer { get; set; default = new Writer(); }
-		public Gee.HashMap<string, TagIgnored> tags { get; set; default = new Gee.HashMap<string, TagIgnored>(); }
+		internal Gee.HashMap<string, TagIgnored> tags { get; set; default = new Gee.HashMap<string, TagIgnored>(); }
 		public string current_tag = "";
 		public string prev_tag = "";
 		public bool is_in_pre = false;

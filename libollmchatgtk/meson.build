@@ -47,7 +47,7 @@ lib_build_rpath = ':'.join([
 ])
 
 ollmchatgtk_lib = library('ollmchatgtk',
-  dependencies: [ollmchatgtk_deps, ocagent_vapi_dep],
+  dependencies: [ollmchatgtk_deps],
   sources: [ollmchatgtk_src],
   vala_header: 'ollmchatgtk.h',
   vala_vapi: 'ollmchatgtk.vapi',
@@ -56,8 +56,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
     include_directories('../libollmchat'),
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
-    include_directories('../libocsqlite'),
-    include_directories('../libocagent')
+    include_directories('../libocsqlite')
   ],
   build_rpath: lib_build_rpath,
   # When using link_with, meson auto-includes the meson-generated VAPIs from linked libraries
@@ -65,9 +64,7 @@ ollmchatgtk_lib = library('ollmchatgtk',
   vala_args: [
     '--pkg=sqlite3',
     '--pkg=ocsqlite',
-    '--pkg=ocagent',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite'
   ],
   install: true
 )
@@ -87,17 +84,16 @@ ollmchatgtk_gir = gnome.generate_gir(ollmchatgtk_lib,
   identifier_prefix: 'OLLMchat',
   symbol_prefix: 'ollmchat',
   sources: [ollmchatgtk_header_file],
-  link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib, ocsqlite_base_lib, ocagent_base_lib],
+  link_with: [ollmchat_base_lib, ocmarkdown_base_lib, ocmarkdowngtk_lib, ocsqlite_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ollmchat',
     '--extra-library=ocmarkdown',
     '--extra-library=ocmarkdowngtk',
     '--extra-library=ocsqlite',
-    '--extra-library=ocagent',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0], ocmarkdown_gir[0], ocmarkdowngtk_gir[0], ocsqlite_gir[0], ocagent_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Gtk-4.0', 'GtkSource-5', 'Gee-0.8', ollmchat_gir[0], ocmarkdown_gir[0], ocmarkdowngtk_gir[0], ocsqlite_gir[0]],
   install: true,
   fatal_warnings: false
 )

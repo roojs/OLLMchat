@@ -12,7 +12,7 @@ namespace Markdown
 	/**
 	 * Handler for table tags.
 	 */
-	public class TagTable : TagIgnored
+	internal class TagTable : TagIgnored
 	{
 		private const int MIN_LINE_LENGTH = 3;
 
@@ -166,7 +166,7 @@ namespace Markdown
 	/**
 	 * Handler for table row tags.
 	 */
-	public class TagTableRow : TagIgnored
+	internal class TagTableRow : TagIgnored
 	{
 		public TagTableRow(Writer writer)
 		{
@@ -202,7 +202,7 @@ namespace Markdown
 	/**
 	 * Handler for table header tags.
 	 */
-	public class TagTableHeader : TagIgnored
+	internal class TagTableHeader : TagIgnored
 	{
 		public TagTableHeader(Writer writer)
 		{
@@ -239,7 +239,7 @@ namespace Markdown
 	/**
 	 * Handler for table data tags.
 	 */
-	public class TagTableData : TagIgnored
+	internal class TagTableData : TagIgnored
 	{
 		public TagTableData(Writer writer)
 		{

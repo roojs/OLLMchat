@@ -3,7 +3,7 @@
 #
 # IMPORTANT: When adding/removing/changing source files in any library directory,
 # you MUST update the input files list below to match. This includes:
-# - libocagent, libocsqlite, libocfiles, liboccoder, libollmchat, liboctools, etc.
+# - libocsqlite, libocfiles, liboccoder, libollmchat, liboctools, etc.
 # Check the corresponding meson.build file in each library directory for the
 # current list of source files.
 #
@@ -29,12 +29,9 @@ valadoc_clean = custom_target('valadoc-clean',
 # causes duplicate definition errors (the VAPI contains the same definitions as the source files).
 # When adding new libraries or files, add their source files to this list rather than using --pkg.
 # NOTE: File order matters! Files that define types must come before files that use those types.
-# Dependencies should be listed first (e.g., libocagent before libollmchat, libocsqlite before liboccoder).
+# Dependencies should be listed first (e.g., libocsqlite before liboccoder).
 valadoc_docs = custom_target('valadoc',
   input: files(
-    # libocagent sources (must come first - used by libollmchat and liboccoder)
-    '../libocagent/BaseAgent.vala',
-    '../libocagent/JustAsk.vala',
     # libocsqlite sources (must come before libocfiles and liboccoder which use it)
     '../libocsqlite/Database.vala',
     '../libocsqlite/Query.vala',
@@ -77,7 +74,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocmarkdowngtk/TopState.vala',
     '../libocmarkdowngtk/Table.vala',
     '../libocmarkdowngtk/TableCell.vala',
-    # libollmchat sources (depends on libocagent and libocsqlite)
+    # libollmchat sources (depends on libocsqlite)
     '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',
     '../libollmchat/Settings/namespace.vala',  # Settings namespace documentation
@@ -161,7 +158,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/GoogleSearchRequest.vala',
     '../liboctools/GoogleSearchConfig.vala',
     '../liboctools/GoogleSearchToolConfig.vala',
-    # liboccoder sources (depends on libocagent, libocsqlite, and libocfiles)
+    # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
     '../liboccoder/GitProvider.vala',
@@ -265,7 +262,7 @@ valadoc_docs = custom_target('valadoc',
     '--pkg=posix',
     '--pkg=fiass',  # FAISS via vapi (used by libocvector)
     '--pkg=tree-sitter',  # Tree-sitter via vapi (used by libocvector)
-    # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, ocagent, occoder, ocvector, octools)
+    # Don't use --pkg for internal libraries (ocmarkdown, ocmarkdowngtk, ocsqlite, occoder, ocvector, octools)
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.
     '--doclet=html',

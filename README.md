@@ -18,7 +18,6 @@ OLLMchat is a work-in-progress AI application for interacting with LLMs (Large L
   - Permission system for secure tool access
   - Support for multiple agent types (Just Ask, Code Assistant)
 - **Libraries** - A set of reusable libraries for LLM access, tool integration, and markdown processing
-  - `libocagent.so` - Base agent library for AI agent functionality
   - `libocmarkdown.so` - Markdown parsing and rendering library (no GTK dependencies)
   - `libocmarkdowngtk.so` - Markdown GTK rendering library (includes GTK components)
   - `libocsqlite.so` - SQLite query builder library (no GTK dependencies)
@@ -140,7 +139,6 @@ ninja -C build
 ```
 
 This will build:
-- `libocagent.so` - Base agent library (with headers, VAPI, and GIR files)
 - `libocmarkdown.so` - Markdown parsing library (with headers, VAPI, and GIR files)
 - `libocmarkdowngtk.so` - Markdown GTK rendering library (with headers, VAPI, and GIR files)
 - `libocsqlite.so` - SQLite query builder library (with headers, VAPI, and GIR files)
@@ -192,11 +190,6 @@ The project is organized into component directories, each with its own `meson.bu
 
 **SQLite Library:**
 - `libocsqlite/` - SQLite query builder (libocsqlite.so, namespace: `SQ`)
-
-**Agent Library (`libocagent.so`):**
-- `libocagent/` - Base agent library for AI agent functionality (libocagent.so, namespace: `OLLMagent`)
-  - `BaseAgent.vala` - Base agent class
-  - `JustAsk.vala` - Simple "just ask" agent implementation
 
 **File Management Library (`libocfiles.so`):**
 - `libocfiles/` - File and project management (libocfiles.so, namespace: `OLLMfiles`)

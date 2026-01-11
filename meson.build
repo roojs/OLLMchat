@@ -23,12 +23,11 @@ add_project_arguments(['--target-glib=auto'], language: 'vala')
 subdir('libocsqlite')      # No dependencies
 subdir('libocmarkdown')    # No dependencies
 subdir('libocmarkdowngtk') # Depends on libocmarkdown
-subdir('libocagent')       # No dependencies
 subdir('libocfiles')       # Depends on libocsqlite
-subdir('libollmchat')      # Depends on libocsqlite, libocagent
+subdir('libollmchat')      # Depends on libocsqlite
 subdir('liboctools')       # Depends on libollmchat, libocfiles
 subdir('libocvector')      # Depends on libocsqlite, libollmchat, libocfiles
-subdir('liboccoder')       # Depends on libocsqlite, libocagent, libocfiles, libocvector, libollmchat
+subdir('liboccoder')       # Depends on libocsqlite, libocfiles, libocvector, libollmchat
 subdir('libollmchatgtk')   # Depends on libollmchat, libocmarkdown, libocmarkdowngtk, libocsqlite
 subdir('ollmapp')         # Primary application - depends on all libraries
 subdir('examples')          # Depends on all libraries
@@ -74,7 +73,6 @@ lib_path = ':'.join([
   meson.current_build_dir() / 'libocfiles',
   meson.current_build_dir() / 'liboccoder',
   meson.current_build_dir() / 'libollmchat',
-  meson.current_build_dir() / 'libocagent',
   meson.current_build_dir() / 'libollmchatgtk',
   meson.current_build_dir() / 'libocvector',
   meson.current_build_dir() / 'liboctools'

@@ -37,7 +37,6 @@ ollmchat = executable('ollmchat',
       ollmchat_deps, 
       ocmarkdowngtk_vapi_dep, 
       ocsqlite_vapi_dep, 
-      ocagent_vapi_dep, 
       occoder_vapi_dep, 
       ocvector_vapi_dep, 
       ocfiles_vapi_dep, 
@@ -83,7 +82,6 @@ ollmchat = executable('ollmchat',
     include_directories('../libocmarkdown'),
     include_directories('../libocmarkdowngtk'),
     include_directories('../libocvector'),  # For ocvector.h (included by OLLMvector.Tool.CodebaseSearchTool)
-    include_directories('../libocagent'),   # For ocagent.h (transitive dependency)
     include_directories('../libocsqlite'),  # For ocsqlite.h (transitive dependency)
     include_directories('../libocfiles')   # For ocfiles.h (transitive dependency)
   ],
@@ -96,7 +94,6 @@ ollmchat = executable('ollmchat',
     '--pkg=ocsqlite',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
-    '--pkg=ocagent',
     '--pkg=occoder',
     '--pkg=ocfiles',  # Required for OLLMcoder.Files.BufferProvider and OLLMcoder.Files.GitProvider
     '--pkg=ocvector',  # Use manually generated ocvector.vapi (via ocvector_vapi_dep)
@@ -107,7 +104,6 @@ ollmchat = executable('ollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocagent',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libocvector',

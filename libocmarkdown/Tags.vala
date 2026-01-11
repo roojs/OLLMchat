@@ -22,7 +22,7 @@ namespace Markdown
 	 * Base class for tag handlers.
 	 * Default implementations do nothing (ignore behavior).
 	 */
-	public class TagIgnored : Object
+	internal class TagIgnored : Object
 	{
 		protected Writer writer;
 
@@ -38,7 +38,7 @@ namespace Markdown
 	/**
 	 * Generic handler for simple tags that add the same string at opening and closing.
 	 */
-	public class TagSimple : TagIgnored
+	internal class TagSimple : TagIgnored
 	{
 		private string md;
 
@@ -62,7 +62,7 @@ namespace Markdown
 	/**
 	 * Generic handler for tags that add start on open, and check previous char before adding end on close.
 	 */
-	public class TagSimpleWithBreak : TagIgnored
+	internal class TagSimpleWithBreak : TagIgnored
 	{
 		private string start_str;
 		private string end_str;
@@ -90,7 +90,7 @@ namespace Markdown
 	/**
 	 * Handler for anchor tags.
 	 */
-	public class TagAnchor : TagIgnored
+	internal class TagAnchor : TagIgnored
 	{
 		private string current_title = "";
 		private string current_href = "";
@@ -141,7 +141,7 @@ namespace Markdown
 	/**
 	 * Handler for underline tags.
 	 */
-	public class TagUnderline : TagIgnored
+	internal class TagUnderline : TagIgnored
 	{
 		public TagUnderline(Writer writer)
 		{
@@ -162,7 +162,7 @@ namespace Markdown
 	/**
 	 * Handler for break tags.
 	 */
-	public class TagBreak : TagIgnored
+	internal class TagBreak : TagIgnored
 	{
 		public TagBreak(Writer writer)
 		{
@@ -186,7 +186,7 @@ namespace Markdown
 	/**
 	 * Handler for div tags.
 	 */
-	public class TagDiv : TagIgnored
+	internal class TagDiv : TagIgnored
 	{
 		public TagDiv(Writer writer)
 		{
@@ -208,7 +208,7 @@ namespace Markdown
 	/**
 	 * Handler for list item tags.
 	 */
-	public class TagListItem : TagIgnored
+	internal class TagListItem : TagIgnored
 	{
 		public TagListItem(Writer writer)
 		{
@@ -245,7 +245,7 @@ namespace Markdown
 	/**
 	 * Handler for option tags.
 	 */
-	public class TagOption : TagIgnored
+	internal class TagOption : TagIgnored
 	{
 		public TagOption(Writer writer)
 		{
@@ -263,7 +263,7 @@ namespace Markdown
 	/**
 	 * Handler for ordered list tags.
 	 */
-	public class TagOrderedList : TagIgnored
+	internal class TagOrderedList : TagIgnored
 	{
 		public TagOrderedList(Writer writer)
 		{
@@ -308,7 +308,7 @@ namespace Markdown
 	/**
 	 * Handler for pre tags.
 	 */
-	public class TagPre : TagIgnored
+	internal class TagPre : TagIgnored
 	{
 		public TagPre(Writer writer)
 		{
@@ -356,7 +356,7 @@ namespace Markdown
 	/**
 	 * Handler for code tags.
 	 */
-	public class TagCode : TagIgnored
+	internal class TagCode : TagIgnored
 	{
 		public TagCode(Writer writer)
 		{
@@ -403,7 +403,7 @@ namespace Markdown
 	/**
 	 * Handler for paragraph tags.
 	 */
-	public class TagParagraph : TagIgnored
+	internal class TagParagraph : TagIgnored
 	{
 		public TagParagraph(Writer writer)
 		{
@@ -438,7 +438,7 @@ namespace Markdown
 	/**
 	 * Handler for unordered list tags.
 	 */
-	public class TagUnorderedList : TagIgnored
+	internal class TagUnorderedList : TagIgnored
 	{
 		public TagUnorderedList(Writer writer)
 		{
@@ -481,7 +481,7 @@ namespace Markdown
 	/**
 	 * Handler for title tags.
 	 */
-	public class TagTitle : TagIgnored
+	internal class TagTitle : TagIgnored
 	{
 		public TagTitle(Writer writer)
 		{
@@ -497,7 +497,7 @@ namespace Markdown
 	/**
 	 * Handler for image tags.
 	 */
-	public class TagImage : TagIgnored
+	internal class TagImage : TagIgnored
 	{
 		public TagImage(Writer writer)
 		{
@@ -536,7 +536,7 @@ namespace Markdown
 	/**
 	 * Handler for separator tags.
 	 */
-	public class TagSeperator : TagIgnored
+	internal class TagSeperator : TagIgnored
 	{
 		public TagSeperator(Writer writer)
 		{
@@ -552,7 +552,7 @@ namespace Markdown
 	/**
 	 * Handler for blockquote tags.
 	 */
-	public class TagBlockquote : TagIgnored
+	internal class TagBlockquote : TagIgnored
 	{
 		public TagBlockquote(Writer writer)
 		{

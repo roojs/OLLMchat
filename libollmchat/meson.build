@@ -94,7 +94,7 @@ lib_build_rpath = ':'.join([
 ])
 
 ollmchat_base_lib = library('ollmchat',
-  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocagent_vapi_dep, ocmarkdown_vapi_dep],
+  dependencies: [ollmchat_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep],
   sources: [ollmchat_ollama_src, ollmchat_resources],
   vala_header: 'ollmchat.h',
   vala_vapi: 'ollmchat.vapi',
@@ -102,7 +102,7 @@ ollmchat_base_lib = library('ollmchat',
   # ocsqlite-meson.vapi and adding it as a source. Link manually via ocsqlite_vapi_dep link_args instead.
   build_rpath: lib_build_rpath,
   link_args: ['-lm'],  # Link math library for Math.sqrt() in Embed.vala
-  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocagent', '--pkg=ocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocagent', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'],
+  vala_args: ['--pkg=sqlite3', '--pkg=ocsqlite', '--pkg=ocmarkdown', '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite', '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'],
   install: true
 )
 
@@ -114,14 +114,13 @@ ollmchat_gir = gnome.generate_gir(ollmchat_base_lib,
   nsversion: '1.0',
   identifier_prefix: 'OLLMchat',
   symbol_prefix: 'ollmchat',
-  link_with: [ocsqlite_base_lib, ocagent_base_lib],
+  link_with: [ocsqlite_base_lib],
   dependencies: [dependency('sqlite3')],
   extra_args: [
     '--extra-library=ocsqlite',
-    '--extra-library=ocagent',
     '--accept-unprefixed'
   ],
-  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0], ocagent_gir[0]],
+  includes: ['GObject-2.0', 'Gio-2.0', 'Json-1.0', ocsqlite_gir[0]],
   install: true,
   fatal_warnings: false
 )
