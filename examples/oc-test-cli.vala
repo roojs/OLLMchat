@@ -204,7 +204,7 @@ Examples:
 			// Test connection
 			stdout.printf("Testing connection to %s...\n", opt_url);
 			var original_timeout = connection.timeout;
-			connection.timeout = 10;  // 10 seconds - connection check should be quick
+			connection.timeout = 5;  // 5 seconds - connection check should be quick
 			try {
 				var models_call = new OLLMchat.Call.Models(connection);
 				var models = yield models_call.exec_models();

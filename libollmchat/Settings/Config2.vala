@@ -492,7 +492,7 @@ namespace OLLMchat.Settings
 		 *
 		 * @return The default connection, or null if no default connection is found
 		 */
-		public Connection? get_default_connection()
+		public Connection? default_connection()
 		{
 			foreach (var entry in this.connections.entries) {
 				if (entry.value.is_default) {

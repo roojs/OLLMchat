@@ -186,6 +186,27 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
+		 * Finds a ModelUsage by model name across all connections.
+		 * 
+		 * Only searches models from working connections (is_working = true).
+		 * Returns the first match found.
+		 * 
+		 * @param model_name The model name to search for
+		 * @return The ModelUsage if found, null otherwise
+		 */
+		public ModelUsage? find_model_by_name(string model_name)
+		{
+			foreach (var usage in this.items) {
+				// Only return models from working connections
+				var connection = this.config.connections.get(usage.connection);
+				if (connection != null && connection.is_working && usage.model == model_name) {
+					return usage;
+				}
+			}
+			return null;
+		}
+		
+		/**
 		 * ListModel interface implementation: Get the item type.
 		 */
 		public Type get_item_type()

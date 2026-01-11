@@ -74,6 +74,11 @@ namespace OLLMchat.Call
 		if (message.status_code != 200) {
 			switch (message.status_code) {
 				case 400:
+					// Try to parse error message from response body
+					if (bytes != null && bytes.get_size() > 0) {
+						this.parse_error_from_json((string)bytes.get_data(), "Bad request: ");
+					}
+					// Fall through to default error message if parsing failed or no error field found
 					throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
 				case 401:
 					throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
@@ -121,92 +126,147 @@ namespace OLLMchat.Call
 
 		protected delegate void StreamingChunkCallback(Json.Object chunk);
 
-	protected async void handle_streaming_response(Soup.Message message, StreamingChunkCallback on_chunk) throws Error
-	{
-		// Use send_async() to get InputStream for true streaming
-		// In Vala's libsoup-3.0 bindings, send_async() is already async and returns InputStream directly
-		// Soup is initialized when Connection is created, never null
-		// Timeout is already set on soup (via connection.timeout property)
-		
-		InputStream? input_stream = null;
-		try {
-			input_stream = yield this.connection.soup.send_async(
-					message, GLib.Priority.DEFAULT, this.cancellable);
-		} catch (GLib.IOError e) {
-			if (e.code == GLib.IOError.CANCELLED) {
-				// User cancelled - this is expected, don't throw
-				return;
-			}
-			throw e;
-		}
-		
-		if (message.status_code != 200) {
-			switch (message.status_code) {
-				case 400:
-					throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
-				case 401:
-					throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
-				case 404:
-					throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
-			default:
-				if (message.status_code >= 500) {
-					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
-				}
-				throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
-			}
-		}
-		
-		if (input_stream == null) {
-			throw new OllamaError.FAILED("Failed to get response input stream");
-		}
-		
-		// Process the stream line by line as data arrives
-		try {
-			yield this.process_json_streaming(input_stream, on_chunk);
-		} catch (GLib.IOError e) {
-			if (e.code == GLib.IOError.CANCELLED) {
-				// User cancelled during streaming - this is expected, don't throw
-				return;
-			}
-			throw e;
-		}
-	}
-
-	private async void process_json_streaming(InputStream input_stream, StreamingChunkCallback on_chunk) throws Error
-	{
-		var line_buffer = new StringBuilder();
-		var data_input = new DataInputStream(input_stream);
-
-		while (true) {
-			string? line = null;
+		private void parse_error_from_json(string json_data, string prefix) throws OllamaError
+		{
+			var parser = new Json.Parser();
 			try {
-				line = yield data_input.read_line_async(GLib.Priority.DEFAULT, this.cancellable);
+				parser.load_from_data(json_data, -1);
+			} catch (Error e) {
+				// If JSON parsing fails, throw an error about it
+				throw new OllamaError.FAILED(@"Failed to parse error response: $(e.message)");
+			}
+				
+			var root = parser.get_root();
+			if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
+				throw new OllamaError.FAILED("Failed to parse error response: invalid JSON structure");
+			}
+			
+			var root_obj = root.get_object();
+			if (!root_obj.has_member("error")) {
+				throw new OllamaError.FAILED("Failed to parse error response: no error field found");
+			}
+			
+			var error_message = root_obj.get_string_member("error");
+			if (error_message == "") {
+				throw new OllamaError.FAILED("Failed to parse error response: empty error message");
+			}
+			throw new OllamaError.FAILED(prefix + error_message);
+		}
+
+		private void parse_streaming_error(InputStream? input_stream, string prefix) throws OllamaError
+		{
+			if (input_stream == null) {
+				return;
+			}
+			
+			// Read error response from stream (synchronous - should be fast for a single line)
+			var data_stream = new DataInputStream(input_stream);
+			string? line = null;
+			size_t length = 0;
+			try {
+				line = data_stream.read_line(out length, this.cancellable);
+			} catch (Error e) {
+				// If reading fails, just return (fall through to default error)
+				GLib.debug("Failed to read error response from stream: %s", e.message);
+				return;
+			}
+			
+			if (line == null || line.strip() == "") {
+				return;
+			}
+			
+			this.parse_error_from_json(line.strip(), prefix);
+		}
+
+		protected async void handle_streaming_response(Soup.Message message, StreamingChunkCallback on_chunk) throws Error
+		{
+			// Use send_async() to get InputStream for true streaming
+			// In Vala's libsoup-3.0 bindings, send_async() is already async and returns InputStream directly
+			// Soup is initialized when Connection is created, never null
+			// Timeout is already set on soup (via connection.timeout property)
+			
+			InputStream? input_stream = null;
+			try {
+				input_stream = yield this.connection.soup.send_async(
+						message, GLib.Priority.DEFAULT, this.cancellable);
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
-					// User cancelled - break gracefully
-					break;
+					// User cancelled - this is expected, don't throw
+					return;
 				}
-				// Re-throw other IO errors
 				throw e;
 			}
-
-			if (line == null) {
-				break;
+			
+			if (message.status_code != 200) {
+				switch (message.status_code) {
+					case 400:
+						// Try to parse error message from input stream (for streaming responses)
+						this.parse_streaming_error(input_stream, "Bad request: ");
+						// Fall through to default error message if parsing failed or no error field found
+						throw new OllamaError.FAILED("fetch returned 400: Bad request. Please check your request parameters.");
+					case 401:
+						throw new OllamaError.FAILED("fetch returned 401: Unauthorized. Please check your API key.");
+					case 404:
+						throw new OllamaError.FAILED("fetch returned 404: Endpoint not found. Please check the server URL.");
+				default:
+					if (message.status_code >= 500) {
+						throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string() + ": Server error. The server may be experiencing issues.");
+					}
+					throw new OllamaError.FAILED("fetch returned " + message.status_code.to_string());
+				}
 			}
-
-			var trimmed = line.strip();
-			if (trimmed != "") {
-				this.process_json_chunk(trimmed, on_chunk);
+			
+			if (input_stream == null) {
+				throw new OllamaError.FAILED("Failed to get response input stream");
+			}
+			
+			// Process the stream line by line as data arrives
+			try {
+				yield this.process_json_streaming(input_stream, on_chunk);
+			} catch (GLib.IOError e) {
+				if (e.code == GLib.IOError.CANCELLED) {
+					// User cancelled during streaming - this is expected, don't throw
+					return;
+				}
+				throw e;
 			}
 		}
 
-		if (line_buffer.len > 0) {
-			var final_line = line_buffer.str.strip();
-			if (final_line != "") {
-				this.process_json_chunk(final_line, on_chunk);
+		private async void process_json_streaming(InputStream input_stream, StreamingChunkCallback on_chunk) throws Error
+		{
+			var line_buffer = new StringBuilder();
+			var data_input = new DataInputStream(input_stream);
+
+			while (true) {
+				string? line = null;
+				try {
+					line = yield data_input.read_line_async(GLib.Priority.DEFAULT, this.cancellable);
+				} catch (GLib.IOError e) {
+					if (e.code == GLib.IOError.CANCELLED) {
+						// User cancelled - break gracefully
+						break;
+					}
+					// Re-throw other IO errors
+					throw e;
+				}
+
+				if (line == null) {
+					break;
+				}
+
+				var trimmed = line.strip();
+				if (trimmed != "") {
+					this.process_json_chunk(trimmed, on_chunk);
+				}
+			}
+
+			if (line_buffer.len > 0) {
+				var final_line = line_buffer.str.strip();
+				if (final_line != "") {
+					this.process_json_chunk(final_line, on_chunk);
+				}
 			}
 		}
-	}
 
 		private async void process_streaming(InputStream input_stream, StreamingChunkCallback on_chunk) throws Error
 		{
@@ -232,37 +292,37 @@ namespace OLLMchat.Call
 			return (string)chunk[0:bytes_read];
 		}
 
-	private void process_json_chunk(string chunk_str, StreamingChunkCallback on_chunk)
-	{
-		var trimmed = chunk_str.strip();
-		//GLib.debug("GOT: %s", trimmed);
-		if (trimmed == "" || !trimmed.has_suffix("}")) {
-			return;
-		}
-		var parser = new Json.Parser();
-		try {
-			parser.load_from_data(trimmed, -1);
-			var chunk_node = parser.get_root();
-			if (chunk_node == null || chunk_node.get_node_type() != Json.NodeType.OBJECT) {
-				GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
+		private void process_json_chunk(string chunk_str, StreamingChunkCallback on_chunk)
+		{
+			var trimmed = chunk_str.strip();
+			//GLib.debug("GOT: %s", trimmed);
+			if (trimmed == "" || !trimmed.has_suffix("}")) {
 				return;
 			}
-			// Only log first chunk if streaming_response exists and message is null
-			// (streaming_response is null for Pull, but set for Chat)
-			if (this.streaming_response != null && this.streaming_response.message == null) {
-				GLib.debug("First streaming response: %s", trimmed);
+			var parser = new Json.Parser();
+			try {
+				parser.load_from_data(trimmed, -1);
+				var chunk_node = parser.get_root();
+				if (chunk_node == null || chunk_node.get_node_type() != Json.NodeType.OBJECT) {
+					GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
+					return;
+				}
+				// Only log first chunk if streaming_response exists and message is null
+				// (streaming_response is null for Pull, but set for Chat)
+				if (this.streaming_response != null && this.streaming_response.message == null) {
+					GLib.debug("First streaming response: %s", trimmed);
+				}
+				var chunk_obj = chunk_node.get_object();
+				if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
+					GLib.debug("Last streaming response: %s", trimmed);
+				}				
+				on_chunk(chunk_obj);
+			} catch (Error e) {
+				// Log JSON parsing errors
+				GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);
+				// Skip invalid JSON chunks - they might be partial or malformed
 			}
-			var chunk_obj = chunk_node.get_object();
-			if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
-				GLib.debug("Last streaming response: %s", trimmed);
-			}				
-			on_chunk(chunk_obj);
-		} catch (Error e) {
-			// Log JSON parsing errors
-			GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);
-			// Skip invalid JSON chunks - they might be partial or malformed
 		}
-	}
 
 		protected Json.Node parse_response(Bytes bytes) throws Error
 		{

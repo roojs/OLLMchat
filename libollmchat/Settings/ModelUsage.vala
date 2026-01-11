@@ -151,6 +151,32 @@ namespace OLLMchat.Settings
 			}
 			return this.model;
 		}
+		
+		/**
+		 * Creates a clone of this ModelUsage.
+		 * 
+		 * @return A new ModelUsage with the same properties and cloned options
+		 */
+		public ModelUsage clone()
+		{
+			var cloned = new ModelUsage() {
+				connection = this.connection,
+				model = this.model,
+				model_obj = this.model_obj
+			};
+			cloned.options = this.options.clone();
+			return cloned;
+		}
+		
+		/**
+		 * Returns a string representation of this ModelUsage.
+		 * 
+		 * @return A string in the format "model + connection" (options ignored)
+		 */
+		public string to_string()
+		{
+			return "%s + %s".printf(this.model, this.connection);
+		}
 	
 	}
 }

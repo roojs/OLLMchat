@@ -89,22 +89,19 @@ namespace OLLMchat.Agent
 			this.session = session;
 			
 			// Get model and options from session.model_usage
-			// Create a default ModelUsage if not set (shouldn't happen in normal flow)
-			var usage = this.session.model_usage != null ? this.session.model_usage : 
-				new Settings.ModelUsage();
+			var usage = this.session.model_usage;
 			
-			// Use ModelUsage from session (already has options overlaid from config)
-			var model = usage.model;
-			// Get connection from model_usage (preferred) or default_model_usage
-			if (usage.connection != "" && this.session.manager.config.connections.has_key(usage.connection)) {
+			// Get connection from model_usage
+			if (usage.connection != "" &&
+			 		this.session.manager.config.connections.has_key(usage.connection)) {
 				this.connection = this.session.manager.config.connections.get(usage.connection);
 			}
 			
-			GLib.debug("Agent.Base constructor: Final connection=%p, model='%s'", this.connection, model);
+			GLib.debug("Agent.Base constructor: Final connection=%p, model='%s'", this.connection, usage.model);
 			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change
-			this.chat_call = new OLLMchat.Call.Chat(this.connection, model) {
+			this.chat_call = new OLLMchat.Call.Chat(this.connection, usage.model) {
 				stream = true,
 				think = true,
 				options = usage.options,  // No cloning - Chat just references the Options object

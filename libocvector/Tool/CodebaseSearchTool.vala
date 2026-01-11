@@ -42,7 +42,7 @@ namespace OLLMvector.Tool
 			}
 			
 			var tool_config = new CodebaseSearchToolConfig();
-			var default_connection = config.get_default_connection();
+			var default_connection = config.default_connection();
 			if (default_connection != null) {
 				tool_config.setup_defaults(default_connection.url);
 			}

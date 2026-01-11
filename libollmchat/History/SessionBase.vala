@@ -42,12 +42,34 @@ namespace OLLMchat.History
 		public bool is_active { get; protected set; default = false; }
 		public bool is_running { get; protected set; default = false; }
 		
-		// Model property - stored on Session since Client no longer has model (Phase 3)
-		public string model { get; set; default = ""; }
+		// Backing field for model (stored in database, not serialized to filesystem)
+		internal string model_usage_model = "";
+		
+		/**
+		 * Model property - stored in DB for display, get returns model_usage.model
+		 * 
+		 * IMPORTANT: This property should ONLY be used in these scenarios:
+		 * - Database read/write operations (SQ framework)
+		 * - UI display when only DB data is loaded (SessionPlaceholder)
+		 * 
+		 * For all other code, ALWAYS work with model_usage directly.
+		 * Never set or read this property outside of the above scenarios.
+		 * 
+		 * When set, stores in model_usage_model (for DB persistence)
+		 * When get, returns model_usage.model (not model_usage_model)
+		 */
+		public string model {
+			get {
+				return this.model_usage.model;
+			}
+			set {
+				this.model_usage_model = value;
+			}
+		}
 		
 		// ModelUsage property - stores full model configuration (connection, model, options)
 		// Options are overlaid from config.model_options when activate_model() is called
-		public Settings.ModelUsage? model_usage { get; protected set; default = null; }
+		public Settings.ModelUsage model_usage { get; set; }
 		
 		// Display properties for UI
 		public string display_title {
@@ -145,13 +167,8 @@ namespace OLLMchat.History
 		{
 			this.manager = manager;
 			
-			// Get model from config or use default
-			var model = manager.config.get_default_model();
-			model = model == "" ? "placeholder" : model;
-		 
-			
-			// Store model on session
-			this.model = model;
+			// Copy model_usage from manager's default_model_usage
+			this.model_usage = manager.default_model_usage;
 			
 			// Note: Chat is created per request by AgentHandler, not stored on Session
 			// Note: Permission provider is on Manager, accessed via agent.session.manager.permission_provider
@@ -184,27 +201,63 @@ namespace OLLMchat.History
 				usage.options = config_options.clone();
 			}
 			
-		// Store the ModelUsage
-		this.model_usage = usage;
-		
-		// Update model property for backward compatibility
-		this.model = model_usage.model;
-		
-		// Update Chat properties if agent exists (agent always exists when activate_model is called)
-		if (this.agent != null && this.agent.chat() != null) {
-			// Update model
-			this.agent.chat().model = usage.model;
+			// Store the ModelUsage
+			this.model_usage = usage;
 			
-			// Update connection
-			if (usage.connection != "" && this.manager.config.connections.has_key(usage.connection)) {
-				this.agent.chat().connection = this.manager.config.connections.get(usage.connection);
+			// Update Chat properties if agent exists (agent always exists when activate_model is called)
+				if (this.agent != null && this.agent.chat() != null) {
+				// Update model
+				this.agent.chat().model = usage.model;
+				
+				// Update connection
+				if (usage.connection != "" && this.manager.config.connections.has_key(usage.connection)) {
+					this.agent.chat().connection = this.manager.config.connections.get(usage.connection);
+				}
+				
+				// Update options (no cloning - Chat just references the Options object)
+				this.agent.chat().options = usage.options;
 			}
-			
-			// Update options (no cloning - Chat just references the Options object)
-			this.agent.chat().options = usage.options;
 		}
 		
-	}
+		/**
+		 * Reconstructs model_usage from the model_usage_model field (used when loading from database).
+		 * 
+		 * Searches for the model in available connections. If found, uses that connection.
+		 * If not found, uses the default connection.
+		 */
+		public void reconstruct_model_usage_from_model()
+		{
+			// Search for model in connection_models
+			var found_usage = this.manager.connection_models.find_model_by_name(this.model_usage_model);
+			if (found_usage != null) {
+				// Clone the found usage
+				var usage = found_usage.clone();
+				
+				// Overlay options from config.model_options if available (config options take precedence)
+				if (this.manager.config.model_options.has_key(this.model_usage_model)) {
+					var config_options = this.manager.config.model_options.get(this.model_usage_model);
+					usage.options = config_options.clone();
+				}
+				
+				this.model_usage = usage;
+				return;
+			}
+			
+			// Model not found, create new ModelUsage with default connection
+			var default_connection = this.manager.config.default_connection();
+			var usage = new Settings.ModelUsage() {
+				connection = default_connection != null ? default_connection.url : "",
+				model = this.model_usage_model
+			};
+			
+			// Overlay options from config.model_options if available
+			if (this.manager.config.model_options.has_key(this.model_usage_model)) {
+				var config_options = this.manager.config.model_options.get(this.model_usage_model);
+				usage.options = config_options.clone();
+			}
+			
+			this.model_usage = usage;
+		}
 		
 		/**
 		 * Activates this session, connecting client signals to relay to UI.

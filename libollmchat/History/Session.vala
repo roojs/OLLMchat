@@ -60,7 +60,7 @@ namespace OLLMchat.History
 				}
 				
 				return "%s - %d %s".printf(
-					this.model,
+					this.model_usage.model,
 					reply_count,
 					reply_count == 1 ? "reply" : "replies"
 				);
@@ -386,7 +386,7 @@ namespace OLLMchat.History
 				case "fid":
 				case "updated-at-timestamp":
 				case "title":
-				case "model":
+				case "model-usage":
 				case "agent-name":
 				case "total-messages":
 				case "total-tokens":
@@ -458,6 +458,11 @@ namespace OLLMchat.History
 			if (this.agent != null) {
 				return;
 			}
+			
+			// NOTE: At this point, this.model_usage must contain a valid model and connection.
+			// The model_usage.model must be non-empty and model_usage.connection must be
+			// a valid key in this.manager.config.connections. This should be ensured by
+			// calling activate_model() before ensure_agent_handler() is called.
 			
 			// Get agent name (default to "just-ask" if not set)
 			var agent_name = this.agent_name == "" ? "just-ask" : this.agent_name;

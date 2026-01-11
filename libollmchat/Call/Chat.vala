@@ -234,24 +234,25 @@ namespace OLLMchat.Call
 						return null;
 					}
 					
-					// Check if model supports tools using ConnectionModels
-					// Access via agent.session.manager.connection_models (Phase 3: no Client)
-					bool model_supports_tools = true;
-					
+					// Check if model supports tools
+					// First try via agent.session.manager.connection_models (if agent is set)
+					// Otherwise check directly from connection.models
 					if (this.agent != null) {
 						var model_usage = this.agent.session.manager.connection_models.find_model(
 							this.connection.url, 
 							this.model
 						);
 						
-						if (model_usage != null) {
-							model_supports_tools = model_usage.model_obj.can_call;
+						if (model_usage != null && !model_usage.model_obj.can_call) {
+							return null;
 						}
-					}
-					
-					// Only exclude tools if we know the model explicitly doesn't support them
-					if (!model_supports_tools) {
-						return null;
+					} 
+					if (this.connection.models.has_key(this.model)) {
+						// Check directly from connection.models if agent is not set
+						var model_obj = this.connection.models.get(this.model);
+						if (model_obj != null && !model_obj.can_call) {
+							return null;
+						}
 					}
 					
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);

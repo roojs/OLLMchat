@@ -64,15 +64,17 @@ namespace OLLMchat.History
 			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
-				updated_at_timestamp = (new DateTime.now_local()).to_unix()
+				updated_at_timestamp = (new DateTime.now_local()).to_unix(),
+				model_usage = this.model_usage
 			};
+			
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
 			
 			// Add session to manager.sessions (SessionList will emit items_changed signal automatically)
 			GLib.debug("[EmptySession.send] Converting to Session: fid=%s, agent=%s, model=%s", 
-				real_session.fid, real_session.agent_name, real_session.model);
+				real_session.fid, real_session.agent_name, real_session.model_usage.model);
 			this.manager.sessions.append(real_session);
 			GLib.debug("[EmptySession.send] Session added to manager.sessions");
 			

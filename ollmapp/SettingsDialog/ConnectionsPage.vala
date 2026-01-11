@@ -145,7 +145,7 @@ namespace OLLMapp.SettingsDialog
 		try {
 			// Test connection by calling models endpoint directly with short timeout
 			var original_timeout = test_connection.timeout;
-			test_connection.timeout = 10;  // 10 seconds - connection check should be quick
+			test_connection.timeout = 5;  // 5 seconds - connection check should be quick
 			try {
 				var models_call = new OLLMchat.Call.Models(test_connection);
 				var models = yield models_call.exec_models();

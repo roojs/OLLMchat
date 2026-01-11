@@ -247,11 +247,11 @@ namespace OLLMchat.History
 		 
 		/**
 		 * Creates a new session for a new chat.
-		 * Uses the current session's agent_name and model if available, otherwise defaults to "just-ask".
+		 * Uses the current session's agent_name and model_usage if available, otherwise defaults.
 		 *
-		 * @return A new Session instance with a fresh client
+		 * @return A new EmptySession instance
 		 */
-		public Session create_new_session()
+		public EmptySession create_new_session()
 		{
 			// Get agent name from current session, default to "just-ask"
 			var agent_name = "just-ask";
@@ -259,24 +259,15 @@ namespace OLLMchat.History
 				agent_name = this.session.agent_name;
 			}
 			
-			// Get model from current session if available, otherwise use default from config
-			var model = "";
-			if (this.session != null && this.session.model != "") {
-				model = this.session.model;
-			} else if (this.config != null) {
-				model = this.config.get_default_model();
+			// Create EmptySession (converts to Session when first message is sent)
+			var empty_session = new EmptySession(this);
+			// Copy model_usage from current session if available, otherwise uses default from base constructor
+			if (this.session != null) {
+				empty_session.activate_model(this.session.model_usage);
 			}
-			if (model == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Cannot create session: no model available");
-			}
+			empty_session.agent_name = agent_name;
 			
-			// Chat is created per request by AgentHandler, not stored on Session
-			var session = new Session(this);
-			session.model = model;  // Store model on session
-			session.agent_name = agent_name;
-			this.sessions.append(session);  // SessionList will emit items_changed signal automatically
-			
-			return session;
+			return empty_session;
 		}
 		
 		/**
@@ -312,8 +303,14 @@ namespace OLLMchat.History
 			var placeholder_list = new Gee.ArrayList<SessionPlaceholder>();
 			sq.select("ORDER BY updated_at_timestamp DESC", placeholder_list);
 			
-			// Add placeholders to sessions list and set manager
+			// Add placeholders to sessions list and initialize model_usage from model
 			foreach (var placeholder in placeholder_list) {
+				// Skip if model_usage_model (backing field from DB) is empty
+				if (placeholder.model_usage_model == "") {
+					continue;
+				}
+				// Reconstruct model_usage from model_usage_model (loaded from database)
+				placeholder.reconstruct_model_usage_from_model();
 				this.sessions.append(placeholder);
 			}
 		}

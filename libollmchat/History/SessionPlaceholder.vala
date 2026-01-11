@@ -31,7 +31,7 @@ namespace OLLMchat.History
 		public override string display_info {
 			owned get {
 				return "%s - %d %s".printf(
-					this.model,
+					this.model_usage.model,
 					this.total_messages,
 					this.total_messages == 1 ? "message" : "messages"
 				);
@@ -64,18 +64,13 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
-			// Use the placeholder's model (stored from database)
-			if (this.model == "") {
-				throw new GLib.IOError.INVALID_ARGUMENT("Cannot load session: model is not set in database");
-			}
-			
 			// a) Create a new Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
 				id = this.id,
 				fid = this.fid,
 				updated_at_timestamp = this.updated_at_timestamp,
 				title = this.title,
-				model = this.model,
+				model_usage = this.model_usage,
 				agent_name = this.agent_name,
 				total_messages = this.total_messages,
 				total_tokens = this.total_tokens,
@@ -120,8 +115,8 @@ namespace OLLMchat.History
 			//real_session.id = json_session.id;
 			//real_session.updated_at_timestamp = json_session.updated_at_timestamp;
 			//real_session.title = json_session.title;
-			//real_session.model = json_session.model;
 			//real_session.child_chats = json_session.child_chats;
+			// model_usage is reconstructed from DB model field, ignore JSON model_usage
 			// Copy agent_name from JSON (it may not be in DB for older sessions)
 			if (json_session.agent_name != "" && json_session.agent_name != "just-ask") {
 				real_session.agent_name = json_session.agent_name;

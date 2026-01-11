@@ -67,6 +67,8 @@
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.load.html">load</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.on_message_created.html">on_message_created</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.read.html">read</a></li>
+          <li class="method"><a href="OLLMchat.History.SessionBase.reconstruct_model_usage_from_model.html">reconstruct_model_usage_from_model</a>
+          </li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.saveToDB.html">saveToDB</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.save_async.html">save_async</a></li>
           <li class="abstract_method"><a href="OLLMchat.History.SessionBase.send.html">send</a></li>
@@ -184,9 +186,10 @@
             </div></li>
           <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_basic_type"><span class="class">string</span></span> <b><a href="OLLMchat.History.SessionBase.model.html" class="property">model</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
-            <div class="leaf_brief_description">
+            <div class="leaf_brief_description"><span class="brief_description">Model property - stored in DB for display, get returns 
+                model_usage.model</span>
             </div></li>
-          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span>? <b><a href="OLLMchat.History.SessionBase.model_usage.html" class="property">model_usage</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">protected</span> <span class="main_keyword">set</span>; }
+          <li class="property"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_type"><a href="OLLMchat.Settings.ModelUsage.html" class="class">ModelUsage</a></span> <b><a href="OLLMchat.History.SessionBase.model_usage.html" class="property">model_usage</a></b> { <span class="main_keyword">get</span>; <span class="main_keyword">set</span>; }
             </span>
             <div class="leaf_brief_description">
             </div></li>
@@ -281,6 +284,11 @@
           <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">async</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.read.html" class="abstract_method">read</a></b> () <span class="main_keyword">throws</span> <span class="main_type"><span class="class">Error</span></span>
             </span>
             <div class="leaf_brief_description"><span class="brief_description">Read session from JSON file. Must be implemented by subclasses.</span>
+            </div></li>
+          <li class="method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.reconstruct_model_usage_from_model.html" class="method">reconstruct_model_usage_from_model</a></b> ()
+            </span>
+            <div class="leaf_brief_description"><span class="brief_description">Reconstructs model_usage from the model_usage_model field (used when 
+                loading from database).</span>
             </div></li>
           <li class="abstract_method"><span class="leaf_code_definition"><span class="main_keyword">public</span> <span class="main_keyword">abstract</span> <span class="main_keyword">void</span> <b><a href="OLLMchat.History.SessionBase.saveToDB.html" class="abstract_method">saveToDB</a></b> ()
             </span>
