@@ -64,6 +64,8 @@ namespace OLLMchat.History
 		 */
 		public override async SessionBase? load() throws Error
 		{
+			GLib.debug("Converting SessionPlaceholder to Session: %s", this.to_string());
+			
 			// a) Create a new Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
 				id = this.id,
@@ -117,10 +119,7 @@ namespace OLLMchat.History
 			//real_session.title = json_session.title;
 			//real_session.child_chats = json_session.child_chats;
 			// model_usage is reconstructed from DB model field, ignore JSON model_usage
-			// Copy agent_name from JSON (it may not be in DB for older sessions)
-			if (json_session.agent_name != "" && json_session.agent_name != "just-ask") {
-				real_session.agent_name = json_session.agent_name;
-			}
+			// agent_name is skipped during JSON deserialization, use database value (already set from placeholder)
 			
 			// Agent is managed separately, not stored on client
 			// Agent selection is handled via agent_name in session
@@ -142,6 +141,7 @@ namespace OLLMchat.History
 				// e) Replace the placeholder with the real session in manager.sessions
 				this.manager.sessions.replace_at(index, real_session);
 			}
+			GLib.debug("resulting  Session: %s", real_session.to_string());
 			
 			return real_session;
 		}

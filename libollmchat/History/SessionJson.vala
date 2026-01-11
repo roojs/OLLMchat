@@ -36,6 +36,7 @@ namespace OLLMchat.History
 		
 		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
+			
 			if (property_name != "messages") {
 				value = Value(pspec.value_type);
 				return true;

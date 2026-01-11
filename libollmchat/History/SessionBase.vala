@@ -347,6 +347,11 @@ namespace OLLMchat.History
 		
 			this.messages.add(message);
 			
+			// Set running state to false when done message is received
+			if (message.role == "done") {
+				this.is_running = false;
+				GLib.debug("Stopping running");
+			}
 			
 			// Relay to UI via Manager's message_added signal - pass this session, not content_interface
 			// Only relay if session is active
@@ -437,6 +442,20 @@ namespace OLLMchat.History
 		 * @throws Error if agent activation fails
 		 */
 		public abstract void activate_agent(string agent_name) throws Error;
+		
+		/**
+		 * Returns a string representation of the session for debugging.
+		 * 
+		 * @return String with title, model, agent_name, and agent object status
+		 */
+		public string to_string()
+		{
+			var agent_name_str = this.agent_name ?? "(null)";
+			return "title='" + this.title + "', " +
+			       "model='" + this.model_usage.model + "', " +
+			       "agent_name='" + agent_name_str + "', " +
+			       "agent=" + (this.agent != null ? "Y" : "N");
+		}
 		
 		/**
 		 * Handle JSON property mapping and custom deserialization.

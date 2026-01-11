@@ -165,6 +165,7 @@ namespace OLLMchat.History
 					this.messages.add(this.current_stream_message);
 				} else {
 					// Same stream type - append to existing message
+					GLib.debug("adding new test to current tream message:" + new_text);
 					this.current_stream_message.content += new_text;
 				}
 			}
@@ -220,6 +221,7 @@ namespace OLLMchat.History
 			
 			// Set running state to false when response is done
 			this.is_running = false;
+			GLib.debug("Stopping running");
 			
 			this.save_async.begin();
 			this.notify_property("display_info");  // Reply count changes when message is added
@@ -292,6 +294,7 @@ namespace OLLMchat.History
 				
 				// Generate title if not set
 				if (this.title == "") {
+					GLib.debug("Truing to set title as it's empty on save");
 					try {
 						this.title = yield this.manager.title_generator.to_title(this);
 					} catch (Error e) {
@@ -444,6 +447,9 @@ namespace OLLMchat.History
 			if (this.agent.chat().cancellable != null) {
 				this.agent.chat().cancellable.cancel();
 			}
+			// Set running state to false when stopping
+			this.is_running = false;
+			GLib.debug("Stopping running");
 		}
 		
 		/**
@@ -470,8 +476,7 @@ namespace OLLMchat.History
 			// Get agent from manager
 			var factory = this.manager.agent_factories.get(agent_name);
 			if (factory == null) {
-				GLib.critical("Agent '%s' not found in manager (this.agent_name='%s', class=%s)", 
-				              agent_name, this.agent_name, this.get_type().name());
+				GLib.critical("Agent '%s' not found in manager", agent_name);
 				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
@@ -500,8 +505,7 @@ namespace OLLMchat.History
 			// Get agent from manager
 			var factory = this.manager.agent_factories.get(agent_name);
 			if (factory == null) {
-				GLib.critical("Agent '%s' not found in manager (parameter agent_name='%s', this.agent_name='%s', class=%s)", 
-				              agent_name, agent_name, this.agent_name, this.get_type().name());
+				GLib.critical("Agent '%s' not found in manager", agent_name);
 				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			
@@ -586,9 +590,10 @@ namespace OLLMchat.History
 			
 			// Session has reference to AgentHandler
 			if (this.agent != null) {
-				yield this.agent.send_async(message, cancellable);
-				// Set running state to true after request starts
+				// Set running state to true as soon as we send the message
 				this.is_running = true;
+				GLib.debug("Starting running");
+				yield this.agent.send_async(message, cancellable);
 			} else {
 				throw new OllmError.INVALID_ARGUMENT("No agent available for session");
 			}

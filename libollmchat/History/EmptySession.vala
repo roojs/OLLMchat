@@ -61,6 +61,8 @@ namespace OLLMchat.History
 		 */
 		public override async void send(Message message, GLib.Cancellable? cancellable = null) throws Error
 		{
+			GLib.debug("Converting EmptySession to Session: %s", this.to_string());
+			
 			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
 			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
@@ -68,6 +70,11 @@ namespace OLLMchat.History
 				model_usage = this.model_usage
 			};
 			
+			
+			real_session.title = message.content.strip();
+			
+			// Save title to database immediately
+			real_session.saveToDB();
 			
 			// Replace EmptySession with real Session in manager
 			this.manager.session = real_session;
@@ -80,7 +87,8 @@ namespace OLLMchat.History
 			
 			real_session.activate();
 			this.manager.session_activated(real_session);
-			
+			GLib.debug("CResulting Session: %s", real_session.to_string());
+
 			// Now call send() on the real session
 			yield real_session.send(message, cancellable);
 		}
@@ -115,8 +123,7 @@ namespace OLLMchat.History
 			// Get agent factory from manager
 			var agent_factory = this.manager.agent_factories.get(agent_name);
 			if (agent_factory == null) {
-				GLib.critical("Agent '%s' not found in manager (parameter agent_name='%s', this.agent_name='%s', class=%s)", 
-				              agent_name, agent_name, this.agent_name, this.get_type().name());
+				GLib.critical("Agent '%s' not found in manager", agent_name);
 				throw new OllmError.INVALID_ARGUMENT("Agent '%s' not found in manager", agent_name);
 			}
 			

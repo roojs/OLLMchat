@@ -253,6 +253,8 @@ namespace OLLMchat.History
 		 */
 		public EmptySession create_new_session()
 		{
+			GLib.debug("create_new_session: before - %s", this.session.to_string());
+			
 			// Get agent name from current session, default to "just-ask"
 			var agent_name = "just-ask";
 			if (this.session != null && this.session.agent_name != "") {
@@ -266,6 +268,8 @@ namespace OLLMchat.History
 				empty_session.activate_model(this.session.model_usage);
 			}
 			empty_session.agent_name = agent_name;
+			
+			GLib.debug("create_new_session: after - %s", empty_session.to_string());
 			
 			return empty_session;
 		}
@@ -303,15 +307,18 @@ namespace OLLMchat.History
 			var placeholder_list = new Gee.ArrayList<SessionPlaceholder>();
 			sq.select("ORDER BY updated_at_timestamp DESC", placeholder_list);
 			
-			// Add placeholders to sessions list and initialize model_usage from model
+			// Add placeholders to sessions list and set manager
 			foreach (var placeholder in placeholder_list) {
-				// Skip if model_usage_model (backing field from DB) is empty
-				if (placeholder.model_usage_model == "") {
+				// Check if model exists in connection_models before adding
+				
+				if (this.connection_models.find_model_by_name(placeholder.model_usage_model) == null) {
+					// Model not found, skip this placeholder
 					continue;
 				}
-				// Reconstruct model_usage from model_usage_model (loaded from database)
 				placeholder.reconstruct_model_usage_from_model();
+	
 				this.sessions.append(placeholder);
+				// Reconstruct model_usage to ensure model_obj is set from connection_models
 			}
 		}
 		

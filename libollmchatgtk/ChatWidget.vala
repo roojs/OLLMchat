@@ -37,7 +37,6 @@ namespace OLLMchatGtk
 		private Gtk.Paned paned;
 		public OLLMchat.History.Manager manager { get; private set; }
 		
-		private bool is_streaming_active = false;
 		private string? last_sent_text = null;
 		private int min_bottom_size = 115;
 
@@ -383,17 +382,8 @@ namespace OLLMchatGtk
 		*/
 		public async void start_new_chat_with_text(string text)
 		{
-			// Create a new EmptySession (not a real Session yet - that happens when message is sent)
-			// Copy model and agent from current session
-			var empty_session = new OLLMchat.History.EmptySession(this.manager);
-			
-			// Copy model_usage and agent from current session
-			// Manager always initializes session in constructor, so no null check needed
-			empty_session.activate_model(this.manager.session.model_usage);
-			if (this.manager.session.agent_name != "") {
-				empty_session.agent_name = this.manager.session.agent_name;
-				// Agent is managed separately, not stored on client
-			}
+			// Create a new EmptySession using Manager.create_new_session() to ensure proper initialization
+			var empty_session = this.manager.create_new_session();
 			
 			// Switch to the EmptySession (this clears the chat)
 			yield this.switch_to_session(empty_session);

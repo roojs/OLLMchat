@@ -33,6 +33,7 @@ namespace OLLMchatGtk
 		private Gtk.ListView list_view;
 		public Gtk.ScrolledWindow scrolled_window { get; set; }
 		private bool changing_selection = false;
+		private bool is_loading = false;
 		
 		/**
 		 * Signal emitted when a session is selected.
@@ -77,7 +78,9 @@ namespace OLLMchatGtk
 			
 			// Create ListView with selection model using the sorted store
 			var selection_model = new Gtk.SingleSelection(this.sorted_store) {
-				autoselect = false
+				autoselect = false,
+				can_unselect = true,
+				selected = Gtk.INVALID_LIST_POSITION
 			};
 			this.list_view = new Gtk.ListView(selection_model, null);
 			
@@ -262,6 +265,9 @@ namespace OLLMchatGtk
 		{
 			SourceFunc callback = load_sessions_async.callback;
 			
+			// Set loading flag to prevent on_items_changed from selecting items during initial load
+			this.is_loading = true;
+			
 			// Use Idle to defer loading to avoid blocking UI
 			Idle.add(() => {
 				// Load sessions from database (populates manager.sessions directly)
@@ -269,6 +275,15 @@ namespace OLLMchatGtk
 				
 				// Sessions are now in manager.sessions, which is used directly by the ListView
 				// No need to copy - SessionList implements ListModel
+				
+				// Explicitly set selection to invalid to ensure nothing is selected on initial load
+				this.changing_selection = true;
+				var selection = this.list_view.model as Gtk.SingleSelection;
+				selection.selected = Gtk.INVALID_LIST_POSITION;
+				this.changing_selection = false;
+				
+				// Clear loading flag after initial load is complete
+				this.is_loading = false;
 				
 				callback();
 				return false;
@@ -290,6 +305,11 @@ namespace OLLMchatGtk
 		 */
 		private void on_items_changed(uint position, uint removed, uint added)
 		{
+			// Don't auto-select during initial load - we want no selection on startup
+			if (this.is_loading) {
+				return;
+			}
+			
 			// Only handle additions at position 0 (new sessions appear at top after sorting)
 			if (position != 0 || added == 0) {
 				return;
