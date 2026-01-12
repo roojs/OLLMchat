@@ -10,7 +10,10 @@
 valadoc = find_program('valadoc', required: true)
 
 # Combined documentation for both base and UI libraries
-valadoc_dir = meson.current_source_dir() / 'ollmchat'
+# Output to build directory instead of source directory to keep generated files out of repository
+# Valadoc creates a subdirectory with the package name (ollmchat) inside the specified directory
+# So we point it to build/valadoc and it creates build/valadoc/ollmchat/
+valadoc_dir = meson.project_build_root() / 'valadoc'
 valadoc_clean = custom_target('valadoc-clean',
   output: 'valadoc-clean',
   command: [
@@ -267,19 +270,6 @@ valadoc_docs = custom_target('valadoc',
     '--doclet=html',
     '--directory=' + valadoc_dir,
     '@INPUT@'
-  ],
-  build_by_default: true,
-  install: false
-)
-
-# Touch .generated file after valadoc completes
-# this is used to stop the code scanner from treating generated docs as part of the codebase
-valadoc_touch_generated = custom_target('valadoc-touch-generated',
-  output: 'valadoc-touch-generated',
-  depends: [valadoc_docs],
-  command: [
-    find_program('touch'),
-    valadoc_dir / '.generated'
   ],
   build_by_default: true,
   install: false
