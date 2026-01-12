@@ -29,7 +29,27 @@ namespace OLLMtools.RunCommand
 	{
 		
 		// Base description (without directory note)
-		private const string BASE_DESCRIPTION = """
+	 
+		
+		// Base directory for command execution (project directory if available, otherwise home directory)
+		public string base_directory {
+			get {
+				if (this.project_manager != null && this.project_manager.active_project != null) {
+					return this.project_manager.active_project.path;
+				}
+				return GLib.Environment.get_home_dir();
+			}
+		}
+		
+		public override string name { get { return "run_command"; } }
+		
+		public override string title { get { return "Run Shell Commands Tool"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+			
+		public override string description { 
+			get {
+				return """
 Run a terminal command in the project's root directory and return the output.
 
 You should only run commands that are safe and do not modify the user's system in unexpected ways.
@@ -38,26 +58,6 @@ If you are unsure about the safety of a command, ask the user for confirmation b
 
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
-		
-		// Base directory for command execution (hardcoded to home directory)
-		public string base_directory { get; private set; }
-		
-		public override string name { get { return "run_command"; } }
-		
-		public override string title { get { return "Run Shell Commands Tool"; } }
-		
-		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
-			
-		private string _description = "";
-		
-		public override string description { 
-			get {
-				if (this._description == "") {
-					this._description = BASE_DESCRIPTION + 
-					"\n\nCommands are executed in the directory: " +
-						 this.base_directory + " unless 'cd' is prefixed to the command.";
-				}
-				return this._description;
 			}
 		}
 		
@@ -76,10 +76,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		{
 			base();
 			
-			// Hardcode base_directory to home directory
-			this.base_directory = GLib.Environment.get_home_dir();
-			
 			this.project_manager = project_manager;
+			// base_directory is now a computed property that checks active_project dynamically
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)

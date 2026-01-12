@@ -108,7 +108,7 @@ namespace OLLMchat.Tool
 		 * @param path The path to normalize
 		 * @return The normalized path
 		 */
-		protected string normalize_file_path(string in_path)
+		protected virtual string normalize_file_path(string in_path)
 		{
 			var path = in_path;
 			// Get permission provider via agent interface

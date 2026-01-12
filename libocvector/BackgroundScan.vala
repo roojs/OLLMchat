@@ -484,6 +484,14 @@ namespace OLLMvector {
                     GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
 
+                // Sync database to disk after processing each file (using idle to avoid blocking)
+                var sync_source = new GLib.IdleSource ();
+                sync_source.set_callback (() => {
+                    this.sql_db.backupDB ();
+                    return false;
+                });
+                sync_source.attach (this.worker_context);
+
             }
         }
     }

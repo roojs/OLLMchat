@@ -40,6 +40,32 @@ namespace OLLMtools.ReadFile
 		}
 		
 		/**
+		 * Override normalize_file_path to prepend project path for relative paths.
+		 * 
+		 * When the agent sends the workspace path to the LLM, the LLM may request
+		 * files with relative paths. This override prepends the active project path
+		 * from the tool's project_manager if the path is still relative after
+		 * permission provider normalization.
+		 */
+		protected override string normalize_file_path(string in_path)
+		{
+			var path = base.normalize_file_path(in_path);
+			
+			// If path is already absolute, return it as-is
+			if (GLib.Path.is_absolute(path)) {
+				return path;
+			}
+			
+			// If path is still relative, try to prepend project path
+			var project_manager = ((Tool) this.tool).project_manager;
+			if (project_manager != null && project_manager.active_project != null) {
+				path = GLib.Path.build_filename(project_manager.active_project.path, path);
+			}
+			
+			return path;
+		}
+		
+		/**
 		 * Get first N lines from content string.
 		 * 
 		 * @param content The full content string
@@ -124,8 +150,18 @@ namespace OLLMtools.ReadFile
 				return false;
 			}
 			
+			// Debug: Log input path and project manager state
+			var project_manager = ((Tool) this.tool).project_manager;
+			GLib.debug("ReadFile.build_perm_question: Input file_path='%s'", this.file_path);
+			
 			// Normalize file path
 			var normalized_path = this.normalize_file_path(this.file_path);
+			
+			// Debug: Log normalized path
+			GLib.debug("ReadFile.build_perm_question: Normalized path='%s' (was '%s')",
+				normalized_path,
+				this.file_path);
+			
 			if (normalized_path == null || normalized_path == "") {
 				return false;
 			}

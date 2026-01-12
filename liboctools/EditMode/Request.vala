@@ -58,6 +58,32 @@ namespace OLLMtools.EditMode
 		{
 		}
 		
+		/**
+		 * Override normalize_file_path to prepend project path for relative paths.
+		 * 
+		 * When the agent sends the workspace path to the LLM, the LLM may request
+		 * files with relative paths. This override prepends the active project path
+		 * from the tool's project_manager if the path is still relative after
+		 * permission provider normalization.
+		 */
+		protected override string normalize_file_path(string in_path)
+		{
+			var path = base.normalize_file_path(in_path);
+			
+			// If path is already absolute, return it as-is
+			if (GLib.Path.is_absolute(path)) {
+				return path;
+			}
+			
+			// If path is still relative, try to prepend project path
+			var project_manager = ((Tool) this.tool).project_manager;
+			if (project_manager != null && project_manager.active_project != null) {
+				path = GLib.Path.build_filename(project_manager.active_project.path, path);
+			}
+			
+			return path;
+		}
+		
 		protected override bool build_perm_question()
 		{
 			// Validate parameters first

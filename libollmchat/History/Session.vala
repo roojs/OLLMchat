@@ -600,6 +600,13 @@ namespace OLLMchat.History
 			
 			this.agent.chat().options = this.model_usage.options;
 			
+			// Update think parameter based on model capabilities
+			bool supports_thinking = false;
+			if (this.model_usage.model_obj != null) {
+				supports_thinking = this.model_usage.model_obj.is_thinking;
+			}
+			this.agent.chat().think = supports_thinking;
+			
 			// Rebuild tools when tool configuration changes (ensures Chat has latest tool config/active state)
 			this.agent.rebuild_tools();
 		}

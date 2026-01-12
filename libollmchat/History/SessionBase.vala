@@ -216,6 +216,13 @@ namespace OLLMchat.History
 				
 				// Update options (no cloning - Chat just references the Options object)
 				this.agent.chat().options = usage.options;
+				
+				// Update think parameter based on model capabilities
+				bool supports_thinking = false;
+				if (usage.model_obj != null) {
+					supports_thinking = usage.model_obj.is_thinking;
+				}
+				this.agent.chat().think = supports_thinking;
 			}
 		}
 		

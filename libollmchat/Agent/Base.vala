@@ -97,12 +97,17 @@ namespace OLLMchat.Agent
 				this.connection = this.session.manager.config.connections.get(usage.connection);
 			}
 		
- 			 
+			// Determine if model supports thinking
+			bool supports_thinking = false;
+			if (usage.model_obj != null) {
+				supports_thinking = usage.model_obj.is_thinking;
+			}
+			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change
 			this.chat_call = new OLLMchat.Call.Chat(this.connection, usage.model) {
 				stream = true,
-				think = true,
+				think = supports_thinking,  // Based on model capabilities
 				options = usage.options,  // No cloning - Chat just references the Options object
 				agent = this  // Set agent reference so tools can access session
 			};
