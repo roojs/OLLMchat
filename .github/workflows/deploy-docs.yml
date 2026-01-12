@@ -33,13 +33,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install libfaiss-dev dependencies from Ubuntu
+        run: |
+          # Update package lists and install dependencies from Ubuntu repositories
+          sudo apt-get update
+          sudo apt-get install -y \
+            libblas-dev \
+            liblapack-dev \
+            libomp-dev
+          
       - name: Download and install libfaiss-dev
         run: |
           # Download libfaiss-dev .deb package from Debian repository
           wget http://ftp.us.debian.org/debian/pool/main/f/faiss/libfaiss-dev_1.13.2-1_amd64.deb -O /tmp/libfaiss-dev.deb
           
           # Install the package and fix any missing dependencies
-          sudo apt-get update
           sudo apt-get install -y libfaiss1 || true
           sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
