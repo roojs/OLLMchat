@@ -10,7 +10,10 @@
 valadoc = find_program('valadoc', required: true)
 
 # Combined documentation for both base and UI libraries
-valadoc_dir = meson.current_source_dir() / 'ollmchat'
+# Output to build directory instead of source directory to keep generated files out of repository
+# Valadoc creates a subdirectory with the package name (ollmchat) inside the specified directory
+# So we point it to build/valadoc and it creates build/valadoc/ollmchat/
+valadoc_dir = meson.project_build_root() / 'valadoc'
 valadoc_clean = custom_target('valadoc-clean',
   output: 'valadoc-clean',
   command: [
@@ -145,19 +148,19 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Call/Generate.vala',
     '../libollmchat/Response/Generate.vala',
     # liboctools sources (depends on libollmchat and libocfiles)
-    '../liboctools/ReadFile.vala',
-    '../liboctools/RequestReadFile.vala',
-    '../liboctools/ReadFileSummarize.vala',  # Tree-sitter based file summarizer
-    '../liboctools/EditMode.vala',
-    '../liboctools/RequestEditMode.vala',
-    '../liboctools/RunCommand.vala',
-    '../liboctools/RequestRunCommand.vala',
-    '../liboctools/WebFetchTool.vala',
-    '../liboctools/RequestWebFetch.vala',
-    '../liboctools/GoogleSearchTool.vala',
-    '../liboctools/GoogleSearchRequest.vala',
-    '../liboctools/GoogleSearchConfig.vala',
-    '../liboctools/GoogleSearchToolConfig.vala',
+    '../liboctools/ReadFile/Tool.vala',
+    '../liboctools/ReadFile/Request.vala',
+    '../liboctools/ReadFile/Summarize.vala',  # Tree-sitter based file summarizer
+    '../liboctools/EditMode/Tool.vala',
+    '../liboctools/EditMode/Request.vala',
+    '../liboctools/RunCommand/Tool.vala',
+    '../liboctools/RunCommand/Request.vala',
+    '../liboctools/WebFetch/Tool.vala',
+    '../liboctools/WebFetch/Request.vala',
+    '../liboctools/GoogleSearch/Tool.vala',
+    '../liboctools/GoogleSearch/Request.vala',
+    '../liboctools/GoogleSearch/Config.vala',
+    '../liboctools/GoogleSearch/ToolConfig.vala',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
@@ -199,7 +202,6 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/ChatInput.vala',
     '../libollmchatgtk/ChatPermission.vala',
     '../libollmchatgtk/HistoryBrowser.vala',
-    '../libollmchatgtk/Message.vala',
     '../libollmchatgtk/Tools/Permission.vala',
     '../libollmchatgtk/List/ModelUsageFilter.vala',
     '../libollmchatgtk/List/ModelUsageSort.vala',
@@ -268,19 +270,6 @@ valadoc_docs = custom_target('valadoc',
     '--doclet=html',
     '--directory=' + valadoc_dir,
     '@INPUT@'
-  ],
-  build_by_default: true,
-  install: false
-)
-
-# Touch .generated file after valadoc completes
-# this is used to stop the code scanner from treating generated docs as part of the codebase
-valadoc_touch_generated = custom_target('valadoc-touch-generated',
-  output: 'valadoc-touch-generated',
-  depends: [valadoc_docs],
-  command: [
-    find_program('touch'),
-    valadoc_dir / '.generated'
   ],
   build_by_default: true,
   install: false

@@ -118,6 +118,9 @@ namespace OLLMchatGtk
 			});
 			// Phase 5: Use new message_added signal (preferred) instead of old add_message signal
 			this.manager.message_added.connect(this.on_message_created);
+			
+			// Connect to session_activated signal to set correct streaming state after restoration
+			this.manager.session_activated.connect(this.on_session_activated);
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -183,40 +186,19 @@ namespace OLLMchatGtk
 		*/
 		public async void switch_to_session(OLLMchat.History.SessionBase session)
 		{
-			// Disable scrolling when loading history - set flag before loading
-			
-			// Finalize any active streaming (but don't cancel - we might switch back)
 			this.chat_view.finalize_assistant_message();
-			this.chat_input.set_streaming(false);
-			this.chat_input.sensitive = false;
-			
-			// Switch manager to new session (Manager handles loading, deactivation/activation)
-			this.clear_chat(); // this enables scolling
-			
-			// Manager signals are already connected in constructor
-			// Model dropdown is updated via session_activated signal
+			this.chat_input.set_streaming(true);
+			this.clear_chat();
 			this.chat_view.scroll_enabled = false;
 
-			// Lock input while loading
 			try {
-				// Manager handles loading and switching
 				yield this.manager.switch_to_session(session);
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
-				this.chat_input.sensitive = true;
-				// Re-enable scrolling on error
+				this.chat_input.set_streaming(false);
 				this.chat_view.scroll_enabled = true;
 				return;
 			}
-
-			// Load and render messages from session
-			this.load_messages();
-			GLib.Idle.add(() => {
-				// Unlock input after loading
-				// since scrolling happesn in scroll_tobottom in idle we need this
-				this.chat_input.sensitive = true;
-				return false;
-			});
 		}
 
 		/**
@@ -288,6 +270,14 @@ namespace OLLMchatGtk
 			
 			// Don't re-enable scrolling here - keep it disabled after loading history
 			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
+		}
+		
+		private void on_session_activated(OLLMchat.History.SessionBase session)
+		{
+			GLib.Idle.add(() => {
+				this.chat_input.set_streaming(session.is_running);
+				return false;
+			});
 		}
 		
 		/**

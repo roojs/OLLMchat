@@ -20,19 +20,19 @@ octools_deps = [
 
 # Source files for OLLMtools namespace
 octools_src = files([
-  'ReadFile.vala',
-  'RequestReadFile.vala',
-  'ReadFileSummarize.vala',
-  'EditMode.vala',
-  'RequestEditMode.vala',
-  'RunCommand.vala',
-  'RequestRunCommand.vala',
-  'WebFetchTool.vala',
-  'RequestWebFetch.vala',
-  'GoogleSearchTool.vala',
-  'GoogleSearchRequest.vala',
-  'GoogleSearchConfig.vala',
-  'GoogleSearchToolConfig.vala',
+  'ReadFile/Tool.vala',
+  'ReadFile/Request.vala',
+  'ReadFile/Summarize.vala',
+  'EditMode/Tool.vala',
+  'EditMode/Request.vala',
+  'RunCommand/Tool.vala',
+  'RunCommand/Request.vala',
+  'WebFetch/Tool.vala',
+  'WebFetch/Request.vala',
+  'GoogleSearch/Tool.vala',
+  'GoogleSearch/Request.vala',
+  'GoogleSearch/Config.vala',
+  'GoogleSearch/ToolConfig.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

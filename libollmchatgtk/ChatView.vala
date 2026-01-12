@@ -841,28 +841,6 @@ namespace OLLMchatGtk
 			string content_preview = message.content.length > 20 ? message.content.substring(0, 20) + "..." : message.content;
 			GLib.debug("ChatView.append_tool_message: Adding tool message (content='%s')", content_preview);
 			
-			// Check if this is a GTK Message with widget support
-			if (message is OLLMchatGtk.Message) {
-				var widget = (message as OLLMchatGtk.Message).widget;
-			 
-				
-				// Create Frame with message content as title
-				var frame = new Gtk.Frame(message.content == "" ? null : message.content) {
-					hexpand = true,
-					margin_start = 5,
-					margin_end = 5,
-					margin_top = 5,
-					margin_bottom = 5
-				};
-				frame.set_child( (Gtk.Widget) widget);
-				frame.add_css_class("oc-blockcode-frame");
-				
-				// Add the framed widget
-				this.add_widget_frame(frame);
-				this.scroll_to_bottom();
-				return;
-			}
-			
 			// Get end position for insertion
 			var buffer = this.get_current_buffer();
 			if (buffer == null) {

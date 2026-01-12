@@ -90,6 +90,14 @@ namespace OLLMchat.History
 		this.manager.config.changed.connect(this.on_config_changed);
 	}
 		
+		public override void activate()
+		{
+			base.activate();
+			if (this.messages.size > 0) {
+				this.restore_messages();
+			}
+		}
+		
 		/**
 		* Handler for message_created signal from this session's client.
 		* Handles message persistence when a message is created.
@@ -138,6 +146,45 @@ namespace OLLMchat.History
 			this.notify_property("display_title");
 		}
 			
+		private void restore_messages()
+		{
+			if (this.messages.size == 0) {
+				return;
+			}
+			
+			for (int i = 0; i < this.messages.size - 1; i++) {
+				this.manager.message_added(this.messages[i], this);
+			}
+			
+			var last_msg = this.messages[this.messages.size - 1];
+			
+			if (!this.is_running || 
+				(last_msg.role != "content-stream" && last_msg.role != "think-stream")) {
+				this.manager.message_added(last_msg, this);
+				return;
+			}
+			
+			// For streaming messages, set up current_stream_message and emit through streaming infrastructure
+			// This creates the block in streaming mode (not finalized) so new chunks can append to it
+			this.current_stream_message = last_msg;
+			this.current_stream_is_thinking = (last_msg.role == "think-stream");
+			
+			// Create a minimal response object for restoration
+			// Set is_thinking to match the stream type so append_assistant_chunk() uses correct formatting
+			var dummy_message = new OLLMchat.Message("assistant", "", "");
+			var dummy_response = new Response.Chat(
+					this.agent.chat().connection, this.agent.chat()) {
+				message = dummy_message,
+				done = false,
+				is_thinking = this.current_stream_is_thinking
+			};
+			
+			// Call base.handle_stream_chunk() directly to emit through streaming infrastructure
+			// This bypasses Session's handle_stream_chunk() which would append content again
+			// The message already has the full content, we just need to display it in streaming mode
+			base.handle_stream_chunk(last_msg.content, this.current_stream_is_thinking, dummy_response);
+		}
+		
 		/**
 		 * Called by AgentHandler when a streaming chunk is received.
 		 * Handles persistence and relays to Manager signals.
@@ -167,7 +214,7 @@ namespace OLLMchat.History
 					this.notify_property("display_info");
 				} else {
 					// Same stream type - append to existing message
-					GLib.debug("adding new test to current tream message:" + new_text);
+				//	GLib.debug("adding new test to current tream message:" + new_text);
 					this.current_stream_message.content += new_text;
 				}
 			}
@@ -324,9 +371,9 @@ namespace OLLMchat.History
 		 */
 		public override async void write() throws Error
 		{
-		 
-			
-			// Build full file path
+			GLib.debug("session save");
+		
+		// Build full file path
 			var full_path = GLib.Path.build_filename(this.manager.history_dir, this.to_path() + ".json");
 			
 			// Ensure directory exists
@@ -358,6 +405,8 @@ namespace OLLMchat.History
 			foreach (var msg in this.messages) {
 				msg.include_history_info = false;
 			}
+			
+			GLib.debug("session saved");
 		}
 		
 		/**
@@ -386,6 +435,7 @@ namespace OLLMchat.History
 		 */
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
+			//GLib.debug("serialize_property: %s", property_name);
 			// Note: Vala converts underscores to hyphens when calling serialize_property
 			switch (property_name) {
 				case "fid":
@@ -396,7 +446,6 @@ namespace OLLMchat.History
 				case "total-messages":
 				case "total-tokens":
 				case "duration-seconds":
-				case "child-chats":
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "messages":

@@ -29,7 +29,6 @@ ollmchatgtk_src = files([
   # 'ClipboardManager.vala',
   # 'ClipboardMetadata.vala',
   'HistoryBrowser.vala',
-  'Message.vala',
   'Tools/Permission.vala',
   'List/ModelUsageFilter.vala',
   'List/ModelUsageSort.vala',

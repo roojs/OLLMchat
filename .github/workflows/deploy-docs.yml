@@ -1,0 +1,70 @@
+name: Deploy Documentation to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            meson \
+            ninja-build \
+            valac \
+            valadoc \
+            libgee-0.8-dev \
+            libglib2.0-dev \
+            libgtk-4-dev \
+            libgtksourceview-5-dev \
+            libadwaita-1-dev \
+            libsoup-3.0-dev \
+            libjson-glib-dev \
+            libxml2-dev \
+            libsqlite3-dev \
+            libgit2-glib-1.0-dev \
+            pkg-config
+
+      - name: Setup meson build
+        run: |
+          meson setup build --prefix=/usr
+
+      - name: Build documentation
+        run: |
+          # Build documentation (valadoc target has build_by_default: true)
+          # This will build the docs along with any dependencies
+          ninja -C build
+
+      - name: Create .nojekyll file
+        run: |
+          touch build/valadoc/.nojekyll
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/valadoc
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
