@@ -105,26 +105,11 @@ sudo apt install \
   gobject-introspection \
   libgirepository1.0-dev \
   libomp-dev \
-  libblas-dev \
-  liblapack-dev \
+  libfaiss-dev \
   libtree-sitter-dev \
   desktop-file-utils \
   build-essential \
   pkg-config
-```
-
-### FAISS Library
-
-The `libfaiss-dev` package is not available in standard Ubuntu repositories. You can install it by downloading the Debian package directly:
-
-```bash
-# Install FAISS dependencies first
-sudo apt install libblas-dev liblapack-dev libomp-dev
-
-# Download and install libfaiss-dev from Debian repository
-wget http://ftp.us.debian.org/debian/pool/main/f/faiss/libfaiss-dev_1.13.2-1_amd64.deb -O /tmp/libfaiss-dev.deb
-sudo apt install libfaiss1 || true
-sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt install -f -y
 ```
 
 **For code search functionality**, you'll also need:
