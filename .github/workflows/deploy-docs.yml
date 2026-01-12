@@ -79,6 +79,7 @@ jobs:
             libblas-dev \
             liblapack-dev \
             libtree-sitter-dev \
+            desktop-file-utils \
             build-essential \
             pkg-config
 
