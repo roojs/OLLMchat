@@ -263,7 +263,7 @@ namespace OLLMchat.History
 		 * Activates this session, connecting client signals to relay to UI.
 		 * Called when the session becomes the active session in the UI.
 		 */
-		public void activate()
+		public virtual void activate()
 		{
 			if (this.is_active) {
 				return;
