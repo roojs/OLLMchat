@@ -35,6 +35,10 @@ jobs:
 
       - name: Install build dependencies
         run: |
+          # Enable universe repository for packages like libfaiss-dev
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository universe -y
           sudo apt-get update
           sudo apt-get install -y \
             meson \
@@ -54,10 +58,11 @@ jobs:
             gobject-introspection \
             libgirepository1.0-dev \
             libfaiss-dev \
-            libopenmp-dev \
+            libomp-dev \
             libblas-dev \
             liblapack-dev \
             libtree-sitter-dev \
+            build-essential
             pkg-config
 
       - name: Setup meson build
