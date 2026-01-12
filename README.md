@@ -70,7 +70,7 @@ This is the basic bootstrapping window - and a walk around some of the earlier f
 
 Online API documentation is available:
 
-- **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/ollmchat/index.htm)** - Unified library documentation (base and UI)
+- **[ollmchat API Reference](https://roojs.github.io/OLLMchat/ollmchat/index.htm)** - Unified library documentation (base and UI)
 
 Implementation plans and roadmap:
 
