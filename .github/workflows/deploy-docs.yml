@@ -4,6 +4,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      # Only trigger on changes to source files that affect documentation
+      - 'libocsqlite/**/*.vala'
+      - 'libocfiles/**/*.vala'
+      - 'libocmarkdown/**/*.vala'
+      - 'libocmarkdowngtk/**/*.vala'
+      - 'libollmchat/**/*.vala'
+      - 'liboctools/**/*.vala'
+      - 'liboccoder/**/*.vala'
+      - 'libocvector/**/*.vala'
+      - 'libollmchatgtk/**/*.vala'
+      - 'ollmapp/**/*.vala'
+      - 'examples/**/*.vala'
+      - 'docs/meson.build'
+      - '.github/workflows/deploy-docs.yml'
   workflow_dispatch:  # Allow manual triggering
 
 permissions:
@@ -36,6 +51,13 @@ jobs:
             libxml2-dev \
             libsqlite3-dev \
             libgit2-glib-1.0-dev \
+            gobject-introspection \
+            libgirepository1.0-dev \
+            libfaiss-dev \
+            libopenmp-dev \
+            libblas-dev \
+            liblapack-dev \
+            libtree-sitter-dev \
             pkg-config
 
       - name: Setup meson build
