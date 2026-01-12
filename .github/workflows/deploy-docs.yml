@@ -28,10 +28,20 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-25.10
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Download and install libfaiss-dev
+        run: |
+          # Download libfaiss-dev .deb package from Debian repository
+          wget http://ftp.us.debian.org/debian/pool/main/f/faiss/libfaiss-dev_1.13.2-1_amd64.deb -O /tmp/libfaiss-dev.deb
+          
+          # Install the package and fix any missing dependencies
+          sudo apt-get update
+          sudo apt-get install -y libfaiss1 || true
+          sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt-get install -f -y
 
       - name: Install build dependencies
         run: |
@@ -57,12 +67,11 @@ jobs:
             libgit2-glib-1.0-dev \
             gobject-introspection \
             libgirepository1.0-dev \
-            libfaiss-dev \
             libomp-dev \
             libblas-dev \
             liblapack-dev \
             libtree-sitter-dev \
-            build-essential
+            build-essential \
             pkg-config
 
       - name: Setup meson build
