@@ -132,6 +132,7 @@ namespace OLLMchat.History
 			
 			// Copy chat from old agent to new agent if old agent exists
 			if (old_agent != null) {
+				GLib.debug("EmptySession.activate_agent: Replacing chat from old_agent, old_chat.model='%s'", old_agent.chat().model);
 				agent.replace_chat(old_agent.chat());
 			}
 			

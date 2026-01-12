@@ -313,8 +313,14 @@ namespace OLLMvector.Indexing
 						options = tool_config.analysis.options
 					};
 					
-					chat.system_content = this.cached_template.system_message;
-					chat.chat_content = user_message;
+					// Build messages array directly from template and user message
+					var messages = new Gee.ArrayList<OLLMchat.Message>();
+					
+					if (this.cached_template.system_message != "") {
+						messages.add(new OLLMchat.Message("system", this.cached_template.system_message));
+					}
+					
+					messages.add(new OLLMchat.Message("user", user_message));
 					
 					// Streaming is enabled on chat (set in constructor) so we can see progress
 					// The response will still have complete content when done=true
@@ -332,7 +338,7 @@ namespace OLLMvector.Indexing
 					// Execute LLM call (streaming enabled, plain text response)
 					OLLMchat.Response.Chat? response = null;
 					try {
-						response = yield chat.send(chat.messages, null);
+						response = yield chat.send(messages, null);
 					} finally {
 						// Disconnect signal handler
 						if (stream_chunk_id != 0) {

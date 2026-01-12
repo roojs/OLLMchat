@@ -283,6 +283,68 @@ namespace OLLMapp
 		}
 		
 		/**
+		 * Initializes the default model if it's not set.
+		 * Finds the first available model from the working connection and sets it in config.
+		 * 
+		 * @param config The Config2 instance (contains connection and model configuration)
+		 * @param working_conn The working connection to use for finding models
+		 */
+		private async void initialize_model(OLLMchat.Settings.Config2 config, OLLMchat.Settings.Connection working_conn)
+		{
+			var default_model = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+			
+			// If model is set, verify it exists on the connection
+			if (default_model != null && default_model.model != "") {
+				if (default_model.connection == "") {
+					default_model.connection = working_conn.url;
+				}
+				
+				// Check if connection already has models loaded to avoid redundant API call
+				var conn_obj = config.connections.get(default_model.connection);
+				if (conn_obj != null && conn_obj.models.size > 0 && conn_obj.models.has_key(default_model.model)) {
+					return;
+				}
+				
+				// Models not loaded or model not found, verify (will load models if needed)
+				if (yield default_model.verify_model(config)) {
+					return;
+				}
+				
+				// Model doesn't exist, clear it and find a new one
+				default_model.model = "";
+			}
+			
+			// Load models from working connection
+			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(config);
+			yield temp_connection_models.refresh();
+			
+			var connection_models = temp_connection_models.connection_map.get(working_conn.url);
+			if (connection_models == null || connection_models.size == 0) {
+				GLib.warning("Window.vala: No models found for working connection '%s'", working_conn.url);
+				return;
+			}
+			
+			// Get first model (already verified to exist by refresh())
+			var first_model = connection_models.values.to_array()[0];
+			if (default_model == null) {
+				default_model = new OLLMchat.Settings.ModelUsage() {
+					connection = working_conn.url,
+					model = first_model.model,
+					options = new OLLMchat.Call.Options()
+				};
+				config.usage.set("default_model", default_model);
+			} else {
+				default_model.model = first_model.model;
+				if (default_model.connection == "") {
+					default_model.connection = working_conn.url;
+				}
+			}
+			
+			// No need to verify again - refresh() already loaded and verified the model exists
+			config.save();
+		}
+		
+		/**
 		 * Initializes the client and sets up the UI.
 		 * Tests connection first, then verifies model, then calls initialize_client.
 		 * Shows warning dialog if connection or model fails (with option to configure).
@@ -306,7 +368,8 @@ namespace OLLMapp
 					var response = yield this.show_connection_error_dialog("No working connection found. Please check your connection settings.");
 					
 					if (response != "settings") {
-						// User closed dialog without configuring - exit
+						// User closed dialog without configuring - quit application
+						(this.app as Gtk.Application).quit();
 						return;
 					}
 					
@@ -327,39 +390,55 @@ namespace OLLMapp
 					return;
 				}
 				
-				// Found a working connection - now verify model
-				GLib.debug("Window.vala: Found working connection '%s', creating history manager", working_conn.url);
-				// Create history manager to check model
+				// Found a working connection - now ensure default model is set before creating history manager
+				yield this.initialize_model(config, working_conn);
+				
+				// Check if model is still empty after initialization
+				var default_model = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
+				if (default_model == null || default_model.model == "") {
+					// No model set - show settings dialog with models tab
+					var response = yield this.show_connection_error_dialog("No model configured. Please select a model.");
+					
+					if (response != "settings") {
+						// User closed dialog without configuring - quit application
+						(this.app as Gtk.Application).quit();
+						return;
+					}
+					
+					// User clicked Configure - show settings dialog
+					ulong signal_id = 0;
+					signal_id = this.settings_dialog.closed.connect(() => {
+						this.settings_dialog.disconnect(signal_id);
+						// Config already updated in memory by settings dialog, just re-check
+						this.initialize_unverified_client.begin(this.app.config);
+					});
+					
+					// Show settings dialog and switch to models tab
+					this.show_settings_dialog("models");
+					
+					// Wait for settings dialog to close (will trigger re-check via signal)
+					return;
+				}
+				
 				this.history_manager = new OLLMchat.History.Manager(this.app);
 				
 				// Update default_model_usage to use the working connection if the current one is not working
-				// This ensures verify_model() uses the working connection, not a down one
 				if (this.history_manager.default_model_usage != null) {
 					var current_conn = config.connections.get(this.history_manager.default_model_usage.connection);
 					if (current_conn == null || !current_conn.is_working) {
-						GLib.debug("Window.vala: default_model_usage connection '%s' is not working, updating to working connection '%s'", 
-							this.history_manager.default_model_usage.connection, working_conn.url);
 						this.history_manager.default_model_usage.connection = working_conn.url;
 					}
 				}
 				
-				GLib.debug("Window.vala: History manager created, calling ensure_model_usage()");
-				
 				// Try to verify model, but don't block initialization if it fails
-				// User can select a model later if the default one isn't available
 				try {
 					yield this.history_manager.ensure_model_usage();
-					GLib.debug("Window.vala: Model verified, breaking loop to call initialize_client()");
 				} catch (GLib.Error e) {
-					// Model verification failed - log warning but continue initialization
-					// The user can select a different model later via the UI
 					GLib.warning("Window.vala: Model verification failed: %s. Continuing initialization - user can select model later.", e.message);
 				}
 				
-				// Break out of loop and proceed with initialization regardless of model verification
 				break;
 			}
-			GLib.debug("call initalize client()");
 
 			// Both connection and model verified, proceed with initialization
 			yield this.initialize_client(config);

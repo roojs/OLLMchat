@@ -469,7 +469,7 @@ namespace OLLMtools.EditMode
 		/**
 		 * Sends a message to continue the conversation and disconnects signals.
 		 * This method should be called on both success and error paths to ensure signals are always disconnected.
-		 * Uses agent.chat().reply() to continue the conversation with the LLM's response.
+		 * Uses agent.chat().send_append() to continue the conversation with the LLM's response.
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
@@ -481,18 +481,28 @@ namespace OLLMtools.EditMode
 				? string.joinv("\n", this.error_messages.to_array()) + (message != "" ? "\n" : "") 
 				: "") + message;
 			
-			// Schedule reply() to run on idle to avoid race condition:
+			// Schedule send_append() to run on idle to avoid race condition:
 			// The previous response's final chunk (done=true) may still be processing in the event loop,
-			// which sets is_streaming_active=false. If we call reply() immediately, it sets is_streaming_active=true,
+			// which sets is_streaming_active=false. If we call send_append() immediately, it sets is_streaming_active=true,
 			// but then the final chunk processing overwrites it back to false. By deferring to idle, we ensure
-			// the final chunk processing completes first, then reply() sets is_streaming_active=true before
+			// the final chunk processing completes first, then send_append() sets is_streaming_active=true before
 			// the continuation response starts streaming.
 			GLib.Idle.add(() => {
-				this.agent.chat().reply.begin(
-					reply_text,
-					response,
+				// Build messages array: previous assistant response + new user message
+				var messages_to_send = new Gee.ArrayList<OLLMchat.Message>();
+				
+				// Add the assistant's response from the previous call
+				messages_to_send.add(response.message);
+				
+				// Add the new user message
+				messages_to_send.add(new OLLMchat.Message("user", reply_text));
+				
+				// Append messages and send
+				this.agent.chat().send_append.begin(
+					messages_to_send,
+					null,
 					(obj, res) => {
-						// Remove from active requests after reply completes
+						// Remove from active requests after send completes
 						active_requests.remove(this);
 						GLib.debug("Request.reply_with_errors: Removed request from active_requests (remaining=%zu, file=%s)", 
 							active_requests.size, this.normalized_path);

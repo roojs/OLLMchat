@@ -112,7 +112,7 @@ namespace OLLMvector
 		 */
 		public async int embed_dimension() throws GLib.Error
 		{
-			var connection = yield this.connection("embed");
+			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,

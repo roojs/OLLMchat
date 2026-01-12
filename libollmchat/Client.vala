@@ -135,13 +135,10 @@ namespace OLLMchat
 			var user_sent_msg = new Message("user-sent", text);
 			// message_created signal emission removed - callers handle state directly when creating messages
 			
-			// Set chat_content to user text (no prompt generation)
-			call.chat_content = text;
-			
 			// Prepare messages array for API request
 			// Agent/handler should prepare system messages - this is just for backward compatibility
-			// Add the user message with chat_content (for API request)
-			call.messages.add(new Message("user", call.chat_content));
+			// Add the user message
+			call.messages.add(new Message("user", text));
 			
 			var result = yield call.send(call.messages, cancellable);
 

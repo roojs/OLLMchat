@@ -44,14 +44,15 @@ namespace OLLMvector
 		/**
 		 * Gets a connection from validated tool config.
 		 * 
-		 * Gets tool config from this.config, validates the specified ModelUsage,
+		 * Gets tool config from this.config, optionally validates the specified ModelUsage,
 		 * and returns the connection.
 		 * 
 		 * @param usage_type The usage type: "embed" or "analysis"
+		 * @param verify If true, verify the model is available before returning connection (default: false)
 		 * @return The Connection for the specified usage type
 		 * @throws GLib.Error if tool config is not properly configured
 		 */
-		protected async OLLMchat.Settings.Connection connection(string usage_type) throws GLib.Error
+		public async OLLMchat.Settings.Connection connection(string usage_type, bool verify = false) throws GLib.Error
 		{
 			// Get tool config from this.config
 			if (!this.config.tools.has_key("codebase_search")) {
@@ -76,9 +77,11 @@ namespace OLLMvector
 					throw new GLib.IOError.INVALID_ARGUMENT("Invalid usage_type: %s (must be 'embed' or 'analysis')".printf(usage_type));
 			}
 			
-			// Validate ModelUsage
-			if (!(yield usage.verify_model(this.config))) {
-				throw new GLib.IOError.FAILED("Codebase search tool %s model verification failed".printf(usage_type));
+			// Validate ModelUsage only if verify is true
+			if (verify) {
+				if (!(yield usage.verify_model(this.config))) {
+					throw new GLib.IOError.FAILED("Codebase search tool %s model verification failed".printf(usage_type));
+				}
 			}
 			
 			// Get connection

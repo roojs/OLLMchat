@@ -439,8 +439,14 @@ namespace OLLMfiles
 				return;
 			}
 			
-			GLib.debug("ProjectManager.restore_active_state: Found active project '%s', calling activate_project()", project.path);
-			// This will set this.active_project, deactivate all other projects, update DB, emit signal
+			GLib.debug("ProjectManager.restore_active_state: Found active project '%s'", project.path);
+			// Reset is_active to false in memory to force fresh activation
+			// activate_project() will set it back to true and save it, so no need to save here
+			if (project.is_active) {
+				project.is_active = false;
+			}
+			
+			// This will set this.active_project, set is_active=true, save to DB, emit signal
 			yield this.activate_project(project);
 			GLib.debug("ProjectManager.restore_active_state: Completed");
 			

@@ -80,8 +80,6 @@ namespace OLLMchat.Call
 		 * @since 1.2.2
 		 */
 		public Agent.Base? agent { get; set; }
-		
-		public string system_content { get; set; default = ""; }
 
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
 		
@@ -217,7 +215,6 @@ namespace OLLMchat.Call
 				case "chat-content":
 				case "message":
 				case "streaming-response":
-				case "system-content":
 					// Exclude these properties from serialization
 					return null;
 				
@@ -339,64 +336,6 @@ namespace OLLMchat.Call
 			return true;
 		}
  
-		/**
-		 * Sets up this Chat as a reply to a previous conversation and executes it.
-		 * Appends the previous assistant response and new user message to the messages array, then calls send().
-		 * 
-		 * Note: The Chat object should already have system_content and chat_content set
-		 * by the agent before calling this method. This method does NOT call prompt_assistant.
-		 *
-		 * @param new_text The new user message text (original text, before prompt modification)
-		 * @param previous_response The previous Response from the assistant
-		 * @return The Response from executing the chat call
-		 */
-		public async Response.Chat reply(string new_text, Response.Chat previous_response) throws Error
-		{
-			// Create dummy user-sent Message with original text BEFORE prompt engine modification
-			var user_sent_msg = new Message("user-sent", new_text);
-			// message_created signal emission removed - callers handle state directly when creating messages
-			
-			// Note: system_content and chat_content should already be set by agent before calling reply()
-			// If system_content is set, create system Message
-			if (this.system_content != "") {
-				var system_msg = new Message("system", this.system_content);
-				// message_created signal emission removed - callers handle state directly when creating messages
-			}
-			
-			// Append the assistant's response from the previous call
-			// If it had tool_calls, preserve them in the conversation history
-			if (previous_response.message.tool_calls.size > 0) {
-				this.messages.add(previous_response.message);
-			} else {
-				this.messages.add(
-					new Message("assistant", previous_response.message.content,
-					 previous_response.message.thinking));
-			}
-
-			// Append the new user message with chat_content (for API request)
-			// Note: chat_content should already be set by agent (may be modified from original text)
-			// Note: "user-sent" message was already created via signal with original text
-			var user_message = new Message("user", this.chat_content);
-			this.messages.add(user_message);
-
-			GLib.debug("Chat.reply: Sending %d message(s):", this.messages.size);
-			for (int i = 0; i < this.messages.size; i++) {
-				var msg = this.messages[i];
-				GLib.debug("  Message %d: role='%s', content='%s'%s", 
-					i + 1, 
-					msg.role, 
-					msg.content,
-					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
-			}
-			
-			if (this.stream) {
-				//this.streaming_response = new Response(this.client);
-				return yield this.execute_streaming();
-			}
-
-			return yield this.execute_non_streaming();
-		}
-
 		/**
 		 * Executes tool calls from a response and continues the conversation automatically.
 		 *

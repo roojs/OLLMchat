@@ -88,17 +88,16 @@ namespace OLLMchat.Agent
 			this.factory = factory;
 			this.session = session;
 			
-			// Get model and options from session.model_usage
+		// Get model and options from session.model_usage
 			var usage = this.session.model_usage;
 			
 			// Get connection from model_usage
 			if (usage.connection != "" &&
-			 		this.session.manager.config.connections.has_key(usage.connection)) {
+					this.session.manager.config.connections.has_key(usage.connection)) {
 				this.connection = this.session.manager.config.connections.get(usage.connection);
 			}
-			
-			GLib.debug("Agent.Base constructor: Final connection=%p, model='%s'", this.connection, usage.model);
-			 
+		
+ 			 
 			// Create Chat instance in constructor - reused for all requests
 			// Can be updated if model, options, or other properties change
 			this.chat_call = new OLLMchat.Call.Chat(this.connection, usage.model) {

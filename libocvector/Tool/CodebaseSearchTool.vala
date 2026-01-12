@@ -185,6 +185,10 @@ making it more effective than simple text search for finding relevant code.
 			var temp_db = new OLLMvector.Database(config, 
 				this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
 			var dimension = yield temp_db.embed_dimension();
+			
+			// Verify analysis connection during initialization
+			yield temp_db.connection("analysis", true);
+			
 			this.vector_db = new OLLMvector.Database(config, this.vector_db_path, dimension);
 		}
 		

@@ -243,17 +243,26 @@ namespace OLLMchat.Response
 			}
 		}
 		
-
 		/**
 		 * Creates a reply Chat with conversation history and executes it.
-		 * Adds the previous user message and this assistant response to the messages array, then executes the call.
+		 * Adds the previous assistant response and new user message to the messages array, then sends it.
 		 *
 		 * @param text The new user message text
 		 * @return The Chat from executing the reply call
 		 */
 		public async Chat reply(string text) throws Error
 		{
-			return yield this.call.reply(text, this);
+			// Build messages array: previous assistant response + new user message
+			var messages_to_send = new Gee.ArrayList<OLLMchat.Message>();
+			
+			// Add the assistant's response from the previous call
+			messages_to_send.add(this.message);
+			
+			// Add the new user message
+			messages_to_send.add(new OLLMchat.Message("user", text));
+			
+			// Append messages and send
+			return yield this.call.send_append(messages_to_send);
 		}
 	}
 }

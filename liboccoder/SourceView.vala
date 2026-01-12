@@ -251,21 +251,37 @@ namespace OLLMcoder
 			// Only apply UI state from manager properties - all data is already loaded
 			// Use manager's active_project and active_file properties
 			
-			if (this.manager.active_project != null) {
-				// Activate project (already loaded in memory)
-				yield this.manager.activate_project(this.manager.active_project);
-				
-				// Update file dropdown's project
-				this.file_dropdown.project = this.manager.active_project;
-				
-				// Update project dropdown (use path_basename to match on_selected behavior)
-				this.project_dropdown.placeholder_text = this.manager.active_project.path_basename;
+			if (this.manager.active_project == null) {
+				return;
 			}
 			
-			if (this.manager.active_file != null) {
-				// Open file (will restore cursor/scroll position from file.cursor_line, etc.)
-				yield this.open_file(this.manager.active_file);
+			// Check if we're already on the same project - if so, don't change active file
+			bool same_project = (this.project_dropdown.selected_project != null && 
+								this.project_dropdown.selected_project.path == this.manager.active_project.path);
+			
+			// Project is already activated by restore_active_state(), just update UI
+			// Update file dropdown's project
+			this.file_dropdown.project = this.manager.active_project;
+			
+			// Update project dropdown placeholder only if it's different (avoid unnecessary updates)
+			// Note: on_selected() already handles clearing entry and setting placeholder,
+			// so we only need to update if it's different to avoid duplicate work
+			var expected_placeholder = this.manager.active_project.path_basename;
+			if (this.project_dropdown.placeholder_text != expected_placeholder) {
+				this.project_dropdown.placeholder_text = expected_placeholder;
 			}
+			
+			// If we're switching to the same project, don't change the active file
+			if (same_project) {
+				return;
+			}
+			
+			if (this.manager.active_file == null) {
+				return;
+			}
+			
+			// Open file (will restore cursor/scroll position from file.cursor_line, etc.)
+			yield this.open_file(this.manager.active_file);
 		}
 		
 		/**
@@ -411,25 +427,19 @@ namespace OLLMcoder
 		 * 
 		 * @param project The project to open
 		 */
-		public async void open_project(OLLMfiles.Folder project)
-		{
-			// Check if this project is already the active project to avoid unnecessary work
-			if (this.manager.active_project != null &&
-			    this.manager.active_project.path == project.path) {
-				return;
-			}
-			
-			// Notify manager to activate project (this triggers directory scan)
-			yield this.manager.activate_project(project);
-			
-			// Update file dropdown's project
-			this.file_dropdown.project = project;
-			
-			// Disabled: Don't set project dropdown selection programmatically
-			// this.project_dropdown.selected_project = project;
-			
-			// Update placeholder text with project name (use path_basename to match on_selected)
-			this.project_dropdown.placeholder_text = project.path_basename;
+	public async void open_project(OLLMfiles.Folder project)
+	{
+		// Notify manager to activate project (this will emit signal even if already active)
+		yield this.manager.activate_project(project);
+		
+		// Update file dropdown's project
+		this.file_dropdown.project = project;
+		
+		// Disabled: Don't set project dropdown selection programmatically
+		// this.project_dropdown.selected_project = project;
+		
+		// Update placeholder text with project name (use path_basename to match on_selected)
+		this.project_dropdown.placeholder_text = project.path_basename;
 			
 			// Find and trigger active file (or null if none)
 			var active_file = project.project_files.get_active_file();
