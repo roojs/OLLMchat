@@ -85,13 +85,13 @@ jobs:
 
       - name: Setup meson build
         run: |
+          # Setup meson build (only configures, doesn't build anything yet)
           meson setup build --prefix=/usr
 
       - name: Build documentation
         run: |
-          # Build documentation (valadoc target has build_by_default: true)
-          # This will build the docs along with any dependencies
-          ninja -C build
+          # Build only the valadoc documentation target (no libraries or GIR files needed)
+          ninja -C build docs/valadoc
 
       - name: Create .nojekyll file
         run: |

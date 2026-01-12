@@ -84,11 +84,14 @@ This directory contains the OLLMchat library and test applications for working w
 
 Before building, install the required dependencies. On Debian/Ubuntu systems:
 
+### Basic Build Dependencies
+
 ```bash
 sudo apt install \
   meson \
   ninja-build \
   valac \
+  valadoc \
   libgee-0.8-dev \
   libglib2.0-dev \
   libgtk-4-dev \
@@ -98,8 +101,30 @@ sudo apt install \
   libjson-glib-dev \
   libxml2-dev \
   libsqlite3-dev \
-  libfaiss-dev \
+  libgit2-glib-1.0-dev \
+  gobject-introspection \
+  libgirepository1.0-dev \
+  libomp-dev \
+  libblas-dev \
+  liblapack-dev \
+  libtree-sitter-dev \
+  desktop-file-utils \
+  build-essential \
   pkg-config
+```
+
+### FAISS Library
+
+The `libfaiss-dev` package is not available in standard Ubuntu repositories. You can install it by downloading the Debian package directly:
+
+```bash
+# Install FAISS dependencies first
+sudo apt install libblas-dev liblapack-dev libomp-dev
+
+# Download and install libfaiss-dev from Debian repository
+wget http://ftp.us.debian.org/debian/pool/main/f/faiss/libfaiss-dev_1.13.2-1_amd64.deb -O /tmp/libfaiss-dev.deb
+sudo apt install libfaiss1 || true
+sudo dpkg -i /tmp/libfaiss-dev.deb || sudo apt install -f -y
 ```
 
 **For code search functionality**, you'll also need:
