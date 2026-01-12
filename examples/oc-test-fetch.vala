@@ -139,10 +139,10 @@ Examples:
 		var client = new OLLMchat.Client(connection);
 		
 		// Create WebFetchTool
-		var tool = new OLLMtools.WebFetchTool();
+		var tool = new OLLMtools.WebFetch.Tool();
 		
-		// Create RequestWebFetch manually
-		var request = new OLLMtools.RequestWebFetch();
+		// Create Request manually
+		var request = new OLLMtools.WebFetch.Request();
 		request.tool = tool;
 		request.url = url;
 		request.format = format;

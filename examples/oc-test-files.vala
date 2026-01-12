@@ -603,8 +603,8 @@ BACKUP_PATH: $(backup_path)
 			file = new OLLMfiles.File.new_fake(manager, file_path);
 		}
 		
-		// Create ReadFileSummarize instance
-		var summarizer = new OLLMtools.ReadFileSummarize(file);
+		// Create Summarize instance
+		var summarizer = new OLLMtools.ReadFile.Summarize(file);
 		
 		// Generate summary
 		var summary = yield summarizer.summarize();

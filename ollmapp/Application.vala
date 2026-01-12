@@ -62,12 +62,12 @@ namespace OLLMapp
 			// and classes won't be in the registry until they're explicitly referenced.
 			// This is the only place with all dependencies available.
 			// Note: OLLMchat.Tools.* classes exist but aren't compiled - use OLLMtools.* instead
-			typeof(OLLMtools.ReadFile).ensure();
-			typeof(OLLMtools.RunCommand).ensure();
-			typeof(OLLMtools.WebFetchTool).ensure();
-			typeof(OLLMtools.EditMode).ensure();
+			typeof(OLLMtools.ReadFile.Tool).ensure();
+			typeof(OLLMtools.RunCommand.Tool).ensure();
+			typeof(OLLMtools.WebFetch.Tool).ensure();
+			typeof(OLLMtools.EditMode.Tool).ensure();
 			typeof(OLLMvector.Tool.CodebaseSearchTool).ensure();
-			typeof(OLLMtools.GoogleSearchTool).ensure();
+			typeof(OLLMtools.GoogleSearch.Tool).ensure();
 			OLLMchat.Tool.BaseTool.register_config();
 			
 			// Load config after registrations
