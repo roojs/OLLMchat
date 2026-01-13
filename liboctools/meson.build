@@ -9,6 +9,7 @@ tree_sitter_lib = dependency('tree-sitter', required: true)
 octools_deps = [
   dependency('gee-0.8'),
   dependency('gio-2.0'),
+  dependency('gio-unix-2.0'),  # Required for UnixInputStream in Bubble.vala
   dependency('glib-2.0'),
   dependency('gobject-2.0'),
   dependency('gmodule-2.0'),  # GModule for dynamic library loading
@@ -26,6 +27,7 @@ octools_src = files([
   'EditMode/Tool.vala',
   'EditMode/Request.vala',
   'RunCommand/Tool.vala',
+  'RunCommand/Bubble.vala',  # Must come before Request.vala so Bubble class is available
   'RunCommand/Request.vala',
   'WebFetch/Tool.vala',
   'WebFetch/Request.vala',
@@ -59,6 +61,7 @@ octools_base_lib = library('octools',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles (TreeBase uses TreeSitter)
     '--pkg=json-glib-1.0',
+    '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     # Put build directories FIRST so we use local VAPIs instead of installed ones
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
@@ -98,6 +101,7 @@ octools_vapi = custom_target('octools-vapi',
     '--pkg', 'gobject-2.0',
     '--pkg', 'glib-2.0',
     '--pkg', 'gio-2.0',
+    '--pkg', 'gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     '--pkg', 'gee-0.8',
     '--library', 'octools',
     '--header', meson.current_build_dir() / 'octools.h',  # Use header from library

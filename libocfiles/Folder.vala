@@ -909,5 +909,57 @@ namespace OLLMfiles
 			// Reset last_db_load so that needs_reload() will return true on next access
 			this.last_db_load = 0;
 		}
+		
+		/**
+		 * Build list of root directories that need write access for bubblewrap sandboxing.
+		 * 
+		 * Returns an ArrayList of Folder objects that need to be writable in the sandbox. Follows symlinks
+		 * within the project to find all directories that need write access. For Phase 1,
+		 * returns folders with realpaths (actual filesystem paths with symlinks resolved). In later phases,
+		 * will return folders with overlay mount points instead of realpaths.
+		 * 
+		 * Algorithm:
+		 * 1. Collect all Folder objects from project_files.folder_map (paths are already realpaths)
+		 * 2. Sort folders by path
+		 * 3. Add first folder, then iterate through and add if next folder doesn't start with last added (this avoids duplicates where one folder is a parent of another)
+		 * 
+		 * @return ArrayList of Folder objects that need write access
+		 */
+		public Gee.ArrayList<Folder> build_roots() throws Error
+		{
+			var folders = new Gee.ArrayList<Folder>();
+			
+			// Add project root itself
+			folders.add(this);
+			
+			// Get all Folder objects from project_files.folder_map (paths are already realpaths)
+			foreach (var folder in this.project_files.folder_map.values) {
+				// Only add if not already in list
+				if (!folders.contains(folder)) {
+					folders.add(folder);
+				}
+			}
+			
+			// Sort folders by path
+			folders.sort((a, b) => {
+				return strcmp(a.path, b.path);
+			});
+			
+			// Apply algorithm: add first folder, then iterate and add if next doesn't start with last added
+			var distinct_roots = new Gee.ArrayList<Folder>();
+			// Add first folder
+			distinct_roots.add(folders.get(0));
+			
+			// Iterate through remaining folders
+			for (int i = 1; i < folders.size; i++) {
+				// If current folder path starts with last added folder path (plus "/"), skip it (it's a subdirectory)
+				if (folders.get(i).path.has_prefix(distinct_roots.get(distinct_roots.size - 1).path + "/")) {
+					continue;
+				}
+				distinct_roots.add(folders.get(i));
+			}
+			
+			return distinct_roots;
+		}
 	}
 }
