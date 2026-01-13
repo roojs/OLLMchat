@@ -227,13 +227,58 @@ namespace OLLMtools.RunCommand
 		
 		/**
 		 * Async method to execute the command with non-blocking I/O.
+		 * 
+		 * Checks if bubblewrap can be used (via Bubble.can_wrap() static method).
+		 * If bubblewrap is available and not running in Flatpak, uses Bubble.exec().
+		 * Otherwise, falls back to regular GLib.Subprocess execution.
 		 */
 		private async string execute_tool_async() throws Error
 		{
 			if (this.command == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
 			}
+				
+			// Check if bubblewrap can be used (checks for Flatpak and bwrap availability)
+			// Note: Using unqualified name since both classes are in the same namespace
+			if (!Bubble.can_wrap()) {
+				// Running in Flatpak or bwrap not available - use old permission system and existing Subprocess code
+				// Skip bubblewrap entirely, use existing execute_with_subprocess() implementation
+				return yield this.execute_with_subprocess();
+			}
 			
+			// Not in Flatpak and bwrap available - use bubblewrap
+			// Get project folder from ProjectManager via tool
+			var run_command_tool = (Tool) this.tool;
+			var project_manager = run_command_tool.project_manager;
+			if (project_manager == null || project_manager.active_project == null) {
+				throw new GLib.IOError.FAILED("No active project available for bubblewrap execution");
+			}
+			var project = project_manager.active_project;  // OLLMfiles.Folder
+			
+			// Create Bubble instance
+			var bubble = new Bubble(project, false);
+			
+			// Execute command - simple string in, string out
+			var output = yield bubble.exec(this.command);
+			
+			// Truncate output if needed (same as Subprocess path)
+			output = this.truncate_output(output, 50);
+			
+			// Send output as second message via message_created
+			this.send_ui("txt", "", output);
+			
+			// Return output to LLM (already formatted with stdout + stderr + exit code)
+			return output;
+		}
+		
+		/**
+		 * Execute command using regular GLib.Subprocess (fallback for Flatpak or when bwrap is unavailable).
+		 * 
+		 * This is the original implementation that uses GLib.Subprocess directly.
+		 * Used when bubblewrap is not available or when running inside Flatpak.
+		 */
+		private async string execute_with_subprocess() throws Error
+		{
 			// Get working directory - try agent first, fall back to tool's base_directory
 			var run_command_tool = (Tool) this.tool;
 			var work_dir = run_command_tool.base_directory;

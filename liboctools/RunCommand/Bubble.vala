@@ -228,8 +228,9 @@ namespace OLLMtools.RunCommand
 			// Return final array
 			return args;
 		}
-			/**
-	 * Read stdout and stderr from subprocess and return combined output.
+		
+		/**
+		 * Read stdout and stderr from subprocess and return combined output.
 	 * 
 	 * Uses IOChannel.add_watch() pattern from Spawn.vala to read from both
 	 * streams concurrently as data arrives.

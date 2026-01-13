@@ -55,37 +55,55 @@ Examples:
 		{ null }
 	};
 
-	protected override int run()
+	protected override OptionEntry[] get_options()
 	{
-		// Check if bubblewrap is available
-		if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
-			stdout.printf("ERROR: bubblewrap is not available on this system.\n");
-			stdout.printf("  - Make sure bwrap is installed and in PATH\n");
-			stdout.printf("  - Note: bubblewrap is disabled when running inside Flatpak\n");
-			return 1;
+		// Only include debug and debug-critical from base_options, skip url/api-key/model since we don't need LLM connection
+		// debug + debug-critical + all local options (which includes null)
+		var options = new OptionEntry[2 + local_options.length];
+		options[0] = base_options[0];  // debug option
+		options[1] = base_options[1];  // debug-critical option
+		
+		// Copy all local options (includes null terminator)
+		for (int j = 0; j < local_options.length; j++) {
+			options[2 + j] = local_options[j];
 		}
+		
+		return options;
+	}
 
+	protected override string? validate_args(string[] args)
+	{
 		// Validate required arguments
 		if (opt_project == null || opt_project == "") {
-			stdout.printf("ERROR: --project is required\n");
-			this.print_help();
-			return 1;
+			return "ERROR: --project is required\n";
 		}
 
-		// Get command from remaining arguments
-		if (this.unowned_args.length < 2) {
-			stdout.printf("ERROR: command argument is required\n");
-			this.print_help();
-			return 1;
+		// Get command from remaining arguments (skip program name)
+		if (args.length < 2) {
+			return "ERROR: command argument is required\n";
 		}
-
-		var command = string.joinv(" ", this.unowned_args[1:this.unowned_args.length]);
 
 		// Check if project directory exists
 		if (!GLib.FileUtils.test(opt_project, GLib.FileTest.IS_DIR)) {
-			stdout.printf("ERROR: Project directory does not exist: %s\n", opt_project);
-			return 1;
+			return "ERROR: Project directory does not exist: %s\n".printf(opt_project);
 		}
+
+		return null;
+	}
+
+	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	{
+		// Check if bubblewrap is available
+		if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
+			command_line.printerr("ERROR: bubblewrap is not available on this system.\n");
+			command_line.printerr("  - Make sure bwrap is installed and in PATH\n");
+			command_line.printerr("  - Note: bubblewrap is disabled when running inside Flatpak\n");
+			throw new GLib.IOError.NOT_FOUND("bubblewrap not available");
+		}
+
+		// Get command from remaining arguments (skip program name)
+		string[] args = command_line.get_arguments();
+		var command = string.joinv(" ", args[1:args.length]);
 
 		// Create ProjectManager and load project
 		var db = new SQ.Database(null); // In-memory database for testing
@@ -97,22 +115,11 @@ Examples:
 		project.is_project = true;
 		
 		// Load project files
-		try {
-			yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
-			yield project.load_files_from_db();
-		} catch (GLib.Error e) {
-			stdout.printf("ERROR: Failed to load project: %s\n", e.message);
-			return 1;
-		}
+		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		yield project.load_files_from_db();
 
 		// Create Bubble instance
-		OLLMtools.RunCommand.Bubble bubble;
-		try {
-			bubble = new OLLMtools.RunCommand.Bubble(project, opt_allow_network);
-		} catch (GLib.Error e) {
-			stdout.printf("ERROR: Failed to create Bubble instance: %s\n", e.message);
-			return 1;
-		}
+		var bubble = new OLLMtools.RunCommand.Bubble(project, opt_allow_network);
 
 		// Execute command
 		stdout.printf("Executing command in sandbox: %s\n", command);
@@ -120,13 +127,8 @@ Examples:
 		stdout.printf("Allow network: %s\n", opt_allow_network.to_string());
 		stdout.printf("\n--- Output ---\n");
 
-		string output;
-		try {
-			output = yield bubble.exec(command);
-		} catch (GLib.Error e) {
-			stdout.printf("ERROR: Command execution failed: %s\n", e.message);
-			return 1;
-		}
+		// Execute command
+		var output = yield bubble.exec(command);
 
 		// Print output
 		stdout.printf("%s", output);
@@ -136,14 +138,12 @@ Examples:
 		stdout.printf("\n--- Debug Info ---\n");
 		stdout.printf("ret_str length: %zu\n", bubble.ret_str.length);
 		stdout.printf("fail_str length: %zu\n", bubble.fail_str.length);
-
-		return 0;
 	}
+}
 
-	private static int main(string[] args)
-	{
-		var app = new TestBubble();
-		return app.run_with_args(args);
-	}
+int main(string[] args)
+{
+	var app = new TestBubble();
+	return app.run(args);
 }
 
