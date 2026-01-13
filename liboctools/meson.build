@@ -27,6 +27,7 @@ octools_src = files([
   'EditMode/Request.vala',
   'RunCommand/Tool.vala',
   'RunCommand/Request.vala',
+  'RunCommand/Bubble.vala',
   'WebFetch/Tool.vala',
   'WebFetch/Request.vala',
   'GoogleSearch/Tool.vala',
