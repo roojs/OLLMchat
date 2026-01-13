@@ -921,8 +921,7 @@ namespace OLLMfiles
 		 * Algorithm:
 		 * 1. Collect all Folder objects from project_files.folder_map (paths are already realpaths)
 		 * 2. Sort folders by path
-		 * 3. Add first folder, then iterate through and add if next folder doesn't start with last added
-		 *    (this avoids duplicates where one folder is a parent of another)
+		 * 3. Add first folder, then iterate through and add if next folder doesn't start with last added (this avoids duplicates where one folder is a parent of another)
 		 * 
 		 * @return ArrayList of Folder objects that need write access
 		 */

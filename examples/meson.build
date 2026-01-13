@@ -214,6 +214,35 @@ test_files = executable('oc-test-files',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-test-bubble executable (Bubble class test)
+test_bubble = executable('oc-test-bubble',
+  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, octools_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-bubble.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboctools')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
+    '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    '--pkg=octools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-diff executable (unified diff output)
 # Only depends on libocfiles (no GTK or vector search dependencies)
 # Diff classes moved from liboccoder to libocfiles
