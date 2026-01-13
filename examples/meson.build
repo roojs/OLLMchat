@@ -216,7 +216,14 @@ test_files = executable('oc-test-files',
 
 # Build oc-test-bubble executable (Bubble class test)
 test_bubble = executable('oc-test-bubble',
-  dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocfiles_vapi_dep, ollmchat_vapi_dep, octools_vapi_dep],
+  dependencies: [
+    test_ollama_deps,
+    dependency('gio-unix-2.0'),  # Required for UnixInputStream in Bubble.vala
+    ocsqlite_vapi_dep,
+    ocfiles_vapi_dep,
+    ollmchat_vapi_dep,
+    octools_vapi_dep
+  ],
   sources: ['TestAppBase.vala', 'oc-test-bubble.vala'],
   link_with: [ollmchat_base_lib],
   include_directories: [
@@ -230,6 +237,7 @@ test_bubble = executable('oc-test-bubble',
     '--pkg=ocsqlite',
     '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
     '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
+    '--pkg=gio-unix-2.0',  # Required for UnixInputStream in Bubble.vala
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--pkg=octools',
