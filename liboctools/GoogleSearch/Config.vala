@@ -19,20 +19,28 @@
 namespace OLLMtools.GoogleSearch
 {
 	/**
-	 * Configuration for Google Custom Search API credentials.
+	 * Tool-specific configuration for Google search tool.
 	 *
-	 * Loads API key and search engine ID from ~/.config/ollmchat/google.json
+	 * This configuration class extends BaseToolConfig and adds API credentials
+	 * for Google Custom Search API: api_key and engine_id (CSID).
+	 *
+	 * All properties must be GObject properties with proper metadata for
+	 * Phase 2 UI generation via property introspection.
+	 *
+	 * @since 1.0
 	 */
-	public class Config : Object, Json.Serializable
+	public class Config : OLLMchat.Settings.BaseToolConfig
 	{
 		/**
-		 * Google Custom Search API key
+		 * Google Custom Search API key.
 		 */
+		[Description(nick = "API Key", blurb = "Google Custom Search API key")]
 		public string api_key { get; set; default = ""; }
 		
 		/**
-		 * Google Custom Search Engine ID
+		 * Google Custom Search Engine ID (CSID).
 		 */
+		[Description(nick = "Engine ID", blurb = "Google Custom Search Engine ID (CSID)")]
 		public string engine_id { get; set; default = ""; }
 
 		/**
@@ -40,70 +48,6 @@ namespace OLLMtools.GoogleSearch
 		 */
 		public Config()
 		{
-		}
-
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-        public new void Json.Serializable.set_property(ParamSpec pspec, GLib.Value value)
-        {
-            base.set_property(pspec.get_name(), value);
-        }
-
-        public new GLib.Value Json.Serializable.get_property(ParamSpec pspec)
-        {
-            GLib.Value val = GLib.Value(pspec.value_type);
-            base.get_property(pspec.get_name(), ref val);
-            return val;
-        }
-
-        public override Json.Node serialize_property(string property_name, GLib.Value value, ParamSpec pspec)
-        {
-            return default_serialize_property(property_name, value, pspec);
-        }
-
-        public override bool deserialize_property(string property_name, out GLib.Value value, ParamSpec pspec, Json.Node property_node)
-        {
-            return default_deserialize_property(property_name, out value, pspec, property_node);
-        }
-
-		/**
-		 * Loads Config from file.
-		 *
-		 * Loads from ~/.config/ollmchat/google.json
-		 * If the file cannot be read/parsed, returns null.
-		 *
-		 * @return A new Config instance loaded from the file, or null if loading failed
-		 */
-		public static Config? load()
-		{
-			var config_path = GLib.Path.build_filename(
-				GLib.Environment.get_home_dir(), ".config", "ollmchat", "google.json"
-			);
-
-			try {
-				string contents;
-				GLib.FileUtils.get_contents(config_path, out contents);
-				
-				var loaded_config = Json.gobject_from_data(
-					typeof(Config),
-					contents,
-					-1
-				) as Config;
-				
-				if (loaded_config == null) {
-					GLib.warning("Failed to deserialize Google Search config file");
-					return null;
-				}
-
-				return loaded_config;
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load Google Search config: %s", e.message);
-			}
-			
-			return null;
 		}
 	}
 }

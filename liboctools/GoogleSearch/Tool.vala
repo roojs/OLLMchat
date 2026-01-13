@@ -58,7 +58,7 @@ The tool requires permission to access the Google Custom Search API.""";
 			this.project_manager = project_manager;
 		}
 		
-		public override Type config_class() { return typeof(ToolConfig); }
+		public override Type config_class() { return typeof(Config); }
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{

@@ -160,7 +160,6 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/GoogleSearch/Tool.vala',
     '../liboctools/GoogleSearch/Request.vala',
     '../liboctools/GoogleSearch/Config.vala',
-    '../liboctools/GoogleSearch/ToolConfig.vala',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
