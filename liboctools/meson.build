@@ -28,6 +28,7 @@ octools_src = files([
   'EditMode/Request.vala',
   'RunCommand/Tool.vala',
   'RunCommand/Bubble.vala',  # Must come before Request.vala so Bubble class is available
+  'RunCommand/Monitor.vala',  # File monitor support for overlay filesystem tracking
   'RunCommand/Request.vala',
   'WebFetch/Tool.vala',
   'WebFetch/Request.vala',
