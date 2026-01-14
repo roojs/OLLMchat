@@ -27,9 +27,10 @@ namespace OLLMtools.RunCommand
 	 * 
 	 * The sandbox configuration:
 	 * - Mounts the entire filesystem as read-only (--ro-bind / /)
-	 * - Provides read-write access to project directories (--bind for each root)
+	 * - Provides read-write access to project directories via overlay filesystem
 	 * - Blocks network access by default (--unshare-net, unless allow_network is true)
 	 * - Executes commands via /bin/sh -c
+	 * - Provides isolated temporary directory (/tmp) via tmpfs
 	 * 
 	 * A new Bubble instance is created for each command execution. The instance is used
 	 * once and then goes out of scope, so no cleanup logic is needed for old instances.
@@ -37,8 +38,9 @@ namespace OLLMtools.RunCommand
 	 * Environment variables are automatically inherited from the user's environment
 	 * when using GLib.Subprocess. No explicit --setenv flags are needed.
 	 * 
-	 * Working directory support will be added in later phases when overlay support
-	 * is implemented. For Phase 1, commands execute from the project root directory.
+	 * Overlay filesystem is used for write isolation. All writes to project directories
+	 * go to the overlay upper directory and are copied back to the live system after
+	 * command execution completes.
 	 */
 	public class Bubble
 	{
@@ -76,12 +78,14 @@ namespace OLLMtools.RunCommand
 		private OLLMfiles.Folder project;
 		
 		/**
-		 * Map of path -> Folder objects to share (read-write access).
+		 * Overlay instance for write isolation.
 		 * 
-		 * Contains all directories that need write access in the sandbox, as determined
-		 * by project.build_roots(). Each path is mapped to the project Folder reference.
+		 * The overlay filesystem is used for write isolation.
+		 * The overlay mount point is bind-mounted into the sandbox instead of
+		 * directly binding project roots. All project root binds are replaced with
+		 * a single overlay mount point bind.
 		 */
-		private Gee.HashMap<string, OLLMfiles.Folder> roots;
+		private Overlay overlay;
 		
 		/**
 		 * Network access flag (default: false).
@@ -105,12 +109,12 @@ namespace OLLMtools.RunCommand
 		 * Constructor.
 		 * 
 		 * Initializes a Bubble instance with the specified project folder and network
-		 * access setting. Calls project.build_roots() to determine which directories
-		 * need write access in the sandbox.
+		 * access setting. Creates an Overlay instance for write isolation (but doesn't
+		 * create/mount it yet - that happens in exec()).
 		 * 
 		 * @param project Project folder object (is_project = true) - the main project directory
 		 * @param allow_network Whether to allow network access (default: false, Phase 7 feature)
-		 * @throws Error if project is invalid, build_roots() fails, or a path is not absolute
+		 * @throws Error if project is invalid or overlay creation fails
 		 */
 		public Bubble(OLLMfiles.Folder project, bool allow_network = false) throws Error
 		{
@@ -118,25 +122,19 @@ namespace OLLMtools.RunCommand
 			this.project = project;
 			this.allow_network = allow_network;
 			
-			// Initialize roots as empty HashMap
-			this.roots = new Gee.HashMap<string, OLLMfiles.Folder>();
-			
-			// Call project.build_roots() to get array of paths that need write access
-			
-			// For each path returned:
-			foreach (var folder in project.build_roots()) {
-				// Add to HashMap: roots.set(path, project) (use project as the Folder reference)
-				this.roots.set(folder.path, project);
-			}
+			// Create overlay instance for write isolation (but don't create/mount yet)
+			// Overlay constructor already calls project.build_roots() internally and builds overlay_map
+			this.overlay = new Overlay(project);
 		}
 		
 		/**
 		 * Execute command string in bubblewrap sandbox and return output as string.
 		 * 
-		 * This is the main public API for executing commands. It builds the bubblewrap
-		 * command arguments, creates a subprocess, reads stdout and stderr, and formats
-		 * the output. The output includes stdout, stderr (if any), and the exit code
-		 * (if non-zero).
+		 * This is the main public API for executing commands. It creates and mounts the overlay,
+		 * builds the bubblewrap command arguments, creates a subprocess, reads stdout and stderr,
+		 * copies files from overlay to live system, and cleans up the overlay.
+		 * 
+		 * The output includes stdout, stderr (if any), and the exit code (if non-zero).
 		 * 
 		 * The command is executed via /bin/sh -c, so shell features like pipes, redirects,
 		 * and command chaining are supported.
@@ -147,27 +145,44 @@ namespace OLLMtools.RunCommand
 		 */
 		public async string exec(string command) throws Error
 		{
-			// Build bubblewrap command arguments using build_bubble_args(command)
-			var args = this.build_bubble_args(command);
+			// Create and mount overlay (lazy initialization)
+			this.overlay.create();
+			this.overlay.mount();
 			
-			// Create GLib.Subprocess with bubblewrap as executable
-			GLib.Subprocess subprocess;
 			try {
-				subprocess = new GLib.Subprocess.newv(
-					args,
-					GLib.SubprocessFlags.STDOUT_PIPE | 
-					GLib.SubprocessFlags.STDERR_PIPE |
-					GLib.SubprocessFlags.STDIN_INHERIT
-				);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
+				// Build bubblewrap command arguments using build_bubble_args(command)
+				var args = this.build_bubble_args(command);
+				
+				// Create GLib.Subprocess with bubblewrap as executable
+				GLib.Subprocess subprocess;
+				try {
+					subprocess = new GLib.Subprocess.newv(
+						args,
+						GLib.SubprocessFlags.STDOUT_PIPE | 
+						GLib.SubprocessFlags.STDERR_PIPE |
+						GLib.SubprocessFlags.STDIN_INHERIT
+					);
+				} catch (GLib.Error e) {
+					throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
+				}
+				
+				// Read output using read_subprocess_output()
+				var output = yield this.read_subprocess_output(subprocess);
+				
+				// Copy files from overlay to live system (stops Monitor, copies files)
+				yield this.overlay.copy_files();
+				
+				// Return formatted string
+				return output;
+				
+			} finally {
+				// Always cleanup overlay (unmounts overlay and tmpfs, removes directories)
+				try {
+					this.overlay.cleanup();
+				} catch (Error cleanup_error) {
+					GLib.warning("Failed to cleanup overlay: %s", cleanup_error.message);
+				}
 			}
-			
-			// Read output using read_subprocess_output()
-			var output = yield this.read_subprocess_output(subprocess);
-			
-			// Return formatted string
-			return output;
 		}
 		
 		/**
@@ -175,7 +190,8 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * Constructs the full command line for bubblewrap, including:
 		 * - Read-only root filesystem bind (--ro-bind / /)
-		 * - Read-write binds for each project root directory (--bind path path)
+		 * - Read-write binds for overlay mount point at each project root location
+		 * - Temporary directory mount (--tmpfs /tmp)
 		 * - Network isolation flag (--unshare-net) if network is not allowed
 		 * - Command separator (--)
 		 * - Shell command (/bin/sh -c "command")
@@ -205,12 +221,19 @@ namespace OLLMtools.RunCommand
 			args += "/";
 			args += "/";
 			
-			// Add root folder binds: Iterate over roots HashMap, for each path add "--bind", path, path
-			foreach (var entry in this.roots.entries) {
+			// Bind overlay subdirectory for each project root
+			var overlay_mount_point = GLib.Path.build_filename(this.overlay.overlay_dir, "merged");
+			// Use overlay_map entries to get both subdirectory name (key) and project root path (value)
+			foreach (var entry in this.overlay.overlay_map.entries) {
+				// Build path to subdirectory within merged mount point
 				args += "--bind";
-				args += entry.key;
-				args += entry.key;
+				args += GLib.Path.build_filename(overlay_mount_point, entry.key);;  // Source: overlay subdirectory path (e.g., merged/overlay1)
+				args += entry.value;         // Destination: project root path from overlay_map
 			}
+			
+			// Add tmpfs mount for /tmp (clean temporary directory)
+			args += "--tmpfs";
+			args += "/tmp";
 			
 			// Add network args: If allow_network == false, add "--unshare-net"
 			if (!this.allow_network) {

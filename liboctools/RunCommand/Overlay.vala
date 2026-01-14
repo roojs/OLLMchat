@@ -322,7 +322,7 @@ namespace OLLMtools.RunCommand
 			foreach (var entry in this.monitor.removed.entries) {
 				// Delete file from real path
 				try {
-					GLib.File.new_for_path(entry.value.path).delete();
+					GLib.FileUtils.unlink(entry.value.path);
 				} catch (GLib.Error e) {
 					GLib.warning("Cannot delete file from real path (%s): %s", entry.value.path, e.message);
 					continue;
@@ -363,15 +363,15 @@ namespace OLLMtools.RunCommand
 			}
 			
 			// Remove remaining overlay directory structure
-			// After unmounting tmpfs, all directories will be empty, so remove() will work
+			// After unmounting tmpfs, all directories will be empty, so unlink() will work
 			try {
-				GLib.File.new_for_path(GLib.Path.build_filename(
-						this.overlay_dir, "work")).remove(null);
-				GLib.File.new_for_path(GLib.Path.build_filename(
-						this.overlay_dir, "merged")).remove(null);
-				GLib.File.new_for_path(GLib.Path.build_filename(
-						this.overlay_dir, "upper")).remove(null);
-				GLib.File.new_for_path(this.overlay_dir).remove(null);
+				GLib.FileUtils.unlink(GLib.Path.build_filename(
+						this.overlay_dir, "work"));
+				GLib.FileUtils.unlink(GLib.Path.build_filename(
+						this.overlay_dir, "merged"));
+				GLib.FileUtils.unlink(GLib.Path.build_filename(
+						this.overlay_dir, "upper"));
+				GLib.FileUtils.unlink(this.overlay_dir);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Cannot remove overlay directory: " + e.message);
 			}

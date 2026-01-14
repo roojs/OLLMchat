@@ -246,7 +246,7 @@ namespace OLLMtools.RunCommand
 				return yield this.execute_with_subprocess();
 			}
 			
-			// Not in Flatpak and bwrap available - use bubblewrap
+			// Not in Flatpak and bwrap available - use bubblewrap with overlay
 			// Get project folder from ProjectManager via tool
 			var run_command_tool = (Tool) this.tool;
 			var project_manager = run_command_tool.project_manager;
@@ -255,20 +255,30 @@ namespace OLLMtools.RunCommand
 			}
 			var project = project_manager.active_project;  // OLLMfiles.Folder
 			
-			// Create Bubble instance
-			var bubble = new Bubble(project, false);
-			
-			// Execute command - simple string in, string out
-			var output = yield bubble.exec(this.command);
-			
-			// Truncate output if needed (same as Subprocess path)
-			output = this.truncate_output(output, 50);
-			
-			// Send output as second message via message_created
-			this.send_ui("txt", "", output);
-			
-			// Return output to LLM (already formatted with stdout + stderr + exit code)
-			return output;
+			// Create Bubble instance (creates overlay, mounts in exec())
+			Bubble? bubble = null;
+			try {
+				bubble = new Bubble(project, false);
+				
+				// Execute command in bwrap sandbox (writes go to overlay upper directory)
+				// exec() handles overlay creation, mounting, file copying, and cleanup internally
+				var output = yield bubble.exec(this.command);
+				
+				// Truncate output if needed
+				// FIXME - not sure this is a great idea - we will be bumping the context up soon
+				// with ollama create tricks
+				output = this.truncate_output(output, 100);
+				
+				// Send output as second message via message_created
+				this.send_ui("txt", "", output);
+				
+				// Return output to LLM
+				return output;
+				
+			} catch (Error e) {
+				// Cleanup is handled inside bubble.exec() finally block, so we just re-throw
+				throw e;
+			}
 		}
 		
 		/**
