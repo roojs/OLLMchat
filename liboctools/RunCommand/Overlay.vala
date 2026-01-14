@@ -72,6 +72,41 @@ namespace OLLMtools.RunCommand
 		private Monitor monitor { get; private set; }
 
 		/**
+		 * Full path to mount executable.
+		 * Found in constructor, used throughout for mounting operations.
+		 */
+		private string mount_exe { get; private set; default = ""; }
+
+		/**
+		 * Full path to umount executable.
+		 * Found in constructor, used throughout for unmounting operations.
+		 */
+		private string umount_exe { get; private set; default = ""; }
+
+		/**
+		 * Execute a command and throw an error if it fails.
+		 * 
+		 * @param command Command string to execute
+		 * @param error_prefix Prefix for error messages (e.g., "Cannot execute mount command")
+		 * @throws GLib.IOError if command execution fails or returns non-zero exit status
+		 */
+		private void exe(string command, string error_prefix) throws Error
+		{
+			string stdout;
+			string stderr;
+			int exit_status;
+			try {
+				GLib.Process.spawn_command_line_sync(command, out stdout, out stderr, out exit_status);
+			} catch (GLib.SpawnError e) {
+				throw new GLib.IOError.FAILED(error_prefix + ": " + e.message);
+			}
+			
+			if (exit_status != 0) {
+				throw new GLib.IOError.FAILED(error_prefix + " failed: " + stderr);
+			}
+		}
+
+		/**
 		 * Constructor.
 		 * 
 		 * Initializes an Overlay instance with the specified project folder.
@@ -102,6 +137,17 @@ namespace OLLMtools.RunCommand
 			);
 			this.overlay_dir = GLib.Path.build_filename(cache_dir, "overlay-" + timestamp);
 			
+			// Find mount and umount executables
+			this.mount_exe = GLib.Environment.find_program_in_path("mount");
+			if (this.mount_exe == null) {
+				throw new GLib.IOError.NOT_FOUND("mount command not found in PATH");
+			}
+			
+			this.umount_exe = GLib.Environment.find_program_in_path("umount");
+			if (this.umount_exe == null) {
+				throw new GLib.IOError.NOT_FOUND("umount command not found in PATH");
+			}
+			
 			// Create Monitor instance (will be started in mount())
 			this.monitor = new Monitor(
 				this.project,
@@ -123,7 +169,9 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * Also builds overlay_map HashMap mapping subdirectory names to real project paths.
 		 * 
-		 * @throws GLib.IOError if directory creation fails
+		 * Mounts tmpfs on the upper directory to ensure automatic cleanup on unmount.
+		 * 
+		 * @throws GLib.IOError if directory creation or tmpfs mount fails
 		 */
 		public void create() throws Error
 		{
@@ -135,6 +183,11 @@ namespace OLLMtools.RunCommand
 				GLib.File.new_for_path(
 					GLib.Path.build_filename(this.overlay_dir, "upper")
 				).make_directory_with_parents(null);
+				
+				// Mount tmpfs on upper directory for automatic cleanup
+				this.exe(this.mount_exe + " -t tmpfs tmpfs " 
+					+ GLib.Path.build_filename(this.overlay_dir, "upper"), 
+					"Mount tmpfs command");
 				
 				// Create work directory
 				GLib.File.new_for_path(
@@ -152,7 +205,7 @@ namespace OLLMtools.RunCommand
 					var entry = entries_array[i];
 					var subdirectory_name = "overlay" + (i + 1).to_string();
 					
-					// Create subdirectory
+					// Create subdirectory (now inside tmpfs)
 					GLib.File.new_for_path(
 						GLib.Path.build_filename(this.overlay_dir, "upper", subdirectory_name)
 					).make_directory_with_parents(null);
@@ -177,36 +230,16 @@ namespace OLLMtools.RunCommand
 		 */
 		public void mount() throws Error
 		{
-			// Find full path to mount executable
-			var mount_path = GLib.Environment.find_program_in_path("mount");
-			if (mount_path == null) {
-				throw new GLib.IOError.NOT_FOUND("mount command not found in PATH");
-			}
-			
-			// Build mount command string
-			var command = mount_path + " -t overlay overlay -o lowerdir=" + this.project.path +
+			this.exe(this.mount_exe + " -t overlay overlay -o lowerdir=" + this.project.path +
 				",upperdir=" + GLib.Path.build_filename(this.overlay_dir, "upper") +
 				",workdir=" + GLib.Path.build_filename(this.overlay_dir, "work") + " " +
-				GLib.Path.build_filename(this.overlay_dir, "merged");
-			
-			// Execute mount command using Process.spawn_command_line_sync()
-			string stdout;
-			string stderr;
-			int exit_status;
-			try {
-				GLib.Process.spawn_command_line_sync(command, out stdout, out stderr, out exit_status);
-			} catch (GLib.SpawnError e) {
-				throw new GLib.IOError.FAILED("Cannot execute mount command: " + e.message);
-			}
-			
-			// Check exit status: If non-zero, throw GLib.IOError.FAILED with stderr message
-			if (exit_status != 0) {
-				throw new GLib.IOError.FAILED("Mount command failed: " + stderr);
-			}
+				GLib.Path.build_filename(this.overlay_dir, "merged"),
+				"Mount command");
 			
 			// Start Monitor: this.monitor.start() (monitor was created in constructor)
 			this.monitor.start();
 		}
+
 
 		/**
 		 * Unmount overlay filesystem using umount.
@@ -220,30 +253,8 @@ namespace OLLMtools.RunCommand
 		 */
 		public void unmount() throws Error
 		{
-			// Find full path to umount executable
-			var umount_path = GLib.Environment.find_program_in_path("umount");
-			if (umount_path == null) {
-				throw new GLib.IOError.NOT_FOUND("umount command not found in PATH");
-			}
-			
-			// Build unmount command string
-			var command = umount_path + " "
-				 + GLib.Path.build_filename(this.overlay_dir, "merged");
-			
-			// Execute umount command using Process.spawn_command_line_sync()
-			string stdout;
-			string stderr;
-			int exit_status;
-			try {
-				GLib.Process.spawn_command_line_sync(command, out stdout, out stderr, out exit_status);
-			} catch (GLib.SpawnError e) {
-				throw new GLib.IOError.FAILED("Cannot execute umount command: " + e.message);
-			}
-			
-			// Check exit status: If non-zero, throw GLib.IOError.FAILED with stderr message
-			if (exit_status != 0) {
-				throw new GLib.IOError.FAILED("Unmount command failed: " + stderr);
-			}
+			this.exe(this.umount_exe + " " + GLib.Path.build_filename(this.overlay_dir, "merged"),
+				"Unmount command");
 		}
 
 		/**
@@ -322,23 +333,45 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Clean up overlay directory.
 		 * 
-		 * Unmounts the overlay filesystem and removes the overlay directory structure.
+		 * Unmounts the overlay filesystem, unmounts tmpfs from upper directory,
+		 * and removes the remaining overlay directory structure.
 		 * This should be called after copy_files() is complete.
+		 * 
+		 * After unmounting tmpfs, all directories will be empty, so GLib.File.remove()
+		 * can be used to delete them.
 		 * 
 		 * @throws GLib.IOError if unmount or directory removal fails
 		 */
 		public void cleanup() throws Error
 		{
-			// Call this.unmount() (may throw Error, but continue cleanup even if it fails)
+			// Unmount overlay filesystem (may throw Error, but continue cleanup even if it fails)
 			try {
-				this.unmount();
+				this.exe(this.umount_exe + " " 
+					+ GLib.Path.build_filename(this.overlay_dir, "merged"),
+					"Unmount command");
 			} catch (GLib.Error e) {
 				GLib.warning("Unmount failed during cleanup: %s", e.message);
 			}
 			
-			// Remove overlay directory structure
+			// Unmount tmpfs from upper directory (automatically cleans up all files)
 			try {
-				GLib.File.new_for_path(this.overlay_dir).delete();
+				this.exe(this.umount_exe + " "
+					 + GLib.Path.build_filename(this.overlay_dir, "upper"), 
+					 "Unmount tmpfs command");
+			} catch (GLib.Error e) {
+				GLib.warning("Unmount tmpfs failed during cleanup: %s", e.message);
+			}
+			
+			// Remove remaining overlay directory structure
+			// After unmounting tmpfs, all directories will be empty, so remove() will work
+			try {
+				GLib.File.new_for_path(GLib.Path.build_filename(
+						this.overlay_dir, "work")).remove(null);
+				GLib.File.new_for_path(GLib.Path.build_filename(
+						this.overlay_dir, "merged")).remove(null);
+				GLib.File.new_for_path(GLib.Path.build_filename(
+						this.overlay_dir, "upper")).remove(null);
+				GLib.File.new_for_path(this.overlay_dir).remove(null);
 			} catch (GLib.Error e) {
 				throw new GLib.IOError.FAILED("Cannot remove overlay directory: " + e.message);
 			}
@@ -387,18 +420,20 @@ namespace OLLMtools.RunCommand
 			var overlay_rwx = overlay_mode & 0777;
 			var real_rwx = real_mode & 0777;
 			
-			if (overlay_rwx != real_rwx) {
-				try {
-					GLib.File.new_for_path(real_path).set_attribute_uint32(
-						GLib.FileAttribute.UNIX_MODE,
-						(real_mode & ~0777) | overlay_rwx,
-						GLib.FileQueryInfoFlags.NONE,
-						null
-					);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot set real file permissions (%s): %s", real_path, e.message);
-					return;
-				}
+			if (overlay_rwx == real_rwx) {
+				return;
+			}
+			
+			try {
+				GLib.File.new_for_path(real_path).set_attribute_uint32(
+					GLib.FileAttribute.UNIX_MODE,
+					(real_mode & ~0777) | overlay_rwx,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot set real file permissions (%s): %s", real_path, e.message);
+				return;
 			}
 		}
 	}
