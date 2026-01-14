@@ -156,6 +156,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/RunCommand/Tool.vala',
     '../liboctools/RunCommand/Bubble.vala',  # Must come before Request.vala (Request uses Bubble)
     '../liboctools/RunCommand/Monitor.vala',  # File monitor support for overlay filesystem tracking
+    '../liboctools/RunCommand/Overlay.vala',  # Overlay filesystem management
     '../liboctools/RunCommand/Request.vala',
     '../liboctools/WebFetch/Tool.vala',
     '../liboctools/WebFetch/Request.vala',

@@ -21,13 +21,18 @@ namespace OLLMtools.RunCommand
 	/**
 	 * Filesystem monitor using inotify (via GLib.FileMonitor) to track file changes
 	 * during command execution. Tracks files/folders that were written/added/modified/deleted
-	 * and maintains simple HashMaps of changes (path => FileBase).
+	 * and maintains simple HashMaps of changes (overlay path => FileBase).
+	 * 
+	 * FIXME: This monitor does not handle the following edge cases:
+	 * - File aliases (symlinks): Symlinks are not tracked or resolved
+	 * - File/directory type changes: Deleting a file and replacing it with a directory
+	 * (or vice versa) is not properly handled
 	 */
 	public class Monitor : Object
 	{
 		/**
 		 * HashMap of files/folders that were created during monitoring.
-		 * Key: Normalized absolute path
+		 * Key: Overlay path (e.g., "/home/alan/.cache/ollmchat/overlay-12345/upper/overlay1/src/main.c")
 		 * Value: File or Folder object (id = 0, not in database)
 		 * Contains only files/folders NOT in ProjectFiles (new files).
 		 */
@@ -36,7 +41,7 @@ namespace OLLMtools.RunCommand
 		
 		/**
 		 * HashMap of files/folders that were deleted during monitoring.
-		 * Key: Normalized absolute path
+		 * Key: Overlay path (e.g., "/home/alan/.cache/ollmchat/overlay-12345/upper/overlay1/src/main.c")
 		 * Value: File or Folder object from ProjectFiles
 		 * Contains only files/folders FROM ProjectFiles (existing files that were deleted).
 		 */
@@ -45,7 +50,7 @@ namespace OLLMtools.RunCommand
 		
 		/**
 		 * HashMap of files that were modified during monitoring.
-		 * Key: Normalized absolute path
+		 * Key: Overlay path (e.g., "/home/alan/.cache/ollmchat/overlay-12345/upper/overlay1/src/main.c")
 		 * Value: File object from ProjectFiles
 		 * Contains only files FROM ProjectFiles (existing files that were modified).
 		 */
@@ -147,41 +152,46 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
-		 * Event handler for filesystem change events from GLib.FileMonitor.
-		 */
+		* Event handler for filesystem change events from GLib.FileMonitor.
+		*/
 		private void on_file_changed(GLib.File file, GLib.File? other_file, GLib.FileMonitorEvent event)
 		{
-			var real_path = this.to_real_path(file.get_path());
+			var overlay_path = file.get_path();
+			if (overlay_path == null) {
+				return;
+			}
+			
+			var real_path = this.to_real_path(overlay_path);
 			
 			switch (event) {
 				case GLib.FileMonitorEvent.CREATED:
-					if (GLib.FileUtils.test(real_path, GLib.FileTest.IS_DIR)) {
-						this.handle_directory_created(real_path);
+					if (GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_DIR)) {
+						this.handle_directory_created(overlay_path, real_path);
 						break;
 					}
-					this.handle_file_created(real_path);
+					this.handle_file_created(overlay_path, real_path);
 					break;
 					
 				case GLib.FileMonitorEvent.CHANGED:
-					if (GLib.FileUtils.test(real_path, GLib.FileTest.IS_REGULAR)) {
-						this.handle_file_modified(real_path);
+					if (GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_REGULAR)) {
+						this.handle_file_modified(overlay_path, real_path);
 					}
 					break;
 					
 				case GLib.FileMonitorEvent.ATTRIBUTE_CHANGED:
-					if (GLib.FileUtils.test(real_path, GLib.FileTest.IS_REGULAR)) {
-						this.handle_file_modified(real_path);
+					if (GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_REGULAR)) {
+						this.handle_file_modified(overlay_path, real_path);
 					}
 					break;
 					
 				case GLib.FileMonitorEvent.DELETED:
-					this.handle_file_deleted(real_path);
+					this.handle_file_deleted(overlay_path, real_path);
 					break;
 					
 				case GLib.FileMonitorEvent.MOVED:
 					var overlay_source_path = file.get_path();
 					if (overlay_source_path != null) {
-						this.handle_file_deleted(this.to_real_path(overlay_source_path));
+						this.handle_file_deleted(overlay_source_path, this.to_real_path(overlay_source_path));
 					}
 					
 					if (other_file == null) {
@@ -194,42 +204,41 @@ namespace OLLMtools.RunCommand
 					}
 					
 					var real_dest_path = this.to_real_path(overlay_dest_path);
-					if (GLib.FileUtils.test(real_dest_path, GLib.FileTest.IS_DIR)) {
-						this.handle_directory_created(real_dest_path);
+					if (GLib.FileUtils.test(overlay_dest_path, GLib.FileTest.IS_DIR)) {
+						this.handle_directory_created(overlay_dest_path, real_dest_path);
 						break;
 					}
-					this.handle_file_created(real_dest_path);
+					this.handle_file_created(overlay_dest_path, real_dest_path);
 					break;
 					
 				default:
 					break;
 			}
 		}
-		
-		/**
-		 * Handle creation of a new directory.
-		 * Track it in `added` if it doesn't exist in ProjectFiles.
-		 * Create a new FileMonitor for the directory since GLib.FileMonitor doesn't monitor recursively.
-		 * 
-		 * @param dir_path Absolute path to the newly created directory
-		 */
-		private void handle_directory_created(string dir_path)
-		{
-			var normalized_path = this.normalize_path(dir_path);
 			
-			if (this.project_folder.project_files.folder_map.has_key(normalized_path)) {
+		/**
+		* Handle creation of a new directory.
+		* Track it in `added` if it doesn't exist in ProjectFiles.
+		* Create a new FileMonitor for the directory since GLib.FileMonitor doesn't monitor recursively.
+		* 
+		* @param overlay_path Overlay path to the newly created directory
+		* @param real_path Real project path to the newly created directory
+		*/
+		private void handle_directory_created(string overlay_path, string real_path)
+		{
+			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
 				return;
 			}
 			
 			GLib.FileInfo folder_info;
 			try {
-				folder_info = GLib.File.new_for_path(normalized_path).query_info(
+				folder_info = GLib.File.new_for_path(overlay_path).query_info(
 					GLib.FileAttribute.TIME_MODIFIED,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
 			} catch (GLib.Error e) {
-				GLib.warning("Monitor.handle_directory_created: Could not query folder info for %s: %s", normalized_path, e.message);
+				GLib.warning("Monitor.handle_directory_created: Could not query folder info for %s: %s", overlay_path, e.message);
 				return;
 			}
 			
@@ -237,135 +246,137 @@ namespace OLLMtools.RunCommand
 				this.project_folder.manager,
 				this.project_folder,
 				folder_info,
-				normalized_path
+				real_path
 			);
 			
-			this.added.set(normalized_path, new_folder);
+			this.added.set(overlay_path, new_folder);
 			
 			try {
-				var monitor = GLib.File.new_for_path(normalized_path).monitor_directory(GLib.FileMonitorFlags.NONE, null);
+				var monitor = GLib.File.new_for_path(overlay_path).monitor_directory(GLib.FileMonitorFlags.NONE, null);
 				this.monitors.set(monitor, new_folder);
 				this.signal_handlers.set(monitor, monitor.changed.connect(this.on_file_changed));
 			} catch (GLib.Error e) {
-				GLib.warning("Monitor.handle_directory_created: Could not create monitor for subdirectory %s: %s", normalized_path, e.message);
+				GLib.warning("Monitor.handle_directory_created: Could not create monitor for subdirectory %s: %s", overlay_path, e.message);
 			}
 		}
-		
-		/**
-		 * Handle creation of a new file.
-		 * Track it in `added` if it doesn't exist in ProjectFiles, otherwise add to `updated`.
-		 * 
-		 * @param file_path Absolute path to the newly created file
-		 */
-		private void handle_file_created(string file_path)
-		{
-			var normalized_path = this.normalize_path(file_path);
 			
-			if (this.project_folder.project_files.child_map.has_key(normalized_path)) {
-				this.updated.set(normalized_path, this.project_folder.project_files.child_map.get(normalized_path).file);
+		/**
+		* Handle creation of a new file.
+		* Track it in `added` if it doesn't exist in ProjectFiles, otherwise add to `updated`.
+		* 
+		* @param overlay_path Overlay path to the newly created file
+		* @param real_path Real project path to the newly created file
+		*/
+		private void handle_file_created(string overlay_path, string real_path)
+		{
+			if (this.project_folder.project_files.child_map.has_key(real_path)) {
+				this.updated.set(overlay_path, this.project_folder.project_files.child_map.get(real_path).file);
 				return;
 			}
 			
 			try {
-				this.added.set(normalized_path, 
-					this.create_filebase_from_path(normalized_path));
+				this.added.set(overlay_path, 
+					this.create_filebase_from_path(overlay_path, real_path));
 			} catch (GLib.Error e) {
-				GLib.warning("Monitor.handle_file_created: Could not create filebase for %s: %s", normalized_path, e.message);
+				GLib.warning("Monitor.handle_file_created: Could not create filebase for %s: %s", overlay_path, e.message);
 			}
 		}
-		
+			
 		/**
-		 * Handle modification of an existing file.
-		 * If already in `added` or `updated`, do nothing (NOOP).
-		 * If in `removed`, move to `updated`.
-		 */
-		private void handle_file_modified(string file_path)
+		* Handle modification of an existing file.
+		* If already in `added` or `updated`, do nothing (NOOP).
+		* If in `removed`, move to `updated`.
+		* 
+		* @param overlay_path Overlay path to the modified file
+		* @param real_path Real project path to the modified file
+		*/
+		private void handle_file_modified(string overlay_path, string real_path)
 		{
-			var normalized_path = this.normalize_path(file_path);
-			
-			if (this.added.has_key(normalized_path)) {
+			if (this.added.has_key(overlay_path)) {
 				return;
 			}
 			
-			if (this.updated.has_key(normalized_path)) {
+			if (this.updated.has_key(overlay_path)) {
 				return;
 			}
 			
-			if (this.removed.has_key(normalized_path)) {
-				var filebase = this.removed.get(normalized_path);
-				this.removed.unset(normalized_path);
-				this.updated.set(normalized_path, filebase);
+			if (this.removed.has_key(overlay_path)) {
+				var filebase = this.removed.get(overlay_path);
+				this.removed.unset(overlay_path);
+				this.updated.set(overlay_path, filebase);
 				return;
 			}
 			
-			if (this.project_folder.project_files.child_map.has_key(normalized_path)) {
-				this.updated.set(normalized_path, 
-					this.project_folder.project_files.child_map.get(normalized_path).file);
+			if (this.project_folder.project_files.child_map.has_key(real_path)) {
+				this.updated.set(overlay_path, 
+					this.project_folder.project_files.child_map.get(real_path).file);
 				return;
 			}
 		}
-		
+			
 		/**
-		 * Handle deletion of a file or directory.
-		 * Remove from `added` or `updated` and add to `removed` if from ProjectFiles.
-		 */
-		private void handle_file_deleted(string file_path)
+		* Handle deletion of a file or directory.
+		* Remove from `added` or `updated` and add to `removed` if from ProjectFiles.
+		* 
+		* @param overlay_path Overlay path to the deleted file
+		* @param real_path Real project path to the deleted file
+		*/
+		private void handle_file_deleted(string overlay_path, string real_path)
 		{
-			var normalized_path = this.normalize_path(file_path);
-			
-			if (this.added.has_key(normalized_path)) {
-				this.added.unset(normalized_path);
+			if (this.added.has_key(overlay_path)) {
+				this.added.unset(overlay_path);
 				return;
 			}
 			
-			if (this.updated.has_key(normalized_path)) {
-				var filebase = this.updated.get(normalized_path);
-				this.updated.unset(normalized_path);
-				this.removed.set(normalized_path, filebase);
+			if (this.updated.has_key(overlay_path)) {
+				var filebase = this.updated.get(overlay_path);
+				this.updated.unset(overlay_path);
+				this.removed.set(overlay_path, filebase);
 				return;
 			}
 			
-			if (this.project_folder.project_files.child_map.has_key(normalized_path)) {
-				this.removed.set(normalized_path,
-					 this.project_folder.project_files.child_map.get(normalized_path).file);
+			if (this.project_folder.project_files.child_map.has_key(real_path)) {
+				this.removed.set(overlay_path,
+					this.project_folder.project_files.child_map.get(real_path).file);
 				return;
 			}
 			
-			if (!this.project_folder.project_files.folder_map.has_key(normalized_path)) {
+			if (!this.project_folder.project_files.folder_map.has_key(real_path)) {
 				return;
 			}
 			
-			this.removed.set(normalized_path, 
-				this.project_folder.project_files.folder_map.get(normalized_path));
+			this.removed.set(overlay_path, 
+				this.project_folder.project_files.folder_map.get(real_path));
 			return;
 		}
-		
+			
 		/**
-		 * Create a File object from a filesystem path.
-		 * Used for tracking files that don't exist in ProjectFiles. The file is known to exist from the inotify event, so no existence checks are needed.
-		 * 
-		 * @param file_path Absolute path to the file (known to exist from inotify event)
-		 * @return File object
-		 * @throws GLib.Error if file info cannot be queried
-		 */
-		private OLLMfiles.File create_filebase_from_path(string file_path) throws GLib.Error
+		* Create a File object from a filesystem path.
+		* Used for tracking files that don't exist in ProjectFiles. The file is known to exist from the inotify event, so no existence checks are needed.
+		* 
+		* @param overlay_path Overlay path to the file (used to query file info)
+		* @param real_path Real project path to the file (used as the FileBase.path property)
+		* @return File object
+		* @throws GLib.Error if file info cannot be queried
+		*/
+		private OLLMfiles.File create_filebase_from_path(string overlay_path, string real_path) throws GLib.Error
 		{
 			return new OLLMfiles.File.new_from_info(
 				this.project_folder.manager,
 				this.project_folder,
-				GLib.File.new_for_path(file_path).query_info(
+				GLib.File.new_for_path(overlay_path).query_info(
 					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," + GLib.FileAttribute.TIME_MODIFIED,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				),
-				file_path
+				real_path
 			);
 		}
-		
+			
 		/**
 		 * Convert an overlay filesystem path to the corresponding real project path.
 		 */
-		private string to_real_path(string overlay_path)
+		public string to_real_path(string overlay_path)
 		{
 			if (!overlay_path.has_prefix(this.base_path)) {
 				return overlay_path;
@@ -392,23 +403,6 @@ namespace OLLMtools.RunCommand
 					this.overlay_map.get(components[0]), components[1]);
 			}
 			return this.overlay_map.get(components[0]);
-		}
-		
-		/**
-		 * Normalize a path to absolute form.
-		 * Resolves symlinks and ensures absolute path.
-		 */
-		private string normalize_path(string path)
-		{
-			try {
-				var resolved_path = GLib.File.new_for_path(path).resolve_relative_path(".").get_path();
-				if (resolved_path != null) {
-					return resolved_path;
-				}
-				return path;
-			} catch {
-				return path;
-			}
 		}
 	}
 }
