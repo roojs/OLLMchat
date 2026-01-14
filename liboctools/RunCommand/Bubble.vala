@@ -145,13 +145,17 @@ namespace OLLMtools.RunCommand
 		 */
 		public async string exec(string command) throws Error
 		{
-			// Create and mount overlay (lazy initialization)
+			// Create overlay directory structure (lazy initialization)
 			this.overlay.create();
-			this.overlay.mount();
+			this.overlay.start_monitor();
 			
 			try {
 				// Build bubblewrap command arguments using build_bubble_args(command)
 				var args = this.build_bubble_args(command);
+				
+				// Debug: Output the exact command being run
+				var cmd_str = string.joinv(" ", args);
+				GLib.debug("Bubble.exec() running command: %s", cmd_str);
 				
 				// Create GLib.Subprocess with bubblewrap as executable
 				GLib.Subprocess subprocess;
@@ -176,7 +180,7 @@ namespace OLLMtools.RunCommand
 				return output;
 				
 			} finally {
-				// Always cleanup overlay (unmounts overlay and tmpfs, removes directories)
+				// Always cleanup overlay (removes directories)
 				try {
 					this.overlay.cleanup();
 				} catch (Error cleanup_error) {
@@ -216,24 +220,50 @@ namespace OLLMtools.RunCommand
 			// Start with: ["bwrap"]
 			args += bwrap_path;
 			
+			// Add user namespace (required for overlay support without root)
+			args += "--unshare-user";
+			
+			// Add tmpfs mount for /tmp first (needs to be writable before creating directories)
+			args += "--tmpfs";
+			args += "/tmp";
+			
 			// Add read-only bind: "--ro-bind", "/", "/"
 			args += "--ro-bind";
 			args += "/";
 			args += "/";
 			
-			// Bind overlay subdirectory for each project root
-			var overlay_mount_point = GLib.Path.build_filename(this.overlay.overlay_dir, "merged");
-			// Use overlay_map entries to get both subdirectory name (key) and project root path (value)
-			foreach (var entry in this.overlay.overlay_map.entries) {
-				// Build path to subdirectory within merged mount point
-				args += "--bind";
-				args += GLib.Path.build_filename(overlay_mount_point, entry.key);;  // Source: overlay subdirectory path (e.g., merged/overlay1)
-				args += entry.value;         // Destination: project root path from overlay_map
+			// Use bubblewrap's --overlay for each project root
+			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)
+			var upper_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "upper");
+			var work_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "work");
+			
+			var entries_array = this.overlay.overlay_map.entries.to_array();
+			for (int i = 0; i < entries_array.length; i++) {
+				var entry = entries_array[i];
+				var overlay_name = "overlay" + (i + 1).to_string();
+				var work_name = "work" + (i + 1).to_string();
+				
+				// Create destination directory in sandbox (overlay will mount on it)
+				args += "--dir";
+				args += entry.value;  // Project root path
+				
+				// Lower layer (read-only source)
+				args += "--overlay-src";
+				args += entry.value;  // Project root path
+				
+				// Overlay mount: RWSRC (upper/overlayN), WORKDIR (work/workN), DEST (project root in sandbox)
+				args += "--overlay";
+				args += GLib.Path.build_filename(upper_dir, overlay_name);  // RWSRC
+				args += GLib.Path.build_filename(work_dir, work_name);       // WORKDIR
+				args += entry.value;  // DEST (project root path in sandbox)
 			}
 			
-			// Add tmpfs mount for /tmp (clean temporary directory)
-			args += "--tmpfs";
-			args += "/tmp";
+			// Set working directory to project folder (first project root)
+			// This ensures commands run in the project directory context
+			if (entries_array.length > 0) {
+				args += "--chdir";
+				args += entries_array[0].value;  // First project root path
+			}
 			
 			// Add network args: If allow_network == false, add "--unshare-net"
 			if (!this.allow_network) {
@@ -264,9 +294,13 @@ namespace OLLMtools.RunCommand
 	 */
 	private async string read_subprocess_output(GLib.Subprocess subprocess) throws Error
 	{
+		GLib.debug("read_subprocess_output: Starting to read from subprocess");
+		
 		// Get stdout and stderr streams from subprocess
 		var stdout_stream = subprocess.get_stdout_pipe();
 		var stderr_stream = subprocess.get_stderr_pipe();
+		
+		GLib.debug("read_subprocess_output: Got streams, stdout=%p, stderr=%p", stdout_stream, stderr_stream);
 		
 		// Reset accumulators for this execution
 		this.ret_str = "";
@@ -331,6 +365,7 @@ namespace OLLMtools.RunCommand
 		);
 		
 		// Wait for process to complete
+		GLib.debug("read_subprocess_output: Waiting for process to complete");
 		int exit_status = 0;
 		try {
 			if (!(yield subprocess.wait_async(null))) {
@@ -346,11 +381,15 @@ namespace OLLMtools.RunCommand
 			throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 		}
 		
+		GLib.debug("read_subprocess_output: Process completed with exit_status=%d, stdout_open=%s, stderr_open=%s", exit_status, stdout_open.to_string(), stderr_open.to_string());
+		
 		// Read any remaining data
 		if (stdout_open) {
+			GLib.debug("read_subprocess_output: Reading remaining stdout data");
 			this.read_from_channel(stdout_ch, true);
 		}
 		if (stderr_open) {
+			GLib.debug("read_subprocess_output: Reading remaining stderr data");
 			this.read_from_channel(stderr_ch, false);
 		}
 		
@@ -373,6 +412,12 @@ namespace OLLMtools.RunCommand
 			final_fail_str += "\n";
 		}
 		final_fail_str += "Exit code: " + exit_status.to_string() + "\n";
+		
+		// Debug: Output what we captured
+		GLib.debug("Bubble.read_subprocess_output: exit_status=%d, ret_str length=%zu, fail_str length=%zu", exit_status, this.ret_str.length, this.fail_str.length);
+		if (this.fail_str.length > 0) {
+			GLib.debug("Bubble.read_subprocess_output: fail_str content: %s", this.fail_str);
+		}
 		
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
@@ -404,19 +449,23 @@ namespace OLLMtools.RunCommand
 			try {
 				status = channel.read_line(out buffer, out len, out term_pos);
 			} catch (GLib.Error e) {
+				GLib.debug("read_from_channel: Error reading from %s: %s", is_stdout ? "stdout" : "stderr", e.message);
 				return; // Error reading, stop
 			}
 			
 			if (buffer == null) {
+				GLib.debug("read_from_channel: No more data from %s", is_stdout ? "stdout" : "stderr");
 				return; // No more data
 			}
 			
 			// If status is not NORMAL, return early
 			if (status != GLib.IOStatus.NORMAL) {
+				GLib.debug("read_from_channel: Status %s from %s, stopping", status.to_string(), is_stdout ? "stdout" : "stderr");
 				return; // AGAIN, EOF, or ERROR - stop reading
 			}
 			
 			// Status is NORMAL - accumulate output
+			GLib.debug("read_from_channel: Read %zu bytes from %s: %s", len, is_stdout ? "stdout" : "stderr", buffer);
 			if (is_stdout) {
 				this.ret_str += buffer;
 				continue; // Read more

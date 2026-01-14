@@ -78,13 +78,21 @@
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(this.get_options(), null);
 			
+			// Parse options - this modifies the array in place to remove parsed options
+			unowned string[] remaining_args = args;
 			try {
-				unowned string[] unowned_args = args;
-				opt_context.parse(ref unowned_args);
+				opt_context.parse(ref remaining_args);
 			} catch (OptionError e) {
 				command_line.printerr("error: %s\n", e.message);
 				command_line.printerr("Run '%s --help' to see a full list of available command line options.\n", args[0]);
 				return 1;
+			}
+			
+			// remaining_args now contains only the positional arguments (excluding parsed options)
+			// Create a copy to pass to run_test
+			string[] remaining_args_copy = {};
+			foreach (var arg in remaining_args) {
+				remaining_args_copy += arg;
 			}
 			
 			// Set debug flags and let ApplicationInterface.debug_log handle everything
@@ -106,7 +114,7 @@
 			// Hold the application to keep main loop running during async operations
 			this.hold();
 			
-			this.run_test.begin(command_line, (obj, res) => {
+			this.run_test.begin(command_line, remaining_args_copy, (obj, res) => {
 				try {
 					this.run_test.end(res);
 				} catch (Error e) {
@@ -268,6 +276,6 @@
 		 * @param command_line The ApplicationCommandLine for output
 		 * @throws Error if the test fails
 		 */
-		protected abstract async void run_test(ApplicationCommandLine command_line) throws Error;
+		protected abstract async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error;
 	}
 

@@ -316,6 +316,21 @@ namespace OLLMcoder
 		}
 		
 		/**
+		 * Clear buffer contents to empty.
+		 * 
+		 * Clears the GTK TextBuffer contents, reflecting that the file has been deleted.
+		 * 
+		 * @throws Error if clearing fails
+		 */
+		public async void clear() throws Error
+		{
+			Gtk.TextIter start, end;
+			this.get_bounds(out start, out end);
+			this.delete(ref start, ref end);
+			this.is_loaded = true;
+		}
+		
+		/**
 		 * Apply multiple edits to the buffer efficiently using GTK buffer operations.
 		 * 
 		 * Uses GTK TextBuffer's text manipulation for efficient chunk editing.

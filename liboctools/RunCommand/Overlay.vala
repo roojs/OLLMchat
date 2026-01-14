@@ -67,44 +67,11 @@ namespace OLLMtools.RunCommand
 
 		/**
 		 * Monitor instance for tracking filesystem changes in overlay.
-		 * Created in constructor, started in mount(), stopped before copying files.
+		 * Created in constructor, started in start_monitor(), stopped before copying files.
 		 */
 		private Monitor monitor { get; private set; }
 
-		/**
-		 * Full path to mount executable.
-		 * Found in constructor, used throughout for mounting operations.
-		 */
-		private string mount_exe { get; private set; default = ""; }
 
-		/**
-		 * Full path to umount executable.
-		 * Found in constructor, used throughout for unmounting operations.
-		 */
-		private string umount_exe { get; private set; default = ""; }
-
-		/**
-		 * Execute a command and throw an error if it fails.
-		 * 
-		 * @param command Command string to execute
-		 * @param error_prefix Prefix for error messages (e.g., "Cannot execute mount command")
-		 * @throws GLib.IOError if command execution fails or returns non-zero exit status
-		 */
-		private void exe(string command, string error_prefix) throws Error
-		{
-			string stdout;
-			string stderr;
-			int exit_status;
-			try {
-				GLib.Process.spawn_command_line_sync(command, out stdout, out stderr, out exit_status);
-			} catch (GLib.SpawnError e) {
-				throw new GLib.IOError.FAILED(error_prefix + ": " + e.message);
-			}
-			
-			if (exit_status != 0) {
-				throw new GLib.IOError.FAILED(error_prefix + " failed: " + stderr);
-			}
-		}
 
 		/**
 		 * Constructor.
@@ -137,18 +104,7 @@ namespace OLLMtools.RunCommand
 			);
 			this.overlay_dir = GLib.Path.build_filename(cache_dir, "overlay-" + timestamp);
 			
-			// Find mount and umount executables
-			this.mount_exe = GLib.Environment.find_program_in_path("mount");
-			if (this.mount_exe == null) {
-				throw new GLib.IOError.NOT_FOUND("mount command not found in PATH");
-			}
-			
-			this.umount_exe = GLib.Environment.find_program_in_path("umount");
-			if (this.umount_exe == null) {
-				throw new GLib.IOError.NOT_FOUND("umount command not found in PATH");
-			}
-			
-			// Create Monitor instance (will be started in mount())
+			// Create Monitor instance (will be started in start_monitor())
 			this.monitor = new Monitor(
 				this.project,
 				GLib.Path.build_filename(this.overlay_dir, "upper"),
@@ -160,18 +116,22 @@ namespace OLLMtools.RunCommand
 		 * Create overlay directory structure with subdirectories for each project root.
 		 * 
 		 * Creates the following directory structure:
-		 * - {overlay_dir}/upper/overlay1/ (for first project root)
-		 * - {overlay_dir}/upper/overlay2/ (for second project root)
-		 * - {overlay_dir}/upper/overlay3/ (for third project root)
+		 * - {overlay_dir}/upper/overlay1/ (for first project root - RWSRC for bubblewrap)
+		 * - {overlay_dir}/upper/overlay2/ (for second project root - RWSRC for bubblewrap)
+		 * - {overlay_dir}/upper/overlay3/ (for third project root - RWSRC for bubblewrap)
 		 * - etc.
-		 * - {overlay_dir}/work/ (work directory for overlayfs)
-		 * - {overlay_dir}/merged/ (mount point for overlayfs)
+		 * - {overlay_dir}/work/work1/ (work directory for first overlay)
+		 * - {overlay_dir}/work/work2/ (work directory for second overlay)
+		 * - etc.
 		 * 
 		 * Also builds overlay_map HashMap mapping subdirectory names to real project paths.
 		 * 
-		 * Mounts tmpfs on the upper directory to ensure automatic cleanup on unmount.
+		 * The upper directory is created as a regular directory. Cleanup is performed
+		 * by recursively deleting the upper directory contents during cleanup().
 		 * 
-		 * @throws GLib.IOError if directory creation or tmpfs mount fails
+		 * Note: Overlay mounting is handled by bubblewrap's --overlay option, not manually.
+		 * 
+		 * @throws GLib.IOError if directory creation fails
 		 */
 		public void create() throws Error
 		{
@@ -179,24 +139,14 @@ namespace OLLMtools.RunCommand
 				// Create overlay_dir directory (with parents if needed)
 				GLib.File.new_for_path(this.overlay_dir).make_directory_with_parents(null);
 				
-				// Create upper directory
+				// Create upper directory (regular directory)
 				GLib.File.new_for_path(
 					GLib.Path.build_filename(this.overlay_dir, "upper")
 				).make_directory_with_parents(null);
 				
-				// Mount tmpfs on upper directory for automatic cleanup
-				this.exe(this.mount_exe + " -t tmpfs tmpfs " 
-					+ GLib.Path.build_filename(this.overlay_dir, "upper"), 
-					"Mount tmpfs command");
-				
-				// Create work directory
+				// Create work directory (parent for individual work dirs)
 				GLib.File.new_for_path(
 					GLib.Path.build_filename(this.overlay_dir, "work")
-				).make_directory_with_parents(null);
-				
-				// Create merged directory (mount point)
-				GLib.File.new_for_path(
-					GLib.Path.build_filename(this.overlay_dir, "merged")
 				).make_directory_with_parents(null);
 				
 				// Iterate over roots to create subdirectories and build overlay_map
@@ -204,10 +154,16 @@ namespace OLLMtools.RunCommand
 				for (int i = 0; i < entries_array.length; i++) {
 					var entry = entries_array[i];
 					var subdirectory_name = "overlay" + (i + 1).to_string();
+					var work_name = "work" + (i + 1).to_string();
 					
-					// Create subdirectory (now inside tmpfs)
+					// Create subdirectory in upper directory (RWSRC for bubblewrap --overlay)
 					GLib.File.new_for_path(
 						GLib.Path.build_filename(this.overlay_dir, "upper", subdirectory_name)
+					).make_directory_with_parents(null);
+					
+					// Create work subdirectory (WORKDIR for bubblewrap --overlay)
+					GLib.File.new_for_path(
+						GLib.Path.build_filename(this.overlay_dir, "work", work_name)
 					).make_directory_with_parents(null);
 					
 					// Add to overlay_map
@@ -219,42 +175,17 @@ namespace OLLMtools.RunCommand
 		}
 
 		/**
-		 * Mount overlay filesystem and start monitoring.
+		 * Start monitoring the overlay upper directory.
 		 * 
-		 * Mounts the overlay filesystem and starts the Monitor to track changes.
+		 * Starts the Monitor to track changes in the overlay upper directory.
+		 * This should be called before executing commands in bubblewrap.
 		 * 
-		 * The mount command format:
-		 * mount -t overlay overlay -o lowerdir={project.path},upperdir={overlay_dir}/upper,workdir={overlay_dir}/work {overlay_dir}/merged
-		 * 
-		 * @throws GLib.IOError if mount fails or monitor start fails
+		 * @throws GLib.IOError if monitor start fails
 		 */
-		public void mount() throws Error
+		public void start_monitor() throws Error
 		{
-			this.exe(this.mount_exe + " -t overlay overlay -o lowerdir=" + this.project.path +
-				",upperdir=" + GLib.Path.build_filename(this.overlay_dir, "upper") +
-				",workdir=" + GLib.Path.build_filename(this.overlay_dir, "work") + " " +
-				GLib.Path.build_filename(this.overlay_dir, "merged"),
-				"Mount command");
-			
 			// Start Monitor: this.monitor.start() (monitor was created in constructor)
 			this.monitor.start();
-		}
-
-
-		/**
-		 * Unmount overlay filesystem using umount.
-		 * 
-		 * Unmounts the overlay filesystem.
-		 * 
-		 * The unmount command format:
-		 * umount {overlay_dir}/merged
-		 * 
-		 * @throws GLib.IOError if unmount fails (e.g., busy, not mounted)
-		 */
-		public void unmount() throws Error
-		{
-			this.exe(this.umount_exe + " " + GLib.Path.build_filename(this.overlay_dir, "merged"),
-				"Unmount command");
 		}
 
 		/**
@@ -262,6 +193,8 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * Stops monitoring, then processes Monitor change lists to copy files from overlay
 		 * upper directory to project directories. Also copies file permissions (rwx only).
+		 * Creates backups for modified and deleted files, updates ProjectManager file data,
+		 * and handles file metadata.
 		 * 
 		 * This should be called after command execution is complete.
 		 * 
@@ -269,30 +202,55 @@ namespace OLLMtools.RunCommand
 		 */
 		public async void copy_files()
 		{
-			// Stop Monitor: yield this.monitor.stop() (async, ensures all inotify events are processed)
+			// Stop Monitor (existing)
 			yield this.monitor.stop();
 			
 			// Process Monitor change lists
 			// For modified files (this.monitor.updated)
 			foreach (var entry in this.monitor.updated.entries) {
-				// Copy file from overlay to real path
+				var file = entry.value as OLLMfiles.File;
+				if (file == null) {
+					continue;
+				}
+				
+				// Create backup (all modified files are in database, id > 0)
+				try {
+					yield file.create_backup();
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create backup for file (%s): %s", file.path, e.message);
+				}
+				
+				// Copy modified file from overlay to real path
 				try {
 					GLib.File.new_for_path(entry.key).copy(
-						GLib.File.new_for_path(entry.value.path),
+						GLib.File.new_for_path(file.path),
 						GLib.FileCopyFlags.OVERWRITE,
 						null,
 						null
 					);
 				} catch (GLib.Error e) {
-					GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", entry.key, entry.value.path, e.message);
+					GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
+						entry.key, file.path, e.message);
 					continue;
 				}
 				
-				// Copy file permissions (rwx only - user cannot change ownership)
-				this.copy_permissions(entry.key, entry.value.path);
+				// Copy file permissions (existing)
+				this.copy_permissions(entry.key, file.path);
+				
+				// Reload buffer with new content (only if buffer already exists)
+				if (file.buffer != null) {
+					try {
+						yield file.buffer.read_async();
+					} catch (GLib.Error e) {
+						GLib.warning("Cannot reload buffer for file (%s): %s", file.path, e.message);
+					}
+				}
+				
+				// Update metadata (existing method)
+				this.project.manager.on_file_contents_change(file);
 			}
 			
-			// For new files (this.monitor.added)
+			// Process new files (this.monitor.added)
 			// Sort entries by path (to ensure parent directories are created naturally)
 			var added_entries = new Gee.ArrayList<string>.wrap(this.monitor.added.keys.to_array());
 			added_entries.sort((a, b) => {
@@ -300,80 +258,247 @@ namespace OLLMtools.RunCommand
 			});
 			
 			foreach (var key in added_entries) {
-				// Copy file from overlay to real path
-				try {
-					GLib.File.new_for_path(key).copy(
-						GLib.File.new_for_path(this.monitor.added.get(key).path),
-						GLib.FileCopyFlags.OVERWRITE,
-						null,
-						null
-					);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
-						key, this.monitor.added.get(key).path, e.message);
+				var filebase = this.monitor.added.get(key);
+				
+				if (filebase is OLLMfiles.File) {
+					// Process files
+					// Copy file from overlay to real path first
+					// convert_fake_file_to_real() handles parent directory creation via make_children()
+					try {
+						GLib.File.new_for_path(key).copy(
+							GLib.File.new_for_path(filebase.path),
+							GLib.FileCopyFlags.OVERWRITE,
+							null,
+							null
+						);
+					} catch (GLib.Error e) {
+						GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
+							key, filebase.path, e.message);
+						continue;
+					}
+					
+					// Copy file permissions (existing)
+					this.copy_permissions(key, filebase.path);
+					
+					// Create fake file and convert to real (existing method handles parent directory creation)
+					try {
+						var fake_file = new OLLMfiles.File.new_fake(this.project.manager, filebase.path);
+						yield this.project.manager.convert_fake_file_to_real(fake_file, filebase.path);
+					} catch (GLib.Error e) {
+						GLib.warning("Cannot convert fake file to real (%s): %s", filebase.path, e.message);
+					}
 					continue;
 				}
 				
-				// Copy file permissions (rwx only - user cannot change ownership)
-				this.copy_permissions(key, this.monitor.added.get(key).path);
+				if (!(filebase is OLLMfiles.Folder)) {
+					continue;
+				}
+				
+				// Process folders - create directory on disk and add to ProjectManager
+				var folder = filebase as OLLMfiles.Folder;
+				
+				// Create directory on disk (parent directories already exist due to sorting)
+				try {
+					GLib.File.new_for_path(filebase.path).make_directory(null);
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create directory (%s): %s", filebase.path, e.message);
+					continue;
+				}
+				
+				// Copy directory permissions (existing)
+				this.copy_permissions(key, filebase.path);
+				
+				// Add folder to project tree (use existing folder object from Monitor)
+				var parent_dir_path = GLib.Path.get_dirname(filebase.path);
+				var found_base_folder = this.project.project_files.find_container_of(parent_dir_path);
+				if (found_base_folder == null) {
+					// Folder is outside project - save directly if it has an id
+					if (folder.id > 0 && this.project.manager.db != null) {
+						folder.saveToDB(this.project.manager.db, null, false);
+					}
+					continue;
+				}
+				
+				// Ensure parent folder chain exists (creates missing parents)
+				// Pass a dummy file path in the parent to ensure parent exists without creating our folder
+				var dummy_file_in_parent = GLib.Path.build_filename(parent_dir_path, ".dummy");
+				var parent_folder = yield found_base_folder.make_children(dummy_file_in_parent);
+				if (parent_folder == null) {
+					GLib.warning("Cannot create parent folder chain for (%s)", filebase.path);
+					continue;
+				}
+				
+				// Check if folder already exists in parent's children
+				var folder_name = GLib.Path.get_basename(filebase.path);
+				if (parent_folder.children.child_map.has_key(folder_name)) {
+					// Folder already exists in project tree - skip
+					continue;
+				}
+				
+				// Use existing folder object from Monitor - set parent and add to project tree
+				folder.parent = parent_folder;
+				folder.parent_id = parent_folder.id;
+				parent_folder.children.append(folder);
+				
+				// Add to project's folder_map
+				this.project.project_files.folder_map.set(folder.path, folder);
+				
+				// Save to database
+				if (this.project.manager.db != null) {
+					folder.saveToDB(this.project.manager.db, null, false);
+				} else {
+					this.project.manager.file_cache.set(folder.path, folder);
+				}
 			}
 			
-			// For deleted files (this.monitor.removed)
-			foreach (var entry in this.monitor.removed.entries) {
-				// Delete file from real path
-				try {
-					GLib.FileUtils.unlink(entry.value.path);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot delete file from real path (%s): %s", entry.value.path, e.message);
+			// Process deleted files (this.monitor.removed)
+			// Sort entries in reverse order (folders deleted after children)
+			var removed_entries = new Gee.ArrayList<string>.wrap(this.monitor.removed.keys.to_array());
+			removed_entries.sort((a, b) => {
+				return strcmp(b, a); // Reverse sort
+			});
+			
+			foreach (var key in removed_entries) {
+				var filebase = this.monitor.removed.get(key);
+				
+				// Set is_deleted flag
+				filebase.is_deleted = true;
+				
+				if (filebase is OLLMfiles.File) {
+					var file = filebase as OLLMfiles.File;
+					
+					// Create backup (all deleted files are in database, id > 0)
+					try {
+						yield file.create_backup();
+					} catch (GLib.Error e) {
+						GLib.warning("Cannot create backup for deleted file (%s): %s", file.path, e.message);
+					}
+					
+					// Delete file from disk
+					try {
+						GLib.FileUtils.unlink(file.path);
+					} catch (GLib.Error e) {
+						GLib.warning("Cannot delete file from real path (%s): %s", file.path, e.message);
+						continue;
+					}
+					
+					// Clear buffer contents to empty (only if buffer already exists)
+					if (file.buffer != null) {
+						try {
+							yield file.buffer.clear();
+						} catch (GLib.Error e) {
+							GLib.warning("Cannot clear buffer for deleted file (%s): %s", file.path, e.message);
+						}
+					}
+					
+					// Save to database
+					if (this.project.manager.db != null) {
+						file.saveToDB(this.project.manager.db, null, false);
+					}
 					continue;
+				}
+				
+				if (!(filebase is OLLMfiles.Folder)) {
+					continue;
+				}
+				
+				// Process deleted folders
+				var folder = filebase as OLLMfiles.Folder;
+				
+				// Delete directory from disk
+				try {
+					this.recursive_delete(folder.path);
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot delete directory from real path (%s): %s", folder.path, e.message);
+					continue;
+				}
+				
+				// Save to database
+				if (this.project.manager.db != null) {
+					folder.saveToDB(this.project.manager.db, null, false);
 				}
 			}
 		}
 
 		/**
+		 * Recursively delete a directory and all its contents.
+		 * 
+		 * @param dir_path Path to directory to delete
+		 * @throws Error if deletion fails
+		 */
+		private void recursive_delete(string dir_path) throws Error
+		{
+			GLib.debug("recursive_delete: attempting to delete %s", dir_path);
+			var dir = GLib.File.new_for_path(dir_path);
+			
+			// Change directory permissions to make it accessible (directories only)
+			try {
+				dir.set_attribute_uint32(
+					GLib.FileAttribute.UNIX_MODE,
+					0755,  // rwxr-xr-x - make directory accessible
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+			} catch (GLib.Error e) {
+				// If we can't change permissions, try to continue anyway
+				GLib.debug("recursive_delete: cannot change permissions on %s: %s", dir_path, e.message);
+			}
+			
+			// Recursively delete directory contents
+			var enumerator = dir.enumerate_children(
+				GLib.FileAttribute.STANDARD_NAME + "," + GLib.FileAttribute.STANDARD_TYPE,
+				GLib.FileQueryInfoFlags.NONE,
+				null
+			);
+			
+			GLib.FileInfo? file_info;
+			while ((file_info = enumerator.next_file(null)) != null) {
+				var child_path = GLib.Path.build_filename(dir_path, file_info.get_name());
+				
+				// Recurse for subdirectories, delete files directly
+				if (file_info.get_file_type() == GLib.FileType.DIRECTORY) {
+					this.recursive_delete(child_path);
+					continue;
+				}
+				GLib.FileUtils.unlink(child_path);
+			}
+			
+			// Delete the directory itself
+			dir.delete(null);
+		}
+
+		/**
 		 * Clean up overlay directory.
 		 * 
-		 * Unmounts the overlay filesystem, unmounts tmpfs from upper directory,
-		 * and removes the remaining overlay directory structure.
-		 * This should be called after copy_files() is complete.
+		 * Recursively deletes the upper directory and removes the remaining overlay
+		 * directory structure. This should be called after copy_files() is complete.
 		 * 
-		 * After unmounting tmpfs, all directories will be empty, so GLib.File.remove()
-		 * can be used to delete them.
+		 * Note: Overlay mounting/unmounting is handled by bubblewrap, so we only
+		 * need to clean up the directory structure.
 		 * 
-		 * @throws GLib.IOError if unmount or directory removal fails
+		 * @throws GLib.IOError if directory removal fails
 		 */
 		public void cleanup() throws Error
 		{
-			// Unmount overlay filesystem (may throw Error, but continue cleanup even if it fails)
+			// Recursively delete upper directory (contains all overlay changes)
 			try {
-				this.exe(this.umount_exe + " " 
-					+ GLib.Path.build_filename(this.overlay_dir, "merged"),
-					"Unmount command");
+				this.recursive_delete(GLib.Path.build_filename(this.overlay_dir, "upper"));
 			} catch (GLib.Error e) {
-				GLib.warning("Unmount failed during cleanup: %s", e.message);
+				GLib.warning("Failed to delete upper directory: %s", e.message);
 			}
 			
-			// Unmount tmpfs from upper directory (automatically cleans up all files)
+			// Recursively delete work directory
 			try {
-				this.exe(this.umount_exe + " "
-					 + GLib.Path.build_filename(this.overlay_dir, "upper"), 
-					 "Unmount tmpfs command");
+				this.recursive_delete(GLib.Path.build_filename(this.overlay_dir, "work"));
 			} catch (GLib.Error e) {
-				GLib.warning("Unmount tmpfs failed during cleanup: %s", e.message);
+				GLib.warning("Failed to delete work directory: %s", e.message);
 			}
 			
-			// Remove remaining overlay directory structure
-			// After unmounting tmpfs, all directories will be empty, so unlink() will work
+			// Try to remove overlay directory (should succeed after work and upper are deleted)
 			try {
-				GLib.FileUtils.unlink(GLib.Path.build_filename(
-						this.overlay_dir, "work"));
-				GLib.FileUtils.unlink(GLib.Path.build_filename(
-						this.overlay_dir, "merged"));
-				GLib.FileUtils.unlink(GLib.Path.build_filename(
-						this.overlay_dir, "upper"));
 				GLib.FileUtils.unlink(this.overlay_dir);
 			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Cannot remove overlay directory: " + e.message);
+				GLib.warning("Failed to remove overlay directory: %s", e.message);
 			}
 		}
 

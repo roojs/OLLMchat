@@ -91,7 +91,7 @@ Examples:
 		return null;
 	}
 
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		// Check if bubblewrap is available
 		if (!OLLMtools.RunCommand.Bubble.can_wrap()) {
@@ -102,8 +102,8 @@ Examples:
 		}
 
 		// Get command from remaining arguments (skip program name)
-		string[] args = command_line.get_arguments();
-		var command = string.joinv(" ", args[1:args.length]);
+		var command = string.joinv(" ", remaining_args[1:remaining_args.length]);
+		GLib.debug("oc-test-bubble: command to execute: %s", command);
 
 		// Create ProjectManager and load project
 		var db = new SQ.Database(null); // In-memory database for testing

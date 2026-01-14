@@ -214,6 +214,11 @@ namespace OLLMfiles
 		public bool is_unsaved { get; set; default = false; }
 		
 		/**
+		 * Whether the file has been deleted (marked for deletion).
+		 */
+		public bool is_deleted { get; set; default = false; }
+		
+		/**
 		 * Whether this folder represents a project (stored in database, default: false).
 		 */
 		public bool is_project { get; set; default = false; }
@@ -276,6 +281,7 @@ namespace OLLMfiles
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
+				"is_deleted INTEGER NOT NULL DEFAULT 0, " +
 				"last_vector_scan INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
@@ -284,6 +290,15 @@ namespace OLLMfiles
 			
 			// Migrate existing databases: add last_vector_scan column if it doesn't exist
 			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add is_deleted column if it doesn't exist
+			migrate_query = "ALTER TABLE filebase ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
@@ -350,7 +365,7 @@ namespace OLLMfiles
 		 * Copies all database-preserved fields (excluding filesystem-derived fields):
 		 * id, is_active, last_viewed, last_modified, language, last_approved_copy_path,
 		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
-		 * is_repo, last_vector_scan.
+		 * is_repo, is_deleted, last_vector_scan.
 		 * 
 		 * Note: base_type is not copied as it's determined by object type and should match.
 		 * 
@@ -375,6 +390,7 @@ namespace OLLMfiles
 			target.is_ignored = this.is_ignored;
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
+			target.is_deleted = this.is_deleted;
 			target.last_vector_scan = this.last_vector_scan;
 		}
 		

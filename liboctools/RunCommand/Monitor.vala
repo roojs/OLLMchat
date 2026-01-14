@@ -27,6 +27,9 @@ namespace OLLMtools.RunCommand
 	 * - File aliases (symlinks): Symlinks are not tracked or resolved
 	 * - File/directory type changes: Deleting a file and replacing it with a directory
 	 * (or vice versa) is not properly handled
+	 * - CRITICAL / URGENT Folder renames: Renaming folders may break add/remove tracking - if a folder is renamed,
+	 * files within it may appear as added/removed rather than moved, causing incorrect backup
+	 * behavior and database state
 	 */
 	public class Monitor : Object
 	{
@@ -131,9 +134,10 @@ namespace OLLMtools.RunCommand
 		{
 			
 			
-			this.is_monitoring = false;
+			
 			
 			Idle.add(() => {
+				this.is_monitoring = false;
 				foreach (var monitor in this.monitors.keys) {
 					if (this.signal_handlers.has_key(monitor)) {
 						monitor.disconnect(this.signal_handlers.get(monitor));
@@ -162,6 +166,8 @@ namespace OLLMtools.RunCommand
 			}
 			
 			var real_path = this.to_real_path(overlay_path);
+			GLib.debug("Monitor.on_file_changed: event=%s, overlay_path=%s, real_path=%s", 
+				event.to_string(), overlay_path, real_path);
 			
 			switch (event) {
 				case GLib.FileMonitorEvent.CREATED:
@@ -211,6 +217,30 @@ namespace OLLMtools.RunCommand
 					this.handle_file_created(overlay_dest_path, real_dest_path);
 					break;
 					
+				case GLib.FileMonitorEvent.MOVED_IN:
+					// In overlayfs, file deletions can appear as MOVED_IN events when whiteout files are created
+					// Check if this is a whiteout file (character device with 0/0 device number)
+					if (this.is_whiteout(overlay_path)) {
+						this.handle_file_deleted(overlay_path, real_path);
+						break;
+					}
+					if (!GLib.FileUtils.test(overlay_path, GLib.FileTest.EXISTS)) {
+						this.handle_file_deleted(overlay_path, real_path);
+						break;
+					}
+					// File exists and is not whiteout, treat as creation
+					if (GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_DIR)) {
+						this.handle_directory_created(overlay_path, real_path);
+					} else {
+						this.handle_file_created(overlay_path, real_path);
+					}
+					break;
+					
+				case GLib.FileMonitorEvent.MOVED_OUT:
+					// File moved out of monitored directory - treat as deletion
+					this.handle_file_deleted(overlay_path, real_path);
+					break;
+					
 				default:
 					break;
 			}
@@ -226,6 +256,8 @@ namespace OLLMtools.RunCommand
 		*/
 		private void handle_directory_created(string overlay_path, string real_path)
 		{
+			GLib.debug("Monitor.handle_directory_created: overlay_path=%s, real_path=%s", overlay_path, real_path);
+			
 			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
 				return;
 			}
@@ -269,6 +301,8 @@ namespace OLLMtools.RunCommand
 		*/
 		private void handle_file_created(string overlay_path, string real_path)
 		{
+			GLib.debug("Monitor.handle_file_created: overlay_path=%s, real_path=%s", overlay_path, real_path);
+			
 			if (this.project_folder.project_files.child_map.has_key(real_path)) {
 				this.updated.set(overlay_path, this.project_folder.project_files.child_map.get(real_path).file);
 				return;
@@ -292,6 +326,8 @@ namespace OLLMtools.RunCommand
 		*/
 		private void handle_file_modified(string overlay_path, string real_path)
 		{
+			GLib.debug("Monitor.handle_file_modified: overlay_path=%s, real_path=%s", overlay_path, real_path);
+			
 			if (this.added.has_key(overlay_path)) {
 				return;
 			}
@@ -323,6 +359,8 @@ namespace OLLMtools.RunCommand
 		*/
 		private void handle_file_deleted(string overlay_path, string real_path)
 		{
+			GLib.debug("Monitor.handle_file_deleted: overlay_path=%s, real_path=%s", overlay_path, real_path);
+			
 			if (this.added.has_key(overlay_path)) {
 				this.added.unset(overlay_path);
 				return;
@@ -373,6 +411,41 @@ namespace OLLMtools.RunCommand
 			);
 		}
 			
+		/**
+		 * Check if a path is a whiteout file (character device with 0/0 device number).
+		 * In overlayfs, whiteout files represent deleted files from the lower layer.
+		 * 
+		 * @param overlay_path Path to check
+		 * @return true if the path is a whiteout file
+		 */
+		private bool is_whiteout(string overlay_path)
+		{
+			try {
+				var file = GLib.File.new_for_path(overlay_path);
+				if (!file.query_exists(null)) {
+					return false;
+				}
+				
+				var info = file.query_info(
+					GLib.FileAttribute.UNIX_RDEV + "," + GLib.FileAttribute.STANDARD_TYPE,
+					GLib.FileQueryInfoFlags.NONE,
+					null
+				);
+				
+				// Check if it's a character device (SPECIAL file type)
+				if (info.get_file_type() != GLib.FileType.SPECIAL) {
+					return false;
+				}
+				
+				// Check if device number is 0/0 (whiteout)
+				// Use UNIX_RDEV (st_rdev) for special files, not UNIX_DEVICE (st_dev)
+				// Device number is 0 when both major and minor are 0 (whiteout)
+				return info.get_attribute_uint32(GLib.FileAttribute.UNIX_RDEV) == 0;
+			} catch (GLib.Error e) {
+				return false;
+			}
+		}
+		
 		/**
 		 * Convert an overlay filesystem path to the corresponding real project path.
 		 */

@@ -533,5 +533,105 @@ namespace OLLMfiles
 			
 			return FileUpdateStatus.NO_CHANGE;
 		}
+		
+		/**
+		 * Create backup of the existing file.
+		 * 
+		 * Copies file from its current path to backup location and updates file metadata.
+		 * Just copies the file - no buffer needed. Buffer can use this method if needed.
+		 * 
+		 * == Backup Location ==
+		 * 
+		 * Backups are stored in: ~/.cache/ollmchat/edited/
+		 * 
+		 * == Backup Naming ==
+		 * 
+		 * Format: {id}-{date YY-MM-DD}-{basename}
+		 * 
+		 * Example: 123-25-01-15-MainWindow.vala
+		 * 
+		 * == Backup Rules ==
+		 * 
+		 *  1. Only for Database Files: Backups are only created for files with id > 0 (in database)
+		 *  2. One Per Day: Only one backup is created per file per day
+		 *  3. Automatic: Backups are created automatically before writing
+		 *  4. Metadata: Backup path is stored in file.last_approved_copy_path
+		 * 
+		 * == Backup Cleanup ==
+		 * 
+		 * Old backups (more than 7 days) are automatically cleaned up:
+		 * 
+		 *  * Triggered after backup creation (runs at most once per day)
+		 *  * Static method: ProjectManager.cleanup_old_backups()
+		 *  * Can also be called manually
+		 * 
+		 * @throws Error if backup creation fails
+		 */
+		public async void create_backup() throws Error
+		{
+			// Only create backup if file is in database (id > 0)
+			if (this.id <= 0) {
+				return;
+			}
+			
+			try {
+				var cache_dir = GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(),
+					".cache",
+					"ollmchat",
+					"edited"
+				);
+				
+				// Create cache directory if it doesn't exist
+				var cache_dir_file = GLib.File.new_for_path(cache_dir);
+				if (!cache_dir_file.query_exists()) {
+					cache_dir_file.make_directory_with_parents(null);
+				}
+				
+				// Generate backup filename with date
+				var basename = GLib.Path.get_basename(this.path);
+				var backup_path = GLib.Path.build_filename(
+					cache_dir,
+					"%lld-%s-%s".printf(
+						this.id,
+						new GLib.DateTime.now_local().format("%y-%m-%d"),
+						basename
+					)
+				);
+				
+				// Check if backup already exists for today
+				var backup_file = GLib.File.new_for_path(backup_path);
+				if (backup_file.query_exists()) {
+					// Backup already exists for today, skip
+					return;
+				}
+				
+				// Create source file object
+				var source_file = GLib.File.new_for_path(this.path);
+				
+				// Copy file synchronously (GLib.File.copy() is synchronous, called from async method)
+				source_file.copy(
+					backup_file,
+					GLib.FileCopyFlags.OVERWRITE,
+					null,
+					null
+				);
+				
+				// Update file's last_approved_copy_path
+				this.last_approved_copy_path = backup_path;
+				
+				// Save file to database
+				if (this.manager.db != null) {
+					this.saveToDB(this.manager.db, null, false);
+				}
+				
+				// Cleanup old backup files (runs at most once per day)
+				ProjectManager.cleanup_old_backups.begin();
+			} catch (GLib.Error e) {
+				GLib.warning("File.create_backup: Failed to create backup for %s: %s", 
+					this.path, e.message);
+				throw e;
+			}
+		}
 	}
 }

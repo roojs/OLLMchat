@@ -106,7 +106,7 @@ Examples:
 		return "Web Fetch Test Tool";
 	}
 	
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		string[] args = command_line.get_arguments();
 		string url = args.length > 1 ? args[1] : "";
