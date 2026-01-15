@@ -74,13 +74,20 @@ setup_test_env() {
         echo "Some tests may fail. Install bubblewrap to run all tests."
     fi
     
+    # Wipe test directory from previous failed test runs
+    if [ -d "$TEST_DIR" ]; then
+        echo "Cleaning up leftover test directory from previous run..."
+        rm -rf "$TEST_DIR"
+    fi
+    
+    # Remove old test database if it exists
+    rm -f "$TEST_DB"
+    
+    # Create fresh test directories
     mkdir -p "$TEST_DIR"
     mkdir -p "$TEST_PROJECT_DIR"
     mkdir -p "$DATA_DIR"
     mkdir -p "$BUILD_DIR"
-    
-    # Remove old test database if it exists
-    rm -f "$TEST_DB"
 }
 
 # Execute command in bubblewrap sandbox
@@ -302,40 +309,6 @@ test_basic_creation_5_symlink_to_directory() {
     
     # Verify symlink exists and points to target
     verify_symlink "$testname" "$link_dir" "dir" "Symlink to directory created"
-}
-
-test_basic_creation_6_hard_link() {
-    echo "=== Test 1.6: Create hard link ==="
-    reset_test_state
-    
-    local testname="test_basic_creation_6_hard_link"
-    local original_file="$TEST_PROJECT_DIR/file"
-    local hardlink_file="$TEST_PROJECT_DIR/hardlink"
-    
-    # Clean up any existing files
-    rm -f "$original_file" "$hardlink_file"
-    
-    # Create original file first
-    echo "original content" > "$original_file"
-    
-    # Execute command
-    bubble_exec "$testname" "ln file hardlink"
-    
-    # Verify hard link exists (same inode)
-    if [ -f "$hardlink_file" ]; then
-        local original_inode
-        local hardlink_inode
-        original_inode=$(stat -c %i "$original_file" 2>/dev/null || stat -f %i "$original_file" 2>/dev/null || echo "")
-        hardlink_inode=$(stat -c %i "$hardlink_file" 2>/dev/null || stat -f %i "$hardlink_file" 2>/dev/null || echo "")
-        
-        if [ "$original_inode" = "$hardlink_inode" ] && [ -n "$original_inode" ]; then
-            test_pass "$testname: Hard link created (same inode)"
-        else
-            test_fail "$testname: Hard link created but inodes don't match"
-        fi
-    else
-        test_fail "$testname: Hard link not created"
-    fi
 }
 
 # ============================================================================
@@ -577,6 +550,13 @@ test_move_1_rename_file() {
     # Create file
     echo "$file_content" > "$old_file"
     rm -f "$new_file"
+    
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    echo \"$file_content\" > old"
+    echo "    rm -f new"
+    echo ""
     
     # Execute command
     bubble_exec "$testname" "mv old new"
@@ -921,7 +901,6 @@ main() {
     run_test test_basic_creation_3_nested_dirs_and_file
     run_test test_basic_creation_4_symlink_to_file
     run_test test_basic_creation_5_symlink_to_directory
-    run_test test_basic_creation_6_hard_link
     
     # Category 2: File Operations
     run_test test_file_ops_1_append

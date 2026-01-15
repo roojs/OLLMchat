@@ -20,9 +20,6 @@ namespace OLLMtools.RunCommand
 {
 	/**
 	 * Manages overlay filesystem creation, mounting, and cleanup for isolating writes during command execution.
-	 * 
-	 * FIXME: This overlay does not handle the following edge cases:
-	 * File aliases (symlinks) Symlinks are copied as regular files (not as symlinks)
 	 */
 	public class Overlay : GLib.Object
 	{
@@ -238,11 +235,10 @@ namespace OLLMtools.RunCommand
 			// Process Monitor change lists
 			// For modified files (this.monitor.updated)
 			foreach (var entry in this.monitor.updated.entries) {
-				var file = entry.value as OLLMfiles.File;
-				if (file == null) {
+				if (entry.value is OLLMfiles.File || entry.value is OLLMfiles.FileAlias) {
+					yield this.file_updated(entry.key, entry.value);
 					continue;
 				}
-				yield this.file_updated(entry.key, file);
 			}
 			
 			// Before processing new files, scan created folders recursively
@@ -266,8 +262,8 @@ namespace OLLMtools.RunCommand
 			foreach (var key in added_entries) {
 				var filebase = this.monitor.added.get(key);
 				
-				if (filebase is OLLMfiles.File) {
-					yield this.file_added(key, filebase as OLLMfiles.File);
+				if (filebase is OLLMfiles.File || filebase is OLLMfiles.FileAlias) {
+					yield this.file_added(key, filebase);
 					continue;
 				}
 				
@@ -353,39 +349,78 @@ namespace OLLMtools.RunCommand
 		 * reloads the buffer if it exists, and updates metadata.
 		 * 
 		 * @param overlay_path Path to file in overlay
-		 * @param file File object representing the updated file
+		 * @param filebase FileBase object (File or FileAlias) representing the updated file
 		 */
-		private async void file_updated(string overlay_path, OLLMfiles.File file)
+		private async void file_updated(string overlay_path, OLLMfiles.FileBase filebase)
 		{
+			var file = filebase as OLLMfiles.File;
+			
 			// Create FileHistory object for this change
 			try {
 				var file_history = new OLLMfiles.FileHistory(
 					this.project.manager.db,
-					file,
+					filebase,
 					"modified",
 					this.command_timestamp
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
-				GLib.warning("Cannot create FileHistory for modified file (%s): %s", file.path, e.message);
+				GLib.warning("Cannot create FileHistory for modified file (%s): %s", filebase.path, e.message);
 			}
 			
-			// Copy modified file from overlay to real path
+			// Check if filebase is a symlink (FileAlias)
+			// Monitor ensures type matches, so if filebase is FileAlias, overlay is also a symlink
+			if (filebase is OLLMfiles.FileAlias) {
+				// Handle symlink: read target and create symlink
+				try {
+					string? symlink_target = GLib.FileUtils.read_link(overlay_path);
+					if (symlink_target == null) {
+						GLib.warning("Cannot read symlink target from overlay (%s)", overlay_path);
+						return;
+					}
+					
+					// Rationalize symlink target: if it's an absolute path pointing to overlay,
+					// convert it to the corresponding real path
+					if (GLib.Path.is_absolute(symlink_target)) {
+						symlink_target = this.monitor.to_real_path(symlink_target);
+					}
+					
+					// Remove existing file/symlink if it exists
+					if (GLib.FileUtils.test(filebase.path, GLib.FileTest.EXISTS)) {
+						GLib.FileUtils.unlink(filebase.path);
+					}
+					
+					// Create symlink in real filesystem
+					GLib.debug("Overlay.file_updated: creating symlink '%s' -> '%s'", filebase.path, symlink_target);
+					Posix.symlink(symlink_target, filebase.path);
+					
+					// Copy file permissions (existing)
+					this.copy_permissions(overlay_path, filebase.path);
+					
+					// Symlinks don't have buffers, so we're done
+					return;
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create symlink from overlay to real path (%s -> %s): %s", 
+						overlay_path, filebase.path, e.message);
+					return;
+				}
+			} 
+			// Handle regular file: copy from overlay to real path
 			try {
 				GLib.File.new_for_path(overlay_path).copy(
-					GLib.File.new_for_path(file.path),
+					GLib.File.new_for_path(filebase.path),
 					GLib.FileCopyFlags.OVERWRITE,
 					null,
 					null
 				);
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
-					overlay_path, file.path, e.message);
+					overlay_path, filebase.path, e.message);
 				return;
 			}
 			
 			// Copy file permissions (existing)
-			this.copy_permissions(overlay_path, file.path);
+			this.copy_permissions(overlay_path, filebase.path);
 			
 			// Reload buffer with new content (only if buffer already exists)
 			if (file.buffer != null) {
@@ -407,44 +442,88 @@ namespace OLLMtools.RunCommand
 		 * fake file to real file in ProjectManager.
 		 * 
 		 * @param overlay_path Path to file in overlay
-		 * @param file File object representing the added file
+		 * @param filebase FileBase object (File or FileAlias) representing the added file
 		 */
-		private async void file_added(string overlay_path, OLLMfiles.File file)
+		private async void file_added(string overlay_path, OLLMfiles.FileBase filebase)
 		{
 			// Create FileHistory object for this change
 			// For new files, filebase_id will be 0 (file doesn't have id yet)
+			// Note: FileHistory.commit() only creates backups for "modified" or "deleted" files,
+			// not for "added" files, so symlinks won't trigger backup creation
 			try {
 				var file_history = new OLLMfiles.FileHistory(
 					this.project.manager.db,
-					file,
+					filebase,
 					"added",
 					this.command_timestamp
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
-				GLib.warning("Cannot create FileHistory for added file (%s): %s", file.path, e.message);
+				GLib.warning("Cannot create FileHistory for added file (%s): %s", filebase.path, e.message);
 			}
 			
-			// Copy file from overlay to real path first
+			// Check if filebase is a symlink (FileAlias)
+			// Monitor creates FileAlias objects for symlinks, so if filebase is FileAlias, overlay is also a symlink
+			if (filebase is OLLMfiles.FileAlias) {
+				// Handle symlink: read target and create symlink
+				try {
+					string? symlink_target = GLib.FileUtils.read_link(overlay_path);
+					if (symlink_target == null) {
+						GLib.warning("Cannot read symlink target from overlay (%s)", overlay_path);
+						return;
+					}
+					
+					// Rationalize symlink target: if it's an absolute path pointing to overlay,
+					// convert it to the corresponding real path
+					if (GLib.Path.is_absolute(symlink_target)) {
+						symlink_target = this.monitor.to_real_path(symlink_target);
+					}
+					
+					// Ensure parent directory exists - not neeed by design.
+					
+					// Remove existing file/symlink if it exists
+					if (GLib.FileUtils.test(filebase.path, GLib.FileTest.EXISTS)) {
+						GLib.FileUtils.unlink(filebase.path);
+					}
+					
+					// Create symlink in real filesystem
+					GLib.debug("Overlay.file_added: creating symlink '%s' -> '%s'", filebase.path, symlink_target);
+					Posix.symlink(symlink_target, filebase.path);
+					
+					// Copy file permissions (existing)
+					this.copy_permissions(overlay_path, filebase.path);
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create symlink from overlay to real path (%s -> %s): %s", 
+						overlay_path, filebase.path, e.message);
+					return;
+				}
+				return;
+			}
+			
+			// Handle regular file: copy from overlay to real path
 			// convert_fake_file_to_real() handles parent directory creation via make_children()
 			try {
 				GLib.File.new_for_path(overlay_path).copy(
-					GLib.File.new_for_path(file.path),
+					GLib.File.new_for_path(filebase.path),
 					GLib.FileCopyFlags.OVERWRITE,
 					null,
 					null
 				);
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
-					overlay_path, file.path, e.message);
+					overlay_path, filebase.path, e.message);
 				return;
 			}
 			
 			// Copy file permissions (existing)
-			this.copy_permissions(overlay_path, file.path);
+			this.copy_permissions(overlay_path, filebase.path);
+			
 			
 			// Create fake file and convert to real (existing method handles parent directory creation)
 			// Ignored files still need to be saved to DB
+			// Only do this for File objects, not FileAlias (FileAlias is already a real object)
+			var file = filebase as OLLMfiles.File;
+			
 			try {
 				var fake_file = new OLLMfiles.File.new_fake(this.project.manager, file.path);
 				yield this.project.manager.convert_fake_file_to_real(fake_file, file.path);
@@ -572,6 +651,7 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void folder_removed(OLLMfiles.Folder folder)
 		{
+			GLib.debug("remove %s", folder.path);
 			// Create FileHistory object for this change
 			try {
 				var file_history = new OLLMfiles.FileHistory(

@@ -129,8 +129,14 @@ Examples:
 		// Add project to manager's projects list
 		project_manager.projects.append(project);
 		
+		// Disable background recursion for testing (ensure it's off)
+		OLLMfiles.Folder.background_recurse = false;
+		
 		// Load project files - this builds the folder_map with all parent folders
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Restore previous background setting
+		
 		yield project.load_files_from_db();
 		
 		// Update ProjectFiles to ensure folder_map is populated with all folders
