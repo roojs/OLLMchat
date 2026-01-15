@@ -332,7 +332,7 @@ namespace OLLMfiles
 		 * @param new_items List to populate with newly created FileBase objects
 		 * @throws Error if directory enumeration fails
 		 */
-		private void enumerate_directory_contents(GLib.File dir, Gee.ArrayList<FileBase> new_items) throws Error
+		public void enumerate_directory_contents(GLib.File dir, Gee.ArrayList<FileBase> new_items) throws Error
 		{
 			// Execute directory enumeration
 			var enumerator = dir.enumerate_children(

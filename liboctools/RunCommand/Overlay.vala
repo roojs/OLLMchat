@@ -245,6 +245,17 @@ namespace OLLMtools.RunCommand
 				yield this.file_updated(entry.key, file);
 			}
 			
+			// Before processing new files, scan created folders recursively
+			// to catch any files that were created before the monitor could detect them
+			// Make a copy of entries to avoid modifying added while iterating
+			var check = new Gee.HashMap<string, OLLMfiles.FileBase>();
+			foreach (var key in this.monitor.added.keys) {
+				check.set(key, this.monitor.added.get(key));
+			}
+			foreach (var key in check.keys) {
+				this.scan_folder(key, check.get(key));
+			}
+			
 			// Process new files (this.monitor.added)
 			// Sort entries by path (to ensure parent directories are created naturally)
 			var added_entries = new Gee.ArrayList<string>.wrap(this.monitor.added.keys.to_array());
@@ -263,6 +274,74 @@ namespace OLLMtools.RunCommand
 				if (filebase is OLLMfiles.Folder) {
 					yield this.folder_added(key, filebase as OLLMfiles.Folder);
 					continue;
+				}
+			}
+		}
+
+		/**
+		 * Scan a folder recursively to find files that were created before
+		 * the monitor could detect them.
+		 * 
+		 * @param overlay_path Overlay path to the folder/file
+		 * @param filebase FileBase object (Folder or File) from monitor.added
+		 */
+		private void scan_folder(string overlay_path, OLLMfiles.FileBase filebase)
+		{
+			if (!(filebase is OLLMfiles.Folder)) {
+				return;
+			}
+			
+			var folder = filebase as OLLMfiles.Folder;
+			var overlay_folder = new OLLMfiles.Folder(this.project.manager) {
+				path = overlay_path
+			};
+			
+			var overlay_dir = GLib.File.new_for_path(overlay_path);
+			if (!overlay_dir.query_exists()) {
+				return;
+			}
+			
+			var overlay_items = new Gee.ArrayList<OLLMfiles.FileBase>();
+			try {
+				overlay_folder.enumerate_directory_contents(overlay_dir, overlay_items);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot enumerate overlay folder %s: %s", overlay_path, e.message);
+				return;
+			}
+			
+			foreach (var add_item in overlay_items) {
+				var overlay_item_path = add_item.path;
+				
+				if (this.monitor.added.has_key(overlay_item_path)) {
+					continue;
+				}
+				
+				add_item.path = this.monitor.to_real_path(overlay_item_path);
+				add_item.parent = folder;
+				add_item.parent_id = folder.id;
+				add_item.is_ignored = folder.is_ignored;
+				
+				if (add_item.is_ignored || !this.project.manager.git_provider.repository_exists(folder) || add_item is OLLMfiles.Folder) {
+					this.monitor.added.set(overlay_item_path, add_item);
+					if (add_item is OLLMfiles.Folder) {
+						this.scan_folder(overlay_item_path, add_item);
+					}
+					continue;
+				}
+				
+				var workdir_path = this.project.manager.git_provider.get_workdir_path(folder);
+				if (workdir_path != null && add_item.path.has_prefix(workdir_path)) {
+					var relative_path = add_item.path.substring(workdir_path.length);
+					if (relative_path.has_prefix("/")) {
+						relative_path = relative_path.substring(1);
+					}
+					add_item.is_ignored = this.project.manager.git_provider.path_is_ignored(folder, relative_path);
+				}
+				
+				this.monitor.added.set(overlay_item_path, add_item);
+				
+				if (add_item is OLLMfiles.Folder) {
+					this.scan_folder(overlay_item_path, add_item);
 				}
 			}
 		}
@@ -587,6 +666,7 @@ namespace OLLMtools.RunCommand
 		public void cleanup() throws Error
 		{
 			// Recursively delete upper directory (contains all overlay changes)
+			GLib.debug("cleanup");
 			try {
 				this.recursive_delete(GLib.Path.build_filename(this.overlay_dir, "upper"));
 			} catch (GLib.Error e) {
@@ -602,7 +682,7 @@ namespace OLLMtools.RunCommand
 			
 			// Try to remove overlay directory (should succeed after work and upper are deleted)
 			try {
-				GLib.FileUtils.unlink(this.overlay_dir);
+				GLib.FileUtils.remove(this.overlay_dir);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to remove overlay directory: %s", e.message);
 			}

@@ -270,7 +270,7 @@ namespace OLLMtools.RunCommand
 			GLib.FileInfo folder_info;
 			try {
 				folder_info = GLib.File.new_for_path(overlay_path).query_info(
-					GLib.FileAttribute.TIME_MODIFIED,
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," + GLib.FileAttribute.TIME_MODIFIED,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);

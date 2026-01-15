@@ -465,14 +465,16 @@ namespace OLLMfiles
 				return null; // Target doesn't exist
 			}
 			
-			try {
-				return target_file_obj.query_info(
-					GLib.FileAttribute.STANDARD_TYPE + "," +
-					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-					GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
+		try {
+			return target_file_obj.query_info(
+				GLib.FileAttribute.STANDARD_TYPE + "," +
+				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
+				GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+				GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
+				GLib.FileAttribute.TIME_MODIFIED,
+				GLib.FileQueryInfoFlags.NONE,
+				null
+			);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to get target info for %s: %s", target_path, e.message);
 				return null;

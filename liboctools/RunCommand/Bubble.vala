@@ -375,9 +375,14 @@ namespace OLLMtools.RunCommand
 			if (!subprocess.get_successful()) {
 				exit_status = subprocess.get_exit_status();
 			}
-			// Clean up watches
-			GLib.Source.remove(stdout_watch);
-			GLib.Source.remove(stderr_watch);
+			// Clean up watches - only remove if they haven't been removed already
+			// (watch callbacks remove themselves when HUP/ERR is detected)
+			if (stdout_open) {
+				GLib.Source.remove(stdout_watch);
+			}
+			if (stderr_open) {
+				GLib.Source.remove(stderr_watch);
+			}
 			throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 		}
 		
@@ -393,9 +398,14 @@ namespace OLLMtools.RunCommand
 			this.read_from_channel(stderr_ch, false);
 		}
 		
-		// Clean up watches
-		GLib.Source.remove(stdout_watch);
-		GLib.Source.remove(stderr_watch);
+		// Clean up watches - only remove if they haven't been removed already
+		// (watch callbacks remove themselves when HUP/ERR is detected)
+		if (stdout_open) {
+			GLib.Source.remove(stdout_watch);
+		}
+		if (stderr_open) {
+			GLib.Source.remove(stderr_watch);
+		}
 		
 		// Build failure string (stderr + stdout + exit code) for failure case
 		// fail_str already contains stderr, now add stdout

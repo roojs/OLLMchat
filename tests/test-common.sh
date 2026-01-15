@@ -465,8 +465,30 @@ test_exe() {
             return 1
         fi
     else
-        # Expected file doesn't exist - just log a note to stderr
-        echo -e "${YELLOW}Note: Expected stdout file not found: $expected_file (skipping stdout comparison)${NC}" >&2
+        # Expected file doesn't exist - only warn if there's actual command output
+        # Filter out wrapper debug lines, BACKUP lines, and log messages to check for real output
+        if [ -f "$output_file" ]; then
+            # Remove wrapper debug lines, BACKUP lines, and log messages (timestamp patterns), then check if anything remains
+            local actual_content=$(cat "$output_file" | tr -d '\r' | \
+                grep -v "^BACKUP:" | \
+                grep -v "^Executing command in sandbox:" | \
+                grep -v "^Project:" | \
+                grep -v "^Allow network:" | \
+                grep -v "^--- Output ---" | \
+                grep -v "^--- End Output ---" | \
+                grep -v "^--- Debug Info ---" | \
+                grep -v "^ret_str length:" | \
+                grep -v "^fail_str length:" | \
+                grep -vE "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?:" | \
+                grep -vE "^\\*\\* .* \\*\\*:" | \
+                grep -vE "G_LOG_LEVEL" | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [ -n "$actual_content" ]; then
+                # There's actual command output but no expected file - this might be a missing expected file
+                echo -e "${YELLOW}Note: Expected stdout file not found: $expected_file (skipping stdout comparison)${NC}" >&2
+            fi
+            # If actual_content is empty after filtering, don't show any message - no command output is expected
+        fi
     fi
     
     # Return the output content (to stdout, so it can be captured)

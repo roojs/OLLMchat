@@ -20,6 +20,7 @@ class TestBubble : TestAppBase
 {
 	private static string? opt_project = null;
 	private static bool opt_allow_network = false;
+	private static string? opt_test_db = null;
 
 	protected const string help = """
 Usage: {ARG} --project=DIR <command>
@@ -29,6 +30,7 @@ Test tool for Bubble class (bubblewrap sandboxing).
 Options:
   --project=DIR              Project directory path (required)
   --allow-network            Allow network access (default: false)
+  --test-db=PATH              Use test database instead of in-memory (optional, for testing only)
 
 Arguments:
   command                    Command to execute in sandbox
@@ -37,6 +39,7 @@ Examples:
   {ARG} --project=/path/to/project "ls -la"
   {ARG} --project=/path/to/project "echo hello"
   {ARG} --project=/path/to/project --allow-network "curl https://example.com"
+  {ARG} --project=/path/to/project --test-db=/tmp/test.db "ls -la"
 """;
 
 	public TestBubble()
@@ -52,6 +55,7 @@ Examples:
 	private const OptionEntry[] local_options = {
 		{ "project", 'p', 0, OptionArg.STRING, ref opt_project, "Project directory path", "DIR" },
 		{ "allow-network", 0, 0, OptionArg.NONE, ref opt_allow_network, "Allow network access", null },
+		{ "test-db", 0, 0, OptionArg.STRING, ref opt_test_db, "Specify test database path (optional, for testing only)", "PATH" },
 		{ null }
 	};
 
@@ -105,18 +109,33 @@ Examples:
 		var command = string.joinv(" ", remaining_args[1:remaining_args.length]);
 		GLib.debug("oc-test-bubble: command to execute: %s", command);
 
+		// Determine database path
+		string? db_path = null;
+		if (opt_test_db != null && opt_test_db != "") {
+			db_path = opt_test_db;
+		}
+		// If db_path is null, use in-memory database (default behavior)
+
 		// Create ProjectManager and load project
-		var db = new SQ.Database(null); // In-memory database for testing
+		var db = new SQ.Database(db_path, false);
 		var project_manager = new OLLMfiles.ProjectManager(db);
+		// Note: git_provider defaults to GitProviderBase (dummy implementation) - no need to set it
 		
 		// Create project folder
 		var project = new OLLMfiles.Folder(project_manager);
 		project.path = opt_project;
 		project.is_project = true;
 		
-		// Load project files
+		// Add project to manager's projects list
+		project_manager.projects.append(project);
+		
+		// Load project files - this builds the folder_map with all parent folders
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
 		yield project.load_files_from_db();
+		
+		// Update ProjectFiles to ensure folder_map is populated with all folders
+		// This is critical - Monitor needs parent folders to exist in folder_map
+		project.project_files.update_from(project);
 
 		// Create Bubble instance
 		var bubble = new OLLMtools.RunCommand.Bubble(project, opt_allow_network);
