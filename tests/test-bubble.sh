@@ -45,6 +45,12 @@ DATA_DIR="$SCRIPT_DIR/data"
 # Export TEST_DB for test-common.sh reset_test_state function
 export TEST_DB
 
+# Variables to track failed test for debug re-run
+FAILED_TEST_FUNC=""
+FAILED_TEST_COMMAND=""
+FAILED_TEST_NAME=""
+DEBUG_RERUN=false
+
 # Cleanup function
 cleanup() {
     if [ $? -eq 0 ]; then
@@ -98,11 +104,27 @@ bubble_exec() {
     local expected_output_file="${3:-}"
     local output_file="$TEST_DIR/${testname}-stdout.txt"
     
+    # Store command for potential debug re-run (if stop-on-failure is enabled and not already in debug rerun)
+    if [ "$STOP_ON_FAILURE" = true ] && [ "$DEBUG_RERUN" = false ]; then
+        FAILED_TEST_COMMAND="$command"
+        FAILED_TEST_NAME="$testname"
+    fi
+    
     # Build the full command with test database
-    local test_cmd="\"$OC_TEST_BUBBLE\" --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+    local debug_flag=""
+    if [ "$DEBUG_RERUN" = true ]; then
+        debug_flag="--debug "
+        output_file="$TEST_DIR/${testname}-stdout-debug.txt"
+    fi
+    
+    local test_cmd="\"$OC_TEST_BUBBLE\" ${debug_flag}--project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
     
     # Print the command being executed
-    echo "  Running: $OC_TEST_BUBBLE --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+    if [ "$DEBUG_RERUN" = true ]; then
+        echo "  Running (DEBUG): $OC_TEST_BUBBLE --debug --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+    else
+        echo "  Running: $OC_TEST_BUBBLE --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+    fi
     
     # Execute command via oc-test-bubble
     test_exe "$testname" "$test_cmd" "$output_file" "$testname" "$DATA_DIR"
@@ -867,9 +889,45 @@ run_test() {
     local test_func="$1"
     
     if [ "$STOP_ON_FAILURE" = true ]; then
+        # Store test function name for potential debug re-run
+        FAILED_TEST_FUNC="$test_func"
+        
         # Stop on first failure
         "$test_func" || {
-            cleanup
+            # Test failed - prepare for debug re-run
+            echo ""
+            echo -e "${YELLOW}Test failed. Preparing debug re-run...${NC}"
+            
+            # Clear environment
+            echo "  Clearing test environment..."
+            if [ -d "$TEST_DIR" ]; then
+                rm -rf "$TEST_DIR"
+            fi
+            rm -f "$TEST_DB"
+            
+            # Reset up precursor for the test
+            echo "  Resetting test environment..."
+            setup_test_env
+            reset_test_state
+            
+            # Re-run the entire test function with debug enabled
+            echo ""
+            echo -e "${YELLOW}Re-running failed test with --debug:${NC}"
+            echo "  Test function: $test_func"
+            echo ""
+            
+            # Set debug rerun flag so bubble_exec uses --debug
+            DEBUG_RERUN=true
+            
+            # Re-run the test function (this will include all setup and the command with --debug)
+            # Suppress test failures during debug rerun - we just want to see the output
+            set +e
+            "$test_func" 2>&1 || true
+            set -e
+            
+            # Reset debug flag
+            DEBUG_RERUN=false
+            
             echo ""
             echo -e "${RED}Stopping on first failure (--stop-on-failure enabled)${NC}"
             print_test_summary
