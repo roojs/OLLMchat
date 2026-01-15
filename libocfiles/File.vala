@@ -568,7 +568,7 @@ namespace OLLMfiles
 		 * Old backups (more than 7 days) are automatically cleaned up:
 		 * 
 		 *  * Triggered after backup creation (runs at most once per day)
-		 *  * Static method: ProjectManager.cleanup_old_backups()
+		 *  * Static method: FileHistory.cleanup_old_backups()
 		 *  * Can also be called manually
 		 * 
 		 * @throws Error if backup creation fails
@@ -635,7 +635,7 @@ namespace OLLMfiles
 				}
 				
 				// Cleanup old backup files (runs at most once per day)
-				ProjectManager.cleanup_old_backups.begin();
+				FileHistory.cleanup_old_backups.begin();
 			} catch (GLib.Error e) {
 				GLib.warning("File.create_backup: Failed to create backup for %s: %s", 
 					this.path, e.message);

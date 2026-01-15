@@ -46,6 +46,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/FileChange.vala',  # Must come after FileBuffer (FileBuffer uses FileChange)
     '../libocfiles/DummyFileBuffer.vala',
     '../libocfiles/FileBase.vala',
+    '../libocfiles/FileHistory.vala',  # Uses FileBase
     '../libocfiles/File.vala',
     '../libocfiles/FileAlias.vala',
     '../libocfiles/Folder.vala',

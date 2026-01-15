@@ -259,7 +259,7 @@ namespace OLLMfiles
 		/**
 		 * Initialize database table for filebase objects.
 		 */
-		public static void initDB(SQ.Database db)
+		public static void init_db(SQ.Database db)
 		{
 			string errmsg;
 			var query = "CREATE TABLE IF NOT EXISTS filebase (" +

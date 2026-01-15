@@ -472,7 +472,7 @@ PROJECT_PATH: $(manager.active_project.path)
 	{
 		// Note: cleanup_old_backups is static and uses hardcoded 7 days
 		// We can't override the age, but we can call it
-		yield OLLMfiles.ProjectManager.cleanup_old_backups();
+		yield OLLMfiles.FileHistory.cleanup_old_backups();
 		
 		var cache_dir = GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(),

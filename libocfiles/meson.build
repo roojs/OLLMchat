@@ -24,6 +24,7 @@ ocfiles_src = files([
   'FileChange.vala',
   'DummyFileBuffer.vala',
   'FileBase.vala',
+  'FileHistory.vala',  # Uses FileBase
   'File.vala',
   'FileAlias.vala',
   'Folder.vala',
