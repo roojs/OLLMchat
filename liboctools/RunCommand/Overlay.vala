@@ -205,153 +205,7 @@ namespace OLLMtools.RunCommand
 			// Stop Monitor (existing)
 			yield this.monitor.stop();
 			
-			// Process Monitor change lists
-			// For modified files (this.monitor.updated)
-			foreach (var entry in this.monitor.updated.entries) {
-				var file = entry.value as OLLMfiles.File;
-				if (file == null) {
-					continue;
-				}
-				
-				// Create backup (all modified files are in database, id > 0)
-				try {
-					yield file.create_backup();
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot create backup for file (%s): %s", file.path, e.message);
-				}
-				
-				// Copy modified file from overlay to real path
-				try {
-					GLib.File.new_for_path(entry.key).copy(
-						GLib.File.new_for_path(file.path),
-						GLib.FileCopyFlags.OVERWRITE,
-						null,
-						null
-					);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
-						entry.key, file.path, e.message);
-					continue;
-				}
-				
-				// Copy file permissions (existing)
-				this.copy_permissions(entry.key, file.path);
-				
-				// Reload buffer with new content (only if buffer already exists)
-				if (file.buffer != null) {
-					try {
-						yield file.buffer.read_async();
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot reload buffer for file (%s): %s", file.path, e.message);
-					}
-				}
-				
-				// Update metadata (existing method)
-				this.project.manager.on_file_contents_change(file);
-			}
-			
-			// Process new files (this.monitor.added)
-			// Sort entries by path (to ensure parent directories are created naturally)
-			var added_entries = new Gee.ArrayList<string>.wrap(this.monitor.added.keys.to_array());
-			added_entries.sort((a, b) => {
-				return strcmp(a, b);
-			});
-			
-			foreach (var key in added_entries) {
-				var filebase = this.monitor.added.get(key);
-				
-				if (filebase is OLLMfiles.File) {
-					// Process files
-					// Copy file from overlay to real path first
-					// convert_fake_file_to_real() handles parent directory creation via make_children()
-					try {
-						GLib.File.new_for_path(key).copy(
-							GLib.File.new_for_path(filebase.path),
-							GLib.FileCopyFlags.OVERWRITE,
-							null,
-							null
-						);
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
-							key, filebase.path, e.message);
-						continue;
-					}
-					
-					// Copy file permissions (existing)
-					this.copy_permissions(key, filebase.path);
-					
-					// Create fake file and convert to real (existing method handles parent directory creation)
-					try {
-						var fake_file = new OLLMfiles.File.new_fake(this.project.manager, filebase.path);
-						yield this.project.manager.convert_fake_file_to_real(fake_file, filebase.path);
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot convert fake file to real (%s): %s", filebase.path, e.message);
-					}
-					continue;
-				}
-				
-				if (!(filebase is OLLMfiles.Folder)) {
-					continue;
-				}
-				
-				// Process folders - create directory on disk and add to ProjectManager
-				var folder = filebase as OLLMfiles.Folder;
-				
-				// Create directory on disk (parent directories already exist due to sorting)
-				try {
-					GLib.File.new_for_path(filebase.path).make_directory(null);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot create directory (%s): %s", filebase.path, e.message);
-					continue;
-				}
-				
-				// Copy directory permissions (existing)
-				this.copy_permissions(key, filebase.path);
-				
-				// Add folder to project tree (use existing folder object from Monitor)
-				var parent_dir_path = GLib.Path.get_dirname(filebase.path);
-				var found_base_folder = this.project.project_files.find_container_of(parent_dir_path);
-				if (found_base_folder == null) {
-					// Folder is outside project - save directly if it has an id
-					if (folder.id > 0 && this.project.manager.db != null) {
-						folder.saveToDB(this.project.manager.db, null, false);
-					}
-					continue;
-				}
-				
-				// Ensure parent folder chain exists (creates missing parents)
-				// Pass a dummy file path in the parent to ensure parent exists without creating our folder
-				var dummy_file_in_parent = GLib.Path.build_filename(parent_dir_path, ".dummy");
-				var parent_folder = yield found_base_folder.make_children(dummy_file_in_parent);
-				if (parent_folder == null) {
-					GLib.warning("Cannot create parent folder chain for (%s)", filebase.path);
-					continue;
-				}
-				
-				// Check if folder already exists in parent's children
-				var folder_name = GLib.Path.get_basename(filebase.path);
-				if (parent_folder.children.child_map.has_key(folder_name)) {
-					// Folder already exists in project tree - skip
-					continue;
-				}
-				
-				// Use existing folder object from Monitor - set parent and add to project tree
-				folder.parent = parent_folder;
-				folder.parent_id = parent_folder.id;
-				parent_folder.children.append(folder);
-				
-				// Add to project's folder_map
-				this.project.project_files.folder_map.set(folder.path, folder);
-				
-				// Save to database
-				if (this.project.manager.db != null) {
-					folder.saveToDB(this.project.manager.db, null, false);
-				} else {
-					this.project.manager.file_cache.set(folder.path, folder);
-				}
-			}
-			
-			// Process deleted files (this.monitor.removed)
+			// Process deleted files FIRST (this.monitor.removed)
 			// Sort entries in reverse order (folders deleted after children)
 			var removed_entries = new Gee.ArrayList<string>.wrap(this.monitor.removed.keys.to_array());
 			removed_entries.sort((a, b) => {
@@ -365,59 +219,258 @@ namespace OLLMtools.RunCommand
 				filebase.is_deleted = true;
 				
 				if (filebase is OLLMfiles.File) {
-					var file = filebase as OLLMfiles.File;
-					
-					// Create backup (all deleted files are in database, id > 0)
-					try {
-						yield file.create_backup();
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot create backup for deleted file (%s): %s", file.path, e.message);
-					}
-					
-					// Delete file from disk
-					try {
-						GLib.FileUtils.unlink(file.path);
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot delete file from real path (%s): %s", file.path, e.message);
-						continue;
-					}
-					
-					// Clear buffer contents to empty (only if buffer already exists)
-					if (file.buffer != null) {
-						try {
-							yield file.buffer.clear();
-						} catch (GLib.Error e) {
-							GLib.warning("Cannot clear buffer for deleted file (%s): %s", file.path, e.message);
-						}
-					}
-					
-					// Save to database
-					if (this.project.manager.db != null) {
-						file.saveToDB(this.project.manager.db, null, false);
-					}
+					yield this.file_removed(filebase as OLLMfiles.File);
 					continue;
 				}
 				
-				if (!(filebase is OLLMfiles.Folder)) {
+				if (filebase is OLLMfiles.Folder) {
+					yield this.folder_removed(filebase as OLLMfiles.Folder);
 					continue;
-				}
-				
-				// Process deleted folders
-				var folder = filebase as OLLMfiles.Folder;
-				
-				// Delete directory from disk
-				try {
-					this.recursive_delete(folder.path);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot delete directory from real path (%s): %s", folder.path, e.message);
-					continue;
-				}
-				
-				// Save to database
-				if (this.project.manager.db != null) {
-					folder.saveToDB(this.project.manager.db, null, false);
 				}
 			}
+			
+			// Process Monitor change lists
+			// For modified files (this.monitor.updated)
+			foreach (var entry in this.monitor.updated.entries) {
+				var file = entry.value as OLLMfiles.File;
+				if (file == null) {
+					continue;
+				}
+				yield this.file_updated(entry.key, file);
+			}
+			
+			// Process new files (this.monitor.added)
+			// Sort entries by path (to ensure parent directories are created naturally)
+			var added_entries = new Gee.ArrayList<string>.wrap(this.monitor.added.keys.to_array());
+			added_entries.sort((a, b) => {
+				return strcmp(a, b);
+			});
+			
+			foreach (var key in added_entries) {
+				var filebase = this.monitor.added.get(key);
+				
+				if (filebase is OLLMfiles.File) {
+					yield this.file_added(key, filebase as OLLMfiles.File);
+					continue;
+				}
+				
+				if (filebase is OLLMfiles.Folder) {
+					yield this.folder_added(key, filebase as OLLMfiles.Folder);
+					continue;
+				}
+			}
+		}
+
+		/**
+		 * Handle an updated file from overlay.
+		 * 
+		 * Creates a backup, copies the file from overlay to real path, copies permissions,
+		 * reloads the buffer if it exists, and updates metadata.
+		 * 
+		 * @param overlay_path Path to file in overlay
+		 * @param file File object representing the updated file
+		 */
+		private async void file_updated(string overlay_path, OLLMfiles.File file)
+		{
+			// Create backup (all modified files are in database, id > 0)
+			// Skip backup for ignored files
+			if (!file.is_ignored) {
+				try {
+					yield file.create_backup();
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create backup for file (%s): %s", file.path, e.message);
+				}
+			}
+			
+			// Copy modified file from overlay to real path
+			try {
+				GLib.File.new_for_path(overlay_path).copy(
+					GLib.File.new_for_path(file.path),
+					GLib.FileCopyFlags.OVERWRITE,
+					null,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
+					overlay_path, file.path, e.message);
+				return;
+			}
+			
+			// Copy file permissions (existing)
+			this.copy_permissions(overlay_path, file.path);
+			
+			// Reload buffer with new content (only if buffer already exists)
+			if (file.buffer != null) {
+				try {
+					yield file.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot reload buffer for file (%s): %s", file.path, e.message);
+				}
+			}
+			
+			// Update metadata (existing method)
+			this.project.manager.on_file_contents_change(file);
+		}
+
+		/**
+		 * Handle a new file added to overlay.
+		 * 
+		 * Copies the file from overlay to real path, copies permissions, and converts
+		 * fake file to real file in ProjectManager.
+		 * 
+		 * @param overlay_path Path to file in overlay
+		 * @param file File object representing the added file
+		 */
+		private async void file_added(string overlay_path, OLLMfiles.File file)
+		{
+			// Copy file from overlay to real path first
+			// convert_fake_file_to_real() handles parent directory creation via make_children()
+			try {
+				GLib.File.new_for_path(overlay_path).copy(
+					GLib.File.new_for_path(file.path),
+					GLib.FileCopyFlags.OVERWRITE,
+					null,
+					null
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot copy file from overlay to real path (%s -> %s): %s", 
+					overlay_path, file.path, e.message);
+				return;
+			}
+			
+			// Copy file permissions (existing)
+			this.copy_permissions(overlay_path, file.path);
+			
+			// Create fake file and convert to real (existing method handles parent directory creation)
+			// Ignored files still need to be saved to DB
+			try {
+				var fake_file = new OLLMfiles.File.new_fake(this.project.manager, file.path);
+				yield this.project.manager.convert_fake_file_to_real(fake_file, file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot convert fake file to real (%s): %s", file.path, e.message);
+			}
+		}
+
+		/**
+		 * Handle a new folder added to overlay.
+		 * 
+		 * Creates the directory on disk, copies permissions, and adds the folder
+		 * to the project tree in ProjectManager.
+		 * 
+		 * @param overlay_path Path to folder in overlay
+		 * @param folder Folder object representing the added folder
+		 */
+		private async void folder_added(string overlay_path, OLLMfiles.Folder folder)
+		{
+			// Create directory on disk (parent directories already exist due to sorting)
+			try {
+				GLib.File.new_for_path(folder.path).make_directory(null);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create directory (%s): %s", folder.path, e.message);
+				return;
+			}
+			
+			// Copy directory permissions (existing)
+			this.copy_permissions(overlay_path, folder.path);
+			
+			// Add folder to project tree (use existing folder object from Monitor)
+			// Ignored folders still need to be saved to DB
+			var parent_dir_path = GLib.Path.get_dirname(folder.path);
+			var found_base_folder = this.project.project_files.find_container_of(parent_dir_path);
+			
+			// Ensure parent folder chain exists (creates missing parents)
+			// Pass a dummy file path in the parent to ensure parent exists without creating our folder
+			var dummy_file_in_parent = GLib.Path.build_filename(parent_dir_path, ".dummy");
+			var parent_folder = yield found_base_folder.make_children(dummy_file_in_parent);
+			
+			// Use existing folder object from Monitor - set parent and add to project tree
+			folder.parent = parent_folder;
+			folder.parent_id = parent_folder.id;
+			parent_folder.children.append(folder);
+			
+			// Add to project's folder_map
+			this.project.project_files.folder_map.set(folder.path, folder);
+			
+			// Save to database
+			folder.saveToDB(this.project.manager.db, null, false);
+		}
+
+		/**
+		 * Handle a file removed from overlay.
+		 * 
+		 * Creates a backup, deletes the file from disk, clears the buffer if it exists,
+		 * and saves to database.
+		 * 
+		 * @param file File object representing the removed file
+		 */
+		private async void file_removed(OLLMfiles.File file)
+		{
+			// Create backup (all deleted files are in database, id > 0)
+			// Skip backup for ignored files
+			if (!file.is_ignored) {
+				try {
+					yield file.create_backup();
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot create backup for deleted file (%s): %s", file.path, e.message);
+				}
+			}
+			
+			// Delete file from disk
+			try {
+				GLib.FileUtils.unlink(file.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot delete file from real path (%s): %s", file.path, e.message);
+				return;
+			}
+			
+			// Clear buffer contents to empty (only if buffer already exists)
+			if (file.buffer != null) {
+				try {
+					yield file.buffer.clear();
+				} catch (GLib.Error e) {
+					GLib.warning("Cannot clear buffer for deleted file (%s): %s", file.path, e.message);
+				}
+			}
+			
+			// Remove from parent's children list
+			file.parent.children.remove(file);
+			
+			// Remove from ProjectFiles
+			if (this.project.project_files.child_map.has_key(file.path)) {
+				this.project.project_files.remove(this.project.project_files.child_map.get(file.path));
+			}
+			
+			// Save to database
+			file.saveToDB(this.project.manager.db, null, false);
+		}
+
+		/**
+		 * Handle a folder removed from overlay.
+		 * 
+		 * Recursively deletes the directory from disk and saves to database.
+		 * 
+		 * @param folder Folder object representing the removed folder
+		 */
+		private async void folder_removed(OLLMfiles.Folder folder)
+		{
+			// Delete directory from disk
+			try {
+				this.recursive_delete(folder.path);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot delete directory from real path (%s): %s", folder.path, e.message);
+				return;
+			}
+			
+			// Remove from parent's children list
+			folder.parent.children.remove(folder);
+			
+			// Remove from ProjectFiles
+			if (this.project.project_files.folder_map.has_key(folder.path)) {
+				this.project.project_files.folder_map.unset(folder.path);
+			}
+			
+			// Save to database
+			folder.saveToDB(this.project.manager.db, null, false);
 		}
 
 		/**

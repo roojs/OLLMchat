@@ -535,10 +535,12 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Create backup of the existing file.
+		 * Create backup of the file.
 		 * 
-		 * Copies file from its current path to backup location and updates file metadata.
-		 * Just copies the file - no buffer needed. Buffer can use this method if needed.
+		 * For existing files (id > 0): Copies file from its current path to backup location.
+		 * For new files (id == 0): Creates an empty backup file (touched file).
+		 * Updates file metadata. Just copies/creates the file - no buffer needed.
+		 * Buffer can use this method if needed.
 		 * 
 		 * == Backup Location ==
 		 * 
@@ -548,14 +550,18 @@ namespace OLLMfiles
 		 * 
 		 * Format: {id}-{date YY-MM-DD}-{basename}
 		 * 
-		 * Example: 123-25-01-15-MainWindow.vala
+		 * Examples:
+		 * - Existing file: 123-25-01-15-MainWindow.vala
+		 * - New file: 0-25-01-15-NewFile.vala
 		 * 
 		 * == Backup Rules ==
 		 * 
-		 *  1. Only for Database Files: Backups are only created for files with id > 0 (in database)
-		 *  2. One Per Day: Only one backup is created per file per day
-		 *  3. Automatic: Backups are created automatically before writing
-		 *  4. Metadata: Backup path is stored in file.last_approved_copy_path
+		 *  1. All Files: Backups are created for all files, including new files (id == 0)
+		 *  2. New Files: For new files (id == 0), an empty file is created as the backup
+		 *  3. Existing Files: For existing files (id > 0), the file is copied to backup location
+		 *  4. One Per Day: Only one backup is created per file per day
+		 *  5. Automatic: Backups are created automatically before writing
+		 *  6. Metadata: Backup path is stored in file.last_approved_copy_path
 		 * 
 		 * == Backup Cleanup ==
 		 * 
@@ -569,11 +575,6 @@ namespace OLLMfiles
 		 */
 		public async void create_backup() throws Error
 		{
-			// Only create backup if file is in database (id > 0)
-			if (this.id <= 0) {
-				return;
-			}
-			
 			try {
 				var cache_dir = GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(),
@@ -589,11 +590,12 @@ namespace OLLMfiles
 				}
 				
 				// Generate backup filename with date
+				// For new files (id == 0), use "0" as the id in the filename
 				var basename = GLib.Path.get_basename(this.path);
 				var backup_path = GLib.Path.build_filename(
 					cache_dir,
 					"%lld-%s-%s".printf(
-						this.id,
+						this.id > 0 ? this.id : 0,
 						new GLib.DateTime.now_local().format("%y-%m-%d"),
 						basename
 					)
@@ -606,16 +608,23 @@ namespace OLLMfiles
 					return;
 				}
 				
-				// Create source file object
-				var source_file = GLib.File.new_for_path(this.path);
-				
-				// Copy file synchronously (GLib.File.copy() is synchronous, called from async method)
-				source_file.copy(
-					backup_file,
-					GLib.FileCopyFlags.OVERWRITE,
-					null,
-					null
-				);
+				// For new files (id == 0), create empty backup file
+				// For existing files (id > 0), copy the file
+				if (this.id == 0) {
+					// Create empty file (touch)
+					backup_file.create(GLib.FileCreateFlags.NONE, null);
+				} else {
+					// Create source file object
+					var source_file = GLib.File.new_for_path(this.path);
+					
+					// Copy file synchronously (GLib.File.copy() is synchronous, called from async method)
+					source_file.copy(
+						backup_file,
+						GLib.FileCopyFlags.OVERWRITE,
+						null,
+						null
+					);
+				}
 				
 				// Update file's last_approved_copy_path
 				this.last_approved_copy_path = backup_path;

@@ -262,6 +262,11 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			
+			// Check if a FILE exists at this path (type mismatch)
+			if (this.project_folder.project_files.child_map.has_key(real_path)) {
+				this.removed.set(overlay_path, this.project_folder.project_files.child_map.get(real_path).file);
+			}
+			
 			GLib.FileInfo folder_info;
 			try {
 				folder_info = GLib.File.new_for_path(overlay_path).query_info(
@@ -281,8 +286,7 @@ namespace OLLMtools.RunCommand
 				real_path
 			);
 			
-			this.added.set(overlay_path, new_folder);
-			
+			// Set up monitor first
 			try {
 				var monitor = GLib.File.new_for_path(overlay_path).monitor_directory(GLib.FileMonitorFlags.NONE, null);
 				this.monitors.set(monitor, new_folder);
@@ -290,6 +294,40 @@ namespace OLLMtools.RunCommand
 			} catch (GLib.Error e) {
 				GLib.warning("Monitor.handle_directory_created: Could not create monitor for subdirectory %s: %s", overlay_path, e.message);
 			}
+			
+			// Set is_ignored based on parent folder
+			new_folder.is_ignored = false;
+			var parent_folder = this.project_folder.project_files.folder_map.get(GLib.Path.get_dirname(real_path));
+			if (parent_folder == null) {
+				parent_folder = (this.added.get(GLib.Path.get_dirname(overlay_path)) as OLLMfiles.Folder);
+			}
+			
+			if (parent_folder.is_ignored) {
+				new_folder.is_ignored = true;
+				this.added.set(overlay_path, new_folder);
+				return;
+			}
+			
+			if (!this.project_folder.manager.git_provider.repository_exists(parent_folder)) {
+				this.added.set(overlay_path, new_folder);
+				return;
+			}
+			
+			var workdir_path = this.project_folder.manager.git_provider.get_workdir_path(parent_folder);
+			if (workdir_path == null || !real_path.has_prefix(workdir_path)) {
+				this.added.set(overlay_path, new_folder);
+				return;
+			}
+			
+			var relative_path = real_path.substring(workdir_path.length);
+			if (relative_path.has_prefix("/")) {
+				relative_path = relative_path.substring(1);
+			}
+			if (this.project_folder.manager.git_provider.path_is_ignored(parent_folder, relative_path)) {
+				new_folder.is_ignored = true;
+			}
+			
+			this.added.set(overlay_path, new_folder);
 		}
 			
 		/**
@@ -308,9 +346,47 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			
+			// Check if a FOLDER exists at this path (type mismatch)
+			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
+				this.removed.set(overlay_path, this.project_folder.project_files.folder_map.get(real_path));
+			}
+			
 			try {
-				this.added.set(overlay_path, 
-					this.create_filebase_from_path(overlay_path, real_path));
+				var new_file = this.create_filebase_from_path(overlay_path, real_path);
+				
+				// Set is_ignored based on parent folder
+				new_file.is_ignored = false;
+				var parent_folder = this.project_folder.project_files.folder_map.get(GLib.Path.get_dirname(real_path));
+				if (parent_folder == null) {
+					parent_folder = (this.added.get(GLib.Path.get_dirname(overlay_path)) as OLLMfiles.Folder);
+				}
+				
+				if (parent_folder.is_ignored) {
+					new_file.is_ignored = true;
+					this.added.set(overlay_path, new_file);
+					return;
+				}
+				
+				if (!this.project_folder.manager.git_provider.repository_exists(parent_folder)) {
+					this.added.set(overlay_path, new_file);
+					return;
+				}
+				
+				var workdir_path = this.project_folder.manager.git_provider.get_workdir_path(parent_folder);
+				if (workdir_path == null || !real_path.has_prefix(workdir_path)) {
+					this.added.set(overlay_path, new_file);
+					return;
+				}
+				
+				var relative_path = real_path.substring(workdir_path.length);
+				if (relative_path.has_prefix("/")) {
+					relative_path = relative_path.substring(1);
+				}
+				if (this.project_folder.manager.git_provider.path_is_ignored(parent_folder, relative_path)) {
+					new_file.is_ignored = true;
+				}
+				
+				this.added.set(overlay_path, new_file);
 			} catch (GLib.Error e) {
 				GLib.warning("Monitor.handle_file_created: Could not create filebase for %s: %s", overlay_path, e.message);
 			}
@@ -338,8 +414,12 @@ namespace OLLMtools.RunCommand
 			
 			if (this.removed.has_key(overlay_path)) {
 				var filebase = this.removed.get(overlay_path);
-				this.removed.unset(overlay_path);
-				this.updated.set(overlay_path, filebase);
+				// Only move to updated if type matches (File→File)
+				// If type doesn't match (Folder→File), keep in removed and handle_file_created will add new file to added
+				if (filebase is OLLMfiles.File) {
+					this.removed.unset(overlay_path);
+					this.updated.set(overlay_path, filebase);
+				}
 				return;
 			}
 			
