@@ -590,6 +590,25 @@ namespace OLLMtools.EditMode
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
+			// Create FileHistory object before applying changes
+			// Determine change type: "added" if file doesn't exist, "modified" if exists
+			string change_type = file_exists ? "modified" : "added";
+			int64 edit_timestamp = (new GLib.DateTime.now_local()).to_unix();
+			
+			// Create FileHistory object (for both new and existing files)
+			// For new files, file.id will be 0 (fake file), which is correct
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					project_manager.db,
+					file,
+					change_type,
+					edit_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for edit (%s): %s", this.normalized_path, e.message);
+			}
+			
 			// Validate and apply changes
 			if (this.complete_file) {
 				// Complete file mode: only allow a single change

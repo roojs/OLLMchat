@@ -71,6 +71,12 @@ namespace OLLMtools.RunCommand
 		 */
 		private Monitor monitor { get; private set; }
 
+		/**
+		 * Timestamp when copy_files() started processing changes.
+		 * Used for all FileHistory records created during this processing session.
+		 */
+		private int64 command_timestamp { get; private set; default = 0; }
+
 
 
 		/**
@@ -205,6 +211,9 @@ namespace OLLMtools.RunCommand
 			// Stop Monitor (existing)
 			yield this.monitor.stop();
 			
+			// Set timestamp when processing starts (used for all FileHistory records in this session)
+			this.command_timestamp = (new GLib.DateTime.now_local()).to_unix();
+			
 			// Process deleted files FIRST (this.monitor.removed)
 			// Sort entries in reverse order (folders deleted after children)
 			var removed_entries = new Gee.ArrayList<string>.wrap(this.monitor.removed.keys.to_array());
@@ -214,9 +223,6 @@ namespace OLLMtools.RunCommand
 			
 			foreach (var key in removed_entries) {
 				var filebase = this.monitor.removed.get(key);
-				
-				// Set is_deleted flag
-				filebase.is_deleted = true;
 				
 				if (filebase is OLLMfiles.File) {
 					yield this.file_removed(filebase as OLLMfiles.File);
@@ -272,14 +278,17 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void file_updated(string overlay_path, OLLMfiles.File file)
 		{
-			// Create backup (all modified files are in database, id > 0)
-			// Skip backup for ignored files
-			if (!file.is_ignored) {
-				try {
-					yield file.create_backup();
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot create backup for file (%s): %s", file.path, e.message);
-				}
+			// Create FileHistory object for this change
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					this.project.manager.db,
+					file,
+					"modified",
+					this.command_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for modified file (%s): %s", file.path, e.message);
 			}
 			
 			// Copy modified file from overlay to real path
@@ -323,6 +332,20 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void file_added(string overlay_path, OLLMfiles.File file)
 		{
+			// Create FileHistory object for this change
+			// For new files, filebase_id will be 0 (file doesn't have id yet)
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					this.project.manager.db,
+					file,
+					"added",
+					this.command_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for added file (%s): %s", file.path, e.message);
+			}
+			
 			// Copy file from overlay to real path first
 			// convert_fake_file_to_real() handles parent directory creation via make_children()
 			try {
@@ -362,6 +385,20 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void folder_added(string overlay_path, OLLMfiles.Folder folder)
 		{
+			// Create FileHistory object for this change
+			// For new folders, filebase_id will be 0 (folder doesn't have id yet)
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					this.project.manager.db,
+					folder,
+					"added",
+					this.command_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for added folder (%s): %s", folder.path, e.message);
+			}
+			
 			// Create directory on disk (parent directories already exist due to sorting)
 			try {
 				GLib.File.new_for_path(folder.path).make_directory(null);
@@ -405,14 +442,17 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void file_removed(OLLMfiles.File file)
 		{
-			// Create backup (all deleted files are in database, id > 0)
-			// Skip backup for ignored files
-			if (!file.is_ignored) {
-				try {
-					yield file.create_backup();
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot create backup for deleted file (%s): %s", file.path, e.message);
-				}
+			// Create FileHistory object for this change
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					this.project.manager.db,
+					file,
+					"deleted",
+					this.command_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for deleted file (%s): %s", file.path, e.message);
 			}
 			
 			// Delete file from disk
@@ -453,6 +493,19 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void folder_removed(OLLMfiles.Folder folder)
 		{
+			// Create FileHistory object for this change
+			try {
+				var file_history = new OLLMfiles.FileHistory(
+					this.project.manager.db,
+					folder,
+					"deleted",
+					this.command_timestamp
+				);
+				yield file_history.commit();
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot create FileHistory for deleted folder (%s): %s", folder.path, e.message);
+			}
+			
 			// Delete directory from disk
 			try {
 				this.recursive_delete(folder.path);

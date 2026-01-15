@@ -424,10 +424,11 @@ $(content)
 		yield file.buffer.write(content);
 		
 		// Output results
-		string backup_info = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
-			? @"BACKUP: $(file.last_approved_copy_path)
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+		string backup_info = file.id < 0 
+			? @"NO_BACKUP: fake_file
 " 
-			: @"NO_BACKUP: $(file.id < 0 ? "fake_file" : "no_backup_created")
+			: @"BACKUP: tracked_in_file_history
 ";
 		print(@"$(backup_info)FILE: $(file_path)
 FILE_ID: $(file.id)
@@ -575,15 +576,13 @@ Cleanup completed (check logs for deleted files)
 			file = new OLLMfiles.File.new_fake(manager, file_path);
 		}
 		
-		string backup_path = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
-			? file.last_approved_copy_path 
-			: "(none)";
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
 		print(@"FILE: $(file_path)
 FILE_ID: $(file.id)
 IS_FAKE: $(file.id < 0 ? "true" : "false")
 BUFFER_STATUS: $(file.buffer != null ? "exists" : "null")
 IN_PROJECT: $(in_project ? "true" : "false")
-BACKUP_PATH: $(backup_path)
+BACKUP_PATH: (tracked_in_file_history)
 ");
 	}
 
@@ -659,11 +658,9 @@ BACKUP_PATH: $(backup_path)
 			yield file.buffer.write(stdin_content);
 			
 			int line_count = file.buffer.get_line_count();
-			string backup_info = "";
-			if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
-				backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
-			}
-			print(backup_info + "FILE: " + file_path + "\n" +
+			// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+			print("BACKUP: tracked_in_file_history\n" +
+				"FILE: " + file_path + "\n" +
 				"FILE_ID: " + file.id.to_string() + "\n" +
 				"LINE_COUNT: " + line_count.to_string() + "\n" +
 				"MODE: complete_file\n");
@@ -726,11 +723,9 @@ BACKUP_PATH: $(backup_path)
 		yield file.buffer.apply_edits(changes);
 		
 		int line_count = file.buffer.get_line_count();
-		string backup_info = "";
-		if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
-			backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
-		}
-		print(backup_info + "FILE: " + file_path + "\n" +
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+		print("BACKUP: tracked_in_file_history\n" +
+			"FILE: " + file_path + "\n" +
 			"FILE_ID: " + file.id.to_string() + "\n" +
 			"LINE_COUNT: " + line_count.to_string() + "\n" +
 			"CHANGES_APPLIED: " + changes.size.to_string() + "\n" +

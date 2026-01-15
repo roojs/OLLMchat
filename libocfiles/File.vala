@@ -200,12 +200,6 @@ namespace OLLMfiles
 		 */
 		public bool is_unsaved { get; set; default = false; }
 		
-		
-		/**
-		 * Filename of last approved copy (default: empty string).
-		 */
-		public string last_approved_copy_path { get; set; default = ""; }
-		
 		private string _icon_name = "";
 		/**
 		 * Icon name for binding in lists.
@@ -534,113 +528,5 @@ namespace OLLMfiles
 			return FileUpdateStatus.NO_CHANGE;
 		}
 		
-		/**
-		 * Create backup of the file.
-		 * 
-		 * For existing files (id > 0): Copies file from its current path to backup location.
-		 * For new files (id == 0): Creates an empty backup file (touched file).
-		 * Updates file metadata. Just copies/creates the file - no buffer needed.
-		 * Buffer can use this method if needed.
-		 * 
-		 * == Backup Location ==
-		 * 
-		 * Backups are stored in: ~/.cache/ollmchat/edited/
-		 * 
-		 * == Backup Naming ==
-		 * 
-		 * Format: {id}-{date YY-MM-DD}-{basename}
-		 * 
-		 * Examples:
-		 * - Existing file: 123-25-01-15-MainWindow.vala
-		 * - New file: 0-25-01-15-NewFile.vala
-		 * 
-		 * == Backup Rules ==
-		 * 
-		 *  1. All Files: Backups are created for all files, including new files (id == 0)
-		 *  2. New Files: For new files (id == 0), an empty file is created as the backup
-		 *  3. Existing Files: For existing files (id > 0), the file is copied to backup location
-		 *  4. One Per Day: Only one backup is created per file per day
-		 *  5. Automatic: Backups are created automatically before writing
-		 *  6. Metadata: Backup path is stored in file.last_approved_copy_path
-		 * 
-		 * == Backup Cleanup ==
-		 * 
-		 * Old backups (more than 7 days) are automatically cleaned up:
-		 * 
-		 *  * Triggered after backup creation (runs at most once per day)
-		 *  * Static method: FileHistory.cleanup_old_backups()
-		 *  * Can also be called manually
-		 * 
-		 * @throws Error if backup creation fails
-		 */
-		public async void create_backup() throws Error
-		{
-			try {
-				var cache_dir = GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(),
-					".cache",
-					"ollmchat",
-					"edited"
-				);
-				
-				// Create cache directory if it doesn't exist
-				var cache_dir_file = GLib.File.new_for_path(cache_dir);
-				if (!cache_dir_file.query_exists()) {
-					cache_dir_file.make_directory_with_parents(null);
-				}
-				
-				// Generate backup filename with date
-				// For new files (id == 0), use "0" as the id in the filename
-				var basename = GLib.Path.get_basename(this.path);
-				var backup_path = GLib.Path.build_filename(
-					cache_dir,
-					"%lld-%s-%s".printf(
-						this.id > 0 ? this.id : 0,
-						new GLib.DateTime.now_local().format("%y-%m-%d"),
-						basename
-					)
-				);
-				
-				// Check if backup already exists for today
-				var backup_file = GLib.File.new_for_path(backup_path);
-				if (backup_file.query_exists()) {
-					// Backup already exists for today, skip
-					return;
-				}
-				
-				// For new files (id == 0), create empty backup file
-				// For existing files (id > 0), copy the file
-				if (this.id == 0) {
-					// Create empty file (touch)
-					backup_file.create(GLib.FileCreateFlags.NONE, null);
-				} else {
-					// Create source file object
-					var source_file = GLib.File.new_for_path(this.path);
-					
-					// Copy file synchronously (GLib.File.copy() is synchronous, called from async method)
-					source_file.copy(
-						backup_file,
-						GLib.FileCopyFlags.OVERWRITE,
-						null,
-						null
-					);
-				}
-				
-				// Update file's last_approved_copy_path
-				this.last_approved_copy_path = backup_path;
-				
-				// Save file to database
-				if (this.manager.db != null) {
-					this.saveToDB(this.manager.db, null, false);
-				}
-				
-				// Cleanup old backup files (runs at most once per day)
-				FileHistory.cleanup_old_backups.begin();
-			} catch (GLib.Error e) {
-				GLib.warning("File.create_backup: Failed to create backup for %s: %s", 
-					this.path, e.message);
-				throw e;
-			}
-		}
 	}
 }

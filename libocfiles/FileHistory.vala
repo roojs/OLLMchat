@@ -126,6 +126,12 @@ namespace OLLMfiles
 		 * Destination path (for rename operations when file was deleted - file was moved to here).
 		 * For renames: change_type="deleted", path = original path, moved_to = destination path.
 		 * Empty string "" for non-rename operations (regular delete, add, modify).
+		 * 
+		 * NOTE: Rename tracking (moved_to/moved_from) is not currently supported.
+		 * This would require additional tracking in Monitor to detect and correlate
+		 * MOVED events with source and destination paths. For now, renames are tracked
+		 * as separate "deleted" and "added" events without the moved_to/moved_from fields.
+		 * This is a future enhancement to keep the initial implementation simple.
 		 */
 		public string moved_to { get; set; default = ""; }
 		
@@ -133,6 +139,12 @@ namespace OLLMfiles
 		 * Source path (for rename operations when file was added - file was moved from here).
 		 * For renames: change_type="added", path = new path, moved_from = original path.
 		 * Empty string "" for non-rename operations (regular add, delete, modify).
+		 * 
+		 * NOTE: Rename tracking (moved_to/moved_from) is not currently supported.
+		 * This would require additional tracking in Monitor to detect and correlate
+		 * MOVED events with source and destination paths. For now, renames are tracked
+		 * as separate "deleted" and "added" events without the moved_to/moved_from fields.
+		 * This is a future enhancement to keep the initial implementation simple.
 		 */
 		public string moved_from { get; set; default = ""; }
 		
@@ -155,23 +167,17 @@ namespace OLLMfiles
 		 * @param filebase_object FileBase object (File or Folder) - required (even for new files, create a fake/temporary one)
 		 * @param change_type "added", "modified", or "deleted"
 		 * @param timestamp Timestamp when change occurred (same for all changes in same command/run/edit)
-		 * @param moved_to Destination path for renames (empty string "" if not a rename)
-		 * @param moved_from Source path for renames (empty string "" if not a rename)
 		 */
 		public FileHistory(
 			SQ.Database db,
 			FileBase filebase_object,
 			string change_type,
-			int64 timestamp,
-			string moved_to = "",
-			string moved_from = "")
+			int64 timestamp)
 		{
 			this.db = db;
 			this.filebase_object = filebase_object;
 			this.change_type = change_type;
 			this.timestamp = timestamp;
-			this.moved_to = moved_to;
-			this.moved_from = moved_from;
 			
 			// Set path and filebase_id from filebase_object
 			this.path = filebase_object.path;

@@ -240,10 +240,9 @@ namespace OLLMfiles
 		 * 
 		 * == Backup Creation ==
 		 * 
-		 *  * Path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}
-		 *  * Only creates backup if file has id > 0 (in database)
-		 *  * Only creates one backup per day (skips if backup exists for today)
-		 *  * Updates file.last_approved_copy_path with backup path
+		 *  * Backups are now created by FileHistory.commit() before writes
+		 *  * Backup paths are stored in FileHistory.backup_path
+		 *  * Path: ~/.cache/ollmchat/edited/{timestamp}-{id}-{basename}
 		 * 
 		 * Usage:
 		 * {{{
@@ -363,9 +362,6 @@ namespace OLLMfiles
 		 */
 		public async void write_real(string contents) throws Error
 		{
-			// Create backup if needed
-			yield this.file.create_backup();
-			
 			// Write to file
 			yield this.write_to_disk(contents);
 			
