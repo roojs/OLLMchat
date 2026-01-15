@@ -38,7 +38,7 @@ namespace OLLMtools.RunCommand
 		 * Value: File or Folder object (id = 0, not in database)
 		 * Contains only files/folders NOT in ProjectFiles (new files).
 		 */
-		public Gee.HashMap<string, OLLMfiles.FileBase> added { get; private set; 
+	public Gee.HashMap<string, OLLMfiles.FileBase> added { get; private set; 
 			default = new Gee.HashMap<string, OLLMfiles.FileBase>(); }
 		
 		/**
@@ -262,6 +262,7 @@ namespace OLLMtools.RunCommand
 			GLib.debug("Monitor.handle_directory_created: overlay_path=%s, real_path=%s", overlay_path, real_path);
 			
 			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
+				GLib.debug("folder added");
 				this.added.set(overlay_path, this.project_folder.project_files.folder_map.get(real_path));
 				return;
 			}
@@ -344,37 +345,36 @@ namespace OLLMtools.RunCommand
 			if (this.removed.has_key(overlay_path)) {
 				var removed_filebase = this.removed.get(overlay_path);
 				
-				// Check if types match (both File or both FileAlias)
+				// Check if types match (both File or both FileAlias, and both Folder or both not Folder)
 				bool overlay_is_symlink = GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_SYMLINK);
 				bool removed_is_symlink = (removed_filebase is OLLMfiles.FileAlias);
+				bool overlay_is_folder = GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_DIR);
+				bool removed_is_folder = (removed_filebase is OLLMfiles.Folder);
 				
-				if (overlay_is_symlink == removed_is_symlink) {
+				if (overlay_is_symlink == removed_is_symlink && overlay_is_folder == removed_is_folder) {
 					// Same type: remove from removed, add to updated
 					this.removed.unset(overlay_path);
 					this.updated.set(overlay_path, removed_filebase);
 					return;
 				}
 				// Different type: keep in removed, new file will be added below
-			}
+			} else {
+				// only check these if not in removed ...
+				if (this.project_folder.project_files.folder_map.has_key(real_path)) {
+					this.handle_directory_created(overlay_path, real_path);
+					return;
+				}
 			
-			// Check if a directory already exists at this path in ProjectFiles
-			// this is done as we get move_in when a directory is being deleted with whiteout
-			// If so, handle it as a directory creation instead
-			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
-				this.handle_directory_created(overlay_path, real_path);
-				return;
+				// Check if a file already exists at this path in ProjectFiles
+				// Note: In overlayfs, modifying an existing file causes it to be copied up to the upper layer,
+				// which appears as a CREATED event. When copied from base, the type doesn't change, so this is a modification.
+				if (this.project_folder.project_files.child_map.has_key(real_path)) {
+					var existing_filebase = this.project_folder.project_files.child_map.get(real_path).file;
+					// File exists and was copied up by overlayfs - treat as modification
+					this.updated.set(overlay_path, existing_filebase);
+					return;
+				}
 			}
-			
-			// Check if a file already exists at this path in ProjectFiles
-			// Note: In overlayfs, modifying an existing file causes it to be copied up to the upper layer,
-			// which appears as a CREATED event. When copied from base, the type doesn't change, so this is a modification.
-			if (this.project_folder.project_files.child_map.has_key(real_path)) {
-				var existing_filebase = this.project_folder.project_files.child_map.get(real_path).file;
-				// File exists and was copied up by overlayfs - treat as modification
-				this.updated.set(overlay_path, existing_filebase);
-				return;
-			}
-			
 			// If we get here, this is a new file being created.
 			
 			try {
@@ -440,12 +440,14 @@ namespace OLLMtools.RunCommand
 			
 			if (this.removed.has_key(overlay_path)) {
 				var filebase = this.removed.get(overlay_path);
-				// Only move to updated if type matches (File→File or FileAlias→FileAlias)
+				// Only move to updated if type matches (File→File or FileAlias→FileAlias, and Folder→Folder or not Folder→not Folder)
 				// If type doesn't match, keep in removed and handle_file_created will add new file to added
 				bool overlay_is_symlink = GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_SYMLINK);
 				bool existing_is_symlink = (filebase is OLLMfiles.FileAlias);
+				bool overlay_is_folder = GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_DIR);
+				bool existing_is_folder = (filebase is OLLMfiles.Folder);
 				
-				if (overlay_is_symlink == existing_is_symlink) {
+				if (overlay_is_symlink == existing_is_symlink && overlay_is_folder == existing_is_folder) {
 					// Type matches: move to updated
 					this.removed.unset(overlay_path);
 					this.updated.set(overlay_path, filebase);

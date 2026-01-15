@@ -31,6 +31,7 @@ namespace OLLMtools.RunCommand
 	 * - Blocks network access by default (--unshare-net, unless allow_network is true)
 	 * - Executes commands via /bin/sh -c
 	 * - Provides isolated temporary directory (/tmp) via tmpfs
+	 * - Mounts /dev read-only (like the rest of the system) with /dev/null writable for output redirection
 	 * 
 	 * A new Bubble instance is created for each command execution. The instance is used
 	 * once and then goes out of scope, so no cleanup logic is needed for old instances.
@@ -194,6 +195,7 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * Constructs the full command line for bubblewrap, including:
 		 * - Read-only root filesystem bind (--ro-bind / /)
+		 * - Device filesystem mount (--ro-bind /dev /dev) with /dev/null override (--dev-bind) for output redirection
 		 * - Read-write binds for overlay mount point at each project root location
 		 * - Temporary directory mount (--tmpfs /tmp)
 		 * - Network isolation flag (--unshare-net) if network is not allowed
@@ -231,6 +233,18 @@ namespace OLLMtools.RunCommand
 			args += "--ro-bind";
 			args += "/";
 			args += "/";
+			
+			// Mount /dev read-only (like the rest of the system)
+			// This makes the sandbox appear as a regular system, but prevents writes
+			args += "--ro-bind";
+			args += "/dev";
+			args += "/dev";
+			
+			// Override /dev/null to be writable for output redirection
+			// Later mounts take precedence, so this overrides the read-only /dev/null
+			args += "--dev-bind";
+			args += "/dev/null";
+			args += "/dev/null";
 			
 			// Use bubblewrap's --overlay for each project root
 			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)
@@ -368,10 +382,11 @@ namespace OLLMtools.RunCommand
 		GLib.debug("read_subprocess_output: Waiting for process to complete");
 		int exit_status = 0;
 		try {
-			if (!(yield subprocess.wait_async(null))) {
-				exit_status = subprocess.get_exit_status();
-			}
+			yield subprocess.wait_async(null);
+			// Always get exit status, regardless of success/failure
+			exit_status = subprocess.get_exit_status();
 		} catch (GLib.Error e) {
+			// If wait_async failed, try to get exit status if process has terminated
 			if (!subprocess.get_successful()) {
 				exit_status = subprocess.get_exit_status();
 			}

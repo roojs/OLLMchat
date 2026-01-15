@@ -211,6 +211,12 @@ reset_test_state() {
     if [ -n "${TEST_DB:-}" ] && [ -f "${TEST_DB}" ]; then
         rm -f "${TEST_DB}"
     fi
+    # Clean up project directory if TEST_PROJECT_DIR is set (for test-bubble.sh)
+    # This ensures each test starts with a clean project directory
+    if [ -n "${TEST_PROJECT_DIR:-}" ] && [ -d "${TEST_PROJECT_DIR}" ]; then
+        # Remove all contents (files, directories, hidden files) but keep the directory itself
+        find "${TEST_PROJECT_DIR}" -mindepth 1 -delete 2>/dev/null || true
+    fi
 }
 
 # Print test summary

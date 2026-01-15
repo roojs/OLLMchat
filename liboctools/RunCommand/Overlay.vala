@@ -221,12 +221,20 @@ namespace OLLMtools.RunCommand
 			foreach (var key in removed_entries) {
 				var filebase = this.monitor.removed.get(key);
 				
+				if (filebase is OLLMfiles.FileAlias) {
+					GLib.debug("delete alias");
+					yield this.file_removed(filebase as OLLMfiles.File);
+					continue;
+				}
+				
 				if (filebase is OLLMfiles.File) {
+					GLib.debug("delete file");
 					yield this.file_removed(filebase as OLLMfiles.File);
 					continue;
 				}
 				
 				if (filebase is OLLMfiles.Folder) {
+					GLib.debug("delete folder");
 					yield this.folder_removed(filebase as OLLMfiles.Folder);
 					continue;
 				}

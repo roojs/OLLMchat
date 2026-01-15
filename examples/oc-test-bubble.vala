@@ -163,6 +163,23 @@ Examples:
 		stdout.printf("\n--- Debug Info ---\n");
 		stdout.printf("ret_str length: %zu\n", bubble.ret_str.length);
 		stdout.printf("fail_str length: %zu\n", bubble.fail_str.length);
+		if (bubble.fail_str.length > 0) {
+			// Show content with visible representation
+			stdout.printf("fail_str content (raw): [%s]\n", bubble.fail_str);
+			// Show hex dump of first 100 bytes to see non-printable characters
+			var preview_len = (int)int.min(bubble.fail_str.length, 100);
+			stdout.printf("fail_str hex (first %d bytes): ", preview_len);
+			unowned uint8[] data = bubble.fail_str.data;
+			for (int i = 0; i < preview_len; i++) {
+				stdout.printf("%02x ", data[i]);
+				if ((i + 1) % 16 == 0) {
+					stdout.printf("\n");
+				}
+			}
+			if (preview_len % 16 != 0) {
+				stdout.printf("\n");
+			}
+		}
 	}
 }
 

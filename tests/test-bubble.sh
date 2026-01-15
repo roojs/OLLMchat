@@ -42,8 +42,9 @@ TEST_PROJECT_DIR="$TEST_DIR/project"
 TEST_DB="$BUILD_DIR/test-bubble.db"
 DATA_DIR="$SCRIPT_DIR/data"
 
-# Export TEST_DB for test-common.sh reset_test_state function
+# Export TEST_DB and TEST_PROJECT_DIR for test-common.sh reset_test_state function
 export TEST_DB
+export TEST_PROJECT_DIR
 
 # Variables to track failed test for debug re-run
 FAILED_TEST_FUNC=""
@@ -403,6 +404,12 @@ test_file_ops_4_read() {
     # Create file with content
     echo "$expected_content" > "$test_file"
     
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    echo \"$expected_content\" > file"
+    echo ""
+    
     # Execute command and capture output
     local output
     output=$(bubble_exec "$testname" "cat file")
@@ -627,6 +634,14 @@ test_move_3_move_file_between_dirs() {
     mkdir -p "$target_dir"
     rm -f "$target_file"
     
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    echo \"$file_content\" > file"
+    echo "    mkdir -p dir"
+    echo "    rm -f dir/file"
+    echo ""
+    
     # Execute command
     bubble_exec "$testname" "mv file dir/"
     
@@ -732,6 +747,9 @@ test_deletion_2_delete_empty_dir() {
     local testname="test_deletion_2_delete_empty_dir"
     local test_dir="$TEST_PROJECT_DIR/dir"
     
+    # Clean up any existing directory
+    rm -rf "$test_dir"
+    
     # Create empty directory
     mkdir -p "$test_dir"
     
@@ -770,9 +788,20 @@ test_deletion_4_delete_symlink() {
     local target_file="$TEST_PROJECT_DIR/target"
     local link_file="$TEST_PROJECT_DIR/link"
     
+    # Clean up any existing files
+    rm -f "$target_file" "$link_file"
+    
     # Create target and symlink
     echo "target content" > "$target_file"
     ln -s target "$link_file"
+    
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    rm -f target link"
+    echo "    echo \"target content\" > target"
+    echo "    ln -s target link"
+    echo ""
     
     # Execute command
     bubble_exec "$testname" "rm link"
@@ -813,11 +842,21 @@ test_type_swap_1_file_to_dir() {
     # Create file
     echo "content" > "$test_path"
     
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    echo \"content\" > file"
+    echo ""
+    
     # Execute command
     bubble_exec "$testname" "rm file && mkdir file"
     
-    # Verify it's now a directory
-    verify_file_not_exists "$testname" "$test_path" "File removed"
+    # Verify it's now a directory (check that it's NOT a file, then that it IS a directory)
+    if [ ! -f "$test_path" ]; then
+        test_pass "$testname: File removed"
+    else
+        test_fail "$testname: File removed (file still exists as file: $test_path)"
+    fi
     verify_dir_exists "$testname" "$test_path" "Directory created at same path"
 }
 
@@ -831,11 +870,21 @@ test_type_swap_2_dir_to_file() {
     # Create directory
     mkdir -p "$test_path"
     
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    mkdir -p dir"
+    echo ""
+    
     # Execute command
     bubble_exec "$testname" "rmdir dir && touch dir"
     
-    # Verify it's now a file
-    verify_file_not_exists "$testname" "$test_path" "Directory removed"
+    # Verify it's now a file (check that it's NOT a directory, then that it IS a file)
+    if [ ! -d "$test_path" ]; then
+        test_pass "$testname: Directory removed"
+    else
+        test_fail "$testname: Directory removed (directory still exists as directory: $test_path)"
+    fi
     verify_file_exists "$testname" "$test_path" "File created at same path"
 }
 

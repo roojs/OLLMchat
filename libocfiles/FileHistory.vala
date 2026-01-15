@@ -211,9 +211,11 @@ namespace OLLMfiles
 			// Insert into database first (to get id)
 			yield this.save_to_db();
 			
+			if (!(this.filebase_object is File)) {
+				return;
+			}
 			// Create backup if needed (for modified/deleted files, but not for symlinks)
-			if ((this.change_type == "modified" || this.change_type == "deleted") 
-					&& !this.filebase_object.is_alias) {
+			if ((this.change_type == "modified" || this.change_type == "deleted")) {
 				yield this.create_backup();
 				// Update database record with backup_path
 				yield this.save_to_db();
