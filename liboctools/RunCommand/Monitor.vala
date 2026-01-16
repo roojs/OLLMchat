@@ -223,11 +223,21 @@ namespace OLLMtools.RunCommand
 				case GLib.FileMonitorEvent.MOVED_IN:
 					// Always treat MOVED_IN as an addition first, then handle deletion if needed
 					// In overlayfs, file deletions can appear as MOVED_IN events when whiteout files are created
+					// Check if file was already deleted (in removed) - if so, deletion already handled
+					bool was_in_removed = this.removed.has_key(overlay_path);
+					
 					if (GLib.FileUtils.test(overlay_path, GLib.FileTest.IS_DIR)) {
 						this.handle_directory_created(overlay_path, real_path);
 					} else {
 						this.handle_file_created(overlay_path, real_path);
 					}
+					
+					// If file was in removed, deletion already handled - return early
+					if (was_in_removed) {
+						break;
+					}
+					
+					// Only check for whiteout/EXISTS if file wasn't already deleted
 					// Check if this is a whiteout file (character device with 0/0 device number)
 					if (this.is_whiteout(overlay_path)) {
 						this.handle_file_deleted(overlay_path, real_path);
@@ -261,9 +271,24 @@ namespace OLLMtools.RunCommand
 		{
 			GLib.debug("Monitor.handle_directory_created: overlay_path=%s, real_path=%s", overlay_path, real_path);
 			
+			// If directory already exists in project, add it to 'updated' (not 'added')
+			// Note: In overlayfs, modifying an existing directory (e.g., MOVED_IN event) causes it to be tracked,
+			// but it's a modification, not a new directory creation
 			if (this.project_folder.project_files.folder_map.has_key(real_path)) {
-				GLib.debug("folder added");
-				this.added.set(overlay_path, this.project_folder.project_files.folder_map.get(real_path));
+				var existing_folder = this.project_folder.project_files.folder_map.get(real_path);
+				// Directory exists and was modified - treat as modification
+				this.updated.set(overlay_path, existing_folder);
+				
+				// Ensure monitor is set up for this directory so we can detect files moving into it
+		
+				try {
+					var monitor = GLib.File.new_for_path(overlay_path).monitor_directory(GLib.FileMonitorFlags.NONE, null);
+					this.monitors.set(monitor, existing_folder);
+					this.signal_handlers.set(monitor, monitor.changed.connect(this.on_file_changed));
+				} catch (GLib.Error e) {
+					GLib.warning("Monitor.handle_directory_created: Could not create monitor for existing directory %s: %s", overlay_path, e.message);
+				}
+			
 				return;
 			}
 		
@@ -340,6 +365,13 @@ namespace OLLMtools.RunCommand
 		private void handle_file_created(string overlay_path, string real_path)
 		{
 			GLib.debug("Monitor.handle_file_created: overlay_path=%s, real_path=%s", overlay_path, real_path);
+			
+			// Check if this is a whiteout file (character device with 0/0 device number).
+			// In overlayfs, file deletions can appear as CREATED events when whiteout files are created.
+			if (this.is_whiteout(overlay_path)) {
+				this.handle_file_deleted(overlay_path, real_path);
+				return;
+			}
 			
 			// Check if there's a deleted file of the same type at this path
 			if (this.removed.has_key(overlay_path)) {
@@ -456,8 +488,9 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			
-			// If we get here and the file exists in ProjectFiles, it should already be in updated/added/removed
-			// from earlier events (CREATED when copied up to overlay). So we don't need to check child_map here.
+			// If we get here, the file is not in added/updated/removed
+			// Files can't be modified unless they've been created first, so this must be a new file
+			this.handle_file_created(overlay_path, real_path);
 		}
 			
 		/**
@@ -572,7 +605,7 @@ namespace OLLMtools.RunCommand
 		 * @param overlay_path Path to check
 		 * @return true if the path is a whiteout file
 		 */
-		private bool is_whiteout(string overlay_path)
+		public bool is_whiteout(string overlay_path)
 		{
 			try {
 				var file = GLib.File.new_for_path(overlay_path);

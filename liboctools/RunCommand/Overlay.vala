@@ -249,13 +249,20 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
-			// Before processing new files, scan created folders recursively
+			// Before processing new files, scan created/modified folders recursively
 			// to catch any files that were created before the monitor could detect them
-			// Make a copy of entries to avoid modifying added while iterating
+			// Make a copy of entries to avoid modifying added/updated while iterating
 			var check = new Gee.HashMap<string, OLLMfiles.FileBase>();
 			foreach (var key in this.monitor.added.keys) {
 				check.set(key, this.monitor.added.get(key));
 			}
+			// Also scan folders from updated (modified folders)
+			foreach (var entry in this.monitor.updated.entries) {
+				if (entry.value is OLLMfiles.Folder) {
+					check.set(entry.key, entry.value);
+				}
+			}
+			GLib.debug("Overlay.copy_files: Scanning %d folders for missed files", check.size);
 			foreach (var key in check.keys) {
 				this.scan_folder(key, check.get(key));
 			}
@@ -269,6 +276,7 @@ namespace OLLMtools.RunCommand
 			
 			foreach (var key in added_entries) {
 				var filebase = this.monitor.added.get(key);
+				GLib.debug("Overlay.copy_files: Processing added item: overlay_path=%s, real_path=%s", key, filebase.path);
 				
 				if (filebase is OLLMfiles.File || filebase is OLLMfiles.FileAlias) {
 					yield this.file_added(key, filebase);
@@ -313,12 +321,15 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 			
+			GLib.debug("Overlay.scan_folder: Found %d items in %s", overlay_items.size, overlay_path);
 			foreach (var add_item in overlay_items) {
 				var overlay_item_path = add_item.path;
 				
 				if (this.monitor.added.has_key(overlay_item_path)) {
 					continue;
 				}
+				
+				GLib.debug("Overlay.scan_folder: Adding missed file: %s", overlay_item_path);
 				
 				add_item.path = this.monitor.to_real_path(overlay_item_path);
 				add_item.parent = folder;
@@ -361,6 +372,19 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void file_updated(string overlay_path, OLLMfiles.FileBase filebase)
 		{
+			// Check if this is a whiteout file (character device with 0/0 device number).
+			// In overlayfs, file deletions can appear as CREATED/UPDATED events when whiteout files are created.
+			// If it's a whiteout, treat it as a deletion instead of an update.
+			if (this.monitor.is_whiteout(overlay_path)) {
+				GLib.debug("Overlay.file_updated: File is whiteout, treating as deletion: %s", overlay_path);
+				if (filebase is OLLMfiles.File || filebase is OLLMfiles.FileAlias) {
+					yield this.file_removed(filebase as OLLMfiles.File);
+				}
+				return;
+			}
+			
+			
+			
 			var file = filebase as OLLMfiles.File;
 			
 			// Create FileHistory object for this change
@@ -454,6 +478,18 @@ namespace OLLMtools.RunCommand
 		 */
 		private async void file_added(string overlay_path, OLLMfiles.FileBase filebase)
 		{
+			// Check if this is a whiteout file (character device with 0/0 device number).
+			// In overlayfs, file deletions can appear as CREATED events when whiteout files are created.
+			// If it's a whiteout, treat it as a deletion instead of an addition.
+			if (this.monitor.is_whiteout(overlay_path)) {
+				GLib.debug("Overlay.file_added: File is whiteout, treating as deletion: %s", overlay_path);
+				if (filebase is OLLMfiles.File || filebase is OLLMfiles.FileAlias) {
+					yield this.file_removed(filebase as OLLMfiles.File);
+				}
+				return;
+			}
+			
+			
 			// Create FileHistory object for this change
 			// For new files, filebase_id will be 0 (file doesn't have id yet)
 			// Note: FileHistory.commit() only creates backups for "modified" or "deleted" files,
@@ -564,6 +600,7 @@ namespace OLLMtools.RunCommand
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot create FileHistory for added folder (%s): %s", folder.path, e.message);
 			}
+			
 			
 			// Create directory on disk (parent directories already exist due to sorting)
 			try {
@@ -835,6 +872,7 @@ namespace OLLMtools.RunCommand
 				return;
 			}
 		}
+
 	}
 }
 

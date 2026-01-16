@@ -120,20 +120,19 @@ bubble_exec() {
     
     local test_cmd="\"$OC_TEST_BUBBLE\" ${debug_flag}--project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
     
-    # Print the command being executed
+    # Print the command being executed (to stderr so it doesn't interfere with output capture)
     if [ "$DEBUG_RERUN" = true ]; then
-        echo "  Running (DEBUG): $OC_TEST_BUBBLE --debug --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+        echo "  Running (DEBUG): $OC_TEST_BUBBLE --debug --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\"" >&2
+        # During debug rerun, just run the command directly and show output without comparison
+        eval "$test_cmd"
+        return 0
     else
-        echo "  Running: $OC_TEST_BUBBLE --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+        echo "  Running: $OC_TEST_BUBBLE --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\"" >&2
     fi
     
     # Execute command via oc-test-bubble
+    # test_exe already returns the output via echo, so we don't need to cat the file again
     test_exe "$testname" "$test_cmd" "$output_file" "$testname" "$DATA_DIR"
-    
-    # Return output for further verification
-    if [ -f "$output_file" ]; then
-        cat "$output_file"
-    fi
 }
 
 # Verify file exists
@@ -147,7 +146,7 @@ verify_file_exists() {
         return 0
     else
         test_fail "$testname: $description (file not found: $file_path)"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
 }
 
@@ -160,7 +159,7 @@ verify_file_content() {
     
     if [ ! -f "$file_path" ]; then
         test_fail "$testname: $description (file not found: $file_path)"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
     
     local actual_content
@@ -173,7 +172,7 @@ verify_file_content() {
         test_fail "$testname: $description"
         echo "  Expected: $expected_content"
         echo "  Actual: $actual_content"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
 }
 
@@ -188,7 +187,7 @@ verify_dir_exists() {
         return 0
     else
         test_fail "$testname: $description (directory not found: $dir_path)"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
 }
 
@@ -201,7 +200,7 @@ verify_symlink() {
     
     if [ ! -L "$link_path" ]; then
         test_fail "$testname: $description (not a symlink: $link_path)"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
     
     local actual_target
@@ -214,7 +213,7 @@ verify_symlink() {
         test_fail "$testname: $description (wrong target)"
         echo "  Expected: $target_path"
         echo "  Actual: $actual_target"
-        return 1
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
     fi
 }
 
@@ -229,7 +228,17 @@ verify_file_not_exists() {
         return 0
     else
         test_fail "$testname: $description (file still exists: $file_path)"
+        return 0  # Return 0 to allow other verifications to run, but CURRENT_TEST_FAILED is set
+    fi
+}
+
+# Helper function to return appropriate exit code based on test failure state
+# Test functions should call this at the end, or it will be checked in run_test
+test_exit_code() {
+    if [ "$CURRENT_TEST_FAILED" = "true" ]; then
         return 1
+    else
+        return 0
     fi
 }
 
@@ -937,12 +946,37 @@ test_type_swap_4_symlink_to_file() {
 run_test() {
     local test_func="$1"
     
+    # Reset test failure state before running test
+    reset_test_state
+    # Explicitly ensure CURRENT_TEST_FAILED is false after reset
+    CURRENT_TEST_FAILED=false
+    
     if [ "$STOP_ON_FAILURE" = true ]; then
         # Store test function name for potential debug re-run
         FAILED_TEST_FUNC="$test_func"
         
-        # Stop on first failure
-        "$test_func" || {
+        # Run the test function
+        # Temporarily disable exit on error so we can check CURRENT_TEST_FAILED even if test returns non-zero
+        set +e
+        "$test_func"
+        local test_exit=$?
+        set -e
+        
+        # Check if test failed
+        # CURRENT_TEST_FAILED is set by test_fail() in test-common.sh when any verification fails
+        # We need to check this flag because verification functions return 0 even on failure
+        # (they set CURRENT_TEST_FAILED=true instead)
+        local test_failed=false
+        # Explicitly check if CURRENT_TEST_FAILED is set to the string "true"
+        if [ "${CURRENT_TEST_FAILED}" = "true" ]; then
+            # A verification failed - treat as test failure
+            test_failed=true
+        elif [ $test_exit -ne 0 ]; then
+            # Test function returned non-zero exit code
+            test_failed=true
+        fi
+        
+        if [ "$test_failed" = "true" ]; then
             # Test failed - prepare for debug re-run
             echo ""
             echo -e "${YELLOW}Test failed. Preparing debug re-run...${NC}"
@@ -971,7 +1005,7 @@ run_test() {
             # Re-run the test function (this will include all setup and the command with --debug)
             # Suppress test failures during debug rerun - we just want to see the output
             set +e
-            "$test_func" 2>&1 || true
+            "$test_func" || true
             set -e
             
             # Reset debug flag
@@ -981,7 +1015,7 @@ run_test() {
             echo -e "${RED}Stopping on first failure (--stop-on-failure enabled)${NC}"
             print_test_summary
             exit 1
-        }
+        fi
     else
         # Continue on failure (default behavior)
         "$test_func" || cleanup
