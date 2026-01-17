@@ -82,16 +82,6 @@ namespace OLLMtools.RunCommand
 		*/
 		public async void run()
 		{
-			// Ensure all_files is populated before scanning
-			// If all_files only contains the project folder (or is empty), populate it
-			if (this.project_folder.project_files.all_files.size <= 1) {
-				GLib.debug("Scan.run: all_files not populated, loading folder hierarchy and updating");
-				// Load folder hierarchy from database if needed
-				yield this.project_folder.load_files_from_db();
-				// Update project_files to populate all_files, folder_map, etc.
-				this.project_folder.project_files.update_from(this.project_folder);
-			}
-			
 			// Debug: Dump in-memory data structures before scanning
 			GLib.debug("Scan.run: Dumping in-memory data structures before scanning");
 			GLib.debug("Scan.run: all_files has %d entries", this.project_folder.project_files.all_files.size);
@@ -200,12 +190,10 @@ namespace OLLMtools.RunCommand
 				overlay_path, real_path, filebase == null ? "NEW" : filebase.get_type().name());
 			
 			var is_whiteout_result = this.is_whiteout(overlay_path);
-			GLib.debug("handle_file: is_whiteout(%s) = %s", overlay_path, is_whiteout_result.to_string());
 			
 			if (is_whiteout_result) {
 				if (filebase != null) {
-					GLib.debug("handle_file: whiteout detected, removing filebase type=%s, path=%s", 
-						filebase.get_type().name(), filebase.path);
+				
 					yield this.handle_remove(overlay_path, filebase);
 				} else {
 					GLib.warning("handle_file: whiteout detected but filebase is null for path=%s (real_path=%s)", 
@@ -582,21 +570,15 @@ namespace OLLMtools.RunCommand
 				GLib.debug("is_whiteout: file_type=%s for %s", file_type.to_string(), overlay_path);
 				
 				// Check if it's a character device (SPECIAL file type)
-				if (file_type != GLib.FileType.SPECIAL) {
-					GLib.debug("is_whiteout: not SPECIAL type, returning false");
+				if (info.get_file_type() != GLib.FileType.SPECIAL) {
 					return false;
 				}
 				
 				// Check if device number is 0/0 (whiteout)
 				// Use UNIX_RDEV (st_rdev) for special files, not UNIX_DEVICE (st_dev)
 				// Device number is 0 when both major and minor are 0 (whiteout)
-				var rdev = info.get_attribute_uint32(GLib.FileAttribute.UNIX_RDEV);
-				GLib.debug("is_whiteout: SPECIAL file, rdev=%u for %s", rdev, overlay_path);
-				var result = (rdev == 0);
-				GLib.debug("is_whiteout: returning %s for %s", result.to_string(), overlay_path);
-				return result;
+				return info.get_attribute_uint32(GLib.FileAttribute.UNIX_RDEV) == 0;
 			} catch (GLib.Error e) {
-				GLib.debug("is_whiteout: error checking %s: %s", overlay_path, e.message);
 				return false;
 			}
 		}

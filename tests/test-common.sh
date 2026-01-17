@@ -19,12 +19,12 @@ CURRENT_TEST_FAILED=false
 # Test helper functions
 test_pass() {
     echo -e "${GREEN}✓ PASS: $1${NC}"
-    ((TESTS_PASSED++))
+    ((TESTS_PASSED++)) || true  # Always succeed - increment might fail with set -e if unset
 }
 
 test_fail() {
     echo -e "${RED}✗ FAIL: $1${NC}"
-    ((TESTS_FAILED++))
+    ((TESTS_FAILED++)) || true  # Always succeed - increment might fail with set -e if unset
     FAILED_TESTS+=("$1")
     CURRENT_TEST_FAILED=true
 }

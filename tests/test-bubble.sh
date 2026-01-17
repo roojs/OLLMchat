@@ -132,7 +132,17 @@ bubble_exec() {
     
     # Execute command via oc-test-bubble
     # test_exe already returns the output via echo, so we don't need to cat the file again
-    test_exe "$testname" "$test_cmd" "$output_file" "$testname" "$DATA_DIR"
+    # Capture output - test_exe may return non-zero on failure, but we handle that via CURRENT_TEST_FAILED
+    # Don't redirect stderr (2>&1) - let warnings go to stderr naturally so they don't interfere
+    local output
+    set +e  # Temporarily disable exit on error to capture output even if test_exe fails
+    # Only capture stdout - stderr (warnings) will go to terminal naturally
+    output=$(test_exe "$testname" "$test_cmd" "$output_file" "$testname" "$DATA_DIR")
+    set -e  # Re-enable exit on error
+    echo "$output"
+    # Note: We don't return the exit code - failures are tracked via CURRENT_TEST_FAILED
+    # The calling test function will check CURRENT_TEST_FAILED to determine if test passed
+    # Warnings about missing expected files go to stderr and don't affect test result
 }
 
 # Verify file exists
@@ -1036,12 +1046,15 @@ run_test() {
         # Explicitly check if CURRENT_TEST_FAILED is set to the string "true"
         if [ "${CURRENT_TEST_FAILED}" = "true" ]; then
             # A verification failed - treat as test failure
+            echo "[DEBUG] Test failed: CURRENT_TEST_FAILED is true" >&2
             test_failed=true
         elif [ $test_exit -ne 0 ]; then
             # Test function returned non-zero exit code
+            echo "[DEBUG] Test failed: test function returned non-zero exit code: $test_exit" >&2
             test_failed=true
         fi
         
+        # If test failed, stop immediately (don't continue to next test)
         if [ "$test_failed" = "true" ]; then
             # Test failed - prepare for debug re-run
             echo ""
