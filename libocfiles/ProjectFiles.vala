@@ -263,6 +263,60 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Comprehensively remove a FileBase from all references and clean up.
+		 * 
+		 * This method handles complete removal of a file or folder:
+		 * - Removes from parent's children list
+		 * - Removes from ProjectFiles (child_map for files, folder_map for folders)
+		 * - For folders: recursively removes all children
+		 * - Removes from database and file_cache
+		 * 
+		 * @param filebase The FileBase object to remove (File, Folder, or FileAlias)
+		 */
+		public async void remove_complete(OLLMfiles.FileBase filebase)
+		{
+			// Remove from parent's children list
+			if (filebase.parent != null) {
+				filebase.parent.children.remove(filebase);
+			}
+			
+			// Handle files and file aliases first (trivial case)
+			if (!(filebase is OLLMfiles.Folder)) {
+				var file = filebase as OLLMfiles.File;
+				
+				// Remove from ProjectFiles child_map
+				if (this.child_map.has_key(file.path)) {
+					var project_file = this.child_map.get(file.path);
+					this.remove(project_file);
+				}
+				
+				// Remove from database and file_cache
+				file.removeFromDB(filebase.manager.db);
+				return;
+			}
+			
+			// Handle folders recursively
+			var folder = filebase as OLLMfiles.Folder;
+			
+			// Recursively remove all children first
+			var children_copy = new Gee.ArrayList<OLLMfiles.FileBase>();
+			foreach (var child in folder.children.items) {
+				children_copy.add(child);
+			}
+			foreach (var child in children_copy) {
+				yield this.remove_complete(child);
+			}
+			
+			// Remove folder from folder_map
+			if (this.folder_map.has_key(folder.path)) {
+				this.folder_map.unset(folder.path);
+			}
+			
+			// Remove from database and file_cache
+			folder.removeFromDB(folder.manager.db);
+		}
+		
+		/**
 		 * Recursively update project files from a folder tree.
 		 * 
 		 * Scans the folder and its children recursively, adding only real files

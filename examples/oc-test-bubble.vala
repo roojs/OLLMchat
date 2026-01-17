@@ -140,7 +140,7 @@ Examples:
 		yield project.load_files_from_db();
 		
 		// Update ProjectFiles to ensure folder_map is populated with all folders
-		// This is critical - Monitor needs parent folders to exist in folder_map
+		// This is critical - Scan needs parent folders to exist in folder_map
 		project.project_files.update_from(project);
 
 		// Create Bubble instance

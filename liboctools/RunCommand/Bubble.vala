@@ -148,7 +148,6 @@ namespace OLLMtools.RunCommand
 		{
 			// Create overlay directory structure (lazy initialization)
 			this.overlay.create();
-			this.overlay.start_monitor();
 			
 			try {
 				// Build bubblewrap command arguments using build_bubble_args(command)
@@ -174,8 +173,8 @@ namespace OLLMtools.RunCommand
 				// Read output using read_subprocess_output()
 				var output = yield this.read_subprocess_output(subprocess);
 				
-				// Copy files from overlay to live system (stops Monitor, copies files)
-				yield this.overlay.copy_files();
+				// Copy files from overlay to live system (scans overlay and copies files)
+				yield this.overlay.scan.run();
 				
 				// Return formatted string
 				return output;

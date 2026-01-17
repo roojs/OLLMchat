@@ -128,7 +128,7 @@ namespace OLLMfiles
 		 * Empty string "" for non-rename operations (regular delete, add, modify).
 		 * 
 		 * NOTE: Rename tracking (moved_to/moved_from) is not currently supported.
-		 * This would require additional tracking in Monitor to detect and correlate
+		 * This would require additional tracking in the scanning system to detect and correlate
 		 * MOVED events with source and destination paths. For now, renames are tracked
 		 * as separate "deleted" and "added" events without the moved_to/moved_from fields.
 		 * This is a future enhancement to keep the initial implementation simple.
@@ -141,7 +141,7 @@ namespace OLLMfiles
 		 * Empty string "" for non-rename operations (regular add, delete, modify).
 		 * 
 		 * NOTE: Rename tracking (moved_to/moved_from) is not currently supported.
-		 * This would require additional tracking in Monitor to detect and correlate
+		 * This would require additional tracking in the scanning system to detect and correlate
 		 * MOVED events with source and destination paths. For now, renames are tracked
 		 * as separate "deleted" and "added" events without the moved_to/moved_from fields.
 		 * This is a future enhancement to keep the initial implementation simple.
