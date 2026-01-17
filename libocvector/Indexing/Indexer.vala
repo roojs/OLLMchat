@@ -127,6 +127,29 @@ namespace OLLMvector.Indexing
 			
 			if (tree.elements.size == 0) {
 				GLib.debug("No elements found in file '%s'", file.path);
+				
+				// After scanning completes, check if file was deleted before saving
+				// Fetch filebase from database again to check current delete_id
+				var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);
+				var check_file = new Gee.ArrayList<OLLMfiles.FileBase>();
+				yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+				
+				// Check if file was deleted during scan or no longer exists
+				if (check_file.size == 0) {
+					// File not found in database - may have been deleted, skip update
+					GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+					return true;  // Return success but don't update database
+				}
+				
+				var db_file = check_file.get(0);
+				if (db_file.delete_id > 0) {
+					// File was deleted - skip database update
+					GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+						file.path, db_file.delete_id);
+					return true;  // Return success but don't update database
+				}
+				
+				// File not deleted - proceed with normal save
 				file.last_vector_scan = new DateTime.now_local().to_unix();
 				file.saveToDB(this.sql_db, null, false);
 				return true;
@@ -140,6 +163,28 @@ namespace OLLMvector.Indexing
 				this.config, this.vector_db, this.sql_db);
 			yield vector_builder.process_file(tree);
 			
+			// After scanning completes, check if file was deleted before saving
+			// Fetch filebase from database again to check current delete_id
+			var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);
+			var check_file = new Gee.ArrayList<OLLMfiles.FileBase>();
+			yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+			
+			// Check if file was deleted during scan or no longer exists
+			if (check_file.size == 0) {
+				// File not found in database - may have been deleted, skip update
+				GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+				return true;  // Return success but don't update database
+			}
+			
+			var db_file = check_file.get(0);
+			if (db_file.delete_id > 0) {
+				// File was deleted - skip database update
+				GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+					file.path, db_file.delete_id);
+				return true;  // Return success but don't update database
+			}
+			
+			// File not deleted - proceed with normal save
 			file.last_vector_scan = new DateTime.now_local().to_unix();
 			file.saveToDB(this.sql_db, null, false);
 			

@@ -319,5 +319,37 @@ namespace OLLMvector
 			// Sync database to disk after reset
 			sql_db.backupDB();
 		}
+		
+		/**
+		 * Remove vector_metadata entries for all deleted files.
+		 * 
+		 * Uses a bulk DELETE query to efficiently remove all vector_metadata entries
+		 * that reference deleted files. Only removes metadata for files (base_type = 'f'),
+		 * not folders.
+		 * 
+		 * Called automatically via DeleteManager.on_cleanup signal after
+		 * DeleteManager.cleanup() completes.
+		 * 
+		 * Can also be called on startup or periodically to ensure consistency.
+		 * 
+		 * @param db The database instance
+		 */
+		public static async void cleanup_all_deleted(SQ.Database db)
+		{
+			// Bulk DELETE query: remove all vector_metadata entries for deleted files
+			// Only delete metadata for files (base_type = 'f'), not folders
+			var delete_query = "DELETE FROM vector_metadata WHERE file_id IN (" +
+				"SELECT id FROM filebase WHERE delete_id > 0 AND base_type = 'f'" +
+				")";
+			
+			string errmsg;
+			if (Sqlite.OK != db.db.exec(delete_query, null, out errmsg)) {
+				GLib.warning("VectorMetadata.cleanup_all_deleted: Failed to delete metadata: %s", errmsg);
+				return;
+			}
+			
+			// Sync database to disk after cleanup
+			db.backupDB();
+		}
 	}
 }

@@ -161,23 +161,23 @@ namespace OLLMfiles
 		private static int64 last_cleanup_timestamp = 0;
 		
 		/**
-		 * Constructor - creates a FileHistory object for a change.
-		 * 
-		 * @param db Database instance
-		 * @param filebase_object FileBase object (File or Folder) - required (even for new files, create a fake/temporary one)
-		 * @param change_type "added", "modified", or "deleted"
-		 * @param timestamp Timestamp when change occurred (same for all changes in same command/run/edit)
-		 */
+		* Constructor - creates a FileHistory object for a change.
+		* 
+		* @param db Database instance
+		* @param filebase_object FileBase object (File or Folder) - required (even for new files, create a fake/temporary one)
+		* @param change_type "added", "modified", or "deleted"
+		* @param timestamp Timestamp when change occurred (same for all changes in same command/run/edit)
+		*/
 		public FileHistory(
 			SQ.Database db,
 			FileBase filebase_object,
 			string change_type,
-			int64 timestamp)
+			GLib.DateTime timestamp)
 		{
 			this.db = db;
 			this.filebase_object = filebase_object;
 			this.change_type = change_type;
-			this.timestamp = timestamp;
+			this.timestamp = timestamp.to_unix();
 			
 			// Set path and filebase_id from filebase_object
 			this.path = filebase_object.path;

@@ -232,7 +232,7 @@ Examples:
 		var query = OLLMfiles.FileBase.query(sql_db, manager);
 		var stmt = query.selectPrepare(
 				"SELECT " + string.joinv(",", query.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path");
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
 		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
 		query.selectExecute(stmt, results_list);
 		

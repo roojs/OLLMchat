@@ -247,6 +247,22 @@ namespace OLLMfiles
 		public int64 last_vector_scan { get; set; default = 0; }
 		
 		/**
+		 * Reference to FileHistory record where this file was deleted.
+		 * 
+		 * If delete_id = 0, the file is not deleted.
+		 * If delete_id > 0, the file is deleted and delete_id points to file_history.id
+		 * where change_type="deleted".
+		 * 
+		 * Deleted files are flagged rather than immediately removed from database,
+		 * allowing for cleanup operations and UI updates. Files with delete_id > 0
+		 * should be excluded from UI lists and scanning operations.
+		 * 
+		 * Provides direct link to deletion information (timestamp, agent, etc.)
+		 * via the FileHistory record.
+		 */
+		public int64 delete_id { get; set; default = 0; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
 		public static void init_db(SQ.Database db)
@@ -270,7 +286,8 @@ namespace OLLMfiles
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
-				"last_vector_scan INT64 NOT NULL DEFAULT 0" +
+				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
+				"delete_id INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -279,6 +296,15 @@ namespace OLLMfiles
 			// Migrate existing databases: add last_vector_scan column if it doesn't exist
 			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add delete_id column if it doesn't exist
+			var migrate_delete_id = "ALTER TABLE filebase ADD COLUMN delete_id INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_delete_id, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
@@ -369,6 +395,7 @@ namespace OLLMfiles
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
 			target.last_vector_scan = this.last_vector_scan;
+			target.delete_id = this.delete_id;
 		}
 		
 		// Static counter for tracking saveToDB calls

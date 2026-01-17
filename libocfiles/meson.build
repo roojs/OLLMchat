@@ -34,6 +34,7 @@ ocfiles_src = files([
   'ProjectFiles.vala',
   'ProjectList.vala',
   'ProjectManager.vala',
+  'DeleteManager.vala',  # Uses ProjectManager
   'ProjectMigrate.vala',
   'Tree.vala',  # Tree-sitter base class
   'Diff/Patch.vala',

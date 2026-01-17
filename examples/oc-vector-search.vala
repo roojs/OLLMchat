@@ -189,7 +189,7 @@ Examples:
 		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
 		var stmt = query_obj.selectPrepare(
 				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path");
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
 		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
 		query_obj.selectExecute(stmt, results_list);
 		

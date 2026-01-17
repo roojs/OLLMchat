@@ -593,7 +593,7 @@ namespace OLLMtools.EditMode
 			// Create FileHistory object before applying changes
 			// Determine change type: "added" if file doesn't exist, "modified" if exists
 			string change_type = file_exists ? "modified" : "added";
-			int64 edit_timestamp = (new GLib.DateTime.now_local()).to_unix();
+			var edit_timestamp = new GLib.DateTime.now_local();
 			
 			// Create FileHistory object (for both new and existing files)
 			// For new files, file.id will be 0 (fake file), which is correct

@@ -88,6 +88,11 @@ namespace OLLMfiles
 		public signal void file_contents_changed(File file);
 		
 		/**
+		 * DeleteManager instance for handling file deletions.
+		 */
+		public DeleteManager delete_manager { get; private set; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param db Optional database instance for persistence
@@ -102,6 +107,9 @@ namespace OLLMfiles
 			}
 			// Initialize git provider if set
 			this.git_provider.initialize();
+			
+			// Create DeleteManager instance
+			this.delete_manager = new DeleteManager(this);
 		}
 		
 		
@@ -268,7 +276,7 @@ namespace OLLMfiles
 			// Query database for projects
 			var query = FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<Folder>();
-			yield query.select_async("WHERE is_project = 1", projects_list);
+			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
 			
 			//GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
 			

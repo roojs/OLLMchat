@@ -52,10 +52,11 @@ namespace OLLMtools.RunCommand
 		private Gee.HashMap<string, string> overlay_map;
 		
 		/**
-		 * Timestamp when scanning started processing changes.
-		 * Used for all FileHistory records created during this scanning session.
-		 */
-		private int64 command_timestamp { get; private set; default = 0; }
+		* Timestamp when scanning started processing changes.
+		* Used for all FileHistory records created during this scanning session.
+		* Initialized to current time, updated in run() when scanning actually starts.
+		*/
+		private GLib.DateTime timestamp { get; private set; default = new GLib.DateTime.now_local(); }
 		
 		/**
 		 * Constructor.
@@ -74,15 +75,13 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
-		 * Execute the scan after command completion.
-		 * 
-		 * Iterates over overlay_map entries and calls scan_dir() for each overlay subdirectory.
-		 * Sets command_timestamp at the start of scanning.
-		 */
+		* Execute the scan after command completion.
+		* 
+		* Iterates over overlay_map entries and calls scan_dir() for each overlay subdirectory.
+		* Calls cleanup() after all scanning is complete to remove deleted files from in-memory lists.
+		*/
 		public async void run()
 		{
-			// Set timestamp when scanning starts (used for all FileHistory records in this session)
-			this.command_timestamp = (new GLib.DateTime.now_local()).to_unix();
 			
 			// Iterate over overlay_map entries
 			foreach (var entry in this.overlay_map.entries) {
@@ -91,6 +90,10 @@ namespace OLLMtools.RunCommand
 					entry.value
 				);
 			}
+			
+			// Cleanup deleted files from in-memory lists after all scanning is complete
+			// This is more efficient than calling cleanup after each individual deletion
+			yield this.project_folder.manager.delete_manager.cleanup();
 		}
 		
 		/**
@@ -219,7 +222,7 @@ namespace OLLMtools.RunCommand
 					this.project_folder.manager.db,
 					file,
 					change_type,
-					this.command_timestamp
+					this.timestamp
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
@@ -313,7 +316,7 @@ namespace OLLMtools.RunCommand
 					this.project_folder.manager.db,
 					folder,
 					"added",
-					this.command_timestamp
+					this.timestamp
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
@@ -385,7 +388,7 @@ namespace OLLMtools.RunCommand
 					this.project_folder.manager.db,
 					filealias,
 					change_type,
-					this.command_timestamp
+					this.timestamp
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
@@ -417,43 +420,25 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
-		 * Handle removal of a file, folder, or symlink.
-		 * 
-		 * Single method handles all types. Performs deletion immediately.
-		 * For folders, recursively deletes the entire directory tree.
-		 * 
-		 * @param overlay_path Overlay path (for reference, not used for deletion)
-		 * @param filebase FileBase object to remove (File, Folder, or FileAlias)
-		 */
+		* Handle removal of a file, folder, or symlink.
+		* 
+		* Single method handles all types. Uses DeleteManager to handle deletion
+		* (filesystem + FileHistory + database), then calls cleanup() to remove
+		* from in-memory lists.
+		* 
+		* @param overlay_path Overlay path (for reference, not used for deletion)
+		* @param filebase FileBase object to remove (File, Folder, or FileAlias)
+		*/
 		private async void handle_remove(string overlay_path, OLLMfiles.FileBase filebase)
 		{
 			GLib.debug("handle_remove: %s (%s), filebase: %s", 
 				overlay_path, filebase.path, filebase.get_type().name());
 			
-			// Create FileHistory object for this change
-			try {
-				var file_history = new OLLMfiles.FileHistory(
-					this.project_folder.manager.db,
-					filebase,
-					"deleted",
-					this.command_timestamp
-				);
-				yield file_history.commit();
-			} catch (GLib.Error e) {
-				GLib.warning("Cannot create FileHistory for deleted file (%s): %s", filebase.path, e.message);
-			}
-			
-			// Handle file or symlink deletion first (trivial case)
-			if (!(filebase is OLLMfiles.Folder)) {
+			// Clear buffer if file has one (before deletion)
+			// TODO: Phase 4 - Remove this once editor monitors notify::delete_id signal
+			// The editor will handle buffer clearing automatically when delete_id is set
+			if (filebase is OLLMfiles.File) {
 				var file = filebase as OLLMfiles.File;
-				
-				try {
-					GLib.FileUtils.unlink(file.path);
-				} catch (GLib.Error e) {
-					GLib.warning("Cannot delete file from real path (%s): %s", file.path, e.message);
-					return;
-				}
-				
 				if (file.buffer != null) {
 					try {
 						yield file.buffer.clear();
@@ -461,25 +446,19 @@ namespace OLLMtools.RunCommand
 						GLib.warning("Cannot clear buffer for deleted file (%s): %s", file.path, e.message);
 					}
 				}
+			}
 				
-				// Remove from all references (parent.children, ProjectFiles, database, file_cache)
-				yield this.project_folder.project_files.remove_complete(file);
-				return;
-			}
-			
-			// Handle folder deletion (recursive)
-			var folder = filebase as OLLMfiles.Folder;
-			
+			// Delete file/folder (filesystem + FileHistory + database)
+			// DeleteManager handles: filesystem deletion, FileHistory backup creation, database update (delete_id)
+			// Use timestamp so all deletions from same command have same timestamp
+			// If deletion fails (FileHistory or database update), throw error - caller needs to know
+			// Note: Cleanup from in-memory lists is done after scan completes (in run()), not here
 			try {
-				this.recursive_delete(folder.path);
+				yield this.project_folder.manager.delete_manager.remove(filebase, this.timestamp);
 			} catch (GLib.Error e) {
-				GLib.warning("Cannot delete directory from real path (%s): %s", folder.path, e.message);
-				return;
+				GLib.warning("Scan.handle_remove: Failed to delete %s: %s", filebase.path, e.message);
+				throw e;  // Re-throw - caller needs to know deletion failed
 			}
-			
-			// Remove from all references (parent.children, ProjectFiles, database, file_cache)
-			// This will recursively remove all children as well
-			yield this.project_folder.project_files.remove_complete(folder);
 		}
 		
 		/**

@@ -676,5 +676,51 @@ namespace OLLMfiles
 			
 			return null;
 		}
+		
+		/**
+		 * Cleanup deleted files from ProjectFiles list and child_map.
+		 * 
+		 * This is a list-level cleanup operation that removes items from a single list.
+		 * Iterates through items and removes any ProjectFile where file.delete_id > 0.
+		 * Batches removals to minimize signal emissions. Since GLib.ListModel.items_changed
+		 * only supports one contiguous range per signal, this emits one broad signal
+		 * indicating all items from the first deletion position changed.
+		 * 
+		 * This should be called after files are flagged as deleted (during cleanup phase).
+		 */
+		public async void cleanup_deleted()
+		{
+			var lowest_removed_index = -1;
+			var removed_count = 0;
+			
+			// Iterate backwards for safe removal (highest to lowest index)
+			for (var i = (int)this.items.size - 1; i >= 0; i--) {
+				var project_file = this.items.get(i);
+				if (project_file.file.delete_id == 0) {
+					continue;  // Skip non-deleted files
+				}
+				
+				// Remove from array and child_map immediately
+				this.items.remove_at(i);
+				this.child_map.unset(project_file.file.path);
+				removed_count++;
+				lowest_removed_index = i;  // Track lowest index (will be last one found)
+			}
+			
+			if (removed_count == 0) {
+				return; // Nothing to remove
+			}
+			
+			// Emit single items_changed signal for the range
+			// GLib.ListModel.items_changed only supports one contiguous range per signal
+			// For sparse (non-contiguous) deletions, we emit one broad signal:
+			// "from lowest_removed_index, removed N items" 
+			// This tells UI to refresh from that position onwards
+			// Less precise than multiple signals but correct and efficient
+			this.items_changed((uint)lowest_removed_index, (uint)removed_count, 0);
+			
+			// Note: VectorMetadata cleanup happens via ProjectManager.on_cleanup signal
+			// (emitted by DeleteManager.cleanup() after all cleanup is complete)
+		}
 	}
 }

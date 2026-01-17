@@ -56,6 +56,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/ProjectFiles.vala',
     '../libocfiles/ProjectList.vala',
     '../libocfiles/ProjectManager.vala',
+    '../libocfiles/DeleteManager.vala',  # Uses ProjectManager
     '../libocfiles/ProjectMigrate.vala',
     '../libocfiles/Tree.vala',  # Tree-sitter base class
     '../libocfiles/Diff/Patch.vala',

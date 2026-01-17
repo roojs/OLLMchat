@@ -671,7 +671,7 @@ namespace OLLMfiles
 			var new_files = new Gee.ArrayList<FileBase>();
 			yield query.select_async("WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids.to_array()) + ")", new_files);
+				string.joinv(", ", seen_ids.to_array()) + ") AND delete_id = 0", new_files);
 				
 			// If no new files found, we're done
 			if (new_files.size == 0) {
