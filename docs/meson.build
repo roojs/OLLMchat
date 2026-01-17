@@ -54,6 +54,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/GitProviderBase.vala',
     '../libocfiles/ProjectFile.vala',
     '../libocfiles/ProjectFiles.vala',
+    '../libocfiles/ReviewFiles.vala',  # Uses ProjectFiles
     '../libocfiles/ProjectList.vala',
     '../libocfiles/ProjectManager.vala',
     '../libocfiles/DeleteManager.vala',  # Uses ProjectManager

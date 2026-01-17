@@ -198,10 +198,9 @@ namespace OLLMfiles
 		public int scroll_position { get; set; default = 0; }
 		
 		/**
-		 * Whether the file needs approval (inverted from is_approved).
-		 * true = needs approval, false = approved.
+		 * Whether the file needs approval.
 		 */
-		public bool needs_approval { get; set; default = true; }
+		public bool is_need_approval { get; set; default = false; }
 		
 		/**
 		 * Whether the file has unsaved changes.
@@ -287,7 +286,8 @@ namespace OLLMfiles
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
 				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
-				"delete_id INT64 NOT NULL DEFAULT 0" +
+				"delete_id INT64 NOT NULL DEFAULT 0, " +
+				"is_need_approval INTEGER NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -305,6 +305,15 @@ namespace OLLMfiles
 			// Migrate existing databases: add delete_id column if it doesn't exist
 			var migrate_delete_id = "ALTER TABLE filebase ADD COLUMN delete_id INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_delete_id, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add is_need_approval column if it doesn't exist
+			var migrate_is_need_approval = "ALTER TABLE filebase ADD COLUMN is_need_approval INTEGER NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_is_need_approval, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
@@ -396,6 +405,7 @@ namespace OLLMfiles
 			target.is_repo = this.is_repo;
 			target.last_vector_scan = this.last_vector_scan;
 			target.delete_id = this.delete_id;
+			target.is_need_approval = this.is_need_approval;
 		}
 		
 		// Static counter for tracking saveToDB calls

@@ -649,6 +649,20 @@ namespace OLLMtools.EditMode
 			}
 			this.send_ui("txt", "Changes Applied", success_message);
 			
+			// Set is_need_approval flag after applying changes (our app modified the file)
+			file.is_need_approval = true;
+			// Update last_modified timestamp
+			file.last_modified = new GLib.DateTime.now_local().to_unix();
+			// Save to database with updated flag (only if file is in project or has valid id)
+			if (is_in_project || file.id > 0) {
+				file.saveToDB(project_manager.db, null, false);
+			}
+			
+			// Refresh review_files if file is in active project
+			if (is_in_project) {
+				project_manager.active_project.review_files.refresh();
+			}
+			
 			// Emit change_done signal for each change
 			var edit_tool = (Tool) this.tool;
 			foreach (var change in this.changes) {

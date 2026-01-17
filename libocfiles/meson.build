@@ -32,6 +32,7 @@ ocfiles_src = files([
   'GitProviderBase.vala',
   'ProjectFile.vala',
   'ProjectFiles.vala',
+  'ReviewFiles.vala',  # Uses ProjectFiles
   'ProjectList.vala',
   'ProjectManager.vala',
   'DeleteManager.vala',  # Uses ProjectManager

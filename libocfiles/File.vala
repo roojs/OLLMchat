@@ -190,10 +190,10 @@ namespace OLLMfiles
 		
 		
 		/**
-		 * Whether the file needs approval (inverted from is_approved).
+		 * Whether the file needs approval.
 		 * true = needs approval, false = approved.
 		 */
-		public bool needs_approval { get; set; default = true; }
+		public bool is_need_approval { get; set; default = false; }
 		
 		/**
 		 * Whether the file has unsaved changes.
@@ -273,9 +273,9 @@ namespace OLLMfiles
 		public override string display_with_indicators {
 			get {
 				this._display_with_indicators = 
-					this.display_basename + (!this.needs_approval ? " ✓" : "") 
+					this.display_basename + (this.is_need_approval ? " ✗" : "") 
 					+ (this.is_unsaved ? " ●" : "");
-				return this._display_with_indicators; // Checkmark when approved (not needs_approval)
+				return this._display_with_indicators; // X mark (✗) when needs approval (is_need_approval)
 			}
 		}
 		

@@ -101,6 +101,9 @@ namespace OLLMtools.RunCommand
 			// Cleanup deleted files from in-memory lists after all scanning is complete
 			// This is more efficient than calling cleanup after each individual deletion
 			yield this.project_folder.manager.delete_manager.cleanup();
+			
+			// Refresh review_files after scanning completes
+			this.project_folder.review_files.refresh();
 		}
 		
 		/**
@@ -261,13 +264,31 @@ namespace OLLMtools.RunCommand
 			this.copy_permissions(overlay_path, real_path);
 			
 			if (change_type == "added") {
+				// Set is_need_approval for new files created by our app (RunCommand)
+				file.is_need_approval = true;
+				// Update last_modified timestamp from filesystem
+				file.last_modified = file.mtime_on_disk();
+				
 				try {
 					var fake_file = new OLLMfiles.File.new_fake(this.project_folder.manager, file.path);
 					yield this.project_folder.manager.convert_fake_file_to_real(fake_file, file.path);
+					// After conversion, file should have a valid id, save the flag to database
+					if (file.id > 0) {
+						file.saveToDB(this.project_folder.manager.db, null, false);
+					}
 				} catch (GLib.Error e) {
 					GLib.warning("Cannot convert fake file to real (%s): %s", file.path, e.message);
 				}
 				return;
+			}
+			
+			// Set is_need_approval for modified files (our app modified the file via RunCommand)
+			file.is_need_approval = true;
+			// Update last_modified timestamp from filesystem
+			file.last_modified = file.mtime_on_disk();
+			// Save to database with updated flag
+			if (file.id > 0) {
+				file.saveToDB(this.project_folder.manager.db, null, false);
 			}
 			
 			if (file.buffer != null) {

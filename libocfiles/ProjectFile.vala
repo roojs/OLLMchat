@@ -23,7 +23,7 @@ namespace OLLMfiles
 	 * 
 	 * Used for searching on open files and files that need updating. Provides all
 	 * interfaces of FileBase but overrides display name properties. Many properties
-	 * delegate to the wrapped file (is_active, is_open, needs_approval, is_unsaved,
+	 * delegate to the wrapped file (is_active, is_open, is_need_approval, is_unsaved,
 	 * display_basename, display_with_indicators).
 	 * 
 	 * ProjectFile is a wrapper for display purposes only. All file operations should
@@ -61,8 +61,8 @@ namespace OLLMfiles
 		/**
 		 * Whether the wrapped file needs approval.
 		 */
-		public bool needs_approval {
-			get { return this.file.needs_approval; }
+		public bool is_need_approval {
+			get { return this.file.is_need_approval; }
 			set {   }
 		}
 		
