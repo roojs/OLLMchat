@@ -22,7 +22,7 @@ namespace OLLMfiles
 	 * Represents a symlink/alias to a file or folder.
 	 * 
 	 * Many properties delegate to the target file (language, last_viewed, needs_approval,
-	 * is_unsaved, last_approved_copy_path). The points_to property references the target
+	 * is_unsaved). The points_to property references the target
 	 * file/folder, while points_to_id and target_path store the database ID and resolved
 	 * path respectively.
 	 * 
@@ -179,19 +179,6 @@ namespace OLLMfiles
 					return ((File)this.points_to).is_unsaved;
 				}
 				return false;
-			}
-			set { /* Aliases are not edited */ }
-		}
-		
-		/**
-		 * Last approved copy path - delegates to target file for tree display.
-		 */
-		public new string last_approved_copy_path {
-			get { 
-				if (this.points_to is File) {
-					return ((File)this.points_to).last_approved_copy_path;
-				}
-				return "";
 			}
 			set { /* Aliases are not edited */ }
 		}

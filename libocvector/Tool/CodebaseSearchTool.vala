@@ -109,42 +109,59 @@ making it more effective than simple text search for finding relevant code.
 		private string? vector_db_path = null;
 		
 		/**
-		 * Constructor with nullable dependencies.
-		 * 
-		 * For Phase 1 (config registration): client and project_manager can be null.
-		 * For Phase 2 (tool instance creation): client and project_manager are provided.
-		 * 
-		 * Embedding client is extracted from client.config.tools["codebase_search"] if available.
-		 * Vector database is not created in constructor (requires async operation).
-		 * Call init_databases() after construction to create the vector database.
-		 * 
-		 * @param client LLM client (nullable for Phase 1)
-		 * @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
-		 */
+		* Constructor with nullable dependencies.
+		* 
+		* For Phase 1 (config registration): project_manager can be null.
+		* For Phase 2 (tool instance creation): project_manager is provided.
+		* 
+		* If project_manager is provided, init_dependencies() is called automatically.
+		* Vector database is not created in constructor (requires async operation).
+		* Call init_databases() after construction to create the vector database.
+		* 
+		* @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
+		*/
 		public CodebaseSearchTool(
 			OLLMfiles.ProjectManager? project_manager = null
 		)
 		{
 			base();
-			this.project_manager = project_manager;
+			
+			// If project_manager is provided, initialize dependencies immediately
+			if (project_manager != null) {
+				this.init_dependencies(project_manager);
+			}
 			
 			// Embedding client will be extracted lazily when config is available
 			// (e.g., in init_databases or when tool is used with Manager context)
 		}
 		
 		/**
-		 * Initializes tool dependencies after creation.
-		 * 
-		 * Called after tool is created via Object.new() to set dependencies
-		 * that weren't available during registration.
-		 * 
-		 * @param project_manager Project manager instance (nullable)
-		 */
-		public void init_dependencies(OLLMfiles.ProjectManager? project_manager = null)
+		* Initializes tool dependencies after creation.
+		* 
+		* Called after tool is created via Object.new() to set dependencies
+		* that weren't available during registration. Also called from constructor
+		* if project_manager is provided.
+		* 
+		* Returns early if project_manager is already set to avoid re-initialization.
+		* 
+		* @param project_manager Project manager instance (required)
+		*/
+		public void init_dependencies(OLLMfiles.ProjectManager project_manager)
 		{
-			if (project_manager != null) {
-				this.project_manager = project_manager;
+			// Return early if already initialized to avoid re-connecting signals
+			if (this.project_manager != null) {
+				return;
 			}
+			
+			this.project_manager = project_manager;
+			
+			// Connect to DeleteManager.on_cleanup signal for bulk VectorMetadata cleanup
+			this.project_manager.delete_manager.on_cleanup.connect(() => {
+				// Bulk cleanup: remove all vector_metadata entries for deleted files
+				if (this.project_manager.db != null) {
+					VectorMetadata.cleanup_all_deleted.begin(this.project_manager.db);
+				}
+			});
 		}
 		
 		/**

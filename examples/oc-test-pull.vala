@@ -49,7 +49,7 @@ Examples:
 		return null;
 	}
 	
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		var client = yield this.setup_client(command_line);
 		

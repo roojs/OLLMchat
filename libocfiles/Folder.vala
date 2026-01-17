@@ -332,7 +332,7 @@ namespace OLLMfiles
 		 * @param new_items List to populate with newly created FileBase objects
 		 * @throws Error if directory enumeration fails
 		 */
-		private void enumerate_directory_contents(GLib.File dir, Gee.ArrayList<FileBase> new_items) throws Error
+		public void enumerate_directory_contents(GLib.File dir, Gee.ArrayList<FileBase> new_items) throws Error
 		{
 			// Execute directory enumeration
 			var enumerator = dir.enumerate_children(
@@ -671,7 +671,7 @@ namespace OLLMfiles
 			var new_files = new Gee.ArrayList<FileBase>();
 			yield query.select_async("WHERE (" + 
 				string.joinv(" OR ", path_conds) + ") AND id NOT IN (" + 
-				string.joinv(", ", seen_ids.to_array()) + ")", new_files);
+				string.joinv(", ", seen_ids.to_array()) + ") AND delete_id = 0", new_files);
 				
 			// If no new files found, we're done
 			if (new_files.size == 0) {

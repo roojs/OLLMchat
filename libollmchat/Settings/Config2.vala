@@ -119,10 +119,20 @@ namespace OLLMchat.Settings
 		public static string config_path = "";
 		
 		/**
-		 * Whether the config was successfully loaded from a file.
-		 * This property is not serialized.
-		 */
+		* Whether the config was successfully loaded from a file.
+		* This property is not serialized.
+		*/
 		public bool loaded = false;
+		
+		/**
+		* Maximum number of days to retain deleted file records in the database.
+		* 
+		* After this many days, deleted file records and their associated FileHistory
+		* records will be cleaned up by FileHistory.cleanup_old_backups().
+		* 
+		* Default: 30 days
+		*/
+		public int files_max_deleted_days { get; set; default = 30; }
 
 		/**
 		 * Initializes the usage_types and tools_types maps and registers default types.

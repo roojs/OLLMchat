@@ -112,7 +112,7 @@ Examples:
 		return "Code Vector Indexer";
 	}
 	
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		// Handle reset-database case
 		if (opt_reset_database) {
@@ -232,7 +232,7 @@ Examples:
 		var query = OLLMfiles.FileBase.query(sql_db, manager);
 		var stmt = query.selectPrepare(
 				"SELECT " + string.joinv(",", query.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path");
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
 		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
 		query.selectExecute(stmt, results_list);
 		

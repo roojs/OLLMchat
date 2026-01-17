@@ -88,6 +88,11 @@ namespace OLLMfiles
 		public signal void file_contents_changed(File file);
 		
 		/**
+		 * DeleteManager instance for handling file deletions.
+		 */
+		public DeleteManager delete_manager { get; private set; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param db Optional database instance for persistence
@@ -97,10 +102,14 @@ namespace OLLMfiles
 			this.db = db;
 			if (this.db != null) {
 				// Initialize database tables
-				FileBase.initDB(this.db);
+				FileBase.init_db(this.db);
+				FileHistory.init_db(this.db);
 			}
 			// Initialize git provider if set
 			this.git_provider.initialize();
+			
+			// Create DeleteManager instance
+			this.delete_manager = new DeleteManager(this);
 		}
 		
 		
@@ -267,7 +276,7 @@ namespace OLLMfiles
 			// Query database for projects
 			var query = FileBase.query(this.db, this);
 			var projects_list = new Gee.ArrayList<Folder>();
-			yield query.select_async("WHERE is_project = 1", projects_list);
+			yield query.select_async("WHERE is_project = 1 AND delete_id = 0", projects_list);
 			
 			//GLib.debug("ProjectManager.load_projects_from_db: Found %d projects in database", projects_list.size);
 			
@@ -462,7 +471,6 @@ namespace OLLMfiles
 		 * Timestamp of last backup cleanup run (Unix timestamp).
 		 * Used to ensure cleanup only runs once per day.
 		 */
-		private static int64 last_cleanup_timestamp = 0;
 		
 		/**
 		 * Check if the active file has been modified on disk and differs from the buffer.
@@ -512,91 +520,6 @@ namespace OLLMfiles
 				GLib.debug("Reloaded file from disk: %s", this.active_file.path);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to reload file from disk %s: %s", this.active_file.path, e.message);
-			}
-		}
-		
-		/**
-		 * Cleanup old backup files from the backup directory.
-		 * 
-		 * Removes backup files older than 7 days from ~/.cache/ollmchat/edited/.
-		 * This should be called on startup or periodically to prevent backup directory
-		 * from growing indefinitely.
-		 * 
-		 * Only runs once per day to avoid excessive file system operations.
-		 */
-		public static async void cleanup_old_backups()
-		{
-			var now = new GLib.DateTime.now_local().to_unix();
-			
-			if (last_cleanup_timestamp > now - (24 * 60 * 60)) {
-				return;
-			}
-			
-			last_cleanup_timestamp = now;
-			
-			try {
-				var cache_dir = GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(),
-					".cache",
-					"ollmchat",
-					"edited"
-				);
-				
-				var cache_dir_file = GLib.File.new_for_path(cache_dir);
-				if (!cache_dir_file.query_exists()) {
-					return;
-				}
-				
-				var cutoff_timestamp = new GLib.DateTime.now_local().add_days(-7).to_unix();
-				
-				var enumerator = yield cache_dir_file.enumerate_children_async(
-					GLib.FileAttribute.STANDARD_NAME + "," + 
-					GLib.FileAttribute.TIME_MODIFIED + "," +
-					GLib.FileAttribute.STANDARD_TYPE,
-					GLib.FileQueryInfoFlags.NONE,
-					GLib.Priority.DEFAULT,
-					null
-				);
-				
-				var files_to_delete = new Gee.ArrayList<string>();
-				
-				GLib.FileInfo? info;
-				while ((info = enumerator.next_file(null)) != null) {
-					if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-						continue;
-					}
-					
-					var file_path = GLib.Path.build_filename(cache_dir, info.get_name());
-					
-					if (info.get_modification_date_time().to_unix() < cutoff_timestamp) {
-						files_to_delete.add(file_path);
-					}
-				}
-				
-				enumerator.close(null);
-				
-				int deleted_count = 0;
-				foreach (var file_path in files_to_delete) {
-					try {
-						yield GLib.File.new_for_path(file_path).delete_async(
-							GLib.Priority.DEFAULT,
-							null
-						);
-						deleted_count++;
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Failed to delete backup file %s: %s",
-							file_path,
-							e.message
-						);
-					}
-				}
-				
-				if (deleted_count > 0) {
-					GLib.debug("Deleted %d old backup file(s)", deleted_count);
-				}
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to cleanup old backups: %s", e.message);
 			}
 		}
 		

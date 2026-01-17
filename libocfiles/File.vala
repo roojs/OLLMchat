@@ -200,12 +200,6 @@ namespace OLLMfiles
 		 */
 		public bool is_unsaved { get; set; default = false; }
 		
-		
-		/**
-		 * Filename of last approved copy (default: empty string).
-		 */
-		public string last_approved_copy_path { get; set; default = ""; }
-		
 		private string _icon_name = "";
 		/**
 		 * Icon name for binding in lists.
@@ -533,5 +527,6 @@ namespace OLLMfiles
 			
 			return FileUpdateStatus.NO_CHANGE;
 		}
+		
 	}
 }

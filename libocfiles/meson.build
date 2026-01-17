@@ -24,6 +24,7 @@ ocfiles_src = files([
   'FileChange.vala',
   'DummyFileBuffer.vala',
   'FileBase.vala',
+  'FileHistory.vala',  # Uses FileBase
   'File.vala',
   'FileAlias.vala',
   'Folder.vala',
@@ -33,6 +34,7 @@ ocfiles_src = files([
   'ProjectFiles.vala',
   'ProjectList.vala',
   'ProjectManager.vala',
+  'DeleteManager.vala',  # Uses ProjectManager
   'ProjectMigrate.vala',
   'Tree.vala',  # Tree-sitter base class
   'Diff/Patch.vala',

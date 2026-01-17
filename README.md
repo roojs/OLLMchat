@@ -126,6 +126,17 @@ ollama pull bge-m3:latest
 ollama pull qwen3-coder:30b
 ```
 
+### Runtime Dependencies
+
+**For RunCommand tool (command execution with overlay filesystem support)**, you'll also need:
+
+```bash
+sudo apt install \
+  bubblewrap
+```
+
+- **bubblewrap** - Provides `bwrap` command for sandboxed command execution
+
 ## Building
 
 To build the project, follow these steps:

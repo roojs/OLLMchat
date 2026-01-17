@@ -186,7 +186,7 @@ Examples:
 		return null;
 	}
 
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		// Determine database path
 		string db_path;
@@ -424,10 +424,11 @@ $(content)
 		yield file.buffer.write(content);
 		
 		// Output results
-		string backup_info = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
-			? @"BACKUP: $(file.last_approved_copy_path)
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+		string backup_info = file.id < 0 
+			? @"NO_BACKUP: fake_file
 " 
-			: @"NO_BACKUP: $(file.id < 0 ? "fake_file" : "no_backup_created")
+			: @"BACKUP: tracked_in_file_history
 ";
 		print(@"$(backup_info)FILE: $(file_path)
 FILE_ID: $(file.id)
@@ -470,9 +471,20 @@ PROJECT_PATH: $(manager.active_project.path)
 
 	private async void run_cleanup_backups() throws Error
 	{
-		// Note: cleanup_old_backups is static and uses hardcoded 7 days
-		// We can't override the age, but we can call it
-		yield OLLMfiles.ProjectManager.cleanup_old_backups();
+		// Determine database path
+		string db_path;
+		if (opt_test_db != null && opt_test_db != "") {
+			db_path = opt_test_db;
+		} else {
+			// Use main database (normal operation)
+			db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		}
+		
+		// Create database
+		var db = new SQ.Database(db_path, false);
+		
+		// Call cleanup with db and default max_deleted_days (30)
+		yield OLLMfiles.FileHistory.cleanup_old_backups(db, 30);
 		
 		var cache_dir = GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(),
@@ -481,10 +493,9 @@ PROJECT_PATH: $(manager.active_project.path)
 			"edited"
 		);
 		
-		print(@"BACKUP_DIR: $(cache_dir)
-AGE_THRESHOLD: 7 days
-Cleanup completed (check logs for deleted files)
-");
+		print("BACKUP_DIR: " + cache_dir + "\n" +
+			"AGE_THRESHOLD: 30 days\n" +
+			"Cleanup completed (check logs for deleted files)\n");
 	}
 
 	private async void run_list_buffers(OLLMfiles.ProjectManager manager) throws Error
@@ -575,15 +586,13 @@ Cleanup completed (check logs for deleted files)
 			file = new OLLMfiles.File.new_fake(manager, file_path);
 		}
 		
-		string backup_path = file.last_approved_copy_path != null && file.last_approved_copy_path != "" 
-			? file.last_approved_copy_path 
-			: "(none)";
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
 		print(@"FILE: $(file_path)
 FILE_ID: $(file.id)
 IS_FAKE: $(file.id < 0 ? "true" : "false")
 BUFFER_STATUS: $(file.buffer != null ? "exists" : "null")
 IN_PROJECT: $(in_project ? "true" : "false")
-BACKUP_PATH: $(backup_path)
+BACKUP_PATH: (tracked_in_file_history)
 ");
 	}
 
@@ -659,11 +668,9 @@ BACKUP_PATH: $(backup_path)
 			yield file.buffer.write(stdin_content);
 			
 			int line_count = file.buffer.get_line_count();
-			string backup_info = "";
-			if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
-				backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
-			}
-			print(backup_info + "FILE: " + file_path + "\n" +
+			// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+			print("BACKUP: tracked_in_file_history\n" +
+				"FILE: " + file_path + "\n" +
 				"FILE_ID: " + file.id.to_string() + "\n" +
 				"LINE_COUNT: " + line_count.to_string() + "\n" +
 				"MODE: complete_file\n");
@@ -726,11 +733,9 @@ BACKUP_PATH: $(backup_path)
 		yield file.buffer.apply_edits(changes);
 		
 		int line_count = file.buffer.get_line_count();
-		string backup_info = "";
-		if (file.last_approved_copy_path != null && file.last_approved_copy_path != "") {
-			backup_info = "BACKUP: " + file.last_approved_copy_path + "\n";
-		}
-		print(backup_info + "FILE: " + file_path + "\n" +
+		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path
+		print("BACKUP: tracked_in_file_history\n" +
+			"FILE: " + file_path + "\n" +
 			"FILE_ID: " + file.id.to_string() + "\n" +
 			"LINE_COUNT: " + line_count.to_string() + "\n" +
 			"CHANGES_APPLIED: " + changes.size.to_string() + "\n" +

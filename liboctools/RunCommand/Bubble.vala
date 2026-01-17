@@ -27,9 +27,11 @@ namespace OLLMtools.RunCommand
 	 * 
 	 * The sandbox configuration:
 	 * - Mounts the entire filesystem as read-only (--ro-bind / /)
-	 * - Provides read-write access to project directories (--bind for each root)
+	 * - Provides read-write access to project directories via overlay filesystem
 	 * - Blocks network access by default (--unshare-net, unless allow_network is true)
 	 * - Executes commands via /bin/sh -c
+	 * - Provides isolated temporary directory (/tmp) via tmpfs
+	 * - Mounts /dev read-only (like the rest of the system) with /dev/null writable for output redirection
 	 * 
 	 * A new Bubble instance is created for each command execution. The instance is used
 	 * once and then goes out of scope, so no cleanup logic is needed for old instances.
@@ -37,8 +39,9 @@ namespace OLLMtools.RunCommand
 	 * Environment variables are automatically inherited from the user's environment
 	 * when using GLib.Subprocess. No explicit --setenv flags are needed.
 	 * 
-	 * Working directory support will be added in later phases when overlay support
-	 * is implemented. For Phase 1, commands execute from the project root directory.
+	 * Overlay filesystem is used for write isolation. All writes to project directories
+	 * go to the overlay upper directory and are copied back to the live system after
+	 * command execution completes.
 	 */
 	public class Bubble
 	{
@@ -76,12 +79,14 @@ namespace OLLMtools.RunCommand
 		private OLLMfiles.Folder project;
 		
 		/**
-		 * Map of path -> Folder objects to share (read-write access).
+		 * Overlay instance for write isolation.
 		 * 
-		 * Contains all directories that need write access in the sandbox, as determined
-		 * by project.build_roots(). Each path is mapped to the project Folder reference.
+		 * The overlay filesystem is used for write isolation.
+		 * The overlay mount point is bind-mounted into the sandbox instead of
+		 * directly binding project roots. All project root binds are replaced with
+		 * a single overlay mount point bind.
 		 */
-		private Gee.HashMap<string, OLLMfiles.Folder> roots;
+		private Overlay overlay;
 		
 		/**
 		 * Network access flag (default: false).
@@ -105,12 +110,12 @@ namespace OLLMtools.RunCommand
 		 * Constructor.
 		 * 
 		 * Initializes a Bubble instance with the specified project folder and network
-		 * access setting. Calls project.build_roots() to determine which directories
-		 * need write access in the sandbox.
+		 * access setting. Creates an Overlay instance for write isolation (but doesn't
+		 * create/mount it yet - that happens in exec()).
 		 * 
 		 * @param project Project folder object (is_project = true) - the main project directory
 		 * @param allow_network Whether to allow network access (default: false, Phase 7 feature)
-		 * @throws Error if project is invalid, build_roots() fails, or a path is not absolute
+		 * @throws Error if project is invalid or overlay creation fails
 		 */
 		public Bubble(OLLMfiles.Folder project, bool allow_network = false) throws Error
 		{
@@ -118,25 +123,19 @@ namespace OLLMtools.RunCommand
 			this.project = project;
 			this.allow_network = allow_network;
 			
-			// Initialize roots as empty HashMap
-			this.roots = new Gee.HashMap<string, OLLMfiles.Folder>();
-			
-			// Call project.build_roots() to get array of paths that need write access
-			
-			// For each path returned:
-			foreach (var folder in project.build_roots()) {
-				// Add to HashMap: roots.set(path, project) (use project as the Folder reference)
-				this.roots.set(folder.path, project);
-			}
+			// Create overlay instance for write isolation (but don't create/mount yet)
+			// Overlay constructor already calls project.build_roots() internally and builds overlay_map
+			this.overlay = new Overlay(project);
 		}
 		
 		/**
 		 * Execute command string in bubblewrap sandbox and return output as string.
 		 * 
-		 * This is the main public API for executing commands. It builds the bubblewrap
-		 * command arguments, creates a subprocess, reads stdout and stderr, and formats
-		 * the output. The output includes stdout, stderr (if any), and the exit code
-		 * (if non-zero).
+		 * This is the main public API for executing commands. It creates and mounts the overlay,
+		 * builds the bubblewrap command arguments, creates a subprocess, reads stdout and stderr,
+		 * copies files from overlay to live system, and cleans up the overlay.
+		 * 
+		 * The output includes stdout, stderr (if any), and the exit code (if non-zero).
 		 * 
 		 * The command is executed via /bin/sh -c, so shell features like pipes, redirects,
 		 * and command chaining are supported.
@@ -147,27 +146,47 @@ namespace OLLMtools.RunCommand
 		 */
 		public async string exec(string command) throws Error
 		{
-			// Build bubblewrap command arguments using build_bubble_args(command)
-			var args = this.build_bubble_args(command);
+			// Create overlay directory structure (lazy initialization)
+			this.overlay.create();
 			
-			// Create GLib.Subprocess with bubblewrap as executable
-			GLib.Subprocess subprocess;
 			try {
-				subprocess = new GLib.Subprocess.newv(
-					args,
-					GLib.SubprocessFlags.STDOUT_PIPE | 
-					GLib.SubprocessFlags.STDERR_PIPE |
-					GLib.SubprocessFlags.STDIN_INHERIT
-				);
-			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
+				// Build bubblewrap command arguments using build_bubble_args(command)
+				var args = this.build_bubble_args(command);
+				
+				// Debug: Output the exact command being run
+				var cmd_str = string.joinv(" ", args);
+				GLib.debug("Bubble.exec() running command: %s", cmd_str);
+				
+				// Create GLib.Subprocess with bubblewrap as executable
+				GLib.Subprocess subprocess;
+				try {
+					subprocess = new GLib.Subprocess.newv(
+						args,
+						GLib.SubprocessFlags.STDOUT_PIPE | 
+						GLib.SubprocessFlags.STDERR_PIPE |
+						GLib.SubprocessFlags.STDIN_INHERIT
+					);
+				} catch (GLib.Error e) {
+					throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
+				}
+				
+				// Read output using read_subprocess_output()
+				var output = yield this.read_subprocess_output(subprocess);
+				
+				// Copy files from overlay to live system (scans overlay and copies files)
+				yield this.overlay.scan.run();
+				
+				// Return formatted string
+				return output;
+				
+			} finally {
+				// Always cleanup overlay (removes directories)
+				try {
+					this.overlay.cleanup();
+				} catch (Error cleanup_error) {
+					GLib.warning("Failed to cleanup overlay: %s", cleanup_error.message);
+				}
 			}
-			
-			// Read output using read_subprocess_output()
-			var output = yield this.read_subprocess_output(subprocess);
-			
-			// Return formatted string
-			return output;
 		}
 		
 		/**
@@ -175,7 +194,9 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * Constructs the full command line for bubblewrap, including:
 		 * - Read-only root filesystem bind (--ro-bind / /)
-		 * - Read-write binds for each project root directory (--bind path path)
+		 * - Device filesystem mount (--ro-bind /dev /dev) with /dev/null override (--dev-bind) for output redirection
+		 * - Read-write binds for overlay mount point at each project root location
+		 * - Temporary directory mount (--tmpfs /tmp)
 		 * - Network isolation flag (--unshare-net) if network is not allowed
 		 * - Command separator (--)
 		 * - Shell command (/bin/sh -c "command")
@@ -200,16 +221,61 @@ namespace OLLMtools.RunCommand
 			// Start with: ["bwrap"]
 			args += bwrap_path;
 			
+			// Add user namespace (required for overlay support without root)
+			args += "--unshare-user";
+			
+			// Add tmpfs mount for /tmp first (needs to be writable before creating directories)
+			args += "--tmpfs";
+			args += "/tmp";
+			
 			// Add read-only bind: "--ro-bind", "/", "/"
 			args += "--ro-bind";
 			args += "/";
 			args += "/";
 			
-			// Add root folder binds: Iterate over roots HashMap, for each path add "--bind", path, path
-			foreach (var entry in this.roots.entries) {
-				args += "--bind";
-				args += entry.key;
-				args += entry.key;
+			// Mount /dev read-only (like the rest of the system)
+			// This makes the sandbox appear as a regular system, but prevents writes
+			args += "--ro-bind";
+			args += "/dev";
+			args += "/dev";
+			
+			// Override /dev/null to be writable for output redirection
+			// Later mounts take precedence, so this overrides the read-only /dev/null
+			args += "--dev-bind";
+			args += "/dev/null";
+			args += "/dev/null";
+			
+			// Use bubblewrap's --overlay for each project root
+			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)
+			var upper_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "upper");
+			var work_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "work");
+			
+			var entries_array = this.overlay.overlay_map.entries.to_array();
+			for (int i = 0; i < entries_array.length; i++) {
+				var entry = entries_array[i];
+				var overlay_name = "overlay" + (i + 1).to_string();
+				var work_name = "work" + (i + 1).to_string();
+				
+				// Create destination directory in sandbox (overlay will mount on it)
+				args += "--dir";
+				args += entry.value;  // Project root path
+				
+				// Lower layer (read-only source)
+				args += "--overlay-src";
+				args += entry.value;  // Project root path
+				
+				// Overlay mount: RWSRC (upper/overlayN), WORKDIR (work/workN), DEST (project root in sandbox)
+				args += "--overlay";
+				args += GLib.Path.build_filename(upper_dir, overlay_name);  // RWSRC
+				args += GLib.Path.build_filename(work_dir, work_name);       // WORKDIR
+				args += entry.value;  // DEST (project root path in sandbox)
+			}
+			
+			// Set working directory to project folder (first project root)
+			// This ensures commands run in the project directory context
+			if (entries_array.length > 0) {
+				args += "--chdir";
+				args += entries_array[0].value;  // First project root path
 			}
 			
 			// Add network args: If allow_network == false, add "--unshare-net"
@@ -241,9 +307,13 @@ namespace OLLMtools.RunCommand
 	 */
 	private async string read_subprocess_output(GLib.Subprocess subprocess) throws Error
 	{
+		GLib.debug("read_subprocess_output: Starting to read from subprocess");
+		
 		// Get stdout and stderr streams from subprocess
 		var stdout_stream = subprocess.get_stdout_pipe();
 		var stderr_stream = subprocess.get_stderr_pipe();
+		
+		GLib.debug("read_subprocess_output: Got streams, stdout=%p, stderr=%p", stdout_stream, stderr_stream);
 		
 		// Reset accumulators for this execution
 		this.ret_str = "";
@@ -308,32 +378,48 @@ namespace OLLMtools.RunCommand
 		);
 		
 		// Wait for process to complete
+		GLib.debug("read_subprocess_output: Waiting for process to complete");
 		int exit_status = 0;
 		try {
-			if (!(yield subprocess.wait_async(null))) {
-				exit_status = subprocess.get_exit_status();
-			}
+			yield subprocess.wait_async(null);
+			// Always get exit status, regardless of success/failure
+			exit_status = subprocess.get_exit_status();
 		} catch (GLib.Error e) {
+			// If wait_async failed, try to get exit status if process has terminated
 			if (!subprocess.get_successful()) {
 				exit_status = subprocess.get_exit_status();
 			}
-			// Clean up watches
-			GLib.Source.remove(stdout_watch);
-			GLib.Source.remove(stderr_watch);
+			// Clean up watches - only remove if they haven't been removed already
+			// (watch callbacks remove themselves when HUP/ERR is detected)
+			if (stdout_open) {
+				GLib.Source.remove(stdout_watch);
+			}
+			if (stderr_open) {
+				GLib.Source.remove(stderr_watch);
+			}
 			throw new GLib.IOError.FAILED("Failed to wait for process: " + e.message);
 		}
 		
+		GLib.debug("read_subprocess_output: Process completed with exit_status=%d, stdout_open=%s, stderr_open=%s", exit_status, stdout_open.to_string(), stderr_open.to_string());
+		
 		// Read any remaining data
 		if (stdout_open) {
+			GLib.debug("read_subprocess_output: Reading remaining stdout data");
 			this.read_from_channel(stdout_ch, true);
 		}
 		if (stderr_open) {
+			GLib.debug("read_subprocess_output: Reading remaining stderr data");
 			this.read_from_channel(stderr_ch, false);
 		}
 		
-		// Clean up watches
-		GLib.Source.remove(stdout_watch);
-		GLib.Source.remove(stderr_watch);
+		// Clean up watches - only remove if they haven't been removed already
+		// (watch callbacks remove themselves when HUP/ERR is detected)
+		if (stdout_open) {
+			GLib.Source.remove(stdout_watch);
+		}
+		if (stderr_open) {
+			GLib.Source.remove(stderr_watch);
+		}
 		
 		// Build failure string (stderr + stdout + exit code) for failure case
 		// fail_str already contains stderr, now add stdout
@@ -350,6 +436,12 @@ namespace OLLMtools.RunCommand
 			final_fail_str += "\n";
 		}
 		final_fail_str += "Exit code: " + exit_status.to_string() + "\n";
+		
+		// Debug: Output what we captured
+		GLib.debug("Bubble.read_subprocess_output: exit_status=%d, ret_str length=%zu, fail_str length=%zu", exit_status, this.ret_str.length, this.fail_str.length);
+		if (this.fail_str.length > 0) {
+			GLib.debug("Bubble.read_subprocess_output: fail_str content: %s", this.fail_str);
+		}
 		
 		// Return appropriate string based on exit status
 		if (exit_status == 0) {
@@ -381,19 +473,23 @@ namespace OLLMtools.RunCommand
 			try {
 				status = channel.read_line(out buffer, out len, out term_pos);
 			} catch (GLib.Error e) {
+				GLib.debug("read_from_channel: Error reading from %s: %s", is_stdout ? "stdout" : "stderr", e.message);
 				return; // Error reading, stop
 			}
 			
 			if (buffer == null) {
+				GLib.debug("read_from_channel: No more data from %s", is_stdout ? "stdout" : "stderr");
 				return; // No more data
 			}
 			
 			// If status is not NORMAL, return early
 			if (status != GLib.IOStatus.NORMAL) {
+				GLib.debug("read_from_channel: Status %s from %s, stopping", status.to_string(), is_stdout ? "stdout" : "stderr");
 				return; // AGAIN, EOF, or ERROR - stop reading
 			}
 			
 			// Status is NORMAL - accumulate output
+			GLib.debug("read_from_channel: Read %zu bytes from %s: %s", len, is_stdout ? "stdout" : "stderr", buffer);
 			if (is_stdout) {
 				this.ret_str += buffer;
 				continue; // Read more

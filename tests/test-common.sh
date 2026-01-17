@@ -19,12 +19,12 @@ CURRENT_TEST_FAILED=false
 # Test helper functions
 test_pass() {
     echo -e "${GREEN}✓ PASS: $1${NC}"
-    ((TESTS_PASSED++))
+    ((TESTS_PASSED++)) || true  # Always succeed - increment might fail with set -e if unset
 }
 
 test_fail() {
     echo -e "${RED}✗ FAIL: $1${NC}"
-    ((TESTS_FAILED++))
+    ((TESTS_FAILED++)) || true  # Always succeed - increment might fail with set -e if unset
     FAILED_TESTS+=("$1")
     CURRENT_TEST_FAILED=true
 }
@@ -210,6 +210,12 @@ reset_test_state() {
     # Reset database before each test for consistent FILE_IDs
     if [ -n "${TEST_DB:-}" ] && [ -f "${TEST_DB}" ]; then
         rm -f "${TEST_DB}"
+    fi
+    # Clean up project directory if TEST_PROJECT_DIR is set (for test-bubble.sh)
+    # This ensures each test starts with a clean project directory
+    if [ -n "${TEST_PROJECT_DIR:-}" ] && [ -d "${TEST_PROJECT_DIR}" ]; then
+        # Remove all contents (files, directories, hidden files) but keep the directory itself
+        find "${TEST_PROJECT_DIR}" -mindepth 1 -delete 2>/dev/null || true
     fi
 }
 
@@ -465,8 +471,30 @@ test_exe() {
             return 1
         fi
     else
-        # Expected file doesn't exist - just log a note to stderr
-        echo -e "${YELLOW}Note: Expected stdout file not found: $expected_file (skipping stdout comparison)${NC}" >&2
+        # Expected file doesn't exist - only warn if there's actual command output
+        # Filter out wrapper debug lines, BACKUP lines, and log messages to check for real output
+        if [ -f "$output_file" ]; then
+            # Remove wrapper debug lines, BACKUP lines, and log messages (timestamp patterns), then check if anything remains
+            local actual_content=$(cat "$output_file" | tr -d '\r' | \
+                grep -v "^BACKUP:" | \
+                grep -v "^Executing command in sandbox:" | \
+                grep -v "^Project:" | \
+                grep -v "^Allow network:" | \
+                grep -v "^--- Output ---" | \
+                grep -v "^--- End Output ---" | \
+                grep -v "^--- Debug Info ---" | \
+                grep -v "^ret_str length:" | \
+                grep -v "^fail_str length:" | \
+                grep -vE "^[0-9]{1,2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?:" | \
+                grep -vE "^\\*\\* .* \\*\\*:" | \
+                grep -vE "G_LOG_LEVEL" | \
+                sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+            if [ -n "$actual_content" ]; then
+                # There's actual command output but no expected file - this might be a missing expected file
+                echo -e "${YELLOW}Note: Expected stdout file not found: $expected_file (skipping stdout comparison)${NC}" >&2
+            fi
+            # If actual_content is empty after filtering, don't show any message - no command output is expected
+        fi
     fi
     
     # Return the output content (to stdout, so it can be captured)

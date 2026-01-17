@@ -129,7 +129,7 @@ Examples:
 		return "Code Vector Search";
 	}
 	
-	protected override async void run_test(ApplicationCommandLine command_line) throws Error
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
 		string[] args = command_line.get_arguments();
 		string? folder_path = args.length > 1 ? args[1] : null;
@@ -189,7 +189,7 @@ Examples:
 		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
 		var stmt = query_obj.selectPrepare(
 				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
-					 " FROM filebase WHERE path = $path");
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
 		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
 		query_obj.selectExecute(stmt, results_list);
 		

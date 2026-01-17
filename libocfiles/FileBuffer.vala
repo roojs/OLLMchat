@@ -240,10 +240,9 @@ namespace OLLMfiles
 		 * 
 		 * == Backup Creation ==
 		 * 
-		 *  * Path: ~/.cache/ollmchat/edited/{id}-{date YY-MM-DD}-{basename}
-		 *  * Only creates backup if file has id > 0 (in database)
-		 *  * Only creates one backup per day (skips if backup exists for today)
-		 *  * Updates file.last_approved_copy_path with backup path
+		 *  * Backups are now created by FileHistory.commit() before writes
+		 *  * Backup paths are stored in FileHistory.backup_path
+		 *  * Path: ~/.cache/ollmchat/edited/{timestamp}-{id}-{basename}
 		 * 
 		 * Usage:
 		 * {{{
@@ -343,6 +342,15 @@ namespace OLLMfiles
 		public abstract async void apply_edits(Gee.ArrayList<FileChange> changes) throws Error;
 		
 		/**
+		 * Clear buffer contents to empty.
+		 * 
+		 * Used when file is deleted - buffer should reflect empty state.
+		 * 
+		 * @throws Error if clearing fails
+		 */
+		public abstract async void clear() throws Error;
+		
+		/**
 		 * Write contents to file on disk (sync buffer to file).
 		 * 
 		 * Creates backup if needed, writes to disk, and updates file metadata.
@@ -354,125 +362,11 @@ namespace OLLMfiles
 		 */
 		public async void write_real(string contents) throws Error
 		{
-			// Create backup if needed
-			yield this.create_backup_if_needed();
-			
 			// Write to file
 			yield this.write_to_disk(contents);
 			
 			// Update file metadata
 			this.update_file_metadata_after_write();
-		}
-		
-		/**
-		 * Internal method: Create backup if file is in database.
-		 * 
-		 * Creates a backup of the file before writing if the file is in the database.
-		 * 
-		 * == Backup Location ==
-		 * 
-		 * Backups are stored in: ~/.cache/ollmchat/edited/
-		 * 
-		 * == Backup Naming ==
-		 * 
-		 * Format: {id}-{date YY-MM-DD}-{basename}
-		 * 
-		 * Example: 123-25-01-15-MainWindow.vala
-		 * 
-		 * == Backup Rules ==
-		 * 
-		 *  1. Only for Database Files: Backups are only created for files with id > 0 (in database)
-		 *  2. One Per Day: Only one backup is created per file per day
-		 *  3. Automatic: Backups are created automatically before writing
-		 *  4. Metadata: Backup path is stored in file.last_approved_copy_path
-		 * 
-		 * == Backup Cleanup ==
-		 * 
-		 * Old backups (more than 3 days) are automatically cleaned up:
-		 * 
-		 *  * Triggered after backup creation (runs at most once per day)
-		 *  * Static method: ProjectManager.cleanup_old_backups()
-		 *  * Can also be called manually
-		 */
-		protected async void create_backup_if_needed()
-		{
-			// Only create backup if file is in database (id > 0)
-			if (this.file.id <= 0) {
-				return;
-			}
-			
-			try {
-				var cache_dir = GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(),
-					".cache",
-					"ollmchat",
-					"edited"
-				);
-				
-				// Create cache directory if it doesn't exist
-				var cache_dir_file = GLib.File.new_for_path(cache_dir);
-				if (!cache_dir_file.query_exists()) {
-					cache_dir_file.make_directory_with_parents(null);
-				}
-				
-				// Generate backup filename with date
-				var basename = GLib.Path.get_basename(this.file.path);
-				var backup_path = GLib.Path.build_filename(
-					cache_dir,
-					"%lld-%s-%s".printf(
-						this.file.id,
-						new GLib.DateTime.now_local().format("%y-%m-%d"),
-						basename
-					)
-				);
-				
-				// Check if backup already exists for today
-				var backup_file = GLib.File.new_for_path(backup_path);
-				if (backup_file.query_exists()) {
-					// Backup already exists for today, skip
-					return;
-				}
-				
-				// Copy current file to backup location asynchronously
-				var source_file = GLib.File.new_for_path(this.file.path);
-				if (!source_file.query_exists()) {
-					return;
-				}
-				
-				// Open source file for reading asynchronously
-				var input_stream = yield source_file.read_async(GLib.Priority.DEFAULT, null);
-				
-				// Open destination file for writing asynchronously (replace existing)
-				var output_stream = yield backup_file.replace_async(
-					null,
-					false,
-					GLib.FileCreateFlags.NONE,
-					GLib.Priority.DEFAULT,
-					null
-				);
-				
-				// Copy data from input to output stream asynchronously
-				yield output_stream.splice_async(
-					input_stream,
-					GLib.OutputStreamSpliceFlags.CLOSE_SOURCE | GLib.OutputStreamSpliceFlags.CLOSE_TARGET,
-					GLib.Priority.DEFAULT,
-					null
-				);
-				
-				// Update file's last_approved_copy_path
-				this.file.last_approved_copy_path = backup_path;
-				
-				// Save file to database
-				if (this.file.manager.db != null) {
-					this.file.saveToDB(this.file.manager.db, null, false);
-				}
-				
-				// Cleanup old backup files (runs at most once per day)
-				ProjectManager.cleanup_old_backups.begin();
-			} catch (GLib.Error e) {
-				GLib.warning("FileBuffer.create_backup_if_needed: Failed to create backup for %s: %s", 
-					this.file.path, e.message);
-			}
 		}
 		
 		/**

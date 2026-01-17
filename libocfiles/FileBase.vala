@@ -198,11 +198,6 @@ namespace OLLMfiles
 		public int scroll_position { get; set; default = 0; }
 		
 		/**
-		 * Filename of last approved copy (default: empty string).
-		 */
-		public string last_approved_copy_path { get; set; default = ""; }
-		
-		/**
 		 * Whether the file needs approval (inverted from is_approved).
 		 * true = needs approval, false = approved.
 		 */
@@ -252,9 +247,25 @@ namespace OLLMfiles
 		public int64 last_vector_scan { get; set; default = 0; }
 		
 		/**
+		 * Reference to FileHistory record where this file was deleted.
+		 * 
+		 * If delete_id = 0, the file is not deleted.
+		 * If delete_id > 0, the file is deleted and delete_id points to file_history.id
+		 * where change_type="deleted".
+		 * 
+		 * Deleted files are flagged rather than immediately removed from database,
+		 * allowing for cleanup operations and UI updates. Files with delete_id > 0
+		 * should be excluded from UI lists and scanning operations.
+		 * 
+		 * Provides direct link to deletion information (timestamp, agent, etc.)
+		 * via the FileHistory record.
+		 */
+		public int64 delete_id { get; set; default = 0; }
+		
+		/**
 		 * Initialize database table for filebase objects.
 		 */
-		public static void initDB(SQ.Database db)
+		public static void init_db(SQ.Database db)
 		{
 			string errmsg;
 			var query = "CREATE TABLE IF NOT EXISTS filebase (" +
@@ -263,7 +274,6 @@ namespace OLLMfiles
 				"parent_id INT64 NOT NULL DEFAULT 0, " +
 				"base_type TEXT NOT NULL DEFAULT '', " +
 				"language TEXT, " +
-				"last_approved_copy_path TEXT NOT NULL DEFAULT '', " +
 				"is_active INTEGER NOT NULL DEFAULT 0, " +
 				"cursor_line INTEGER NOT NULL DEFAULT 0, " +
 				"cursor_offset INTEGER NOT NULL DEFAULT 0, " +
@@ -276,7 +286,8 @@ namespace OLLMfiles
 				"is_ignored INTEGER NOT NULL DEFAULT 0, " +
 				"is_text INTEGER NOT NULL DEFAULT 0, " +
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
-				"last_vector_scan INT64 NOT NULL DEFAULT 0" +
+				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
+				"delete_id INT64 NOT NULL DEFAULT 0" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -285,6 +296,15 @@ namespace OLLMfiles
 			// Migrate existing databases: add last_vector_scan column if it doesn't exist
 			var migrate_query = "ALTER TABLE filebase ADD COLUMN last_vector_scan INT64 NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_query, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add delete_id column if it doesn't exist
+			var migrate_delete_id = "ALTER TABLE filebase ADD COLUMN delete_id INT64 NOT NULL DEFAULT 0";
+			if (Sqlite.OK != db.db.exec(migrate_delete_id, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
@@ -348,7 +368,7 @@ namespace OLLMfiles
 		 * == Copied Fields ==
 		 * 
 		 * Copies all database-preserved fields (excluding filesystem-derived fields):
-		 * id, is_active, last_viewed, last_modified, language, last_approved_copy_path,
+		 * id, is_active, last_viewed, last_modified, language,
 		 * cursor_line, cursor_offset, scroll_position, is_project, is_ignored, is_text,
 		 * is_repo, last_vector_scan.
 		 * 
@@ -367,7 +387,6 @@ namespace OLLMfiles
 			
 			// Copy all database fields (now all in FileBase)
 			target.language = this.language;
-			target.last_approved_copy_path = this.last_approved_copy_path;
 			target.cursor_line = this.cursor_line;
 			target.cursor_offset = this.cursor_offset;
 			target.scroll_position = this.scroll_position;
@@ -376,6 +395,7 @@ namespace OLLMfiles
 			target.is_text = this.is_text;
 			target.is_repo = this.is_repo;
 			target.last_vector_scan = this.last_vector_scan;
+			target.delete_id = this.delete_id;
 		}
 		
 		// Static counter for tracking saveToDB calls
@@ -472,14 +492,16 @@ namespace OLLMfiles
 				return null; // Target doesn't exist
 			}
 			
-			try {
-				return target_file_obj.query_info(
-					GLib.FileAttribute.STANDARD_TYPE + "," +
-					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
-					GLib.FileAttribute.STANDARD_SYMLINK_TARGET,
-					GLib.FileQueryInfoFlags.NONE,
-					null
-				);
+		try {
+			return target_file_obj.query_info(
+				GLib.FileAttribute.STANDARD_TYPE + "," +
+				GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
+				GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
+				GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
+				GLib.FileAttribute.TIME_MODIFIED,
+				GLib.FileQueryInfoFlags.NONE,
+				null
+			);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to get target info for %s: %s", target_path, e.message);
 				return null;

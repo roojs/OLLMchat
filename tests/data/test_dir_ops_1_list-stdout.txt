@@ -1,0 +1,6 @@
+total 0
+drwxr-xr-x 1 user user  0 Jan  1 00:00 .
+drwxr-xr-x 1 user user  0 Jan  1 00:00 ..
+-rw-r--r-- 1 user user  0 Jan  1 00:00 File1.txt
+-rw-r--r-- 1 user user  0 Jan  1 00:00 FILE3.TXT
+-rw-r--r-- 1 user user  0 Jan  1 00:00 file2.txt

@@ -467,6 +467,12 @@ namespace OLLMapp
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			this.project_manager.git_provider = new OLLMcoder.GitProvider();
 			
+			// Cleanup old backup files and database records on startup
+			if (this.project_manager.db != null) {
+				var max_days = config.files_max_deleted_days > 0 ? config.files_max_deleted_days : 30;
+				OLLMfiles.FileHistory.cleanup_old_backups.begin(this.project_manager.db, max_days);
+			}
+			
 			// Bind file change banner button signals to project manager methods
 			this.file_change_banner.overwrite_button.clicked.connect(() => {
 				this.file_change_banner.hide();

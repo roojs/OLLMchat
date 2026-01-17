@@ -74,6 +74,13 @@ namespace OLLMfiles
 			default = new Gee.HashMap<string, Folder>(); }
 		
 		/**
+		 * Hashmap of path => FileBase object for quick lookup of all items.
+		 * Includes files, folders, and FileAlias symlinks - everything in the project.
+		 */
+		public Gee.HashMap<string, FileBase> all_files { get; private set;
+			default = new Gee.HashMap<string, FileBase>(); }
+		
+		/**
 		 * Emitted when a new file is explicitly added to the project (not during scans).
 		 * This signal is only emitted when a new file is created, not when files are
 		 * discovered during directory scans. Use this to react to new file creation.
@@ -242,6 +249,9 @@ namespace OLLMfiles
 			// Remove from child_map based on file path
 			this.child_map.unset(item.file.path);
 			
+			// Remove from all_files for consistency (may not be in there, but remove if present)
+			this.all_files.unset(item.file.path);
+			
 			// Emit items_changed signal
 			this.items_changed(position, 1, 0);
 		}
@@ -284,8 +294,9 @@ namespace OLLMfiles
 			// Track folders found in this scan
 			var found_folders = new Gee.HashSet<string>();
 			
-			// Clear folder map before rebuilding
+			// Clear maps before rebuilding
 			this.folder_map.clear();
+			this.all_files.clear();
 			
 			// Recursively process the folder (folder is the project root)
 			this.update_from_recursive(
@@ -297,6 +308,7 @@ namespace OLLMfiles
 				""); // Not inside a symlink at the root
 			
 			// Remove files that are no longer in the project
+			// Note: this.remove() triggers ListModel signals for UI updates
 			var to_remove = new Gee.ArrayList<ProjectFile>();
 			foreach (var project_file in this.items) {
 				if (!found_files.contains(project_file.file.path)) {
@@ -307,16 +319,8 @@ namespace OLLMfiles
 				this.remove(project_file);
 			}
 			
-			// Remove folders that are no longer in the project
-			var folders_to_remove = new Gee.ArrayList<string>();
-			foreach (var folder_path in this.folder_map.keys) {
-				if (!found_folders.contains(folder_path)) {
-					folders_to_remove.add(folder_path);
-				}
-			}
-			foreach (var folder_path in folders_to_remove) {
-				this.folder_map.unset(folder_path);
-			}
+			// Note: folder_map and all_files are cleared and rebuilt by update_from_recursive(),
+			// so no cleanup is needed - they only contain items that exist in the current hierarchy
 		}
 		
 		/**
@@ -350,21 +354,25 @@ namespace OLLMfiles
 			// Mark this folder as scanned
 			scanned_folders.add((int)folder.id);
 			
-			// Add folder to folder_map and found_folders
+			// Add folder to folder_map, all_files, and found_folders
 			found_folders.add(folder.path);
 			this.folder_map.set(folder.path, folder);
+			this.all_files.set(folder.path, folder);
 			
 			// Loop through children of this folder
 			// GLib.debug("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u", folder.path, symlink_path, folder.children.items.size);
 			foreach (var child in folder.children.items) {
 				// GLib.debug("DEBUG update_from_recursive: child.path=%s, child type=%s", child.path, child.get_type().name());
 				// Handle File objects - add real files to project_files
-				// Skip ignored files and non-text files
 				if (child is File) {
+					var file = child as File;
+					// Add all files to all_files (even non-text files)
+					this.all_files.set(file.path, file);
 				 
+					// Only add text files to ProjectFile list (via add_file_if_new)
 					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
 					this.add_file_if_new(
-						child as File,
+						file,
 						project_folder,
 						found_files,
 						symlink_path);
@@ -374,6 +382,8 @@ namespace OLLMfiles
 				// Handle FileAlias - follow to the real file
 				if (child is FileAlias) {
 					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
+					// Add FileAlias to all_files (symlinks are included in all_files)
+					this.all_files.set(child.path, child);
 					this.handle_file_alias(
 						child as FileAlias,
 						project_folder,
@@ -435,6 +445,9 @@ namespace OLLMfiles
 			
 			// Calculate relpath using same simple rules as handle_file_alias
 			// GLib.debug("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'", relpath, symlink_path == "" ? "" : relpath);
+			
+			// Note: file is already added to all_files in update_from_recursive before calling this method
+			// (all_files contains all files, not just text files)
 			
 			// Create ProjectFile wrapper and add it
 			this.append(new ProjectFile(
@@ -621,6 +634,52 @@ namespace OLLMfiles
 			}
 			
 			return null;
+		}
+		
+		/**
+		 * Cleanup deleted files from ProjectFiles list and child_map.
+		 * 
+		 * This is a list-level cleanup operation that removes items from a single list.
+		 * Iterates through items and removes any ProjectFile where file.delete_id > 0.
+		 * Batches removals to minimize signal emissions. Since GLib.ListModel.items_changed
+		 * only supports one contiguous range per signal, this emits one broad signal
+		 * indicating all items from the first deletion position changed.
+		 * 
+		 * This should be called after files are flagged as deleted (during cleanup phase).
+		 */
+		public async void cleanup_deleted()
+		{
+			var lowest_removed_index = -1;
+			var removed_count = 0;
+			
+			// Iterate backwards for safe removal (highest to lowest index)
+			for (var i = (int)this.items.size - 1; i >= 0; i--) {
+				var project_file = this.items.get(i);
+				if (project_file.file.delete_id == 0) {
+					continue;  // Skip non-deleted files
+				}
+				
+				// Remove from array and child_map immediately
+				this.items.remove_at(i);
+				this.child_map.unset(project_file.file.path);
+				removed_count++;
+				lowest_removed_index = i;  // Track lowest index (will be last one found)
+			}
+			
+			if (removed_count == 0) {
+				return; // Nothing to remove
+			}
+			
+			// Emit single items_changed signal for the range
+			// GLib.ListModel.items_changed only supports one contiguous range per signal
+			// For sparse (non-contiguous) deletions, we emit one broad signal:
+			// "from lowest_removed_index, removed N items" 
+			// This tells UI to refresh from that position onwards
+			// Less precise than multiple signals but correct and efficient
+			this.items_changed((uint)lowest_removed_index, (uint)removed_count, 0);
+			
+			// Note: VectorMetadata cleanup happens via ProjectManager.on_cleanup signal
+			// (emitted by DeleteManager.cleanup() after all cleanup is complete)
 		}
 	}
 }

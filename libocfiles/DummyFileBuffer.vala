@@ -262,6 +262,19 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Clear buffer contents to empty.
+		 * 
+		 * Sets the lines array to an empty array, reflecting that the file has been deleted.
+		 * 
+		 * @throws Error if clearing fails
+		 */
+		public async void clear() throws Error
+		{
+			this.lines = new string[0];
+			this.is_loaded = true;
+		}
+		
+		/**
 		 * Apply multiple edits to the buffer efficiently using in-memory lines array.
 		 * 
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.

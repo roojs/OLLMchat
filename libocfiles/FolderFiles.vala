@@ -202,8 +202,55 @@ namespace OLLMfiles
 			}
 		}
 		
-		
-		
-		
+		/**
+		 * Cleanup deleted files from FolderFiles list and child_map.
+		 * 
+		 * Recursively handles cleanup: if a deleted item is a Folder, it recursively
+		 * cleans up that folder's children before removing it from this list.
+		 * 
+		 * Iterates through items and removes any FileBase where delete_id > 0.
+		 * Batches removals to minimize signal emissions.
+		 * This should be called after files are flagged as deleted (during cleanup phase).
+		 */
+		public async void cleanup_deleted()
+		{
+			var lowest_removed_index = -1;
+			var removed_count = 0;
+			
+			// Iterate backwards for safe removal (highest to lowest index)
+			for (var i = (int)this.items.size - 1; i >= 0; i--) {
+				var filebase = this.items.get(i);
+				if (filebase.delete_id == 0) {
+					continue;  // Skip non-deleted files
+				}
+				
+				// If this is a deleted folder, recursively clean up its children first
+				if (filebase is Folder) {
+					var folder = (Folder)filebase;
+					yield folder.children.cleanup_deleted();  // Recursive cleanup
+				}
+				
+				// Remove from array and child_map immediately
+				this.items.remove_at(i);
+				this.child_map.unset(GLib.Path.get_basename(filebase.path));
+				removed_count++;
+				lowest_removed_index = i;  // Track lowest index (will be last one found)
+			}
+			
+			if (removed_count == 0) {
+				return; // Nothing to remove
+			}
+			
+			// Emit single items_changed signal for the range
+			// GLib.ListModel.items_changed only supports one contiguous range per signal
+			// For sparse (non-contiguous) deletions, we emit one broad signal:
+			// "from lowest_removed_index, removed N items" 
+			// This tells UI to refresh from that position onwards
+			// Less precise than multiple signals but correct and efficient
+			this.items_changed((uint)lowest_removed_index, (uint)removed_count, 0);
+			
+			// Note: VectorMetadata cleanup happens via ProjectManager.on_cleanup signal
+			// (emitted by DeleteManager.cleanup() after all cleanup is complete)
+		}
 	}
 }
