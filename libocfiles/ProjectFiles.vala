@@ -74,6 +74,13 @@ namespace OLLMfiles
 			default = new Gee.HashMap<string, Folder>(); }
 		
 		/**
+		 * Hashmap of path => FileBase object for quick lookup of all items.
+		 * Includes files, folders, and FileAlias symlinks - everything in the project.
+		 */
+		public Gee.HashMap<string, FileBase> all_files { get; private set;
+			default = new Gee.HashMap<string, FileBase>(); }
+		
+		/**
 		 * Emitted when a new file is explicitly added to the project (not during scans).
 		 * This signal is only emitted when a new file is created, not when files are
 		 * discovered during directory scans. Use this to react to new file creation.
@@ -242,6 +249,9 @@ namespace OLLMfiles
 			// Remove from child_map based on file path
 			this.child_map.unset(item.file.path);
 			
+			// Remove from all_files for consistency (may not be in there, but remove if present)
+			this.all_files.unset(item.file.path);
+			
 			// Emit items_changed signal
 			this.items_changed(position, 1, 0);
 		}
@@ -260,60 +270,6 @@ namespace OLLMfiles
 			if (old_n_items > 0) {
 				this.items_changed(0, old_n_items, 0);
 			}
-		}
-		
-		/**
-		 * Comprehensively remove a FileBase from all references and clean up.
-		 * 
-		 * This method handles complete removal of a file or folder:
-		 * - Removes from parent's children list
-		 * - Removes from ProjectFiles (child_map for files, folder_map for folders)
-		 * - For folders: recursively removes all children
-		 * - Removes from database and file_cache
-		 * 
-		 * @param filebase The FileBase object to remove (File, Folder, or FileAlias)
-		 */
-		public async void remove_complete(OLLMfiles.FileBase filebase)
-		{
-			// Remove from parent's children list
-			if (filebase.parent != null) {
-				filebase.parent.children.remove(filebase);
-			}
-			
-			// Handle files and file aliases first (trivial case)
-			if (!(filebase is OLLMfiles.Folder)) {
-				var file = filebase as OLLMfiles.File;
-				
-				// Remove from ProjectFiles child_map
-				if (this.child_map.has_key(file.path)) {
-					var project_file = this.child_map.get(file.path);
-					this.remove(project_file);
-				}
-				
-				// Remove from database and file_cache
-				file.removeFromDB(filebase.manager.db);
-				return;
-			}
-			
-			// Handle folders recursively
-			var folder = filebase as OLLMfiles.Folder;
-			
-			// Recursively remove all children first
-			var children_copy = new Gee.ArrayList<OLLMfiles.FileBase>();
-			foreach (var child in folder.children.items) {
-				children_copy.add(child);
-			}
-			foreach (var child in children_copy) {
-				yield this.remove_complete(child);
-			}
-			
-			// Remove folder from folder_map
-			if (this.folder_map.has_key(folder.path)) {
-				this.folder_map.unset(folder.path);
-			}
-			
-			// Remove from database and file_cache
-			folder.removeFromDB(folder.manager.db);
 		}
 		
 		/**
@@ -338,8 +294,9 @@ namespace OLLMfiles
 			// Track folders found in this scan
 			var found_folders = new Gee.HashSet<string>();
 			
-			// Clear folder map before rebuilding
+			// Clear maps before rebuilding
 			this.folder_map.clear();
+			this.all_files.clear();
 			
 			// Recursively process the folder (folder is the project root)
 			this.update_from_recursive(
@@ -351,6 +308,7 @@ namespace OLLMfiles
 				""); // Not inside a symlink at the root
 			
 			// Remove files that are no longer in the project
+			// Note: this.remove() triggers ListModel signals for UI updates
 			var to_remove = new Gee.ArrayList<ProjectFile>();
 			foreach (var project_file in this.items) {
 				if (!found_files.contains(project_file.file.path)) {
@@ -361,16 +319,8 @@ namespace OLLMfiles
 				this.remove(project_file);
 			}
 			
-			// Remove folders that are no longer in the project
-			var folders_to_remove = new Gee.ArrayList<string>();
-			foreach (var folder_path in this.folder_map.keys) {
-				if (!found_folders.contains(folder_path)) {
-					folders_to_remove.add(folder_path);
-				}
-			}
-			foreach (var folder_path in folders_to_remove) {
-				this.folder_map.unset(folder_path);
-			}
+			// Note: folder_map and all_files are cleared and rebuilt by update_from_recursive(),
+			// so no cleanup is needed - they only contain items that exist in the current hierarchy
 		}
 		
 		/**
@@ -404,21 +354,25 @@ namespace OLLMfiles
 			// Mark this folder as scanned
 			scanned_folders.add((int)folder.id);
 			
-			// Add folder to folder_map and found_folders
+			// Add folder to folder_map, all_files, and found_folders
 			found_folders.add(folder.path);
 			this.folder_map.set(folder.path, folder);
+			this.all_files.set(folder.path, folder);
 			
 			// Loop through children of this folder
 			// GLib.debug("DEBUG update_from_recursive: folder.path=%s, symlink_path='%s', children.count=%u", folder.path, symlink_path, folder.children.items.size);
 			foreach (var child in folder.children.items) {
 				// GLib.debug("DEBUG update_from_recursive: child.path=%s, child type=%s", child.path, child.get_type().name());
 				// Handle File objects - add real files to project_files
-				// Skip ignored files and non-text files
 				if (child is File) {
+					var file = child as File;
+					// Add all files to all_files (even non-text files)
+					this.all_files.set(file.path, file);
 				 
+					// Only add text files to ProjectFile list (via add_file_if_new)
 					// GLib.debug("DEBUG update_from_recursive: child is File (not FileAlias)");
 					this.add_file_if_new(
-						child as File,
+						file,
 						project_folder,
 						found_files,
 						symlink_path);
@@ -428,6 +382,8 @@ namespace OLLMfiles
 				// Handle FileAlias - follow to the real file
 				if (child is FileAlias) {
 					// GLib.debug("DEBUG update_from_recursive: child is FileAlias");
+					// Add FileAlias to all_files (symlinks are included in all_files)
+					this.all_files.set(child.path, child);
 					this.handle_file_alias(
 						child as FileAlias,
 						project_folder,
@@ -489,6 +445,9 @@ namespace OLLMfiles
 			
 			// Calculate relpath using same simple rules as handle_file_alias
 			// GLib.debug("DEBUG add_file_if_new: calculated relpath='%s', final relpath='%s'", relpath, symlink_path == "" ? "" : relpath);
+			
+			// Note: file is already added to all_files in update_from_recursive before calling this method
+			// (all_files contains all files, not just text files)
 			
 			// Create ProjectFile wrapper and add it
 			this.append(new ProjectFile(

@@ -471,9 +471,20 @@ PROJECT_PATH: $(manager.active_project.path)
 
 	private async void run_cleanup_backups() throws Error
 	{
-		// Note: cleanup_old_backups is static and uses hardcoded 7 days
-		// We can't override the age, but we can call it
-		yield OLLMfiles.FileHistory.cleanup_old_backups();
+		// Determine database path
+		string db_path;
+		if (opt_test_db != null && opt_test_db != "") {
+			db_path = opt_test_db;
+		} else {
+			// Use main database (normal operation)
+			db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		}
+		
+		// Create database
+		var db = new SQ.Database(db_path, false);
+		
+		// Call cleanup with db and default max_deleted_days (30)
+		yield OLLMfiles.FileHistory.cleanup_old_backups(db, 30);
 		
 		var cache_dir = GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(),
@@ -482,10 +493,9 @@ PROJECT_PATH: $(manager.active_project.path)
 			"edited"
 		);
 		
-		print(@"BACKUP_DIR: $(cache_dir)
-AGE_THRESHOLD: 7 days
-Cleanup completed (check logs for deleted files)
-");
+		print("BACKUP_DIR: " + cache_dir + "\n" +
+			"AGE_THRESHOLD: 30 days\n" +
+			"Cleanup completed (check logs for deleted files)\n");
 	}
 
 	private async void run_list_buffers(OLLMfiles.ProjectManager manager) throws Error

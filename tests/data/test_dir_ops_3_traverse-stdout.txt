@@ -1,0 +1,3 @@
+./tree/a/b/file3
+./tree/a/file2
+./tree/file1

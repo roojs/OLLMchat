@@ -139,9 +139,18 @@ Examples:
 		
 		yield project.load_files_from_db();
 		
+		// Debug: Check folder hierarchy before update_from
+		GLib.debug("oc-test-bubble: project.children.items.size = %u", project.children.items.size);
+		foreach (var child in project.children.items) {
+			GLib.debug("oc-test-bubble: project child: %s (type=%s)", child.path, child.get_type().name());
+		}
+		
 		// Update ProjectFiles to ensure folder_map is populated with all folders
 		// This is critical - Scan needs parent folders to exist in folder_map
 		project.project_files.update_from(project);
+		
+		// Debug: Check all_files after update_from
+		GLib.debug("oc-test-bubble: all_files.size = %u after update_from", project.project_files.all_files.size);
 
 		// Create Bubble instance
 		var bubble = new OLLMtools.RunCommand.Bubble(project, opt_allow_network);

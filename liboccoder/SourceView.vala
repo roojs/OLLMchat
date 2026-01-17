@@ -86,6 +86,12 @@ namespace OLLMcoder
 		}
 		
 		/**
+		 * Signal handler ID for delete_id notification on current file.
+		 * Used to disconnect the handler when switching files.
+		 */
+		private ulong? delete_id_handler_id = null;
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param manager The ProjectManager instance (required)
@@ -93,9 +99,9 @@ namespace OLLMcoder
 		public SourceView(OLLMfiles.ProjectManager manager)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL);
-		this.manager = manager;
+			this.manager = manager;
 		
-		// Create header bar with dropdowns
+			// Create header bar with dropdowns
 			var header_bar = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
 				margin_start = 5,
 				margin_end = 5,
@@ -322,6 +328,9 @@ namespace OLLMcoder
 		private void on_file_selected(OLLMfiles.File? file)
 		{
 			if (file == null) {
+				// Disconnect delete_id signal handler when no file is selected
+				this.disconnect_delete_id_handler();
+				
 				// Set default placeholder when no file is selected
 				this.file_dropdown.placeholder_text = "Select file...";
 				// Hide sourceview, search bar and disable save button when no file
@@ -361,6 +370,8 @@ namespace OLLMcoder
 			// Save current file state if switching away
 			if (this.current_file != null && this.current_file != file) {
 				this.save_current_file_state();
+				// Disconnect delete_id signal handler from previous file
+				this.disconnect_delete_id_handler();
 			}
 			
 			// Notify manager to activate file
@@ -387,12 +398,33 @@ namespace OLLMcoder
 			this.source_view.set_buffer(gtk_buffer);
 			this.current_file = file;
 			
-			// Show sourceview and search bar when file is opened
+			// Connect to delete_id signal to monitor file deletion
+			// Disconnect any existing handler first
+			this.disconnect_delete_id_handler();
+			// Connect to notify::delete_id signal
+			this.delete_id_handler_id = file.notify["delete-id"].connect(() => {
+				if (file.delete_id > 0) {
+					this.handle_file_deleted(file);
+				}
+			});
+			
+			// Show sourceview and search bar when file is opened (even if deleted)
 			this.scrolled_window.visible = true;
 			this.search_bar.visible = true;
 			
-			// Enable save button when file is open
-			this.save_button.sensitive = true;
+			// Check if file is already deleted
+			if (file.delete_id > 0) {
+				this.handle_file_deleted(file);
+			} else {
+				// Remove deleted CSS class if it was set
+				this.source_view.remove_css_class("file-deleted");
+				
+				// Enable save button when file is open
+				this.save_button.sensitive = true;
+				
+				// Make editor editable
+				this.source_view.editable = true;
+			}
 			
 			// Reset search context when switching files
 			this.search_context = null;
@@ -906,6 +938,17 @@ namespace OLLMcoder
 				return;
 			}
 			
+			// FIXME: User interaction needed - show warning dialog when trying to save deleted file
+			// Currently silently returns, but should warn user that file is deleted and cannot be saved.
+			// Could show a dialog like "File has been deleted and cannot be saved. Would you like to restore it?"
+			// or at minimum show a notification/warning message to the user.
+			if (this.current_file.delete_id > 0) {
+				GLib.warning("Cannot save file %s: file has been deleted (delete_id=%lld)", 
+					this.current_file.path, this.current_file.delete_id);
+				// TODO: Show user-visible warning/notification dialog
+				return;
+			}
+			
 			// Sync buffer to file
 			try {
 				yield this.current_file.buffer.sync_to_file();
@@ -919,6 +962,56 @@ namespace OLLMcoder
 			} catch (Error e) {
 				GLib.warning("Failed to save file %s: %s", this.current_file.path, e.message);
 			}
+		}
+		
+		/**
+		 * Disconnect delete_id signal handler.
+		 */
+		private void disconnect_delete_id_handler()
+		{
+			if (this.delete_id_handler_id == null || this.current_file == null) {
+				return;
+			}
+			this.current_file.disconnect(this.delete_id_handler_id);
+			this.delete_id_handler_id = null;
+		}
+		
+		/**
+		 * Handle file deletion in editor.
+		 * 
+		 * Called when delete_id > 0 is detected on the current file.
+		 * Clears buffer contents, shows "file deleted" indicator, and disables editing.
+		 * 
+		 * @param file The deleted file
+		 */
+		private void handle_file_deleted(OLLMfiles.File file)
+		{
+			// Clear buffer contents
+			if (file.buffer != null) {
+				file.buffer.clear.begin((obj, res) => {
+					try {
+						file.buffer.clear.end(res);
+					} catch (Error e) {
+						GLib.warning("Failed to clear buffer for deleted file %s: %s", file.path, e.message);
+					}
+				});
+			}
+			
+			// Show "file deleted" indicator in placeholder
+			this.file_dropdown.placeholder_text = Path.get_basename(file.path) + " (deleted)";
+			
+			// Disable editing
+			this.source_view.editable = false;
+			
+			// Disable save button
+			this.save_button.sensitive = false;
+			
+			// Add CSS class to indicate deleted state (for potential styling)
+			this.source_view.add_css_class("file-deleted");
+			
+			// Note: Future enhancement - when sourceview can handle diffs, show the original file
+			// content as red deleted (like a diff view showing deleted lines)
+			// Can access deletion info via: file.delete_id -> FileHistory record
 		}
 		
 	}

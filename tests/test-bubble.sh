@@ -1,7 +1,7 @@
 #!/bin/bash
 # Test script for oc-test-bubble overlay operations
 # Tests overlay filesystem operations in bubblewrap sandbox
-# 40 tests organized into 6 categories
+# 42 tests organized into 6 categories
 
 set -euo pipefail
 
@@ -223,7 +223,9 @@ verify_file_not_exists() {
     local file_path="$2"
     local description="${3:-File does not exist}"
     
-    if [ ! -f "$file_path" ] && [ ! -d "$file_path" ]; then
+    # If it's a symlink, that's fine - the file was removed and replaced with a symlink
+    # Otherwise, check if it's not a regular file and not a directory
+    if [ -L "$file_path" ] || ([ ! -f "$file_path" ] && [ ! -d "$file_path" ]); then
         test_pass "$testname: $description"
         return 0
     else
@@ -593,7 +595,6 @@ test_move_1_rename_file() {
     echo "  Precursor commands (run these to set up the environment):"
     echo "    cd \"$TEST_PROJECT_DIR\""
     echo "    echo \"$file_content\" > old"
-    echo "    rm -f new"
     echo ""
     
     # Execute command
@@ -648,7 +649,6 @@ test_move_3_move_file_between_dirs() {
     echo "    cd \"$TEST_PROJECT_DIR\""
     echo "    echo \"$file_content\" > file"
     echo "    mkdir -p dir"
-    echo "    rm -f dir/file"
     echo ""
     
     # Execute command
@@ -807,7 +807,6 @@ test_deletion_4_delete_symlink() {
     # Output precursor commands for manual reproduction
     echo "  Precursor commands (run these to set up the environment):"
     echo "    cd \"$TEST_PROJECT_DIR\""
-    echo "    rm -f target link"
     echo "    echo \"target content\" > target"
     echo "    ln -s target link"
     echo ""
@@ -838,7 +837,7 @@ test_deletion_5_delete_with_open_handle() {
 }
 
 # ============================================================================
-# Category 6: Type Swaps (4 tests)
+# Category 6: Type Swaps (6 tests)
 # ============================================================================
 
 test_type_swap_1_file_to_dir() {
@@ -925,16 +924,83 @@ test_type_swap_4_symlink_to_file() {
     local test_path="$TEST_PROJECT_DIR/link"
     local target_path="$TEST_PROJECT_DIR/target"
     
+    # Clean up any existing files
+    rm -f "$test_path" "$target_path"
+    
     # Create target and symlink
     echo "target content" > "$target_path"
     ln -s target "$test_path"
     
+    # Output precursor commands for manual reproduction
+    echo "  Precursor commands (run these to set up the environment):"
+    echo "    cd \"$TEST_PROJECT_DIR\""
+    echo "    echo \"target content\" > target"
+    echo "    ln -s target link"
+    echo ""
+    
     # Execute command
     bubble_exec "$testname" "rm link && touch link"
     
-    # Verify it's now a file
-    verify_file_not_exists "$testname" "$test_path" "Symlink removed"
+    # Verify it's now a file (not a symlink)
+    if [ -L "$test_path" ]; then
+        test_fail "$testname: Symlink removed (still a symlink: $test_path)"
+    else
+        test_pass "$testname: Symlink removed"
+    fi
     verify_file_exists "$testname" "$test_path" "File created at same path"
+}
+
+test_type_swap_5_symlink_to_absolute_outside() {
+    echo "=== Test 6.5: Create symlink to absolute path outside project ==="
+    reset_test_state
+    
+    local testname="test_type_swap_5_symlink_to_absolute_outside"
+    local link_file="$TEST_PROJECT_DIR/link"
+    local target_file="$BUILD_DIR/oc-test-bubble"
+    
+    # Verify target exists
+    if [ ! -f "$target_file" ]; then
+        echo -e "${YELLOW}Skipping test: oc-test-bubble not found at $target_file${NC}"
+        return 0
+    fi
+    
+    # Clean up any existing link
+    rm -f "$link_file"
+    
+    # Execute command - create symlink to absolute path outside project
+    bubble_exec "$testname" "ln -s '$target_file' link"
+    
+    # Verify symlink exists and points to correct absolute path
+    verify_symlink "$testname" "$link_file" "$target_file" "Symlink to absolute path outside project created"
+}
+
+test_type_swap_6_symlink_to_relative_outside() {
+    echo "=== Test 6.6: Create symlink to relative path outside project ==="
+    reset_test_state
+    
+    local testname="test_type_swap_6_symlink_to_relative_outside"
+    local link_file="$TEST_PROJECT_DIR/link"
+    local target_file="$BUILD_DIR/oc-test-bubble"
+    
+    # Verify target exists
+    if [ ! -f "$target_file" ]; then
+        echo -e "${YELLOW}Skipping test: oc-test-bubble not found at $target_file${NC}"
+        return 0
+    fi
+    
+    # Clean up any existing link
+    rm -f "$link_file"
+    
+    # Calculate relative path from TEST_PROJECT_DIR to BUILD_DIR/oc-test-bubble
+    # TEST_PROJECT_DIR is $BUILD_DIR/ollmchat-testing/project
+    # From project/ go up two levels (../..) to reach build/, then oc-test-bubble
+    local relative_target="../../oc-test-bubble"
+    
+    # Execute command - create symlink to relative path outside project
+    bubble_exec "$testname" "ln -s '$relative_target' link"
+    
+    # Verify symlink exists and points to correct relative path
+    verify_symlink "$testname" "$link_file" "$relative_target" "Symlink to relative path outside project created"
 }
 
 # ============================================================================
@@ -1077,6 +1143,8 @@ main() {
     run_test test_type_swap_2_dir_to_file
     run_test test_type_swap_3_file_to_symlink
     run_test test_type_swap_4_symlink_to_file
+    run_test test_type_swap_5_symlink_to_absolute_outside
+    run_test test_type_swap_6_symlink_to_relative_outside
     
     # Summary
     print_test_summary

@@ -82,6 +82,23 @@ namespace OLLMtools.RunCommand
 		*/
 		public async void run()
 		{
+			// Ensure all_files is populated before scanning
+			// If all_files only contains the project folder (or is empty), populate it
+			if (this.project_folder.project_files.all_files.size <= 1) {
+				GLib.debug("Scan.run: all_files not populated, loading folder hierarchy and updating");
+				// Load folder hierarchy from database if needed
+				yield this.project_folder.load_files_from_db();
+				// Update project_files to populate all_files, folder_map, etc.
+				this.project_folder.project_files.update_from(this.project_folder);
+			}
+			
+			// Debug: Dump in-memory data structures before scanning
+			GLib.debug("Scan.run: Dumping in-memory data structures before scanning");
+			GLib.debug("Scan.run: all_files has %d entries", this.project_folder.project_files.all_files.size);
+			foreach (var entry in this.project_folder.project_files.all_files.entries) {
+				GLib.debug("Scan.run: all_files['%s'] = %s(id=%lld)", 
+					entry.key, entry.value.get_type().name(), entry.value.id);
+			}
 			
 			// Iterate over overlay_map entries
 			foreach (var entry in this.overlay_map.entries) {
@@ -119,7 +136,9 @@ namespace OLLMtools.RunCommand
 			GLib.FileEnumerator enumerator;
 			try {
 				enumerator = overlay_dir.enumerate_children(
-					GLib.FileAttribute.STANDARD_NAME + "," + GLib.FileAttribute.STANDARD_TYPE,
+					GLib.FileAttribute.STANDARD_NAME + ","
+						 + GLib.FileAttribute.STANDARD_TYPE + ","  
+						 + GLib.FileAttribute.STANDARD_IS_SYMLINK,
 					GLib.FileQueryInfoFlags.NONE,
 					null
 				);
@@ -137,11 +156,12 @@ namespace OLLMtools.RunCommand
 				var actual_real_path = this.to_real_path(item_overlay_path);
 				
 				// Check ProjectFiles for existing filebase using real_path (may be null)
-				OLLMfiles.FileBase? filebase = this.project_folder.project_files.folder_map.get(actual_real_path);
+				// Use all_files which includes files, folders, and FileAlias symlinks
+				OLLMfiles.FileBase? filebase = this.project_folder.project_files.all_files.get(actual_real_path);
 				
-				 if (filebase == null) {
-					filebase = this.project_folder.project_files.child_map.get(actual_real_path).file;
-				}
+				GLib.debug("scan_dir: item=%s, real_path=%s, filebase=%s", 
+					file_info.get_name(), actual_real_path, 
+					filebase == null ? "null" : filebase.get_type().name());
 				
 				// Call appropriate handler based on type
 				if (file_info.get_file_type() == GLib.FileType.DIRECTORY) {
@@ -179,9 +199,17 @@ namespace OLLMtools.RunCommand
 			GLib.debug("handle_file: %s -> %s, filebase: %s", 
 				overlay_path, real_path, filebase == null ? "NEW" : filebase.get_type().name());
 			
-			if (this.is_whiteout(overlay_path)) {
+			var is_whiteout_result = this.is_whiteout(overlay_path);
+			GLib.debug("handle_file: is_whiteout(%s) = %s", overlay_path, is_whiteout_result.to_string());
+			
+			if (is_whiteout_result) {
 				if (filebase != null) {
+					GLib.debug("handle_file: whiteout detected, removing filebase type=%s, path=%s", 
+						filebase.get_type().name(), filebase.path);
 					yield this.handle_remove(overlay_path, filebase);
+				} else {
+					GLib.warning("handle_file: whiteout detected but filebase is null for path=%s (real_path=%s)", 
+						overlay_path, real_path);
 				}
 				return;
 			}
@@ -434,25 +462,12 @@ namespace OLLMtools.RunCommand
 			GLib.debug("handle_remove: %s (%s), filebase: %s", 
 				overlay_path, filebase.path, filebase.get_type().name());
 			
-			// Clear buffer if file has one (before deletion)
-			// TODO: Phase 4 - Remove this once editor monitors notify::delete_id signal
-			// The editor will handle buffer clearing automatically when delete_id is set
-			if (filebase is OLLMfiles.File) {
-				var file = filebase as OLLMfiles.File;
-				if (file.buffer != null) {
-					try {
-						yield file.buffer.clear();
-					} catch (GLib.Error e) {
-						GLib.warning("Cannot clear buffer for deleted file (%s): %s", file.path, e.message);
-					}
-				}
-			}
-				
 			// Delete file/folder (filesystem + FileHistory + database)
 			// DeleteManager handles: filesystem deletion, FileHistory backup creation, database update (delete_id)
 			// Use timestamp so all deletions from same command have same timestamp
 			// If deletion fails (FileHistory or database update), throw error - caller needs to know
 			// Note: Cleanup from in-memory lists is done after scan completes (in run()), not here
+			// Note: Buffer clearing is handled by editor via notify::delete_id signal (Phase 4)
 			try {
 				yield this.project_folder.manager.delete_manager.remove(filebase, this.timestamp);
 			} catch (GLib.Error e) {
@@ -553,6 +568,7 @@ namespace OLLMtools.RunCommand
 			try {
 				var file = GLib.File.new_for_path(overlay_path);
 				if (!file.query_exists(null)) {
+					GLib.debug("is_whiteout: file does not exist: %s", overlay_path);
 					return false;
 				}
 				
@@ -562,16 +578,25 @@ namespace OLLMtools.RunCommand
 					null
 				);
 				
+				var file_type = info.get_file_type();
+				GLib.debug("is_whiteout: file_type=%s for %s", file_type.to_string(), overlay_path);
+				
 				// Check if it's a character device (SPECIAL file type)
-				if (info.get_file_type() != GLib.FileType.SPECIAL) {
+				if (file_type != GLib.FileType.SPECIAL) {
+					GLib.debug("is_whiteout: not SPECIAL type, returning false");
 					return false;
 				}
 				
 				// Check if device number is 0/0 (whiteout)
 				// Use UNIX_RDEV (st_rdev) for special files, not UNIX_DEVICE (st_dev)
 				// Device number is 0 when both major and minor are 0 (whiteout)
-				return info.get_attribute_uint32(GLib.FileAttribute.UNIX_RDEV) == 0;
+				var rdev = info.get_attribute_uint32(GLib.FileAttribute.UNIX_RDEV);
+				GLib.debug("is_whiteout: SPECIAL file, rdev=%u for %s", rdev, overlay_path);
+				var result = (rdev == 0);
+				GLib.debug("is_whiteout: returning %s for %s", result.to_string(), overlay_path);
+				return result;
 			} catch (GLib.Error e) {
+				GLib.debug("is_whiteout: error checking %s: %s", overlay_path, e.message);
 				return false;
 			}
 		}

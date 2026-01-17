@@ -274,8 +274,8 @@ namespace OLLMfiles
 					null
 				);
 				
-				// Cleanup old backup files (runs at most once per day)
-				FileHistory.cleanup_old_backups.begin();
+				// Note: cleanup_old_backups() should be called separately with db and config
+				// (e.g., on startup or periodically) - not called here since we don't have config access
 			} catch (GLib.Error e) {
 				GLib.warning("FileHistory.create_backup: Failed to create backup for %s: %s", 
 					this.path, e.message);
@@ -290,7 +290,7 @@ namespace OLLMfiles
 		 */
 		private async void save_to_db() throws Error
 		{
-			var sq = new SQ.Query<FileHistory>(this.db, "file_history");
+			var sq = FileHistory.query(this.db);
 			if (this.id == 0) {
 				// Insert new record
 				this.id = sq.insert(this);
@@ -301,15 +301,56 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Cleanup old backup files from the backup directory.
+		 * Delete the backup file from disk.
 		 * 
-		 * Removes backup files older than 7 days from ~/.cache/ollmchat/edited/.
-		 * This should be called on startup or periodically to prevent backup directory
-		 * from growing indefinitely.
+		 * Removes the backup file at backup_path from the filesystem.
+		 * If backup_path is empty or the file doesn't exist, does nothing.
 		 * 
-		 * Only runs once per day to avoid excessive file system operations.
+		 * Uses GLib.FileUtils.unlink() which handles errors silently.
 		 */
-		public static async void cleanup_old_backups()
+		public void unlink()
+		{
+			if (this.backup_path == "") {
+				return;
+			}
+			if (!GLib.FileUtils.test(this.backup_path, GLib.FileTest.EXISTS)) {
+				return;
+			}
+			GLib.debug("FileHistory.unlink: Deleting backup file %s", this.backup_path);
+			GLib.FileUtils.unlink(this.backup_path);
+		}
+		
+		/**
+		 * Create a query object for file_history table.
+		 * 
+		 * @param db The database instance
+		 * @return A configured Query object ready to use
+		 */
+		public static SQ.Query<FileHistory> query(SQ.Database db)
+		{
+			return new SQ.Query<FileHistory>(db, "file_history");
+		}
+		
+		/**
+		 * Cleanup old backup files from the backup directory and database records.
+		 * 
+		 * Removes backup files and database records older than max_deleted_days
+		 * from ~/.cache/ollmchat/edited/ and the database.
+		 * 
+		 * This method:
+		 * 1. Selects FileHistory records older than max_deleted_days
+		 * 2. Deletes database records (filebase and file_history)
+		 * 3. Deletes backup files from disk
+		 * 
+		 * This should be called on startup or periodically to prevent backup directory
+		 * and database from growing indefinitely.
+		 * 
+		 * Only runs once per day to avoid excessive file system and database operations.
+		 * 
+		 * @param db Database instance (required)
+		 * @param max_deleted_days Number of days to retain deleted file records (default: 30 if <= 0)
+		 */
+		public static async void cleanup_old_backups(SQ.Database db, int max_deleted_days = 30)
 		{
 			var now = new GLib.DateTime.now_local().to_unix();
 			
@@ -319,69 +360,62 @@ namespace OLLMfiles
 			
 			last_cleanup_timestamp = now;
 			
+			// Calculate cutoff timestamp based on max_deleted_days
+			var cutoff_timestamp = new GLib.DateTime.now_local().add_days(
+				-1 * (max_deleted_days > 0 ? max_deleted_days : 30)
+			).to_unix().to_string();
+			
+			// Step 1: Select FileHistory records older than max_deleted_days
+			var old_records = new Gee.ArrayList<FileHistory>();
 			try {
-				var cache_dir = GLib.Path.build_filename(
-					GLib.Environment.get_home_dir(),
-					".cache",
-					"ollmchat",
-					"edited"
-				);
-				
-				var cache_dir_file = GLib.File.new_for_path(cache_dir);
-				if (!cache_dir_file.query_exists()) {
-					return;
-				}
-				
-				var cutoff_timestamp = new GLib.DateTime.now_local().add_days(-7).to_unix();
-				
-				var enumerator = yield cache_dir_file.enumerate_children_async(
-					GLib.FileAttribute.STANDARD_NAME + "," + 
-					GLib.FileAttribute.TIME_MODIFIED + "," +
-					GLib.FileAttribute.STANDARD_TYPE,
-					GLib.FileQueryInfoFlags.NONE,
-					GLib.Priority.DEFAULT,
-					null
-				);
-				
-				var files_to_delete = new Gee.ArrayList<string>();
-				
-				GLib.FileInfo? info;
-				while ((info = enumerator.next_file(null)) != null) {
-					if (info.get_file_type() == GLib.FileType.DIRECTORY) {
-						continue;
-					}
-					
-					var file_path = GLib.Path.build_filename(cache_dir, info.get_name());
-					
-					if (info.get_modification_date_time().to_unix() < cutoff_timestamp) {
-						files_to_delete.add(file_path);
-					}
-				}
-				
-				enumerator.close(null);
-				
-				int deleted_count = 0;
-				foreach (var file_path in files_to_delete) {
-					try {
-						yield GLib.File.new_for_path(file_path).delete_async(
-							GLib.Priority.DEFAULT,
-							null
-						);
-						deleted_count++;
-					} catch (GLib.Error e) {
-						GLib.warning(
-							"Failed to delete backup file %s: %s",
-							file_path,
-							e.message
-						);
-					}
-				}
-				
-				if (deleted_count > 0) {
-					GLib.debug("Deleted %d old backup file(s)", deleted_count);
-				}
+				yield FileHistory.query(db).select_async(
+					"WHERE timestamp < " + cutoff_timestamp, old_records);
 			} catch (GLib.Error e) {
-				GLib.warning("Failed to cleanup old backups: %s", e.message);
+				GLib.warning("FileHistory.cleanup_old_backups: Failed to select old records: %s", e.message);
+				return;
+			}
+			
+			if (old_records.size == 0) {
+				// No old records to clean up
+				return;
+			}
+			
+			// Step 2: Delete database records (before deleting files from disk)
+			string errmsg;
+			
+			// Delete filebase records for deleted files (where delete_id points to old FileHistory records)
+			if (Sqlite.OK != db.db.exec("""
+				DELETE FROM 
+					filebase 
+				WHERE 
+				delete_id IN (
+					SELECT 
+						id 
+					FROM 
+						file_history 
+					WHERE 
+						timestamp < """ + cutoff_timestamp + """
+				)"""	
+				, null, out errmsg)) {
+				GLib.warning("FileHistory.cleanup_old_backups: Failed to delete filebase records: %s", errmsg);
+				return;
+			}
+			
+			// Delete all old FileHistory records (added, modified, deleted - no filtering by change_type needed)
+			if (Sqlite.OK != db.db.exec(
+				"""
+				DELETE FROM 
+					file_history 
+				WHERE 
+					timestamp < """ + cutoff_timestamp, null, out errmsg)) {
+				GLib.warning("FileHistory.cleanup_old_backups: Failed to delete file_history records: %s", errmsg);
+				return;
+			}
+			
+			// Step 3: Delete backup files from disk (only if database deletion succeeded)
+			// Iterate through FileHistory objects from Step 1 (we already have them in old_records)
+			foreach (var history in old_records) {
+				history.unlink();
 			}
 		}
 		
