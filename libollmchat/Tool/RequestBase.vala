@@ -237,9 +237,9 @@ namespace OLLMchat.Tool
 		 * Tools that need to process messages when they're done can override this method.
 		 * Default implementation does nothing.
 		 * 
-		 * @param message The completed message
+		 * @param response The response object containing the completed message and done status
 		 */
-		public virtual void on_message_completed(OLLMchat.Message message)
+		public virtual void on_message_completed(OLLMchat.Response.Chat response)
 		{
 			// Default: do nothing
 			// Tools that need message completion override this

@@ -81,7 +81,7 @@ namespace OLLMchat.Agent
 		 * Signal emitted when a message is completed.
 		 * Used by tools to know when message is done and they can process/finalize.
 		 */
-		public signal void message_completed(OLLMchat.Message message);
+		public signal void message_completed(OLLMchat.Response.Chat response);
 		
 		/**
 		 * Registry of active tool requests for monitoring streaming chunks.
@@ -170,7 +170,7 @@ namespace OLLMchat.Agent
 			if (response.done && response.message != null) {
 				GLib.debug("Agent.handle_stream_chunk: Emitting message_completed signal (response.done=%s, message.role=%s, message.is_done=%s, active_tools.size=%zu)", 
 					response.done.to_string(), response.message.role, response.message.is_done.to_string(), this.active_tools.size);
-				this.message_completed(response.message);
+				this.message_completed(response);
 			}
 			
 			// Relay to session (existing code - for persistence and UI updates)
@@ -442,11 +442,9 @@ namespace OLLMchat.Agent
 			this.message_completed.disconnect(request.on_message_completed);
 			// Note: message_failed not needed - errors propagate as exceptions
 			
-			// Clear reference (optional, for cleanup)
-			request.agent = null;
-			
 			// Remove from registry
 			this.active_tools.unset(request_id);
+			// Note: Do not clear request.agent - the request may still need it after unregistering
 			
 			GLib.debug("Agent.unregister_tool: Unregistered request '%d'", request_id);
 		}
