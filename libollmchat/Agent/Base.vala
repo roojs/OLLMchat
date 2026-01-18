@@ -243,6 +243,11 @@ namespace OLLMchat.Agent
 				}
 			}
 			
+			// Set is_running = true when tool replies will continue the conversation
+			// This ensures the session appears as "running" when tool replies are sent
+			this.session.is_running = true;
+			GLib.debug("Agent.execute_tools: Setting is_running=true for session %s (tool replies will continue conversation)", this.session.fid);
+			
 			return reply_messages;
 		}
 		
@@ -297,6 +302,11 @@ namespace OLLMchat.Agent
 				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
 				// (these are for UI/persistence only)
 			}
+			
+			// Set is_running = true when sending (for both initial sends and tool continuation replies)
+			// This ensures the session appears as "running" when tool replies continue the conversation
+			this.session.is_running = true;
+			GLib.debug("Agent.send_async: Setting is_running=true for session %s", this.session.fid);
 			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;
