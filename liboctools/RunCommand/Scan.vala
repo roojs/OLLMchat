@@ -103,7 +103,7 @@ namespace OLLMtools.RunCommand
 			yield this.project_folder.manager.delete_manager.cleanup();
 			
 			// Refresh review_files after scanning completes
-			this.project_folder.review_files.refresh();
+			this.project_folder.project_files.review_files.refresh();
 		}
 		
 		/**

@@ -116,7 +116,7 @@ namespace OLLMchat.Call
 		 * For non-agent usage: Connect to this signal to handle tool execution.
 		 * 
 		 * The handler is responsible for:
-		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call.function.arguments)`
+		 * 1. Execute the tool: Get the tool from `chat.tools.get(tool_call.function.name)` and call `tool.execute(chat, tool_call)`
 		 * 2. Create tool reply message: `new Message.tool_reply(tool_call.id, tool_call.function.name, result)`
 		 * 3. Append it to return_messages: `return_messages.add(tool_reply)`
 		 * 
@@ -521,7 +521,10 @@ namespace OLLMchat.Call
 				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
-
+			if (response == null) {
+				throw new OllmError.FAILED("Streaming response is null after initialization");
+			}
+ 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
 			var message = this.connection.soup_message(this.http_method, url, request_body);

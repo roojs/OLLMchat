@@ -188,24 +188,14 @@ namespace OLLMchat.History
 		}
 		
 		/**
-		 * Registers all tools and stores them on Manager.
+		 * Registers a single tool and stores it on Manager.
 		 * 
-		 * Tools are stored on Manager so agents can access them when configuring Chat.
-		 * Tools are created without Client - they get what they need from agent.session.manager.config when executing.
-		 * 
-		 * @param project_manager Optional project manager (not currently used, tools don't need it)
+		 * @param tool The tool instance to register
 		 */
-		public void register_all_tools(Object? project_manager = null)
+		public void register_tool(OLLMchat.Tool.BaseTool tool)
 		{
-			// Register all tools (Phase 3: tools stored on Manager, added to Chat by agents)
-			// This discovers all tool classes and creates instances
-			// Tools are metadata - they don't need Client or project_manager (handlers do, provided when handlers are created)
-			var tools = OLLMchat.Tool.BaseTool.register_all_tools();
-			
-			// Store tools on Manager
-			foreach (var entry in tools.entries) {
-				this.tools.set(entry.key, entry.value);
-			}
+			this.tools.set(tool.name, tool);
+			GLib.debug("Manager.register_tool: Registered tool '%s'", tool.name);
 		}
 		
 		/**

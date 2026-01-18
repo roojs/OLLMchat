@@ -40,7 +40,8 @@ namespace OLLMchat.History
 		}
 		
 		public bool is_active { get; protected set; default = false; }
-		public bool is_running { get; protected set; default = false; }
+		public bool is_running { get;  set; default = false; } // agent can set this as runnig when doing tools
+		
 		
 		// Backing field for model (stored in database, not serialized to filesystem)
 		internal string model_usage_model = "";

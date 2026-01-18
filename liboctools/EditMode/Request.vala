@@ -47,10 +47,6 @@ namespace OLLMtools.EditMode
 		// Stored error messages to send when message is done
 		private Gee.ArrayList<string> error_messages = new Gee.ArrayList<string>();
 		
-		// Signal handler IDs for disconnection
-		private ulong stream_content_id = 0;
-		private ulong message_created_id = 0;
-		
 		/**
 		 * Default constructor.
 		 */
@@ -96,14 +92,28 @@ namespace OLLMtools.EditMode
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
+			var project_manager = ((Tool) this.tool).project_manager;
+			
 			// Check if file is in active project (skip permission prompt if so)
-			if (((Tool) this.tool).project_manager?.get_file_from_active_project(this.normalized_path) != null) {
+			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
 				// File is in active project - skip permission prompt
 				// Clear permission question to indicate auto-approved
 				this.permission_question = "";
 				// Return false to skip permission check (auto-approved for project files)
 				return false;
 			}
+			
+		// Check if file path is within project folder (even if file doesn't exist yet)
+		// This allows new files inside the project folder to be created without permission checks
+		if (project_manager.active_project != null) {
+			var dir_path = GLib.Path.get_dirname(this.normalized_path);
+			// Check if the directory containing the file is in the project's folder_map
+			if (project_manager.active_project.project_files.folder_map.has_key(dir_path) == true) {
+				// File is within project folder - skip permission prompt
+				this.permission_question = "";
+				return false;
+			}
+		}
 			
 			// File is not in active project - require permission
 			return true;
@@ -154,7 +164,10 @@ namespace OLLMtools.EditMode
 			}
 			foreach (var req in existing_requests) {
 				GLib.debug("Request.execute_request: Cleaning up existing request for file %s", req.normalized_path);
-				req.disconnect_signals();
+				// Unregister from agent if registered
+				
+				req.agent.unregister_tool(req.request_id);
+				
 				active_requests.remove(req);
 			}
 			
@@ -163,70 +176,23 @@ namespace OLLMtools.EditMode
 			GLib.debug("Request.execute_request: Added request to active_requests (total=%zu, file=%s)", 
 				active_requests.size, this.normalized_path);
 			
-			// Connect signals for this request
-			this.connect_signals();
+			// Signal connections are now handled automatically via agent.register_tool_monitoring()
+			// which is called in Tool.execute() when the request is created.
 			
 			return llm_message;
 		}
 		
 		/**
-		 * Connects client signals to this request's handlers.
-		 * Called when edit mode is activated for this request.
+		 * Override on_stream_chunk callback to process streaming content.
+		 * Called by agent when streaming chunks arrive.
 		 */
-		public void connect_signals()
+		public override void on_stream_chunk(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
-			GLib.debug("Request.connect_signals: Connecting signals for file %s (tool.active=%s)", 
-				this.normalized_path, this.tool.active.to_string());
+			// Only process non-thinking content (actual code blocks)
+			if (is_thinking || new_text.length == 0) {
+				return;
+			}
 			
-			// Note: Signal connections removed - tools should use direct method calls via agent handler.
-			// Streaming is handled via agent.handle_stream_chunk() which tools can register callbacks with.
-			
-			// TODO: message_created connection removed per Phase 1.2
-			// Need to replace with direct calls from message creation code
-			// For now, RequestEditMode won't detect when messages are done
-			// this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
-			// 	// Check if this request is still valid before processing
-			// 	if (this.chat_call == null || this.chat_call.client == null) {
-			// 		GLib.debug("RequestEditMode: message_created handler called but chat_call/client is null (file=%s)", 
-			// 			this.normalized_path);
-			// 		return;
-			// 	}
-			// 	// Only process if this message belongs to our chat_call
-			// 	if (message.message_interface != this.chat_call) {
-			// 		GLib.debug("RequestEditMode: message_created handler called for different chat_call, skipping (file=%s, message_interface=%p, our_chat_call=%p)", 
-			// 			this.normalized_path, message.message_interface, this.chat_call);
-			// 		return;
-			// 	}
-			// 	this.on_message_created.begin(message, content_interface);
-			// });
-			// GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
-		}
-		
-		/**
-		 * Disconnects client signals from this request's handlers.
-		 * Called when edit mode is deactivated for this request.
-		 */
-		/**
-		 * Disconnects signal handlers but keeps the object alive.
-		 * Call this before sending the final reply to stop processing new content.
-		 */
-		public void disconnect_signals()
-		{
-			// Note: Signal disconnections removed - no longer using signals
-			// Legacy code removed - tool.client property no longer exists
-			this.stream_content_id = 0;
-			this.message_created_id = 0;
-			
-			GLib.debug("Request.disconnect_signals: Disconnected signals (file=%s, still in active_requests=%s)", 
-				this.normalized_path, active_requests.contains(this).to_string());
-		}
-		
-		/**
-		 * Processes streaming content to track code blocks.
-		 * Splits on newlines and processes each part.
-		 */
-		public void process_streaming_content(string new_text)
-		{
 			// Only process if tool is active
 			if (!this.tool.active) {
 				return;
@@ -251,176 +217,37 @@ namespace OLLMtools.EditMode
 			}
 		}
 		
-		
 		/**
-		 * Adds text to current_line and to current_block if in code block.
+		 * Override on_message_completed callback to process completed messages.
+		 * Called by agent when message is done.
 		 */
-		private void add_text(string text)
+		public override void on_message_completed(OLLMchat.Response.Chat response)
 		{
-			this.current_line += text;
+			GLib.debug("Request.on_message_completed: Received response (file=%s, response.done=%s, message.role=%s, tool_active=%s)", 
+				this.normalized_path, response.done.to_string(), 
+				response.message != null ? response.message.role : "null", this.tool.active.to_string());
 			
-			if (this.in_code_block) {
-				this.current_block += text;
-			}
-		}
-		
-		/**
-		 * Tries to parse a code block opener.
-		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when complete_file=false
-		 * Language tag format: ```type (e.g., ```python) when complete_file=true
-		 * 
-		 * @param line The line that starts with ```
-		 * @return true if successfully parsed and entered code block, false otherwise
-		 */
-		private bool try_parse_code_block_opener(string stripped_line)
-		{
-			var tag = stripped_line.substring(3).strip(); // Remove ```
-			GLib.debug("Request.try_parse_code_block_opener: Parsing code block opener (file=%s, tag='%s', complete_file=%s)", 
-				this.normalized_path, tag, this.complete_file.to_string());
-			
-			// For complete_file mode, accept language-only tags (no colons)
-			if (this.complete_file && !tag.contains(":")) {
-				GLib.debug("Request.try_parse_code_block_opener: Complete file mode - accepting language-only tag '%s'", tag);
-				this.current_start_line = -1;
-				this.current_end_line = -1;
-				this.in_code_block = true;
-				this.current_line = "";
-				this.current_block = "";
-				return true;
-			}
-			
-			if (!tag.contains(":")) {
-				return false;
-			}
-			
-			// Check if tag contains line numbers
-			if (tag.contains(":")) {
-				// Parse line numbers from tag (format: type:startline:endline)
-				var parts = tag.split(":");
-				if (parts.length < 3) {
-					return false;
-				}
-				
-				int start_line = -1;
-				int end_line = -1;
-				
-				if (!int.try_parse(parts[parts.length - 2], out start_line)) {
-					return false;
-				}
-				if (!int.try_parse(parts[parts.length - 1], out end_line)) {
-					return false;
-				}
-				if (start_line < 1 || end_line < start_line) {
-					return false;
-				}
-				
-				// Valid line numbers - store them and enter code block
-				this.current_start_line = start_line;
-				this.current_end_line = end_line;
-				this.in_code_block = true;
-				this.current_line = "";
-				this.current_block = "";
-				return true;
-			}
-			
-			// No line numbers - language-only tag
-			// Accept it (we'll validate later if complete_file mode requires line numbers)
-			this.current_start_line = -1;
-			this.current_end_line = -1;
-			this.in_code_block = true;
-			this.current_line = "";
-			this.current_block = "";
-			return true;
-		}
-		
-		/**
-		 * Processes line break: checks current_line for code block markers,
-		 * updates state, and clears current_line.
-		 */
-		private void add_linebreak()
-		{
-			// Check if this line contains a language tag with opening marker
-			// The line must start with ``` (no leading whitespace)
-			if (!this.in_code_block && this.current_line.has_prefix("```")) {
-				if (this.try_parse_code_block_opener(this.current_line)) {
-					return;
-				}
-			}
-			
-			// Check if current_line is a code block marker (```)
-			if (this.current_line == "```") {
-				// Toggle code block state
-				if (!this.in_code_block) {
-					// Entering code block without language tag (shouldn't happen in our format, but handle it)
-					this.in_code_block = true;
-					this.current_line = "";
-					this.current_block = "";
-					return;
-				}
-				
-				// Exiting code block: create FileChange
-				// Remove the marker text from current_block if it was accidentally added
-				if (this.current_block.has_suffix("```\n")) {
-					this.current_block = this.current_block.substring(0, this.current_block.length - 4);
-				} else if (this.current_block.has_suffix("```")) {
-					this.current_block = this.current_block.substring(0, this.current_block.length - 3);
-				}
-				
-				// Create FileChange
-				GLib.debug("Request.add_linebreak: Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
-					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
-				this.changes.add(new OLLMfiles.FileChange() {
-					start = this.current_start_line,
-					end = this.current_end_line,
-					replacement = this.current_block
-				});
-				
-				this.in_code_block = false;
-				this.current_line = "";
-				this.current_block = "";
-				this.current_start_line = -1;
-				this.current_end_line = -1;
+			// Check if response is actually done
+			if (!response.done) {
+				GLib.debug("Request.on_message_completed: Response is not done, skipping (response.done=%s)", response.done.to_string());
 				return;
 			}
-			
-			// Not a code block marker
-			if (this.in_code_block) {
-				// In code block: add newline to current_block (text already added by add_text)
-				this.current_block += "\n";
-			}
-			
-			// Clear current_line after processing
-			this.current_line = "";
-		}
 		
-		/**
-		 * Called when a message is created. Processes final content and applies changes when "done" message is received.
-		 */
-		private async void on_message_created(OLLMchat.Message message)
-		{
-			GLib.debug("Request.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
-				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
-			
-			// Only process "done" messages - this indicates the assistant message is complete
-			if (!message.is_done) {
-				GLib.debug("Request.on_message_created: Message is not 'done', skipping (role=%s)", message.role);
-				return;
-			}
-			
-			// Get Response.Chat from agent.chat().streaming_response
-			var response = this.agent.chat().streaming_response;
-			if (response == null) {
-				GLib.debug("Request.on_message_created: streaming_response is null (file=%s)", this.normalized_path);
-				return;
-			}
-			
-			GLib.debug("Request.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
-				this.normalized_path, this.changes.size);
-			
-			// If not streaming, process the full content at once
-			// If streaming, we should have already captured everything via stream_content
-			// Phase 3: stream is on Chat, not Client
-			if (!this.agent.chat().stream && response.message != null && response.message.content != "") {
+		// Get Response.Chat from agent.chat().streaming_response
+		if (this.agent == null) {
+			GLib.debug("Request.on_message_completed: agent is null (file=%s)", this.normalized_path);
+			return;
+		}
+		this.agent.unregister_tool(this.request_id);
+
+		
+		GLib.debug("Request.on_message_completed: Processing done message (file=%s, changes_count=%zu)", 
+		this.normalized_path, this.changes.size);
+	
+		// If not streaming, process the full content at once
+		// If streaming, we should have already captured everything via stream_content
+		// Phase 3: stream is on Chat, not Client
+		if (!this.agent.chat().stream && response.message.content != "") {
 				var parts = response.message.content.split("\n");
 				for (int i = 0; i < parts.length; i++) {
 					this.add_text(parts[i]);
@@ -435,23 +262,31 @@ namespace OLLMtools.EditMode
 			// This allows the LLM to call edit mode again without getting a confusing error message
 			if (this.changes.size == 0) {
 				// No changes were captured - clean up silently
-				GLib.debug("Request.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu), cleaning up silently", 
+				GLib.debug("Request.on_message_completed: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu), cleaning up silently", 
 					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
-				this.disconnect_signals();
+				// Already unregistered at the top of this method
 				active_requests.remove(this);
-				GLib.debug("Request.on_message_created: Removed request from active_requests (remaining=%zu, file=%s)", 
+				GLib.debug("Request.on_message_completed: Removed request from active_requests (remaining=%zu, file=%s)", 
 					active_requests.size, this.normalized_path);
 				// Don't send any reply - just let the LLM try again naturally
 				return;
 			}
 			
-			GLib.debug("Request.on_message_created: Found %zu changes, applying to file %s", 
+			GLib.debug("Request.on_message_completed: Found %zu changes, applying to file %s", 
 				this.changes.size, this.normalized_path);
 			
 			// Apply changes
+			this.apply_all_changes.begin((obj, res) => {
+				this.handle_apply_changes_response(res, response);
+			});
+		}
+		
+		private void handle_apply_changes_response(GLib.AsyncResult res, OLLMchat.Response.Chat response)
+		{
 			int line_count = 0;
+			
 			try {
-				yield this.apply_all_changes();
+				this.apply_all_changes.end(res);
 				
 				// Calculate line count for success message
 				try {
@@ -485,8 +320,126 @@ namespace OLLMtools.EditMode
 				// Store error message instead of sending immediately
 				this.error_messages.add("There was a problem applying the changes: " + e.message);
 				this.reply_with_errors(response);
+			}
+		}
+		
+		
+		/**
+		 * Adds text to current_line and to current_block if in code block.
+		 */
+		private void add_text(string text)
+		{
+			this.current_line += text;
+			
+			if (this.in_code_block) {
+				this.current_block += text;
+			}
+		}
+		
+		/**
+		 * Tries to parse a code block opener.
+		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when complete_file=false
+		 * Language tag format: ```type (e.g., ```python) when complete_file=true
+		 * 
+		 * @param line The line that starts with ```
+		 * @return true if successfully parsed and entered code block, false otherwise
+		 */
+		private bool try_parse_code_block_opener(string stripped_line)
+		{
+			var tag = stripped_line.substring(3).strip();
+			GLib.debug("Parsing code block opener (file=%s, tag='%s', complete_file=%s)", 
+				this.normalized_path, tag, this.complete_file.to_string());
+			
+			if (this.complete_file && !tag.contains(":")) {
+				GLib.debug("Complete file mode - accepting language-only tag '%s'", tag);
+				this.enter_code_block(-1, -1);
+				return true;
+			}
+			
+			if (!tag.contains(":")) {
+				this.enter_code_block(-1, -1);
+				return true;
+			}
+			
+			var parts = tag.split(":");
+			if (parts.length < 3) {
+				return false;
+			}
+			
+			int start_line = -1;
+			int end_line = -1;
+			
+			if (!int.try_parse(parts[parts.length - 2], out start_line)) {
+				return false;
+			}
+			if (!int.try_parse(parts[parts.length - 1], out end_line)) {
+				return false;
+			}
+			if (start_line < 1 || end_line < start_line) {
+				return false;
+			}
+			
+			this.enter_code_block(start_line, end_line);
+			return true;
+		}
+		
+		/**
+		 * Enters code block state with given line numbers.
+		 */
+		private void enter_code_block(int start_line, int end_line)
+		{
+			this.current_start_line = start_line;
+			this.current_end_line = end_line;
+			this.in_code_block = true;
+			this.current_line = "";
+			this.current_block = "";
+		}
+		
+		/**
+		 * Processes line break: checks current_line for code block markers,
+		 * updates state, and clears current_line.
+		 */
+		private void add_linebreak()
+		{
+			if (!this.in_code_block && this.current_line.has_prefix("```")) {
+				if (this.try_parse_code_block_opener(this.current_line)) {
+					return;
+				}
+			}
+			
+			if (this.current_line == "```") {
+				if (!this.in_code_block) {
+					this.enter_code_block(-1, -1);
+					return;
+				}
+				
+				if (this.current_block.has_suffix("```\n")) {
+					this.current_block = this.current_block.substring(0, this.current_block.length - 4);
+				} else if (this.current_block.has_suffix("```")) {
+					this.current_block = this.current_block.substring(0, this.current_block.length - 3);
+				}
+				
+				GLib.debug("Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
+					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
+				this.changes.add(new OLLMfiles.FileChange() {
+					start = this.current_start_line,
+					end = this.current_end_line,
+					replacement = this.current_block
+				});
+				
+				this.in_code_block = false;
+				this.current_line = "";
+				this.current_block = "";
+				this.current_start_line = -1;
+				this.current_end_line = -1;
 				return;
 			}
+			
+			if (this.in_code_block) {
+				this.current_block += "\n";
+			}
+			
+			this.current_line = "";
 		}
 		
 		/**
@@ -496,8 +449,17 @@ namespace OLLMtools.EditMode
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
-			// Disconnect signals first - we're done processing new content
-			this.disconnect_signals();
+			// Check if agent is available before proceeding
+			if (this.agent == null) {
+				GLib.debug("Request.reply_with_errors: agent is null (file=%s)", this.normalized_path);
+				return;
+			}
+			
+			// Unregister from agent - we're done processing new content
+			this.agent.unregister_tool(this.request_id);
+			
+			// Get chat reference after unregistering (agent reference remains valid)
+			var chat = this.agent.chat();
 			
 			// Build reply: errors first (if any), then message
 			string reply_text = (this.error_messages.size > 0 
@@ -520,8 +482,8 @@ namespace OLLMtools.EditMode
 				// Add the new user message
 				messages_to_send.add(new OLLMchat.Message("user", reply_text));
 				
-				// Append messages and send
-				this.agent.chat().send_append.begin(
+				// Append messages and send (using captured chat reference)
+				chat.send_append.begin(
 					messages_to_send,
 					null,
 					(obj, res) => {
@@ -544,124 +506,181 @@ namespace OLLMtools.EditMode
 				return;
 			}
 		
-			// Get or create File object from path
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager == null) {
 				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			
-			// First, try to get from active project
 			var file = project_manager.get_file_from_active_project(this.normalized_path);
 			var is_in_project = (file != null);
 			
-			// Only check permission if file is NOT in active project
-			// Files in active project are auto-approved and don't need permission checks
-			if (!is_in_project) {
-			// Check if permission status has changed (e.g., revoked by signal handler)
-			// Get permission provider via agent interface
-			if (!this.agent.get_permission_provider().check_permission(this)) {
-					throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
+			if (!is_in_project && project_manager.active_project != null) {
+				var dir_path = GLib.Path.get_dirname(this.normalized_path);
+				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
+					is_in_project = true;
 				}
 			}
 			
-			// Log and notify that we're starting to write with more detail
-			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
-				this.normalized_path, is_in_project.to_string(), this.changes.size);
-			
-			string apply_message = "Applying changes to file: " + this.normalized_path + "\n";
-			apply_message += "Changes to apply: " + this.changes.size.to_string() + "\n";
-			apply_message += "Project file: " + (is_in_project ? "yes" : "no") + "\n";
-			if (this.complete_file) {
-				apply_message += "Mode: Complete file replacement";
-			} else {
-				apply_message += "Mode: Line range edits";
+			if (!is_in_project && !this.agent.get_permission_provider().check_permission(this)) {
+				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
 			}
-			this.send_ui("txt", "Applying Changes", apply_message);
+			
+			this.send_apply_ui_message(is_in_project);
 			
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
 			}
-			
-			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
 			
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
+			var change_type = file_exists ? "modified" : "added";
 			
-			// Create FileHistory object before applying changes
-			// Determine change type: "added" if file doesn't exist, "modified" if exists
-			string change_type = file_exists ? "modified" : "added";
-			var edit_timestamp = new GLib.DateTime.now_local();
+			if (change_type == "modified") {
+				yield this.create_file_history(project_manager, file, change_type);
+			}
 			
-			// Create FileHistory object (for both new and existing files)
-			// For new files, file.id will be 0 (fake file), which is correct
+			this.validate_changes(file_exists);
+			if (this.complete_file) {
+				yield this.create_new_file_with_changes(file);
+			} else {
+				yield this.apply_edits(file);
+			}
+			
+			this.send_success_ui_message(is_in_project);
+			
+			if (change_type == "added" && file.id <= 0 && is_in_project) {
+				file = yield this.convert_new_file_to_real(project_manager, file);
+				if (file != null) {
+					is_in_project = true;
+					project_manager.active_project.project_files.update_from(project_manager.active_project);
+					yield this.create_file_history(project_manager, file, change_type);
+				}
+			}
+			
+			file.is_need_approval = true;
+			file.last_change_type = change_type;
+			file.last_modified = new GLib.DateTime.now_local().to_unix();
+			
+			if (is_in_project || file.id > 0) {
+				file.saveToDB(project_manager.db, null, false);
+			}
+			
+			if (is_in_project) {
+				project_manager.active_project.project_files.review_files.refresh();
+			}
+			this.emit_change_signals();
+			
+			if (project_manager.db != null) {
+				project_manager.db.backupDB();
+			}
+		}
+		
+		/**
+		 * Creates FileHistory entry for the change.
+		 */
+		private async void create_file_history(
+			OLLMfiles.ProjectManager project_manager,
+			OLLMfiles.File file,
+			string change_type) throws Error
+		{
+			if (project_manager.db == null) {
+				return;
+			}
+			
 			try {
 				var file_history = new OLLMfiles.FileHistory(
 					project_manager.db,
 					file,
 					change_type,
-					edit_timestamp
+					new GLib.DateTime.now_local()
 				);
 				yield file_history.commit();
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot create FileHistory for edit (%s): %s", this.normalized_path, e.message);
 			}
-			
-			// Validate and apply changes
-			if (this.complete_file) {
-				// Complete file mode: only allow a single change
-				if (this.changes.size > 1) {
-					throw new GLib.IOError.INVALID_ARGUMENT("Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
-				}
-				// Check if code block had line numbers (invalid in complete_file mode)
-				// In complete_file mode, start and end should both be -1 (not set) when no line numbers provided
-				// If they sent line numbers, start would be >= 1
-				if (this.changes[0].start != -1 || this.changes[0].end != -1) {
-					throw new GLib.IOError.INVALID_ARGUMENT("Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
-				}
-				// Check if file exists and overwrite is not allowed
-				if (file_exists && !this.overwrite) {
-					throw new GLib.IOError.EXISTS("File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
-				}
-				// Create new file or overwrite existing file
-				yield this.create_new_file_with_changes(file);
-			} else {
-				// Normal mode: file must exist
+		}
+		
+		/**
+		 * Validates changes based on mode and file existence.
+		 */
+		private void validate_changes(bool file_exists) throws Error
+		{
+			if (!this.complete_file) {
 				if (!file_exists) {
-					throw new GLib.IOError.NOT_FOUND("File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
+					throw new GLib.IOError.NOT_FOUND(
+						"File does not exist: " + this.normalized_path + ". Use complete_file=true to create a new file.");
 				}
-				// Apply edits to existing file
-				yield this.apply_edits(file);
+				return;
 			}
 			
-			// Log and send status message after successful write with more detail
-			GLib.debug("Request.apply_all_changes: Successfully applied changes to file %s", this.normalized_path);
-			
-			string success_message = "Successfully applied changes to file: " + this.normalized_path + "\n";
-			success_message += "Changes applied: " + this.changes.size.to_string() + "\n";
-			success_message += "Project file: " + (is_in_project ? "yes" : "no") + "\n";
-			if (this.complete_file) {
-				success_message += "Mode: Complete file replacement";
-			} else {
-				success_message += "Mode: Line range edits";
+			if (this.changes.size > 1) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
 			}
+			
+			if (this.changes[0].start != -1 || this.changes[0].end != -1) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
+			}
+			
+			if (file_exists && !this.overwrite) {
+				throw new GLib.IOError.EXISTS(
+					"File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite it.");
+			}
+		}
+		
+		/**
+		 * Converts a fake file to a real file.
+		 */
+		private async OLLMfiles.File? convert_new_file_to_real(
+			OLLMfiles.ProjectManager project_manager,
+			OLLMfiles.File file) throws Error
+		{
+			try {
+				yield project_manager.convert_fake_file_to_real(file, this.normalized_path);
+				return project_manager.get_file_from_active_project(this.normalized_path);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot convert fake file to real (%s): %s", this.normalized_path, e.message);
+				return null;
+			}
+		}
+		
+		/**
+		 * Sends UI message about applying changes.
+		 */
+		private void send_apply_ui_message(bool is_in_project)
+		{
+			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
+				this.normalized_path, is_in_project.to_string(), this.changes.size);
+			
+			var mode_text = this.complete_file ? "Complete file replacement" : "Line range edits";
+			var apply_message = "Applying changes to file: " + this.normalized_path + "\n" +
+				"Changes to apply: " + this.changes.size.to_string() + "\n" +
+				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
+				"Mode: " + mode_text;
+			this.send_ui("txt", "Applying Changes", apply_message);
+		}
+		
+		/**
+		 * Sends UI message about successful changes.
+		 */
+		private void send_success_ui_message(bool is_in_project)
+		{
+			GLib.debug("Successfully applied changes to file %s", this.normalized_path);
+			
+			var mode_text = this.complete_file ? "Complete file replacement" : "Line range edits";
+			var success_message = "Successfully applied changes to file: " + this.normalized_path + "\n" +
+				"Changes applied: " + this.changes.size.to_string() + "\n" +
+				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
+				"Mode: " + mode_text;
 			this.send_ui("txt", "Changes Applied", success_message);
-			
-			// Set is_need_approval flag after applying changes (our app modified the file)
-			file.is_need_approval = true;
-			file.last_change_type = change_type;
-			// Update last_modified timestamp
-			file.last_modified = new GLib.DateTime.now_local().to_unix();
-			// Save to database with updated flag (only if file is in project or has valid id)
-			if (is_in_project || file.id > 0) {
-				file.saveToDB(project_manager.db, null, false);
-			}
-			
-			// Refresh review_files if file is in active project
-			if (is_in_project) {
-				project_manager.active_project.review_files.refresh();
-			}
-			
-			// Emit change_done signal for each change
+		}
+		
+		/**
+		 * Emits change_done signals for each change.
+		 */
+		private void emit_change_signals()
+		{
 			var edit_tool = (Tool) this.tool;
 			foreach (var change in this.changes) {
 				edit_tool.change_done(this.normalized_path, change);
@@ -706,23 +725,17 @@ namespace OLLMtools.EditMode
 		 */
 		private int count_file_lines() throws Error
 		{
-			// Get or create File object from path
 			var project_manager = ((Tool) this.tool).project_manager;
 			if (project_manager == null) {
 				throw new GLib.IOError.FAILED("ProjectManager is not available");
 			}
 			
-			// First, try to get from active project
 			var file = project_manager.get_file_from_active_project(this.normalized_path);
-			
 			if (file == null) {
 				file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
 			}
 			
-			// Ensure buffer exists (create if needed)
 			file.manager.buffer_provider.create_buffer(file);
-			
-			// Use buffer-based line counting (will load file synchronously if needed)
 			return file.buffer.get_line_count();
 		}
 	}

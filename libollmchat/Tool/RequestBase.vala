@@ -48,6 +48,14 @@ namespace OLLMchat.Tool
 		public Agent.Interface? agent { get; set; }
 		
 		/**
+		 * Unique identifier for this request.
+		 * Used for registering/unregistering with agent for streaming monitoring.
+		 * Auto-generated from static counter.
+		 */
+		private static int request_id_cnt = 0;
+		public int request_id { get; set; default = request_id_cnt++; }
+		
+		/**
 		 * Permission question text.
 		 */
 		public string permission_question { get; protected set; default = ""; }
@@ -90,10 +98,11 @@ namespace OLLMchat.Tool
 
 		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Exclude tool and agent from deserialization (they're set after deserialization)
+			// Exclude tool, agent, and request_id from deserialization (they're set after deserialization)
 			switch (property_name) {
 				case "tool":
 				case "agent":
+				case "request_id":
 					value = Value(pspec.value_type);
 					return true;
 				
@@ -205,5 +214,38 @@ namespace OLLMchat.Tool
 		 * @return String content result (will be wrapped in JSON by execute())
 		 */
 		protected abstract async string execute_request() throws Error;
+		
+		/**
+		 * Virtual callback method called when a streaming chunk is received.
+		 * 
+		 * Tools that need to process streaming content can override this method.
+		 * Default implementation does nothing.
+		 * 
+		 * @param new_text The new text chunk
+		 * @param is_thinking Whether this is a thinking chunk
+		 * @param response The response object
+		 */
+		public virtual void on_stream_chunk(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
+		{
+			// Default: do nothing
+			// Tools that need streaming override this
+		}
+		
+		/**
+		 * Virtual callback method called when a message is completed.
+		 * 
+		 * Tools that need to process messages when they're done can override this method.
+		 * Default implementation does nothing.
+		 * 
+		 * @param response The response object containing the completed message and done status
+		 */
+		public virtual void on_message_completed(OLLMchat.Response.Chat response)
+		{
+			// Default: do nothing
+			// Tools that need message completion override this
+		}
+		
+		// Note: on_message_failed() not needed - errors propagate as exceptions through send_async()
+		// Tools can handle errors in their own try/catch blocks if needed
 	}
 }

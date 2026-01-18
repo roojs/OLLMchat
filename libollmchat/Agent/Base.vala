@@ -78,6 +78,19 @@ namespace OLLMchat.Agent
 		public signal void stream_start();
 		
 		/**
+		 * Signal emitted when a message is completed.
+		 * Used by tools to know when message is done and they can process/finalize.
+		 */
+		public signal void message_completed(OLLMchat.Response.Chat response);
+		
+		/**
+		 * Registry of active tool requests for monitoring streaming chunks.
+		 * Keyed by request_id (auto-generated int).
+		 */
+		private Gee.HashMap<int, OLLMchat.Tool.RequestBase> active_tools { 
+			get; set; default = new Gee.HashMap<int, OLLMchat.Tool.RequestBase>(); }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param factory The factory that created this agent
@@ -147,7 +160,20 @@ namespace OLLMchat.Agent
 		 */
 		public virtual void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
-			// Relay to session (agent is always connected to session)
+			// Emit signal for active tool requests (they're connected via register_tool_monitoring)
+			// This allows tools like EditMode to receive streaming chunks in real-time
+			// Use existing stream_chunk signal (already defined in Agent.Base)
+			this.stream_chunk(new_text, is_thinking, response);
+			
+			// If response is done, emit message_completed signal for active tool requests
+			// This allows tools to know when the message is complete and they can process/finalize
+			if (response.done && response.message != null) {
+				GLib.debug("Agent.handle_stream_chunk: Emitting message_completed signal (response.done=%s, message.role=%s, message.is_done=%s, active_tools.size=%zu)", 
+					response.done.to_string(), response.message.role, response.message.is_done.to_string(), this.active_tools.size);
+				this.message_completed(response);
+			}
+			
+			// Relay to session (existing code - for persistence and UI updates)
 			this.session.handle_stream_chunk(new_text, is_thinking, response);
 		}
 		
@@ -208,7 +234,7 @@ namespace OLLMchat.Agent
 				
 				try {
 					// Execute the tool - tool.execute() will set request.agent = chat_call.agent
-					var result = yield tool.execute(this.chat_call, tool_call.function.arguments);
+					var result = yield tool.execute(this.chat_call, tool_call);
 					
 					// Log result summary (truncate if too long)
 					var result_summary = result.length > 100 ? result.substring(0, 100) + "..." : result;
@@ -242,6 +268,11 @@ namespace OLLMchat.Agent
 					continue; // Continue to next tool call
 				}
 			}
+			
+			// Set is_running = true when tool replies will continue the conversation
+			// This ensures the session appears as "running" when tool replies are sent
+			this.session.is_running = true;
+			GLib.debug("Agent.execute_tools: Setting is_running=true for session %s (tool replies will continue conversation)", this.session.fid);
 			
 			return reply_messages;
 		}
@@ -297,6 +328,11 @@ namespace OLLMchat.Agent
 				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
 				// (these are for UI/persistence only)
 			}
+			
+			// Set is_running = true when sending (for both initial sends and tool continuation replies)
+			// This ensures the session appears as "running" when tool replies continue the conversation
+			this.session.is_running = true;
+			GLib.debug("Agent.send_async: Setting is_running=true for session %s", this.session.fid);
 			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;
@@ -361,6 +397,56 @@ namespace OLLMchat.Agent
 		public void replace_chat(Call.Chat new_chat)
 		{
 			this.chat_call = new_chat;
+		}
+		
+		/**
+		 * Register a tool request for monitoring streaming chunks and message completion.
+		 * 
+		 * Connects the request's callback methods to agent signals so it can receive
+		 * streaming chunks in real-time and be notified when messages complete.
+		 * 
+		 * @param request_id The unique identifier for this request (auto-generated int)
+		 * @param request The request object to register
+		 */
+		public void register_tool_monitoring(int request_id, OLLMchat.Tool.RequestBase request)
+		{
+			// Store tool reference to prevent garbage collection
+			this.active_tools.set(request_id, request);
+			
+			// Connect tool to agent signals
+			request.agent = this;  // Ensure agent reference is set
+			this.stream_chunk.connect(request.on_stream_chunk);  // Use existing stream_chunk signal
+			this.message_completed.connect(request.on_message_completed);
+			// Note: message_failed not needed - errors propagate as exceptions
+			
+			GLib.debug("Agent.register_tool_monitoring: Registered request '%d' for monitoring", request_id);
+		}
+		
+		/**
+		 * Unregister a tool request from monitoring.
+		 * 
+		 * Disconnects the request's callback methods from agent signals and removes
+		 * it from the registry.
+		 * 
+		 * @param request_id The unique identifier for this request (auto-generated int)
+		 */
+		public void unregister_tool(int request_id)
+		{
+			if (!this.active_tools.has_key(request_id)) {
+				return;
+			}
+			var request = this.active_tools.get(request_id);
+			
+			// Disconnect signals
+			this.stream_chunk.disconnect(request.on_stream_chunk);  // Use existing stream_chunk signal
+			this.message_completed.disconnect(request.on_message_completed);
+			// Note: message_failed not needed - errors propagate as exceptions
+			
+			// Remove from registry
+			this.active_tools.unset(request_id);
+			// Note: Do not clear request.agent - the request may still need it after unregistering
+			
+			GLib.debug("Agent.unregister_tool: Unregistered request '%d'", request_id);
 		}
 		
 	}

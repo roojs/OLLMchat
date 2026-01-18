@@ -137,10 +137,9 @@ namespace OLLMchat.Tool
 		 * 
 		 * This method is called:
 		 * - In the constructor (for normal instantiation)
-		 * - After Object.new() calls (for tools created with named parameters)
+		 * - After Object.new() calls (for config registration, where dummy instances are created)
 		 * 
-		 * Ensures tools created via Object.new() are properly initialized even
-		 * when constructors might not be called correctly.
+		 * Ensures tools created via Object.new() for config registration are properly initialized.
 		 */
 		public void init()
 		{
@@ -537,14 +536,14 @@ namespace OLLMchat.Tool
 		 * then sets tool and agent properties, and calls its execute() method.
 		 *
 		 * @param chat_call The chat call context for this tool execution
-		 * @param parameters The parameters from the Ollama function call
+		 * @param tool_call The tool call object containing id, function name, and arguments
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public virtual async string execute(Call.Chat chat_call, Json.Object parameters)
+		public virtual async string execute(Call.Chat chat_call, Response.ToolCall tool_call)
 		{
 			// Convert parameters Json.Object to Json.Node for deserialization
 			var parameters_node = new Json.Node(Json.NodeType.OBJECT);
-			parameters_node.set_object(parameters);
+			parameters_node.set_object(tool_call.function.arguments);
 			
 			// Deserialize parameters JSON into Request object
 			var request = this.deserialize(parameters_node);
@@ -556,6 +555,11 @@ namespace OLLMchat.Tool
 			request.tool = this;
 			// Set agent property (from chat_call, set after deserialization)
 			request.agent = chat_call.agent;
+			
+			// request_id is auto-generated via default value in RequestBase
+			// Register for monitoring (works for both Agent.Base and dummy agents)
+			// Interface methods have default no-op implementations
+			request.agent.register_tool_monitoring(request.request_id, request);
 			
 			return yield request.execute();
 		}
@@ -656,42 +660,5 @@ namespace OLLMchat.Tool
 			}
 		}
 		
-		/**
-		 * Creates all tool instances (Phase 3: tools moved from Client to Chat).
-		 *
-		 * This method discovers all tool classes and creates tool instances.
-		 * Tools are metadata/descriptors - they don't need Client or project_manager.
-		 * Tool handlers (created when tools execute) need project_manager, which
-		 * should be provided when creating handlers, not when creating tools.
-		 * Tools get config from agent.session.manager.config when executing.
-		 * 
-		 * The caller is responsible for storing the tools (e.g., on Manager) and
-		 * adding them to Chat objects via Chat.add_tool() when Chat is created.
-		 * 
-		 * Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.)
-		 * adds tools directly to Chat.
-		 *
-		 * @return Map of tool name to tool instance
-		 */
-		public static Gee.HashMap<string, BaseTool> register_all_tools()
-		{
-			var tool_classes = discover_classes();
-			var tools_map = new Gee.HashMap<string, BaseTool>();
-			
-			foreach (var tool_type in tool_classes) {
-				// Use Object.new() to create tool instance without parameters
-				// Tools are metadata - they don't need Client or project_manager
-				// Tool handlers need project_manager, provided when handlers are created
-				// Tools get config from agent.session.manager.config when executing
-				var tool = Object.new(tool_type) as Tool.BaseTool;
-				tool.init(); // Ensure tool is properly initialized
-				
-				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
-				tools_map.set(tool.name, tool);
-			}
-			
-			GLib.debug("register_all_tools: created %d tools", tool_classes.size);
-			return tools_map;
-		}
 	}
 }
