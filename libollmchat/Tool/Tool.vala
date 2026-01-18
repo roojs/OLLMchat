@@ -137,10 +137,9 @@ namespace OLLMchat.Tool
 		 * 
 		 * This method is called:
 		 * - In the constructor (for normal instantiation)
-		 * - After Object.new() calls (for tools created with named parameters)
+		 * - After Object.new() calls (for config registration, where dummy instances are created)
 		 * 
-		 * Ensures tools created via Object.new() are properly initialized even
-		 * when constructors might not be called correctly.
+		 * Ensures tools created via Object.new() for config registration are properly initialized.
 		 */
 		public void init()
 		{
@@ -656,42 +655,5 @@ namespace OLLMchat.Tool
 			}
 		}
 		
-		/**
-		 * Creates all tool instances (Phase 3: tools moved from Client to Chat).
-		 *
-		 * This method discovers all tool classes and creates tool instances.
-		 * Tools are metadata/descriptors - they don't need Client or project_manager.
-		 * Tool handlers (created when tools execute) need project_manager, which
-		 * should be provided when creating handlers, not when creating tools.
-		 * Tools get config from agent.session.manager.config when executing.
-		 * 
-		 * The caller is responsible for storing the tools (e.g., on Manager) and
-		 * adding them to Chat objects via Chat.add_tool() when Chat is created.
-		 * 
-		 * Per the plan: "Caller manages tools" - the caller (AgentHandler, Session, etc.)
-		 * adds tools directly to Chat.
-		 *
-		 * @return Map of tool name to tool instance
-		 */
-		public static Gee.HashMap<string, BaseTool> register_all_tools()
-		{
-			var tool_classes = discover_classes();
-			var tools_map = new Gee.HashMap<string, BaseTool>();
-			
-			foreach (var tool_type in tool_classes) {
-				// Use Object.new() to create tool instance without parameters
-				// Tools are metadata - they don't need Client or project_manager
-				// Tool handlers need project_manager, provided when handlers are created
-				// Tools get config from agent.session.manager.config when executing
-				var tool = Object.new(tool_type) as Tool.BaseTool;
-				tool.init(); // Ensure tool is properly initialized
-				
-				GLib.debug("register_all_tools: creating tool '%s'", tool.name);
-				tools_map.set(tool.name, tool);
-			}
-			
-			GLib.debug("register_all_tools: created %d tools", tool_classes.size);
-			return tools_map;
-		}
 	}
 }
