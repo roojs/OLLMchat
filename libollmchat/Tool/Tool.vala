@@ -536,14 +536,14 @@ namespace OLLMchat.Tool
 		 * then sets tool and agent properties, and calls its execute() method.
 		 *
 		 * @param chat_call The chat call context for this tool execution
-		 * @param parameters The parameters from the Ollama function call
+		 * @param tool_call The tool call object containing id, function name, and arguments
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public virtual async string execute(Call.Chat chat_call, Json.Object parameters)
+		public virtual async string execute(Call.Chat chat_call, Response.ToolCall tool_call)
 		{
 			// Convert parameters Json.Object to Json.Node for deserialization
 			var parameters_node = new Json.Node(Json.NodeType.OBJECT);
-			parameters_node.set_object(parameters);
+			parameters_node.set_object(tool_call.function.arguments);
 			
 			// Deserialize parameters JSON into Request object
 			var request = this.deserialize(parameters_node);
@@ -555,6 +555,12 @@ namespace OLLMchat.Tool
 			request.tool = this;
 			// Set agent property (from chat_call, set after deserialization)
 			request.agent = chat_call.agent;
+			
+			// request_id is auto-generated via default value in RequestBase
+			// Register for monitoring (works for both Agent.Base and dummy agents)
+			
+			request.agent.register_tool_monitoring(request.request_id, request);
+			
 			
 			return yield request.execute();
 		}

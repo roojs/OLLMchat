@@ -47,10 +47,6 @@ namespace OLLMtools.EditMode
 		// Stored error messages to send when message is done
 		private Gee.ArrayList<string> error_messages = new Gee.ArrayList<string>();
 		
-		// Signal handler IDs for disconnection
-		private ulong stream_content_id = 0;
-		private ulong message_created_id = 0;
-		
 		/**
 		 * Default constructor.
 		 */
@@ -154,7 +150,10 @@ namespace OLLMtools.EditMode
 			}
 			foreach (var req in existing_requests) {
 				GLib.debug("Request.execute_request: Cleaning up existing request for file %s", req.normalized_path);
-				req.disconnect_signals();
+				// Unregister from agent if registered
+				
+				req.agent.unregister_tool(req.request_id);
+				
 				active_requests.remove(req);
 			}
 			
@@ -163,70 +162,23 @@ namespace OLLMtools.EditMode
 			GLib.debug("Request.execute_request: Added request to active_requests (total=%zu, file=%s)", 
 				active_requests.size, this.normalized_path);
 			
-			// Connect signals for this request
-			this.connect_signals();
+			// Signal connections are now handled automatically via agent.register_tool_monitoring()
+			// which is called in Tool.execute() when the request is created.
 			
 			return llm_message;
 		}
 		
 		/**
-		 * Connects client signals to this request's handlers.
-		 * Called when edit mode is activated for this request.
+		 * Override on_stream_chunk callback to process streaming content.
+		 * Called by agent when streaming chunks arrive.
 		 */
-		public void connect_signals()
+		public override void on_stream_chunk(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
-			GLib.debug("Request.connect_signals: Connecting signals for file %s (tool.active=%s)", 
-				this.normalized_path, this.tool.active.to_string());
+			// Only process non-thinking content (actual code blocks)
+			if (is_thinking || new_text.length == 0) {
+				return;
+			}
 			
-			// Note: Signal connections removed - tools should use direct method calls via agent handler.
-			// Streaming is handled via agent.handle_stream_chunk() which tools can register callbacks with.
-			
-			// TODO: message_created connection removed per Phase 1.2
-			// Need to replace with direct calls from message creation code
-			// For now, RequestEditMode won't detect when messages are done
-			// this.message_created_id = this.chat_call.client.message_created.connect((message, content_interface) => {
-			// 	// Check if this request is still valid before processing
-			// 	if (this.chat_call == null || this.chat_call.client == null) {
-			// 		GLib.debug("RequestEditMode: message_created handler called but chat_call/client is null (file=%s)", 
-			// 			this.normalized_path);
-			// 		return;
-			// 	}
-			// 	// Only process if this message belongs to our chat_call
-			// 	if (message.message_interface != this.chat_call) {
-			// 		GLib.debug("RequestEditMode: message_created handler called for different chat_call, skipping (file=%s, message_interface=%p, our_chat_call=%p)", 
-			// 			this.normalized_path, message.message_interface, this.chat_call);
-			// 		return;
-			// 	}
-			// 	this.on_message_created.begin(message, content_interface);
-			// });
-			// GLib.debug("RequestEditMode.connect_signals: Connected message_created signal (id=%lu)", this.message_created_id);
-		}
-		
-		/**
-		 * Disconnects client signals from this request's handlers.
-		 * Called when edit mode is deactivated for this request.
-		 */
-		/**
-		 * Disconnects signal handlers but keeps the object alive.
-		 * Call this before sending the final reply to stop processing new content.
-		 */
-		public void disconnect_signals()
-		{
-			// Note: Signal disconnections removed - no longer using signals
-			// Legacy code removed - tool.client property no longer exists
-			this.stream_content_id = 0;
-			this.message_created_id = 0;
-			
-			GLib.debug("Request.disconnect_signals: Disconnected signals (file=%s, still in active_requests=%s)", 
-				this.normalized_path, active_requests.contains(this).to_string());
-		}
-		
-		/**
-		 * Processes streaming content to track code blocks.
-		 * Splits on newlines and processes each part.
-		 */
-		public void process_streaming_content(string new_text)
-		{
 			// Only process if tool is active
 			if (!this.tool.active) {
 				return;
@@ -248,6 +200,119 @@ namespace OLLMtools.EditMode
 				if (i < parts.length - 1) {
 					this.add_linebreak();
 				}
+			}
+		}
+		
+		/**
+		 * Override on_message_completed callback to process completed messages.
+		 * Called by agent when message is done.
+		 */
+		public override void on_message_completed(OLLMchat.Message message)
+		{
+			GLib.debug("Request.on_message_completed: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
+				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
+			
+			// Only process "done" messages - this indicates the assistant message is complete
+			if (!message.is_done) {
+				GLib.debug("Request.on_message_completed: Message is not 'done', skipping (role=%s)", message.role);
+				return;
+			}
+			
+	
+		
+		
+			// Get Response.Chat from agent.chat().streaming_response
+			if (this.agent == null) {
+				GLib.debug("Request.on_message_completed: agent is null (file=%s)", this.normalized_path);
+				return;
+			}
+			this.agent.unregister_tool(this.request_id);
+
+			var response = this.agent.chat().streaming_response;
+			if (response == null) {
+				GLib.debug("Request.on_message_completed: streaming_response is null (file=%s)", this.normalized_path);
+				return;
+			}
+			
+			GLib.debug("Request.on_message_completed: Processing done message (file=%s, changes_count=%zu)", 
+			this.normalized_path, this.changes.size);
+		
+			// If not streaming, process the full content at once
+			// If streaming, we should have already captured everything via stream_content
+			// Phase 3: stream is on Chat, not Client
+			if (!this.agent.chat().stream && response.message != null && response.message.content != "") {
+				var parts = response.message.content.split("\n");
+				for (int i = 0; i < parts.length; i++) {
+					this.add_text(parts[i]);
+					this.add_linebreak();
+				}
+			}
+			
+			// Process any remaining current_line (for both streaming and non-streaming)
+			this.add_linebreak();
+			
+			// Check if we have any changes - if not, just clean up silently
+			// This allows the LLM to call edit mode again without getting a confusing error message
+			if (this.changes.size == 0) {
+				// No changes were captured - clean up silently
+				GLib.debug("Request.on_message_completed: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu), cleaning up silently", 
+					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
+				// Already unregistered at the top of this method
+				active_requests.remove(this);
+				GLib.debug("Request.on_message_completed: Removed request from active_requests (remaining=%zu, file=%s)", 
+					active_requests.size, this.normalized_path);
+				// Don't send any reply - just let the LLM try again naturally
+				return;
+			}
+			
+			GLib.debug("Request.on_message_completed: Found %zu changes, applying to file %s", 
+				this.changes.size, this.normalized_path);
+			
+			// Apply changes
+			this.apply_all_changes.begin((obj, res) => {
+				this.handle_apply_changes_response(res, response);
+			});
+		}
+		
+		private void handle_apply_changes_response(GLib.AsyncResult res, OLLMchat.Response.Chat response)
+		{
+			int line_count = 0;
+			
+			try {
+				this.apply_all_changes.end(res);
+				
+				// Calculate line count for success message
+				try {
+					line_count = this.count_file_lines();
+				} catch (Error e) {
+					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
+				}
+				
+				// Build and emit UI message with more detail
+				string update_message = "File updated: " + this.normalized_path + "\n";
+				if (line_count > 0) {
+					update_message += "Total lines: " + line_count.to_string() + "\n";
+				}
+				update_message += "Changes applied: " + this.changes.size.to_string() + "\n";
+				var project_manager = ((Tool) this.tool).project_manager;
+				var is_in_project = project_manager?.get_file_from_active_project(this.normalized_path) != null;
+				update_message += "Project file: " + (is_in_project ? "yes" : "no");
+				this.send_ui("txt", "File Updated", update_message);
+				
+				// Send tool reply to LLM
+				this.reply_with_errors(
+					response,
+					(line_count > 0)
+						? "File '" + this.normalized_path + 
+							"' has been updated. It now has " + 
+							line_count.to_string() + " lines."
+						: "File '" + this.normalized_path + "' has been updated."
+				);
+			} catch (Error e) {
+				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
+				// Store error message instead of sending immediately
+				this.error_messages.add("There was a problem applying the changes: " + e.message);
+				this.reply_with_errors(response);
 			}
 		}
 		
@@ -394,110 +459,23 @@ namespace OLLMtools.EditMode
 		}
 		
 		/**
-		 * Called when a message is created. Processes final content and applies changes when "done" message is received.
-		 */
-		private async void on_message_created(OLLMchat.Message message)
-		{
-			GLib.debug("Request.on_message_created: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
-				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
-			
-			// Only process "done" messages - this indicates the assistant message is complete
-			if (!message.is_done) {
-				GLib.debug("Request.on_message_created: Message is not 'done', skipping (role=%s)", message.role);
-				return;
-			}
-			
-			// Get Response.Chat from agent.chat().streaming_response
-			var response = this.agent.chat().streaming_response;
-			if (response == null) {
-				GLib.debug("Request.on_message_created: streaming_response is null (file=%s)", this.normalized_path);
-				return;
-			}
-			
-			GLib.debug("Request.on_message_created: Processing done message (file=%s, changes_count=%zu)", 
-				this.normalized_path, this.changes.size);
-			
-			// If not streaming, process the full content at once
-			// If streaming, we should have already captured everything via stream_content
-			// Phase 3: stream is on Chat, not Client
-			if (!this.agent.chat().stream && response.message != null && response.message.content != "") {
-				var parts = response.message.content.split("\n");
-				for (int i = 0; i < parts.length; i++) {
-					this.add_text(parts[i]);
-					this.add_linebreak();
-				}
-			}
-			
-			// Process any remaining current_line (for both streaming and non-streaming)
-			this.add_linebreak();
-			
-			// Check if we have any changes - if not, just clean up silently
-			// This allows the LLM to call edit mode again without getting a confusing error message
-			if (this.changes.size == 0) {
-				// No changes were captured - clean up silently
-				GLib.debug("Request.on_message_created: No changes captured (file=%s, in_code_block=%s, current_block_size=%zu), cleaning up silently", 
-					this.normalized_path, this.in_code_block.to_string(), this.current_block.length);
-				this.disconnect_signals();
-				active_requests.remove(this);
-				GLib.debug("Request.on_message_created: Removed request from active_requests (remaining=%zu, file=%s)", 
-					active_requests.size, this.normalized_path);
-				// Don't send any reply - just let the LLM try again naturally
-				return;
-			}
-			
-			GLib.debug("Request.on_message_created: Found %zu changes, applying to file %s", 
-				this.changes.size, this.normalized_path);
-			
-			// Apply changes
-			int line_count = 0;
-			try {
-				yield this.apply_all_changes();
-				
-				// Calculate line count for success message
-				try {
-					line_count = this.count_file_lines();
-				} catch (Error e) {
-					GLib.warning("Error counting lines in %s: %s", this.normalized_path, e.message);
-				}
-				
-				// Build and emit UI message with more detail
-				string update_message = "File updated: " + this.normalized_path + "\n";
-				if (line_count > 0) {
-					update_message += "Total lines: " + line_count.to_string() + "\n";
-				}
-				update_message += "Changes applied: " + this.changes.size.to_string() + "\n";
-				var project_manager = ((Tool) this.tool).project_manager;
-				var is_in_project = project_manager?.get_file_from_active_project(this.normalized_path) != null;
-				update_message += "Project file: " + (is_in_project ? "yes" : "no");
-				this.send_ui("txt", "File Updated", update_message);
-				
-				// Send tool reply to LLM
-				this.reply_with_errors(
-					response,
-					(line_count > 0)
-						? "File '" + this.normalized_path + 
-							"' has been updated. It now has " + 
-							line_count.to_string() + " lines."
-						: "File '" + this.normalized_path + "' has been updated."
-				);
-			} catch (Error e) {
-				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
-				// Store error message instead of sending immediately
-				this.error_messages.add("There was a problem applying the changes: " + e.message);
-				this.reply_with_errors(response);
-				return;
-			}
-		}
-		
-		/**
 		 * Sends a message to continue the conversation and disconnects signals.
 		 * This method should be called on both success and error paths to ensure signals are always disconnected.
 		 * Uses agent.chat().send_append() to continue the conversation with the LLM's response.
 		 */
 		private void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
-			// Disconnect signals first - we're done processing new content
-			this.disconnect_signals();
+			// Check if agent is available before proceeding
+			if (this.agent == null) {
+				GLib.debug("Request.reply_with_errors: agent is null (file=%s)", this.normalized_path);
+				return;
+			}
+			
+			// Capture chat reference before unregistering (unregister sets agent to null)
+			var chat = this.agent.chat();
+			
+			// Unregister from agent - we're done processing new content
+			this.agent.unregister_tool(this.request_id);
 			
 			// Build reply: errors first (if any), then message
 			string reply_text = (this.error_messages.size > 0 
@@ -520,8 +498,8 @@ namespace OLLMtools.EditMode
 				// Add the new user message
 				messages_to_send.add(new OLLMchat.Message("user", reply_text));
 				
-				// Append messages and send
-				this.agent.chat().send_append.begin(
+				// Append messages and send (using captured chat reference)
+				chat.send_append.begin(
 					messages_to_send,
 					null,
 					(obj, res) => {

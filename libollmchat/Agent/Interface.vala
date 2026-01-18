@@ -67,6 +67,33 @@ namespace OLLMchat.Agent
 		 * @param message The message to add
 		 */
 		public abstract void add_message(Message message);
+		
+		/**
+		 * Register a tool request for monitoring streaming chunks and message completion.
+		 * 
+		 * For agentic usage (Agent.Base): Connects request callbacks to agent signals.
+		 * For non-agentic usage: Default implementation does nothing (no-op).
+		 * 
+		 * @param request_id The unique identifier for this request (auto-generated int)
+		 * @param request The request object to register
+		 */
+		public virtual void register_tool_monitoring(int request_id, Tool.RequestBase request)
+		{
+			// Default: no-op for non-agentic usage
+		}
+		
+		/**
+		 * Unregister a tool request from monitoring.
+		 * 
+		 * For agentic usage (Agent.Base): Disconnects request callbacks and removes from registry.
+		 * For non-agentic usage: Default implementation does nothing (no-op).
+		 * 
+		 * @param request_id The unique identifier for this request (auto-generated int)
+		 */
+		public virtual void unregister_tool(int request_id)
+		{
+			// Default: no-op for non-agentic usage
+		}
 	}
 }
 
