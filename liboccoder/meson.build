@@ -28,6 +28,8 @@ occoder_src = files([
   'SourceView.vala',
   'AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
   'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
+  'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
+  'Approvals.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

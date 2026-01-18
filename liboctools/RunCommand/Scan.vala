@@ -266,6 +266,7 @@ namespace OLLMtools.RunCommand
 			if (change_type == "added") {
 				// Set is_need_approval for new files created by our app (RunCommand)
 				file.is_need_approval = true;
+				file.last_change_type = change_type;
 				// Update last_modified timestamp from filesystem
 				file.last_modified = file.mtime_on_disk();
 				
@@ -284,6 +285,7 @@ namespace OLLMtools.RunCommand
 			
 			// Set is_need_approval for modified files (our app modified the file via RunCommand)
 			file.is_need_approval = true;
+			file.last_change_type = change_type;
 			// Update last_modified timestamp from filesystem
 			file.last_modified = file.mtime_on_disk();
 			// Save to database with updated flag
