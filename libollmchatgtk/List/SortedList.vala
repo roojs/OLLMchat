@@ -163,9 +163,10 @@ namespace OLLMchatGtk.List
 			this.pre_update.clear();
 			this.pre_update.add_all(this.sorted_items);
 			
-			// Start with what we have
-			this.got_list.clear();
-			this.got_list.add_all(this.sorted_items);
+			// Build new sorted list in a separate list first
+			var new_sorted_items = new Gee.ArrayList<Object>((a, b) => {
+				return this.sorter.compare(a, b) == Gtk.Ordering.EQUAL;
+			});
 			
 			// Process filtered items from source
 			for (uint i = 0; i < this.source_model.get_n_items(); i++) {
@@ -176,45 +177,39 @@ namespace OLLMchatGtk.List
 					continue;
 				}
 				
-				// Check if item is already in sorted_items using got_list (which has compare func)
-				if (this.got_list.index_of(item_obj) >= 0) {
-					// Already in sorted_items, remove from got_list
-					this.got_list.remove(item_obj);
-				} else {
-					// Not in sorted_items, add directly
-					this.sorted_items.add(item_obj);
-					// Emit items_changed - position will be updated after sort
-				}
+				// Add to new list
+				new_sorted_items.add(item_obj);
 			}
 			
-			// Anything left in got_list needs to be removed from sorted_items
-			foreach (var item in this.got_list) {
-				this.sorted_items.remove(item);
-			}
-			
-			// Sort at the end using the sorter
-			this.sorted_items.sort((a, b) => {
+			// Sort the new list using the sorter
+			new_sorted_items.sort((a, b) => {
 				return (int)this.sorter.compare(a, b);
 			});
 			
-			// Compare pre_update and sorted_items to emit precise items_changed signals
-			uint max_size = this.pre_update.size > this.sorted_items.size ? this.pre_update.size : this.sorted_items.size;
-			for (uint i = 0; i < max_size; i++) {
-				Object? pre_item = i < this.pre_update.size ? this.pre_update.get((int)i) : null;
-				Object? sorted_item = i < this.sorted_items.size ? this.sorted_items.get((int)i) : null;
-				
-				// Check if item at position i changed
-				if (pre_item == null || sorted_item == null) {
-					// Either added or removed
-					this.items_changed(i, pre_item != null ? 1 : 0, sorted_item != null ? 1 : 0);
-					continue;
+			// Replace old list with new list atomically
+			var old_size = this.sorted_items.size;
+			this.sorted_items = new_sorted_items;
+			var new_size = this.sorted_items.size;
+			
+			// Emit a single items_changed signal for the entire change
+			// This is safer than emitting multiple signals during rebuild
+			if (old_size != new_size || old_size == 0) {
+				// Size changed or was empty - emit signal for entire range
+				this.items_changed(0, old_size, new_size);
+			} else {
+				// Same size - check if items actually changed
+				bool items_changed = false;
+				for (uint i = 0; i < old_size; i++) {
+					var old_item = this.pre_update.get((int)i);
+					var new_item = this.sorted_items.get((int)i);
+					if (old_item != new_item) {
+						items_changed = true;
+						break;
+					}
 				}
-				
-				// Both exist, check if item moved using index_of
-				int pre_index_in_sorted = this.sorted_items.index_of(pre_item);
-				if (pre_index_in_sorted != (int)i) {
-					// Item moved
-					this.items_changed(i, 1, 1);
+				if (items_changed) {
+					// Items changed - emit signal for entire range
+					this.items_changed(0, old_size, new_size);
 				}
 			}
 		}

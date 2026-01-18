@@ -123,6 +123,9 @@ namespace OLLMcoder
 			// Connect to active_project_changed signal
 			this.project_manager.active_project_changed.connect(this.activate_project);
 			
+			// Connect to active_file_changed signal (internal handling)
+			this.project_manager.active_file_changed.connect(this.on_active_file_changed);
+			
 			// Set up motion controllers on next_button
 			this.button_motion = new Gtk.EventControllerMotion();
 			this.button_motion.enter.connect(() => {
@@ -180,6 +183,31 @@ namespace OLLMcoder
 		}
 		
 		/**
+		 * Handle active file change (internal).
+		 * 
+		 * Updates selection when active file changes:
+		 * - If file is in ReviewFiles, select it (blocks handler, no signal emitted)
+		 * - If file is not in ReviewFiles, clear selection internally
+		 */
+		private void on_active_file_changed(OLLMfiles.File? file)
+		{
+			if (file == null || this.project_manager.active_project == null) {
+				// No file active or no project: clear selection internally
+				this.clear_selection();
+				return;
+			}
+			
+			// Check if file is in ReviewFiles
+			if (this.project_manager.active_project.review_files.file_map.has_key(file.path)) {
+				// File is in ReviewFiles: select it (blocks handler, no signal emitted)
+				this.select_file(file);
+				return;
+			} 
+			// File is not in ReviewFiles: clear selection internally
+			this.clear_selection();
+		}
+		
+		/**
 		 * Handle active project change.
 		 */
 		private void activate_project(OLLMfiles.Folder? project)
@@ -207,6 +235,15 @@ namespace OLLMcoder
 			// Connect to review_files.items_changed signal
 			this.review_files_handler_id = project.review_files.items_changed.connect(() => {
 				this.update_button_visibility();
+				
+				// Check if selected file still needs approval
+				if (this.selected_file == null) {
+					return;
+				}
+				if (!this.selected_file.is_need_approval) {
+					// Selected file no longer needs approval: clear selection internally
+					this.clear_selection();
+				}
 			});
 			
 			// Update button visibility
@@ -218,8 +255,7 @@ namespace OLLMcoder
 		 */
 		private void update_button_visibility()
 		{
-			var project = this.project_manager.active_project;
-			if (project == null) {
+			if (this.project_manager.active_project == null) {
 				this.visible = false;
 				this.next_button.visible = false;
 				this.approve_button.visible = false;
@@ -227,8 +263,9 @@ namespace OLLMcoder
 				return;
 			}
 			
-			// Next button visibility: based on ReviewFiles count
-			this.next_button.visible = (project.review_files.get_n_items() > 0);
+			// Next button visibility: based on ReviewFiles countclear_selection
+			this.next_button.visible = (
+				this.project_manager.active_project.review_files.get_n_items() > 0);
 			
 			// Approve and reject button visibility: both require selected file
 			this.approve_button.visible = (this.selected_file != null);
@@ -307,14 +344,14 @@ namespace OLLMcoder
 		{
 			this.blocking_selection_handler = true;
 			
-			var project = this.project_manager.active_project;
-			if (project == null) {
+			if (this.project_manager.active_project == null) {
 				this.blocking_selection_handler = false;
 				return;
 			}
 			
 			// Get file from review_files (verifies it exists and gets the actual object)
-			var review_file = project.review_files.file_map.get(file.path);
+			var review_file = this.project_manager.active_project.review_files.file_map.get(
+					file.path);
 			if (review_file == null) {
 				this.blocking_selection_handler = false;
 				return;

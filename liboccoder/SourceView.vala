@@ -44,6 +44,7 @@ namespace OLLMcoder
 		private ProjectDropdown project_dropdown;
 		private FileDropdown file_dropdown;
 		private Gtk.Button save_button;
+		private Approvals? approvals = null;
 		private GtkSource.View source_view;
 		private Gtk.ScrolledWindow scrolled_window;
 		
@@ -137,6 +138,17 @@ namespace OLLMcoder
 				this.save_file.begin();
 			});
 			header_bar.append(this.save_button);
+			
+			// Create Approvals widget with ProjectManager
+			this.approvals = new Approvals(this.manager);
+			
+			// Add approvals bar to header bar (after save button)
+			header_bar.append(this.approvals);
+			
+			// Connect file_selected signal to open files
+			this.approvals.file_selected.connect((file) => {
+				this.open_file.begin(file, null);
+			});
 			
 			this.append(header_bar);
 			
