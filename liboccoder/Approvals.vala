@@ -198,7 +198,7 @@ namespace OLLMcoder
 			}
 			
 			// Check if file is in ReviewFiles
-			if (this.project_manager.active_project.review_files.file_map.has_key(file.path)) {
+			if (this.project_manager.active_project.project_files.review_files.file_map.has_key(file.path)) {
 				// File is in ReviewFiles: select it (blocks handler, no signal emitted)
 				this.select_file(file);
 				return;
@@ -222,7 +222,7 @@ namespace OLLMcoder
 			
 			// Create sorted model with empty store (or project's review_files if available)
 			var source_model = project != null ?
-				project.review_files as GLib.ListModel : empty_store;
+				project.project_files.review_files as GLib.ListModel : empty_store;
 			
 			this.sorted_model = this.create_sorted_model(source_model);
 			this.selection.model = this.sorted_model;
@@ -233,7 +233,8 @@ namespace OLLMcoder
 			}
 			
 			// Connect to review_files.items_changed signal
-			this.review_files_handler_id = project.review_files.items_changed.connect(() => {
+			this.review_files_handler_id = 
+					project.project_files.review_files.items_changed.connect(() => {
 				this.update_button_visibility();
 				
 				// Check if selected file still needs approval
@@ -265,7 +266,7 @@ namespace OLLMcoder
 			
 			// Next button visibility: based on ReviewFiles countclear_selection
 			this.next_button.visible = (
-				this.project_manager.active_project.review_files.get_n_items() > 0);
+				this.project_manager.active_project.project_files.review_files.get_n_items() > 0);
 			
 			// Approve and reject button visibility: both require selected file
 			this.approve_button.visible = (this.selected_file != null);
@@ -350,7 +351,8 @@ namespace OLLMcoder
 			}
 			
 			// Get file from review_files (verifies it exists and gets the actual object)
-			var review_file = this.project_manager.active_project.review_files.file_map.get(
+			var review_file = 
+				this.project_manager.active_project.project_files.review_files.file_map.get(
 					file.path);
 			if (review_file == null) {
 				this.blocking_selection_handler = false;

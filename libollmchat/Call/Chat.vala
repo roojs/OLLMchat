@@ -521,7 +521,10 @@ namespace OLLMchat.Call
 				this.streaming_response = new Response.Chat(this.connection, this);
 			}
 			var response = (Response.Chat?)this.streaming_response;
-
+			if (response == null) {
+				throw new OllmError.FAILED("Streaming response is null after initialization");
+			}
+ 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
 			var message = this.connection.soup_message(this.http_method, url, request_body);

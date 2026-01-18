@@ -81,6 +81,11 @@ namespace OLLMfiles
 			default = new Gee.HashMap<string, FileBase>(); }
 		
 		/**
+		 * List of files that need approval (extracted from project_files).
+		 */
+		public ReviewFiles review_files { get; private set; }
+		
+		/**
 		 * Emitted when a new file is explicitly added to the project (not during scans).
 		 * This signal is only emitted when a new file is created, not when files are
 		 * discovered during directory scans. Use this to react to new file creation.
@@ -95,6 +100,7 @@ namespace OLLMfiles
 		public ProjectFiles()
 		{
 			Object();
+			this.review_files = new ReviewFiles(this);
 		}
 		
 		/**

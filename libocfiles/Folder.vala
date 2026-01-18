@@ -52,8 +52,6 @@ namespace OLLMfiles
 		{
 			base(manager);
 			this.base_type = "d";
-			// Initialize review_files when project_files is set
-			this.review_files = new ReviewFiles(this.project_files);
 		}
 		
 		/**
@@ -90,12 +88,6 @@ namespace OLLMfiles
 		 * ListStore of all files in project (used by dropdowns).
 		 */
 		public ProjectFiles project_files { get; set; default = new ProjectFiles(); }
-		
-		/**
-		 * List of files that need approval (only for projects).
-		 * Initialized in constructor when is_project is true.
-		 */
-		public ReviewFiles review_files { get; private set; }
 		
 		/**
 		 * Unix timestamp of last view (stored in database, default: 0, used for projects).
@@ -282,8 +274,8 @@ namespace OLLMfiles
 				this.manager.db.backupDB();
 				if (this.is_project) {
 					this.project_files.update_from(this);
+					this.project_files.review_files.refresh();
 				}
-				this.review_files.refresh();
 				return;
 			} 
 				// Start processing folders in idle callback (non-blocking)
@@ -307,8 +299,8 @@ namespace OLLMfiles
 				this.manager.db.backupDB();
 				if (this.is_project) {
 					this.project_files.update_from(this);
+					this.project_files.review_files.refresh();
 				}
-				this.review_files.refresh();
 				return;
 			}
 			
@@ -649,7 +641,7 @@ namespace OLLMfiles
 			this.project_files.update_from(this);
 			
 			// Refresh review_files
-			this.review_files.refresh();
+			this.project_files.review_files.refresh();
 			
 			// Update last_db_load timestamp to current time
 			this.last_db_load = new GLib.DateTime.now_local().to_unix();
@@ -692,7 +684,6 @@ namespace OLLMfiles
 			}
 			
 		// Build id map and seen_ids (first pass)
-		
 			foreach (var file_base in new_files) {
 				id_map.set((int)file_base.id, file_base);
 				seen_ids.add(file_base.id.to_string());
@@ -934,7 +925,7 @@ namespace OLLMfiles
 			if (!this.is_project) {
 				return;
 			}
-			this.review_files.refresh();
+			this.project_files.review_files.refresh();
 		}
 		
 		/**

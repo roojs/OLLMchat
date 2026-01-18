@@ -168,6 +168,8 @@ namespace OLLMchat.Agent
 			// If response is done, emit message_completed signal for active tool requests
 			// This allows tools to know when the message is complete and they can process/finalize
 			if (response.done && response.message != null) {
+				GLib.debug("Agent.handle_stream_chunk: Emitting message_completed signal (response.done=%s, message.role=%s, message.is_done=%s, active_tools.size=%zu)", 
+					response.done.to_string(), response.message.role, response.message.is_done.to_string(), this.active_tools.size);
 				this.message_completed(response.message);
 			}
 			

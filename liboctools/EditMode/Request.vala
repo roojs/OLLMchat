@@ -92,14 +92,28 @@ namespace OLLMtools.EditMode
 			this.permission_operation = OLLMchat.ChatPermission.Operation.WRITE;
 			this.permission_question = "Write to file '" + this.normalized_path + "'?";
 			
+			var project_manager = ((Tool) this.tool).project_manager;
+			
 			// Check if file is in active project (skip permission prompt if so)
-			if (((Tool) this.tool).project_manager?.get_file_from_active_project(this.normalized_path) != null) {
+			if (project_manager.get_file_from_active_project(this.normalized_path) != null) {
 				// File is in active project - skip permission prompt
 				// Clear permission question to indicate auto-approved
 				this.permission_question = "";
 				// Return false to skip permission check (auto-approved for project files)
 				return false;
 			}
+			
+		// Check if file path is within project folder (even if file doesn't exist yet)
+		// This allows new files inside the project folder to be created without permission checks
+		if (project_manager.active_project != null) {
+			var dir_path = GLib.Path.get_dirname(this.normalized_path);
+			// Check if the directory containing the file is in the project's folder_map
+			if (project_manager.active_project.project_files.folder_map.has_key(dir_path) == true) {
+				// File is within project folder - skip permission prompt
+				this.permission_question = "";
+				return false;
+			}
+		}
 			
 			// File is not in active project - require permission
 			return true;
@@ -209,8 +223,19 @@ namespace OLLMtools.EditMode
 		 */
 		public override void on_message_completed(OLLMchat.Message message)
 		{
-			GLib.debug("Request.on_message_completed: Received message (file=%s, role=%s, is_done=%s, tool_active=%s)", 
-				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string());
+			GLib.debug("Request.on_message_completed: Received message (file=%s, role=%s, is_done=%s, tool_active=%s, content_length=%zu)", 
+				this.normalized_path, message.role, message.is_done.to_string(), this.tool.active.to_string(), message.content.length);
+			
+			// Debug: Check response state before the is_done check
+			if (this.agent != null) {
+				var response = this.agent.chat().streaming_response;
+				if (response != null) {
+					GLib.debug("Request.on_message_completed: DEBUG response.done=%s, response.message.role=%s, response.message.is_done=%s", 
+						response.done.to_string(), 
+						response.message != null ? response.message.role : "null",
+						response.message != null ? response.message.is_done.to_string() : "null");
+				}
+			}
 			
 			// Only process "done" messages - this indicates the assistant message is complete
 			if (!message.is_done) {
@@ -532,6 +557,17 @@ namespace OLLMtools.EditMode
 			var file = project_manager.get_file_from_active_project(this.normalized_path);
 			var is_in_project = (file != null);
 			
+			// If file is not found in project, check if path is within project folder
+			// This allows new files inside the project folder to be created without permission checks
+			if (!is_in_project && project_manager.active_project != null) {
+				var dir_path = GLib.Path.get_dirname(this.normalized_path);
+				// Check if the directory containing the file is in the project's folder_map
+				if (project_manager.active_project.project_files.folder_map.has_key(dir_path) == true) {
+					// File is within project folder - treat as in project
+					is_in_project = true;
+				}
+			}
+			
 			// Only check permission if file is NOT in active project
 			// Files in active project are auto-approved and don't need permission checks
 			if (!is_in_project) {
@@ -636,7 +672,7 @@ namespace OLLMtools.EditMode
 			
 			// Refresh review_files if file is in active project
 			if (is_in_project) {
-				project_manager.active_project.review_files.refresh();
+				project_manager.active_project.project_files.review_files.refresh();
 			}
 			
 			// Emit change_done signal for each change
