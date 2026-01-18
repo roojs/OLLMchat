@@ -651,6 +651,7 @@ namespace OLLMtools.EditMode
 			
 			// Set is_need_approval flag after applying changes (our app modified the file)
 			file.is_need_approval = true;
+			file.last_change_type = change_type;
 			// Update last_modified timestamp
 			file.last_modified = new GLib.DateTime.now_local().to_unix();
 			// Save to database with updated flag (only if file is in project or has valid id)

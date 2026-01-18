@@ -203,6 +203,12 @@ namespace OLLMfiles
 		public bool is_need_approval { get; set; default = false; }
 		
 		/**
+		 * The most recent change type from FileHistory ("added", "modified", "deleted", or "").
+		 * Set when is_need_approval is set to true.
+		 */
+		public string last_change_type { get; set; default = ""; }
+		
+		/**
 		 * Whether the file has unsaved changes.
 		 */
 		public bool is_unsaved { get; set; default = false; }
@@ -287,7 +293,8 @@ namespace OLLMfiles
 				"is_repo INTEGER NOT NULL DEFAULT -1, " +
 				"last_vector_scan INT64 NOT NULL DEFAULT 0, " +
 				"delete_id INT64 NOT NULL DEFAULT 0, " +
-				"is_need_approval INTEGER NOT NULL DEFAULT 0" +
+				"is_need_approval INTEGER NOT NULL DEFAULT 0, " +
+				"last_change_type TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create filebase table: %s", db.db.errmsg());
@@ -314,6 +321,15 @@ namespace OLLMfiles
 			// Migrate existing databases: add is_need_approval column if it doesn't exist
 			var migrate_is_need_approval = "ALTER TABLE filebase ADD COLUMN is_need_approval INTEGER NOT NULL DEFAULT 0";
 			if (Sqlite.OK != db.db.exec(migrate_is_need_approval, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add last_change_type column if it doesn't exist
+			var migrate_last_change_type = "ALTER TABLE filebase ADD COLUMN last_change_type TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_last_change_type, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);
@@ -406,6 +422,7 @@ namespace OLLMfiles
 			target.last_vector_scan = this.last_vector_scan;
 			target.delete_id = this.delete_id;
 			target.is_need_approval = this.is_need_approval;
+			target.last_change_type = this.last_change_type;
 		}
 		
 		// Static counter for tracking saveToDB calls
@@ -518,7 +535,51 @@ namespace OLLMfiles
 			}
 		}
 		
+		/**
+		 * Display text for approval list with visual indicators.
+		 * 
+		 * Returns formatted text for display in approvals list:
+		 * - "+ filename" for new files
+		 * - "<s>filename</s>" (Pango markup strikethrough) for deleted files
+		 * - "filename" for modified files
+		 */
+		public string display_approval_text {
+			owned get {
+				switch (this.last_change_type) {
+					case "added":
+						return "+ " + this.path_basename;
+					case "deleted":
+						return "<s>" + this.path_basename + "</s>";
+					default:
+						// Modified or no change type
+						return this.path_basename;
+				}
+			}
+		}
 		
+		/**
+		 * Tooltip text for approval list with full path and change type.
+		 * 
+		 * Returns tooltip text with full path and change type:
+		 * - "Added /path/to/file" for new files
+		 * - "Modified /path/to/file" for modified files
+		 * - "Deleted /path/to/file" for deleted files
+		 */
+		public string display_approval_tooltip {
+			owned get {
+				switch (this.last_change_type) {
+					case "added":
+						return "Added " + this.path;
+					case "deleted":
+						return "Deleted " + this.path;
+					case "modified":
+						return "Modified " + this.path;
+					default:
+						// No change type or unknown
+						return this.path;
+				}
+			}
+		}
 		
 	}
 }
