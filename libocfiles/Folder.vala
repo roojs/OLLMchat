@@ -924,6 +924,20 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Refresh review_files list.
+		 * 
+		 * Wrapper method that calls review_files.refresh().
+		 * Only works for projects (folders with is_project = true).
+		 */
+		public void refresh_review()
+		{
+			if (!this.is_project) {
+				return;
+			}
+			this.review_files.refresh();
+		}
+		
+		/**
 		 * Build list of root directories that need write access for bubblewrap sandboxing.
 		 * 
 		 * Returns an ArrayList of Folder objects that need to be writable in the sandbox. Follows symlinks

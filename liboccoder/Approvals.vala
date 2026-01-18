@@ -19,16 +19,25 @@
 namespace OLLMcoder
 {
 	/**
-	 * Button widget for displaying and managing files that need approval.
+	 * Horizontal box widget containing buttons for file approval workflow.
 	 * 
-	 * Extends Gtk.Button and contains an internal popover with a list of files that need approval,
-	 * ordered by last_modified (most recent first). The button shows a task-due icon and the popover
-	 * appears on mouseover. Allows selecting files to open in codeview. Supports visual indicators
-	 * for new/deleted files. Tied to ProjectManager and monitors active_project for changes.
+	 * Contains:
+	 * - Approve button (approves selected file)
+	 * - Reject button (reverts selected file)
+	 * - Next/popover button (existing functionality with task-due icon, popover on mouseover)
+	 * 
+	 * Monitors ReviewFiles and updates button visibility accordingly.
 	 */
-	public class Approvals : Gtk.Button
+	public class Approvals : Gtk.Box
 	{
 		private OLLMfiles.ProjectManager project_manager;
+		
+		// Buttons (in order: approve, reject, next)
+		private Gtk.Button approve_button;
+		private Gtk.Button reject_button;
+		private Gtk.Button next_button;  // Existing popover button functionality
+		
+		// Existing popover functionality (moved from button to next_button)
 		private Gtk.Popover popover;
 		private Gtk.ListView list_view;
 		private Gtk.SingleSelection selection;
@@ -58,14 +67,37 @@ namespace OLLMcoder
 		 */
 		public Approvals(OLLMfiles.ProjectManager project_manager)
 		{
+			Object(orientation: Gtk.Orientation.HORIZONTAL);
 			this.project_manager = project_manager;
-			this.icon_name = "task-due";
+			
+			// Create approve button
+			this.approve_button = new Gtk.Button.with_label("Approve") {
+				css_classes = {"oc-approve", "suggested-action"},
+				visible = false
+			};
+			this.approve_button.clicked.connect(this.on_approve_clicked);
+			this.append(this.approve_button);
+			
+			// Create reject button
+			this.reject_button = new Gtk.Button.with_label("Reject") {
+				css_classes = {"oc-reject"},
+				tooltip_text = "Revert file to previous version",
+				visible = false
+			};
+			this.reject_button.clicked.connect(this.on_reject_clicked);
+			this.append(this.reject_button);
+			
+			// Create next/popover button with task-due icon
+			this.next_button = new Gtk.Button() {
+				icon_name = "task-due",
+				visible = false
+			};
 			
 			// Create popover with autohide disabled
 			this.popover = new Gtk.Popover() {
 				autohide = false
 			};
-			this.popover.set_parent(this);
+			this.popover.set_parent(this.next_button);
 			
 			// Create empty ListStore as initial model (will be replaced when project is available)
 			var empty_store = new GLib.ListStore(typeof(OLLMfiles.File));
@@ -91,7 +123,7 @@ namespace OLLMcoder
 			// Connect to active_project_changed signal
 			this.project_manager.active_project_changed.connect(this.activate_project);
 			
-			// Set up motion controllers
+			// Set up motion controllers on next_button
 			this.button_motion = new Gtk.EventControllerMotion();
 			this.button_motion.enter.connect(() => {
 				if (this.in_cooldown) {
@@ -107,7 +139,7 @@ namespace OLLMcoder
 				}
 				this.schedule_hide();
 			});
-			this.add_controller(this.button_motion);
+			this.next_button.add_controller(this.button_motion);
 			
 			this.popover_motion = new Gtk.EventControllerMotion();
 			this.popover_motion.enter.connect(() => {
@@ -118,11 +150,14 @@ namespace OLLMcoder
 			});
 			(this.popover as Gtk.Widget).add_controller(this.popover_motion);
 			
-			// Connect to button clicked signal
-			this.clicked.connect(() => {
+			// Connect to next_button clicked signal
+			this.next_button.clicked.connect(() => {
 				this.popover.popdown();
 				this.start_cooldown();
 			});
+			
+			// Append next_button to box (third button)
+			this.append(this.next_button);
 			
 			// Connect to popover closed signal (fires when clicking outside)
 			this.popover.closed.connect(() => {
@@ -179,17 +214,28 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Update button visibility based on review_files count.
+		 * Update button visibility based on review_files count and selected file.
 		 */
 		private void update_button_visibility()
 		{
 			var project = this.project_manager.active_project;
 			if (project == null) {
 				this.visible = false;
+				this.next_button.visible = false;
+				this.approve_button.visible = false;
+				this.reject_button.visible = false;
 				return;
 			}
 			
-			this.visible = project.review_files.get_n_items() > 0;
+			// Next button visibility: based on ReviewFiles count
+			this.next_button.visible = (project.review_files.get_n_items() > 0);
+			
+			// Approve and reject button visibility: both require selected file
+			this.approve_button.visible = (this.selected_file != null);
+			this.reject_button.visible = (this.selected_file != null);
+			
+			// Overall widget visibility: show if any button should be visible
+			this.visible = (this.next_button.visible || this.approve_button.visible);
 		}
 		
 		/**
@@ -322,12 +368,65 @@ namespace OLLMcoder
 		{
 			if (this.selection.selected == Gtk.INVALID_LIST_POSITION) {
 				this.selected_file = null;
+				this.update_button_visibility();
 				return;
 			}
 			
 			var file = this.sorted_model.get_item_typed(this.selection.selected);
 			this.selected_file = file;
 			this.file_selected(file);
+			this.update_button_visibility();
+		}
+		
+		/**
+		 * Handle approve button click.
+		 */
+		private void on_approve_clicked()
+		{
+			// Disable buttons during operation
+			this.approve_button.sensitive = false;
+			this.reject_button.sensitive = false;
+			
+			// Approve file (handles FileHistory approval and database updates)
+			this.selected_file.approve();
+			
+			// Refresh ReviewFiles (file will be removed)
+			this.project_manager.active_project.refresh_review();
+			
+			// Re-enable buttons and update visibility
+			this.approve_button.sensitive = true;
+			this.reject_button.sensitive = true;
+			this.update_button_visibility();
+		}
+		
+		/**
+		 * Handle reject button click.
+		 */
+		private void on_reject_clicked()
+		{
+			// Disable buttons during operation
+			this.approve_button.sensitive = false;
+			this.reject_button.sensitive = false;
+			
+			// Revert the file (handles FileHistory revert and database updates)
+			this.selected_file.revert.begin((obj, res) => {
+				try {
+					this.selected_file.revert.end(res);
+					
+					// Refresh ReviewFiles (file may be removed or updated)
+					this.project_manager.active_project.refresh_review();
+					
+					// Re-enable buttons and update visibility
+					
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to revert file: %s", e.message);
+					// Re-enable buttons on error
+				
+				}
+				this.approve_button.sensitive = true;
+				this.reject_button.sensitive = true;
+				this.update_button_visibility();
+			});
 		}
 		
 		/**

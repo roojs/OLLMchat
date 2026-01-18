@@ -214,8 +214,9 @@ namespace OLLMfiles
 			if (!(this.filebase_object is File)) {
 				return;
 			}
-			// Create backup if needed (for modified/deleted files, but not for symlinks)
-			if ((this.change_type == "modified" || this.change_type == "deleted")) {
+			// Create backup if needed (for modified/deleted/revert files, but not for symlinks)
+			if ((this.change_type == "modified" || 
+				this.change_type == "deleted" || this.change_type == "revert")) {
 				yield this.create_backup();
 				// Update database record with backup_path
 				yield this.save_to_db();

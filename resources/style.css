@@ -155,3 +155,13 @@
   color: red;
   font-weight: bold;
 }
+
+/* Approve button - uses suggested-action for primary styling */
+.oc-approve {
+  /* No styling currently, class exists for potential future use */
+}
+
+/* Reject button - no styling currently */
+.oc-reject {
+  /* No styling currently, class exists for potential future use */
+}

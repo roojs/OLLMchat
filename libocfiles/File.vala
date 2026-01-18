@@ -528,5 +528,146 @@ namespace OLLMfiles
 			return FileUpdateStatus.NO_CHANGE;
 		}
 		
+		/**
+		 * Approve this file and all its FileHistory items.
+		 * 
+		 * Sets is_need_approval = false and updates all FileHistory records
+		 * for this file to status = 1 (approved).
+		 */
+		public void approve()
+		{
+			// Approve file
+			this.is_need_approval = false;
+			this.last_change_type = "";
+			this.saveToDB(this.manager.db, null, false);
+			
+			// Approve all FileHistory items for this file using query wrapper
+			var db = this.manager.db;
+			var history_records = new Gee.ArrayList<OLLMfiles.FileHistory>();
+			try {
+				OLLMfiles.FileHistory.query(db).select(
+					"WHERE filebase_id = %lld".printf(this.id),
+					history_records
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to query FileHistory for approval: %s", e.message);
+				return;
+			}
+			
+			// Update each FileHistory record to approved status
+			foreach (var history in history_records) {
+				history.status = 1;
+				try {
+					OLLMfiles.FileHistory.query(db).updateById(history);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to update FileHistory status: %s", e.message);
+				}
+			}
+		}
+		
+		/**
+		 * Revert this file to previous version from FileHistory backup.
+		 * 
+		 * Finds the most recent FileHistory record with a backup for this file
+		 * and restores the file from that backup. Before restoring, creates a new
+		 * FileHistory record with change_type="revert" to backup the rejected content
+		 * (flagged as approved). Updates the original FileHistory status to rejected (-1)
+		 * and sets is_need_approval = true.
+		 * 
+		 * @throws Error if backup file doesn't exist or restore fails
+		 */
+		public async void revert() throws Error
+		{
+			// Get FileHistory records for this file
+			var db = this.manager.db;
+			var history_records = new Gee.ArrayList<OLLMfiles.FileHistory>();
+			try {
+				yield OLLMfiles.FileHistory.query(db).select_async(
+					"WHERE filebase_id = %lld AND backup_path != '' ORDER BY timestamp DESC LIMIT 1".printf(this.id),
+					history_records
+				);
+			} catch (GLib.Error e) {
+				throw new GLib.IOError.NOT_FOUND("Failed to query FileHistory for revert: %s".printf(e.message));
+			}
+			
+			if (history_records.size == 0) {
+				throw new GLib.IOError.NOT_FOUND("No backup found for file: %s".printf(this.path));
+			}
+			
+			// Get the most recent FileHistory record with backup
+			var history = history_records[0];
+			
+			// Check if backup exists
+			if (history.backup_path == "" || !GLib.FileUtils.test(history.backup_path, GLib.FileTest.EXISTS)) {
+				throw new GLib.IOError.NOT_FOUND("Backup file does not exist: %s".printf(history.backup_path));
+			}
+			
+			// Check change type - cannot revert "added" files (no backup)
+			if (history.change_type == "added") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Cannot revert added files (no backup exists)");
+			}
+			
+			// Before restoring, backup the current content (the rejected content)
+			// Create a new FileHistory record with change_type="revert" to backup the rejected content
+			var now = new GLib.DateTime.now_local();
+			var revert_history = new OLLMfiles.FileHistory(
+				db,
+				this,
+				"revert",
+				now
+			);
+			
+			// Set status to approved (1) for the revert record
+			revert_history.status = 1;
+			
+			// Commit the revert history record (creates backup of current content)
+			yield revert_history.commit();
+			
+			// Copy backup file back to original path
+			var backup_file = GLib.File.new_for_path(history.backup_path);
+			var target_file = GLib.File.new_for_path(history.path);
+			
+			// Create parent directory if it doesn't exist (for deleted files)
+			var parent_dir = target_file.get_parent();
+			if (parent_dir != null && !parent_dir.query_exists()) {
+				parent_dir.make_directory_with_parents(null);
+			}
+			
+			// Copy backup to original location (overwrites existing file)
+			backup_file.copy(
+				target_file,
+				GLib.FileCopyFlags.OVERWRITE,
+				null,
+				null
+			);
+			
+			// Update File object metadata
+			this.last_modified = now.to_unix();
+		
+			// Save File object to database
+			this.saveToDB(db, null, false);
+			
+			// Reload buffer if it exists (file content changed on disk)
+			if (this.buffer != null) {
+				try {
+					yield this.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to reload buffer after revert for %s: %s", this.path, e.message);
+				}
+			}
+			
+			// Update FileHistory status to rejected (-1) using query wrapper
+			history.status = -1;
+			try {
+				OLLMfiles.FileHistory.query(db).updateById(history);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to update FileHistory status: %s", e.message);
+			}
+			
+			this.last_change_type = "";
+			this.is_need_approval = false;
+			this.saveToDB(db, null, false);
+		}
+		
 	}
 }
