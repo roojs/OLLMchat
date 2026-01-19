@@ -161,7 +161,7 @@ namespace OLLMchat.Tool
 		 * from their specific parameters. Sets permission_question, permission_target_path,
 		 * and permission_operation properties.
 		 *
-		 * @return true if permission needs to be asked, false if permission check can be skipped
+		 * @return true if permission is allowed or can be checked (request will call the provider; it may allow from cache or ask the user); false if the permission check can be skipped
 		 */
 		protected abstract bool build_perm_question();
 		
@@ -180,9 +180,9 @@ namespace OLLMchat.Tool
 			if (this.build_perm_question()) {
 				GLib.debug("RequestBase.execute: Tool '%s' requires permission: '%s'", this.tool.name, this.permission_question);
 				
-			// Get permission provider via agent interface
-			var permission_provider = this.agent.get_permission_provider();
-			GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Manager", 
+				// Get permission provider via agent interface
+				var permission_provider = this.agent.get_permission_provider();
+				GLib.debug("RequestBase.execute: Tool '%s' using permission_provider=%p (%s) from Manager", 
 				this.tool.name, permission_provider, permission_provider.get_type().name());
 				
 				if (!(yield permission_provider.request(this))) {

@@ -140,10 +140,19 @@ namespace OLLMtools.RunCommand
 			return trimmed.substring(0, space_pos);
 		}
 		
+		/**
+		 * Sets permission_question, permission_target_path, permission_operation.
+		 * @return true if permission is needed of false if it can be skipped
+		 */
 		protected override bool build_perm_question()
 		{
-			// Validate required parameter
-			if (this.command == "") {
+			// Invalid: cannot be checked
+			 
+			
+			// Skip permission when using bubblewrap with active project (sandboxed - allow everything).
+			// Same pattern as EditMode for project files: clear permission_question and return false to skip.
+			if (Bubble.can_wrap() && ((Tool) this.tool).project_manager != null && ((Tool) this.tool).project_manager.active_project != null) {
+				this.permission_question = "";
 				return false;
 			}
 			
@@ -196,26 +205,22 @@ namespace OLLMtools.RunCommand
 		public override async string execute()
 		{
 			// Parameters are already deserialized in constructor
-			// Build permission question
-			if (!this.build_perm_question()) {
+			if (this.command.strip() == "") {
 				return "ERROR: Invalid parameters";
+			
+			bool need_perm = this.build_perm_question();
+			if (need_perm) {
+				// For complex commands, use a unique identifier to bypass cache
+				if (this.is_complex_command) {
+					var unique_path = this.permission_target_path + "#" + GLib.get_real_time().to_string();
+					this.permission_target_path = unique_path;
+				}
+				if (!(yield this.agent.get_permission_provider().request(this))) {
+					return "ERROR: Permission denied: " + this.permission_question;
+				}
 			}
 			
-			// For complex commands, use a unique identifier to bypass cache
-			if (this.is_complex_command) {
-				// Add a timestamp to make the path unique (won't match cache)
-				var unique_path = this.permission_target_path + "#" + GLib.get_real_time().to_string();
-				this.permission_target_path = unique_path;
-			}
-			
-			// Send command to UI before requesting permission
 			this.send_ui("bash", "", "$ " + this.command);
-			
-			// Request permission (will always ask for complex commands due to unique path)
-			// Get permission provider via agent interface
-			if (!(yield this.agent.get_permission_provider().request(this))) {
-				return "ERROR: Permission denied: " + this.permission_question;
-			}
 			
 			// Execute the tool async
 			try {

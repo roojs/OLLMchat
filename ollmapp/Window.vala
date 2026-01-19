@@ -526,6 +526,15 @@ namespace OLLMapp
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
 			this.split_view.sidebar = this.history_browser;
 			
+			// Hide sidebar when mouse leaves the history panel (e.g. after selecting a history item to restore)
+			var sidebar_motion = new Gtk.EventControllerMotion();
+			sidebar_motion.leave.connect(() => {
+				if (this.split_view.show_sidebar) {
+					this.split_view.show_sidebar = false;
+				}
+			});
+			this.history_browser.add_controller(sidebar_motion);
+			
 			// Connect history browser to load sessions
 			this.history_browser.session_selected.connect((session) => {
 				// switch_to_session() handles loading internally via load()
