@@ -43,16 +43,16 @@ namespace OLLMchat.Call
 	public class Options : Object, Json.Serializable
 	{
 		// Numeric options - default to -1 (no value set)
-		[Description(nick = "Seed", blurb = "Random seed for reproducible outputs")]
+		[Description(nick = "Seed", blurb = "Random seed for reproducible outputs (default: -1)")]
 		public int seed { get; set; default = -1; }
 		
-		[Description(nick = "Temperature", blurb = "Controls randomness in the output (0.0 = deterministic, higher = more random)")]
+		[Description(nick = "Temperature", blurb = "Controls randomness in the output (0.0 = deterministic, higher = more random) (default: 0.8)")]
 		public double temperature { get; set; default = -1.0; }
 		
-		[Description(nick = "Top P", blurb = "Nucleus sampling: consider tokens with top_p probability mass")]
+		[Description(nick = "Top P", blurb = "Nucleus sampling: consider tokens with top_p probability mass (default: 0.9)")]
 		public double top_p { get; set; default = -1.0; }
 		
-		[Description(nick = "Top K", blurb = "Limit the number of highest probability tokens to consider")]
+		[Description(nick = "Top K", blurb = "Limit the number of highest probability tokens to consider (default: 40)")]
 		public int top_k { get; set; default = -1; }
 		
 		[Description(nick = "Max Tokens", blurb = "Maximum number of tokens to generate")]
@@ -61,12 +61,30 @@ namespace OLLMchat.Call
 		[Description(nick = "Min P", blurb = "Minimum probability threshold for token selection")]
 		public double min_p { get; set; default = -1.0; }
 		
-		[Description(nick = "Context Window", blurb = "Size of the context window in tokens")]
+		[Description(nick = "Context Window", blurb = "Size of the context in tokens (1K = 1024). Recommend at least 64K for most use.")]
 		public int num_ctx { get; set; default = -1; }
+		
+		[Description(nick = "Typical P", blurb = "Lower = keeps answers more on-topic and predictable, fewer odd or creative phrasings; 1.0 = no effect (default: 1.0)")]
+		public double typical_p { get; set; default = -1.0; }
+		
+		[Description(nick = "Repeat Last N", blurb = "Larger = stronger reduction of repetition; 0 = off. Range 0–65536. (default: 64)")]
+		public int repeat_last_n { get; set; default = -1; }
+		
+		/* Ranges for repeat_penalty, presence_penalty, frequency_penalty from plan 1.3.8 Option ranges; Ollama does not document official min/max. */
+		[Description(nick = "Repeat Penalty", blurb = "Higher = less repetition in the output. Range 1.0–2.0. (default: 1.1)")]
+		public double repeat_penalty { get; set; default = -1.0; }
+		
+		[Description(nick = "Presence Penalty", blurb = "Higher = long answers stay fresher and easier to read instead of rehashing the same words. Range 0–2. (default: 0.0)")]
+		public double presence_penalty { get; set; default = -1.0; }
+		
+		[Description(nick = "Frequency Penalty", blurb = "Higher = cuts down tics and overused phrases so the model doesn’t get stuck on the same wording. Range 0–2. (default: 0.0)")]
+		public double frequency_penalty { get; set; default = -1.0; }
 		
 		// String options - default to empty string (no value set)
 		[Description(nick = "Stop Sequences", blurb = "Sequences that will stop generation (separate multiple with commas)")]
 		public string stop { get; set; default = ""; }
+		
+		// public string template { get; set; default = ""; }  // placeholder for user-editable template – might use later
 
 		public Options()
 		{
@@ -109,6 +127,11 @@ namespace OLLMchat.Call
 				|| this.num_predict != -1
 				|| this.min_p != -1.0
 				|| this.num_ctx != -1
+				|| this.typical_p != -1.0
+				|| this.repeat_last_n != -1
+				|| this.repeat_penalty != -1.0
+				|| this.presence_penalty != -1.0
+				|| this.frequency_penalty != -1.0
 				|| this.stop != "";
 		}
 
@@ -155,6 +178,7 @@ namespace OLLMchat.Call
 					case "top_k":
 					case "num_predict":
 					case "num_ctx":
+					case "repeat_last_n":
 						int int_value;
 						if (int.try_parse(param_value, out int_value)) {
 							var value = Value(typeof(int));
@@ -167,6 +191,10 @@ namespace OLLMchat.Call
 					case "temperature":
 					case "top_p":
 					case "min_p":
+					case "typical_p":
+					case "repeat_penalty":
+					case "presence_penalty":
+					case "frequency_penalty":
 						double double_value;
 						if (double.try_parse(param_value, out double_value)) {
 							var value = Value(typeof(double));
@@ -216,6 +244,7 @@ namespace OLLMchat.Call
 				case "top-k":
 				case "num-predict":
 				case "num-ctx":
+				case "repeat-last-n":
 					if (value.get_int() == -1) {
 						return null;
 					}
@@ -225,6 +254,10 @@ namespace OLLMchat.Call
 				case "temperature":
 				case "top-p":
 				case "min-p":
+				case "typical-p":
+				case "repeat-penalty":
+				case "presence-penalty":
+				case "frequency-penalty":
 					if (value.get_double() == -1.0) {
 						return null;
 					}

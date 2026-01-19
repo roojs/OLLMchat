@@ -166,11 +166,12 @@ namespace OLLMapp.SettingsDialog
 				// Then check if model has a default value and set it if user option is unset
 				// Use switch case on property name (with hyphens - Vala uses hyphens for GObject)
 				switch (property_name) {
-					// Integer properties
+					// Integer properties (-1 = unset)
 					case "seed":
 					case "top-k":
 					case "num-predict":
 					case "num-ctx":
+					case "repeat-last-n":
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
@@ -184,6 +185,10 @@ namespace OLLMapp.SettingsDialog
 					case "temperature":
 					case "top-p":
 					case "min-p":
+					case "typical-p":
+					case "repeat-penalty":
+					case "presence-penalty":
+					case "frequency-penalty":
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();

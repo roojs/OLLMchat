@@ -81,7 +81,7 @@ namespace OLLMapp.SettingsDialog.Rows
 				max_value = 2.0,
 				step_value = 0.1,
 				digits = 1,
-				default_value = 0.7
+				default_value = 0.8
 			});
 
 			this.rows.add(new Float(dialog, options, options_class.find_property("top_p")) {
@@ -108,14 +108,6 @@ namespace OLLMapp.SettingsDialog.Rows
 				default_value = 16384.0
 			});
 
-			this.rows.add(new Int(dialog, options, options_class.find_property("num_predict")) {
-				min_value = 1.0,
-				max_value = 1000000.0,
-				step_value = 1.0,
-				digits = 0,
-				default_value = 16384.0
-			});
-
 			this.rows.add(new Float(dialog, options, options_class.find_property("min_p")) {
 				min_value = 0.0,
 				max_value = 1.0,
@@ -124,12 +116,52 @@ namespace OLLMapp.SettingsDialog.Rows
 				default_value = 0.1
 			});
 
+			this.rows.add(new Float(dialog, options, options_class.find_property("typical_p")) {
+				min_value = 0.0,
+				max_value = 1.0,
+				step_value = 0.01,
+				digits = 2,
+				default_value = 1.0
+			});
+
+			this.rows.add(new Int(dialog, options, options_class.find_property("repeat_last_n")) {
+				min_value = 0.0,
+				max_value = 65536.0,
+				step_value = 1.0,
+				digits = 0,
+				default_value = 64.0
+			});
+
+			this.rows.add(new Float(dialog, options, options_class.find_property("repeat_penalty")) {
+				min_value = 1.0,
+				max_value = 2.0,
+				step_value = 0.1,
+				digits = 1,
+				default_value = 1.1
+			});
+
+			this.rows.add(new Float(dialog, options, options_class.find_property("presence_penalty")) {
+				min_value = 0.0,
+				max_value = 2.0,
+				step_value = 0.1,
+				digits = 1,
+				default_value = 0.0
+			});
+
+			this.rows.add(new Float(dialog, options, options_class.find_property("frequency_penalty")) {
+				min_value = 0.0,
+				max_value = 2.0,
+				step_value = 0.1,
+				digits = 1,
+				default_value = 0.0
+			});
+
 			this.rows.add(new Int(dialog, options, options_class.find_property("seed")) {
 				min_value = -1.0,
 				max_value = 2147483647.0,
 				step_value = 1.0,
 				digits = 0,
-				default_value = 42.0
+				default_value = -1.0
 			});
 		}
 

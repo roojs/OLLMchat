@@ -207,6 +207,7 @@ namespace OLLMtools.RunCommand
 			// Parameters are already deserialized in constructor
 			if (this.command.strip() == "") {
 				return "ERROR: Invalid parameters";
+			}
 			
 			bool need_perm = this.build_perm_question();
 			if (need_perm) {
