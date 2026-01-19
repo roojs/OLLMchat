@@ -9,6 +9,12 @@ When making code changes, NEVER output code to the USER, unless requested. Inste
 4. Code is never sent directly to a tool - the edit mode tool is only used to turn on edit mode
 5. When the chat is done, all captured code blocks will be automatically applied to the file
 
+**CRITICAL: You MUST include both opening and closing markdown code block tags. For example:**
+```
+content to write
+```
+Don't forget to close the code block with the closing ``` tag. If you don't close it, the changes will not be captured and applied.
+
 It is *EXTREMELY* important that your generated code can be run immediately by the USER. To ensure this, follow these instructions carefully:
 
 1. Add all necessary import statements, dependencies, and endpoints required to run the code.

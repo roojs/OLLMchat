@@ -552,59 +552,28 @@ namespace OLLMchatGtk
 		public async void update_models()
 		{
 			GLib.debug("update_models: session.model='%s'", this.manager.session.model);
-			this.is_loading_models = true;
-			try {
-				// Refresh ConnectionModels - this will load models from all working connections
-				yield this.manager.connection_models.refresh();
-				
-				// Set selection to match session.model and update session state (Phase 3: model on Session, not Client)
-				// This will trigger the notify signal, but we're ignoring it during loading
-				bool model_found = false;
-				OLLMchat.Response.Model? current_model_obj = null;
-				if (this.manager.session.model != "") {
-					var default_connection = this.manager.config.connections.get(this.manager.default_model_usage.connection);
-					var model_usage = this.manager.connection_models.find_model(
-						default_connection.url,
-						this.manager.session.model
-					);
-					
-					if (model_usage != null) {
-						// Find position in sorted_models
-						uint position = this.sorted_models.find_position(model_usage);
-						if (position != Gtk.INVALID_LIST_POSITION) {
-							this.model_dropdown.selected = position;
-							current_model_obj = model_usage.model_obj;
-						}
-						// Update tools button visibility based on model's can_call property
-						this.update_model_widgets_visibility();
-						model_found = true;
-					}
+			
+			// Set selection to match session.model_usage - no refresh, just update selection
+			if (this.manager.session != null) {
+				// Find position in sorted_models
+				uint position = this.sorted_models.find_position(this.manager.session.model_usage);
+				if (position != Gtk.INVALID_LIST_POSITION) {
+					this.model_dropdown.selected = position;
 				}
 				
-				// Bind tools button visibility to current model's can_call property if we have a model
-				// This will automatically update when model capabilities are loaded
-				if (model_found && this.manager.connection_models.get_n_items() > 0) {
-					if (this.tools_button_binding != null) {
-						this.tools_button_binding.unbind();
-					}
-					this.tools_button_binding = current_model_obj.bind_property(
+				// Update tools button visibility based on model's can_call property
+				if (this.tools_button_binding != null) {
+					this.tools_button_binding.unbind();
+				}
+				if (this.manager.session.model_usage.model_obj != null) {
+					this.tools_button_binding = this.manager.session.model_usage.model_obj.bind_property(
 						"can-call",
 						this.tools_menu_button,
 						"visible",
 						BindingFlags.SYNC_CREATE
 					);
 				}
-				
-				// Models are now loaded - hide loading label and show dropdown
-				// Set is_loading_models to false so update_model_widgets_visibility() hides the label
-				this.is_loading_models = false;
 				this.update_model_widgets_visibility();
-			} catch (GLib.Error e) {
-				GLib.warning("Failed to load models: %s", e.message);
-				// Don't show error to user - dropdown will just remain hidden
-				return;
-			} finally {
-				this.is_loading_models = false;
 			}
 		}
 	}
