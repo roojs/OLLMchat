@@ -30,7 +30,7 @@ Test tool for Bubble class (bubblewrap sandboxing).
 Options:
   --project=DIR              Project directory path (required)
   --allow-network            Allow network access (default: false)
-  --test-db=PATH              Use test database instead of in-memory (optional, for testing only)
+  --test-db=PATH              Use test database instead of standard database (optional, for testing only)
 
 Arguments:
   command                    Command to execute in sandbox
@@ -55,7 +55,7 @@ Examples:
 	private const OptionEntry[] local_options = {
 		{ "project", 'p', 0, OptionArg.STRING, ref opt_project, "Project directory path", "DIR" },
 		{ "allow-network", 0, 0, OptionArg.NONE, ref opt_allow_network, "Allow network access", null },
-		{ "test-db", 0, 0, OptionArg.STRING, ref opt_test_db, "Specify test database path (optional, for testing only)", "PATH" },
+		{ "test-db", 0, 0, OptionArg.STRING, ref opt_test_db, "Specify test database path instead of standard database (optional, for testing only)", "PATH" },
 		{ null }
 	};
 
@@ -110,34 +110,54 @@ Examples:
 		GLib.debug("oc-test-bubble: command to execute: %s", command);
 
 		// Determine database path
-		string? db_path = null;
+		string db_path;
 		if (opt_test_db != null && opt_test_db != "") {
 			db_path = opt_test_db;
+		} else {
+			// Use main database (normal operation)
+			db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
 		}
-		// If db_path is null, use in-memory database (default behavior)
 
 		// Create ProjectManager and load project
 		var db = new SQ.Database(db_path, false);
 		var project_manager = new OLLMfiles.ProjectManager(db);
 		// Note: git_provider defaults to GitProviderBase (dummy implementation) - no need to set it
 		
-		// Create project folder
-		var project = new OLLMfiles.Folder(project_manager);
-		project.path = opt_project;
-		project.is_project = true;
+		// Load existing projects from database first
+		yield project_manager.load_projects_from_db();
 		
-		// Add project to manager's projects list
-		project_manager.projects.append(project);
+		// Check if project already exists in database
+		var project = project_manager.projects.path_map.get(opt_project);
+		
+		// Error out first if using standard database and project doesn't exist
+		if (project == null && (opt_test_db == null || opt_test_db == "")) {
+			command_line.printerr("ERROR: Project not found in database: %s\n", opt_project);
+			command_line.printerr("  Projects must be created using the main application or oc-test-files\n");
+			throw new GLib.IOError.NOT_FOUND("Project not found in database: " + opt_project);
+		}
+		
+		// Create project if it doesn't exist (only when using test database)
+		if (project == null) {
+			project = new OLLMfiles.Folder(project_manager);
+			project.path = opt_project;
+			project.is_project = true;
+			project.display_name = GLib.Path.get_basename(opt_project);
+			
+			// Save project to database before scanning
+			project.saveToDB(db, null, false);
+			project_manager.projects.append(project);
+		}
+		
+		// Load existing project files from database first
+		// This populates project.children so read_dir() can compare filesystem with database
+		yield project.load_files_from_db();
 		
 		// Disable background recursion for testing (ensure it's off)
 		OLLMfiles.Folder.background_recurse = false;
 		
-		// Load project files - this builds the folder_map with all parent folders
+		// Scan the filesystem to update project files
+		// read_dir() automatically updates project_files when recursion completes
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
-		
-		// Restore previous background setting
-		
-		yield project.load_files_from_db();
 		
 		// Update ProjectFiles to ensure folder_map is populated with all folders
 		// This is critical - Scan needs parent folders to exist in folder_map

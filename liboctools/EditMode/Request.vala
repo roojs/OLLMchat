@@ -23,6 +23,44 @@ namespace OLLMtools.EditMode
 	 */
 	public class Request : OLLMchat.Tool.RequestBase
 	{
+		// Message constants
+		private const string INSTRUCTIONS_COMPLETE_FILE = """
+Since complete_file=true is enabled, code blocks should only have the language tag e.g.,
+
+```javascript
+the output goes here
+```
+
+ Do not include line numbers. The entire file content will be replaced.
+""";
+
+		private const string INSTRUCTIONS_LINE_RANGE = """
+Code blocks must include line range in format type:startline:endline e.g.,
+
+```javascript:10:15
+the output goes here
+```
+
+The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+""";
+
+		private const string OVERWRITE_MESSAGE = """
+You set overwrite=true, so we will overwrite the existing file when you complete your message.
+""";
+
+		private const string CODE_BLOCK_REQUIREMENT = """
+Now provide markdown code block with content. You MUST include a starting markdown tag and an ending one. For example:
+
+```
+content to write
+```
+
+Don't forget to close it.
+""";
+
+		private const string ERROR_APPLYING_CHANGES = "There was a problem applying the changes: ";
+
+
 		// Static list to keep active requests alive so signal handlers can be called
 		private static Gee.ArrayList<Request> active_requests = new Gee.ArrayList<Request>();
 		
@@ -142,17 +180,14 @@ namespace OLLMtools.EditMode
 			// Build LLM message - tell LLM edit mode is activated and provide instructions
 			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
 			
-			string instructions;
-			if (this.complete_file) {
-				instructions = "Since complete_file=true is enabled, code blocks should only have the language tag (e.g., ```javascript, ```python). Do not include line numbers. The entire file content will be replaced.";
-			} else {
-				instructions = "Code blocks must include line range in format type:startline:endline (e.g., ```javascript:10:15, ```python:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.";
+			string instructions = this.complete_file ? INSTRUCTIONS_COMPLETE_FILE : INSTRUCTIONS_LINE_RANGE;
+			llm_message += instructions;
+			
+			if (this.overwrite && file_exists) {
+				llm_message += "\n" + OVERWRITE_MESSAGE;
 			}
 			
-			llm_message += instructions;
-			if (this.overwrite && file_exists) {
-				llm_message += "\n\nYou set overwrite=true, so we will overwrite the existing file when you complete your message.";
-			}
+			llm_message += "\n" + CODE_BLOCK_REQUIREMENT;
 			
 			// Clean up any existing active request for the same file before starting a new one
 			// This handles the case where edit mode is called again after a failed attempt
@@ -318,7 +353,7 @@ namespace OLLMtools.EditMode
 			} catch (Error e) {
 				GLib.warning("Error applying changes to %s: %s", this.normalized_path, e.message);
 				// Store error message instead of sending immediately
-				this.error_messages.add("There was a problem applying the changes: " + e.message);
+				this.error_messages.add(ERROR_APPLYING_CHANGES + e.message);
 				this.reply_with_errors(response);
 			}
 		}
