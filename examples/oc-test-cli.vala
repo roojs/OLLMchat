@@ -24,6 +24,7 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 	private static string? opt_model = null;
 	private static string? opt_stats = null;
 	private static bool opt_list_models = false;
+	private static int opt_ctx_num = -1;
 	
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
@@ -35,6 +36,7 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
 		{ "stats", 0, 0, OptionArg.STRING, ref opt_stats, "Output statistics from last message to file", "FILE" },
 		{ "list-models", 0, 0, OptionArg.NONE, ref opt_list_models, "List available models and exit", null },
+		{ "ctx-num", 0, 0, OptionArg.INT, ref opt_ctx_num, "Context window size in tokens (1K = 1024)", "NUM" },
 		{ null }
 	};
 	
@@ -68,6 +70,7 @@ class TestCliApp : Application, OLLMchat.ApplicationInterface
 		opt_model = null;
 		opt_stats = null;
 		opt_list_models = false;
+		opt_ctx_num = -1;
 		
 		string[] args = command_line.get_arguments();
 		var opt_context = new OptionContext("OLLMchat Test CLI");
@@ -131,6 +134,7 @@ Options:
   -m, --model=MODEL    Model name (overrides config)
   --stats=FILE         Output statistics from last message to file
   --list-models        List available models and exit
+  --ctx-num=NUM        Context window size in tokens (1K = 1024)
 
 Examples:
   $(args[0]) \"What is the capital of France?\"
@@ -282,6 +286,20 @@ Examples:
 			stream = true
 		};
 		chat.options = default_usage.options == null ?  new OLLMchat.Call.Options() : default_usage.options;
+		
+		// Override num_ctx if provided via command line
+		chat.options.num_ctx = opt_ctx_num;
+		
+		// Phase 4: Customize model
+		// Get model_obj from connection and call customize() to create temp model if needed
+		var model_obj = client.connection.models.get(default_usage.model);
+		try {
+			chat.model = yield model_obj.customize(client.connection, chat.options);
+		} catch (Error e) {
+			GLib.warning("Failed to customize model '%s': %s. Using base model.", default_usage.model, e.message);
+			// chat.model remains as the base model name
+		}
+		
 		// Connect to chat signals for streaming output
 		chat.stream_chunk.connect((new_text, is_thinking, response) => {
 			stdout.write(new_text.data);

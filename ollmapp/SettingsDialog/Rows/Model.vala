@@ -121,10 +121,14 @@ namespace OLLMapp.SettingsDialog.Rows
 			this.filtered_models = new Gtk.FilterListModel(this.connection_models, this.connection_filter);
 			
 			// Create sorted list model
+			// Filter out ollmchat-temp/ models - they should never appear in model lists
+			// (Phase 3: Hide all ollmchat-temp from model lists)
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				this.filtered_models,
 				new OLLMchatGtk.List.ModelUsageSort(),
-				new Gtk.CustomFilter((item) => { return true; })
+				new Gtk.CustomFilter((item) => {
+					return !((OLLMchat.Settings.ModelUsage)item).model.has_prefix("ollmchat-temp/");
+				})
 			);
 			
 			// Set up dropdown with sorted models

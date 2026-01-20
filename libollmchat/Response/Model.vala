@@ -448,6 +448,62 @@ namespace OLLMchat.Response
 			}
 		}
 		
+		/**
+		 * Customizes the model name based on options, creating a temporary model if needed.
+		 *
+		 * Returns the model name to use for chat operations. If num_ctx is set (not auto),
+		 * creates a temporary model variant with the specified context size. The temp model
+		 * name follows the pattern: `ollmchat-temp/{base}-ctx{N}K` where N is num_ctx in K.
+		 *
+		 * If the temp model already exists, it is reused. If it doesn't exist, it is created
+		 * using the Ollama create API with a Modelfile containing FROM {base} and PARAMETER num_ctx.
+		 *
+		 * @param connection The connection to use for API calls
+		 * @param options The options containing num_ctx setting
+		 * @return The model name to use (either base name or temp model name)
+		 * @throws Error if model creation fails
+		 */
+		public async string customize(Settings.Connection connection, Call.Options options) throws Error
+		{
+			// If num_ctx is not set (auto), return base model name
+			if (options.num_ctx == -1) {
+				return this.name;
+			}
+			
+			// Generate temp model name: ollmchat-temp/{base}-ctx{N}K
+			// N = num_ctx / 1024 (convert tokens to K)
+			string temp_name = "ollmchat-temp/" + this.name + "-ctx" + (options.num_ctx / 1024).to_string() + "K";
+			
+			// Check if temp model exists using connection's cached model list (O(1) lookup)
+			if (connection.models.has_key(temp_name)) {
+				GLib.debug("Temp model '%s' already exists, reusing", temp_name);
+				return temp_name;
+			}
+			
+			// Model doesn't exist - create it
+			GLib.debug("Creating temp model '%s' with num_ctx=%d", temp_name, options.num_ctx);
+			
+			// Create the model using API fields
+			// We always use the existing template from the base model (no custom template)
+			var create_call = new Call.Create(connection, temp_name) {
+				from = this.name
+			};
+			
+			// Set num_ctx parameter (Options object serializes automatically)
+			create_call.parameters.num_ctx = options.num_ctx;
+			
+			try {
+				yield create_call.exec_create();
+				GLib.debug("Successfully created temp model '%s'", temp_name);
+			} catch (Error e) {
+				GLib.warning("Failed to create temp model '%s': %s. Falling back to base model '%s'", temp_name, e.message, this.name);
+				// Fall back to base model on error
+				return this.name;
+			}
+			
+			return temp_name;
+		}
+		
 	}
 
 }

@@ -32,6 +32,7 @@ namespace OLLMapp.SettingsDialog.Rows
 		public double default_value { get; set; }  // Hardcoded default (never changes)
 		public int model_value { get; set; default = -1; }   // Model's default value (set via set_model_value(), defaults to unset_value if not set)
 		public int unset_value { get; set; default = -1; }
+		public bool display_in_k { get; set; default = false; }  // Display values in K format (e.g., 64K instead of 65536)
 
 		private Gtk.SpinButton spin_button;
 
@@ -65,6 +66,12 @@ namespace OLLMapp.SettingsDialog.Rows
 			// Add button box to suffix
 			this.add_suffix(this.button_box);
 			
+			// Always connect output/input signal handlers for K formatting (methods check display_in_k)
+			this.spin_button.output.connect(this.on_output);
+			this.spin_button.input.connect((spin, out new_value) => {
+				return this.on_input(out new_value);
+			});
+			
 			// If bound to a property, set up signal handler to update it
 			
 			this.spin_button.value_changed.connect(() => {
@@ -88,6 +95,70 @@ namespace OLLMapp.SettingsDialog.Rows
 		
 		}
 
+		/**
+		 * Output signal handler: formats value in K format if display_in_k is enabled.
+		 * 
+		 * @return true if value was formatted, false otherwise
+		 */
+		private bool on_output()
+		{
+			if (!this.display_in_k) {
+				return false;
+			}
+			
+			// Format output: convert tokens to K (e.g., 65536 -> "64K")
+		
+			this.spin_button.numeric = false;
+			this.spin_button.text = "%dK".printf(
+				this.spin_button.get_value_as_int() / 1024)
+			;
+			this.spin_button.numeric = true;
+			return true;
+		}
+		
+		/**
+		 * Input signal handler: parses K format back to tokens if display_in_k is enabled.
+		 * 
+		 * @param new_value The out double parameter to set with the parsed token count
+		 * @return 1 if value was parsed (handled), 0 otherwise
+		 */
+		private int on_input(out double new_value)
+		{
+			if (!this.display_in_k) {
+				// Return 0 (not handled) - GTK will use default integer parsing
+				// new_value is set to satisfy out parameter, but GTK ignores it when we return 0
+				new_value = 0.0;
+				return 0;
+			}
+			
+			// Parse input: convert K to tokens (e.g., "64K" -> 65536)
+			var text = this.spin_button.text.strip().up();
+			
+			// Remove trailing 'K' if present
+			if (text.has_suffix("K")) {
+				text = text.substring(0, text.length - 1);
+			}
+			
+			// Parse as integer
+			int k_value;
+			if (!int.try_parse(text, out k_value)) {
+				new_value = 0.0;
+				return 0;
+			}
+			
+			// Convert K to tokens and clamp to valid range
+			if (k_value * 1024 < (int)this.min_value) {
+				new_value = this.min_value;
+				return 1;
+			}
+			if (k_value * 1024 > (int)this.max_value) {
+				new_value = this.max_value;
+				return 1;
+			}
+			new_value = (double)k_value * 1024;
+			return 1;
+		}
+
 		protected override bool is_default(Value value)
 		{
 			return value.get_int() == this.unset_value;
@@ -109,13 +180,19 @@ namespace OLLMapp.SettingsDialog.Rows
 			// Clamp to valid range
 			if (int_val < (int)this.min_value) {
 				int_val = (int)this.min_value;
-			} else if (int_val > (int)this.max_value) {
+			}
+			if (int_val > (int)this.max_value) {
 				int_val = (int)this.max_value;
 			}
 			// Set model_value to model's default (used when user clicks Auto button)
 			this.model_value = int_val;
-			string label_text = int_val.to_string();
-			// Update Auto button label to show model's default value
+			
+			// Format label text
+			if (this.display_in_k) {
+				this.auto_button.label = "%dK".printf(int_val / 1024);
+				return;
+			}
+			var label_text = int_val.to_string();
 			this.auto_button.label = label_text == "" ? "Auto" : label_text;
 		}
 		
@@ -136,11 +213,13 @@ namespace OLLMapp.SettingsDialog.Rows
 				// Scenario 1: new_value is unset (default/empty)
 				this.auto_button.label = "Auto";
 				this.set_to_auto();
-			} else {
-				// Scenario 2: new_value is set (user has explicitly set a value)
-				this.set_to_default();
-				this.spin_button.value = (double)val.get_int();
+				this.loading_config = false;
+				return;
 			}
+			
+			// Scenario 2: new_value is set (user has explicitly set a value)
+			this.set_to_default();
+			this.spin_button.value = (double)val.get_int();
 			this.loading_config = false;
 		}
 
