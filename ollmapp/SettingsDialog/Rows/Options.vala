@@ -105,7 +105,8 @@ namespace OLLMapp.SettingsDialog.Rows
 				max_value = 1000000.0,
 				step_value = 1024.0,
 				digits = 0,
-				default_value = 16384.0
+				default_value = 16384.0,
+				display_in_k = true
 			});
 
 			this.rows.add(new Float(dialog, options, options_class.find_property("min_p")) {
