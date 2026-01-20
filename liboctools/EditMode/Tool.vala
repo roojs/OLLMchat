@@ -43,8 +43,8 @@ While edit mode is active, code blocks will be automatically captured and applie
 To apply changes, just end the chat (send chat done signal). All captured code blocks will be applied to the file automatically.
 
 Code block format depends on the complete_file parameter:
-- If complete_file=false (default): Code blocks must include line range in format type:startline:endline (e.g., python:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
-- If complete_file=true: Code blocks should only have the language tag (e.g., ```python, ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
+- If complete_file=false (default): Code blocks must include line range in format type:startline:endline (e.g., vala:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+- If complete_file=true: Code blocks should only have the language tag (e.g., ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
 
 When complete_file=true, do not include line numbers in the code block. When complete_file=false, line numbers are required.
 

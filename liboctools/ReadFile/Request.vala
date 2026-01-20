@@ -28,7 +28,7 @@ namespace OLLMtools.ReadFile
 		public int64 start_line { get; set; default = -1; }
 		public int64 end_line { get; set; default = -1; }
 		public bool read_entire_file { get; set; default = false; }
-		public bool with_lines { get; set; default = false; }
+		public bool show_lines { get; set; default = false; }
 		public string find_words { get; set; default = ""; }
 		public bool summarize { get; set; default = false; }
 		
@@ -214,8 +214,8 @@ namespace OLLMtools.ReadFile
 			// Add full file status
 			request_message += this.read_entire_file ? "Full file: yes\n" : "Full file: no\n";
 			
-			// Add with_lines option
-			if (this.with_lines) {
+			// Add show_lines option
+			if (this.show_lines) {
 				request_message += "With line numbers: yes\n";
 			}
 			
@@ -341,8 +341,8 @@ namespace OLLMtools.ReadFile
 				return matching_lines;
 			}
 			
-			// Handle with_lines option - format with line numbers
-			if (this.with_lines) {
+			// Handle show_lines option - format with line numbers
+			if (this.show_lines) {
 				full_content = this.format_with_line_numbers(full_content, content_start_line);
 			}
 			

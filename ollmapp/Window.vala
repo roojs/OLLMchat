@@ -37,6 +37,7 @@ namespace OLLMapp
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
 		private Gtk.ToggleButton history_toggle_button;
+		private uint history_leave_ignore_timeout_id = 0;
 		private SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
 		private SettingsDialog.MainDialog? settings_dialog = null;
 		private Gtk.Button settings_button;
@@ -164,13 +165,27 @@ namespace OLLMapp
 			this.history_toggle_button.toggled.connect(() => {
 				this.split_view.show_sidebar = this.history_toggle_button.active;
 				this.history_toggle_button.icon_name = this.history_toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
-				// Scroll to top when expanding history sidebar
-				// in theroy history browse might not exist but its so unlikely we dont check
 				if (this.history_toggle_button.active) {
+					// Ignore mouse leave for 1s after expanding so movements don't immediately close it
+					if (this.history_leave_ignore_timeout_id != 0) {
+						GLib.Source.remove(this.history_leave_ignore_timeout_id);
+						this.history_leave_ignore_timeout_id = 0;
+					}
+					this.history_leave_ignore_timeout_id = GLib.Timeout.add_seconds(1, () => {
+						this.history_leave_ignore_timeout_id = 0;
+						return false;
+					});
+					// Scroll to top when expanding history sidebar
+					// in theroy history browse might not exist but its so unlikely we dont check
 					GLib.Idle.add(() => {
 						this.history_browser.scrolled_window.vadjustment.value = 0;
 						return false;
 					});
+				} else {
+					if (this.history_leave_ignore_timeout_id != 0) {
+						GLib.Source.remove(this.history_leave_ignore_timeout_id);
+						this.history_leave_ignore_timeout_id = 0;
+					}
 				}
 			});
 
@@ -527,10 +542,11 @@ namespace OLLMapp
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
 			this.split_view.sidebar = this.history_browser;
 			
-			// Hide sidebar when mouse leaves the history panel (e.g. after selecting a history item to restore)
+			// Hide sidebar when mouse leaves the history panel (e.g. after selecting a history item to restore).
+			// Ignore leave during the 1s after expanding (history_leave_ignore_timeout_id != 0).
 			var sidebar_motion = new Gtk.EventControllerMotion();
 			sidebar_motion.leave.connect(() => {
-				if (this.split_view.show_sidebar) {
+				if (this.split_view.show_sidebar && this.history_leave_ignore_timeout_id == 0) {
 					this.history_toggle_button.active = false;
 				}
 			});

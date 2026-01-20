@@ -4,7 +4,7 @@ When making code changes, NEVER output code to the USER, unless requested. Inste
 
 **IMPORTANT: Code edits should be done using the edit mode tool:**
 1. Call the edit_mode tool with the file path to activate edit mode for that file
-2. After edit mode is active, output code blocks with the format `type:startline:endline` (e.g., ```python:10:15, ```vala:1:5)
+2. After edit mode is active, output code blocks with the format `type:startline:endline` (e.g., ```vala:10:15, ```vala:1:5)
 3. Code blocks with this format are automatically captured while edit mode is active
 4. Code is never sent directly to a tool - the edit mode tool is only used to turn on edit mode
 5. When the chat is done, all captured code blocks will be automatically applied to the file

@@ -25,9 +25,10 @@ Required Components
 ### Format
 Use standard markdown code blocks with ONLY the language tag:
 
-```python
-for i in range(10):
-    print(i)
+```vala
+for (int i = 0; i < 10; i++) {
+    print ("%d\n", i);
+}
 ```
 
 ## Critical Formatting Rules for Both Methods
@@ -44,9 +45,10 @@ RULE SUMMARY (ALWAYS Follow):
 // ... existing code ...
 ```
 	-	Use MARKDOWN CODE BLOCKS (with language tag) for new or proposed code.
-```python
-for i in range(10):
-    print(i)
+```vala
+for (int i = 0; i < 10; i++) {
+    print ("%d\n", i);
+}
 ```
   - ANY OTHER FORMAT IS STRICTLY FORBIDDEN
 	-	NEVER mix formats.

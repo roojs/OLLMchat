@@ -181,39 +181,32 @@ namespace OLLMcoder
 		
 		/**
 		 * Gets the full contents of a file.
-		 * 
+		 *
+		 * Content is read only via the File (buffer). Uses active file when path matches, else
+		 * get_file_from_active_project. create_buffer is always called (no-op if buffer exists).
+		 * Returns "Problem loading file contents: &lt;path&gt;" if the file is not found. No disk fallback.
+		 *
 		 * @param file The file path
-		 * @return The file contents, or empty string if not available
+		 * @return The file contents, or an error message if not available
 		 */
 		public override string get_file_contents(string file)
 		{
 			GLib.debug("AgentFactory.get_file_contents: Looking for file: %s", file);
-			GLib.debug("AgentFactory.get_file_contents: file_cache size: %u", this.project_manager.file_cache.size);
-			
-			// Find file by path in manager's file cache
-			var file_base = this.project_manager.file_cache.get(file);
-			if (file_base == null) {
-				GLib.debug("AgentFactory.get_file_contents: File not found in cache: %s", file);
-				return "";
+
+ 
+			if (this.project_manager.active_file != null 
+					&& this.project_manager.active_file.path == file) {
+			 
+				
+				return this.project_manager.active_file.get_contents(200);
 			}
-			
-			if (!(file_base is OLLMfiles.File)) {
-				GLib.debug("AgentFactory.get_file_contents: File in cache is not a File type: %s", file_base.get_type().name());
-				return "";
+			var found_file = this.project_manager.get_file_from_active_project(file);
+			if (found_file == null) {
+				GLib.critical("Problem loading file contents: %s", file);
+				return "Problem loading file contents: " + file;
 			}
-			
-			var found_file = file_base as OLLMfiles.File;
-			GLib.debug("AgentFactory.get_file_contents: File found, is_active=%s, path=%s",
-				found_file.is_active.to_string(), found_file.path);
-			
-			// For active file, return full contents
-			// For other files, return first 20 lines
-			if (this.project_manager.active_file != null && this.project_manager.active_file.path == found_file.path) {
-				GLib.debug("AgentFactory.get_file_contents: Returning full contents (active file)");
-				return found_file.get_contents(200); // 200 = all lines
-			} 
-			GLib.debug("AgentFactory.get_file_contents: Returning first 20 lines");
-			return found_file.get_contents(20); // First 20 lines
+			this.project_manager.buffer_provider.create_buffer(found_file);
+			return found_file.get_contents(20);
 		}
 		
 		/**
@@ -271,7 +264,7 @@ namespace OLLMcoder
 		 * @param user_query The actual user query/message
 		 * @return User prompt string with additional context
 		 */
-		protected override string generate_user_prompt(string user_query) throws Error
+		public override string generate_user_prompt(string user_query) throws Error
 		{
 			return this.generate_context_section() + "\n\n" +
 				"<user_query>\n" +
@@ -316,9 +309,30 @@ namespace OLLMcoder
 		}
 		
 		/**
+		 * Format content with line numbers (e.g. "1: first line", "2: second line").
+		 *
+		 * @param content The content string
+		 * @param start_line_number The starting line number (1-based)
+		 * @return Content with line numbers prefixed
+		 */
+		private string format_with_line_numbers(string content, int start_line_number = 1)
+		{
+			if (content == null || content == "") {
+				return "";
+			}
+			var lines = content.split("\n");
+			var parts = new string[lines.length];
+			for (int i = 0; i < lines.length; i++) {
+				parts[i] = "%d: %s".printf(start_line_number + i, lines[i]);
+			}
+			return string.joinv("\n", parts);
+		}
+
+		/**
 		 * Generates the context data section from application state.
 		 * 
 		 * Matches Cursor's format with <current_file>, <attached_files>, and <manually_added_selection>.
+		 * File contents are shown with line numbers to make it easier to identify which lines to edit.
 		 */
 		private string generate_context_section()
 		{
@@ -326,36 +340,52 @@ namespace OLLMcoder
 			var result = "<additional_data>\n" +
 				"Below are some helpful pieces of information about the current state:\n\n";
 			
-			// Current file (from factory methods)
+			// Current file = active file when set, otherwise first in open list
 			var open_files = this.get_open_files();
-			if (open_files.size > 0) {
-				var current_file = open_files[0];
-				var cursor_pos_str = this.get_current_cursor_position();
-				
-				result += "<current_file>\n" +
-					"Path: " + current_file + "\n";
-				if (cursor_pos_str != "") {
-					result += "Line: " + cursor_pos_str + "\n";
-				}
-				var line_content = this.get_current_line_content(cursor_pos_str);
-				if (line_content != "") {
-					result += "Line Content: `" + line_content + "`\n";
-				}
-				result += "</current_file>\n\n";
+			string? current_file_path = null;
+			if (this.project_manager.active_file != null) {
+				current_file_path = this.project_manager.active_file.path;
+			} else if (open_files.size > 0) {
+				current_file_path = open_files[0];
 			}
-			
-			// Attached files (all open files with their contents)
-			if (open_files.size > 0) {
-				result += "<attached_files>\n";
-				foreach (var file in open_files) {
-					var contents = this.get_file_contents(file);
-					if (contents != "") {
-						var line_count = contents.split("\n").length;
-						result += "<file_contents path=\"" + file + "\" lines=\"1-" + line_count.to_string() + "\">\n" +
-							contents +
-							"\n</file_contents>\n";
-					}
+
+			if (current_file_path != null) {
+				var cursor_pos_str = this.get_current_cursor_position();
+				var contents = this.get_file_contents(current_file_path);
+				var numbered = this.format_with_line_numbers(contents, 1);
+
+				result += "<current_file>\n" +
+					"File path: " + current_file_path + "\n";
+				if (cursor_pos_str != "") {
+					result += "Cursor is at this Line: " + cursor_pos_str + "\n";
 				}
+				result += "Content of the file with line numbers:\n\n" +
+					(numbered != "" ? numbered + "\n" : "") +
+					"</current_file>\n\n";
+			}
+
+			// Attached files: other open files only (exclude current/active), when any exist
+			var attached_count = 0;
+			foreach (var path in open_files) {
+				if (path == current_file_path) {
+					continue;
+				}
+				var contents = this.get_file_contents(path);
+				if (contents == "") {
+					continue;
+				}
+				if (attached_count == 0) {
+					result += "<attached_files>\n";
+				}
+				attached_count++;
+				var line_count = contents.split("\n").length;
+				var numbered = this.format_with_line_numbers(contents, 1);
+				result += "<file_contents path=\"" + path + "\" lines=\"1-" + line_count.to_string() + "\">\n" +
+					"File contents with line numbers (e.g. 1: …) to make it easier to identify which lines to edit.\n\n" +
+					numbered +
+					"\n</file_contents>\n";
+			}
+			if (attached_count > 0) {
 				result += "</attached_files>\n\n";
 			}
 			

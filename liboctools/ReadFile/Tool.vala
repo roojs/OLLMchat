@@ -56,7 +56,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 @param start_line {integer} [optional] The starting line number to read from.
 @param end_line {integer} [optional] The ending line number to read to.
 @param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.
-@param with_lines {boolean} [optional] If true, output content with line numbers prefixed to each line (e.g., "1: content", "2: content").
+@param show_lines {boolean} [optional] If true, output content with line numbers prefixed to each line (e.g., "1: content", "2: content"). We recommend you do this if you are going to edit code, as it will make it easier to work out which lines to edit.
 @param find_words {string} [optional] Search for lines containing this string and return only matching lines with line numbers. Case-insensitive search.
 @param summarize {boolean} [optional] If true, generate a tree-sitter based summary of the file structure instead of reading the file contents.""";
 		} }

@@ -68,9 +68,11 @@ namespace OLLMcoder
 				messages.add(system_msg);
 			}
 			
-			// Add the current "user" message to session.messages (after processing)
-			// This ensures the "user" message is in session.messages for API filtering
-			this.session.messages.add(message);
+			// Add the current "user" message to session.messages with expanded context.
+			// factory.generate_user_prompt() adds <additional_data> (current_file, attached_files,
+			// manually_added_selection) and <user_query> so the model sees open file details.
+			var user_content = this.factory.generate_user_prompt(message.content);
+			this.session.messages.add(new OLLMchat.Message("user", user_content));
 			
 			// Filter and add messages from this.session.messages (full conversation history)
 			// Filter to get API-compatible messages (system, user, assistant, tool)

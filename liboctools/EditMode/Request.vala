@@ -373,8 +373,8 @@ Don't forget to close it.
 		
 		/**
 		 * Tries to parse a code block opener.
-		 * Language tag format: ```type:startline:endline (e.g., ```python:10:15) when complete_file=false
-		 * Language tag format: ```type (e.g., ```python) when complete_file=true
+		 * Language tag format: ```type:startline:endline (e.g., ```vala:10:15) when complete_file=false
+		 * Language tag format: ```type (e.g., ```vala) when complete_file=true
 		 * 
 		 * @param line The line that starts with ```
 		 * @return true if successfully parsed and entered code block, false otherwise
@@ -655,7 +655,7 @@ Don't forget to close it.
 			
 			if (this.changes[0].start != -1 || this.changes[0].end != -1) {
 				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```python, not ```python:1:1).");
+					"Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```vala, not ```vala:1:1).");
 			}
 			
 			if (file_exists && !this.overwrite) {

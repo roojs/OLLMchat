@@ -185,13 +185,14 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
-		 * Generates the user prompt.
-		 * Default implementation returns the input text as-is.
+		 * Generates the user prompt sent to the API.
+		 * Default implementation returns the input as-is. Override to add context
+		 * (e.g. current file, attached files, selection) via generate_context_section().
 		 *
-		 * @param user_input The user's input text
-		 * @return User prompt string
+		 * @param user_input The user's raw input text
+		 * @return The prompt string to send (may include context)
 		 */
-		protected virtual string generate_user_prompt(string user_input) throws GLib.Error
+		public virtual string generate_user_prompt(string user_input) throws GLib.Error
 		{
 			return user_input;
 		}
