@@ -334,6 +334,25 @@ namespace OLLMchat.Agent
 			this.session.is_running = true;
 			GLib.debug("Agent.send_async: Setting is_running=true for session %s", this.session.fid);
 			
+			// Phase 4: Customize model if num_ctx is set (not auto)
+			// Call model.customize() to get the model name to use (creates temp model if needed)
+			
+			try {
+				var customized_model_name = yield this.session.model_usage.model_obj.customize(
+					this.connection, 
+					this.chat_call.options
+				);
+				
+				// Update chat_call.model with the customized model name
+				this.chat_call.model = customized_model_name;
+			} catch (Error e) {
+				// Error handling: fall back to base model if create fails
+				GLib.warning("Agent.send_async: Failed to customize model '%s': %s. Using base model.", 
+					this.session.model_usage.model_obj.name, e.message);
+				// chat_call.model remains as the base model name
+			}
+			
+			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;
 			

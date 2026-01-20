@@ -414,13 +414,14 @@ namespace OLLMchatGtk
 			});
 
 			// Create sorted list model
-			var sorter = new OLLMchatGtk.List.ModelUsageSort();
-			var match_all_filter = new Gtk.CustomFilter((item) => { return true; });
-			
+			// Filter out ollmchat-temp/ models - they should never appear in model lists
+			// (Phase 3: Hide all ollmchat-temp from model lists)
 			this.sorted_models = new OLLMchatGtk.List.SortedList<OLLMchat.Settings.ModelUsage>(
 				connection_models,
-				sorter,
-				match_all_filter
+				new OLLMchatGtk.List.ModelUsageSort(),
+				new Gtk.CustomFilter((item) => {
+					return !((OLLMchat.Settings.ModelUsage)item).model.has_prefix("ollmchat-temp/");
+				})
 			);
 
 			// Create factory using ModelUsageFactory (keep reference to prevent garbage collection)

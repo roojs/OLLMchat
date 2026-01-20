@@ -199,7 +199,8 @@ namespace OLLMchat.Settings
 			foreach (var usage in this.items) {
 				// Only return models from working connections
 				var connection = this.config.connections.get(usage.connection);
-				if (connection != null && connection.is_working && usage.model == model_name) {
+				if (connection != null && 
+					connection.is_working && usage.model == model_name) {
 					return usage;
 				}
 			}
