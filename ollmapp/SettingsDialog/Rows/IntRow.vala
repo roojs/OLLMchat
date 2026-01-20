@@ -32,6 +32,7 @@ namespace OLLMapp.SettingsDialog.Rows
 		public double default_value { get; set; }  // Hardcoded default (never changes)
 		public int model_value { get; set; default = -1; }   // Model's default value (set via set_model_value(), defaults to unset_value if not set)
 		public int unset_value { get; set; default = -1; }
+		public bool display_in_k { get; set; default = false; }  // Display values in K format (e.g., 64K instead of 65536)
 
 		private Gtk.SpinButton spin_button;
 
@@ -64,6 +65,46 @@ namespace OLLMapp.SettingsDialog.Rows
 
 			// Add button box to suffix
 			this.add_suffix(this.button_box);
+			
+			// If display_in_k is enabled, set up output/input signal handlers for K formatting
+			if (this.display_in_k) {
+				// Format output: convert tokens to K (e.g., 65536 -> "64K")
+				this.spin_button.output.connect(() => {
+					var value = this.spin_button.get_value_as_int();
+					var k_value = value / 1024;
+					var text = "%dK".printf(k_value);
+					this.spin_button.get_editable().set_text(text);
+					return true;
+				});
+				
+				// Parse input: convert K to tokens (e.g., "64K" -> 65536)
+				this.spin_button.input.connect((new_value) => {
+					var text = this.spin_button.get_editable().get_text();
+					text = text.strip().up();
+					
+					// Remove trailing 'K' if present
+					if (text.has_suffix("K")) {
+						text = text.substring(0, text.length - 1);
+					}
+					
+					// Parse as integer
+					int k_value;
+					if (int.try_parse(text, out k_value)) {
+						// Convert K to tokens
+						var tokens = k_value * 1024;
+						// Clamp to valid range
+						if (tokens < (int)this.min_value) {
+							tokens = (int)this.min_value;
+						} else if (tokens > (int)this.max_value) {
+							tokens = (int)this.max_value;
+						}
+						new_value.set_double((double)tokens);
+						return true;
+					}
+					
+					return false;
+				});
+			}
 			
 			// If bound to a property, set up signal handler to update it
 			
