@@ -63,7 +63,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		
 		public override string parameter_description { get {
 			return """
-@param command {string} [required] The terminal command to run.""";
+@param command {string} [required] The terminal command to run.
+@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. If a relative path is provided, it will be treated as relative to the user's home directory ($HOME). Defaults to the project directory.""";
 		} }
 		
 		/**

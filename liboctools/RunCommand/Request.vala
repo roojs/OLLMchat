@@ -25,15 +25,42 @@ namespace OLLMtools.RunCommand
 	{
 		// Parameter properties
 		public string command { get; set; default = ""; }
+		public string working_dir { get; set; default = ""; }
 		
 		// Flag to track if this is a complex command (needs to bypass cache)
 		private bool is_complex_command = false;
-		
+			
 		/**
 		 * Default constructor.
 		 */
 		public Request()
 		{
+		}
+		
+		/**
+		 * Normalizes working_dir to an absolute path.
+		 * 
+		 * - If working_dir is empty, returns empty string (will use default project directory)
+		 * - If working_dir is already absolute, returns it as-is
+		 * - If working_dir is relative, treats it as relative to user's home directory ($HOME)
+		 * 
+		 * @return Normalized absolute path, or empty string if working_dir is empty
+		 */
+		private string normalize_working_dir()
+		{
+			if (this.working_dir.strip() == "") {
+				return "";
+			}
+			
+			var dir = this.working_dir.strip();
+			
+			// If already absolute, return as-is
+			if (GLib.Path.is_absolute(dir)) {
+				return dir;
+			}
+			
+			// Relative path: treat as relative to user's home directory
+			return GLib.Path.build_filename(GLib.Environment.get_home_dir(), dir);
 		}
 		
 		/**
@@ -209,6 +236,19 @@ namespace OLLMtools.RunCommand
 				return "ERROR: Invalid parameters";
 			}
 			
+			// Normalize and validate working_dir if provided
+			var normalized_working_dir = this.normalize_working_dir();
+			if (normalized_working_dir != "") {
+				var dir_file = GLib.File.new_for_path(normalized_working_dir);
+				if (!dir_file.query_exists()) {
+					return "ERROR: Working directory does not exist: " + normalized_working_dir;
+				}
+				var file_type = dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE, null);
+				if (file_type != GLib.FileType.DIRECTORY) {
+					return "ERROR: Working directory is not a directory: " + normalized_working_dir;
+				}
+			}
+			
 			bool need_perm = this.build_perm_question();
 			if (need_perm) {
 				// For complex commands, use a unique identifier to bypass cache
@@ -243,6 +283,9 @@ namespace OLLMtools.RunCommand
 			if (this.command == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
 			}
+			
+			// Normalize working_dir (already validated in execute())
+			var normalized_working_dir = this.normalize_working_dir();
 				
 			// Check if bubblewrap can be used (checks for Flatpak and bwrap availability)
 			// Note: Using unqualified name since both classes are in the same namespace
@@ -268,7 +311,7 @@ namespace OLLMtools.RunCommand
 				
 				// Execute command in bwrap sandbox (writes go to overlay upper directory)
 				// exec() handles overlay creation, mounting, file copying, and cleanup internally
-				var output = yield bubble.exec(this.command);
+				var output = yield bubble.exec(this.command, normalized_working_dir);
 				
 				// Truncate output if needed
 				// FIXME - not sure this is a great idea - we will be bumping the context up soon
@@ -295,12 +338,16 @@ namespace OLLMtools.RunCommand
 		 */
 		private async string execute_with_subprocess() throws Error
 		{
-			// Get working directory - try agent first, fall back to tool's base_directory
+			// Get working directory - use normalized working_dir if provided, otherwise fall back to tool's base_directory
+			var normalized_working_dir = this.normalize_working_dir();
 			var run_command_tool = (Tool) this.tool;
-			var work_dir = run_command_tool.base_directory;
+			var work_dir = (normalized_working_dir != "") ? normalized_working_dir : run_command_tool.base_directory;
 			
-			// Note: Agent working directory access will be handled differently in Phase 3/4
-			// For now, use tool's base_directory
+			// Validate directory exists (should already be validated in execute(), but double-check for safety)
+			var dir_file = GLib.File.new_for_path(work_dir);
+			if (!dir_file.query_exists()) {
+				throw new GLib.IOError.NOT_FOUND("Working directory does not exist: " + work_dir);
+			}
 			
 			// Execute command using shell with working directory
 			// Build command with cd if needed
