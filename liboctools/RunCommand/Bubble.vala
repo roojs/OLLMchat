@@ -141,17 +141,18 @@ namespace OLLMtools.RunCommand
 		 * and command chaining are supported.
 		 * 
 		 * @param command Command string to execute (e.g., "ls -la" or "cd /path && make")
+		 * @param working_dir Optional working directory (absolute path). If empty, defaults to first project root.
 		 * @return String containing command output (stdout + stderr, with exit code if non-zero)
 		 * @throws Error if command execution fails, subprocess creation fails, or I/O errors occur
 		 */
-		public async string exec(string command) throws Error
+		public async string exec(string command, string working_dir = "") throws Error
 		{
 			// Create overlay directory structure (lazy initialization)
 			this.overlay.create();
 			
 			try {
-				// Build bubblewrap command arguments using build_bubble_args(command)
-				var args = this.build_bubble_args(command);
+				// Build bubblewrap command arguments using build_bubble_args(command, working_dir)
+				var args = this.build_bubble_args(command, working_dir);
 				
 				// Debug: Output the exact command being run
 				var cmd_str = string.joinv(" ", args);
@@ -190,24 +191,53 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
+		 * Get the playground directory path, ensuring it exists.
+		 * 
+		 * Returns the fixed path to the playground directory:
+		 * ~/.local/share/ollmchat/playground
+		 * Creates the directory if it doesn't exist.
+		 * 
+		 * @return Absolute path to playground directory
+		 * @throws Error if the directory cannot be created
+		 */
+		private string playground_path() throws Error
+		{
+			var playground_path = GLib.Path.build_filename(
+				GLib.Environment.get_home_dir(),
+				".local",
+				"share",
+				"ollmchat",
+				"playground"
+			);
+			var playground_file = GLib.File.new_for_path(playground_path);
+			if (!playground_file.query_exists()) {
+				playground_file.make_directory_with_parents(null);
+			}
+			return playground_path;
+		}
+		
+		/**
 		 * Build complete bubblewrap command line arguments.
 		 * 
 		 * Constructs the full command line for bubblewrap, including:
 		 * - Read-only root filesystem bind (--ro-bind / /)
 		 * - Device filesystem mount (--ro-bind /dev /dev) with /dev/null override (--dev-bind) for output redirection
 		 * - Read-write binds for overlay mount point at each project root location
+		 * - Playground directory mount (--bind) at $HOME/playground
 		 * - Temporary directory mount (--tmpfs /tmp)
 		 * - Network isolation flag (--unshare-net) if network is not allowed
+		 * - Working directory flag (--chdir) if working_dir is provided
 		 * - Command separator (--)
 		 * - Shell command (/bin/sh -c "command")
 		 * 
 		 * The resulting array can be passed directly to GLib.Subprocess.newv().
 		 * 
 		 * @param command Command string to execute
+		 * @param working_dir Optional working directory (absolute path). If empty, defaults to first project root.
 		 * @return Array of arguments for bubblewrap command (including /bin/sh -c "command")
 		 * @throws Error if argument building fails
 		 */
-		private string[] build_bubble_args(string command) throws Error
+		private string[] build_bubble_args(string command, string working_dir = "") throws Error
 		{
 			// Find full path to bwrap executable
 			var bwrap_path = GLib.Environment.find_program_in_path("bwrap");
@@ -245,6 +275,12 @@ namespace OLLMtools.RunCommand
 			args += "/dev/null";
 			args += "/dev/null";
 			
+			// Mount playground directory as read-write at $HOME/playground
+			// Use --bind (not overlay) since playground is outside project roots
+			args += "--bind";
+			args += this.playground_path();
+			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
+			
 			// Use bubblewrap's --overlay for each project root
 			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)
 			var upper_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "upper");
@@ -271,9 +307,12 @@ namespace OLLMtools.RunCommand
 				args += entry.value;  // DEST (project root path in sandbox)
 			}
 			
-			// Set working directory to project folder (first project root)
-			// This ensures commands run in the project directory context
-			if (entries_array.length > 0) {
+			// Set working directory
+			// If working_dir is provided, use it; otherwise default to first project root
+			if (working_dir != "") {
+				args += "--chdir";
+				args += working_dir;
+			} else if (entries_array.length > 0) {
 				args += "--chdir";
 				args += entries_array[0].value;  // First project root path
 			}

@@ -71,6 +71,13 @@ namespace OLLMchat.Tool
 		public OLLMchat.ChatPermission.Operation permission_operation { get; protected set; default = OLLMchat.ChatPermission.Operation.READ; }
 		
 		/**
+		 * Whether this permission request should only show "Allow" and "Deny" buttons (no "Always" options).
+		 * When true, the permission widget will only show one-time approval buttons.
+		 * Default: false (shows all buttons including "Always" options).
+		 */
+		public bool one_time_only { get; protected set; default = false; }
+		
+		/**
 		 * Default constructor.
 		 * Request objects are created via Json.gobject_deserialize from parameters JSON.
 		 * Tool and agent are set after deserialization.
