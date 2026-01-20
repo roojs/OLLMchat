@@ -114,13 +114,14 @@ namespace MarkdownGtk
 				language_label_text = (stripped != "") ? stripped : "txt";
 			}
 			var title_label = new Gtk.Label(language_label_text) {
-				hexpand = false,
+				hexpand = true,
 				halign = Gtk.Align.START,
 				valign = Gtk.Align.CENTER,
-				margin_start = 5
-			};
+				margin_start = 5,
+				ellipsize = Pango.EllipsizeMode.END
+		    	};
 			title_label.add_css_class("oc-code-frame-title");
-			header_box.append(title_label);
+			title_label.max_width_chars = 30;
 			
 			// Add spacer to push buttons to the right
 			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {

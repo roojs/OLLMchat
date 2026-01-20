@@ -36,14 +36,48 @@ namespace OLLMfiles
 		public int end { get; set; default = -1; }
 		
 		/**
-		 * Replacement text to insert at the specified range.
-		 */
+		* Replacement text to insert at the specified range.
+		*/
 		public string replacement { get; set; default = ""; }
 		
 		/**
-		 * Old lines that were replaced (for reference/debugging).
-		 */
-		public Gee.ArrayList<string> old_lines { get; set; default = new Gee.ArrayList<string>(); }
+	 	* Normalize indentation of replacement text based on base indentation.
+		* 
+		* Removes minimum leading whitespace from all lines, then prepends base_indent.
+		* 
+		* @param base_indent The base indentation string to prepend to each line
+		*/
+		public void normalize_indentation(string base_indent)
+		{
+			if (this.replacement.length == 0) {
+				return;
+			}
+			
+			var lines = this.replacement.split("\n");
+			
+			// Find minimum leading whitespace
+			int min_indent = int.MAX;
+			foreach (var line in lines) {
+				if (line.strip().length == 0) {
+					continue;
+				}
+				// Use chug to find prefix length
+				var prefix_length = line.length - line.chug().length;
+				if (prefix_length < min_indent) {
+					min_indent = prefix_length;
+				}
+			}
+			
+			string[] ret = {};
+			
+			foreach (var line in lines) {
+				ret += base_indent + (
+					(min_indent == int.MAX || line.strip().length == 0) ? "" : 
+						line.substring(min_indent));
+			}
+			
+			this.replacement = string.joinv("\n", ret);
+		}
 	}
 }
 

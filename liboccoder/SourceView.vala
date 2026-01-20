@@ -172,6 +172,16 @@ namespace OLLMcoder
 			// Add CSS class for monospace font styling
 			this.source_view.add_css_class("source-view");
 			
+			// Enable whitespace display
+			this.source_view.get_space_drawer().set_matrix(null);
+			this.source_view.get_space_drawer().set_types_for_locations(
+				GtkSource.SpaceLocationFlags.ALL,
+				GtkSource.SpaceTypeFlags.ALL
+			);
+			this.source_view.get_space_drawer().set_enable_matrix(true);
+			// Set tab width to 4 spaces (fixed)
+			this.source_view.tab_width = 4;
+			
 			this.scrolled_window.set_child(this.source_view);
 			// Hide sourceview initially until a file is opened
 			this.scrolled_window.visible = false;
@@ -409,6 +419,20 @@ namespace OLLMcoder
 			// Switch view to file's buffer (GtkSourceFileBuffer IS a GtkSource.Buffer)
 			this.source_view.set_buffer(gtk_buffer);
 			this.current_file = file;
+			
+			// Apply detected indentation settings to configure editor behavior
+			var gtk_source_buffer = file.buffer as GtkSourceFileBuffer;
+			if (gtk_source_buffer != null) {
+				// Configure whether Tab inserts spaces or tabs based on detected file style
+				// insert_spaces_instead_of_tabs: true = insert spaces, false = insert tabs
+				this.source_view.insert_spaces_instead_of_tabs = 
+					!gtk_source_buffer.uses_tabs;
+				
+				// Set indent width to match detected indent_size (for auto-indentation)
+				// If using tabs, indent_width should match tab_width (4), otherwise use indent_size
+				this.source_view.indent_width = gtk_source_buffer.uses_tabs ? 4 :
+					 gtk_source_buffer.indent_size;
+			}
 			
 			// Connect to delete_id signal to monitor file deletion
 			// Disconnect any existing handler first

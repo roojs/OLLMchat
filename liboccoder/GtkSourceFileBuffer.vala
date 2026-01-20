@@ -68,14 +68,29 @@ namespace OLLMcoder
 		}
 		
 		/**
-		 * Whether the buffer has been loaded with file content.
-		 * 
-		 * Returns true if the buffer has been loaded from the file,
-		 * false if it needs to be loaded.
-		 */
+		* Whether the buffer has been loaded with file content.
+		* 
+		* Returns true if the buffer has been loaded from the file,
+		* false if it needs to be loaded.
+		*/
 		public bool is_loaded { get; set; default = false; }
 		
 		/**
+		* Whether the file uses tabs for indentation.
+		*/
+		public bool uses_tabs { get; private set; default = true; }
+		
+		/**
+		* Number of spaces per indent level (0 if using tabs).
+		*/
+		public int indent_size { get; private set; default = 0; }
+		
+		/**
+		* Whether indentation detection has been completed for this buffer.
+		*/
+		private bool detection_done = false;
+					
+			/**
 		 * Constructor.
 		 * 
 		 * @param file The file this buffer represents
@@ -130,6 +145,10 @@ namespace OLLMcoder
 				this.text = contents;
 				this.last_read_timestamp = mod_timestamp;
 				this.is_loaded = true;
+				// Reset detection flag when file content changes
+				this.detection_done = false;
+				// Detect indentation after loading
+				this.detect_indentation();
 			}
 			
 			// Return buffer contents
@@ -303,6 +322,8 @@ namespace OLLMcoder
 		{
 			// Update buffer
 			this.text = contents;
+			// Reset detection flag when content changes
+		
 			
 			// Write to file (backup, write, update metadata)
 			yield this.write_real(contents);
@@ -328,6 +349,123 @@ namespace OLLMcoder
 			this.get_bounds(out start, out end);
 			this.delete(ref start, ref end);
 			this.is_loaded = true;
+			// Reset detection flag when content is cleared
+			this.detection_done = false;
+		}
+		
+		/**
+		 * Update indentation to use spaces based on space counts and return.
+		 * 
+		 * Sets uses_tabs to false and indent_size to the most common space count.
+		 * 
+		 * @param space_counts Map of normalized space counts to their frequencies
+		 */
+		private void update_indent_size(Gee.HashMap<int, int> space_counts)
+		{
+			this.uses_tabs = false;
+			var most_common = 4;
+			var max_count = 0;
+			foreach (var entry in space_counts.entries) {
+				if (entry.value > max_count) {
+					max_count = entry.value;
+					most_common = entry.key;
+				}
+			}
+			this.indent_size = most_common;
+		}
+		
+		/**
+		 * Detect indentation style from buffer content.
+		 * 
+		 * Analyzes first 100 lines (or all lines if fewer) to determine:
+		 * - Whether file uses tabs or spaces
+		 * - If spaces, how many spaces per indent level
+		 * 
+		 * Stops early once 10 lines with tabs or 10 lines with spaces are found.
+		 */
+		private void detect_indentation()
+		{
+			// If already detected, skip (NOOP)
+			if (this.detection_done) {
+				return;
+			}
+		
+			
+			
+			var line_count = this.get_line_count();
+			if (line_count == 0) {
+				return;
+			}
+			// Reset to defaults before detection 
+			// (needed because some code paths return early without setting values)
+			// except when we have an empty file - then we just use the old defaults.
+			
+			this.indent_size = 0;
+			this.uses_tabs = true;
+			var max_lines = (line_count < 100) ? line_count : 100;
+			var tab_count = 0;
+			var space_count = 0;
+			var space_counts = new Gee.HashMap<int, int>();
+			
+			for (var i = 0; i < max_lines; i++) {
+				var line = this.get_line(i);
+				if (line.strip().length == 0) {
+					continue;
+				}
+				
+				// Get prefix using chug
+				var prefix_length = line.length - line.chug().length;
+				if (prefix_length == 0) {
+					continue;
+				}
+				
+				var prefix = line.substring(0, prefix_length);
+				
+				// Count tabs and spaces in prefix
+				var tabs_in_prefix = prefix.replace(" ", "").length;
+				var spaces_in_prefix = prefix.replace("\t", "").length;
+				
+				if (line.has_prefix("\t") || tabs_in_prefix > 0) {
+					tab_count++;
+					if (tab_count >= 10) {
+						this.detection_done = true;
+						return;
+					}
+				}
+				
+				if (spaces_in_prefix > 0 && tabs_in_prefix == 0) {
+					space_count++;
+					// Track space counts (normalize to common values)
+					var normalized = 
+						(spaces_in_prefix % 4 == 0) ? 4 : (
+							(spaces_in_prefix % 2 == 0) ? 2 : (
+								(spaces_in_prefix % 8 == 0) ? 8 : spaces_in_prefix));
+					var current_count = space_counts.has_key(normalized) ? 
+						space_counts.get(normalized) : 0;
+					space_counts.set(normalized, current_count + 1);
+					
+				if (space_count >= 10) {
+					this.update_indent_size(space_counts);
+					this.detection_done = true;
+					return;
+				}
+				}
+			}
+			
+			// Determine from collected statistics
+			if (tab_count > 0) {
+				this.detection_done = true;
+				return;
+			}
+			
+			if (space_count > 0) {
+				this.update_indent_size(space_counts);
+				this.detection_done = true;
+				return;
+			}
+			
+			// No indentation found, keep defaults
+			this.detection_done = true;
 		}
 		
 		/**
@@ -367,6 +505,22 @@ namespace OLLMcoder
 			
 			// Apply changes in reverse order (from end to start) to preserve line numbers
 			foreach (var change in changes) {
+				// Get base indentation for normalization
+				var line_number = change.start - 1;
+				var base_indent = "";
+				
+				// Extract base indentation if line exists
+				if (line_number >= 0 && line_number < this.get_line_count()) {
+					var line = this.get_line(line_number);
+					var prefix_length = line.length - line.chug().length;
+					if (prefix_length > 0) {
+						base_indent = line.substring(0, prefix_length);
+					}
+				}
+				
+				// Normalize indentation of replacement text
+				change.normalize_indentation(base_indent);
+				
 				// Get iterators for the range
 				Gtk.TextIter start_iter;
 				Gtk.TextIter end_iter;
