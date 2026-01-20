@@ -43,6 +43,7 @@ namespace OLLMtools.RunCommand
 		 * 
 		 * - If working_dir is empty, returns empty string (will use default project directory)
 		 * - If working_dir is already absolute, returns it as-is
+		 * - If working_dir is "playground", returns $HOME/playground (bind mount in bwrap)
 		 * - If working_dir is relative, treats it as relative to user's home directory ($HOME)
 		 * 
 		 * @return Normalized absolute path, or empty string if working_dir is empty
@@ -58,6 +59,11 @@ namespace OLLMtools.RunCommand
 			// If already absolute, return as-is
 			if (GLib.Path.is_absolute(dir)) {
 				return dir;
+			}
+			
+			// Special case: "playground" maps to $HOME/playground (bind mount in bwrap)
+			if (dir == "playground") {
+				return GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
 			}
 			
 			// Relative path: treat as relative to user's home directory
@@ -251,13 +257,17 @@ namespace OLLMtools.RunCommand
 			// Normalize and validate working_dir if provided
 			var normalized_working_dir = this.normalize_working_dir();
 			if (normalized_working_dir != "") {
-				var dir_file = GLib.File.new_for_path(normalized_working_dir);
-				if (!dir_file.query_exists()) {
-					return "ERROR: Working directory does not exist: " + normalized_working_dir;
-				}
-				var file_type = dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE, null);
-				if (file_type != GLib.FileType.DIRECTORY) {
-					return "ERROR: Working directory is not a directory: " + normalized_working_dir;
+				// $HOME/playground may be created by Bubble.ensure_home_playground_mount_point(); skip host existence check for it
+				var home_playground = GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
+				if (normalized_working_dir != home_playground) {
+					var dir_file = GLib.File.new_for_path(normalized_working_dir);
+					if (!dir_file.query_exists()) {
+						return "ERROR: Working directory does not exist: " + normalized_working_dir;
+					}
+					var file_type = dir_file.query_file_type(GLib.FileQueryInfoFlags.NONE, null);
+					if (file_type != GLib.FileType.DIRECTORY) {
+						return "ERROR: Working directory is not a directory: " + normalized_working_dir;
+					}
 				}
 			}
 			
@@ -356,6 +366,16 @@ namespace OLLMtools.RunCommand
 			var normalized_working_dir = this.normalize_working_dir();
 			var run_command_tool = (Tool) this.tool;
 			var work_dir = (normalized_working_dir != "") ? normalized_working_dir : run_command_tool.base_directory;
+			
+			// When not using bwrap, $HOME/playground may not exist; use the real playground path
+			var home_playground = GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
+			if (work_dir == home_playground) {
+				work_dir = GLib.Path.build_filename(GLib.Environment.get_home_dir(), ".local", "share", "ollmchat", "playground");
+				var pf = GLib.File.new_for_path(work_dir);
+				if (!pf.query_exists()) {
+					pf.make_directory_with_parents(null);
+				}
+			}
 			
 			// Validate directory exists (should already be validated in execute(), but double-check for safety)
 			var dir_file = GLib.File.new_for_path(work_dir);

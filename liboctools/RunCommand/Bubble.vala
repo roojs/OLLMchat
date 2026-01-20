@@ -96,6 +96,9 @@ namespace OLLMtools.RunCommand
 		 */
 		private bool allow_network;
 		
+		/** True if we created $HOME/playground on the host as a mount point for bwrap; we remove it in the exec() finally block when bwrap ends. */
+		private bool home_playground_created = false;
+		
 		/**
 		 * Accumulator for stdout output (for success case).
 		 */
@@ -150,6 +153,8 @@ namespace OLLMtools.RunCommand
 			// Create overlay directory structure (lazy initialization)
 			this.overlay.create();
 			
+			// Ensure $HOME/playground exists on the host so bwrap can bind to it (creates if missing; we remove in finally if we created it)
+			 
 			try {
 				// Build bubblewrap command arguments using build_bubble_args(command, working_dir)
 				var args = this.build_bubble_args(command, working_dir);
@@ -217,6 +222,13 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
+		 * Ensure $HOME/playground exists on the host so bwrap can use it as a bind mount point.
+		 * After --ro-bind / /, the mount point must exist; we create it if missing and set
+		 * home_playground_created so we remove it in the exec() finally block when bwrap ends.
+		 */
+	 
+		
+		/**
 		 * Build complete bubblewrap command line arguments.
 		 * 
 		 * Constructs the full command line for bubblewrap, including:
@@ -253,15 +265,21 @@ namespace OLLMtools.RunCommand
 			
 			// Add user namespace (required for overlay support without root)
 			args += "--unshare-user";
-			
-			// Add tmpfs mount for /tmp first (needs to be writable before creating directories)
-			args += "--tmpfs";
-			args += "/tmp";
-			
-			// Add read-only bind: "--ro-bind", "/", "/"
+				// Add read-only bind: "--ro-bind", "/", "/"
 			args += "--ro-bind";
 			args += "/";
 			args += "/";
+			// Add tmpfs mount for /tmp (after --ro-bind / / so it overrides the host's /tmp and stays writable)
+			args += "--tmpfs";
+			args += "/tmp";
+			
+			// Mount playground at $HOME/playground; ensure_home_playground_mount_point() creates the host dir if missing
+			args += "--dir";
+			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
+			
+			args += "--bind";
+			args += this.playground_path();
+			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
 			
 			// Mount /dev read-only (like the rest of the system)
 			// This makes the sandbox appear as a regular system, but prevents writes
@@ -274,12 +292,6 @@ namespace OLLMtools.RunCommand
 			args += "--dev-bind";
 			args += "/dev/null";
 			args += "/dev/null";
-			
-			// Mount playground directory as read-write at $HOME/playground
-			// Use --bind (not overlay) since playground is outside project roots
-			args += "--bind";
-			args += this.playground_path();
-			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
 			
 			// Use bubblewrap's --overlay for each project root
 			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)

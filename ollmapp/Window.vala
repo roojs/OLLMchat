@@ -36,6 +36,7 @@ namespace OLLMapp
 		private Gtk.Widget? current_agent_widget = null;
 		private Gtk.DropDown agent_dropdown;
 		private Adw.HeaderBar header_bar;
+		private Gtk.ToggleButton history_toggle_button;
 		private SettingsDialog.ConnectionAdd? bootstrap_dialog = null;
 		private SettingsDialog.MainDialog? settings_dialog = null;
 		private Gtk.Button settings_button;
@@ -79,11 +80,11 @@ namespace OLLMapp
 			
 			// Create header bar with toggle button and new chat button
 			this.header_bar = new Adw.HeaderBar();
-			var toggle_button = new Gtk.ToggleButton() {
+			this.history_toggle_button = new Gtk.ToggleButton() {
 				icon_name = "sidebar-show-symbolic",
 				tooltip_text = "Toggle History"
 			};
-			this.header_bar.pack_start(toggle_button);
+			this.header_bar.pack_start(this.history_toggle_button);
 			
 			this.new_chat_button = new Gtk.Button() {
 				icon_name = "list-add-symbolic",
@@ -160,12 +161,12 @@ namespace OLLMapp
 			this.split_view.set_sidebar_width_fraction(0.25);
 			
 			// Connect toggle button to show/hide sidebar
-			toggle_button.toggled.connect(() => {
-				this.split_view.show_sidebar = toggle_button.active;
-				toggle_button.icon_name = toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
+			this.history_toggle_button.toggled.connect(() => {
+				this.split_view.show_sidebar = this.history_toggle_button.active;
+				this.history_toggle_button.icon_name = this.history_toggle_button.active ? "sidebar-hide-symbolic" : "sidebar-show-symbolic";
 				// Scroll to top when expanding history sidebar
 				// in theroy history browse might not exist but its so unlikely we dont check
-				if (toggle_button.active) {
+				if (this.history_toggle_button.active) {
 					GLib.Idle.add(() => {
 						this.history_browser.scrolled_window.vadjustment.value = 0;
 						return false;
@@ -530,7 +531,7 @@ namespace OLLMapp
 			var sidebar_motion = new Gtk.EventControllerMotion();
 			sidebar_motion.leave.connect(() => {
 				if (this.split_view.show_sidebar) {
-					this.split_view.show_sidebar = false;
+					this.history_toggle_button.active = false;
 				}
 			});
 			this.history_browser.add_controller(sidebar_motion);

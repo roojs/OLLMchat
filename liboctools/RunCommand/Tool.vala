@@ -54,8 +54,8 @@ Run a terminal command in the project's root directory (or specified working dir
 
 File System Permissions:
 - The Run command tool normally works in the project directory and has read-write access to:
-  - The project directory
-  - $HOME/playground (playground directory for experiments, where $HOME is the user's home directory)
+  - The project directory - this is the main location that the user will want you to look at and update
+  - $HOME/playground (playground directory for cloning repos or creating scratch files) unless the users explitly says look in the playground - assume the user is talking about the project directory
 - Everything else is read-only
 
 Network Access:
@@ -71,7 +71,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		public override string parameter_description { get {
 			return """
 @param command {string} [required] The terminal command to run.
-@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. Defaults to the project directory. Special case: "playground" is normalized to `$HOME/playground` (user's home directory).
+@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. Defaults to the project directory.
 @param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.""";
 		} }
 		

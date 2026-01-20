@@ -166,7 +166,16 @@ namespace OLLMtools.ReadFile
 				return false;
 			}
 			
-			// Set up permission properties for non-project files first
+			// If path is under the project, don't ask for permission.
+			if (project_manager != null && project_manager.active_project != null) {
+				var project_path = project_manager.active_project.path;
+				if ((normalized_path == project_path) || normalized_path.has_prefix(project_path + "/")) {
+					this.permission_question = "";
+					return false;
+				}
+			}
+			
+			// Set up permission properties for non-project files
 			this.permission_target_path = normalized_path;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
 			
@@ -183,16 +192,7 @@ namespace OLLMtools.ReadFile
 			}
 			this.permission_question = question;
 			
-			// Check if file is in active project (skip permission prompt if so)
-			if (((Tool) this.tool).project_manager?.get_file_from_active_project(normalized_path) != null) {
-				// File is in active project - skip permission prompt
-				// Clear permission question to indicate auto-approved
-				this.permission_question = "";
-				// Return false to skip permission check (auto-approved for project files)
-				return false;
-			}
-			
-			// File is not in active project - require permission
+			// File is not under project - require permission
 			return true;
 		}
 		

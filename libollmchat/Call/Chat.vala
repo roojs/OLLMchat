@@ -432,8 +432,10 @@ namespace OLLMchat.Call
 				this.messages.add(msg);
 			}
 			
-			// Send using existing send() method
-			return yield this.send(this.messages, cancellable);
+			// Send using existing send() method; preserve this.cancellable when caller omits it
+			// so that Stop continues to work across tool rounds (toolsReply, etc.)
+			return yield this.send(this.messages, 
+				cancellable != null ? cancellable : this.cancellable);
 		}
 		
 		/**
