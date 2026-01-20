@@ -34,6 +34,12 @@ namespace OLLMchatGtk
 		private SourceFunc? resume_callback = null;
 		private OLLMchat.ChatPermission.PermissionResponse? pending_response = null;
 		
+		// Store button references for dynamic show/hide
+		private Gtk.Button deny_always_btn;
+		private Gtk.Button deny_once_btn;
+		private Gtk.Button allow_once_btn;
+		private Gtk.Button allow_always_btn;
+		
 		/**
 		 * Creates a new ChatPermission widget.
 		 * 
@@ -59,19 +65,17 @@ namespace OLLMchatGtk
 				halign = Gtk.Align.START
 			};
 			
-			// Create buttons with styling
-			var deny_always_btn = this.create_button("Deny Always", "Permanently deny this permission", OLLMchat.ChatPermission.PermissionResponse.DENY_ALWAYS, true);
-			var deny_btn = this.create_button("Deny", "Deny for this session only", OLLMchat.ChatPermission.PermissionResponse.DENY_SESSION, true);
-			var allow_btn = this.create_button("Allow", "Allow for this session only", OLLMchat.ChatPermission.PermissionResponse.ALLOW_SESSION, false);
-			var allow_once_btn = this.create_button("Allow Once", "Allow this one time only", OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE, false);
-			var allow_always_btn = this.create_button("Allow Always", "Permanently allow this permission", OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS, false);
+			// Create buttons with styling and store references
+			this.deny_always_btn = this.create_button("Deny Always", "Permanently deny this permission", OLLMchat.ChatPermission.PermissionResponse.DENY_ALWAYS, true);
+			this.deny_once_btn = this.create_button("Deny", "Deny this one time only", OLLMchat.ChatPermission.PermissionResponse.DENY_ONCE, true);
+			this.allow_once_btn = this.create_button("Allow", "Allow this one time only", OLLMchat.ChatPermission.PermissionResponse.ALLOW_ONCE, false);
+			this.allow_always_btn = this.create_button("Allow Always", "Permanently allow this permission", OLLMchat.ChatPermission.PermissionResponse.ALLOW_ALWAYS, false);
 			
 			// Add buttons to button box
-			this.button_box.append(deny_always_btn);
-			this.button_box.append(deny_btn);
-			this.button_box.append(allow_btn);
-			this.button_box.append(allow_once_btn);
-			this.button_box.append(allow_always_btn);
+			this.button_box.append(this.deny_always_btn);
+			this.button_box.append(this.deny_once_btn);
+			this.button_box.append(this.allow_once_btn);
+			this.button_box.append(this.allow_always_btn);
 			
 			// Create main container
 			var container = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -94,13 +98,20 @@ namespace OLLMchatGtk
 		 * Shows the widget, waits for user response, then hides the widget.
 		 * 
 		 * @param question The permission question to display
+		 * @param one_time Whether to show only one-time buttons (Allow/Deny only)
 		 * @return The user's permission response
 		 * @since 1.0
 		 */
-		public async OLLMchat.ChatPermission.PermissionResponse request(string question)
+		public async OLLMchat.ChatPermission.PermissionResponse request(string question, bool one_time = false)
 		{
 			// Update question text
 			this.question_label.label = question;
+			
+			// Show/hide buttons based on one_time flag
+			this.deny_always_btn.visible = !one_time;
+			this.allow_always_btn.visible = !one_time;
+			this.deny_once_btn.visible = one_time;
+			// allow_once_btn is always visible
 			
 			// Show the widget
 			this.set_visible(true);

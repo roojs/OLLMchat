@@ -26,6 +26,7 @@ namespace OLLMtools.RunCommand
 		// Parameter properties
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
+		public bool network { get; set; default = false; }
 		
 		// Flag to track if this is a complex command (needs to bypass cache)
 		private bool is_complex_command = false;
@@ -173,11 +174,22 @@ namespace OLLMtools.RunCommand
 		 */
 		protected override bool build_perm_question()
 		{
+			// Handle network requests first - they always require approval (even with bubblewrap)
+			if (this.network) {
+				this.one_time_only = true;
+				// Use unique identifier to bypass cache (timestamp-based)
+				this.permission_target_path = "network#" + GLib.get_real_time().to_string();
+				this.permission_operation = OLLMchat.ChatPermission.Operation.EXECUTE;
+				this.permission_question = "Run command with network access: " + this.command + "?";
+				return true;
+			}
+			
 			// Invalid: cannot be checked
 			 
 			
 			// Skip permission when using bubblewrap with active project (sandboxed - allow everything).
 			// Same pattern as EditMode for project files: clear permission_question and return false to skip.
+			// Note: Network requests are handled above and always require permission.
 			if (Bubble.can_wrap() && ((Tool) this.tool).project_manager != null && ((Tool) this.tool).project_manager.active_project != null) {
 				this.permission_question = "";
 				return false;
@@ -307,7 +319,9 @@ namespace OLLMtools.RunCommand
 			// Create Bubble instance (creates overlay, mounts in exec())
 			Bubble? bubble = null;
 			try {
-				bubble = new Bubble(project, false);
+				// Pass network permission to Bubble (permission was already checked in execute())
+				// If network is true, permission was requested and granted before reaching here
+				bubble = new Bubble(project, this.network);
 				
 				// Execute command in bwrap sandbox (writes go to overlay upper directory)
 				// exec() handles overlay creation, mounting, file copying, and cleanup internally

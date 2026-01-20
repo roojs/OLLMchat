@@ -50,11 +50,18 @@ namespace OLLMtools.RunCommand
 		public override string description { 
 			get {
 				return """
-Run a terminal command in the project's root directory and return the output.
+Run a terminal command in the project's root directory (or specified working directory) and return the output.
 
-You should only run commands that are safe and do not modify the user's system in unexpected ways.
+File System Permissions:
+- The Run command tool normally works in the project directory and has read-write access to:
+  - The project directory
+  - $HOME/playground (playground directory for experiments, where $HOME is the user's home directory)
+- Everything else is read-only
 
-If you are unsure about the safety of a command, ask the user for confirmation before running it.
+Network Access:
+- By default, this tool does not have access to the network.
+- If you require access to the network, you must set the `network` parameter to `true`.
+- For fetching websites or web content, you should use the `web_fetch` tool instead of this tool.
 
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
@@ -64,7 +71,8 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		public override string parameter_description { get {
 			return """
 @param command {string} [required] The terminal command to run.
-@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. If a relative path is provided, it will be treated as relative to the user's home directory ($HOME). Defaults to the project directory.""";
+@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. Defaults to the project directory. Special case: "playground" is normalized to `$HOME/playground` (user's home directory).
+@param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.""";
 		} }
 		
 		/**
