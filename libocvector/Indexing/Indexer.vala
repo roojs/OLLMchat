@@ -45,11 +45,8 @@ namespace OLLMvector.Indexing
 	 *     project_manager
 	 * );
 	 * 
-	 * // Index single file
-	 * yield indexer.index_file(file, force: false);
-	 * 
-	 * // Index folder recursively
-	 * yield indexer.index_folder(folder, recursive: true);
+	 * // Index a file or folder
+	 * yield indexer.index_filebase(file_or_folder, recurse: true, force: false);
 	 * }}}
 	 */
 	public class Indexer : VectorBase
@@ -64,8 +61,9 @@ namespace OLLMvector.Indexing
 		 * @param current Current file number being processed (1-based)
 		 * @param total Total number of files to process
 		 * @param file_path Path of the file currently being processed
+		 * @param success true when a file was indexed and last_vector_scan was saved; listen for this to trigger sql_db.backupDB() on the main thread
 		 */
-		public signal void progress(int current, int total, string file_path);
+		public signal void progress(int current, int total, string file_path, bool success);
 		
 		/**
 		 * Emitted when an element is scanned during indexing.
@@ -106,7 +104,7 @@ namespace OLLMvector.Indexing
 		 * @param force If true, skip incremental check and force re-indexing
 		 * @return true if file was indexed, false if skipped (not modified)
 		 */
-		public async bool index_file(OLLMfiles.File file, bool force = false) throws GLib.Error
+		private async bool index_file(OLLMfiles.File file, bool force = false) throws GLib.Error
 		{
 			// Skip ignored files
 			if (file.is_ignored) {
@@ -229,7 +227,7 @@ namespace OLLMvector.Indexing
 		 * @param force If true, skip incremental check and force re-indexing
 		 * @return Number of files indexed
 		 */
-		public async int index_folder(OLLMfiles.Folder folder, bool recurse = false, bool force = false) throws GLib.Error
+		private async int index_folder(OLLMfiles.Folder folder, bool recurse = false, bool force = false) throws GLib.Error
 		{
 			GLib.debug("Processing folder '%s'", folder.path);
 			
@@ -242,10 +240,11 @@ namespace OLLMvector.Indexing
 			foreach (var project_file in folder.project_files) {
 				current++;
 				var file = project_file.file;
-				this.progress((int)current, (int)n_items, file.path);
+				this.progress((int)current, (int)n_items, file.path, false);
 				try {
 					if (yield this.index_file(file, force)) {
 						files_indexed++;
+						this.progress((int)current, (int)n_items, file.path, true);
 					}
 				} catch (GLib.Error e) {
 					GLib.warning("Failed to index file '%s': %s", file.path, e.message);
@@ -282,8 +281,9 @@ namespace OLLMvector.Indexing
 			
 			if (filebase is OLLMfiles.File) {
 				var file = (OLLMfiles.File)filebase;
-				this.progress(1, 1, file.path);
+				this.progress(1, 1, file.path, false);
 				if (yield this.index_file(file, force)) {
+					this.progress(1, 1, file.path, true);
 					return 1;
 				}
 				return 0;

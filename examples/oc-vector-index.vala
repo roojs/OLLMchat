@@ -236,7 +236,11 @@ Examples:
 		int current_file_num = 0;
 		int total_files = 0;
 		
-		indexer.progress.connect((current, total, file_path) => {
+		indexer.progress.connect((current, total, file_path, success) => {
+			if (success) {
+				sql_db.backupDB();
+				return;
+			}
 			int percentage = (int)((current * 100.0) / total);
 			// Trim any trailing whitespace from file_path in case of database corruption
 			var clean_path = file_path.strip();
@@ -352,7 +356,7 @@ Examples:
 			// Set last_vector_scan timestamp after successful indexing
 			var vector_scan_time = new DateTime.now_local().to_unix();
 			folder_obj.last_vector_scan = vector_scan_time;
-			folder_obj.saveToDB(sql_db, null, false);
+			folder_obj.saveToDB(sql_db, null, true);
 		} catch (GLib.Error e) {
 			stdout.printf("Error during indexing: %s\n", e.message);
 			throw e;

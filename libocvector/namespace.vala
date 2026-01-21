@@ -84,11 +84,8 @@
  *     project_manager
  * );
  * 
- * // Index a single file
- * var indexed = yield indexer.index_file(file, force: false);
- * 
- * // Index a folder recursively
- * yield indexer.index_folder(folder, recursive: true);
+ * // Index a file or folder
+ * var n = yield indexer.index_filebase(file_or_folder, recurse: true, force: false);
  * }}}
  * 
  * === Performing a Search ===

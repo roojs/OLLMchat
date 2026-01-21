@@ -475,23 +475,23 @@ namespace OLLMvector {
                 // Lazily create/reuse the Indexer.
                 if (this.indexer == null) {
                     this.indexer = new Indexing.Indexer (this.config, this.vector_db, this.sql_db, this.worker_project_manager);
+                    this.indexer.progress.connect ((_c, _t, _p, success) => {
+                        if (!success) {
+                            return;
+                        }
+                        this.main_context.invoke (() => {
+                            this.sql_db.backupDB ();
+                            return false;
+                        });
+                    });
                 }
 
-                // Perform indexing.  Indexer.index_file() is async.
+                // Perform indexing via index_filebase (single file); progress(success=true) triggers backup on main thread.
                 try {
-                    yield this.indexer.index_file (project_file.file);
+                    yield this.indexer.index_filebase (project_file.file, false, false);
                 } catch (GLib.Error e) {
                     GLib.warning ("BackgroundScan: indexing error for %s – %s", next_item.file_path, e.message);
                 }
-
-                // Sync database to disk after processing each file (using idle to avoid blocking)
-                var sync_source = new GLib.IdleSource ();
-                sync_source.set_callback (() => {
-                    this.sql_db.backupDB ();
-                    return false;
-                });
-                sync_source.attach (this.worker_context);
-
             }
         }
     }
