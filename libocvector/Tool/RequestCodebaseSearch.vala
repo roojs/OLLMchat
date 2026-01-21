@@ -188,8 +188,16 @@ namespace OLLMvector.Tool
 			var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (" +
 				string.joinv(",", file_ids.to_array()) + ")";
 			
+			// When element_type is "function" or "method", search for both types
+			bool search_both_function_and_method = false;
 			if (this.element_type != "") {
-				sql = sql + " AND element_type = $element_type";
+				var normalized_type = this.element_type.strip().down();
+				if (normalized_type == "function" || normalized_type == "method") {
+					sql = sql + " AND element_type IN ('function', 'method')";
+					search_both_function_and_method = true;
+				} else {
+					sql = sql + " AND element_type = $element_type";
+				}
 			}
 			
 			// Debug: Log vector filtering query
@@ -208,7 +216,7 @@ namespace OLLMvector.Tool
 			var vector_query = OLLMvector.VectorMetadata.query(sql_db);
 			var vector_stmt = vector_query.selectPrepare(sql);
 			
-			if (this.element_type != "") {
+			if (this.element_type != "" && !search_both_function_and_method) {
 				vector_stmt.bind_text(
 					vector_stmt.bind_parameter_index("$element_type"), this.element_type);
 			}
@@ -235,7 +243,7 @@ namespace OLLMvector.Tool
 				this.query,
 				(uint64)this.max_results,
 				filtered_vector_ids,
-				this.element_type  // Pass element_type filter to Search
+				this.element_type  // Pass element_type filter to Search 
 			);
 			
 			// Execute search

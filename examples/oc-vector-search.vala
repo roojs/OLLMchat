@@ -249,7 +249,7 @@ Examples:
 			query,
 			(uint64)opt_max_results,
 			filtered_vector_ids,
-			opt_element_type  // Pass element_type filter to Search for secondary filtering
+			opt_element_type // Pass element_type filter to Search for secondary filtering (empty string if null)
 		);
 		
 		// Execute search

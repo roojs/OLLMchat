@@ -85,9 +85,10 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Optional element_type filter for metadata results.
-		 * If set, only metadata with matching element_type will be included.
+		 * If set (non-empty), only metadata with matching element_type will be included.
+		 * Empty string means no filtering.
 		 */
-		private string? element_type_filter;
+		private string element_type_filter;
 		
 		/**
 		 * Constructor with all required dependencies.
@@ -99,7 +100,7 @@ namespace OLLMvector.Search
 		 * @param query Search query text
 		 * @param max_results Maximum number of results (default: 10)
 		 * @param filtered_vector_ids List of vector IDs to filter search (empty list = search all)
-		 * @param element_type_filter Optional element_type to filter metadata results (e.g., "class", "method")
+		 * @param element_type_filter Element type to filter metadata results (e.g., "class", "method"). Empty string means no filtering.
 		 */
 		public Search(
 			OLLMvector.Database vector_db,
@@ -109,7 +110,7 @@ namespace OLLMvector.Search
 			string query,
 			uint64 max_results = 10,
 			Gee.ArrayList<int> filtered_vector_ids,
-			string? element_type_filter = null
+			string element_type_filter = ""
 		)
 		{
 			base(config);
@@ -289,8 +290,9 @@ namespace OLLMvector.Search
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
 			
-			// Filter metadata by element_type if filter is set
-			if (this.element_type_filter != null) {
+			// Filter metadata by element_type if filter is set and not empty
+			if (this.element_type_filter.strip() != "") {
+				var original_count = metadata_list.size;
 				var filtered_metadata = new Gee.ArrayList<OLLMvector.VectorMetadata>();
 				foreach (var metadata in metadata_list) {
 					if (metadata.element_type == this.element_type_filter) {
@@ -299,7 +301,7 @@ namespace OLLMvector.Search
 				}
 				metadata_list = filtered_metadata;
 				GLib.debug("Search.execute: Filtered metadata from %d to %d entries matching element_type='%s'",
-					metadata_list.size + (metadata_list.size - filtered_metadata.size),
+					original_count,
 					filtered_metadata.size,
 					this.element_type_filter
 				);

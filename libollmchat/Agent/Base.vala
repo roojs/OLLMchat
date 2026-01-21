@@ -218,7 +218,7 @@ namespace OLLMchat.Agent
 					}
 					
 					var err_message = "ERROR: You requested a tool called '" + tool_call.function.name + 
-						"', however we only have these tools: " + available_tools_str;
+						" ', however we only have these tools: " + available_tools_str;
 					
 					var error_msg = new Message("ui", err_message);
 					this.handle_tool_message(error_msg);
