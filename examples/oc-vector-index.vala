@@ -20,8 +20,10 @@ class VectorIndexerApp : VectorAppBase
 {
 	protected static bool opt_recurse = false;
 	protected static bool opt_reset_database = false;
+	protected static bool opt_create_project = false;
 	protected static string? opt_embed_model = null;
 	protected static string? opt_analyze_model = null;
+	protected static string? opt_data_dir = null;
 	
 	private string db_path;
 	private string vector_db_path;
@@ -35,6 +37,8 @@ Options:
   -d, --debug          Enable debug output
   -r, --recurse        Recurse into subfolders (only for folders)
   --reset-database     Reset the vector database (delete vectors, metadata, and reset scan dates)
+  --create-project     Create the folder as a project if it's not already one
+  --data-dir=DIR       Data directory for database files (default: ~/.local/share/ollmchat)
   --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
   --api-key=KEY       API key (only used if config not found; ignored if config exists)
   --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
@@ -45,12 +49,16 @@ Examples:
   {ARG} --debug libocvector/Database.vala
   {ARG} libocvector/
   {ARG} --recurse libocvector/
+  {ARG} --create-project libocvector/
+  {ARG} --data-dir=/custom/path libocvector/
   {ARG} --reset-database
 """;
 	
 	protected const OptionEntry[] local_options = {
 		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
 		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
+		{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Create the folder as a project if it's not already one", null },
+		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
 		{ null }
@@ -85,11 +93,22 @@ Examples:
 	
 	protected override string? validate_args(string[] args)
 	{
+		// Save data_dir value before reset (options are parsed before validate_args is called)
+		var saved_data_dir = opt_data_dir;
+		var saved_create_project = opt_create_project;
+		
 		// Reset static option variables at start of each command line invocation
 		opt_recurse = false;
 		opt_reset_database = false;
+		opt_create_project = false;
 		opt_embed_model = null;
 		opt_analyze_model = null;
+		opt_data_dir = null;
+		
+		// Override data_dir if --data-dir option provided
+		if (saved_data_dir != null && saved_data_dir != "") {
+			this.data_dir = saved_data_dir;
+		}
 		
 		// Build paths at start
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
@@ -241,17 +260,49 @@ Examples:
 			filebase = results_list[0];
 		}
 		
-		// Error condition: filebase must exist in database
-		if (filebase == null) {
-			throw new GLib.IOError.FAILED("Failed to get or create filebase entry");
+		// Check error conditions first
+		if (filebase == null && !saved_create_project) {
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"Folder '%s' is not in the database. Use --create-project to create it as a project first.".printf(abs_path)
+			);
 		}
 		
-		// Error condition: only folders are supported for indexing
-		if (!(filebase is OLLMfiles.Folder)) {
+		if (filebase != null && !(filebase is OLLMfiles.Folder)) {
 			throw new GLib.IOError.INVALID_ARGUMENT("Only folders can be indexed, not files");
 		}
 		
-		var folder_obj = (OLLMfiles.Folder)filebase;
+		// Get or create folder object
+		var folder_obj = filebase == null ?  new OLLMfiles.Folder(manager) :
+				(OLLMfiles.Folder)filebase;
+		if (filebase == null) {
+			
+			folder_obj.path = abs_path;
+			folder_obj.display_name = GLib.Path.get_basename(abs_path);
+		} 
+		
+		// Check error condition: folder must be a project
+		if (!folder_obj.is_project && !saved_create_project) {
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"Folder '%s' is not a project. Use --create-project to create it as a project first.".printf(abs_path)
+			);
+		}
+		
+		// Create or convert to project if needed
+		if (!folder_obj.is_project) {
+			if (filebase == null) {
+				stdout.printf("Creating folder as project: %s\n", abs_path);
+			} else {
+				stdout.printf("Converting folder to project: %s\n", abs_path);
+			}
+			
+			folder_obj.is_project = true;
+			folder_obj.display_name = GLib.Path.get_basename(abs_path);
+			folder_obj.saveToDB(sql_db, null, false);
+			
+			// Add to projects list
+			manager.projects.append(folder_obj);
+			stdout.printf("✓ Project created\n\n");
+		}
 		stdout.printf("Starting indexing process...\n" +
 		              "Indexing folder: %s (recurse=%s)\n",
 		              folder_obj.path, opt_recurse.to_string());
