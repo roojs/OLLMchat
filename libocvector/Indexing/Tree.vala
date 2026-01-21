@@ -307,6 +307,8 @@ namespace OLLMvector.Indexing
 			
 			// Build AST path from node by traversing up the AST using base class method
 			metadata.ast_path = this.ast_path(node, code_content);
+			GLib.debug("extract_element_metadata: set ast_path='%s' for %s %s (lines %d-%d)", 
+				metadata.ast_path, element_type, element_name, metadata.start_line, metadata.end_line);
 			
 			return metadata;
 		}

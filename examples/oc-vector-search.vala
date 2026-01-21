@@ -81,15 +81,25 @@ Examples:
 		return base_load_config();
 	}
 	
-	protected override string? validate_args(string[] args)
+	protected override int command_line(ApplicationCommandLine command_line)
 	{
-		// Reset static option variables at start of each command line invocation
+		// Reset local static option variables at start of each command line invocation
+		// This must happen BEFORE parsing, not in validate_args() which is called AFTER parsing
 		opt_json = false;
 		opt_language = null;
 		opt_element_type = null;
 		opt_max_results = 10;
 		opt_max_snippet_lines = 10;
 		opt_embed_model = null;
+		
+		// Call base implementation which will parse options and call validate_args()
+		return base.command_line(command_line);
+	}
+	
+	protected override string? validate_args(string[] args)
+	{
+		// Note: Option variables are already reset in command_line() before parsing,
+		// so they now contain the parsed values
 		
 		// Build paths at start
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
@@ -238,7 +248,8 @@ Examples:
 			search_folder,
 			query,
 			(uint64)opt_max_results,
-			filtered_vector_ids
+			filtered_vector_ids,
+			opt_element_type  // Pass element_type filter to Search for secondary filtering
 		);
 		
 		// Execute search
@@ -285,6 +296,9 @@ Examples:
 			stdout.printf("Lines: %d-%d\n", results[i].metadata.start_line, results[i].metadata.end_line);	
 			stdout.printf("Description: %s\n", results[i].metadata.description);
 			
+			if (results[i].metadata.ast_path != "") {
+				stdout.printf("ast-path: %s\n", results[i].metadata.ast_path);
+			}
 			
 			var snippet = results[i].code_snippet(opt_max_snippet_lines);
 			

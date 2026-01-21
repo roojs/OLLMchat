@@ -171,7 +171,8 @@ namespace OLLMvector.Indexing
 					end_line = metadata.end_line,
 					element_type = metadata.element_type,
 					element_name = metadata.element_name,
-					description = element.description
+					description = element.description,
+					ast_path = element.ast_path
 				}.saveToDB(this.sql_db, false);
 			}
 			

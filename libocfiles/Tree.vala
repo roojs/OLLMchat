@@ -257,14 +257,17 @@ namespace OLLMfiles
 		public string ast_path(TreeSitter.Node node, string code_content)
 		{
 			if (TreeSitter.node_is_null(node)) {
+				GLib.debug("ast_path: node is null");
 				return "";
 			}
 			
 			// Get element name from the node itself
 			var elem_name = this.element_name(node, code_content);
 			if (elem_name == null || elem_name == "") {
+				GLib.debug("ast_path: element_name is null or empty for node type: %s", TreeSitter.node_get_type(node) ?? "null");
 				return "";
 			}
+			GLib.debug("ast_path: starting with element_name: %s", elem_name);
 			
 			// Traverse up the AST to collect namespace and class hierarchy
 			// We traverse from inner to outer, so we'll reverse the arrays at the end
@@ -313,7 +316,13 @@ namespace OLLMfiles
 			
 			// Add namespace (join with '.' for namespace parts)
 			if (namespace_parts.length > 0) {
-				ast_path_parts += string.joinv(".", namespace_parts);
+				var namespace_str = string.joinv(".", namespace_parts);
+				// Trim trailing '.' from namespace
+				var regex_trailing_dot = new GLib.Regex("\\.+$");
+				namespace_str = regex_trailing_dot.replace(namespace_str, -1, 0, "");
+				if (namespace_str != "") {
+					ast_path_parts += namespace_str;
+				}
 			}
 			
 			// Add class hierarchy (join with '-' for class parts)
@@ -324,7 +333,13 @@ namespace OLLMfiles
 			// Add element name
 			ast_path_parts += elem_name;
 			
-			return string.joinv("-", ast_path_parts);
+			var result = string.joinv("-", ast_path_parts);
+			// Replace '--' with '-' (can occur if namespace or class parts are empty)
+			var regex_double_dash = new GLib.Regex("--+");
+			result = regex_double_dash.replace(result, -1, 0, "-");
+			GLib.debug("ast_path: result = '%s' (namespace_parts.length=%d, class_parts.length=%d, elem_name='%s')", 
+				result, namespace_parts.length, class_parts.length, elem_name);
+			return result;
 		}
 		
 		/**
