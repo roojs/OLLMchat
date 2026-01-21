@@ -100,9 +100,16 @@ namespace SQ {
 				return false;
 			}
 			
-			Posix.Stat buf;
-			Posix.stat(this.filename, out buf);
-			if (buf.st_size == 0) {
+			var file = GLib.File.new_for_path(this.filename);
+			GLib.FileInfo info;
+			try {
+				info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE);
+				if (info.get_size() == 0) {
+					// Delete zero-size file
+					GLib.FileUtils.remove(this.filename);
+					return false;
+				}
+			} catch (GLib.Error e) {
 				return false;
 			}
 			
@@ -139,27 +146,63 @@ namespace SQ {
 		}
 		
 		/**
-		 * Backs up the in-memory database to the file.
-		 * 
-		 * This method saves the current state of the in-memory database to
-		 * the file specified in the constructor. If the database is not open,
-		 * this method does nothing.
-		 * 
-		 * After saving, the is_dirty flag is reset to false.
-		 */
+		* Backs up the in-memory database to the file.
+		* 
+		* This method saves the current state of the in-memory database to
+		* the file specified in the constructor. If the database is not open,
+		* this method does nothing.
+		* 
+		* The backup is performed atomically by first writing to a temporary
+		* file (filename.new), verifying it was created successfully, then
+		* moving it into place.
+		* 
+		* After saving, the is_dirty flag is reset to false.
+		*/
 		public void backupDB()
 		{
 			if (db == null) {
 				GLib.debug("database not open = not saving");
 				return;
 			}
+			
 			db_mutex.lock();
-			Sqlite.Database filedb;
-			Sqlite.Database.open(this.filename, out filedb);
-			var b = new Sqlite.Backup(filedb, "main", db, "main");
-			b.step(-1);
-			this.is_dirty = false;
-			db_mutex.unlock();
+			
+			try {
+				var new_filename = this.filename + ".new";
+				
+				// Backup to temporary file first
+				Sqlite.Database filedb;
+				Sqlite.Database.open(new_filename, out filedb);
+				var b = new Sqlite.Backup(filedb, "main", db, "main");
+				b.step(-1);
+				
+				// Check the file was created and has size > 0
+				var new_file = GLib.File.new_for_path(new_filename);
+				GLib.FileInfo info;
+				try {
+					info = new_file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE);
+					if (info.get_size() == 0) {
+						GLib.warning("Backup file %s was not created properly (size: 0)", new_filename);
+						// Clean up the bad file
+						GLib.FileUtils.remove(new_filename);
+						return;
+					}
+				} catch (GLib.Error e) {
+					GLib.warning("Backup file %s was not created properly: %s", new_filename, e.message);
+					// Clean up the bad file
+					GLib.FileUtils.remove(new_filename);
+					return;
+				}
+				
+				// Atomically move into place
+				GLib.FileUtils.rename(new_filename, this.filename);
+				
+				this.is_dirty = false;
+			} catch (GLib.Error e) {
+				GLib.warning("Error during database backup: %s", e.message);
+			} finally {
+				db_mutex.unlock();
+			}
 		}
 		 
 		/**
