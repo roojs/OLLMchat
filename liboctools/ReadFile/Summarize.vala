@@ -178,7 +178,7 @@ namespace OLLMtools.ReadFile
 			// Track parent enum name for enum_value nodes
 			string? current_parent_enum = parent_enum_name;
 			if (node_type_lower == "enum_declaration" || node_type_lower == "enum") {
-				var enum_name = this.get_element_name(node, code_content);
+				var enum_name = this.element_name(node, code_content);
 				if (enum_name != null && enum_name != "") {
 					current_parent_enum = enum_name;
 				}
@@ -187,7 +187,7 @@ namespace OLLMtools.ReadFile
 			// Track namespace for all elements
 			string? updated_namespace = current_namespace;
 			if (node_type_lower == "namespace_declaration") {
-				var namespace_name = this.get_element_name(node, code_content);
+				var namespace_name = this.element_name(node, code_content);
 				if (namespace_name != null && namespace_name != "") {
 					if (current_namespace != null && current_namespace != "") {
 						updated_namespace = "%s.%s".printf(current_namespace, namespace_name);
@@ -202,7 +202,7 @@ namespace OLLMtools.ReadFile
 			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
 			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
 			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
-				var class_name = this.get_element_name(node, code_content);
+				var class_name = this.element_name(node, code_content);
 				if (class_name != null && class_name != "") {
 					updated_parent_class = class_name;
 				}
@@ -216,10 +216,10 @@ namespace OLLMtools.ReadFile
 			
 			// Special case: For block_continuation nodes, check if they're part of a heading pattern
 			// by trying to extract a name first - if we get a heading-like name, it's a heading
-			// The get_element_name function already checks the line content and extracts the name
+			// The element_name function already checks the line content and extracts the name
 			// If it successfully extracts a name from a block_continuation, it means it found a heading pattern
 			if (node_type_lower == "block_continuation" && element_type == "") {
-				cached_element_name = this.get_element_name(node, code_content);
+				cached_element_name = this.element_name(node, code_content);
 				// If we extracted a name, check the line to determine heading level
 				if (cached_element_name != null && cached_element_name != "") {
 					// Get the line content to check for heading level
@@ -272,7 +272,7 @@ namespace OLLMtools.ReadFile
 			if (element_type != "") {
 				// Skip namespace declarations - we track namespace for context but don't output them separately
 				if (element_type != "namespace") {
-					cached_element_name = this.get_element_name(node, code_content);
+					cached_element_name = this.element_name(node, code_content);
 					
 					// Debug: log name extraction
 					// if (element_type.has_prefix("heading") || node_type_lower.has_prefix("heading") || node_type_lower.has_prefix("atx")) {
@@ -337,7 +337,7 @@ namespace OLLMtools.ReadFile
 			
 			// After processing children, check if this node and its siblings form a heading pattern
 			// This handles cases where headings are parsed as separate nodes (block_continuation + '#' + text)
-			// We can't easily check siblings from here, so we'll handle this in get_element_type/get_element_name
+			// We can't easily check siblings from here, so we'll handle this in get_element_type/element_name
 			// by checking the node's position and looking at the raw text content
 			
 			// Decrease indent after processing children (use cached element_name)

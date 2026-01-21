@@ -244,6 +244,90 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Build AST path from a TreeSitter node by traversing up the AST tree.
+		 * 
+		 * Creates a hierarchical path representing the element's location in the AST by
+		 * walking up the parent chain to find namespace and class declarations.
+		 * Format: namespace-class-method or namespace-outerclass-innerclass-method etc. (using '-' separator).
+		 * 
+		 * @param node TreeSitter node for the element
+		 * @param code_content Source code content for text extraction
+		 * @return AST path string (e.g., "OLLMvector.Indexing-OuterClass-InnerClass-methodName")
+		 */
+		public string ast_path(TreeSitter.Node node, string code_content)
+		{
+			if (TreeSitter.node_is_null(node)) {
+				return "";
+			}
+			
+			// Get element name from the node itself
+			var elem_name = this.element_name(node, code_content);
+			if (elem_name == null || elem_name == "") {
+				return "";
+			}
+			
+			// Traverse up the AST to collect namespace and class hierarchy
+			// We traverse from inner to outer, so we'll reverse the arrays at the end
+			string[] namespace_parts = {};
+			string[] class_parts = {};
+			
+			var current = TreeSitter.node_get_parent(node);
+			while (!TreeSitter.node_is_null(current)) {
+				unowned string? node_type = TreeSitter.node_get_type(current);
+				if (node_type == null) {
+					current = TreeSitter.node_get_parent(current);
+					continue;
+				}
+				
+				var node_type_lower = node_type.down();
+				
+				// Check for namespace declarations
+				if (node_type_lower == "namespace_declaration" || node_type_lower == "namespace") {
+					var namespace_name = this.element_name(current, code_content);
+					if (namespace_name != null && namespace_name != "") {
+						// Prepend to build full namespace path (outer namespaces first)
+						string[] new_parts = { namespace_name };
+						new_parts += string.joinv(".", namespace_parts);
+						namespace_parts = string.joinv(".", new_parts).split(".");
+					}
+				}
+				
+				// Check for class/struct/interface declarations
+				if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
+				    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
+				    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
+					var class_name = this.element_name(current, code_content);
+					if (class_name != null && class_name != "") {
+						// Prepend to build nested class hierarchy (outer classes first)
+						string[] new_parts = { class_name };
+						new_parts += string.joinv("-", class_parts);
+						class_parts = string.joinv("-", new_parts).split("-");
+					}
+				}
+				
+				current = TreeSitter.node_get_parent(current);
+			}
+			
+			// Build the final path
+			string[] ast_path_parts = {};
+			
+			// Add namespace (join with '.' for namespace parts)
+			if (namespace_parts.length > 0) {
+				ast_path_parts += string.joinv(".", namespace_parts);
+			}
+			
+			// Add class hierarchy (join with '-' for class parts)
+			if (class_parts.length > 0) {
+				ast_path_parts += string.joinv("-", class_parts);
+			}
+			
+			// Add element name
+			ast_path_parts += elem_name;
+			
+			return string.joinv("-", ast_path_parts);
+		}
+		
+		/**
 		 * Extract string from lines array using Vala string range syntax.
 		 * 
 		 * @param start_line Starting line number (1-indexed, or -1 for invalid/no content)
@@ -284,11 +368,14 @@ namespace OLLMfiles
 		/**
 		 * Get element name from AST node.
 		 * 
+		 * Handles various edge cases including markdown headings, block continuations,
+		 * and different field names used by tree-sitter grammars.
+		 * 
 		 * @param node AST node
 		 * @param code_content Source code content for text extraction
 		 * @return Element name, or null if not found
 		 */
-		protected string? get_element_name(TreeSitter.Node node, string code_content)
+		protected string? element_name(TreeSitter.Node node, string code_content)
 		{
 			unowned string? node_type = TreeSitter.node_get_type(node);
 			var node_type_lower = (node_type ?? "").down();
@@ -298,48 +385,30 @@ namespace OLLMfiles
 			// The '#' nodes are siblings, not children, so we need to check the raw line content
 			if (node_type_lower == "block_continuation") {
 				var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
-				var start_byte = TreeSitter.node_get_start_byte(node);
+				var start_byte = (int)TreeSitter.node_get_start_byte(node);
 				
 				// Get the full line content by finding newlines around this position
 				// Find the start of the line (search backwards for newline)
-				int line_start_idx = 0;
-				for (int i = (int)start_byte - 1; i >= 0 && i >= (int)start_byte - 500; i--) {
-					if (code_content[i] == '\n') {
-						line_start_idx = i + 1;
-						break;
-					}
-				}
+				var search_start = (start_byte - 500).clamp(0, start_byte);
+				var search_range = code_content.substring(search_start, start_byte - search_start);
+				var before_pos = search_range.last_index_of("\n");
+				var line_start_idx = (before_pos >= 0) ? search_start + before_pos + 1 : search_start;
+				
 				// Find the end of the line (search forwards for newline)
-				int line_end_idx = (int)code_content.length;
-				for (uint32 i = start_byte; i < code_content.length && i < start_byte + 500; i++) {
-					if (code_content[i] == '\n') {
-						line_end_idx = (int)i;
-						break;
-					}
-				}
+				var search_end = (start_byte + 500).clamp(start_byte, (int)code_content.length);
+				var after_pos = code_content.index_of("\n", start_byte);
+				var line_end_idx = (after_pos >= 0 && after_pos <= search_end) ? after_pos : search_end;
 				
 				if (line_end_idx > line_start_idx) {
 					var line_text = code_content.substring(line_start_idx, line_end_idx - line_start_idx);
-					// GLib.debug("TreeBase.get_element_name: block_continuation at line %d, checking line text: '%s'", start_line, line_text);
+					// GLib.debug("TreeBase.element_name: block_continuation at line %d, checking line text: '%s'", start_line, line_text);
 					
-					// Check if line starts with 1-6 '#' characters
-					int hash_count = 0;
-					for (int i = 0; i < line_text.length && i < 6; i++) {
-						if (line_text[i] == '#') {
-							hash_count++;
-						} else if (line_text[i] == ' ' || line_text[i] == '\t') {
-							// Allow whitespace after hashes
-							continue;
-						} else {
-							break;
-						}
-					}
-					
-					if (hash_count >= 1 && hash_count <= 6) {
-						// This looks like a heading - extract the text
-						var name = line_text.replace("#", "").strip();
+					// Check if line starts with 1-6 '#' characters followed by optional whitespace
+					MatchInfo match_info;
+					if (/^#{1,6}\s*(.+)$/.match(line_text, 0, out match_info)) {
+						var name = match_info.fetch(1).strip();
 						if (name != null && name != "") {
-							// GLib.debug("TreeBase.get_element_name: Extracted heading name '%s' from block_continuation at line %d (hash_count=%d)", name, start_line, hash_count);
+							// GLib.debug("TreeBase.element_name: Extracted heading name '%s' from block_continuation at line %d", name, start_line);
 							return name;
 						}
 					}
@@ -499,14 +568,14 @@ namespace OLLMfiles
 					// 	start_line, child_count, start_byte, end_byte);
 					
 					// If no children, the heading text might be in sibling nodes
-					// We'll handle this in get_element_name by checking the raw text
+					// We'll handle this in element_name by checking the raw text
 					// For now, if it's at a line that looks like it could be a heading, return a generic heading
 					// The actual level will be determined when we extract the name
 					if (child_count == 0) {
-						// This might be a heading - we'll verify in get_element_name
-						// Return a placeholder that get_element_name can use
+						// This might be a heading - we'll verify in element_name
+						// Return a placeholder that element_name can use
 						// GLib.debug("TreeBase.get_element_type: block_continuation at line %d has no children, might be heading", start_line);
-						// Don't return here - let it fall through and check in get_element_name
+						// Don't return here - let it fall through and check in element_name
 					}
 				}
 			}
