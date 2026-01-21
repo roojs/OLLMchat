@@ -118,15 +118,21 @@ namespace OLLMvector.Indexing
 				}
 			}
 			
-			// Track parent class/struct/interface for methods, properties, fields, etc.
-			string? updated_parent_class = parent_class_name;
+			// Track parent class/struct/interface hierarchy for methods, properties, fields, etc.
+			// Build hierarchical path for nested classes (e.g., "OuterClass-InnerClass")
+			var updated_parent_class = parent_class_name;
 			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
 			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
 			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
 				// Extract the class/struct/interface name to use as parent
 				var class_name = this.get_element_name(node, code_content);
 				if (class_name != null && class_name != "") {
-					updated_parent_class = class_name;
+					// Build hierarchical path for nested classes
+					if (parent_class_name != null && parent_class_name != "") {
+						updated_parent_class = "%s-%s".printf(parent_class_name, class_name);
+					} else {
+						updated_parent_class = class_name;
+					}
 				}
 			}
 			
@@ -298,6 +304,20 @@ namespace OLLMvector.Indexing
 			
 			// Extract documentation block line numbers
 			this.extract_documentation_lines(node, metadata);
+			
+			// Build AST path from namespace and parent_class
+			// Format: namespace-class-method or namespace-outerclass-innerclass-method etc. (using '-' separator)
+			// For nested classes, parent_class already contains the full hierarchy (e.g., "OuterClass-InnerClass")
+			string[] ast_path_parts = {};
+			if (namespace != null && namespace != "") {
+				ast_path_parts += namespace;
+			}
+			if (parent_class != null && parent_class != "") {
+				// parent_class may already contain nested class hierarchy (e.g., "OuterClass-InnerClass")
+				ast_path_parts += parent_class;
+			}
+			ast_path_parts += element_name;
+			metadata.ast_path = string.joinv("-", ast_path_parts);
 			
 			return metadata;
 		}

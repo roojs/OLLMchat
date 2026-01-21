@@ -132,6 +132,14 @@ namespace OLLMvector
 		public string description { get; set; default = ""; }
 		
 		/**
+		 * AST path representing the hierarchical location of the element.
+		 * Format: namespace-class-method or namespace-function etc. (using '-' separator).
+		 * Empty string for file elements (files don't have AST paths).
+		 * Stored in database for search and navigation.
+		 */
+		public string ast_path { get; set; default = ""; }
+		
+		/**
 		 * Constructor.
 		 */
 		public VectorMetadata()
@@ -155,10 +163,20 @@ namespace OLLMvector
 				"end_line INTEGER NOT NULL, " +
 				"element_type TEXT NOT NULL, " +
 				"element_name TEXT NOT NULL, " +
-				"description TEXT NOT NULL DEFAULT ''" +
+				"description TEXT NOT NULL DEFAULT '', " +
+				"ast_path TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create vector_metadata table: %s", db.db.errmsg());
+			}
+			
+			// Migrate existing databases: add ast_path column if it doesn't exist
+			var migrate_ast_path = "ALTER TABLE vector_metadata ADD COLUMN ast_path TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_ast_path, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
 			}
 			
 			// Create indexes for efficient lookups
