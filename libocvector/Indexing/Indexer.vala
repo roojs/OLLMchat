@@ -171,14 +171,16 @@ namespace OLLMvector.Indexing
 			
 			tree = yield analysis.analyze_tree(tree);
 			
+			
 			// Analyze file and create file-level summary
 			tree = yield analysis.analyze_file(tree);
 			
 			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
 				this.config, this.vector_db, this.sql_db);
+
+				
 			yield vector_builder.process_file(tree);
-			
 			// After scanning completes, check if file was deleted before saving
 			// Fetch filebase from database again to check current delete_id
 			var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);

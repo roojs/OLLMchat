@@ -120,7 +120,8 @@ namespace OLLMfiles
 				var file = GLib.File.new_for_path(path);
 				if (file.query_exists()) {
 					var file_info = file.query_info(
-						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+						GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
+						GLib.FileAttribute.TIME_MODIFIED,
 						GLib.FileQueryInfoFlags.NONE,
 						null
 					);

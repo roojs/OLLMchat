@@ -340,7 +340,6 @@ namespace SQ {
 				 
 				setter += (s.name +  " = $" + s.name);
 				types.set(s.name,s.ctype);
-				
 			}
 			if (setter.length < 1) {
 				return;

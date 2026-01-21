@@ -161,14 +161,14 @@ namespace OLLMvector.Indexing
 		{
 			// Only process named nodes (skip anonymous nodes)
 			if (!TreeSitter.node_is_named(node)) {
-				GLib.debug("Skipping node: not a named node (anonymous)");
+				//GLib.debug("Skipping node: not a named node (anonymous)");
 				return null;
 			}
 			
 			// Get node type
 			unowned string? node_type = TreeSitter.node_get_type(node);
 			if (node_type == null) {
-				GLib.debug("Skipping node: node type is null");
+				//GLib.debug("Skipping node: node type is null");
 				return null;
 			}
 			
@@ -179,7 +179,7 @@ namespace OLLMvector.Indexing
 			// This prevents duplicate namespace extraction
 			var node_type_lower = node_type.down();
 			if (node_type_lower == "namespace_member") {
-				GLib.debug("Skipping node: namespace_member (lines %d-%d) - only extracting namespace_declaration", start_line, end_line);
+			//	GLib.debug("Skipping node: namespace_member (lines %d-%d) - only extracting namespace_declaration", start_line, end_line);
 				return null;
 			}
 			
@@ -187,13 +187,13 @@ namespace OLLMvector.Indexing
 			var element_type = this.get_element_type(node, this.language);
 			if (element_type == "") {
 				// Not a code element we're interested in
-				GLib.debug("Skipping node: %s (lines %d-%d) - not a recognized code element type", node_type, start_line, end_line);
+				//GLib.debug("Skipping node: %s (lines %d-%d) - not a recognized code element type", node_type, start_line, end_line);
 				return null;
 			}
 			
 			// Skip namespace declarations - we track namespace for context but don't vectorize them separately
 			if (element_type == "namespace") {
-				GLib.debug("Skipping node: namespace_declaration (lines %d-%d) - namespace tracked for context only", start_line, end_line);
+				//GLib.debug("Skipping node: namespace_declaration (lines %d-%d) - namespace tracked for context only", start_line, end_line);
 				return null;
 			}
 			

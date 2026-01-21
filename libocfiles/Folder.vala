@@ -342,7 +342,8 @@ namespace OLLMfiles
 					GLib.FileAttribute.STANDARD_TYPE + "," +
 					GLib.FileAttribute.STANDARD_IS_SYMLINK + "," +
 					GLib.FileAttribute.STANDARD_SYMLINK_TARGET + "," +
-					GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+					GLib.FileAttribute.STANDARD_CONTENT_TYPE + "," +
+					GLib.FileAttribute.TIME_MODIFIED,
 				GLib.FileQueryInfoFlags.NONE,
 				null
 			);
@@ -495,6 +496,9 @@ namespace OLLMfiles
 
 				// TODO: If our item is a FileAlias, resolve points_to_id before saving
 				// Query database for target by target_path and set points_to_id and points_to
+				
+				// Ensure last_modified is set from filesystem (in case FileInfo didn't have it)
+				new_item.last_modified = new_item.mtime_on_disk();
 
 				new_item.saveToDB(this.manager.db, null, false);
 				return;
@@ -508,6 +512,8 @@ namespace OLLMfiles
 				// Add new item
 				this.children.append(new_item);
 				this.children.child_map.set(name, new_item);
+				// Ensure last_modified is set from filesystem
+				new_item.last_modified = new_item.mtime_on_disk();
 				new_item.saveToDB(this.manager.db, null, false);
 				
 				return;
@@ -515,6 +521,9 @@ namespace OLLMfiles
 			
 			// Same item - copy DB fields to preserve them, then update only changed fields
 			old_item.copy_db_fields_to(new_item);
+			// Update last_modified from filesystem (preserve filesystem mtime, not DB value)
+			// This ensures the database reflects the actual file modification time
+			new_item.last_modified = new_item.mtime_on_disk();
 			// database manager has to be set other wise all this will break
 			old_item.saveToDB(this.manager.db, new_item, false);
 			

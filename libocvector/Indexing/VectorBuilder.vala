@@ -102,12 +102,17 @@ namespace OLLMvector.Indexing
 				GLib.debug("Document %d for embedding:\n%s", i + 1, documents[i]);
 			}
 			
-			// Return early if embed_model is not configured or invalid
-			if (!this.config.usage.has_key("embed_model")) {
-				throw new GLib.IOError.FAILED("No embed_model configured for embeddings");
+			// Get embed model from codebase_search tool config
+			if (!this.config.tools.has_key("codebase_search")) {
+				throw new GLib.IOError.FAILED("Codebase search tool config not found");
 			}
 			
-			var embed_model_usage = this.config.usage.get("embed_model") as OLLMchat.Settings.ModelUsage;
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			if (!tool_config.enabled) {
+				throw new GLib.IOError.FAILED("Codebase search tool is disabled");
+			}
+			
+			var embed_model_usage = tool_config.embed;
 			var model = embed_model_usage.model;
 			
 			if (model == "" || embed_model_usage.connection == "" || !this.config.connections.has_key(embed_model_usage.connection)) {

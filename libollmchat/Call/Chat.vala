@@ -44,21 +44,53 @@ namespace OLLMchat.Call
 		public string model { get; set; }
 		
 		// Real properties (Phase 3: fallback logic removed)
-		public bool stream { get; set; default = false; }
+		/**
+		 * Stream response as it's generated.
+		 *
+		 * When true (default), the response is streamed incrementally as chunks arrive.
+		 * When false, the response is returned as a complete message after generation finishes.
+		 */
+		public bool stream { get; set; default = true; }
 		
+		/**
+		 * Format to return a response in.
+		 *
+		 * Can be set to "json" for JSON-formatted responses, or null for default text format.
+		 * For structured outputs with a JSON schema, use {@link format_obj} instead.
+		 */
 		public string? format { get; set; }
 		
 		/**
 		 * JSON schema object for structured outputs.
 		 * When set, this will be serialized as the "format" field instead of the string format property.
 		 * Used for Ollama's structured output feature.
-		 */
+		*/
 		public Json.Object? format_obj { get; set; default = null; }
 		
+		/**
+		 * Runtime options that control text generation.
+		 *
+		 * Contains parameters such as temperature, top_p, top_k, and other model-specific
+		 * generation settings. Only serialized if it contains valid values.
+		 */
 		public Call.Options options { get; set; }
 		
+		/**
+		 * Enable separate thinking output in addition to content.
+		 *
+		 * When true, the model returns separate thinking output alongside regular content.
+		 * For supported models, this can also be set to a string ("high", "medium", "low")
+		 * to control the level of thinking detail.
+		 */
 		public bool think { get; set; default = false; }
 		
+		/**
+		 * Model keep-alive duration.
+		 *
+		 * Specifies how long the model should remain loaded in memory after the request.
+		 * Can be a duration string (e.g., "5m" for 5 minutes) or "0" to unload immediately.
+		 * When null, uses the server's default keep-alive behavior. 
+		 */
 		public string? keep_alive { get; set; }
 		
 		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }

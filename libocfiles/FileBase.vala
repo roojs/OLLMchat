@@ -147,6 +147,7 @@ namespace OLLMfiles
 		{
 			var file = GLib.File.new_for_path(this.path);
 			if (!file.query_exists()) {
+				GLib.critical("mtime_on_disk: File does not exist '%s'", this.path);
 				return 0;
 			}
 			
@@ -157,8 +158,13 @@ namespace OLLMfiles
 					null
 				);
 				var date_time = info.get_modification_date_time();
-				return date_time.to_unix();
+				var mtime = date_time.to_unix();
+				if (mtime < 1) {
+					GLib.critical("mtime_on_disk: Invalid mtime (%lld) for file '%s'", mtime, this.path);
+				}
+				return mtime;
 			} catch (GLib.Error e) {
+				GLib.critical("mtime_on_disk: Failed to query mtime for file '%s': %s", this.path, e.message);
 				return 0;
 			}
 		}
@@ -457,6 +463,7 @@ namespace OLLMfiles
 		 */
 		public void saveToDB(SQ.Database db, FileBase? new_values = null, bool sync = true)
 		{
+			//GLib.debug("saveToDB called: path='%s' id=%lld last_vector_scan=%lld", this.path, this.id, this.last_vector_scan);
 			// Skip DB operations for fake files (id < 0 indicates not in database)
 			// id = -1: fake file (ignore), id = 0: new file (insert), id > 0: existing file (update)
 			if (this.id < 0) {
