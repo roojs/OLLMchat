@@ -20,7 +20,7 @@ class TestFetchApp : TestAppBase
 {
 	protected static string? opt_format = null;
 	
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <url> [format]
 
 Fetch content from a URL and display it.
@@ -29,30 +29,32 @@ Arguments:
   url                    URL to fetch (required)
   format                 Output format: markdown, raw, or base64 (default: markdown)
 
-Options:
-  -d, --debug          Enable debug output
-  --format=FORMAT     Output format: markdown, raw, or base64 (default: markdown)
-
 Examples:
   {ARG} https://example.com
   {ARG} https://example.com markdown
   {ARG} --format=raw https://example.com
   {ARG} https://example.com base64
-""";
+"""; }
 	
 	protected const OptionEntry[] local_options = {
 		{ "format", 0, 0, OptionArg.STRING, ref opt_format, "Output format: markdown, raw, or base64 (default: markdown)", "FORMAT" },
 		{ null }
 	};
 	
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		// Only include debug from base_options, skip url/api-key/model since we don't need Ollama connection
-		var options = new OptionEntry[3];  // debug + format + null terminator
-		options[0] = base_options[0];  // debug option
-		options[1] = local_options[0];  // format option
-		options[2] = { null };  // null terminator
-		return options;
+		var opt_context = new OptionContext(this.get_app_name());
+		// Only include debug from base_options
+		var base_opts = new OptionEntry[2];
+		base_opts[0] = base_options[0];  // debug option
+		base_opts[1] = { null };
+		opt_context.add_main_entries(base_opts, null);
+		
+		var app_group = new OptionGroup("oc-test-fetch", "Test Fetch Options", "Show Test Fetch options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
+		
+		return opt_context;
 	}
 	
 	public TestFetchApp()

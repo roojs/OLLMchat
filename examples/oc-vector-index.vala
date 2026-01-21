@@ -28,21 +28,10 @@ class VectorIndexerApp : VectorAppBase
 	private string db_path;
 	private string vector_db_path;
 	
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <file_or_folder_path>
 
 Index files or folders for vector search.
-
-Options:
-  -d, --debug          Enable debug output
-  -r, --recurse        Recurse into subfolders (only for folders)
-  --reset-database     Reset the vector database (delete vectors, metadata, and reset scan dates)
-  --create-project     Create the folder as a project if it's not already one
-  --data-dir=DIR       Data directory for database files (default: ~/.local/share/ollmchat)
-  --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
-  --api-key=KEY       API key (only used if config not found; ignored if config exists)
-  --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
-  --analyze-model=MODEL Analysis model name (overrides config; default: qwen3-coder:30b)
 
 Examples:
   {ARG} libocvector/Database.vala
@@ -52,7 +41,7 @@ Examples:
   {ARG} --create-project libocvector/
   {ARG} --data-dir=/custom/path libocvector/
   {ARG} --reset-database
-""";
+"""; }
 	
 	protected const OptionEntry[] local_options = {
 		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
@@ -64,17 +53,16 @@ Examples:
 		{ null }
 	};
 	
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		var options = new OptionEntry[base_options.length + local_options.length];
-		int i = 0;
-		foreach (var opt in base_options) {
-			options[i++] = opt;
-		}
-		foreach (var opt in local_options) {
-			options[i++] = opt;
-		}
-		return options;
+		var opt_context = new OptionContext(this.get_app_name());
+		opt_context.add_main_entries(base_options, null);
+		
+		var app_group = new OptionGroup("oc-vector-index", "Code Vector Indexer Options", "Show Code Vector Indexer options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
+		
+		return opt_context;
 	}
 	
 	public VectorIndexerApp()
@@ -196,6 +184,16 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
+		if (this.config.loaded) {
+			yield this.ensure_config();
+		} else {
+			// Ensure config exists before setting up tool config
+			yield this.ensure_config(opt_url, opt_api_key);
+		}
+		
+		// Ensure tool config exists
+		new OLLMvector.Tool.CodebaseSearchTool(null).setup_tool_config(this.config);
+		
 		// Inline tool config access
 		if (!this.config.tools.has_key("codebase_search")) {
 			GLib.error("Codebase search tool config not found");
@@ -203,7 +201,6 @@ Examples:
 		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 		
 		if (this.config.loaded) {
-			yield this.ensure_config();
 			embed_client = yield this.tool_config_client("embed");
 			analysis_client = yield this.tool_config_client("analysis");
 		} else {
@@ -235,12 +232,28 @@ Examples:
 			manager
 		);
 		
+		string? current_file_path = null;
+		int current_file_num = 0;
+		int total_files = 0;
+		
 		indexer.progress.connect((current, total, file_path) => {
 			int percentage = (int)((current * 100.0) / total);
 			// Trim any trailing whitespace from file_path in case of database corruption
 			var clean_path = file_path.strip();
+			current_file_path = clean_path;
+			current_file_num = current;
+			total_files = total;
 			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, clean_path);
 			stdout.flush();
+		});
+		
+		indexer.element_scanned.connect((element_name, element_number, total_elements) => {
+			if (current_file_path != null) {
+				int percentage = (int)((current_file_num * 100.0) / total_files);
+				stdout.printf("\r%d/%d files %d%% done - %s - %s (%d/%d)", 
+					current_file_num, total_files, percentage, current_file_path, element_name, element_number, total_elements);
+				stdout.flush();
+			}
 		});
 		
 		stdout.printf("=== Indexing ===\n");

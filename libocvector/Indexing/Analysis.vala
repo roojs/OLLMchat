@@ -37,6 +37,15 @@ namespace OLLMvector.Indexing
 		private PromptTemplate? cached_file_template = null;
 		
 		/**
+		 * Emitted when an element is finished being analyzed.
+		 * 
+		 * @param element_name Name of the element that was analyzed
+		 * @param element_number Current element number (1-based)
+		 * @param total_elements Total number of elements in the current file
+		 */
+		public signal void element_analyzed(string element_name, int element_number, int total_elements);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param config The Config2 instance containing tool configuration
@@ -220,29 +229,28 @@ namespace OLLMvector.Indexing
 			// Ensure prompt template is loaded (cached after first load)
 			this.get_prompt_template();
 			
-			// Process elements in batches for efficiency
-			var elements_to_process = new Gee.ArrayList<VectorMetadata>();
-			
-			// Collect elements that need LLM analysis
-			foreach (var element in tree.elements) {
-				if (this.should_skip_llm(element)) {
-					element.description = "";
-					continue;
-				}
-				elements_to_process.add(element);
-			}
-			
-			GLib.debug("Processing file %s - %d elements need LLM, %d elements skipped", 
-			           tree.file.path, elements_to_process.size, tree.elements.size - elements_to_process.size);
-			
-			// Process elements sequentially (can be optimized to batch later)
+			// Process elements sequentially
 			int success_count = 0;
 			int failure_count = 0;
+			int total_elements = tree.elements.size;
+			int element_number = 0;
 			
-			foreach (var element in elements_to_process) {
+			foreach (var element in tree.elements) {
+				element_number++;
+				
+				if (this.should_skip_llm(element)) {
+					element.description = "";
+					// Emit signal for skipped elements too
+					this.element_analyzed(element.element_name, element_number, total_elements);
+					continue;
+				}
+				
 				try {
 					GLib.debug("Analyzing: %s (%s)", element.element_name, element.element_type);
 					yield this.analyze_element(element, tree);
+					
+					// Emit signal after element is analyzed
+					this.element_analyzed(element.element_name, element_number, total_elements);
 					
 					if (element.description != null && element.description != "") {
 						success_count++;
@@ -253,9 +261,14 @@ namespace OLLMvector.Indexing
 					GLib.warning("Failed to analyze element %s (%s) in file %s: %s", 
 					             element.element_name, element.element_type, tree.file.path, e.message);
 					element.description = "";
+					// Emit signal even if analysis failed
+					this.element_analyzed(element.element_name, element_number, total_elements);
 					failure_count++;
 				}
 			}
+			
+			GLib.debug("Processing file %s - %d elements processed, %d succeeded, %d failed", 
+			           tree.file.path, total_elements, success_count, failure_count);
 			
 			GLib.debug("Complete for file %s: %d succeeded, %d failed", 
 			           tree.file.path, success_count, failure_count);

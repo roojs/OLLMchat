@@ -22,15 +22,10 @@ class TestBubble : TestAppBase
 	private static bool opt_allow_network = false;
 	private static string? opt_test_db = null;
 
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} --project=DIR <command>
 
 Test tool for Bubble class (bubblewrap sandboxing).
-
-Options:
-  --project=DIR              Project directory path (required)
-  --allow-network            Allow network access (default: false)
-  --test-db=PATH              Use test database instead of standard database (optional, for testing only)
 
 Arguments:
   command                    Command to execute in sandbox
@@ -40,7 +35,7 @@ Examples:
   {ARG} --project=/path/to/project "echo hello"
   {ARG} --project=/path/to/project --allow-network "curl https://example.com"
   {ARG} --project=/path/to/project --test-db=/tmp/test.db "ls -la"
-""";
+"""; }
 
 	public TestBubble()
 	{
@@ -59,20 +54,21 @@ Examples:
 		{ null }
 	};
 
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		// Only include debug and debug-critical from base_options, skip url/api-key/model since we don't need LLM connection
-		// debug + debug-critical + all local options (which includes null)
-		var options = new OptionEntry[2 + local_options.length];
-		options[0] = base_options[0];  // debug option
-		options[1] = base_options[1];  // debug-critical option
+		var opt_context = new OptionContext(this.get_app_name());
+		// Only include debug and debug-critical from base_options
+		var base_opts = new OptionEntry[3];
+		base_opts[0] = base_options[0];  // debug option
+		base_opts[1] = base_options[1];  // debug-critical option
+		base_opts[2] = { null };
+		opt_context.add_main_entries(base_opts, null);
 		
-		// Copy all local options (includes null terminator)
-		for (int j = 0; j < local_options.length; j++) {
-			options[2 + j] = local_options[j];
-		}
+		var app_group = new OptionGroup("oc-test-bubble", "Test Bubble Options", "Show Test Bubble options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
 		
-		return options;
+		return opt_context;
 	}
 
 	protected override string? validate_args(string[] args)

@@ -28,7 +28,7 @@ class VectorSearchApp : VectorAppBase
 	private string db_path;
 	private string vector_db_path;
 	
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <folder> <query>
 
 Search indexed codebase using semantic vector search.
@@ -37,24 +37,13 @@ Arguments:
   folder                 Folder path to search within (required)
   query                  Search query text (required)
 
-Options:
-  -d, --debug          Enable debug output
-  -j, --json           Output results as JSON
-  -l, --language=LANG Filter by language (e.g., vala, python)
-  -e, --element-type=TYPE Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant, file)
-  -n, --max-results=N  Maximum number of results (default: 10)
-  -s, --max-snippet-lines=N Maximum lines of code snippet to display (default: 10, -1 for no limit)
-  --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
-  --api-key=KEY       API key (only used if config not found; ignored if config exists)
-  --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
-
 Examples:
   {ARG} libocvector "database connection"
   {ARG} --json libocvector "async function"
   {ARG} --language=vala --element-type=method libocvector "parse"
   {ARG} --max-results=20 libocvector "search"
   {ARG} --max-snippet-lines=5 libocvector "search"
-""";
+"""; }
 	
 	protected const OptionEntry[] local_options = {
 		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
@@ -66,17 +55,16 @@ Examples:
 		{ null }
 	};
 	
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		var options = new OptionEntry[base_options.length + local_options.length];
-		int i = 0;
-		foreach (var opt in base_options) {
-			options[i++] = opt;
-		}
-		foreach (var opt in local_options) {
-			options[i++] = opt;
-		}
-		return options;
+		var opt_context = new OptionContext(this.get_app_name());
+		opt_context.add_main_entries(base_options, null);
+		
+		var app_group = new OptionGroup("oc-vector-search", "Code Vector Search Options", "Show Code Vector Search options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
+		
+		return opt_context;
 	}
 	
 	public VectorSearchApp()
