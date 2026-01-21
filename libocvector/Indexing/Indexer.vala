@@ -158,6 +158,9 @@ namespace OLLMvector.Indexing
 			var analysis = new Analysis(this.config, this.sql_db);
 			tree = yield analysis.analyze_tree(tree);
 			
+			// Analyze file and create file-level summary
+			tree = yield analysis.analyze_file(tree);
+			
 			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
 				this.config, this.vector_db, this.sql_db);
