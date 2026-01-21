@@ -33,6 +33,14 @@
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
 		
+		/**
+		 * Custom help text for this application.
+		 * Set this to provide custom help text.
+		 * Use {ARG} as a placeholder for the program name.
+		 * If empty, the default auto-generated help from OptionEntry definitions will be used.
+		 */
+		protected virtual string help { get; set; default = ""; }
+		
 		protected const OptionEntry[] base_options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "debug-critical", 0, 0, OptionArg.NONE, ref opt_debug_critical, "Treat critical warnings as errors", null },
@@ -74,9 +82,26 @@
 			opt_model = null;
 			
 			string[] args = command_line.get_arguments();
-			var opt_context = new OptionContext(this.get_app_name());
+			
+			// Check for help flag before parsing (to show custom help if available)
+			bool help_requested = false;
+			foreach (var arg in args) {
+				if (arg == "--help" || arg == "-h") {
+					help_requested = true;
+					break;
+				}
+			}
+			
+			if (help_requested) {
+				string? custom_help = this.get_help_text(args[0]);
+				if (custom_help != null) {
+					command_line.print("%s", custom_help);
+					return 0;
+				}
+			}
+			
+			var opt_context = this.app_options();
 			opt_context.set_help_enabled(true);
-			opt_context.add_main_entries(this.get_options(), null);
 			
 			// Parse options - this modifies the array in place to remove parsed options
 			unowned string[] remaining_args = args;
@@ -139,13 +164,46 @@
 		}
 		
 		/**
-		 * Returns the command-line options for this application.
-		 * Override to add additional options beyond the base ones.
+		 * Returns custom help text for this application.
+		 * If 'help' property is set, outputs it (with {ARG} replaced) followed by
+		 * auto-generated options from GLib's OptionContext.
+		 * 
+		 * @param program_name The program name (args[0]) to use in help text
+		 * @return Custom help text string, or null to use default auto-generated help
 		 */
-		protected virtual OptionEntry[] get_options()
+		protected virtual string? get_help_text(string program_name)
 		{
-			return base_options;
+			if (this.help == "") {
+				return null;
+			}
+			
+			// Build OptionContext to get auto-generated options text
+			
+			// Extract only the options section (skip usage line)
+			// Find the first section header (e.g., "Help Options:" or "Application Options:")
+			var  lines = this.app_options().get_help(false, null).split("\n");
+			string options_text = "";
+			bool found_options = false;
+			foreach (string line in lines) {
+				if (!found_options && line.has_suffix("Options:")) {
+					found_options = true;
+				}
+				if (found_options) {
+					options_text +=  "\n" + line;
+				}
+			}
+			
+			// Output custom help (without options) + auto-generated options
+			return this.help.replace("{ARG}", program_name) + "\n" + options_text;
 		}
+
+		
+		/**
+		 * Returns a configured OptionContext for this application.
+		 * Subclasses must implement this to create the context with base_options
+		 * as main entries and add their local options in an OptionGroup.
+		 */
+		protected abstract OptionContext app_options();
 		
 		/**
 		 * Validates command-line arguments.

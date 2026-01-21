@@ -97,7 +97,7 @@ namespace OLLMvector.Indexing
 			string? current_parent_enum = parent_enum_name;
 			if (node_type_lower == "enum_declaration" || node_type_lower == "enum") {
 				// Extract the enum name to use as parent for enum values
-				var enum_name = this.get_element_name(node, code_content);
+				var enum_name = this.element_name(node, code_content);
 				if (enum_name != null && enum_name != "") {
 					current_parent_enum = enum_name;
 				}
@@ -107,7 +107,7 @@ namespace OLLMvector.Indexing
 			string? updated_namespace = current_namespace;
 			if (node_type_lower == "namespace_declaration") {
 				// Extract the namespace name
-				var namespace_name = this.get_element_name(node, code_content);
+				var namespace_name = this.element_name(node, code_content);
 				if (namespace_name != null && namespace_name != "") {
 					// Build full namespace path (e.g., "OLLMvector.Indexing")
 					if (current_namespace != null && current_namespace != "") {
@@ -118,15 +118,21 @@ namespace OLLMvector.Indexing
 				}
 			}
 			
-			// Track parent class/struct/interface for methods, properties, fields, etc.
-			string? updated_parent_class = parent_class_name;
+			// Track parent class/struct/interface hierarchy for methods, properties, fields, etc.
+			// Build hierarchical path for nested classes (e.g., "OuterClass-InnerClass")
+			var updated_parent_class = parent_class_name;
 			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
 			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
 			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
 				// Extract the class/struct/interface name to use as parent
-				var class_name = this.get_element_name(node, code_content);
+				var class_name = this.element_name(node, code_content);
 				if (class_name != null && class_name != "") {
-					updated_parent_class = class_name;
+					// Build hierarchical path for nested classes
+					if (parent_class_name != null && parent_class_name != "") {
+						updated_parent_class = "%s-%s".printf(parent_class_name, class_name);
+					} else {
+						updated_parent_class = class_name;
+					}
 				}
 			}
 			
@@ -199,7 +205,7 @@ namespace OLLMvector.Indexing
 			
 			// Get element name - skip elements without proper names
 			// Anonymous/internal elements aren't useful for code search
-			var element_name = this.get_element_name(node, code_content);
+			var element_name = this.element_name(node, code_content);
 			
 			// For enum_value nodes, prefix with parent enum name if available
 			if (node_type_lower == "enum_value" && parent_enum_name != null && parent_enum_name != "") {
@@ -298,6 +304,9 @@ namespace OLLMvector.Indexing
 			
 			// Extract documentation block line numbers
 			this.extract_documentation_lines(node, metadata);
+			
+			// Build AST path from node by traversing up the AST using base class method
+			metadata.ast_path = this.ast_path(node, code_content);
 			
 			return metadata;
 		}

@@ -34,6 +34,16 @@ namespace OLLMvector.Indexing
 	{
 		private SQ.Database sql_db;
 		private PromptTemplate? cached_template = null;
+		private PromptTemplate? cached_file_template = null;
+		
+		/**
+		 * Emitted when an element is finished being analyzed.
+		 * 
+		 * @param element_name Name of the element that was analyzed
+		 * @param element_number Current element number (1-based)
+		 * @param total_elements Total number of elements in the current file
+		 */
+		public signal void element_analyzed(string element_name, int element_number, int total_elements);
 		
 		/**
 		 * Constructor.
@@ -155,6 +165,55 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
+		 * Loads the file-level prompt template from resources.
+		 * Template should use `---` separator between system and user messages.
+		 * 
+		 * @return PromptTemplate with system_message and user_template
+		 */
+		private PromptTemplate load_file_prompt_template() throws GLib.Error
+		{
+			var resource_path = GLib.Path.build_filename(
+				RESOURCE_BASE_PREFIX,
+				"ocvector",
+				"analysis-prompt-file.txt"
+			);
+			var file = GLib.File.new_for_uri("resource://" + resource_path);
+			
+			uint8[] data;
+			string etag;
+			file.load_contents(null, out data, out etag);
+			var template = (string)data;
+			
+			// Split on `---` separator
+			var parts = template.split("---", 2);
+			if (parts.length != 2) {
+				throw new GLib.IOError.FAILED("Prompt template must contain '---' separator between system and user messages");
+			}
+			
+			return PromptTemplate() {
+				system_message = parts[0].strip(),
+				user_template = parts[1].strip()
+			};
+		}
+		
+		/**
+		 * Gets the file-level prompt template, loading and caching it if needed.
+		 * 
+		 * @return PromptTemplate (cached after first load)
+		 * @throws GLib.Error if template cannot be loaded
+		 */
+		private PromptTemplate get_file_prompt_template() throws GLib.Error
+		{
+			if (this.cached_file_template != null) {
+				return this.cached_file_template;
+			}
+			
+			// Load from resources - fail if it doesn't work
+			this.cached_file_template = this.load_file_prompt_template();
+			return this.cached_file_template;
+		}
+		
+		/**
 		 * Analyzes a Tree object and generates descriptions for elements.
 		 * 
 		 * Iterates over Tree.elements and:
@@ -170,36 +229,28 @@ namespace OLLMvector.Indexing
 			// Ensure prompt template is loaded (cached after first load)
 			this.get_prompt_template();
 			
-			// Process elements in batches for efficiency
-			var elements_to_process = new Gee.ArrayList<VectorMetadata>();
-			
-			// Collect elements that need LLM analysis
-			foreach (var element in tree.elements) {
-				if (this.should_skip_llm(element)) {
-					element.description = "";
-					continue;
-				}
-				elements_to_process.add(element);
-			}
-			
-			GLib.debug("Processing file %s - %d elements need LLM, %d elements skipped", 
-			           tree.file.path, elements_to_process.size, tree.elements.size - elements_to_process.size);
-			
-			// Process elements sequentially (can be optimized to batch later)
+			// Process elements sequentially
 			int success_count = 0;
 			int failure_count = 0;
+			int total_elements = tree.elements.size;
+			int element_number = 0;
 			
-			foreach (var element in elements_to_process) {
+			foreach (var element in tree.elements) {
+				element_number++;
+				
+				if (this.should_skip_llm(element)) {
+					element.description = "";
+					// Emit signal for skipped elements too
+					this.element_analyzed(element.element_name, element_number, total_elements);
+					continue;
+				}
+				
 				try {
-					// Print element info before analysis starts
-					stdout.printf("\n[Analyzing: %s (%s)]\n", element.element_name, element.element_type);
-					stdout.flush();
-					
+					GLib.debug("Analyzing: %s (%s)", element.element_name, element.element_type);
 					yield this.analyze_element(element, tree);
 					
-					// Print newline after analysis completes
-					stdout.printf("\n");
-					stdout.flush();
+					// Emit signal after element is analyzed
+					this.element_analyzed(element.element_name, element_number, total_elements);
 					
 					if (element.description != null && element.description != "") {
 						success_count++;
@@ -210,15 +261,177 @@ namespace OLLMvector.Indexing
 					GLib.warning("Failed to analyze element %s (%s) in file %s: %s", 
 					             element.element_name, element.element_type, tree.file.path, e.message);
 					element.description = "";
+					// Emit signal even if analysis failed
+					this.element_analyzed(element.element_name, element_number, total_elements);
 					failure_count++;
 				}
 			}
+			
+			GLib.debug("Processing file %s - %d elements processed, %d succeeded, %d failed", 
+			           tree.file.path, total_elements, success_count, failure_count);
 			
 			GLib.debug("Complete for file %s: %d succeeded, %d failed", 
 			           tree.file.path, success_count, failure_count);
 			
 			// Sync database to file after processing this file
 			this.sql_db.backupDB();
+			
+			return tree;
+		}
+		
+		/**
+		 * Analyzes a file and generates a file-level summary.
+		 * 
+		 * Creates a VectorMetadata object for the file with element_type='file',
+		 * adds it to tree.elements so it gets processed like other elements.
+		 * 
+		 * @param tree The Tree object with analyzed elements
+		 * @return The same Tree object with file element added
+		 */
+		public async Tree analyze_file(Tree tree) throws GLib.Error
+		{
+			// Ensure file prompt template is loaded (cached after first load)
+			this.get_file_prompt_template();
+			
+			// Build elements summary (excluding enum members)
+			string[] elements_summary_parts = {};
+			foreach (var element in tree.elements) {
+				// Skip enum members (element_type == "enum")
+				if (element.element_type == "enum") {
+					continue;
+				}
+				
+				// Format: element_type: element_name - description
+				var element_line = "%s: %s".printf(element.element_type, element.element_name);
+				if (element.description != null && element.description != "" && element.description.strip() != "") {
+					element_line += " - %s".printf(element.description.strip());
+				}
+				elements_summary_parts += element_line;
+			}
+			
+			var elements_summary = string.joinv("\n", elements_summary_parts);
+			
+			// Get file basename and path
+			var file_basename = GLib.Path.get_basename(tree.file.path);
+			var file_path = tree.file.path;
+			
+			// Build user message from template
+			var user_message = this.cached_file_template.user_template.replace(
+				"{file_basename}",
+				file_basename != "" ? file_basename : "unknown"
+			).replace(
+				"{file_path}",
+				file_path != "" ? file_path : "unknown"
+			).replace(
+				"{elements_summary}",
+				elements_summary != "" ? elements_summary : "(no elements found)"
+			);
+			
+			// Call LLM to generate file description
+			GLib.debug("Analyzing file: %s", file_basename);
+			var file_description = "";
+			const int MAX_RETRIES = 2;
+			
+			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+				try {
+					// Get analysis connection using base class method
+					var analysis_conn = yield this.connection("analysis");
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+					
+					var chat = new OLLMchat.Call.Chat(
+							analysis_conn,
+							tool_config.analysis.model) {
+						stream = false,
+						options = tool_config.analysis.options
+					};
+					
+					// Build messages array
+					var messages = new Gee.ArrayList<OLLMchat.Message>();
+					
+					if (this.cached_file_template.system_message != "") {
+						messages.add(new OLLMchat.Message("system", this.cached_file_template.system_message));
+					}
+					
+					messages.add(new OLLMchat.Message("user", user_message));
+					
+					// Execute LLM call
+					OLLMchat.Response.Chat? response = null;
+					response = yield chat.send(messages, null);
+					
+					if (response == null || response.message == null || response.message.content == null) {
+						if (attempt < MAX_RETRIES) {
+							continue;
+						}
+						file_description = "";
+						break;
+					}
+					
+					// Process response (strip whitespace and remove markdown formatting)
+					file_description = response.message.content.strip();
+					
+					// Remove markdown code blocks if present
+					if (file_description.has_prefix("```")) {
+						var lines = file_description.split("\n");
+						if (lines.length > 2) {
+							file_description = string.joinv("\n", lines[1:lines.length-1]).strip();
+						}
+					}
+					
+					// If we got a valid description, break out of retry loop
+					if (file_description != null && file_description != "") {
+						GLib.debug("File analysis result: %s", file_description);
+						break;
+					}
+					
+					// Empty description - retry if we have attempts left
+					if (attempt < MAX_RETRIES) {
+						continue;
+					}
+					
+					// All retries exhausted, leave empty
+					file_description = "";
+					break;
+					
+				} catch (GLib.Error e) {
+					// Retry if we have attempts left
+					if (attempt < MAX_RETRIES) {
+						continue;
+					}
+					// All retries exhausted, log warning and continue with empty description
+					GLib.warning("Failed to analyze file %s: %s", tree.file.path, e.message);
+					file_description = "";
+					break;
+				}
+			}
+			
+			// Get file line count for end_line
+			var file_line_count = tree.file.get_line_count();
+			if (file_line_count <= 0) {
+				// Fallback: count lines from tree.lines if available
+				if (tree.lines != null && tree.lines.length > 0) {
+					file_line_count = tree.lines.length;
+				} else {
+					// Default to 1 if we can't determine
+					file_line_count = 1;
+				}
+			}
+			
+			// Create VectorMetadata object for the file
+			var file_metadata = new VectorMetadata() {
+				element_type = "file",
+				element_name = file_basename,
+				start_line = 1,
+				end_line = file_line_count,
+				description = file_description,
+				file_id = tree.file.id,
+				ast_path = ""  // Empty for file elements
+			};
+			
+			// Add file element to tree.elements so it gets processed like other elements
+			tree.elements.add(file_metadata);
+			
+			GLib.debug("File analysis complete for %s: description length %d", 
+			           tree.file.path, file_description.length);
 			
 			return tree;
 		}
@@ -309,7 +522,7 @@ namespace OLLMvector.Indexing
 					var chat = new OLLMchat.Call.Chat(
 							analysis_conn,
 							tool_config.analysis.model) {
-						stream = true,  // Enable streaming (Phase 2: migrate to real properties)
+						stream = false,
 						options = tool_config.analysis.options
 					};
 					
@@ -322,36 +535,9 @@ namespace OLLMvector.Indexing
 					
 					messages.add(new OLLMchat.Message("user", user_message));
 					
-					// Streaming is enabled on chat (set in constructor) so we can see progress
-					// The response will still have complete content when done=true
-					// We're requesting plain text format (format=null means text, not JSON)
-					
-					// Connect to stream_chunk signal to capture and print partial content (including thinking)
-					ulong stream_chunk_id = 0;
-					stream_chunk_id = chat.stream_chunk.connect((new_text, is_thinking, response) => {
-						// Print the partial content as it arrives (both thinking and regular content)
-						// Use stdout and flush immediately so output appears on command line in real-time
-						stdout.printf("%s", new_text);
-						stdout.flush();
-					});
-					
-					// Execute LLM call (streaming enabled, plain text response)
+					// Execute LLM call
 					OLLMchat.Response.Chat? response = null;
-					try {
-						response = yield chat.send(messages, null);
-					} finally {
-						// Disconnect signal handler
-						if (stream_chunk_id != 0) {
-							chat.disconnect(stream_chunk_id);
-						}
-					}
-					
-					// Wait for streaming to complete if needed
-					// (send() already waits, but response.done indicates completion)
-					if (response != null && !response.done) {
-						GLib.debug("Waiting for streaming response to complete...");
-						// In practice, send() should return with done=true, but just in case
-					}
+					response = yield chat.send(messages, null);
 					
 					if (response == null || response.message == null || response.message.content == null) {
 						if (attempt < MAX_RETRIES) {
@@ -375,6 +561,7 @@ namespace OLLMvector.Indexing
 					// Update element description (leave empty if still empty after processing)
 					if (description != null && description != "") {
 						element.description = description;
+						GLib.debug("Element analysis result: %s", description);
 						return;
 					}
 					

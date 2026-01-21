@@ -43,7 +43,7 @@ class TestFiles : TestAppBase
 	private static bool opt_edit_complete_file = false;
 	private static bool opt_overwrite = false;
 
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <action>
 
 Test tool for file operations using libocfiles.
@@ -64,26 +64,13 @@ Actions (specify one):
   --edit=PATH [--edit-complete-file] [--overwrite]
                                       Edit file (reads from stdin)
 
-Options:
-  --test-db=PATH                      Use test database instead of main database
-  --backend=BACKEND                   Buffer backend: sourceview or dummy (default: dummy)
-  --start-line=N                      Start line number for reading (1-based)
-  --end-line=M                        End line number for reading (1-based)
-  --output=FILE                       Output file path (default: stdout)
-  --content=TEXT                      Content to write to file
-  --content-file=FILE                 File containing content to write
-  --age-days=N                        Age threshold in days for backup cleanup (default: 7)
-  --max-buffers=N                     Maximum number of buffers to list
-  --edit-complete-file                Enable complete file mode (overwrite entire file)
-  --overwrite                         Allow overwriting existing files in complete_file mode
-
 Examples:
   {ARG} --read=/path/to/file.txt --start-line=10 --end-line=20
   {ARG} --write=/path/to/file.txt --content="new content" --test-db=/tmp/test.db
   {ARG} --create-fake=/tmp/fake.txt --test-db=/tmp/test.db
   {ARG} --check-project=/path/to/file.txt --test-db=/tmp/test.db
   {ARG} --create-project=/path/to/project --test-db=/tmp/test.db
-""";
+"""; }
 
 	public TestFiles()
 	{
@@ -122,20 +109,21 @@ Examples:
 		{ null }
 	};
 
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		// Only include debug and debug-critical from base_options, skip url/api-key/model since we don't need LLM connection
-		// debug + debug-critical + all local options (which includes null)
-		var options = new OptionEntry[2 + local_options.length];
-		options[0] = base_options[0];  // debug option
-		options[1] = base_options[1];  // debug-critical option
+		var opt_context = new OptionContext(this.get_app_name());
+		// Only include debug and debug-critical from base_options
+		var base_opts = new OptionEntry[3];
+		base_opts[0] = base_options[0];  // debug option
+		base_opts[1] = base_options[1];  // debug-critical option
+		base_opts[2] = { null };
+		opt_context.add_main_entries(base_opts, null);
 		
-		// Copy all local options (includes null terminator)
-		for (int j = 0; j < local_options.length; j++) {
-			options[2 + j] = local_options[j];
-		}
+		var app_group = new OptionGroup("oc-test-files", "Test Files Options", "Show Test Files options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
 		
-		return options;
+		return opt_context;
 	}
 
 	protected override string? validate_args(string[] args)

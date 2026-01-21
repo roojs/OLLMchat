@@ -58,7 +58,7 @@ namespace OLLMvector.Tool
 Search the codebase using semantic vector search to find code elements that match a query.
 
 This tool performs semantic search across indexed code elements in the active project.
-It can find classes, methods, functions, and other code elements based on their
+It can find files, classes, methods, functions, and other code elements based on their
 semantic meaning, not just exact text matches.
 
 IMPORTANT: This tool only searches source code files (e.g., .vala, .py, .js, .ts, .java, .cpp, etc.).
@@ -66,6 +66,7 @@ It does NOT search documentation files, markdown files (.md), HTML files, CSS fi
 For searching documentation, use a different tool.
 
 Use this tool when you need to:
+- Find files that contain specific functionality or topics
 - Find code that implements a specific functionality
 - Locate classes or methods by their purpose or behavior
 - Search for code patterns or design implementations
@@ -80,7 +81,7 @@ making it more effective than simple text search for finding relevant code.
 			return """
 @param query {string} [required] The search query text describing what code to find.
 @param language {string} [optional] Filter results by programming language (e.g., "vala", "python", "javascript").
-@param element_type {string} [optional] Filter results by element type. Supported types: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant". Note: "namespace" is not searchable as namespace declarations are not indexed.
+@param element_type {string} [optional] Filter results by element type. Supported types: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant", "file". Note: "namespace" is not searchable as namespace declarations are not indexed.
 @param max_results {integer} [optional] Maximum number of results to return (default: 10).
 """;
 		} }

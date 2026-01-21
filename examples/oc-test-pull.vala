@@ -28,6 +28,13 @@ class TestPullApp : TestAppBase
 		return "OLLMchat Test Pull Tool";
 	}
 	
+	protected override OptionContext app_options()
+	{
+		var opt_context = new OptionContext(this.get_app_name());
+		opt_context.add_main_entries(base_options, null);
+		return opt_context;
+	}
+	
 	protected override string? validate_args(string[] args)
 	{
 		if (opt_model == null || opt_model == "") {
@@ -35,11 +42,6 @@ class TestPullApp : TestAppBase
 
 Test tool for ollama pull with streaming enabled.
 
-Options:
-  -d, --debug          Enable debug output
-  --url=URL           Ollama server URL (required if config not found)
-  --api-key=KEY       API key (optional)
-  -m, --model=MODEL    Model name to pull (required)
 
 Examples:
   $(args[0]) --model llama2

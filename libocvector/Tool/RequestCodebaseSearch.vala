@@ -55,7 +55,8 @@ namespace OLLMvector.Tool
 			"field",
 			"delegate",
 			"signal",
-			"constant"
+			"constant",
+			"file"
 		};
 		
 		/**
@@ -332,8 +333,12 @@ namespace OLLMvector.Tool
 					metadata.end_line
 				);
 				
-				if (metadata.description != null && metadata.description != "") {
+				if (metadata.description != "") {
 					output.append_printf("Description: %s\n", metadata.description);
+				}
+				
+				if (metadata.ast_path != "") {
+					output.append_printf("ast-path: %s\n", metadata.ast_path);
 				}
 				
 				// Code citation block (citation format: startLine:endLine:filepath in language tag position)

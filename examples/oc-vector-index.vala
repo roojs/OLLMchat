@@ -20,53 +20,49 @@ class VectorIndexerApp : VectorAppBase
 {
 	protected static bool opt_recurse = false;
 	protected static bool opt_reset_database = false;
+	protected static bool opt_create_project = false;
 	protected static string? opt_embed_model = null;
 	protected static string? opt_analyze_model = null;
+	protected static string? opt_data_dir = null;
 	
 	private string db_path;
 	private string vector_db_path;
 	
-	protected const string help = """
+	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <file_or_folder_path>
 
 Index files or folders for vector search.
-
-Options:
-  -d, --debug          Enable debug output
-  -r, --recurse        Recurse into subfolders (only for folders)
-  --reset-database     Reset the vector database (delete vectors, metadata, and reset scan dates)
-  --url=URL           Ollama server URL (only used if config not found; ignored if config exists)
-  --api-key=KEY       API key (only used if config not found; ignored if config exists)
-  --embed-model=MODEL Embedding model name (overrides config; default: bge-m3)
-  --analyze-model=MODEL Analysis model name (overrides config; default: qwen3-coder:30b)
 
 Examples:
   {ARG} libocvector/Database.vala
   {ARG} --debug libocvector/Database.vala
   {ARG} libocvector/
   {ARG} --recurse libocvector/
+  {ARG} --create-project libocvector/
+  {ARG} --data-dir=/custom/path libocvector/
   {ARG} --reset-database
-""";
+"""; }
 	
 	protected const OptionEntry[] local_options = {
 		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
 		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
+		{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Create the folder as a project if it's not already one", null },
+		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
 		{ null }
 	};
 	
-	protected override OptionEntry[] get_options()
+	protected override OptionContext app_options()
 	{
-		var options = new OptionEntry[base_options.length + local_options.length];
-		int i = 0;
-		foreach (var opt in base_options) {
-			options[i++] = opt;
-		}
-		foreach (var opt in local_options) {
-			options[i++] = opt;
-		}
-		return options;
+		var opt_context = new OptionContext(this.get_app_name());
+		opt_context.add_main_entries(base_options, null);
+		
+		var app_group = new OptionGroup("oc-vector-index", "Code Vector Indexer Options", "Show Code Vector Indexer options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
+		
+		return opt_context;
 	}
 	
 	public VectorIndexerApp()
@@ -85,11 +81,21 @@ Examples:
 	
 	protected override string? validate_args(string[] args)
 	{
+		// Save data_dir value before reset (options are parsed before validate_args is called)
+		var saved_data_dir = opt_data_dir;
+		
 		// Reset static option variables at start of each command line invocation
 		opt_recurse = false;
 		opt_reset_database = false;
+		opt_create_project = false;
 		opt_embed_model = null;
 		opt_analyze_model = null;
+		opt_data_dir = null;
+		
+		// Override data_dir if --data-dir option provided
+		if (saved_data_dir != null && saved_data_dir != "") {
+			this.data_dir = saved_data_dir;
+		}
 		
 		// Build paths at start
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
@@ -178,6 +184,16 @@ Examples:
 		OLLMchat.Client embed_client;
 		OLLMchat.Client analysis_client;
 		
+		if (this.config.loaded) {
+			yield this.ensure_config();
+		} else {
+			// Ensure config exists before setting up tool config
+			yield this.ensure_config(opt_url, opt_api_key);
+		}
+		
+		// Ensure tool config exists
+		new OLLMvector.Tool.CodebaseSearchTool(null).setup_tool_config(this.config);
+		
 		// Inline tool config access
 		if (!this.config.tools.has_key("codebase_search")) {
 			GLib.error("Codebase search tool config not found");
@@ -185,7 +201,6 @@ Examples:
 		var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 		
 		if (this.config.loaded) {
-			yield this.ensure_config();
 			embed_client = yield this.tool_config_client("embed");
 			analysis_client = yield this.tool_config_client("analysis");
 		} else {
@@ -217,12 +232,28 @@ Examples:
 			manager
 		);
 		
+		string? current_file_path = null;
+		int current_file_num = 0;
+		int total_files = 0;
+		
 		indexer.progress.connect((current, total, file_path) => {
 			int percentage = (int)((current * 100.0) / total);
 			// Trim any trailing whitespace from file_path in case of database corruption
 			var clean_path = file_path.strip();
+			current_file_path = clean_path;
+			current_file_num = current;
+			total_files = total;
 			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, clean_path);
 			stdout.flush();
+		});
+		
+		indexer.element_scanned.connect((element_name, element_number, total_elements) => {
+			if (current_file_path != null) {
+				int percentage = (int)((current_file_num * 100.0) / total_files);
+				stdout.printf("\r%d/%d files %d%% done - %s - %s (%d/%d)", 
+					current_file_num, total_files, percentage, current_file_path, element_name, element_number, total_elements);
+				stdout.flush();
+			}
 		});
 		
 		stdout.printf("=== Indexing ===\n");
@@ -241,17 +272,47 @@ Examples:
 			filebase = results_list[0];
 		}
 		
-		// Error condition: filebase must exist in database
-		if (filebase == null) {
-			throw new GLib.IOError.FAILED("Failed to get or create filebase entry");
+		// Check error conditions first
+		if (filebase == null && !opt_create_project) {
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"Folder '%s' is not in the database. Use --create-project to create it as a project first.".printf(abs_path)
+			);
 		}
 		
-		// Error condition: only folders are supported for indexing
-		if (!(filebase is OLLMfiles.Folder)) {
+		if (filebase != null && !(filebase is OLLMfiles.Folder)) {
 			throw new GLib.IOError.INVALID_ARGUMENT("Only folders can be indexed, not files");
 		}
 		
-		var folder_obj = (OLLMfiles.Folder)filebase;
+		// Get or create folder object
+		var folder_obj = filebase == null ?  new OLLMfiles.Folder(manager) :
+				(OLLMfiles.Folder)filebase;
+		if (filebase == null) {
+			
+			folder_obj.path = abs_path;
+			folder_obj.display_name = GLib.Path.get_basename(abs_path);
+		} 
+		
+		// Check error condition: folder must be a project
+		if (!folder_obj.is_project && !opt_create_project) {
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"Folder '%s' is not a project. Use --create-project to create it as a project first.".printf(abs_path)
+			);
+		}
+		
+		// Create or convert to project if needed
+		if (!folder_obj.is_project) {
+			stdout.printf(filebase == null ? 
+				"Creating folder as project: %s\n" : "Converting folder to project: %s\n", 
+				abs_path);
+			
+			folder_obj.is_project = true;
+			folder_obj.display_name = GLib.Path.get_basename(abs_path);
+			folder_obj.saveToDB(sql_db, null, false);
+			
+			// Add to projects list
+			manager.projects.append(folder_obj);
+			stdout.printf("✓ Project created\n\n");
+		}
 		stdout.printf("Starting indexing process...\n" +
 		              "Indexing folder: %s (recurse=%s)\n",
 		              folder_obj.path, opt_recurse.to_string());

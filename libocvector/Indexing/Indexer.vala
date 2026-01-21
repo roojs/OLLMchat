@@ -68,6 +68,15 @@ namespace OLLMvector.Indexing
 		public signal void progress(int current, int total, string file_path);
 		
 		/**
+		 * Emitted when an element is scanned during indexing.
+		 * 
+		 * @param element_name Name of the element being scanned
+		 * @param element_number Current element number (1-based)
+		 * @param total_elements Total number of elements in the current file
+		 */
+		public signal void element_scanned(string element_name, int element_number, int total_elements);
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param config The Config2 instance containing tool configuration
@@ -156,7 +165,16 @@ namespace OLLMvector.Indexing
 			}
 			
 			var analysis = new Analysis(this.config, this.sql_db);
+			
+			// Connect to element_analyzed signal and forward as element_scanned
+			analysis.element_analyzed.connect((element_name, element_number, total_elements) => {
+				this.element_scanned(element_name, element_number, total_elements);
+			});
+			
 			tree = yield analysis.analyze_tree(tree);
+			
+			// Analyze file and create file-level summary
+			tree = yield analysis.analyze_file(tree);
 			
 			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
