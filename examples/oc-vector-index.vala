@@ -95,7 +95,6 @@ Examples:
 	{
 		// Save data_dir value before reset (options are parsed before validate_args is called)
 		var saved_data_dir = opt_data_dir;
-		var saved_create_project = opt_create_project;
 		
 		// Reset static option variables at start of each command line invocation
 		opt_recurse = false;
@@ -261,7 +260,7 @@ Examples:
 		}
 		
 		// Check error conditions first
-		if (filebase == null && !saved_create_project) {
+		if (filebase == null && !opt_create_project) {
 			throw new GLib.IOError.INVALID_ARGUMENT(
 				"Folder '%s' is not in the database. Use --create-project to create it as a project first.".printf(abs_path)
 			);
@@ -281,7 +280,7 @@ Examples:
 		} 
 		
 		// Check error condition: folder must be a project
-		if (!folder_obj.is_project && !saved_create_project) {
+		if (!folder_obj.is_project && !opt_create_project) {
 			throw new GLib.IOError.INVALID_ARGUMENT(
 				"Folder '%s' is not a project. Use --create-project to create it as a project first.".printf(abs_path)
 			);
@@ -289,11 +288,9 @@ Examples:
 		
 		// Create or convert to project if needed
 		if (!folder_obj.is_project) {
-			if (filebase == null) {
-				stdout.printf("Creating folder as project: %s\n", abs_path);
-			} else {
-				stdout.printf("Converting folder to project: %s\n", abs_path);
-			}
+			stdout.printf(filebase == null ? 
+				"Creating folder as project: %s\n" : "Converting folder to project: %s\n", 
+				abs_path);
 			
 			folder_obj.is_project = true;
 			folder_obj.display_name = GLib.Path.get_basename(abs_path);
