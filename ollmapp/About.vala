@@ -55,7 +55,25 @@ namespace OLLMapp
 					issue_url = "https://github.com/roojs/OLLMchat/issues",
 					license_type = Gtk.License.LGPL_3_0,
 					copyright = "Copyright © 2026 Alan Knowles",
-					comments = "A chat interface for local LLM servers with tools - designed for local LLM work"
+					default_width = 600,  // Set width ~30% wider than default
+					comments = """<b>OLLMchat</b> is a work-in-progress AI application for 
+interacting with LLMs (Large Language Models) such as Ollama and OpenAI, 
+featuring a full-featured chat interface with code assistant capabilities 
+including semantic codebase search.
+
+<b>Key Features:</b>
+• Full-featured chat interface for interacting with LLMs (Ollama/OpenAI)
+• Code assistant agent with semantic codebase search capabilities
+• Chat history management with session browser
+• Tool integration: ReadFile, EditMode, RunCommand, WebFetch, and 
+  CodebaseSearch
+• Project management and file tracking
+• Permission system for secure tool access
+• Support for multiple agent types (Just Ask, Code Assistant)
+• Settings dialog with model search and download from Ollama
+
+The application provides a comprehensive solution for local LLM work, 
+combining powerful AI capabilities with a modern GTK4 interface."""
 				};
 				
 				// Set transient for the active window
