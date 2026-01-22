@@ -2,7 +2,7 @@
 
 
 /*
- * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

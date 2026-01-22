@@ -1,5 +1,30 @@
 # Build ollmchat executable (primary application)
 
+# Extract git commit date for version (format: 0.YYYYMMDD)
+git = find_program('git', required: false)
+if git.found()
+	git_commit_date = run_command(
+		git, 'log', '-1', '--format=%cd', '--date=format:%Y%m%d',
+		check: false
+	).stdout().strip()
+	if git_commit_date == ''
+		git_commit_date = '0.00000000'
+	else
+		git_commit_date = '0.' + git_commit_date
+	endif
+else
+	git_commit_date = '0.00000000'
+endif
+
+# Generate version.vala file with version constant
+version_vala = configure_file(
+	input: 'version.vala.in',
+	output: 'version.vala',
+	configuration: {
+		'APP_VERSION': git_commit_date
+	}
+)
+
 # Build rpath for executable to find libraries in build directory
 # This allows running executable without installing libraries
 build_rpath = ':'.join([
@@ -43,7 +68,9 @@ ollmchat = executable('ollmchat',
       octools_vapi_dep
   ],
   sources: [
+    version_vala,
     'Application.vala',
+    'About.vala',
     'Window.vala',
     'WindowPane.vala',
     'FileChangeBanner.vala',

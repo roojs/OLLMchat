@@ -9,23 +9,14 @@
 #
 valadoc = find_program('valadoc', required: true)
 
+# Use fake version file for valadoc (internal constant, not documented)
+
 # Combined documentation for both base and UI libraries
 # Output to build directory instead of source directory to keep generated files out of repository
 # Valadoc creates a subdirectory with the package name (ollmchat) inside the specified directory
 # So we point it to build/valadoc and it creates build/valadoc/ollmchat/
+# Note: No need for valadoc_clean - meson automatically handles cleaning build directories
 valadoc_dir = meson.project_build_root() / 'valadoc'
-valadoc_clean = custom_target('valadoc-clean',
-  output: 'valadoc-clean',
-  command: [
-    find_program('sh'),
-    '-c',
-    '''if [ -d "@0@" ]; then
-      # Remove the directory completely (valadoc needs to recreate it)
-      rm -rf "@0@"
-    fi'''.format(valadoc_dir)
-  ],
-  build_by_default: false
-)
 
 # IMPORTANT: We list ALL source files explicitly instead of using --pkg for internal libraries.
 # This is because valadoc processes source files directly, and using --pkg with VAPI files
@@ -217,7 +208,10 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchatgtk/List/ModelUsageFactory.vala',
     '../libollmchatgtk/List/SortedList.vala',
     # ollmapp application sources
+    # Note: version_fake.vala must come first as it defines OLLMapp.APP_VERSION (internal, not documented)
+    'version_fake.vala',
     '../ollmapp/Application.vala',
+    '../ollmapp/About.vala',
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',
     '../ollmapp/FileChangeBanner.vala',
@@ -250,7 +244,6 @@ valadoc_docs = custom_target('valadoc',
     '../ollmapp/SettingsDialog/Rows/IntRow.vala',
   ),
   output: ['valadoc'],
-  depends: [valadoc_clean],
   command: [
     valadoc,
     '--package-name=ollmchat',

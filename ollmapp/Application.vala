@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -44,6 +44,9 @@ namespace OLLMapp
 				application_id: "org.roojs.ollmchat",
 				flags: GLib.ApplicationFlags.HANDLES_COMMAND_LINE
 			);
+			
+			// Set version property (GLib.Application.version)
+			this.version = OLLMapp.APP_VERSION;
 			
 			// Set up debug logging
 			GLib.Log.set_default_handler((dom, lvl, msg) => {

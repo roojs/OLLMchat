@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Alan Knowles <alan@roojs.com>
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -127,6 +127,10 @@ namespace OLLMapp
 				this.show_settings_dialog();
 			});
 			this.header_bar.pack_start(this.settings_button);
+			
+			// Create about button
+			var about_button = new About();
+			this.header_bar.pack_start(about_button);
 			
 			// Create tool error banner
 			this.tool_error_banner = new Adw.Banner("") {
