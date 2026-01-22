@@ -37,7 +37,9 @@ namespace OLLMtools.ReadFile
 			return """
 Read the contents of a file (and the outline).
 
-If you want to understand what is in a file, you are recommended to call summarize on it first. This will give you an overview of the file's structure and contents before reading specific sections.
+If you want to understand what is in a file, you are recommended to call summarize on it first. This will give you an overview of the file's structure and contents before reading specific sections. The summary shows the hierarchical structure of code elements (classes, methods, functions, etc.) with AST paths by default, making it easy to identify and reference specific elements.
+
+You can read specific code elements using AST paths (e.g., "Namespace-Class-Method") instead of line numbers. This is more reliable than line numbers, especially when code changes. AST paths work for files in the active project and automatically resolve to the correct line range.
 
 When using this tool to gather information, it's your responsibility to ensure you have the COMPLETE context. Each time you call this command you should:
 1) Assess if contents viewed are sufficient to proceed with the task.
@@ -53,12 +55,13 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] The path to the file to read.
-@param start_line {integer} [optional] The starting line number to read from.
-@param end_line {integer} [optional] The ending line number to read to.
+@param ast_path {string} [optional] AST path to locate code elements (e.g., "Namespace-Class-Method"). Alternative to start_line/end_line. Resolves to line range automatically. Only works for files in the active project.
+@param start_line {integer} [optional] The starting line number to read from. Ignored if ast_path is provided.
+@param end_line {integer} [optional] The ending line number to read to. Ignored if ast_path is provided.
 @param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.
 @param show_lines {boolean} [optional] If true, output content with line numbers prefixed to each line (e.g., "1: content", "2: content"). We recommend you do this if you are going to edit code, as it will make it easier to work out which lines to edit.
 @param find_words {string} [optional] Search for lines containing this string and return only matching lines with line numbers. Case-insensitive search.
-@param summarize {boolean} [optional] If true, generate a tree-sitter based summary of the file structure instead of reading the file contents.""";
+@param summarize {boolean} [optional] If true, generate a tree-sitter based summary of the file structure instead of reading the file contents. The summary shows the hierarchical structure (classes, methods, functions, etc.) with AST paths by default. If you want line numbers instead, use show_lines parameter.""";
 		} }
 		
 		/**

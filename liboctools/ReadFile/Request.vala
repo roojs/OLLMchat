@@ -27,10 +27,17 @@ namespace OLLMtools.ReadFile
 		public string file_path { get; set; default = ""; }
 		public int64 start_line { get; set; default = -1; }
 		public int64 end_line { get; set; default = -1; }
+		public string ast_path { get; set; default = ""; }
 		public bool read_entire_file { get; set; default = false; }
 		public bool show_lines { get; set; default = false; }
 		public string find_words { get; set; default = ""; }
 		public bool summarize { get; set; default = false; }
+		
+		// Internal: normalized file path (set once at start of interaction)
+		private string normalized_path = "";
+		
+		// Internal: File object (set once at start of execute_request)
+		private OLLMfiles.File? file = null;
 		
 		/**
 		 * Default constructor.
@@ -111,6 +118,37 @@ namespace OLLMtools.ReadFile
 		}
 		
 		/**
+		 * Resolve AST path to line range.
+		 * 
+		 * Only resolves AST paths for files in the active project.
+		 * Uses this.file (must be set before calling).
+		 * 
+		 * @return true if AST path was resolved successfully, false otherwise
+		 */
+		private async bool resolve_ast_path() throws GLib.Error
+		{
+			if (this.ast_path == "" || this.file == null) {
+				return false;
+			}
+			
+			var project_manager = ((Tool) this.tool).project_manager;
+			
+			// Get Tree instance and parse
+			var tree = project_manager.tree_factory(this.file);
+			yield tree.parse();
+			
+			// Lookup AST path
+			int start, end;
+			if (tree.lookup_path(this.ast_path, out start, out end)) {
+				this.start_line = start;
+				this.end_line = end;
+				return true;
+			}
+			
+			return false;
+		}
+		
+		/**
 		 * Find lines containing search words and return with line numbers.
 		 * 
 		 * @param content The full content string
@@ -143,52 +181,68 @@ namespace OLLMtools.ReadFile
 			return string.joinv("\n", matching_lines.to_array());
 		}
 		
+		/**
+		 * Build permission question for file read operation.
+		 * 
+		 * @return true if permission is required (file is outside project or project_manager is null),
+		 *         false if permission is not required (file is in project or invalid parameters)
+		 */
 		protected override bool build_perm_question()
 		{
 			// Validate required parameter
 			if (this.file_path == "") {
-				return false;
+				return false; // Invalid - no permission needed
 			}
 			
-			// Debug: Log input path and project manager state
+			// If project_manager is null, return false - no permission needed, execute_request() will fail with error
 			var project_manager = ((Tool) this.tool).project_manager;
+			if (project_manager == null) {
+				this.permission_question = "";
+				return false; // No permission needed - execute_request() will fail with proper error
+			}
+			
+			// Normalize file path once at the start
+			this.normalized_path = this.normalize_file_path(this.file_path);
+			
+			// Debug: Log input path
 			GLib.debug("ReadFile.build_perm_question: Input file_path='%s'", this.file_path);
 			
-			// Normalize file path
-			var normalized_path = this.normalize_file_path(this.file_path);
-			
 			// Debug: Log normalized path
-			GLib.debug("ReadFile.build_perm_question: Normalized path='%s' (was '%s')",
-				normalized_path,
+			GLib.debug("ReadFile.build_perm_question: Normalized patnh='%s' (was '%s')",
+				this.normalized_path,
 				this.file_path);
 			
-			if (normalized_path == null || normalized_path == "") {
-				return false;
+			if (this.normalized_path == null || this.normalized_path == "") {
+				return false; // Invalid - no permission needed
 			}
 			
-			// If path is under the project, don't ask for permission.
-			if (project_manager != null && project_manager.active_project != null) {
+			// If path is under the project, don't ask for permission
+			if (project_manager.active_project != null) {
 				var project_path = project_manager.active_project.path;
-				if ((normalized_path == project_path) || normalized_path.has_prefix(project_path + "/")) {
+				if ((this.normalized_path == project_path) || this.normalized_path.has_prefix(project_path + "/")) {
 					this.permission_question = "";
-					return false;
+					return false; // File in project - no permission needed
 				}
 			}
 			
 			// Set up permission properties for non-project files
-			this.permission_target_path = normalized_path;
+			this.permission_target_path = this.normalized_path;
 			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
+			// Return true - permission required for files outside project
 			
 			// Build permission question based on parameters
 			string question;
 			if (this.summarize) {
-				question = "Summarize file '" + normalized_path + "'?";
+				question = "Summarize file '" + this.normalized_path + "'?";
 			} else if (this.read_entire_file) {
-				question = "Read entire file '" + normalized_path + "'?";
+				question = "Read entire file '" + this.normalized_path + "'?";
+			} else if (this.ast_path != "") {
+				// Show AST path in permission question (line numbers resolved later in execute_request)
+				question = "Read file '" + this.normalized_path + "' (ast-path: " + this.ast_path + ")?";
 			} else if (this.start_line > 0 && this.end_line > 0) {
-				question = "Read file '" + normalized_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
+				question = "Read file '" + this.normalized_path + "' (lines " + this.start_line.to_string() + "-" + this.end_line.to_string() + ")?";
 			} else {
-				question = "Read file '" + normalized_path + "'?";
+				question = "Read file '" + this.normalized_path + "'?";
 			}
 			this.permission_question = question;
 			
@@ -198,13 +252,45 @@ namespace OLLMtools.ReadFile
 		
 		protected override async string execute_request() throws Error
 		{
-			// Normalize file path
-			var file_path = this.normalize_file_path(this.file_path);
+			// Use normalized_path from build_perm_question() (called first)
+			
+			// Get ProjectManager
+			var project_manager = ((Tool) this.tool).project_manager;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
+			
+			// Try to get File from active project (needed for AST path resolution)
+			this.file = project_manager.get_file_from_active_project(this.normalized_path);
+			
+			// Resolve AST path if provided (only works for project files)
+			if (this.ast_path != "") {
+				if (this.file == null) {
+					var error_msg = "AST path resolution requires file to be in active project: " + this.ast_path;
+					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					throw new GLib.IOError.NOT_FOUND(error_msg);
+				}
+				if (!yield this.resolve_ast_path()) {
+					var error_msg = "AST path not found: " + this.ast_path;
+					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					throw new GLib.IOError.NOT_FOUND(error_msg);
+				}
+			}
+			
+			// Create fake file if needed (only after AST path check, since AST doesn't work on fake files)
+			if (this.file == null) {
+				this.file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
 			
 			// Build standardized file read request message and send to UI (before any validation)
 			// Use original file_path if normalized is empty, otherwise use normalized
-			var display_path = (file_path != null && file_path != "") ? file_path : this.file_path;
+			var display_path = (this.normalized_path != null && this.normalized_path != "") ? this.normalized_path : this.file_path;
 			var request_message = "File: " + display_path + "\n";
+			
+			// Add AST path if specified
+			if (this.ast_path != "") {
+				request_message += "AST path: " + this.ast_path + "\n";
+			}
 			
 			// Add lines if specified
 			if (!this.read_entire_file && this.start_line > 0 && this.end_line > 0) {
@@ -233,7 +319,7 @@ namespace OLLMtools.ReadFile
 			this.send_ui("txt", "File Read Requested", request_message);
 			
 			// Validate that file_path was provided
-			if (file_path == null || file_path == "") {
+			if (this.normalized_path == null || this.normalized_path == "") {
 				string error_msg;
 				if (this.file_path == null || this.file_path == "") {
 					error_msg = "File path parameter is required but was not provided or is empty";
@@ -245,8 +331,8 @@ namespace OLLMtools.ReadFile
 			}
 			
 			// Validate that file exists
-			if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
-				var error_msg = "File not found or is not a regular file: " + file_path;
+			if (!GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR)) {
+				var error_msg = "File not found or is not a regular file: " + this.normalized_path;
 				this.send_ui("txt", "Read file Response", "Error: " + error_msg);
 				throw new GLib.IOError.FAILED(error_msg);
 			}
@@ -269,25 +355,11 @@ namespace OLLMtools.ReadFile
 				}
 			}
 			
-			// Get or create File object from path
-			var project_manager = ((Tool) this.tool).project_manager;
-			if (project_manager == null) {
-				throw new GLib.IOError.FAILED("ProjectManager is not available");
-			}
-			
-			
-			// First, try to get from active project
-			var file = project_manager.get_file_from_active_project(file_path);
-			
-			
-			if (file == null) {
-				file = new OLLMfiles.File.new_fake(project_manager, file_path);
-			}
 			
 			// Handle summarize option
 			if (this.summarize) {
-				// Create Summarize instance
-				var summarizer = new Summarize(file);
+				// Create Summarize instance (pass show_lines to control output format)
+				var summarizer = new Summarize(this.file, this.show_lines);
 				
 				// Generate summary
 				var summary = yield summarizer.summarize();
@@ -301,15 +373,15 @@ namespace OLLMtools.ReadFile
 			}
 			
 			// Ensure buffer exists (create if needed)
-			file.manager.buffer_provider.create_buffer(file);
+			this.file.manager.buffer_provider.create_buffer(this.file);
 			
 			// Ensure buffer is loaded
-			if (!file.buffer.is_loaded) {
-				yield file.buffer.read_async();
+			if (!this.file.buffer.is_loaded) {
+				yield this.file.buffer.read_async();
 			}
 
 			// Get full content (default to entire file)
-			var  full_content = file.buffer.get_text();
+			var  full_content = this.file.buffer.get_text();
 			var content_start_line = 1; // Track starting line number for line number formatting
 			
 			// Read line range if specified and not reading entire file
@@ -318,7 +390,7 @@ namespace OLLMtools.ReadFile
 				// Original: 1-based, inclusive start, exclusive end
 				// Buffer: 0-based, inclusive start and end
 				// Conversion: start_line_0 = start_line - 1, end_line_0 = end_line - 2
-				full_content = file.buffer.get_text(
+				full_content = this.file.buffer.get_text(
 					(int)(this.start_line - 1),
 					(int)(this.end_line - 2)
 				);
@@ -348,11 +420,17 @@ namespace OLLMtools.ReadFile
 			
 			// Send first 10 lines to UI
 			var preview_content = this.get_first_lines(full_content, 10);
-			var file_basename = GLib.Path.get_basename(file.path);
+			var file_basename = GLib.Path.get_basename(this.file.path);
 			
 			// Build line range suffix if specified
 			string line_range_suffix = "";
-			if (!this.read_entire_file && this.start_line > 0 && this.end_line > 0) {
+			if (this.ast_path != "") {
+				line_range_suffix = " (ast-path: " + this.ast_path;
+				if (this.start_line > 0 && this.end_line > 0) {
+					line_range_suffix += ", lines %lld-%lld".printf(this.start_line, this.end_line);
+				}
+				line_range_suffix += ")";
+			} else if (!this.read_entire_file && this.start_line > 0 && this.end_line > 0) {
 				line_range_suffix = " (lines %lld-%lld)".printf(this.start_line, this.end_line);
 			}
 			

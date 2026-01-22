@@ -29,7 +29,7 @@ namespace OLLMtools.ReadFile
 		/**
 		 * Markdown output buffer.
 		 */
-		private GLib.StringBuilder output = new GLib.StringBuilder();
+		private string output = "";
 		
 		/**
 		 * Current indentation level (number of spaces).
@@ -42,13 +42,20 @@ namespace OLLMtools.ReadFile
 		private const int INDENT_STEP = 3;
 		
 		/**
+		 * Whether to show line numbers instead of AST paths.
+		 */
+		private bool show_lines = false;
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param file The OLLMfiles.File to parse
+		 * @param show_lines If true, show line numbers instead of AST paths
 		 */
-		public Summarize(OLLMfiles.File file)
+		public Summarize(OLLMfiles.File file, bool show_lines = false)
 		{
 			base(file);
+			this.show_lines = show_lines;
 		}
 		
 		/**
@@ -85,8 +92,7 @@ namespace OLLMtools.ReadFile
 			// GLib.debug("ReadFileSummarize: Tree parsed successfully");
 			
 			// Initialize output
-			this.output = new GLib.StringBuilder();
-			this.output.append("# File Summary\n\n");
+			this.output = "# File Summary\n\n";
 			
 			// Traverse AST and extract elements
 			var root_node = tree.get_root_node();
@@ -96,7 +102,7 @@ namespace OLLMtools.ReadFile
 			// GLib.debug("ReadFileSummarize: Root node named child count: %u", TreeSitter.node_get_named_child_count(root_node));
 			this.traverse_ast(root_node, code_content, null, null, null, null);
 			
-			return this.output.str;
+			return this.output;
 		}
 		
 		
@@ -287,7 +293,7 @@ namespace OLLMtools.ReadFile
 						}
 						
 						// Output markdown line with indentation
-						this.output_indented_line(element_type, cached_element_name, start_line, output_end_line);
+						this.output_indented_line(node, code_content, element_type, cached_element_name, start_line, output_end_line);
 						
 						// Increase indent for children (for code elements, not markdown headings)
 						if (!element_type.has_prefix("heading")) {
@@ -330,24 +336,36 @@ namespace OLLMtools.ReadFile
 		/**
 		 * Output an indented markdown line for an element.
 		 * 
+		 * @param node AST node for this element (used to generate AST path)
+		 * @param code_content Source code content (used to generate AST path)
 		 * @param type Element type (e.g., "class", "method")
 		 * @param name Element name
 		 * @param start_line Starting line number (1-indexed)
 		 * @param end_line Ending line number (1-indexed)
 		 */
-		private void output_indented_line(string type, string name, int start_line, int end_line)
+		private void output_indented_line(TreeSitter.Node node, string code_content, string type, string name, int start_line, int end_line)
 		{
 			// Generate indentation
 			var indent = string.nfill(this.indent_level * INDENT_STEP, ' ');
 			
-			// Build the entire line in one operation
-			string line = indent + "* " + type + " " + name + " lines " + start_line.to_string();
-			if (end_line != start_line) {
-				line = line + "-" + end_line.to_string();
+			// Build the line - use AST path by default, or line numbers if show_lines is true
+			if (this.show_lines) {
+				// Show line numbers
+				this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
+					(end_line != start_line ? "-" + end_line.to_string() : "") + "\n";
+				return;
 			}
-			line = line + "\n";
 			
-			this.output.append(line);
+			// Show AST path (default)
+			var ast_path_str = this.ast_path(node, code_content);
+			if (ast_path_str != null && ast_path_str != "") {
+				this.output += indent + "* " + type + " " + name + " ast-path: " + ast_path_str + "\n";
+				return;
+			}
+			
+			// Fallback to line numbers if AST path not available
+			this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
+				(end_line != start_line ? "-" + end_line.to_string() : "") + "\n";
 		}
 	}
 }

@@ -39,6 +39,8 @@ class TestFiles : TestAppBase
 	private static string? opt_info = null;
 	private static string? opt_ls_path = null;
 	private static string? opt_summarize = null;
+	private static string? opt_ast_path = null;
+	private static bool opt_show_lines = false;
 	private static string? opt_edit = null;
 	private static bool opt_edit_complete_file = false;
 	private static bool opt_overwrite = false;
@@ -50,8 +52,8 @@ Test tool for file operations using libocfiles.
 
 Actions (specify one):
   --ls [--ls-path=PATH]              List files in directory
-  --read=PATH [--start-line=N] [--end-line=M] [--output=FILE]
-                                      Read file with optional line ranges
+  --read=PATH [--start-line=N] [--end-line=M] [--ast-path=PATH] [--output=FILE]
+                                      Read file with optional line ranges or AST path
   --write=PATH [--content=TEXT] [--content-file=FILE]
                                       Write file with backups
   --create-fake=PATH                  Create fake file (not in database)
@@ -60,7 +62,8 @@ Actions (specify one):
   --list-buffers [--max-buffers=N]    List current file buffers
   --create-project=PATH               Create test project from directory
   --info=PATH                         Show file information
-  --summarize=PATH                    Show file structure summary (tree-sitter based)
+  --summarize=PATH [--show-lines]    Show file structure summary (tree-sitter based)
+                                      Use --show-lines to show line numbers instead of AST paths
   --edit=PATH [--edit-complete-file] [--overwrite]
                                       Edit file (reads from stdin)
 
@@ -103,6 +106,8 @@ Examples:
 		{ "create-project", 0, 0, OptionArg.STRING, ref opt_create_project, "Create test project", "PATH" },
 		{ "info", 0, 0, OptionArg.STRING, ref opt_info, "Show file information", "PATH" },
 		{ "summarize", 0, 0, OptionArg.STRING, ref opt_summarize, "Show file structure summary", "PATH" },
+		{ "ast-path", 0, 0, OptionArg.STRING, ref opt_ast_path, "AST path for reading specific element (e.g., 'Namespace-Class-Method')", "PATH" },
+		{ "show-lines", 0, 0, OptionArg.NONE, ref opt_show_lines, "Show line numbers instead of AST paths in summarize", null },
 		{ "edit", 0, 0, OptionArg.STRING, ref opt_edit, "Edit file (reads from stdin)", "PATH" },
 		{ "edit-complete-file", 0, 0, OptionArg.NONE, ref opt_edit_complete_file, "Enable complete file mode", null },
 		{ "overwrite", 0, 0, OptionArg.NONE, ref opt_overwrite, "Allow overwriting existing files", null },
@@ -292,6 +297,9 @@ Examples:
 	{
 		string file_path = opt_read;
 		
+		// Normalize ast_path (null -> empty string)
+		opt_ast_path = opt_ast_path == null ? "" : opt_ast_path;
+		
 		// Get or create file
 		OLLMfiles.File? file = null;
 		
@@ -303,6 +311,26 @@ Examples:
 		// If not in project, create fake file
 		if (file == null) {
 			file = new OLLMfiles.File.new_fake(manager, file_path);
+		}
+		
+		// Resolve AST path if provided (before reading)
+		if (opt_ast_path != "") {
+			if (file.id < 0) {
+				stderr.printf("AST path resolution requires file to be in active project\n");
+				return;
+			}
+			
+			var tree = manager.tree_factory(file);
+			yield tree.parse();
+			
+			int start, end;
+			if (!tree.lookup_path(opt_ast_path, out start, out end)) {
+				stderr.printf("AST path not found: %s\n", opt_ast_path);
+				return;
+			}
+			
+			opt_start_line = start;
+			opt_end_line = end;
 		}
 		
 		// Ensure buffer is created
@@ -600,13 +628,13 @@ BACKUP_PATH: (tracked_in_file_history)
 			file = new OLLMfiles.File.new_fake(manager, file_path);
 		}
 		
-		// Create Summarize instance
-		var summarizer = new OLLMtools.ReadFile.Summarize(file);
+		// Create Summarize instance (pass show_lines option)
+		var summarizer = new OLLMtools.ReadFile.Summarize(file, opt_show_lines);
 		
 		// Generate summary
 		var summary = yield summarizer.summarize();
 		
-		// Output summary
+		// Output full summary
 		print(summary);
 	}
 
