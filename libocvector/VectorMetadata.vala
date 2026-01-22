@@ -296,6 +296,48 @@ namespace OLLMvector
 		}
 		
 		/**
+		 * Lookup AST path across multiple files (for codebase search).
+		 * 
+		 * Searches for metadata entries matching the given AST path within the specified files.
+		 * Tries exact match first, then falls back to suffix matching (finds paths that end with the search path).
+		 * 
+		 * @param db The database instance
+		 * @param file_ids Array of file IDs to search within (empty array searches all files)
+		 * @param ast_path AST path to search for (e.g., "Namespace-Class-Method")
+		 * @return List of VectorMetadata objects matching the AST path, ordered by exact matches first
+		 */
+		public static Gee.ArrayList<VectorMetadata> lookup_path(
+			SQ.Database db,
+			int64[] file_ids,
+			string ast_path
+		)
+		{
+			var results = new Gee.ArrayList<VectorMetadata>();
+			
+			// Build file_id list for IN clause
+			string[] file_id_strings = {};
+			foreach (var file_id in file_ids) {
+				file_id_strings += file_id.to_string();
+			}
+			
+			// Escape ast_path for SQL (replace single quotes with two single quotes)
+			var escaped_path = ast_path.replace("'", "''");
+			
+			// Use SQ.Query API to execute query and populate objects
+			var query = VectorMetadata.query(db);
+			var stmt = query.selectPrepare(
+				"SELECT * FROM vector_metadata " +
+				"WHERE " +
+				(file_ids.length > 0 ? "file_id IN (" + string.joinv(",", file_id_strings) + ") AND " : "") +
+				"(ast_path = '" + escaped_path + "' OR ast_path LIKE '%" + escaped_path + "%') " +
+				"ORDER BY CASE WHEN (ast_path = '" + escaped_path + "') THEN 1 ELSE 0 END DESC"
+			);
+			query.selectExecute(stmt, results);
+			
+			return results;
+		}
+		
+		/**
 		 * Get all vector_ids from the metadata table.
 		 * 
 		 * @param db The database instance

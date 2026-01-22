@@ -49,6 +49,15 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Cache of Tree instances for AST path lookup.
+		 * Maps file path to Tree instance.
+		 */
+		public Gee.HashMap<string,Tree> tree_cache {
+			get; private set;
+			default = new Gee.HashMap<string,Tree>(); 
+		}
+		
+		/**
 		 * List of all projects (folders where is_project = true).
 		 */
 		public ProjectList projects { get; private set;
@@ -521,6 +530,28 @@ namespace OLLMfiles
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to reload file from disk %s: %s", this.active_file.path, e.message);
 			}
+		}
+		
+		/**
+		 * Get or create a Tree instance for the given file.
+		 * 
+		 * Returns cached Tree instance if available, otherwise creates a new one
+		 * and adds it to the cache.
+		 * 
+		 * @param file The file to get/create Tree for
+		 * @return Tree instance for the file
+		 */
+		public Tree tree_factory(File file)
+		{
+			// Check cache first
+			if (this.tree_cache.has_key(file.path)) {
+				return this.tree_cache.get(file.path);
+			}
+			
+			// Create new Tree instance and cache it
+			var tree = new Tree(file);
+			this.tree_cache.set(file.path, tree);
+			return tree;
 		}
 		
 	}

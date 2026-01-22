@@ -84,7 +84,11 @@ namespace OLLMvector.Indexing
 		 * @param node Current AST node
 		 * @param code_content Source code content for text extraction
 		 */
-		private void traverse_ast(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? current_namespace = null, string? parent_class_name = null)
+		private void traverse_ast(TreeSitter.Node node, 
+			string code_content,
+			string? parent_enum_name = null, 
+			string? current_namespace = null, 
+			string? parent_class_name = null)
 		{
 			if (TreeSitter.node_is_null(node)) {
 				return;
@@ -94,47 +98,14 @@ namespace OLLMvector.Indexing
 			var node_type_lower = (node_type ?? "").down();
 			
 			// Track parent enum name for enum_value nodes
-			string? current_parent_enum = parent_enum_name;
-			if (node_type_lower == "enum_declaration" || node_type_lower == "enum") {
-				// Extract the enum name to use as parent for enum values
-				var enum_name = this.element_name(node, code_content);
-				if (enum_name != null && enum_name != "") {
-					current_parent_enum = enum_name;
-				}
-			}
+			var current_parent_enum = this.update_parent_enum_from_node(node_type_lower, node, code_content, parent_enum_name);
 			
 			// Track namespace for all elements
-			string? updated_namespace = current_namespace;
-			if (node_type_lower == "namespace_declaration") {
-				// Extract the namespace name
-				var namespace_name = this.element_name(node, code_content);
-				if (namespace_name != null && namespace_name != "") {
-					// Build full namespace path (e.g., "OLLMvector.Indexing")
-					if (current_namespace != null && current_namespace != "") {
-						updated_namespace = "%s.%s".printf(current_namespace, namespace_name);
-					} else {
-						updated_namespace = namespace_name;
-					}
-				}
-			}
+			var updated_namespace = this.update_namespace_from_node(node_type_lower, node, code_content, current_namespace);
 			
 			// Track parent class/struct/interface hierarchy for methods, properties, fields, etc.
 			// Build hierarchical path for nested classes (e.g., "OuterClass-InnerClass")
-			var updated_parent_class = parent_class_name;
-			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
-			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
-			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
-				// Extract the class/struct/interface name to use as parent
-				var class_name = this.element_name(node, code_content);
-				if (class_name != null && class_name != "") {
-					// Build hierarchical path for nested classes
-					if (parent_class_name != null && parent_class_name != "") {
-						updated_parent_class = "%s-%s".printf(parent_class_name, class_name);
-					} else {
-						updated_parent_class = class_name;
-					}
-				}
-			}
+			var updated_parent_class = this.update_parent_class_from_node(node_type_lower, node, code_content, parent_class_name);
 			
 			// Extract element metadata if this node represents a code element
 			var metadata = this.extract_element_metadata(node, code_content, current_parent_enum, updated_namespace, updated_parent_class);

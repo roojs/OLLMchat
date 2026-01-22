@@ -19,684 +19,196 @@
 namespace OLLMfiles
 {
 	/**
-	 * Base class for tree-sitter AST parsing.
+	 * Tree-sitter AST path lookup class.
 	 * 
-	 * Provides common functionality for parsing source code files using tree-sitter,
-	 * including language loading, element name/type extraction, and file content management.
+	 * Provides fast lookup of AST paths to line numbers by parsing the file
+	 * and building hash maps of path -> line number mappings.
 	 */
-	public abstract class TreeBase : Object
+	public class Tree : TreeBase
 	{
 		/**
-		 * The file being parsed.
+		 * Hash map of AST path to start line number.
 		 */
-		public File file { get; protected set; }
+		private Gee.HashMap<string, int> ast_start = new Gee.HashMap<string, int>();
 		
 		/**
-		 * File content split into lines (0-indexed array).
+		 * Hash map of AST path to end line number.
 		 */
-		public string[] lines { get; protected set; }
+		private Gee.HashMap<string, int> ast_end = new Gee.HashMap<string, int>();
 		
-		protected TreeSitter.Parser parser = new TreeSitter.Parser();
-		protected TreeSitter.Language? language;
-		protected unowned GLib.Module? loaded_module;  // Keep module loaded to prevent language object from becoming invalid
-		
-		[CCode (has_target = false)]
-		private delegate unowned TreeSitter.Language TreeSitterLanguageFunc();
+		/**
+		 * Timestamp of when the file was last parsed (Unix timestamp).
+		 * Used to determine if re-parsing is needed.
+		 */
+		public int64 last_parsed { get; private set; default = 0; }
 		
 		/**
 		 * Constructor.
 		 * 
 		 * @param file The OLLMfiles.File to parse
 		 */
-		protected TreeBase(File file)
+		public Tree(File file)
 		{
-			this.file = file;
+			base(file);
 		}
 		
 		/**
-		 * Check if language is supported by tree-sitter (or should be skipped).
+		 * Parse file and build AST path maps.
 		 * 
-		 * @param lang_name Language name (normalized to lowercase)
-		 * @return true if language should be skipped (not a code file), false if we should try to load it
+		 * Compares file modification time with last_parsed. If they match, this is a NOOP.
+		 * Otherwise, clears the hashmaps and rebuilds them by traversing the AST.
+		 * 
+		 * @throws Error if parsing fails
 		 */
-		protected bool is_unsupported_language(string lang_name)
+		public async void parse() throws GLib.Error
 		{
-			// Handle empty/null language as unsupported
-			if (lang_name == null || lang_name == "") {
-				return true;
+			// Get current file modification time
+			var file_mtime = this.file.mtime_on_disk();
+			
+			// If file hasn't changed since last parse, skip parsing
+			if (file_mtime > 0 && file_mtime == this.last_parsed) {
+				GLib.debug("Tree.parse: File unchanged (mtime=%lld), skipping parse", file_mtime);
+				return;
 			}
 			
-			var lang_lower = lang_name.down();
-			switch (lang_lower) {
-				case "html":
-				case "htm":
-				case "xhtml":
-				case "css":
-				case "txt":
-				case "text":
-				case "plaintext":
-					return true;
-				default:
-					return false;
-			}
-		}
-		
-		/**
-		 * Load file content and split into lines.
-		 * 
-		 * @throws Error if file cannot be read
-		 * @return File content as string
-		 */
-		protected async string load_file_content() throws GLib.Error
-		{
-			// Load file content lazily (only when needed for parsing)
-			// Use buffer.read_async() to read from disk since buffer may not be loaded
-			this.file.manager.buffer_provider.create_buffer(this.file);
-			var code_content = yield this.file.buffer.read_async();
-			if (code_content == null || code_content == "") {
-				throw new GLib.IOError.NOT_FOUND("File is empty or cannot be read: " + this.file.path);
-			}
+			// Clear existing maps
+			this.ast_start.clear();
+			this.ast_end.clear();
 			
-			// Split into lines
-			this.lines = code_content.split("\n");
-			
-			return code_content;
-		}
-		
-		/**
-		 * Initialize tree-sitter parser with language for the file.
-		 * 
-		 * @throws Error if language cannot be loaded or set
-		 */
-		protected async void init_parser() throws GLib.Error
-		{
 			// Check if this is a non-code file that we should skip
 			if (this.is_unsupported_language(this.file.language ?? "")) {
+				GLib.debug("Tree.parse: Skipping non-code file: %s (language: %s)", 
+					this.file.path, this.file.language ?? "empty");
+				this.last_parsed = file_mtime;
 				return;
 			}
 			
-			// Load tree-sitter language dynamically using GModule
-			this.language = this.load_tree_sitter_language();
-			if (this.language == null) {
-				return;
-			}
+			// Load file content using base class method
+			var code_content = yield this.load_file_content();
 			
-			// Set language on parser
-			if (!this.parser.set_language(this.language)) {
-				throw new GLib.IOError.FAILED("Failed to set tree-sitter language for file: " + this.file.path);
-			}
-		}
-		
-		/**
-		 * Parse file content using tree-sitter.
-		 * 
-		 * @param code_content Source code content to parse
-		 * @return Tree-sitter Tree object, or null if parsing fails
-		 */
-		protected TreeSitter.Tree? parse_content(string code_content)
-		{
+			// Initialize parser using base class method
+			yield this.init_parser();
 			if (this.language == null) {
-				return null;
+				GLib.warning("Tree.parse: Failed to load tree-sitter language for: %s (language: %s)", 
+					this.file.path, this.file.language);
+				this.last_parsed = file_mtime;
+				return;
 			}
 			
 			// Parse source code using tree-sitter
-			return this.parser.parse_string(null, code_content, (uint32)code_content.length);
+			var tree = this.parse_content(code_content);
+			if (tree == null) {
+				throw new GLib.IOError.FAILED("Failed to parse file: " + this.file.path);
+			}
+			
+			// Traverse AST and build path maps
+			var root_node = tree.get_root_node();
+			this.traverse_ast_build_maps(root_node, code_content, null, null, null);
+			
+			// Update last_parsed timestamp
+			this.last_parsed = file_mtime;
+			
+			GLib.debug("Tree.parse: Built %d AST path mappings for %s", 
+				this.ast_start.size, this.file.path);
 		}
 		
 		/**
-		 * Load tree-sitter language dynamically from shared library using GModule.
+		 * Recursively traverse AST and build path -> line number maps.
 		 * 
-		 * @return TreeSitter.Language object, or null if loading fails
-		 */
-		protected TreeSitter.Language? load_tree_sitter_language()
-		{
-			// Get language from file
-			var file_lang = this.file.language;
-			if (file_lang == null || file_lang == "") {
-				// GLib.debug("TreeBase.load_tree_sitter_language: No language detected for file: %s", this.file.path);
-				return null;
-			}
-			
-			// GLib.debug("TreeBase.load_tree_sitter_language: Detected language '%s' for file: %s", file_lang, this.file.path);
-			
-			// Normalize language name
-			var lang_name = file_lang.down();
-			
-			// Map language names to tree-sitter library/function names using switch/case
-			// Most languages use the name as-is (default case)
-			// Note: GtkSource.LanguageManager returns "js" but tree-sitter uses "javascript"
-			// We map these differences here
-			switch (lang_name) {
-				case "c++":
-				case "cxx":
-					lang_name = "cpp";
-					break;
-				case "csharp":
-					lang_name = "c_sharp";
-					break;
-				case "sh":
-					lang_name = "bash";  // tree-sitter uses "bash" not "sh"
-					break;
-				case "js":
-					lang_name = "javascript";  // GtkSource returns "js" but tree-sitter uses "javascript"
-					break;
-				default:
-					break;
-			}
-			
-			// Normalize for function/library names (replace hyphens with underscores)
-			var normalized_lang = lang_name.replace("-", "_");
-			
-			// Build library names: try multiple naming conventions
-			// 1. tree_sitter_parser_{lang}.so (standardized naming - preferred)
-			// 2. parser_{lang}.so (legacy naming)
-			// 3. parser_tree-sitter-{lang}.so (legacy Debian tree-sitter packages)
-			// 4. libtree-sitter-{lang}.so (standard upstream naming)
-			var lib_name = "tree_sitter_parser_" + lang_name + ".so";
-			var legacy_lib_name = "parser_" + lang_name + ".so";
-			var debian_lib_name = "parser_tree-sitter-" + lang_name + ".so";
-			var alt_lib_name = "libtree-sitter-" + lang_name + ".so";
-			
-			// Build function name: tree_sitter_{lang}
-			var func_name = "tree_sitter_" + normalized_lang;
-			
-			// Try all library naming conventions (preferred first)
-			// GLib.Module.open() will search system library paths automatically
-			string[] lib_names = { lib_name, legacy_lib_name, debian_lib_name, alt_lib_name };
-			
-			foreach (var current_lib_name in lib_names) {
-				// Load the parser library using GModule (searches system library paths)
-				var module = GLib.Module.open(current_lib_name, GLib.ModuleFlags.LAZY | GLib.ModuleFlags.LOCAL);
-				if (module == null) {
-					// GLib.debug("TreeBase.load_tree_sitter_language: Failed to open module %s: %s", current_lib_name, GLib.Module.error());
-					continue;
-				}
-				// GLib.debug("TreeBase.load_tree_sitter_language: Opened library: %s", current_lib_name);
-				
-				// Get the function symbol
-				void* func_ptr;
-				if (!module.symbol(func_name, out func_ptr)) {
-					// GLib.debug("Function '%s' not found in %s: %s", func_name, current_lib_name, GLib.Module.error());
-					module.close();
-					continue;
-				}
-				// GLib.debug("Found function '%s' in %s", func_name, current_lib_name);
-				
-				// Cast function pointer to Language* ()(void) - tree-sitter language functions take no args
-				// The function signature is: const TSLanguage* tree_sitter_{lang}(void)
-				TreeSitterLanguageFunc lang_func = (TreeSitterLanguageFunc)func_ptr;
-				unowned TreeSitter.Language? language = lang_func();
-				
-				if (language != null) {
-					// Keep the module loaded - make it resident so it won't be unloaded
-					// The language object depends on symbols from the module
-					module.make_resident();
-					this.loaded_module = module;
-					return language;
-				}
-				
-				module.close();
-			}
-			
-			// GLib.debug("Tree-sitter language library not found for: %s (searched for %s)", 
-			// 	this.file.language, lib_name);
-			return null;
-		}
-		
-		/**
-		 * Build AST path from a TreeSitter node by traversing up the AST tree.
+		 * Similar to OLLMvector.Indexing.Tree.traverse_ast() but only builds
+		 * the path maps without creating VectorMetadata objects.
 		 * 
-		 * Creates a hierarchical path representing the element's location in the AST by
-		 * walking up the parent chain to find namespace and class declarations.
-		 * Format: namespace-class-method or namespace-outerclass-innerclass-method etc. (using '-' separator).
-		 * 
-		 * @param node TreeSitter node for the element
+		 * @param node Current AST node
 		 * @param code_content Source code content for text extraction
-		 * @return AST path string (e.g., "OLLMvector.Indexing-OuterClass-InnerClass-methodName")
+		 * @param parent_enum_name Parent enum name (for enum_value nodes)
+		 * @param current_namespace Current namespace string
+		 * @param parent_class_name Parent class/struct/interface name
 		 */
-		public string ast_path(TreeSitter.Node node, string code_content)
+		private void traverse_ast_build_maps(
+			TreeSitter.Node node, 
+			string code_content,
+			string? parent_enum_name = null, 
+			string? current_namespace = null, 
+			string? parent_class_name = null)
 		{
 			if (TreeSitter.node_is_null(node)) {
-				GLib.debug("ast_path: node is null");
-				return "";
+				return;
 			}
 			
-			// Get element name from the node itself
-			var elem_name = this.element_name(node, code_content);
-			if (elem_name == null || elem_name == "") {
-				GLib.debug("ast_path: element_name is null or empty for node type: %s", TreeSitter.node_get_type(node) ?? "null");
-				return "";
-			}
-			GLib.debug("ast_path: starting with element_name: %s", elem_name);
-			
-			// Traverse up the AST to collect namespace and class hierarchy
-			// We traverse from inner to outer, so we'll reverse the arrays at the end
-			string[] namespace_parts = {};
-			string[] class_parts = {};
-			
-			var current = TreeSitter.node_get_parent(node);
-			while (!TreeSitter.node_is_null(current)) {
-				unowned string? node_type = TreeSitter.node_get_type(current);
-				if (node_type == null) {
-					current = TreeSitter.node_get_parent(current);
-					continue;
-				}
-				
-				var node_type_lower = node_type.down();
-				
-				// Check for namespace declarations
-				if (node_type_lower == "namespace_declaration" || node_type_lower == "namespace") {
-					var namespace_name = this.element_name(current, code_content);
-					if (namespace_name != null && namespace_name != "") {
-						// Prepend to build full namespace path (outer namespaces first)
-						string[] new_parts = { namespace_name };
-						new_parts += string.joinv(".", namespace_parts);
-						namespace_parts = string.joinv(".", new_parts).split(".");
-					}
-				}
-				
-				// Check for class/struct/interface declarations
-				if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
-				    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
-				    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
-					var class_name = this.element_name(current, code_content);
-					if (class_name != null && class_name != "") {
-						// Prepend to build nested class hierarchy (outer classes first)
-						string[] new_parts = { class_name };
-						new_parts += string.joinv("-", class_parts);
-						class_parts = string.joinv("-", new_parts).split("-");
-					}
-				}
-				
-				current = TreeSitter.node_get_parent(current);
-			}
-			
-			// Build the final path
-			string[] ast_path_parts = {};
-			
-			// Add namespace (join with '.' for namespace parts)
-			if (namespace_parts.length > 0) {
-				var namespace_str = string.joinv(".", namespace_parts);
-				// Trim trailing '.' from namespace
-				var regex_trailing_dot = new GLib.Regex("\\.+$");
-				namespace_str = regex_trailing_dot.replace(namespace_str, -1, 0, "");
-				if (namespace_str != "") {
-					ast_path_parts += namespace_str;
-				}
-			}
-			
-			// Add class hierarchy (join with '-' for class parts)
-			if (class_parts.length > 0) {
-				ast_path_parts += string.joinv("-", class_parts);
-			}
-			
-			// Add element name
-			ast_path_parts += elem_name;
-			
-			var result = string.joinv("-", ast_path_parts);
-			// Replace '--' with '-' (can occur if namespace or class parts are empty)
-			var regex_double_dash = new GLib.Regex("--+");
-			result = regex_double_dash.replace(result, -1, 0, "-");
-			GLib.debug("ast_path: result = '%s' (namespace_parts.length=%d, class_parts.length=%d, elem_name='%s')", 
-				result, namespace_parts.length, class_parts.length, elem_name);
-			return result;
-		}
-		
-		/**
-		 * Extract string from lines array using Vala string range syntax.
-		 * 
-		 * @param start_line Starting line number (1-indexed, or -1 for invalid/no content)
-		 * @param end_line Ending line number (1-indexed, exclusive, or -1 for invalid/no content)
-		 * @param max_lines Maximum number of lines to return (0 or negative = no truncation)
-		 * @return Code snippet or documentation text (empty string if invalid range, truncated if max_lines > 0)
-		 */
-		public string lines_to_string(int start_line, int end_line, int max_lines = 0)
-		{
-			// Handle invalid/negative line numbers (e.g., -1 indicates no documentation)
-			if (start_line <= 0 || end_line <= 0 || start_line > end_line) {
-				return "";
-			}
-			
-			// Convert 1-indexed line numbers to 0-based array indices
-			var start_idx = (start_line - 1).clamp(0, this.lines.length - 1);
-			var end_idx = end_line.clamp(0, this.lines.length);
-			
-			if (start_idx >= end_idx) {
-				return "";
-			}
-			
-			// Use Vala array slicing: lines[start_idx:end_idx]
-			var slice = this.lines[start_idx:end_idx];
-			var result = string.joinv("\n", slice);
-			
-			// Apply truncation if max_lines is specified and positive
-			if (max_lines > 0 && slice.length > max_lines) {
-				var truncated_slice = this.lines[start_idx:start_idx + max_lines];
-				var truncated = string.joinv("\n", truncated_slice);
-				var total_lines = end_line - start_line + 1;
-				return truncated + "\n\n// ... (code truncated: showing first " + max_lines.to_string() + " of " + total_lines.to_string() + " lines) ...";
-			}
-			
-			return result;
-		}
-		
-		/**
-		 * Get element name from AST node.
-		 * 
-		 * Handles various edge cases including markdown headings, block continuations,
-		 * and different field names used by tree-sitter grammars.
-		 * 
-		 * @param node AST node
-		 * @param code_content Source code content for text extraction
-		 * @return Element name, or null if not found
-		 */
-		protected string? element_name(TreeSitter.Node node, string code_content)
-		{
 			unowned string? node_type = TreeSitter.node_get_type(node);
 			var node_type_lower = (node_type ?? "").down();
 			
-			// Special handling for block_continuation that might be part of a heading
-			// When headings appear after list items, they're parsed as: block_continuation + '#' + '#' + '#' + text
-			// The '#' nodes are siblings, not children, so we need to check the raw line content
-			if (node_type_lower == "block_continuation") {
-				var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
-				var start_byte = (int)TreeSitter.node_get_start_byte(node);
+			// Track parent enum name for enum_value nodes
+			var current_parent_enum = this.update_parent_enum_from_node(node_type_lower, node, code_content, parent_enum_name);
+			
+			// Track namespace for all elements
+			var updated_namespace = this.update_namespace_from_node(node_type_lower, node, code_content, current_namespace);
+			
+			// Track parent class/struct/interface hierarchy for methods, properties, fields, etc.
+			var updated_parent_class = this.update_parent_class_from_node(node_type_lower, node, code_content, parent_class_name);
+			
+			// Only process named nodes (skip anonymous nodes)
+			if (TreeSitter.node_is_named(node) && this.language != null) {
+				// Get element type to determine if this is a code element we care about
+				var element_type = this.get_element_type(node, this.language);
 				
-				// Get the full line content by finding newlines around this position
-				// Find the start of the line (search backwards for newline)
-				var search_start = (start_byte - 500).clamp(0, start_byte);
-				var search_range = code_content.substring(search_start, start_byte - search_start);
-				var before_pos = search_range.last_index_of("\n");
-				var line_start_idx = (before_pos >= 0) ? search_start + before_pos + 1 : search_start;
-				
-				// Find the end of the line (search forwards for newline)
-				var search_end = (start_byte + 500).clamp(start_byte, (int)code_content.length);
-				var after_pos = code_content.index_of("\n", start_byte);
-				var line_end_idx = (after_pos >= 0 && after_pos <= search_end) ? after_pos : search_end;
-				
-				if (line_end_idx > line_start_idx) {
-					var line_text = code_content.substring(line_start_idx, line_end_idx - line_start_idx);
-					// GLib.debug("TreeBase.element_name: block_continuation at line %d, checking line text: '%s'", start_line, line_text);
-					
-					// Check if line starts with 1-6 '#' characters followed by optional whitespace
-					MatchInfo match_info;
-					if (/^#{1,6}\s*(.+)$/.match(line_text, 0, out match_info)) {
-						var name = match_info.fetch(1).strip();
-						if (name != null && name != "") {
-							// GLib.debug("TreeBase.element_name: Extracted heading name '%s' from block_continuation at line %d", name, start_line);
-							return name;
-						}
+				// Process if it's a recognized element type and not a namespace
+				if (element_type != "" && element_type != "namespace") {
+					// Build AST path for this element
+					var ast_path = this.ast_path(node, code_content);
+					if (ast_path != null && ast_path != "") {
+						// Get line numbers
+						var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
+						var end_line = (int)TreeSitter.node_get_end_point(node).row + 1;
+						
+						// Store in maps (overwrite if duplicate path exists)
+						this.ast_start.set(ast_path, start_line);
+						this.ast_end.set(ast_path, end_line);
 					}
 				}
 			}
 			
-			// Special handling for markdown headings: extract heading text directly
-			if (node_type_lower.has_prefix("heading") || node_type_lower.has_prefix("atx_heading")) {
-				// For markdown headings, the text is typically in a "heading_content" field or as direct children
-				var heading_content_node = TreeSitter.node_get_child_by_field_name(node, "heading_content", 14);
-				if (!TreeSitter.node_is_null(heading_content_node)) {
-					var start_byte = TreeSitter.node_get_start_byte(heading_content_node);
-					var end_byte = TreeSitter.node_get_end_byte(heading_content_node);
-					if (end_byte > start_byte) {
-						var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte)).strip();
-						if (name != null && name != "") {
-							return name;
-						}
-					}
-				}
-				// Fallback: extract text from the node itself (excluding the # markers)
-				var start_byte = TreeSitter.node_get_start_byte(node);
-				var end_byte = TreeSitter.node_get_end_byte(node);
-				if (end_byte > start_byte) {
-					var raw_text = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
-					// Remove leading # and whitespace
-					var name = raw_text.replace("#", "").strip();
-					if (name != null && name != "") {
-						return name;
-					}
-				}
-			}
-			
-			// Strategy 1: Try to get name from field (most reliable)
-			// Try common field names that tree-sitter grammars use
-			string[] field_names = { "name", "identifier", "type", "property_name", "method_name" };
-			foreach (var field_name in field_names) {
-				var name_node = TreeSitter.node_get_child_by_field_name(node, field_name, (uint32)field_name.length);
-				if (TreeSitter.node_is_null(name_node)) {
-					continue;
-				}
-				
-				var start_byte = TreeSitter.node_get_start_byte(name_node);
-				var end_byte = TreeSitter.node_get_end_byte(name_node);
-				if (end_byte <= start_byte) {
-					continue;
-				}
-				
-				var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
-				if (name != null && name != "") {
-					return name;
-				}
-			}
-			
-			// Strategy 2: Look for identifier/name nodes in direct children
-			var child_count = TreeSitter.node_get_child_count(node);
+			// Recursively traverse children, passing down the parent enum name, namespace, and parent class
+			uint child_count = TreeSitter.node_get_child_count(node);
 			for (uint i = 0; i < child_count; i++) {
 				var child = TreeSitter.node_get_child(node, i);
-				if (!TreeSitter.node_is_named(child)) {
-					continue;
-				}
-				
-				unowned string? child_type = TreeSitter.node_get_type(child);
-				if (child_type == null) {
-					continue;
-				}
-				
-				var type_lower = child_type.down();
-				
-				// Check for identifier nodes (common across languages)
-				// Also check for Vala-specific types: symbol, unqualified_type
-				if (type_lower == "identifier" || 
-				    type_lower == "type_identifier" ||
-				    type_lower == "property_identifier" ||
-				    type_lower == "method_identifier" ||
-				    type_lower == "symbol" ||  // Vala uses "symbol" for names
-				    type_lower == "unqualified_type" ||  // Vala uses this for type names
-				    type_lower.contains("name") ||
-				    type_lower.contains("identifier")) {
-					var start_byte = TreeSitter.node_get_start_byte(child);
-					var end_byte = TreeSitter.node_get_end_byte(child);
-					if (end_byte > start_byte) {
-						var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
-						if (name != null && name != "") {
-							return name;
-						}
-					}
-				}
+				this.traverse_ast_build_maps(child, code_content, current_parent_enum, updated_namespace, updated_parent_class);
 			}
-			
-			// Strategy 3: Look in named children only (deeper search)
-			var named_child_count = TreeSitter.node_get_named_child_count(node);
-			for (uint i = 0; i < named_child_count; i++) {
-				var child = TreeSitter.node_get_named_child(node, i);
-				unowned string? child_type = TreeSitter.node_get_type(child);
-				if (child_type == null) {
-					continue;
-				}
-				
-				var type_lower = child_type.down();
-				// Check for identifier nodes and Vala-specific types
-				if (type_lower == "identifier" || 
-				    type_lower == "type_identifier" ||
-				    type_lower == "symbol" ||  // Vala uses "symbol" for names
-				    type_lower == "unqualified_type" ||  // Vala uses this for type names
-				    type_lower.contains("name")) {
-					var start_byte = TreeSitter.node_get_start_byte(child);
-					var end_byte = TreeSitter.node_get_end_byte(child);
-					if (end_byte > start_byte) {
-						var name = code_content.substring((int)start_byte, (int)(end_byte - start_byte));
-						if (name != null && name != "") {
-							return name;
-						}
-					}
-				}
-			}
-			
-			return null;
 		}
 		
 		/**
-		 * Determine element type from tree-sitter node type.
+		 * Lookup AST path and return line range.
 		 * 
-		 * @param node AST node
-		 * @param lang Tree-sitter language
-		 * @return Element type string (e.g., "class", "method", "function"), or empty string if not a code element
+		 * First tries exact match. If not found, iterates through all paths
+		 * and returns the first match using suffix string matching.
+		 * 
+		 * @param ast_path AST path to lookup (e.g., "Namespace-Class-Method")
+		 * @param start_line Output parameter for starting line number (1-indexed, -1 if not found)
+		 * @param end_line Output parameter for ending line number (1-indexed, -1 if not found)
+		 * @return true if found, false if not found
 		 */
-		protected string get_element_type(TreeSitter.Node node, TreeSitter.Language lang)
+		public bool lookup_path(string ast_path, out int start_line, out int end_line)
 		{
-			unowned string? node_type = TreeSitter.node_get_type(node);
-			if (node_type == null) {
-				return "";
+			// Try exact match first
+			if (this.ast_start.has_key(ast_path)) {
+				start_line = this.ast_start.get(ast_path);
+				end_line = this.ast_end.get(ast_path);
+				return true;
 			}
 			
-			var type_lower = node_type.down();
-			
-			// Debug: log heading-related nodes
-			// if (type_lower.has_prefix("heading") || type_lower.has_prefix("atx")) {
-			// 	GLib.debug("TreeBase.get_element_type: Checking node_type='%s' (lower='%s')", node_type, type_lower);
-			// }
-			
-			// Special handling for block_continuation that might contain a heading
-			// Sometimes headings inside lists are parsed as block_continuation nodes
-			// The '#' characters might be siblings, not children, so check the node's text content
-			if (type_lower == "block_continuation") {
-				var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
-				var start_byte = TreeSitter.node_get_start_byte(node);
-				var end_byte = TreeSitter.node_get_end_byte(node);
-				
-				// Check if the node's text content starts with '#' characters
-				if (end_byte > start_byte) {
-					// We need code_content to check, but we don't have it here
-					// Instead, check if parent has children that are '#' nodes
-					// For now, check child count - if 0, the content might be in the node itself
-					var child_count = TreeSitter.node_get_child_count(node);
-					// GLib.debug("TreeBase.get_element_type: Checking block_continuation at line %d with %u children, bytes %u-%u", 
-					// 	start_line, child_count, start_byte, end_byte);
-					
-					// If no children, the heading text might be in sibling nodes
-					// We'll handle this in element_name by checking the raw text
-					// For now, if it's at a line that looks like it could be a heading, return a generic heading
-					// The actual level will be determined when we extract the name
-					if (child_count == 0) {
-						// This might be a heading - we'll verify in element_name
-						// Return a placeholder that element_name can use
-						// GLib.debug("TreeBase.get_element_type: block_continuation at line %d has no children, might be heading", start_line);
-						// Don't return here - let it fall through and check in element_name
-					}
+			// Try suffix matching - find first path that ends with the search path
+			foreach (var path in this.ast_start.keys) {
+				if (path.has_suffix(ast_path)) {
+					start_line = this.ast_start.get(path);
+					end_line = this.ast_end.get(path);
+					return true;
 				}
 			}
 			
-			// Special handling for generic atx_heading: determine level from children
-			if (type_lower == "atx_heading") {
-				// Look for atx_h1_marker, atx_h2_marker, etc. in children
-				var child_count = TreeSitter.node_get_child_count(node);
-				for (uint i = 0; i < child_count; i++) {
-					var child = TreeSitter.node_get_child(node, i);
-					unowned string? child_type = TreeSitter.node_get_type(child);
-					if (child_type == null) {
-						continue;
-					}
-					var child_type_lower = child_type.down();
-					if (child_type_lower.has_prefix("atx_h") && child_type_lower.has_suffix("_marker")) {
-						// Extract number: atx_h1_marker -> 1, atx_h2_marker -> 2, etc.
-						var heading_num = int.parse(child_type_lower.replace("atx_h", "").replace("_marker", ""));
-						if (heading_num > 0 && heading_num <= 6) {
-							// GLib.debug("TreeBase.get_element_type: Detected %s from %s", "heading" + heading_num.to_string(), child_type);
-							return "heading" + heading_num.to_string();
-						}
-					}
-				}
-				// Fallback: if we can't determine level, return generic heading
-				// GLib.debug("TreeBase.get_element_type: Could not determine heading level for atx_heading");
-				return "heading";
-			}
-			
-			// Check exact matches first
-			if (element_type_map.has_key(type_lower)) {
-				// if (element_type_map.get(type_lower).has_prefix("heading")) {
-				// 	GLib.debug("TreeBase.get_element_type: Found exact match: '%s' -> '%s'", type_lower, element_type_map.get(type_lower));
-				// }
-				return element_type_map.get(type_lower);
-			}
-			
-			// Check contains patterns using foreach loop
-			foreach (var entry in element_type_map.entries) {
-				if (type_lower.contains(entry.key)) {
-					// Special case: function should not match if it contains "method"
-					if (entry.key == "function" && type_lower.contains("method")) {
-						continue;
-					}
-					// if (entry.value.has_prefix("heading")) {
-					// 	GLib.debug("TreeBase.get_element_type: Found contains match: '%s' contains '%s' -> '%s'", 
-					// 		type_lower, entry.key, entry.value);
-					// }
-					return entry.value;
-				}
-			}
-			
-			// Not a recognized code element type
-			// if (type_lower.has_prefix("heading") || type_lower.has_prefix("atx")) {
-			// 	GLib.debug("TreeBase.get_element_type: No match found for '%s'", type_lower);
-			// }
-			return "";
-		}
-		
-		/**
-		 * Static map of node type patterns to element types.
-		 * Maps tree-sitter node type patterns to our element type strings.
-		 */
-		protected static Gee.HashMap<string, string> element_type_map;
-		
-		static construct
-		{
-			element_type_map = new Gee.HashMap<string, string>();
-			element_type_map.set("class", "class");
-			element_type_map.set("class_declaration", "class");
-			element_type_map.set("struct", "struct");
-			element_type_map.set("struct_declaration", "struct");
-			element_type_map.set("interface", "interface");
-			element_type_map.set("interface_declaration", "interface");
-			element_type_map.set("enum", "enum_type");
-			element_type_map.set("enum_declaration", "enum_type");
-			element_type_map.set("enum_value", "enum");
-			// Only map namespace_declaration, not namespace (which might be a member)
-			element_type_map.set("namespace_declaration", "namespace");
-			element_type_map.set("function", "function");
-			element_type_map.set("method", "method");
-			element_type_map.set("method_declaration", "method");
-			element_type_map.set("method_definition", "method");
-			element_type_map.set("constructor", "constructor");
-			element_type_map.set("property", "property");
-			element_type_map.set("property_declaration", "property");
-			element_type_map.set("field", "field");
-			element_type_map.set("field_declaration", "field");
-			element_type_map.set("delegate", "delegate");
-			element_type_map.set("signal", "signal");
-			element_type_map.set("constant", "constant");
-			element_type_map.set("constant_declaration", "constant");
-			// For markdown files
-			element_type_map.set("heading1", "heading1");
-			element_type_map.set("heading2", "heading2");
-			element_type_map.set("heading3", "heading3");
-			element_type_map.set("heading4", "heading4");
-			element_type_map.set("heading5", "heading5");
-			element_type_map.set("heading6", "heading6");
-			element_type_map.set("atx_heading1", "heading1");
-			element_type_map.set("atx_heading2", "heading2");
-			element_type_map.set("atx_heading3", "heading3");
-			element_type_map.set("atx_heading4", "heading4");
-			element_type_map.set("atx_heading5", "heading5");
-			element_type_map.set("atx_heading6", "heading6");
+			// Not found - set to -1 to indicate failure
+			start_line = -1;
+			end_line = -1;
+			return false;
 		}
 	}
 }
-

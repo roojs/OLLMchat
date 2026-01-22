@@ -176,37 +176,13 @@ namespace OLLMtools.ReadFile
 			// }
 			
 			// Track parent enum name for enum_value nodes
-			string? current_parent_enum = parent_enum_name;
-			if (node_type_lower == "enum_declaration" || node_type_lower == "enum") {
-				var enum_name = this.element_name(node, code_content);
-				if (enum_name != null && enum_name != "") {
-					current_parent_enum = enum_name;
-				}
-			}
+			var current_parent_enum = this.update_parent_enum_from_node(node_type_lower, node, code_content, parent_enum_name);
 			
 			// Track namespace for all elements
-			string? updated_namespace = current_namespace;
-			if (node_type_lower == "namespace_declaration") {
-				var namespace_name = this.element_name(node, code_content);
-				if (namespace_name != null && namespace_name != "") {
-					if (current_namespace != null && current_namespace != "") {
-						updated_namespace = "%s.%s".printf(current_namespace, namespace_name);
-					} else {
-						updated_namespace = namespace_name;
-					}
-				}
-			}
+			var updated_namespace = this.update_namespace_from_node(node_type_lower, node, code_content, current_namespace);
 			
 			// Track parent class/struct/interface for methods, properties, fields, etc.
-			string? updated_parent_class = parent_class_name;
-			if (node_type_lower == "class_declaration" || node_type_lower == "class" ||
-			    node_type_lower == "struct_declaration" || node_type_lower == "struct" ||
-			    node_type_lower == "interface_declaration" || node_type_lower == "interface") {
-				var class_name = this.element_name(node, code_content);
-				if (class_name != null && class_name != "") {
-					updated_parent_class = class_name;
-				}
-			}
+			var updated_parent_class = this.update_parent_class_from_node(node_type_lower, node, code_content, parent_class_name);
 			
 			// Extract and output element if this node represents a code element
 			var element_type = this.get_element_type(node, this.language);
