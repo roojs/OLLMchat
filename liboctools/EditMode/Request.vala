@@ -72,6 +72,9 @@ Don't forget to close it.
 		// Normalized path (set during permission building)
 		private string normalized_path = "";
 		
+		// Internal: File object (set once at start of execute_request)
+		private OLLMfiles.File? file = null;
+		
 		// Streaming state tracking
 		private string current_line = "";
 		private bool in_code_block = false;
@@ -164,9 +167,23 @@ Don't forget to close it.
 				throw new GLib.IOError.INVALID_ARGUMENT("file_path parameter is required");
 			}
 			
-			// Get project manager and file status for UI message
+			// Get ProjectManager
 			var project_manager = ((Tool) this.tool).project_manager;
-			var is_in_project = project_manager?.get_file_from_active_project(this.normalized_path) != null;
+			if (project_manager == null) {
+				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			}
+			
+			// Try to get File from active project (needed for AST path resolution)
+			this.file = project_manager.get_file_from_active_project(this.normalized_path);
+			
+			// Create fake file if needed (only after AST path check, since AST doesn't work on fake files)
+			// Note: AST path resolution will be done later when code blocks are processed
+			if (this.file == null) {
+				this.file = new OLLMfiles.File.new_fake(project_manager, this.normalized_path);
+			}
+			
+			// Get file status for UI message
+			var is_in_project = (this.file.id > 0);
 			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
 			// Build UI message - just the request info and permission status
@@ -369,6 +386,48 @@ Don't forget to close it.
 			if (this.in_code_block) {
 				this.current_block += text;
 			}
+		}
+		
+		/**
+		 * Resolve AST path to line range.
+		 * 
+		 * Only resolves AST paths for files in the active project.
+		 * Uses this.file (must be set before calling).
+		 * 
+		 * @param ast_path The AST path to resolve (e.g., "Namespace-Class-Method")
+		 * @param start_line Output parameter for the start line (1-based)
+		 * @param end_line Output parameter for the end line (1-based, exclusive)
+		 * @return true if AST path was resolved successfully, false otherwise
+		 */
+		private async bool resolve_ast_path(string ast_path, out int start_line, out int end_line) throws GLib.Error
+		{
+			start_line = -1;
+			end_line = -1;
+			
+			if (ast_path == "" || this.file == null) {
+				return false;
+			}
+			
+			var project_manager = ((Tool) this.tool).project_manager;
+			
+			// AST path resolution only works for files in active project
+			if (this.file.id <= 0) {
+				return false;
+			}
+			
+			// Get Tree instance and parse
+			var tree = project_manager.tree_factory(this.file);
+			yield tree.parse();
+			
+			// Lookup AST path
+			int start, end;
+			if (tree.lookup_path(ast_path, out start, out end)) {
+				start_line = start;
+				end_line = end;
+				return true;
+			}
+			
+			return false;
 		}
 		
 		/**
