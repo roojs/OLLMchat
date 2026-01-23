@@ -82,6 +82,10 @@ Don't forget to close it.
 		private int current_start_line = -1;
 		private int current_end_line = -1;
 		
+		// AST path resolution state
+		private string pending_ast_path = "";
+		private bool resolving_ast_path = false;
+		
 		// Captured changes
 		private Gee.ArrayList<OLLMfiles.FileChange> changes = new Gee.ArrayList<OLLMfiles.FileChange>();
 		
@@ -433,10 +437,13 @@ Don't forget to close it.
 		/**
 		 * Tries to parse a code block opener.
 		 * Language tag format: ```type:startline:endline (e.g., ```vala:10:15) when complete_file=false
+		 * Language tag format: ```type:ast-path:Namespace-Class-Method (e.g., ```vala:ast-path:OLLMchat-Client-chat) when complete_file=false
 		 * Language tag format: ```type (e.g., ```vala) when complete_file=true
 		 * 
+		 * AST path format takes precedence over line numbers if both are provided.
+		 * 
 		 * @param line The line that starts with ```
-		 * @return true if successfully parsed and entered code block, false otherwise
+		 * @return true if successfully parsed and entered code block (or AST path resolution started), false otherwise
 		 */
 		private bool try_parse_code_block_opener(string stripped_line)
 		{
@@ -456,6 +463,44 @@ Don't forget to close it.
 			}
 			
 			var parts = tag.split(":");
+			if (parts.length < 2) {
+				return false;
+			}
+			
+			// Check for AST path format: type:ast-path:Namespace-Class-Method
+			// Look for "ast-path" in the parts
+			int ast_path_index = -1;
+			for (int i = 0; i < parts.length; i++) {
+				if (parts[i] == "ast-path") {
+					ast_path_index = i;
+					break;
+				}
+			}
+			
+			// If AST path is found, extract it and resolve
+			if (ast_path_index >= 0 && ast_path_index < parts.length - 1) {
+				// Extract AST path (everything after "ast-path:")
+				var ast_path_parts = parts[ast_path_index + 1:parts.length];
+				var ast_path = string.joinv("-", ast_path_parts);
+				
+				GLib.debug("Detected AST path in code block opener: '%s'", ast_path);
+				
+				// Enter code block immediately with placeholder line numbers
+				// They will be updated when AST path resolution completes
+				this.enter_code_block(-1, -1);
+				
+				// Store AST path for async resolution
+				this.pending_ast_path = ast_path;
+				this.resolving_ast_path = true;
+				
+				// Resolve AST path asynchronously and update line numbers
+				this.resolve_ast_path_and_update_lines.begin(ast_path);
+				
+				// Return true to indicate we successfully entered code block
+				return true;
+			}
+			
+			// Fall back to line number format: type:startline:endline
 			if (parts.length < 3) {
 				return false;
 			}
@@ -475,6 +520,49 @@ Don't forget to close it.
 			
 			this.enter_code_block(start_line, end_line);
 			return true;
+		}
+		
+		/**
+		 * Resolves AST path to line range and updates current code block line numbers.
+		 * Called asynchronously when AST path is detected in code block opener.
+		 * Code block is already entered with placeholder line numbers (-1, -1).
+		 * 
+		 * @param ast_path The AST path to resolve
+		 */
+		private async void resolve_ast_path_and_update_lines(string ast_path)
+		{
+			// Set default/cleanup values at start (failure state)
+			this.pending_ast_path = "";
+			this.resolving_ast_path = false;
+			this.current_start_line = -2;
+			this.current_end_line = -2;
+			
+			var start_line = -1;
+			var end_line = -1;
+			var resolved = false;
+			var error_msg = "";
+			
+			try {
+				resolved = yield this.resolve_ast_path(ast_path, out start_line, out end_line);
+			} catch (GLib.Error e) {
+				error_msg = "Error resolving AST path '" + ast_path + "': " + e.message;
+			}
+			
+			if (resolved) {
+				GLib.debug("AST path resolved successfully: '%s' -> lines %d-%d", 
+					ast_path, start_line, end_line);
+				// Only set success values when resolution succeeds
+				this.current_start_line = start_line;
+				this.current_end_line = end_line;
+			} else {
+				// Error case: either exception or path not found
+				if (error_msg == "") {
+					error_msg = "AST path not found: " + ast_path;
+				}
+				GLib.warning("EditMode: %s (file=%s)", error_msg, this.normalized_path);
+				this.error_messages.add(error_msg);
+				this.send_ui("txt", "Edit Mode Error", error_msg);
+			}
 		}
 		
 		/**
@@ -513,6 +601,40 @@ Don't forget to close it.
 					this.current_block = this.current_block.substring(0, this.current_block.length - 3);
 				}
 				
+				var error_msg = "";
+				
+				// Check if AST path resolution is still pending
+				if (this.resolving_ast_path) {
+					error_msg = "Code block closed before AST path resolution completed: " + this.pending_ast_path;
+					GLib.warning("Code block closed while AST path resolution pending (file=%s, ast_path=%s), skipping", 
+						this.normalized_path, this.pending_ast_path);
+				}
+				// Check if line numbers are invalid (AST path resolution failed)
+				if (this.current_start_line == -2 || this.current_end_line == -2) {
+					error_msg = "AST path resolution failed";
+					GLib.debug("Skipping code block with invalid line numbers (AST path resolution failed) (file=%s)", 
+						this.normalized_path);
+				}
+				// Check if line numbers are still placeholder (shouldn't happen, but handle gracefully)
+				if (this.current_start_line == -1 || this.current_end_line == -1) {
+					error_msg = "Code block closed with placeholder line numbers";
+					GLib.warning("Code block closed with placeholder line numbers (file=%s), skipping", 
+						this.normalized_path);
+				}
+				
+				if (error_msg != "") {
+					this.error_messages.add(error_msg);
+					this.send_ui("txt", "Edit Mode Error", error_msg);
+					this.in_code_block = false;
+					this.current_line = "";
+					this.current_block = "";
+					this.current_start_line = -1;
+					this.current_end_line = -1;
+					this.pending_ast_path = "";
+					this.resolving_ast_path = false;
+					return;
+				}
+				
 				GLib.debug("Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
 					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
 				this.changes.add(new OLLMfiles.FileChange() {
@@ -526,6 +648,8 @@ Don't forget to close it.
 				this.current_block = "";
 				this.current_start_line = -1;
 				this.current_end_line = -1;
+				this.pending_ast_path = "";
+				this.resolving_ast_path = false;
 				return;
 			}
 			
