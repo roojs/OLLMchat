@@ -43,6 +43,13 @@ namespace OLLMfiles
 		public int64 last_parsed { get; private set; default = 0; }
 		
 		/**
+		 * Flag indicating that the tree needs to be reparsed even if mtime hasn't changed.
+		 * This is set when AST path-based edits are applied, so subsequent AST path lookups
+		 * use updated line numbers.
+		 */
+		public bool needs_reparse { get; set; default = false; }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param file The OLLMfiles.File to parse
@@ -65,10 +72,15 @@ namespace OLLMfiles
 			// Get current file modification time
 			var file_mtime = this.file.mtime_on_disk();
 			
-			// If file hasn't changed since last parse, skip parsing
-			if (file_mtime > 0 && file_mtime == this.last_parsed) {
+			// If file hasn't changed since last parse and no reparse flag is set, skip parsing
+			if (file_mtime > 0 && file_mtime == this.last_parsed && !this.needs_reparse) {
 				GLib.debug("Tree.parse: File unchanged (mtime=%lld), skipping parse", file_mtime);
 				return;
+			}
+			
+			// Clear reparse flag if it was set
+			if (this.needs_reparse) {
+				this.needs_reparse = false;
 			}
 			
 			// Clear existing maps

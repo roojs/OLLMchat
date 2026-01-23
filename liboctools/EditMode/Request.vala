@@ -85,6 +85,8 @@ Don't forget to close it.
 		// AST path resolution state
 		private string pending_ast_path = "";
 		private bool resolving_ast_path = false;
+		private string current_operation_type = "replace"; // "replace", "insert_before", "insert_after", "delete"
+		private bool used_ast_paths = false; // Track if any changes used AST paths
 		
 		// Captured changes
 		private Gee.ArrayList<OLLMfiles.FileChange> changes = new Gee.ArrayList<OLLMfiles.FileChange>();
@@ -438,9 +440,12 @@ Don't forget to close it.
 		 * Tries to parse a code block opener.
 		 * Language tag format: ```type:startline:endline (e.g., ```vala:10:15) when complete_file=false
 		 * Language tag format: ```type:ast-path:Namespace-Class-Method (e.g., ```vala:ast-path:OLLMchat-Client-chat) when complete_file=false
+		 * Language tag format: ```type:ast-path:Namespace-Class-Method:before (insert before) when complete_file=false
+		 * Language tag format: ```type:ast-path:Namespace-Class-Method:after (insert after) when complete_file=false
 		 * Language tag format: ```type (e.g., ```vala) when complete_file=true
 		 * 
 		 * AST path format takes precedence over line numbers if both are provided.
+		 * Empty replacement content in AST path code blocks results in delete operation.
 		 * 
 		 * @param line The line that starts with ```
 		 * @return true if successfully parsed and entered code block (or AST path resolution started), false otherwise
@@ -479,19 +484,41 @@ Don't forget to close it.
 			
 			// If AST path is found, extract it and resolve
 			if (ast_path_index >= 0 && ast_path_index < parts.length - 1) {
-				// Extract AST path (everything after "ast-path:")
+				// Extract AST path parts (everything after "ast-path:")
 				var ast_path_parts = parts[ast_path_index + 1:parts.length];
+				
+				// Check for operation type suffix (:before or :after)
+				var operation_type = "replace";
+				switch (ast_path_parts.length > 0 ? 
+						ast_path_parts[ast_path_parts.length - 1] : "") {
+					case "before":
+						operation_type = "insert_before";
+						// Remove "before" from AST path parts
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						break;
+					case "after":
+						operation_type = "insert_after";
+						// Remove "after" from AST path parts
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						break;
+					default:
+						break;
+				}
+				
+				// Join remaining parts to form AST path
 				var ast_path = string.joinv("-", ast_path_parts);
 				
-				GLib.debug("Detected AST path in code block opener: '%s'", ast_path);
+				GLib.debug("Detected AST path in code block opener: '%s' (operation: %s)", ast_path, operation_type);
 				
 				// Enter code block immediately with placeholder line numbers
 				// They will be updated when AST path resolution completes
 				this.enter_code_block(-1, -1);
 				
-				// Store AST path for async resolution
+				// Store AST path and operation type for async resolution
 				this.pending_ast_path = ast_path;
+				this.current_operation_type = operation_type;
 				this.resolving_ast_path = true;
+				this.used_ast_paths = true; // Mark that we're using AST paths
 				
 				// Resolve AST path asynchronously and update line numbers
 				this.resolve_ast_path_and_update_lines.begin(ast_path);
@@ -575,6 +602,8 @@ Don't forget to close it.
 			this.in_code_block = true;
 			this.current_line = "";
 			this.current_block = "";
+			// Reset operation type to default (will be set by AST path parsing if needed)
+			this.current_operation_type = "replace";
 		}
 		
 		/**
@@ -632,15 +661,46 @@ Don't forget to close it.
 					this.current_end_line = -1;
 					this.pending_ast_path = "";
 					this.resolving_ast_path = false;
+					this.current_operation_type = "replace";
 					return;
 				}
 				
-				GLib.debug("Captured code block (file=%s, start=%d, end=%d, size=%zu bytes)", 
-					this.normalized_path, this.current_start_line, this.current_end_line, this.current_block.length);
+				// Determine operation type and adjust start/end accordingly
+				int change_start = this.current_start_line;
+				int change_end = this.current_end_line;
+				string replacement = this.current_block;
+				
+				// Check if replacement is empty (delete operation)
+				if (replacement.strip() == "") {
+					this.current_operation_type = "delete";
+				}
+				
+				// Adjust start/end based on operation type
+				if (this.current_operation_type == "insert_before") {
+					// Insert before: use start_line for both start and end
+					change_start = this.current_start_line;
+					change_end = this.current_start_line;
+				} else if (this.current_operation_type == "insert_after") {
+					// Insert after: use end_line for both start and end
+					change_start = this.current_end_line;
+					change_end = this.current_end_line;
+				} else if (this.current_operation_type == "delete") {
+					// Delete: use full range, empty replacement
+					change_start = this.current_start_line;
+					change_end = this.current_end_line;
+					replacement = "";
+				} else {
+					// Replace: use full range with replacement content
+					change_start = this.current_start_line;
+					change_end = this.current_end_line;
+				}
+				
+				GLib.debug("Captured code block (file=%s, operation=%s, start=%d, end=%d, size=%zu bytes)", 
+					this.normalized_path, this.current_operation_type, change_start, change_end, replacement.length);
 				this.changes.add(new OLLMfiles.FileChange() {
-					start = this.current_start_line,
-					end = this.current_end_line,
-					replacement = this.current_block
+					start = change_start,
+					end = change_end,
+					replacement = replacement
 				});
 				
 				this.in_code_block = false;
@@ -650,6 +710,7 @@ Don't forget to close it.
 				this.current_end_line = -1;
 				this.pending_ast_path = "";
 				this.resolving_ast_path = false;
+				this.current_operation_type = "replace";
 				return;
 			}
 			
