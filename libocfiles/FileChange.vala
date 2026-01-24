@@ -235,6 +235,17 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Mark this change as completed with a result message.
+		 * 
+		 * @param result_message The result message (e.g., "applied", "timeout", error message)
+		 */
+		public void mark_completed(string result_message)
+		{
+			this.result = result_message;
+			this.completed = true;
+		}
+		
+		/**
 		 * Add a linebreak to the replacement text.
 		 * 
 		 * @param is_closing Whether this is a closing linebreak (when closing code block)
@@ -269,8 +280,9 @@ namespace OLLMfiles
 				return;
 			}
 			
-			// For line-number-based operations, no additional processing needed here.
-			// The change will be applied later, and result/completed will be set then.
+			// For line-number-based operations, mark as completed immediately (no AST resolution needed)
+			// Result will be determined when applying, but we mark as completed so Request doesn't wait
+			this.completed = true;
 		}
 	}
 }

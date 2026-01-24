@@ -75,10 +75,58 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
+		/**
+		 * List to keep active requests alive so signal handlers can be called.
+		 * Hidden from serialization (public field, not a property).
+		 * Uses request_id for equality comparison so remove() works correctly.
+		 */
+		public Gee.ArrayList<Request> active_requests = new Gee.ArrayList<Request>((a, b) => {
+			return a.request_id == b.request_id;
+		});
+		
 		public Tool(OLLMfiles.ProjectManager? project_manager = null)
 		{
 			base();
 			this.project_manager = project_manager;
+		}
+		
+		/**
+		 * Activates a request, adding it to the active requests list.
+		 * 
+		 * Note: Multiple requests for the same file are allowed (e.g., when a single
+		 * agent restarts the tool). Handling conflicts between multiple agents editing
+		 * the same file is deferred to plan 5.4 (multi-window chat issues).
+		 * 
+		 * @param request The request to activate
+		 */
+		public void activate_request(Request request)
+		{
+			// Clean up any existing active request for the same file before starting a new one
+			// in theory this should not be needed - 
+			// and it may cause issues if to processes are editing the same file.
+			// 
+			var existing_requests = new Gee.ArrayList<Request>();
+			foreach (var req in this.active_requests) {
+				if (req.normalized_path == request.normalized_path && req.request_id != request.request_id) {
+					existing_requests.add(req);
+				}
+			}
+			foreach (var req in existing_requests) {
+				GLib.debug("Tool.activate_request: Cleaning up existing request for file %s (request_id=%d)", 
+					req.normalized_path, req.request_id);
+				// Unregister from agent if registered
+				req.agent.unregister_tool(req.request_id);
+				this.active_requests.remove(req);
+			}
+			
+			// Keep this request alive so signal handlers can be called
+			this.active_requests.add(request);
+			GLib.debug("Tool.activate_request: Added request to active_requests (total=%zu, file=%s, request_id=%d)", 
+				this.active_requests.size, request.normalized_path, request.request_id);
+			
+			// TODO (Plan 5.4): Handle conflicts when multiple agents edit the same file
+			// Currently we allow multiple requests for the same file, which works for
+			// single agent restarting the tool, but could cause issues with multiple agents.
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
