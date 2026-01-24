@@ -1,3 +1,6 @@
+TEST: test_complete_file_new
+COMMAND: cat "/home/alan/gitlive/OLLMchat/tests/data/2.edit-test-1-complete.txt" | "/home/alan/gitlive/OLLMchat/build/oc-test-files" --edit="/home/alan/.cache/ollmchat/testing/test_new.txt" --edit-complete-file --backend sourceview --test-db "/home/alan/.cache/ollmchat/testing/test.db"
+BACKUP: tracked_in_file_history
 FILE: /home/alan/.cache/ollmchat/testing/test_new.txt
 FILE_ID: -1
 LINE_COUNT: 4

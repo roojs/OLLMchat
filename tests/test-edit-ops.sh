@@ -4,6 +4,23 @@
 
 set -euo pipefail
 
+# Check for stop-on-failure option
+if [ "${1:-}" = "--stop-on-failure" ] || [ "${1:-}" = "-x" ]; then
+    export STOP_ON_FAIL=1
+    shift
+elif [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+    echo "Usage: $0 [--stop-on-failure|-x] [BUILD_DIR]"
+    echo ""
+    echo "Options:"
+    echo "  --stop-on-failure, -x    Stop on first test failure (default: continue all tests)"
+    echo "  BUILD_DIR               Build directory path (default: PROJECT_ROOT/build)"
+    echo ""
+    echo "Environment variables:"
+    echo "  STOP_ON_FAIL=1          Enable stop-on-failure via environment variable"
+    echo ""
+    exit 0
+fi
+
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

@@ -37,10 +37,22 @@ namespace OLLMfiles
 		private Gee.HashMap<string, int> ast_end = new Gee.HashMap<string, int>();
 		
 		/**
+		 * Hash map of AST path to comment start line number (if any).
+		 */
+		private Gee.HashMap<string, int> ast_comment_start = new Gee.HashMap<string, int>();
+		
+		/**
 		 * Timestamp of when the file was last parsed (Unix timestamp).
 		 * Used to determine if re-parsing is needed.
 		 */
 		public int64 last_parsed { get; private set; default = 0; }
+		
+		/**
+		 * Flag indicating that the tree needs to be reparsed even if mtime hasn't changed.
+		 * This is set when AST path-based edits are applied, so subsequent AST path lookups
+		 * use updated line numbers.
+		 */
+		public bool needs_reparse { get; set; default = false; }
 		
 		/**
 		 * Constructor.
@@ -65,15 +77,21 @@ namespace OLLMfiles
 			// Get current file modification time
 			var file_mtime = this.file.mtime_on_disk();
 			
-			// If file hasn't changed since last parse, skip parsing
-			if (file_mtime > 0 && file_mtime == this.last_parsed) {
+			// If file hasn't changed since last parse and no reparse flag is set, skip parsing
+			if (file_mtime > 0 && file_mtime == this.last_parsed && !this.needs_reparse) {
 				GLib.debug("Tree.parse: File unchanged (mtime=%lld), skipping parse", file_mtime);
 				return;
+			}
+			
+			// Clear reparse flag if it was set
+			if (this.needs_reparse) {
+				this.needs_reparse = false;
 			}
 			
 			// Clear existing maps
 			this.ast_start.clear();
 			this.ast_end.clear();
+			this.ast_comment_start.clear();
 			
 			// Check if this is a non-code file that we should skip
 			if (this.is_unsupported_language(this.file.language ?? "")) {
@@ -160,10 +178,15 @@ namespace OLLMfiles
 						// Get line numbers
 						var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
 						var end_line = (int)TreeSitter.node_get_end_point(node).row + 1;
+						var comment_start = this.find_preceding_comment_start(node);
 						
 						// Store in maps (overwrite if duplicate path exists)
 						this.ast_start.set(ast_path, start_line);
 						this.ast_end.set(ast_path, end_line);
+						if (comment_start <= 0) {
+							comment_start = start_line;
+						}
+						this.ast_comment_start.set(ast_path, comment_start);
 					}
 				}
 			}
@@ -185,13 +208,15 @@ namespace OLLMfiles
 		 * @param ast_path AST path to lookup (e.g., "Namespace-Class-Method")
 		 * @param start_line Output parameter for starting line number (1-indexed, -1 if not found)
 		 * @param end_line Output parameter for ending line number (1-indexed, -1 if not found)
+		 * @param include_comments Include preceding comments when available
 		 * @return true if found, false if not found
 		 */
-		public bool lookup_path(string ast_path, out int start_line, out int end_line)
+		public bool lookup_path(string ast_path, out int start_line, out int end_line, out int comment_start_line)
 		{
 			// Try exact match first
 			if (this.ast_start.has_key(ast_path)) {
 				start_line = this.ast_start.get(ast_path);
+				comment_start_line = this.ast_comment_start.get(ast_path);
 				end_line = this.ast_end.get(ast_path);
 				return true;
 			}
@@ -200,6 +225,7 @@ namespace OLLMfiles
 			foreach (var path in this.ast_start.keys) {
 				if (path.has_suffix(ast_path)) {
 					start_line = this.ast_start.get(path);
+					comment_start_line = this.ast_comment_start.get(path);
 					end_line = this.ast_end.get(path);
 					return true;
 				}
@@ -208,7 +234,72 @@ namespace OLLMfiles
 			// Not found - set to -1 to indicate failure
 			start_line = -1;
 			end_line = -1;
+			comment_start_line = -1;
 			return false;
+		}
+		
+		private bool is_comment_node(string type_lower)
+		{
+			return type_lower.contains("comment") ||
+				type_lower == "line_comment" ||
+				type_lower == "block_comment" ||
+				type_lower == "doc_comment" ||
+				type_lower.contains("doc");
+		}
+		
+		private int find_preceding_comment_start(TreeSitter.Node node)
+		{
+			var parent = TreeSitter.node_get_parent(node);
+			if (TreeSitter.node_is_null(parent)) {
+				return -1;
+			}
+			
+			var element_start = TreeSitter.node_get_start_point(node);
+			var current_start_line = (int)element_start.row + 1;
+			
+			var child_count = TreeSitter.node_get_child_count(parent);
+			var element_index = -1;
+			for (uint i = 0; i < child_count; i++) {
+				var child = TreeSitter.node_get_child(parent, i);
+				if (TreeSitter.node_equals(child, node)) {
+					element_index = (int)i;
+					break;
+				}
+			}
+			
+			if (element_index < 0) {
+				return -1;
+			}
+			
+			var comment_start = -1;
+			
+			for (int i = element_index - 1; i >= 0; i--) {
+				var sibling = TreeSitter.node_get_child(parent, (uint)i);
+				if (TreeSitter.node_is_null(sibling)) {
+					continue;
+				}
+				
+				unowned string? sibling_type = TreeSitter.node_get_type(sibling);
+				if (sibling_type == null) {
+					continue;
+				}
+				
+				var type_lower = sibling_type.down();
+				if (!this.is_comment_node(type_lower)) {
+					break;
+				}
+				
+				var sibling_end_line = (int)TreeSitter.node_get_end_point(sibling).row + 1;
+				if (sibling_end_line >= current_start_line ||
+					(current_start_line - sibling_end_line) > 2) {
+					break;
+				}
+				
+				comment_start = (int)TreeSitter.node_get_start_point(sibling).row + 1;
+				current_start_line = comment_start;
+			}
+			
+			return comment_start;
 		}
 	}
 }

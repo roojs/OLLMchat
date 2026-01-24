@@ -1,4 +1,6 @@
-BACKUP: /home/alan/.cache/ollmchat/edited/3-26-01-01-test2.txt
+TEST: test_line_counting_accuracy_2
+COMMAND: cat "/home/alan/gitlive/OLLMchat/tests/data/2.edit-test-6-2-changes.json" | "/home/alan/gitlive/OLLMchat/build/oc-test-files" --edit="/home/alan/.cache/ollmchat/testing/testproj6/test2.txt" --backend sourceview --test-db "/home/alan/.cache/ollmchat/testing/test.db"
+BACKUP: tracked_in_file_history
 FILE: /home/alan/.cache/ollmchat/testing/testproj6/test2.txt
 FILE_ID: 3
 LINE_COUNT: 12

@@ -39,7 +39,7 @@ Read the contents of a file (and the outline).
 
 If you want to understand what is in a file, you are recommended to call summarize on it first. This will give you an overview of the file's structure and contents before reading specific sections. The summary shows the hierarchical structure of code elements (classes, methods, functions, etc.) with AST paths by default, making it easy to identify and reference specific elements.
 
-You can read specific code elements using AST paths (e.g., "Namespace-Class-Method") instead of line numbers. This is more reliable than line numbers, especially when code changes. AST paths work for files in the active project and automatically resolve to the correct line range.
+You can read specific code elements using AST paths (e.g., "Namespace-Class-Method") instead of line numbers. This is more reliable than line numbers, especially when code changes. AST paths work for files in the active project and automatically resolve to the correct line range, including any preceding documentation comments when available.
 
 When using this tool to gather information, it's your responsibility to ensure you have the COMPLETE context. Each time you call this command you should:
 1) Assess if contents viewed are sufficient to proceed with the task.
@@ -55,7 +55,7 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] The path to the file to read.
-@param ast_path {string} [optional] AST path to locate code elements (e.g., "Namespace-Class-Method"). Alternative to start_line/end_line. Resolves to line range automatically. Only works for files in the active project.
+@param ast_path {string} [optional] AST path to locate code elements (e.g., "Namespace-Class-Method"). Alternative to start_line/end_line. Resolves to line range automatically and includes preceding documentation comments when available. Only works for files in the active project.
 @param start_line {integer} [optional] The starting line number to read from. Ignored if ast_path is provided.
 @param end_line {integer} [optional] The ending line number to read to. Ignored if ast_path is provided.
 @param read_entire_file {boolean} [optional] Whether to read the entire file. Only allowed if the file has been edited or manually attached to the conversation by the user.

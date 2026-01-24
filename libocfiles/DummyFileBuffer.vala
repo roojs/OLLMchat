@@ -275,6 +275,64 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Apply a single edit to the buffer.
+		 * 
+		 * This performs the actual edit operation on the buffer.
+		 * Does NOT sync to file - that should be done by the caller.
+		 * 
+		 * @param change The FileChange to apply
+		 * @throws Error if edit cannot be applied (invalid line ranges, etc.)
+		 */
+		public async void apply_edit(FileChange change) throws Error
+		{
+			// Ensure buffer is loaded
+			if (this.lines == null) {
+				yield this.read_async();
+			}
+			
+			// Convert 1-based (inclusive start, exclusive end) to 0-based array indices
+			int start_idx = change.start - 1;
+			int end_idx = change.end - 1;
+			
+			// Validate range
+			bool is_insertion = (change.start == change.end);
+			if (start_idx < 0 || end_idx < start_idx) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start=" + change.start.to_string() + 
+					", end=" + change.end.to_string() + 
+					" (file has " + this.lines.length.to_string() + " lines)");
+			}
+			// For insertions, allow start_idx == lines.length (insert at end)
+			// For edits, start_idx must be < lines.length
+			if (!is_insertion && start_idx >= this.lines.length) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start=" + change.start.to_string() + 
+					", end=" + change.end.to_string() + 
+					" (file has " + this.lines.length.to_string() + " lines)");
+			}
+			if (is_insertion && start_idx > this.lines.length) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start=" + change.start.to_string() + 
+					", end=" + change.end.to_string() + 
+					" (file has " + this.lines.length.to_string() + " lines)");
+			}
+			
+			// Get array slices using array slicing syntax
+			string[] lines_before = this.lines[0:start_idx];
+			string[] replacement_lines = change.replacement.split("\n");
+			string[] lines_after = this.lines[end_idx:this.lines.length];
+			
+			// Build new lines array efficiently using GLib.Array
+			var array = new GLib.Array<string>(false, true, sizeof(string));
+			array.append_vals(lines_before, lines_before.length);
+			array.append_vals(replacement_lines, replacement_lines.length);
+			array.append_vals(lines_after, lines_after.length);
+			
+			// Take ownership to avoid array copying
+			this.lines = (owned) array.data;
+		}
+		
+		/**
 		 * Apply multiple edits to the buffer efficiently using in-memory lines array.
 		 * 
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.
@@ -284,12 +342,9 @@ namespace OLLMfiles
 		 * 
 		 *  1. Ensure buffer is loaded (calls read_async() if needed)
 		 *  2. Apply changes in reverse order (from end to start) to preserve line numbers
-		 *  3. For each change:
-		 *     * Convert 1-based (inclusive start, exclusive end) to 0-based array indices
-		 *     * Validate range (insertion vs edit)
-		 *     * Build new lines array using array slicing
+		 *  3. For each change: calls apply_edit()
 		 *  4. Join lines back into content string
-		 *  5. Write to file (creates backup, writes, updates metadata)
+		 *  5. Write to file (backup, write, updates metadata)
 		 * 
 		 * == FileChange Format ==
 		 * 
@@ -311,48 +366,16 @@ namespace OLLMfiles
 				yield this.read_async();
 			}
 			
-			// Apply changes in reverse order (from end to start) to preserve line numbers
+			// Sort changes by start line (descending) so we can apply them in reverse order
+			changes.sort((a, b) => {
+				if (a.start < b.start) return 1;
+				if (a.start > b.start) return -1;
+				return 0;
+			});
+			
+			// Apply changes using apply_edit() for each change
 			foreach (var change in changes) {
-				// Convert 1-based (inclusive start, exclusive end) to 0-based array indices
-				int start_idx = change.start - 1;
-				int end_idx = change.end - 1;
-				
-				// Validate range
-				bool is_insertion = (change.start == change.end);
-				if (start_idx < 0 || end_idx < start_idx) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + this.lines.length.to_string() + " lines)");
-				}
-				// For insertions, allow start_idx == lines.length (insert at end)
-				// For edits, start_idx must be < lines.length
-				if (!is_insertion && start_idx >= this.lines.length) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + this.lines.length.to_string() + " lines)");
-				}
-				if (is_insertion && start_idx > this.lines.length) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						", end=" + change.end.to_string() + 
-						" (file has " + this.lines.length.to_string() + " lines)");
-				}
-				
-				// Get array slices using array slicing syntax
-				string[] lines_before = this.lines[0:start_idx];
-				string[] replacement_lines = change.replacement.split("\n");
-				string[] lines_after = this.lines[end_idx:this.lines.length];
-				
-				// Build new lines array efficiently using GLib.Array
-				var array = new GLib.Array<string>(false, true, sizeof(string));
-				array.append_vals(lines_before, lines_before.length);
-				array.append_vals(replacement_lines, replacement_lines.length);
-				array.append_vals(lines_after, lines_after.length);
-				
-				// Take ownership to avoid array copying
-				this.lines = (owned) array.data;
+				yield this.apply_edit(change);
 			}
 			
 			// Join lines back into content string

@@ -138,9 +138,9 @@ namespace OLLMtools.ReadFile
 			yield tree.parse();
 			
 			// Lookup AST path
-			int start, end;
-			if (tree.lookup_path(this.ast_path, out start, out end)) {
-				this.start_line = start;
+			int start, end, comment_start;
+			if (tree.lookup_path(this.ast_path, out start, out end, out comment_start)) {
+				this.start_line = comment_start;
 				this.end_line = end;
 				return true;
 			}

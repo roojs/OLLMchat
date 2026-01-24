@@ -164,6 +164,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/ReadFile/Summarize.vala',  # Tree-sitter based file summarizer
     '../liboctools/EditMode/Tool.vala',
     '../liboctools/EditMode/Request.vala',
+    '../liboctools/EditMode/Stream.vala',
     '../liboctools/RunCommand/Tool.vala',
     '../liboctools/RunCommand/Bubble.vala',  # Must come before Request.vala (Request uses Bubble)
     '../liboctools/RunCommand/Scan.vala',  # Post-completion overlay scanner (must come before Overlay)

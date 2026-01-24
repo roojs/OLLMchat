@@ -210,9 +210,11 @@ Examples:
 		// Load projects from database
 		yield manager.load_projects_from_db();
 		
-		// Don't activate projects in test code - it triggers filesystem scanning
-		// and database updates which are unwanted side effects. Operations can
-		// work without active_project (they fall back to fake files or require explicit paths).
+		// Restore active project/file from DB so edits use real file IDs.
+		// Only do this in test mode (when --test-db is provided).
+		if (opt_test_db != null && opt_test_db != "") {
+			yield manager.restore_active_state();
+		}
 		
 		// Execute the requested action
 		if (opt_ls) {
@@ -323,8 +325,8 @@ Examples:
 			var tree = manager.tree_factory(file);
 			yield tree.parse();
 			
-			int start, end;
-			if (!tree.lookup_path(opt_ast_path, out start, out end)) {
+			int start, end, comment_start;
+			if (!tree.lookup_path(opt_ast_path, out start, out end, out comment_start)) {
 				stderr.printf("AST path not found: %s\n", opt_ast_path);
 				return;
 			}
@@ -577,6 +579,11 @@ PROJECT_PATH: $(manager.active_project.path)
 		foreach (var entry in project.project_files.child_map.entries) {
 			file_count++;
 		}
+
+		// Persist in-memory DB for test runs so subsequent commands see the project/files.
+		if (opt_test_db != null && opt_test_db != "") {
+			db.backupDB();
+		}
 		
 		stdout.printf("PROJECT_PATH: %s\n", project_path);
 		stdout.printf("DATABASE_PATH: %s\n", db.filename);
@@ -746,7 +753,19 @@ BACKUP_PATH: (tracked_in_file_history)
 			return 0;
 		});
 		
-		yield file.buffer.apply_edits(changes);
+		foreach (var change in changes) {
+			yield file.buffer.apply_edit(change);
+		}
+		
+		try {
+			yield file.buffer.sync_to_file();
+		} catch (GLib.IOError e) {
+			if (e is GLib.IOError.NOT_SUPPORTED) {
+				yield file.buffer.write(file.buffer.get_text());
+			} else {
+				throw e;
+			}
+		}
 		
 		int line_count = file.buffer.get_line_count();
 		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path

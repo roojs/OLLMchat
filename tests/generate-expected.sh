@@ -71,11 +71,11 @@ if [ $# -gt 0 ]; then
             if [ -f "$stdout_file" ]; then
                 cp "$stdout_file" "$expected_file"
                 echo -e "${GREEN}Generated:${NC} $(basename "$expected_file")"
-                ((STDOUT_GENERATED++))
+                ((STDOUT_GENERATED++)) || true
             fi
         done < <(find "$TEST_DIR" -name "*-stdout.txt" -type f 2>/dev/null)
         
-        # Find and copy db files
+        # Find and copy db files (INSERT-only dumps)
         while IFS= read -r db_file; do
             basename=$(basename "$db_file" -db.sql)
             # Map test names to 2.edit-test-XX format
@@ -95,7 +95,7 @@ if [ $# -gt 0 ]; then
             if [ -f "$db_file" ]; then
                 cp "$db_file" "$expected_file"
                 echo -e "${GREEN}Generated:${NC} $(basename "$expected_file")"
-                ((DB_GENERATED++))
+                ((DB_GENERATED++)) || true
             fi
         done < <(find "$TEST_DIR" -name "*-db.sql" -type f 2>/dev/null)
     fi
@@ -142,11 +142,11 @@ if [ $# -eq 0 ] || [ -z "${STDOUT_GENERATED:-}" ]; then
         if [ -f "$stdout_file" ]; then
             cp "$stdout_file" "$expected_file"
             echo -e "${GREEN}Generated:${NC} $(basename "$expected_file")"
-            ((STDOUT_GENERATED++))
+            ((STDOUT_GENERATED++)) || true
         fi
     done < <(find "$TEST_DIR" -name "*-stdout.txt" -type f 2>/dev/null)
     
-    # Find all db dump files and copy to expected
+    # Find all db dump files and copy to expected (INSERT-only dumps)
     DB_GENERATED=0
     while IFS= read -r db_file; do
         basename=$(basename "$db_file" -db.sql)
@@ -168,7 +168,7 @@ if [ $# -eq 0 ] || [ -z "${STDOUT_GENERATED:-}" ]; then
         if [ -f "$db_file" ]; then
             cp "$db_file" "$expected_file"
             echo -e "${GREEN}Generated:${NC} $(basename "$expected_file")"
-            ((DB_GENERATED++))
+            ((DB_GENERATED++)) || true
         fi
     done < <(find "$TEST_DIR" -name "*-db.sql" -type f 2>/dev/null)
 fi

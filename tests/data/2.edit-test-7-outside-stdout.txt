@@ -1,3 +1,6 @@
+TEST: test_backup_verification_outside
+COMMAND: cat "/home/alan/gitlive/OLLMchat/tests/data/2.edit-test-7-outside-changes.json" | "/home/alan/gitlive/OLLMchat/build/oc-test-files" --edit="/home/alan/.cache/ollmchat/testing/outside_file.txt" --backend sourceview --test-db "/home/alan/.cache/ollmchat/testing/test.db"
+BACKUP: tracked_in_file_history
 FILE: /home/alan/.cache/ollmchat/testing/outside_file.txt
 FILE_ID: -1
 LINE_COUNT: 4

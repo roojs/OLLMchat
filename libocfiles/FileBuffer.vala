@@ -292,6 +292,17 @@ namespace OLLMfiles
 		public abstract async void sync_to_file() throws Error;
 		
 		/**
+		 * Apply a single edit to the buffer.
+		 * 
+		 * This performs the actual edit operation on the buffer.
+		 * Does NOT sync to file - that should be done by the caller.
+		 * 
+		 * @param change The FileChange to apply
+		 * @throws Error if edit cannot be applied (invalid line ranges, etc.)
+		 */
+		public abstract async void apply_edit(FileChange change) throws Error;
+		
+		/**
 		 * Efficiently apply multiple edits to the buffer.
 		 * 
 		 * Applies edits in reverse order (from end to start) to preserve line numbers.

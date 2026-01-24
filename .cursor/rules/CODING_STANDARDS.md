@@ -1,5 +1,21 @@
 # Coding Standards
 
+## Checklist for all plans
+
+Before marking a plan as ready to implement, make sure it answers these:
+
+- **Nullable types**: Are new APIs and properties designed to avoid nullable types where possible (using default objects/flags instead)?
+- **Null checks**: Does the plan avoid adding generic null checks, and only use them where the design explicitly requires null?
+- **String interpolation**: Does the plan avoid `@"..."` string interpolation except for multi-line usage/help text or documentation?
+- **Temporary variables**: Does the plan avoid introducing one-use temporaries or trivial aliases when describing new code?
+- **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)?
+- **`this.` prefix**: Does the plan assume/describe using `this.` for instance members in new/modified Vala code?
+- **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
+- **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
+- **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
+
+These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
+
 ## String Interpolation
 
 **IMPORTANT:** Do NOT use `@"` string interpolation unless explicitly asked. Use normal string concatenation instead.
