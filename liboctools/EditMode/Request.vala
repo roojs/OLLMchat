@@ -25,7 +25,7 @@ namespace OLLMtools.EditMode
 	{
 		// Message constants
 		private const string INSTRUCTIONS_COMPLETE_FILE = """
-Since complete_file=true is enabled, code blocks should only have the language tag e.g.,
+Since edit_mode=complete_file is enabled, code blocks should only have the language tag e.g.,
 
 ```javascript
 the output goes here
@@ -44,6 +44,40 @@ the output goes here
 The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
 """;
 
+		private const string INSTRUCTIONS_AST = """
+Default mode: AST path.
+
+Code blocks must include AST path in format type:Namespace-Class-Method e.g.
+
+```vala:OLLMchat-Client-chat
+public void chat() {
+	// new implementation
+}
+```
+
+AST path operations:
+- Default (no suffix) = replace target
+- `:before` = insert before target
+- `:after` = insert after target
+- `:remove` = remove target
+
+Example (before):
+```vala:OLLMchat-Client-chat:before
+// inserted before chat()
+```
+
+Example (after):
+```vala:OLLMchat-Client-chat:after
+// inserted after chat()
+```
+
+Example (remove):
+```vala:OLLMchat-Client-chat:remove
+```
+
+Any other format will be ignored.
+""";
+
 		private const string OVERWRITE_MESSAGE = """
 You set overwrite=true, so we will overwrite the existing file when you complete your message.
 """;
@@ -60,12 +94,20 @@ Don't forget to close it.
 
 		// Parameter properties
 		public string file_path { get; set; default = ""; }
-		public bool complete_file { get; set; default = false; }
 		public bool overwrite { get; set; default = false; }
+		public string edit_mode { get; set; default = "ast_path"; }
 		
 		// Normalized path (set during permission building)
 		// Internal so Stream can access it
 		internal string normalized_path = "";
+		
+		// Internal: true when file does not exist yet and will be created
+		internal bool creating_file = false;
+		
+		// Internal: response bookkeeping for Stream
+		// Stored here so Request owns the response lifecycle
+		internal bool message_completed = false;
+		internal OLLMchat.Response.Chat? chat_response = null;
 		
 		// Internal: File object (set once at start of execute_request)
 		private OLLMfiles.File? file = null;
@@ -151,6 +193,13 @@ Don't forget to close it.
 			if (this.file_path == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("file_path parameter is required");
 			}
+
+			if (this.edit_mode != "ast_path"
+				&& this.edit_mode != "line_numbers"
+				&& this.edit_mode != "complete_file") {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"edit_mode must be one of: ast_path, line_numbers, complete_file");
+			}
 			
 			// Get ProjectManager
 			var project_manager = ((Tool) this.tool).project_manager;
@@ -170,17 +219,16 @@ Don't forget to close it.
 			// Create Stream instance for processing streaming content
 			this.stream_handler = new Stream(
 				this,                    // Request reference (Stream calls send_ui() on this)
-				this.file,              // File object (Stream can get path from file.path, project_manager from file.manager)
-				this.complete_file      // Complete file mode (passed as write_complete_file)
+				this.file              // File object (Stream can get path from file.path, project_manager from file.manager)
 			);
 			
 			// Get file status for UI message
 			var is_in_project = (this.file.id > 0);
-			var file_exists = GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
+			this.creating_file = !GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR);
 			
 			// Build UI message - just the request info and permission status
 			var ui_message = "Edit mode activated for file: " + this.normalized_path + "\n"
-				+ "File status: " + (file_exists ? "exists" : "will be created") + "\n"
+				+ "File status: " + (!this.creating_file ? "exists" : "will be created") + "\n"
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
 			
 			// Send to UI using standardized format
@@ -189,10 +237,13 @@ Don't forget to close it.
 			// Build LLM message - tell LLM edit mode is activated and provide instructions
 			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";
 			
-			string instructions = this.complete_file ? INSTRUCTIONS_COMPLETE_FILE : INSTRUCTIONS_LINE_RANGE;
+			string instructions = (this.edit_mode == "line_numbers"
+				? INSTRUCTIONS_LINE_RANGE
+				: (this.edit_mode == "complete_file" ? 
+				INSTRUCTIONS_COMPLETE_FILE : INSTRUCTIONS_AST));
 			llm_message += instructions;
 			
-			if (this.overwrite && file_exists) {
+			if (this.overwrite && !this.creating_file) {
 				llm_message += "\n" + OVERWRITE_MESSAGE;
 			}
 			
@@ -259,32 +310,19 @@ Don't forget to close it.
 				this.stream_handler.process_complete_content(response.message.content);
 			}
 			
-			// Finalize stream processing and wait for AST resolutions
-			// Stream handles all the waiting and summary building
-			this.stream_handler.finalize_and_wait_for_resolutions.begin(response, (obj, res) => {
-				this.stream_handler.finalize_and_wait_for_resolutions.end(res);
+			// Store response state for Stream to use
+			this.message_completed = true;
+			this.chat_response = response;
+			
+			// Finalize stream parsing before applying changes
+			this.stream_handler.add_linebreak();
+			
+			// Finalize stream processing - Stream handles queue and response sending
+			this.stream_handler.finalize_and_handle_response.begin(response, (obj, res) => {
+				this.stream_handler.finalize_and_handle_response.end(res);
 				
-				// Check if we have any changes (Stream may have found none)
-				if (this.stream_handler.changes.size == 0) {
-					// No changes were captured - clean up silently
-					GLib.debug("Request.on_message_completed: No changes captured (file=%s), cleaning up silently", 
-						this.normalized_path);
-					// Already unregistered at the top of this method
-					var edit_tool = (Tool) this.tool;
-					edit_tool.active_requests.remove(this);
-					GLib.debug("Request.on_message_completed: Removed request from active_requests (remaining=%zu, file=%s)", 
-						edit_tool.active_requests.size, this.normalized_path);
-					// Don't send any reply - just let the LLM try again naturally
-					return;
-				}
-				//FIXME - need to solve this - it's ab background operation 
-				// and can send to the LLM at some point?
-				// and needs to block the user from doing anything in the meantime.
-				// Stream has completed finalization and built summaries
-				// Now apply changes (only those that succeeded)
-				this.stream_handler.apply_all_changes.begin((obj, res2) => {
-					this.stream_handler.handle_apply_changes_response(res2, response);
-				});
+				// Stream will handle response sending via send_response() or send_no_changes_response()
+				// when queue is empty and message is completed
 			});
 		}
 		
@@ -297,6 +335,8 @@ Don't forget to close it.
 		 */
 		internal void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
 		{
+			this.chat_response = null;
+			
 			// Check if agent is available before proceeding
 			if (this.agent == null) {
 				GLib.debug("Request.reply_with_errors: agent is null (file=%s)", this.normalized_path);

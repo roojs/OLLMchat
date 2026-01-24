@@ -42,11 +42,18 @@ While edit mode is active, code blocks will be automatically captured and applie
 
 To apply changes, just end the chat (send chat done signal). All captured code blocks will be applied to the file automatically.
 
-Code block format depends on the complete_file parameter:
-- If complete_file=false (default): Code blocks must include line range in format type:startline:endline (e.g., vala:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
-- If complete_file=true: Code blocks should only have the language tag (e.g., ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
+Supported formats:
+- ast_path (default, preferred): use type:Namespace-Class-Method
+- complete_file: replace or create a full file with a bare language tag
+- line_numbers (not recommended): edit an existing file with type:startline:endline
+An editing session cannot mix output formats.
 
-When complete_file=true, do not include line numbers in the code block. When complete_file=false, line numbers are required.
+Code block format depends on the mode:
+- ast_path: Code blocks must include AST path in format type:Namespace-Class-Method.
+- line_numbers: Code blocks must include line range in format type:startline:endline (e.g., vala:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
+- complete_file: Code blocks should only have the language tag (e.g., ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
+
+When edit_mode=complete_file, do not include line numbers or ast-path in the code block.
 
 CRITICAL: You MUST include both opening and closing markdown code block tags. For example:
 ```
@@ -58,8 +65,8 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] The path to the file to edit.
-@param complete_file {boolean} [optional] If true, create or overwrite the entire file. Code blocks should only have language tag (no line numbers). Default is false.
-@param overwrite {boolean} [optional] If true and complete_file=true, overwrite existing file. If false and file exists, return error. Default is false.""";
+@param edit_mode {string} [optional] One of: ast_path, line_numbers, complete_file. Default is ast_path.
+@param overwrite {boolean} [optional] If true and edit_mode=complete_file, overwrite existing file. If false and file exists, return error. Default is false.""";
 		} }
 		
 		/**

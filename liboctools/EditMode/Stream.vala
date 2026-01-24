@@ -23,8 +23,6 @@ namespace OLLMtools.EditMode
 		// File for AST path resolution
 		private OLLMfiles.File file;
 		
-		// Mode: complete file replacement vs line-based edits
-		private bool write_complete_file = false;
 		
 		// Streaming state
 		private string current_line = "";
@@ -39,17 +37,21 @@ namespace OLLMtools.EditMode
 		// Indicates whether any changes have been captured
 		public bool has_changes { get; private set; default = false; }
 		
+		// Queue state for async change application
+		private Gee.Queue<OLLMfiles.FileChange> pending_changes = new Gee.LinkedList<OLLMfiles.FileChange>();
+		private bool processing_change = false;
+		private bool history_created = false;
+		
 		
 		public Stream(
 			OLLMtools.EditMode.Request request,
-			OLLMfiles.File file,
-			bool write_complete_file
+			OLLMfiles.File file
 		)
 		{
 			this.request = request;
 			this.file = file;
-			this.write_complete_file = write_complete_file;
 		}
+
 		
 		/**
 		 * Process a streaming chunk of content.
@@ -110,12 +112,79 @@ namespace OLLMtools.EditMode
 				this.current_change.replacement += text;
 			}
 		}
+
+		private string describe_mode(string mode)
+		{
+			switch (mode) {
+				case "line_numbers":
+					return "line number";
+				case "complete_file":
+					return "complete file";
+				default:
+					return "AST path";
+			}
+		}
+
+		private bool ensure_mode_allows(string detected_mode)
+		{
+			if (this.request.edit_mode == detected_mode) {
+				return true;
+			}
+			
+			var required_format = (this.request.edit_mode == "line_numbers")
+					? "type:startline:endline"
+				: (this.request.edit_mode == "complete_file"
+						? "bare language tag"
+						: "type:Namespace-Class-Method");
+			var detected_text = (detected_mode == "line_numbers")
+				? "Line number format specified but AST path mode is active."
+				: (detected_mode == "ast_path"
+					? "AST path format specified but line number mode is active."
+					: "Format specified but complete file mode is active.");
+			
+			var message = detected_text + " Use format: `" + required_format + "` instead.";
+			if (this.request.edit_mode == "complete_file") {
+				message = "Complete file mode is active. Use a bare language tag (e.g., ```vala) without line numbers or AST path.";
+			}
+			
+			this.current_line = "";
+			this.current_change = new OLLMfiles.FileChange.with_error(this.file, message);
+			
+			return false;
+		}
 		
 		private bool try_parse_code_block_opener(string stripped_line)
 		{
 			var tag = stripped_line.substring(3).strip();
 			
-			if (this.write_complete_file && !tag.contains(":")) {
+			if (this.request.edit_mode == "complete_file" && this.changes.size > 0) {
+				this.current_line = "";
+				this.current_change = new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Complete file mode allows only one code block. This block was ignored."
+				);
+				return true;
+			}
+
+
+
+			if (tag == "") {
+				if (this.request.edit_mode != "complete_file") {
+					this.current_line = "";
+					this.current_change = new OLLMfiles.FileChange.with_error(
+						this.file,
+						"Unlabeled code block not allowed in " + this.describe_mode(this.request.edit_mode) + " mode. " +
+						"Use `type:Namespace-Class-Method` or `type:startline:endline`."
+					);
+					return true;
+				}
+				this.current_line = "";
+				this.current_change = new OLLMfiles.FileChange(this.file);
+				return true;
+			}
+				
+			if (this.request.edit_mode == "complete_file" && !tag.contains(":")) {
+				// Allow bare language tag for complete file replacement.
 				this.current_line = "";
 				this.current_change = new OLLMfiles.FileChange(this.file);
 				return true;
@@ -123,102 +192,101 @@ namespace OLLMtools.EditMode
 			
 			if (!tag.contains(":")) {
 				this.current_line = "";
-				this.current_change = new OLLMfiles.FileChange(this.file);
+				this.current_change = new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Bare language tags are only allowed in complete_file mode. " +
+					"Use `type:Namespace-Class-Method` or `type:startline:endline`."
+				);
 				return true;
 			}
 			
 			var parts = tag.split(":");
 			if (parts.length < 2) {
-				// Invalid format - create FileChange with error state
 				this.current_line = "";
-				var error_msg = "Invalid code block format: expected format with ':' separator";
-				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
-				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				this.current_change = new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Invalid code block format: expected format with ':' separator"
+				);
 				return true;
 			}
-			
-			// Look for "ast-path" marker
-			int ast_path_index = -1;
-			for (int i = 0; i < parts.length; i++) {
-				if (parts[i] == "ast-path") {
-					ast_path_index = i;
-					break;
+
+			int start_line = -1;
+			int end_line = -1;
+			var is_line_range = false;
+			try {
+				var line_range_regex = new GLib.Regex(".*:(\\d+):(\\d+)$");
+				GLib.MatchInfo match_info;
+				if (line_range_regex.match(tag, 0, out match_info)) {
+					is_line_range = true;
+					int.try_parse(match_info.fetch(1), out start_line);
+					int.try_parse(match_info.fetch(2), out end_line);
 				}
+			} catch (GLib.RegexError e) {
+				is_line_range = false;
 			}
-			
-			// AST path format
-			if (ast_path_index >= 0 && ast_path_index < parts.length - 1) {
-				var ast_path_parts = parts[ast_path_index + 1:parts.length];
-				var operation_type = OLLMfiles.OperationType.REPLACE;
-				
-				switch (ast_path_parts.length > 0 ? ast_path_parts[ast_path_parts.length - 1] : "") {
-					case "before":
-						operation_type = OLLMfiles.OperationType.BEFORE;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						break;
-					case "after":
-						operation_type = OLLMfiles.OperationType.AFTER;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						break;
-					default:
-						break;
+
+			if (is_line_range) {
+				if (!this.ensure_mode_allows("line_numbers")) {
+					return true;
 				}
 				
-				// For Phase 1, we enter a code block without resolved line numbers.
-				// Resolution is done by FileChange.resolve_ast_path() which is
-				// a placeholder for now and will be fully implemented in Phase 2.
+				if (start_line < 1 || end_line < start_line) {
+					this.current_line = "";
+					this.current_change = new OLLMfiles.FileChange.with_error(
+						this.file,
+						"Invalid code block format: start line must be >= 1 and end line must be >= start line"
+					);
+					return true;
+				}
+				
 				this.current_line = "";
 				this.current_change = new OLLMfiles.FileChange(this.file) {
-					operation_type = operation_type,
-					ast_path = string.joinv("-", ast_path_parts)
+					start = start_line,
+					end = end_line
 				};
 				return true;
 			}
 			
-			// Line number format: type:startline:endline
-			if (parts.length < 3) {
-				// Invalid format - create FileChange with error state
-				this.current_line = "";
-				var error_msg = "Invalid code block format: line number format requires at least 3 parts (type:start:end)";
-				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
-				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+			if (!this.ensure_mode_allows("ast_path")) {
 				return true;
 			}
 			
-			int start_line = -1;
-			int end_line = -1;
-			
-			if (!int.try_parse(parts[parts.length - 2], out start_line)) {
-				// Invalid format - create FileChange with error state
+			var ast_path_parts = parts[1:parts.length];
+			if (ast_path_parts.length == 0 || ast_path_parts[0] == "") {
 				this.current_line = "";
-				var error_msg = "Invalid code block format: start line must be a valid integer";
-				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
-				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				this.current_change = new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Invalid code block format: AST path is missing"
+				);
 				return true;
 			}
+			var operation_type = OLLMfiles.OperationType.REPLACE;
 			
-			if (!int.try_parse(parts[parts.length - 1], out end_line)) {
-				// Invalid format - create FileChange with error state
-				this.current_line = "";
-				var error_msg = "Invalid code block format: end line must be a valid integer";
-				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
-				this.request.send_ui("txt", "Edit Mode Error", error_msg);
-				return true;
+			switch (ast_path_parts.length > 0 ? ast_path_parts[ast_path_parts.length - 1] : "") {
+				case "before":
+					operation_type = OLLMfiles.OperationType.BEFORE;
+					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+					break;
+				case "after":
+					operation_type = OLLMfiles.OperationType.AFTER;
+					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+					break;
+				case "remove":
+					operation_type = OLLMfiles.OperationType.DELETE;
+					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+					break;
+				default:
+					break;
 			}
 			
-			if (start_line < 1 || end_line < start_line) {
-				// Invalid format - create FileChange with error state
-				this.current_line = "";
-				var error_msg = "Invalid code block format: start line must be >= 1 and end line must be >= start line";
-				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
-				this.request.send_ui("txt", "Edit Mode Error", error_msg);
-				return true;
-			}
 			
+			// For Phase 1, we enter a code block without resolved line numbers.
+			// Resolution is done by FileChange.resolve_ast_path() which is
+			// a placeholder for now and will be fully implemented in Phase 2.
 			this.current_line = "";
 			this.current_change = new OLLMfiles.FileChange(this.file) {
-				start = start_line,
-				end = end_line
+				operation_type = operation_type,
+				ast_path = string.joinv("-", ast_path_parts)
 			};
 			return true;
 		}
@@ -247,7 +315,7 @@ namespace OLLMtools.EditMode
 			}
 			
 			// Check if there are format errors before closing
-			if (this.current_change.start == -2 || this.current_change.end == -2) {
+			if (this.current_change.has_error) {
 				// Format error already set in try_parse_code_block_opener
 				// Just add to changes and reset
 				this.changes.add(this.current_change);
@@ -259,82 +327,258 @@ namespace OLLMtools.EditMode
 			
 			this.current_change.add_linebreak(true);
 			
-			// If AST path resolution was started, it will complete asynchronously
-			// For line number format, FileChange.add_linebreak() marks it as completed immediately
-			
+			// Add change to changes array (for tracking)
 			this.changes.add(this.current_change);
 			this.has_changes = true;
+			
+			// Handle AST path changes vs line number changes differently
+			if (this.current_change.ast_path != "") {
+				// AST path change: add to queue for async processing
+				this.pending_changes.offer(this.current_change);
+				
+				// Start processing queue if not already processing
+				if (!this.processing_change) {
+					this.process_next_change.begin();
+				}
+			}
+			// Line number changes: do NOT add to queue
+			// They will be processed serially after message completion
 			
 			this.current_line = "";
 			this.current_change = null;
 		}
 		
 		/**
-		 * Finalizes stream processing and waits for AST path resolutions to complete.
+		 * Process the next change in the queue.
 		 * 
-		 * This should be called when message is completed. It finalizes any remaining
-		 * content, waits for AST resolutions, and builds error summaries.
-		 * 
-		 * @param response The chat response object
+		 * This method processes AST-based changes asynchronously (but not concurrently).
+		 * When a change completes, it processes the next queue item, or if the end message
+		 * has been received and queue is empty, syncs metadata and sends the response.
 		 */
-		public async void finalize_and_wait_for_resolutions(OLLMchat.Response.Chat response)
+		private async void process_next_change()
 		{
-			// Finalize stream processing
-			this.add_linebreak();
+			if (this.processing_change) {
+				return; // Already processing
+			}
 			
-			// Check if we have any changes
-			if (this.changes.size == 0) {
-				// No changes were captured - Request will handle cleanup
+			if (this.pending_changes.size == 0) {
+				// Queue is empty - sync buffer to file and update metadata for AST changes
+				// then send response if message is completed
+				if (this.request.message_completed) {
+					yield this.sync_and_update_metadata();
+					this.send_response();
+				}
 				return;
 			}
 			
-			GLib.debug("Stream.finalize_and_wait_for_resolutions: Found %zu changes, waiting for AST resolutions", 
-				this.changes.size);
+			this.processing_change = true;
+			var change = this.pending_changes.poll();
 			
-			// Wait for all AST path resolutions to complete
-			// Try up to 5 times (5 * 200ms = 1 second total wait time)
-			int attempts = 0;
-			while (attempts < 5) {
-				bool all_completed = true;
-				foreach (var change in this.changes) {
-					if (!change.completed) {
-						all_completed = false;
-						break;
-					}
-				}
-				
-				if (all_completed) {
-					break; // All resolutions complete
-				}
-				
-				// Wait 200ms before checking again (200 milliseconds = 0.2 seconds)
-				GLib.Timeout.add(200, () => {
-					finalize_and_wait_for_resolutions.callback();
-					return false;
-				});
-				yield;
-				attempts++;
+			// Ensure file history is created on first edit (before changes for modified files)
+			yield this.create_file_history(
+				this.file.manager,
+				this.file,
+				this.request.creating_file ? "added" : "modified"
+			);
+			
+			// Wait for AST resolution if needed
+			// Since resolve_ast_path() is async, we can yield on it directly
+			// Changes in queue are not completed yet (they're added when code block closes)
+			if (change.ast_path != "") {
+				// Yield for resolution - no timeout loops needed
+				yield change.resolve_ast_path();
 			}
 			
-			// After 5 attempts, cancel all changes that are not finished
+			// Apply change after resolution (change is already in changes array, don't add again)
+			// apply_change() sets result and completed - does not throw errors
+			yield change.apply_change(this.request.edit_mode == "complete_file");
+			// result and completed are already set by apply_change()
+			// Note: apply_edit() only applies to buffer - does not sync to file
+			// Buffer sync and metadata updates happen when queue is empty (before sending response)
+			
+			this.processing_change = false;
+			
+			// Process next item in queue, or send response if queue is empty and message completed
+			// This is the key: when a change completes, either process next queue item
+			// or if end message received and queue empty, sync metadata and send response
+			this.process_next_change.begin();
+		}
+		
+		/**
+		 * Finalizes stream processing and handles response sending.
+		 * 
+		 * This should be called when message is completed. It finalizes any remaining
+		 * content, sets message_completed flag, and handles response sending based on
+		 * queue status. Line-based changes are applied serially after message completion.
+		 * AST-based changes are handled by the queue.
+		 * 
+		 * @param response The chat response object
+		 */
+		public async void finalize_and_handle_response(OLLMchat.Response.Chat response)
+		{
+			// Response state is stored on Request so it owns lifecycle and cleanup.
+			// Caller is responsible for setting request.chat_response and request.message_completed.
+			
+			// Check if we have any changes
+			if (this.changes.size == 0 && this.pending_changes.size == 0) {
+				// No changes were captured - send message to LLM
+				this.send_no_changes_response(response);
+				return;
+			}
+			
+			// Check for line-based changes (changes without ast_path)
+			// These need to be applied serially after message completion
+			var has_line_based_changes = false;
 			foreach (var change in this.changes) {
-				if (!change.completed) {
-					change.mark_completed("AST path resolution timeout");
+				if (change.ast_path == "") {
+					has_line_based_changes = true;
+					break;
 				}
 			}
 			
-			// Build summary message from individual change results
+			if (has_line_based_changes) {
+				// Apply line-based changes serially
+				try {
+					yield this.apply_line_based_changes();
+				} catch (GLib.Error e) {
+					GLib.warning("Error applying line-based changes to %s: %s", this.request.normalized_path, e.message);
+					this.error_messages.add("There was a problem applying the changes: " + e.message);
+				}
+			}
+			
+			// Check queue status (not changes array - both line-based and AST changes go in changes array)
+			// If queue is processing or has items, queue processing will handle response when done
+			if (this.processing_change || this.pending_changes.size > 0) {
+				return;
+			}
+			
+			// Check if AST queue is empty - if so, send response immediately
+			// Otherwise, queue processing will send response when done
+			if (this.pending_changes.size == 0 && !this.processing_change) {
+				this.send_response();
+			}
+		}
+		
+		/**
+		 * Apply line-based changes serially from start to end.
+		 * 
+		 * Line-based changes must be applied serially from start to end
+		 * to ensure line numbers remain valid. File and project_manager
+		 * are already set up (file is stored in Stream, project_manager via file.manager).
+		 */
+		private async void apply_line_based_changes() throws Error
+		{
+			// Line-based changes must be applied serially from start to end
+			// to ensure line numbers remain valid
+			// File and project_manager are already set up (file is stored in Stream, project_manager via file.manager)
+			
+			var project_manager = this.file.manager;
+			var normalized_path = this.request.normalized_path;
+			var is_in_project = (this.file.id > 0);
+			
+			if (!is_in_project && project_manager.active_project != null) {
+				var dir_path = GLib.Path.get_dirname(normalized_path);
+				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
+					is_in_project = true;
+				}
+			}
+			
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			
+			// Ensure file history is created on first edit (before changes for modified files)
+			var change_type = this.request.creating_file ? "added" : "modified";
+			yield this.create_file_history(project_manager, this.file, change_type);
+			
+			this.validate_complete_file_changes();
+			
+			// Filter out completed changes and AST changes - only process line-based changes that are not yet completed
+			var valid_changes = new Gee.ArrayList<OLLMfiles.FileChange>();
+			foreach (var change in this.changes) {
+				if (!change.completed && change.ast_path == "") {
+					valid_changes.add(change);
+				}
+			}
+			
+			if (valid_changes.size == 0) {
+				return;
+			}
+			// Apply line-based changes serially (from end to start)
+			// The LLM line numbers are based on the original file snapshot.
+			// Applying from end to start keeps earlier line numbers valid.
+			// Sort by start line (descending) to preserve those positions.
+			valid_changes.sort((a, b) => {
+				if (a.start < b.start) {
+					return 1;
+				}
+				if (a.start > b.start) {
+					return -1;
+				}
+				return 0;
+			});
+			
+			
+			if (this.request.edit_mode == "complete_file") {
+				yield valid_changes.get(0).apply_change(true);
+			} else {
+				// Apply in reverse order for line-based changes
+				// apply_change() updates result and completed
+				foreach (var change in valid_changes) {
+					yield change.apply_change(false);
+				}
+			}
+			
+			// Sync buffer to file and update metadata
+			yield this.sync_and_update_metadata();
+		}
+		
+		/**
+		 * Send no changes response to LLM.
+		 * 
+		 * Called when edit mode was enabled but no changes were provided.
+		 */
+		private void send_no_changes_response(OLLMchat.Response.Chat response)
+		{
+			// Send message to LLM that edit mode was enabled but no changes were provided
+			this.request.reply_with_errors(
+				response,
+				"You enabled edit mode for '" + this.request.normalized_path +
+					"' but did not provide any code blocks with changes. " +
+					"Please provide code blocks with the changes you want to make."
+			);
+		}
+		
+		/**
+		 * Send response to LLM after all changes are applied.
+		 * 
+		 * Builds summary of applied changes and sends response to LLM.
+		 * This will trigger the "messages completed" signal to UI after response is sent.
+		 */
+		private void send_response()
+		{
+			if (!this.request.message_completed) {
+				return; // Message not completed yet
+			}
+			
+			if (this.processing_change || this.pending_changes.size > 0) {
+				return; // Still processing changes
+			}
+			
+			if (this.request.chat_response == null) {
+				return; // No response to send
+			}
+			
+			// Build summary and send response
 			int applied_count = 0;
 			int failed_count = 0;
 			var summary_lines = new Gee.ArrayList<string>();
 			
 			foreach (var change in this.changes) {
-				// Check result (format errors and AST resolution errors are already stored in change.result)
 				if (change.result != "applied") {
 					failed_count++;
-					string error_msg = change.get_description() + " was not applied: " + (change.result != "" ? change.result : "unknown error");
-					summary_lines.add("  • " + error_msg);
-					this.error_messages.add(error_msg); // Collect for reply_with_errors()
+					summary_lines.add("  • " + change.get_description() + " was not applied: " +
+						(change.result != "" ? change.result : "unknown error"));
+					this.error_messages.add(change.get_description() + " was not applied: " +
+						(change.result != "" ? change.result : "unknown error"));
 					continue;
 				}
 				
@@ -354,105 +598,28 @@ namespace OLLMtools.EditMode
 				summary += line + "\n";
 			}
 			
-			// Store summary in error_messages if there were failures
 			if (failed_count > 0) {
 				this.error_messages.insert(0, summary);
 			}
-		}
-		
-		/**
-		 * Applies all captured changes to a file.
-		 * 
-		 * Filters out failed changes and applies only successful ones.
-		 * Handles file creation, history, validation, and emits signals.
-		 */
-		public async void apply_all_changes() throws Error
-		{
-			if (this.changes.size == 0) {
-				return;
-			}
-		
-			var project_manager = ((Tool) this.request.tool).project_manager;
-			if (project_manager == null) {
-				throw new GLib.IOError.FAILED("ProjectManager is not available");
+			
+			// Calculate line count for success message
+			int line_count = 0;
+			try {
+				line_count = this.count_file_lines();
+			} catch (GLib.Error e) {
+				GLib.warning("Error counting lines in %s: %s", this.request.normalized_path, e.message);
 			}
 			
-			var normalized_path = this.request.normalized_path;
-			var file = project_manager.get_file_from_active_project(normalized_path);
-			var is_in_project = (file != null);
-			
-			if (!is_in_project && project_manager.active_project != null) {
-				var dir_path = GLib.Path.get_dirname(normalized_path);
-				if (project_manager.active_project.project_files.folder_map.has_key(dir_path)) {
-					is_in_project = true;
-				}
-			}
-			
-			if (!is_in_project && !this.request.agent.get_permission_provider().check_permission(this.request)) {
-				throw new GLib.IOError.PERMISSION_DENIED("Permission denied or revoked");
-			}
-			
-			this.send_apply_ui_message(is_in_project);
-			
-			if (file == null) {
-				file = new OLLMfiles.File.new_fake(project_manager, normalized_path);
-			}
-			file.manager.buffer_provider.create_buffer(file);
-			
-			var file_exists = GLib.FileUtils.test(normalized_path, GLib.FileTest.IS_REGULAR);
-			var change_type = file_exists ? "modified" : "added";
-			
-			if (change_type == "modified") {
-				yield this.create_file_history(project_manager, file, change_type);
-			}
-			
-			this.validate_changes(file_exists);
-			
-			// Filter out failed changes (those with start == -2 || end == -2)
-			var valid_changes = new Gee.ArrayList<OLLMfiles.FileChange>();
-			foreach (var change in this.changes) {
-				if (change.start != -2 && change.end != -2 && change.result == "applied") {
-					valid_changes.add(change);
-				}
-			}
-			
-			if (this.write_complete_file) {
-				if (valid_changes.size > 0) {
-					// Write replacement content using buffer (handles backup and directory creation automatically)
-					yield file.buffer.write(valid_changes[0].replacement);
-				}
-			} else {
-				if (valid_changes.size > 0) {
-					yield this.apply_edits(file, valid_changes);
-				}
-			}
-			
-			this.send_success_ui_message(is_in_project);
-			
-			if (change_type == "added" && file.id <= 0 && is_in_project) {
-				file = yield this.convert_new_file_to_real(project_manager, file);
-				if (file != null) {
-					is_in_project = true;
-					project_manager.active_project.project_files.update_from(project_manager.active_project);
-					yield this.create_file_history(project_manager, file, change_type);
-				}
-			}
-			
-			file.is_need_approval = true;
-			file.last_change_type = change_type;
-			file.last_modified = new GLib.DateTime.now_local().to_unix();
-			
-			if (is_in_project || file.id > 0) {
-				file.saveToDB(project_manager.db, null, false);
-			}
-			
-			if (is_in_project) {
-				project_manager.active_project.project_files.review_files.refresh();
-			}
-			
-			if (project_manager.db != null) {
-				project_manager.db.backupDB();
-			}
+			// Send tool reply to LLM
+			// This will trigger the "messages completed" signal to UI after response is sent
+			this.request.reply_with_errors(
+				this.request.chat_response,
+				(line_count > 0)
+					? "File '" + this.request.normalized_path +
+						"' has been updated. It now has " +
+						line_count.to_string() + " lines."
+					: "File '" + this.request.normalized_path + "' has been updated."
+			);
 		}
 		
 		private async void create_file_history(
@@ -460,10 +627,18 @@ namespace OLLMtools.EditMode
 			OLLMfiles.File file,
 			string change_type) throws Error
 		{
-			if (project_manager.db == null) {
-				return;
+			// Check if history already created
+			if (this.history_created) {
+				return; // Already created
 			}
 			
+		// For modified files, require the file to exist so it has an ID to reference.
+		// For added files, history can be created even if the file doesn't exist yet.
+			if (change_type != "added" && this.request.creating_file) {
+				return; // File doesn't exist yet, will be called again later
+			}
+		
+		
 			try {
 				var file_history = new OLLMfiles.FileHistory(
 					project_manager.db,
@@ -472,33 +647,110 @@ namespace OLLMtools.EditMode
 					new GLib.DateTime.now_local()
 				);
 				yield file_history.commit();
+				this.history_created = true;
 			} catch (GLib.Error e) {
 				GLib.warning("Cannot create FileHistory for edit (%s): %s", this.request.normalized_path, e.message);
 			}
 		}
 		
-		private void validate_changes(bool file_exists) throws Error
+		/**
+		 * Sync buffer to file and update metadata after all changes have been applied.
+		 * 
+		 * This method syncs the buffer to file and updates metadata after all changes
+		 * have been applied. It also ensures file history is created if it wasn't
+		 * created earlier (for added files). It's called by both line-based and
+		 * AST-based change processing when all changes are done, before sending the response.
+		 */
+		private async void sync_and_update_metadata() throws Error
 		{
-			if (!this.write_complete_file) {
-				if (!file_exists) {
+			var is_in_project = (this.file.id > 0);
+			
+			if (!is_in_project && this.file.manager.active_project != null) {
+				if (this.file.manager.active_project.project_files.folder_map.has_key(
+					GLib.Path.get_dirname(this.request.normalized_path)
+				)) {
+					is_in_project = true;
+				}
+			}
+			
+			var change_type = this.request.creating_file ? "added" : "modified";
+			
+			// Sync buffer to file (all changes have been applied to buffer)
+			// For GTK buffers: use sync_to_file()
+			// For DummyFileBuffer: write buffer contents (sync_to_file() throws NOT_SUPPORTED)
+			try {
+				yield this.file.buffer.sync_to_file();
+			} catch (GLib.IOError e) {
+				if (e is GLib.IOError.NOT_SUPPORTED) {
+					// DummyFileBuffer: get buffer contents and write
+					var contents = this.file.buffer.get_text();
+					yield this.file.buffer.write(contents);
+				} else {
+					throw e;
+				}
+			}
+			
+			// Update file metadata
+			this.send_success_ui_message(is_in_project);
+			
+			// For added files: convert fake file to real
+			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
+				var file = yield this.convert_new_file_to_real(this.file.manager, this.file);
+				if (file != null) {
+					is_in_project = true;
+					this.file.manager.active_project.project_files.update_from(this.file.manager.active_project);
+				}
+			}
+			
+			// Create history if not already created (handles both modified and added)
+			// For modified: should have been created before changes
+			// For added: create here after file is created and converted to real
+			// create_file_history() checks history_created flag and file existence internally
+			yield this.create_file_history(this.file.manager, this.file, change_type);
+			
+			this.file.is_need_approval = true;
+			this.file.last_change_type = change_type;
+			this.file.last_modified = new GLib.DateTime.now_local().to_unix();
+			
+			if (is_in_project || this.file.id > 0) {
+				this.file.saveToDB(this.file.manager.db, null, false);
+			}
+			
+			if (is_in_project) {
+				this.file.manager.active_project.project_files.review_files.refresh();
+			}
+			
+			if (this.file.manager.db != null) {
+				this.file.manager.db.backupDB();
+			}
+			
+			if (this.request.creating_file) {
+				this.request.creating_file = false;
+			}
+		}
+		
+		private void validate_complete_file_changes() throws Error
+		{
+			if (this.request.edit_mode != "complete_file") {
+				if (this.request.creating_file) {
 					throw new GLib.IOError.NOT_FOUND(
 						"File does not exist: " + this.request.normalized_path + ". Use complete_file=true to create a new file.");
 				}
 				return;
 			}
 			
-			if (this.changes.size > 1) {
-				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Cannot create/overwrite file: multiple changes detected. Complete file mode only allows a single code block.");
+			var valid_changes = new Gee.ArrayList<OLLMfiles.FileChange>();
+			foreach (var change in this.changes) {
+				if (!change.completed || change.result == "") {
+					valid_changes.add(change);
+				}
 			}
 			
-			if (this.changes.size > 0 && 
-				(this.changes[0].start != -1 || this.changes[0].end != -1)) {
-				throw new GLib.IOError.INVALID_ARGUMENT(
-					"Cannot use line numbers in complete_file mode. When complete_file=true, code blocks should only have the language tag (e.g., ```vala, not ```vala:1:1).");
+			if (valid_changes.size == 0) {
+				return;
 			}
 			
-			if (file_exists && !this.request.overwrite) {
+			if (!this.request.creating_file && !this.request.overwrite) {
 				throw new GLib.IOError.EXISTS(
 					"File already exists: " + this.request.normalized_path + ". Use overwrite=true to overwrite it.");
 			}
@@ -512,49 +764,18 @@ namespace OLLMtools.EditMode
 			return project_manager.get_file_from_active_project(this.request.normalized_path);
 		}
 		
-		private void send_apply_ui_message(bool is_in_project)
-		{
-			GLib.debug("Starting to apply changes to file %s (in_project=%s, changes=%zu)", 
-				this.request.normalized_path, is_in_project.to_string(), this.changes.size);
-			
-			var mode_text = this.write_complete_file ? "Complete file replacement" : "Line range edits";
-			var apply_message = "Applying changes to file: " + this.request.normalized_path + "\n" +
-				"Changes to apply: " + this.changes.size.to_string() + "\n" +
-				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
-				"Mode: " + mode_text;
-			this.request.send_ui("txt", "Applying Changes", apply_message);
-		}
-		
 		private void send_success_ui_message(bool is_in_project)
 		{
 			GLib.debug("Successfully applied changes to file %s", this.request.normalized_path);
 			
-			var mode_text = this.write_complete_file ? "Complete file replacement" : "Line range edits";
+			var mode_text = (this.request.edit_mode == "complete_file")
+				? "Complete file replacement"
+				: (this.request.edit_mode == "ast_path" ? "AST path edits" : "Line range edits");
 			var success_message = "Successfully applied changes to file: " + this.request.normalized_path + "\n" +
 				"Changes applied: " + this.changes.size.to_string() + "\n" +
 				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
 				"Mode: " + mode_text;
 			this.request.send_ui("txt", "Changes Applied", success_message);
-		}
-		
-		private async void apply_edits(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileChange> changes) throws Error
-		{
-			// Ensure buffer is loaded
-			if (!file.buffer.is_loaded) {
-				yield file.buffer.read_async();
-			}
-			
-			// Sort changes by start line (descending) so we can apply them in reverse order
-			changes.sort((a, b) => {
-				if (a.start < b.start) return 1;
-				if (a.start > b.start) return -1;
-				return 0;
-			});
-			
-			// Apply edits using buffer's efficient apply_edits method
-			// This will use GTK buffer operations for GtkSourceFileBuffer
-			// or in-memory lines array for DummyFileBuffer
-			yield file.buffer.apply_edits(changes);
 		}
 		
 		/**
@@ -576,57 +797,6 @@ namespace OLLMtools.EditMode
 			return file.buffer.get_line_count();
 		}
 		
-		private const string ERROR_APPLYING_CHANGES = "There was a problem applying the changes: ";
-		
-		/**
-		 * Handles the response after applying changes.
-		 * 
-		 * Counts file lines, sends UI messages, and replies to the LLM.
-		 * 
-		 * @param res The async result from apply_all_changes()
-		 * @param response The chat response object
-		 */
-		public void handle_apply_changes_response(GLib.AsyncResult res, OLLMchat.Response.Chat response)
-		{
-			int line_count = 0;
-			
-			try {
-				this.apply_all_changes.end(res);
-				
-				// Calculate line count for success message
-				try {
-					line_count = this.count_file_lines();
-				} catch (Error e) {
-					GLib.warning("Error counting lines in %s: %s", this.request.normalized_path, e.message);
-				}
-				
-				// Build and emit UI message with more detail
-				string update_message = "File updated: " + this.request.normalized_path + "\n";
-				if (line_count > 0) {
-					update_message += "Total lines: " + line_count.to_string() + "\n";
-				}
-				update_message += "Changes applied: " + this.changes.size.to_string() + "\n";
-				var project_manager = ((Tool) this.request.tool).project_manager;
-				var is_in_project = project_manager?.get_file_from_active_project(this.request.normalized_path) != null;
-				update_message += "Project file: " + (is_in_project ? "yes" : "no");
-				this.request.send_ui("txt", "File Updated", update_message);
-				
-				// Send tool reply to LLM
-				this.request.reply_with_errors(
-					response,
-					(line_count > 0)
-						? "File '" + this.request.normalized_path + 
-							"' has been updated. It now has " + 
-							line_count.to_string() + " lines."
-						: "File '" + this.request.normalized_path + "' has been updated."
-				);
-			} catch (Error e) {
-				GLib.warning("Error applying changes to %s: %s", this.request.normalized_path, e.message);
-				// Store error message instead of sending immediately
-				this.error_messages.add(ERROR_APPLYING_CHANGES + e.message);
-				this.request.reply_with_errors(response);
-			}
-		}
 	}
 }
 

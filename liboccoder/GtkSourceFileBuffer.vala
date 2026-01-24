@@ -469,6 +469,87 @@ namespace OLLMcoder
 		}
 		
 		/**
+		 * Apply a single edit to the buffer.
+		 * 
+		 * This performs the actual edit operation on the buffer.
+		 * Does NOT sync to file - that should be done by the caller.
+		 * 
+		 * @param change The FileChange to apply
+		 * @throws Error if edit cannot be applied (invalid line ranges, etc.)
+		 */
+		public async void apply_edit(OLLMfiles.FileChange change) throws Error
+		{
+			// Ensure buffer is loaded
+			if (!this.is_loaded) {
+				yield this.read_async();
+			}
+			
+			// Get base indentation for normalization
+			var line_number = change.start - 1;
+			var base_indent = "";
+			
+			// Extract base indentation if line exists
+			if (line_number >= 0 && line_number < this.get_line_count()) {
+				var line = this.get_line(line_number);
+				var prefix_length = line.length - line.chug().length;
+				if (prefix_length > 0) {
+					base_indent = line.substring(0, prefix_length);
+				}
+			}
+			
+			// Normalize indentation of replacement text
+			change.normalize_indentation(base_indent);
+			
+			// Get iterators for the range
+			Gtk.TextIter start_iter;
+			Gtk.TextIter end_iter;
+			
+			// Handle insertion case (start == end) - normal insertion at existing line
+			var has_start = this.get_iter_at_line(out start_iter, change.start - 1);
+			if (change.start == change.end && has_start) {
+				end_iter = start_iter;
+				this.delete(ref start_iter, ref end_iter);
+				this.insert(ref start_iter, change.replacement, -1);
+				return;
+			}
+			
+			// Handle insertion case (start == end) - insertion at end of file
+			if (change.start == change.end && (change.start - 1) == this.get_line_count()) {
+				this.get_end_iter(out start_iter);
+				end_iter = start_iter;
+				this.delete(ref start_iter, ref end_iter);
+				this.insert(ref start_iter, change.replacement, -1);
+				return;
+			}
+			
+			// Handle insertion case (start == end) - invalid line range
+			if (change.start == change.end) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start=" + change.start.to_string() + 
+					" (file has " + this.get_line_count().to_string() + " lines)");
+			}
+			
+			// Handle edit case (start != end) - get start iterator
+			if (!this.get_iter_at_line(out start_iter, change.start - 1)) {
+				throw new GLib.IOError.INVALID_ARGUMENT(
+					"Invalid line range: start=" + change.start.to_string() + 
+					" (file has " + this.get_line_count().to_string() + " lines)");
+			}
+			
+			// Handle edit case - get end iterator (end line exists)
+			if (this.get_iter_at_line(out end_iter, change.end - 1)) {
+				this.delete(ref start_iter, ref end_iter);
+				this.insert(ref start_iter, change.replacement, -1);
+				return;
+			}
+			
+			// Handle edit case - get end iterator (end line doesn't exist, use end of buffer)
+			this.get_end_iter(out end_iter);
+			this.delete(ref start_iter, ref end_iter);
+			this.insert(ref start_iter, change.replacement, -1);
+		}
+		
+		/**
 		 * Apply multiple edits to the buffer efficiently using GTK buffer operations.
 		 * 
 		 * Uses GTK TextBuffer's text manipulation for efficient chunk editing.
@@ -478,9 +559,7 @@ namespace OLLMcoder
 		 * 
 		 *  1. Ensure buffer is loaded (calls read_async() if needed)
 		 *  2. Apply changes in reverse order (from end to start) to preserve line numbers
-		 *  3. For each change:
-		 *     * Handle insertion case (start == end): Insert at existing line or end of file
-		 *     * Handle edit case (start != end): Delete range and insert replacement
+		 *  3. For each change: calls apply_edit()
 		 *  4. Sync buffer to file (creates backup, writes, updates metadata)
 		 * 
 		 * == FileChange Format ==
@@ -503,71 +582,16 @@ namespace OLLMcoder
 				yield this.read_async();
 			}
 			
-			// Apply changes in reverse order (from end to start) to preserve line numbers
+			// Sort changes by start line (descending) so we can apply them in reverse order
+			changes.sort((a, b) => {
+				if (a.start < b.start) return 1;
+				if (a.start > b.start) return -1;
+				return 0;
+			});
+			
+			// Apply changes using apply_edit() for each change
 			foreach (var change in changes) {
-				// Get base indentation for normalization
-				var line_number = change.start - 1;
-				var base_indent = "";
-				
-				// Extract base indentation if line exists
-				if (line_number >= 0 && line_number < this.get_line_count()) {
-					var line = this.get_line(line_number);
-					var prefix_length = line.length - line.chug().length;
-					if (prefix_length > 0) {
-						base_indent = line.substring(0, prefix_length);
-					}
-				}
-				
-				// Normalize indentation of replacement text
-				change.normalize_indentation(base_indent);
-				
-				// Get iterators for the range
-				Gtk.TextIter start_iter;
-				Gtk.TextIter end_iter;
-				
-				// Handle insertion case (start == end) - normal insertion at existing line
-				var has_start = this.get_iter_at_line(out start_iter, change.start - 1);
-				if (change.start == change.end && has_start) {
-					end_iter = start_iter;
-					this.delete(ref start_iter, ref end_iter);
-					this.insert(ref start_iter, change.replacement, -1);
-					continue;
-				}
-				
-				// Handle insertion case (start == end) - insertion at end of file
-				if (change.start == change.end && (change.start - 1) == this.get_line_count()) {
-					this.get_end_iter(out start_iter);
-					end_iter = start_iter;
-					this.delete(ref start_iter, ref end_iter);
-					this.insert(ref start_iter, change.replacement, -1);
-					continue;
-				}
-				
-				// Handle insertion case (start == end) - invalid line range
-				if (change.start == change.end) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						" (file has " + this.get_line_count().to_string() + " lines)");
-				}
-				
-				// Handle edit case (start != end) - get start iterator
-				if (!this.get_iter_at_line(out start_iter, change.start - 1)) {
-					throw new GLib.IOError.INVALID_ARGUMENT(
-						"Invalid line range: start=" + change.start.to_string() + 
-						" (file has " + this.get_line_count().to_string() + " lines)");
-				}
-				
-				// Handle edit case - get end iterator (end line exists)
-				if (this.get_iter_at_line(out end_iter, change.end - 1)) {
-					this.delete(ref start_iter, ref end_iter);
-					this.insert(ref start_iter, change.replacement, -1);
-					continue;
-				}
-				
-				// Handle edit case - get end iterator (end line doesn't exist, use end of buffer)
-				this.get_end_iter(out end_iter);
-				this.delete(ref start_iter, ref end_iter);
-				this.insert(ref start_iter, change.replacement, -1);
+				yield this.apply_edit(change);
 			}
 			
 			// Sync buffer to file (creates backup, writes, updates metadata)

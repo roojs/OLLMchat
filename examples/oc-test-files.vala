@@ -746,7 +746,19 @@ BACKUP_PATH: (tracked_in_file_history)
 			return 0;
 		});
 		
-		yield file.buffer.apply_edits(changes);
+		foreach (var change in changes) {
+			yield file.buffer.apply_edit(change);
+		}
+		
+		try {
+			yield file.buffer.sync_to_file();
+		} catch (GLib.IOError e) {
+			if (e is GLib.IOError.NOT_SUPPORTED) {
+				yield file.buffer.write(file.buffer.get_text());
+			} else {
+				throw e;
+			}
+		}
 		
 		int line_count = file.buffer.get_line_count();
 		// Note: Backups are now tracked in FileHistory table, not in file.last_approved_copy_path

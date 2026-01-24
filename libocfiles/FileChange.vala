@@ -68,6 +68,11 @@ namespace OLLMfiles
 		 * have been determined for this change.
 		 */
 		public bool completed { get; private set; default = false; }
+
+		/**
+		 * Indicates whether this change represents a parse/format error.
+		 */
+		public bool has_error { get; private set; default = false; }
 		
 		/**
 		 * Operation type for this change.
@@ -102,10 +107,9 @@ namespace OLLMfiles
 		public FileChange.with_error(File? file, string error_message)
 		{
 			Object(file: file);
-			this.start = -2;
-			this.end = -2;
 			this.result = error_message;
 			this.completed = true;
+			this.has_error = true;
 		}
 		
 		/**
@@ -157,7 +161,11 @@ namespace OLLMfiles
 			if (this.ast_path != "") {
 				return "ast-path:" + this.ast_path;
 			}
-			
+		
+			if (this.has_error) {
+				return "code block";
+			}
+				
 			return "lines " + this.start.to_string() + "-" + this.end.to_string();
 		}
 		
@@ -170,8 +178,8 @@ namespace OLLMfiles
 		 * On success: Sets this.start and this.end, adjusts based on operation_type,
 		 * sets this.result = "applied", and marks this.completed = true.
 		 * 
-		 * On failure: Sets this.start = -2, this.end = -2, sets error message in
-		 * this.result, and marks this.completed = true.
+		 * On failure: Sets this.result to an error message, sets has_error = true,
+		 * and marks this.completed = true.
 		 */
 		public async void resolve_ast_path()
 		{
@@ -182,6 +190,7 @@ namespace OLLMfiles
 			if (this.file == null) {
 				this.result = "No file available for AST path resolution";
 				this.completed = true;
+				this.has_error = true;
 				return;
 			}
 			
@@ -190,6 +199,7 @@ namespace OLLMfiles
 			if (this.file.id <= 0) {
 				this.result = "AST path resolution requires file to be in active project";
 				this.completed = true;
+				this.has_error = true;
 				return;
 			}
 			
@@ -201,12 +211,14 @@ namespace OLLMfiles
 				if (!tree.lookup_path(this.ast_path, out start, out end)) {
 					this.result = "AST path not found: " + this.ast_path;
 					this.completed = true;
+					this.has_error = true;
 					return;
 				}
 			} catch (GLib.Error e) {
 				GLib.warning("Error resolving AST path '%s': %s", this.ast_path, e.message);
 				this.result = "Error resolving AST path: " + e.message;
 				this.completed = true;
+				this.has_error = true;
 				return;
 			}
 			
@@ -228,17 +240,62 @@ namespace OLLMfiles
 				case OperationType.REPLACE:
 					break;
 			}
- 
+			this.completed = true;
 		}
 		
 		/**
-		 * Mark this change as completed with a result message.
+		 * Apply this change to the file buffer.
 		 * 
-		 * @param result_message The result message (e.g., "applied", "timeout", error message)
+		 * This method handles buffer creation, loading, and applying the edit.
+		 * Does NOT throw errors - sets result and completed on success or failure.
+		 * 
+		 * @param write_complete_file Whether to write the complete file (replacement content)
 		 */
-		public void mark_completed(string result_message)
+		public async void apply_change(bool write_complete_file)
 		{
-			this.result = result_message;
+			// File is already set as a property of FileChange
+			// Project manager is available via file.manager
+			this.file.manager.buffer_provider.create_buffer(this.file);
+			
+			// Ensure buffer is loaded
+			if (!this.file.buffer.is_loaded) {
+				try {
+					yield this.file.buffer.read_async();
+				} catch (GLib.Error e) {
+					this.result = "Error loading buffer: " + e.message;
+					this.completed = true;
+					return;
+				}
+			}
+			// TODO: When modes are added to the tool, in AST mode we should not reload the file
+			// - The file is already in memory since we had to run the tree on it to start with
+			// - AST path resolution requires the file to be parsed, so buffer should already be loaded
+			// - This check can be optimized for AST mode to skip the reload
+			
+			// Handle complete file write
+			if (write_complete_file) {
+				try {
+					yield this.file.buffer.write(this.replacement);
+				} catch (GLib.Error e) {
+					this.result = "Error writing file: " + e.message;
+					this.completed = true;
+					return;
+				}
+				this.result = "applied";
+				this.completed = true;
+				return;
+			}
+			
+			// Apply single edit using apply_edit (singular)
+			// apply_edit() throws errors - catch and set result/completed
+			try {
+				yield this.file.buffer.apply_edit(this);
+			} catch (GLib.Error e) {
+				this.result = "Error applying edit: " + e.message;
+				this.completed = true;
+				return;
+			}
+			this.result = "applied";
 			this.completed = true;
 		}
 		
