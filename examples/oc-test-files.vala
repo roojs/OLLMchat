@@ -323,8 +323,8 @@ Examples:
 			var tree = manager.tree_factory(file);
 			yield tree.parse();
 			
-			int start, end;
-			if (!tree.lookup_path(opt_ast_path, out start, out end)) {
+			int start, end, comment_start;
+			if (!tree.lookup_path(opt_ast_path, out start, out end, out comment_start)) {
 				stderr.printf("AST path not found: %s\n", opt_ast_path);
 				return;
 			}

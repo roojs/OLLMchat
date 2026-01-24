@@ -205,10 +205,10 @@ namespace OLLMfiles
 			
 			var tree = project_manager.tree_factory(this.file);
 			
-			int start, end;
+			int start, end, comment_start;
 			try {
 				yield tree.parse();
-				if (!tree.lookup_path(this.ast_path, out start, out end)) {
+				if (!tree.lookup_path(this.ast_path, out start, out end, out comment_start)) {
 					this.result = "AST path not found: " + this.ast_path;
 					this.completed = true;
 					this.has_error = true;
