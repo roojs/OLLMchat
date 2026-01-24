@@ -94,6 +94,21 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Secondary constructor for creating a FileChange with an error state.
+		 * 
+		 * @param file The file this change applies to (nullable)
+		 * @param error_message The error message to store in result
+		 */
+		public FileChange.with_error(File? file, string error_message)
+		{
+			Object(file: file);
+			this.start = -2;
+			this.end = -2;
+			this.result = error_message;
+			this.completed = true;
+		}
+		
+		/**
 		 * Normalize indentation of replacement text based on base indentation.
 		 * 
 		 * Removes minimum leading whitespace from all lines, then prepends base_indent.

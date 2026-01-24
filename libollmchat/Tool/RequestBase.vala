@@ -148,17 +148,17 @@ namespace OLLMchat.Tool
 		 * @param title The title/header for the message (e.g., "Read file Response")
 		 * @param body The message body content
 		 */
-		protected void send_ui(string type, string title, string body)
+		public void send_ui(string type, string title, string body)
 		{
-		// Escape code blocks in body to prevent breaking the outer codeblock
-		// Add message via agent interface
-		this.agent.add_message(
-			new OLLMchat.Message(
-				"ui",
-				"```" + type + " " + title + "\n" +
-					body.replace("\n```", "\n\\`\\`\\`") + "\n```"
-			)
-		);
+			// Escape code blocks in body to prevent breaking the outer codeblock
+			// Add message via agent interface
+			this.agent.add_message(
+				new OLLMchat.Message(
+					"ui",
+					"```" + type + " " + title + "\n" +
+						body.replace("\n```", "\n\\`\\`\\`") + "\n```"
+				)
+			);
 		}
 		
 		/**

@@ -128,7 +128,12 @@ namespace OLLMtools.EditMode
 			
 			var parts = tag.split(":");
 			if (parts.length < 2) {
-				return false;
+				// Invalid format - create FileChange with error state
+				this.current_line = "";
+				var error_msg = "Invalid code block format: expected format with ':' separator";
+				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
+				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				return true;
 			}
 			
 			// Look for "ast-path" marker
@@ -171,22 +176,42 @@ namespace OLLMtools.EditMode
 			
 			// Line number format: type:startline:endline
 			if (parts.length < 3) {
-				return false;
+				// Invalid format - create FileChange with error state
+				this.current_line = "";
+				var error_msg = "Invalid code block format: line number format requires at least 3 parts (type:start:end)";
+				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
+				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				return true;
 			}
 			
 			int start_line = -1;
 			int end_line = -1;
 			
 			if (!int.try_parse(parts[parts.length - 2], out start_line)) {
-				return false;
+				// Invalid format - create FileChange with error state
+				this.current_line = "";
+				var error_msg = "Invalid code block format: start line must be a valid integer";
+				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
+				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				return true;
 			}
 			
 			if (!int.try_parse(parts[parts.length - 1], out end_line)) {
-				return false;
+				// Invalid format - create FileChange with error state
+				this.current_line = "";
+				var error_msg = "Invalid code block format: end line must be a valid integer";
+				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
+				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				return true;
 			}
 			
 			if (start_line < 1 || end_line < start_line) {
-				return false;
+				// Invalid format - create FileChange with error state
+				this.current_line = "";
+				var error_msg = "Invalid code block format: start line must be >= 1 and end line must be >= start line";
+				this.current_change = new OLLMfiles.FileChange.with_error(this.file, error_msg);
+				this.request.send_ui("txt", "Edit Mode Error", error_msg);
+				return true;
 			}
 			
 			this.current_line = "";
@@ -220,7 +245,21 @@ namespace OLLMtools.EditMode
 				return;
 			}
 			
+			// Check if there are format errors before closing
+			if (this.current_change.start == -2 || this.current_change.end == -2) {
+				// Format error already set in try_parse_code_block_opener
+				// Just add to changes and reset
+				this.changes.add(this.current_change);
+				this.has_changes = true;
+				this.current_line = "";
+				this.current_change = null;
+				return;
+			}
+			
 			this.current_change.add_linebreak(true);
+			
+			// If AST path resolution was started, it will complete asynchronously
+			// For line number format, result will be determined when applying
 			
 			this.changes.add(this.current_change);
 			this.has_changes = true;
