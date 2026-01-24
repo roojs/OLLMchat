@@ -85,7 +85,7 @@ Don't forget to close it.
 		// AST path resolution state
 		private string pending_ast_path = "";
 		private bool resolving_ast_path = false;
-		private string current_operation_type = "replace"; // "replace", "insert_before", "insert_after", "delete"
+		private OLLMfiles.OperationType current_operation_type = OLLMfiles.OperationType.REPLACE;
 		private bool used_ast_paths = false; // Track if any changes used AST paths
 		
 		// Captured changes
@@ -488,16 +488,16 @@ Don't forget to close it.
 				var ast_path_parts = parts[ast_path_index + 1:parts.length];
 				
 				// Check for operation type suffix (:before or :after)
-				var operation_type = "replace";
+				var operation_type = OLLMfiles.OperationType.REPLACE;
 				switch (ast_path_parts.length > 0 ? 
 						ast_path_parts[ast_path_parts.length - 1] : "") {
 					case "before":
-						operation_type = "insert_before";
+						operation_type = OLLMfiles.OperationType.BEFORE;
 						// Remove "before" from AST path parts
 						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
 						break;
 					case "after":
-						operation_type = "insert_after";
+						operation_type = OLLMfiles.OperationType.AFTER;
 						// Remove "after" from AST path parts
 						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
 						break;
@@ -508,7 +508,7 @@ Don't forget to close it.
 				// Join remaining parts to form AST path
 				var ast_path = string.joinv("-", ast_path_parts);
 				
-				GLib.debug("Detected AST path in code block opener: '%s' (operation: %s)", ast_path, operation_type);
+				GLib.debug("Detected AST path in code block opener: '%s' (operation: %s)", ast_path, operation_type.to_string());
 				
 				// Enter code block immediately with placeholder line numbers
 				// They will be updated when AST path resolution completes
@@ -603,7 +603,7 @@ Don't forget to close it.
 			this.current_line = "";
 			this.current_block = "";
 			// Reset operation type to default (will be set by AST path parsing if needed)
-			this.current_operation_type = "replace";
+			this.current_operation_type = OLLMfiles.OperationType.REPLACE;
 		}
 		
 		/**
@@ -661,7 +661,7 @@ Don't forget to close it.
 					this.current_end_line = -1;
 					this.pending_ast_path = "";
 					this.resolving_ast_path = false;
-					this.current_operation_type = "replace";
+					this.current_operation_type = OLLMfiles.OperationType.REPLACE;
 					return;
 				}
 				
@@ -672,19 +672,19 @@ Don't forget to close it.
 				
 				// Check if replacement is empty (delete operation)
 				if (replacement.strip() == "") {
-					this.current_operation_type = "delete";
+					this.current_operation_type = OLLMfiles.OperationType.DELETE;
 				}
 				
 				// Adjust start/end based on operation type
-				if (this.current_operation_type == "insert_before") {
+				if (this.current_operation_type == OLLMfiles.OperationType.BEFORE) {
 					// Insert before: use start_line for both start and end
 					change_start = this.current_start_line;
 					change_end = this.current_start_line;
-				} else if (this.current_operation_type == "insert_after") {
+				} else if (this.current_operation_type == OLLMfiles.OperationType.AFTER) {
 					// Insert after: use end_line for both start and end
 					change_start = this.current_end_line;
 					change_end = this.current_end_line;
-				} else if (this.current_operation_type == "delete") {
+				} else if (this.current_operation_type == OLLMfiles.OperationType.DELETE) {
 					// Delete: use full range, empty replacement
 					change_start = this.current_start_line;
 					change_end = this.current_end_line;
@@ -696,10 +696,11 @@ Don't forget to close it.
 				}
 				
 				GLib.debug("Captured code block (file=%s, operation=%s, start=%d, end=%d, size=%zu bytes)", 
-					this.normalized_path, this.current_operation_type, change_start, change_end, replacement.length);
-				this.changes.add(new OLLMfiles.FileChange() {
+					this.normalized_path, this.current_operation_type.to_string(), change_start, change_end, replacement.length);
+				this.changes.add(new OLLMfiles.FileChange(this.file) {
 					start = change_start,
 					end = change_end,
+					operation_type = this.current_operation_type,
 					replacement = replacement
 				});
 				
@@ -710,7 +711,7 @@ Don't forget to close it.
 				this.current_end_line = -1;
 				this.pending_ast_path = "";
 				this.resolving_ast_path = false;
-				this.current_operation_type = "replace";
+				this.current_operation_type = OLLMfiles.OperationType.REPLACE;
 				return;
 			}
 			
@@ -915,13 +916,8 @@ Don't forget to close it.
 			OLLMfiles.ProjectManager project_manager,
 			OLLMfiles.File file) throws Error
 		{
-			try {
-				yield project_manager.convert_fake_file_to_real(file, this.normalized_path);
-				return project_manager.get_file_from_active_project(this.normalized_path);
-			} catch (GLib.Error e) {
-				GLib.warning("Cannot convert fake file to real (%s): %s", this.normalized_path, e.message);
-				return null;
-			}
+			yield project_manager.convert_fake_file_to_real(file, this.normalized_path);
+			return project_manager.get_file_from_active_project(this.normalized_path);
 		}
 		
 		/**

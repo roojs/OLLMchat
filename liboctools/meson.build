@@ -26,6 +26,7 @@ octools_src = files([
   'ReadFile/Summarize.vala',
   'EditMode/Tool.vala',
   'EditMode/Request.vala',
+  'EditMode/Stream.vala',
   'RunCommand/Tool.vala',
   'RunCommand/Bubble.vala',  # Must come before Request.vala so Bubble class is available
   'RunCommand/Scan.vala',  # Post-completion overlay scanner (must come before Overlay)
