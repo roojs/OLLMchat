@@ -50,6 +50,9 @@ Default mode: AST path.
 Code blocks must include AST path in format type:Namespace-Class-Method e.g.
 
 ```vala:OLLMchat-Client-chat
+/**
+ * Send a chat message.
+ */
 public void chat() {
 	// new implementation
 }
@@ -57,9 +60,10 @@ public void chat() {
 
 AST path operations:
 - Default (no suffix) = replace target
-- `:before` = insert before target
+- `:before-comment` = insert before comment block (recommended)
 - `:after` = insert after target
-- `:remove` = remove target
+- `:remove` = remove target (includes comment block)
+- `:with-comment` = replace or delete this block including the preceding comment
 
 Example (before):
 ```vala:OLLMchat-Client-chat:before
@@ -73,6 +77,16 @@ Example (after):
 
 Example (remove):
 ```vala:OLLMchat-Client-chat:remove
+```
+
+Example (replace with comments):
+```vala:OLLMchat-Client-chat:with-comment
+/**
+ * Updated docs
+ */
+public void chat() {
+	// new implementation
+}
 ```
 
 Any other format will be ignored.

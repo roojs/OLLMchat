@@ -50,6 +50,7 @@ An editing session cannot mix output formats.
 
 Code block format depends on the mode:
 - ast_path: Code blocks must include AST path in format type:Namespace-Class-Method.
+- ast_path suffixes: `:before-comment`, `:after`, `:remove`, `:with-comment` (comments apply to replace/remove/before-comment).
 - line_numbers: Code blocks must include line range in format type:startline:endline (e.g., vala:10:15, vala:1:5). The range is inclusive of the start line and exclusive of the end line. Line numbers are 1-based.
 - complete_file: Code blocks should only have the language tag (e.g., ```vala). The entire file content will be replaced. If the file doesn't exist, it will be created. If it exists and overwrite=true, it will be overwritten. If overwrite=false and the file exists, an error will be returned.
 

@@ -64,6 +64,11 @@ namespace OLLMfiles
 		public string ast_path { get; set; default = ""; }
 		
 		/**
+		 * Whether to include preceding comments when resolving AST path.
+		 */
+		public bool include_comments { get; set; default = false; }
+		
+		/**
 		 * Indicates whether AST path resolution and application result
 		 * have been determined for this change.
 		 */
@@ -222,7 +227,7 @@ namespace OLLMfiles
 				return;
 			}
 			
-			this.start = start;
+			this.start = this.include_comments ? comment_start : start;
 			this.end = end;
 			
 			switch (this.operation_type) {

@@ -261,22 +261,42 @@ namespace OLLMtools.EditMode
 				return true;
 			}
 			var operation_type = OLLMfiles.OperationType.REPLACE;
+			var include_comments = false;
+			var parsed_suffix = true;
 			
-			switch (ast_path_parts.length > 0 ? ast_path_parts[ast_path_parts.length - 1] : "") {
-				case "before":
-					operation_type = OLLMfiles.OperationType.BEFORE;
-					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-					break;
-				case "after":
-					operation_type = OLLMfiles.OperationType.AFTER;
-					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-					break;
-				case "remove":
-					operation_type = OLLMfiles.OperationType.DELETE;
-					ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-					break;
-				default:
-					break;
+			while (ast_path_parts.length > 0 && parsed_suffix) {
+				parsed_suffix = false;
+				switch (ast_path_parts[ast_path_parts.length - 1]) {
+					case "with-comment":
+						include_comments = true;
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						parsed_suffix = true;
+						break;
+					case "before-comment":
+						include_comments = true;
+						operation_type = OLLMfiles.OperationType.BEFORE;
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						parsed_suffix = true;
+						break;
+					case "before":
+						operation_type = OLLMfiles.OperationType.BEFORE;
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						parsed_suffix = true;
+						break;
+					case "after":
+						operation_type = OLLMfiles.OperationType.AFTER;
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						parsed_suffix = true;
+						break;
+					case "remove":
+						include_comments = true;
+						operation_type = OLLMfiles.OperationType.DELETE;
+						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
+						parsed_suffix = true;
+						break;
+					default:
+						break;
+				}
 			}
 			
 			
@@ -286,7 +306,8 @@ namespace OLLMtools.EditMode
 			this.current_line = "";
 			this.current_change = new OLLMfiles.FileChange(this.file) {
 				operation_type = operation_type,
-				ast_path = string.joinv("-", ast_path_parts)
+				ast_path = string.joinv("-", ast_path_parts),
+				include_comments = include_comments
 			};
 			return true;
 		}
