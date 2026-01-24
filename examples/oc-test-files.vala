@@ -210,9 +210,11 @@ Examples:
 		// Load projects from database
 		yield manager.load_projects_from_db();
 		
-		// Don't activate projects in test code - it triggers filesystem scanning
-		// and database updates which are unwanted side effects. Operations can
-		// work without active_project (they fall back to fake files or require explicit paths).
+		// Restore active project/file from DB so edits use real file IDs.
+		// Only do this in test mode (when --test-db is provided).
+		if (opt_test_db != null && opt_test_db != "") {
+			yield manager.restore_active_state();
+		}
 		
 		// Execute the requested action
 		if (opt_ls) {
@@ -576,6 +578,11 @@ PROJECT_PATH: $(manager.active_project.path)
 		int file_count = 0;
 		foreach (var entry in project.project_files.child_map.entries) {
 			file_count++;
+		}
+
+		// Persist in-memory DB for test runs so subsequent commands see the project/files.
+		if (opt_test_db != null && opt_test_db != "") {
+			db.backupDB();
 		}
 		
 		stdout.printf("PROJECT_PATH: %s\n", project_path);

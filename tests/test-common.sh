@@ -27,6 +27,9 @@ test_fail() {
     ((TESTS_FAILED++)) || true  # Always succeed - increment might fail with set -e if unset
     FAILED_TESTS+=("$1")
     CURRENT_TEST_FAILED=true
+    if [ "${STOP_ON_FAIL:-0}" -ne 0 ]; then
+        exit 1
+    fi
 }
 
 # Extract value from oc-test-files output
@@ -83,8 +86,8 @@ db_dump_to_file() {
     # Normalize timestamps before dumping
     normalize_db_timestamps "$db_path"
     
-    # Dump database to SQL file
-    if sqlite3 "$db_path" .dump > "$output_file" 2>/dev/null; then
+    # Dump database to SQL file (INSERTs only for easy comparison)
+    if sqlite3 "$db_path" .dump | grep "^INSERT" > "$output_file" 2>/dev/null; then
         return 0
     else
         echo -e "${YELLOW}Warning: Failed to dump database $db_path${NC}" >&2
@@ -183,11 +186,10 @@ test-match-db() {
         return 1
     fi
     
-    # Normalize SQL dumps (remove comments, normalize whitespace)
-    # SQLite dumps may have slight ordering differences, so we'll do a simple comparison first
-    # Timestamps should already be normalized to 0 by normalize_db_timestamps before dumping
-    local actual_normalized=$(cat "$actual_db_dump" | tr -d '\r' | grep -v '^--' | sed 's/[[:space:]]\+/ /g' | sort)
-    local expected_normalized=$(cat "$expected_db_dump" | tr -d '\r' | grep -v '^--' | sed 's/[[:space:]]\+/ /g' | sort)
+    # Normalize SQL dumps (normalize whitespace)
+    # Dumps contain INSERT-only lines to avoid schema drift comparisons
+    local actual_normalized=$(cat "$actual_db_dump" | tr -d '\r' | sed 's/[[:space:]]\+/ /g' | sort)
+    local expected_normalized=$(cat "$expected_db_dump" | tr -d '\r' | sed 's/[[:space:]]\+/ /g' | sort)
     
     if [ "$actual_normalized" = "$expected_normalized" ]; then
         test_pass "$full_description"
@@ -210,6 +212,13 @@ reset_test_state() {
     # Reset database before each test for consistent FILE_IDs
     if [ -n "${TEST_DB:-}" ] && [ -f "${TEST_DB}" ]; then
         rm -f "${TEST_DB}"
+    fi
+    # Clean up test directory if TEST_DIR is set (for test-edit-ops.sh)
+    # This ensures each test starts with a clean slate unless we're generating fixtures
+    if [ -z "${GENERATE_EXPECTED_MODE:-}" ]; then
+        if [ -n "${TEST_DIR:-}" ] && [ -d "${TEST_DIR}" ]; then
+            find "${TEST_DIR}" -mindepth 1 -delete 2>/dev/null || true
+        fi
     fi
     # Clean up project directory if TEST_PROJECT_DIR is set (for test-bubble.sh)
     # This ensures each test starts with a clean project directory
@@ -420,13 +429,21 @@ test_exe() {
         return 1
     fi
     
+    # Precursor info for debugging
+    local precursor
+    precursor="TEST: ${testname}\nCOMMAND: ${command}"
+
+    # Print precursor to stderr for live visibility
+    echo "TEST: ${testname}" >&2
+    echo "COMMAND: ${command}" >&2
+
     # Run the command and capture output (both stdout and stderr)
     local output
     output=$(eval "$command" 2>&1)
     local cmd_exit=$?
     
     # Save output to file
-    echo "$output" > "$output_file"
+    printf "%b\n%s\n" "$precursor" "$output" > "$output_file"
     
     # If command failed, that's a test failure
     if [ $cmd_exit -ne 0 ]; then
@@ -455,8 +472,14 @@ test_exe() {
         # Normalize newlines and exclude BACKUP lines from comparison
         # BACKUP lines are verified separately by extracting paths from stdout
         # FILE_IDs should be consistent since database is recreated for each test
-        local actual_normalized=$(cat "$output_file" | tr -d '\r' | grep -v "^BACKUP:")
-        local expected_normalized=$(cat "$expected_file" | tr -d '\r' | grep -v "^BACKUP:")
+        local actual_normalized=$(cat "$output_file" | tr -d '\r' | \
+            grep -v "^BACKUP:" | \
+            grep -v "^TEST:" | \
+            grep -v "^COMMAND:")
+        local expected_normalized=$(cat "$expected_file" | tr -d '\r' | \
+            grep -v "^BACKUP:" | \
+            grep -v "^TEST:" | \
+            grep -v "^COMMAND:")
         
         if [ "$actual_normalized" = "$expected_normalized" ]; then
             test_pass "$full_description" >&2
@@ -477,6 +500,8 @@ test_exe() {
             # Remove wrapper debug lines, BACKUP lines, and log messages (timestamp patterns), then check if anything remains
             local actual_content=$(cat "$output_file" | tr -d '\r' | \
                 grep -v "^BACKUP:" | \
+                grep -v "^TEST:" | \
+                grep -v "^COMMAND:" | \
                 grep -v "^Executing command in sandbox:" | \
                 grep -v "^Project:" | \
                 grep -v "^Allow network:" | \

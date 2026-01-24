@@ -1,4 +1,6 @@
-BACKUP: /home/alan/.cache/ollmchat/edited/2-26-01-01-test.txt
+TEST: test_edit_mode_insert_end
+COMMAND: cat "/home/alan/gitlive/OLLMchat/tests/data/2.edit-test-5-changes.json" | "/home/alan/gitlive/OLLMchat/build/oc-test-files" --edit="/home/alan/.cache/ollmchat/testing/testproj5/test.txt" --backend sourceview --test-db "/home/alan/.cache/ollmchat/testing/test.db"
+BACKUP: tracked_in_file_history
 FILE: /home/alan/.cache/ollmchat/testing/testproj5/test.txt
 FILE_ID: 2
 LINE_COUNT: 6
