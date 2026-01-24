@@ -162,17 +162,58 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Placeholder for AST path resolution.
+		 * Resolve AST path to line range.
 		 * 
-		 * Phase 2 will implement full AST path resolution. For Phase 1,
-		 * this method just marks the change as completed.
+		 * Only resolves AST paths for files in the active project.
+		 * Uses this.file.manager to get ProjectManager and resolve the AST path.
+		 * 
+		 * On success: Sets this.start and this.end, adjusts based on operation_type,
+		 * sets this.result = "applied", and marks this.completed = true.
+		 * 
+		 * On failure: Sets this.start = -2, this.end = -2, sets error message in
+		 * this.result, and marks this.completed = true.
 		 */
 		public async void resolve_ast_path()
 		{
-			// Placeholder: Full implementation in Phase 2
-			// For Phase 1, just mark as completed.
+			if (this.ast_path == "") {
+				this.completed = true;
+				return;
+			}
 			
-			// Adjust line range for insert/delete based on operation_type.
+			if (this.file == null) {
+				this.result = "No file available for AST path resolution";
+				this.completed = true;
+				return;
+			}
+			
+			var project_manager = this.file.manager;
+			
+			if (this.file.id <= 0) {
+				this.result = "AST path resolution requires file to be in active project";
+				this.completed = true;
+				return;
+			}
+			
+			var tree = project_manager.tree_factory(this.file);
+			
+			int start, end;
+			try {
+				yield tree.parse();
+				if (!tree.lookup_path(this.ast_path, out start, out end)) {
+					this.result = "AST path not found: " + this.ast_path;
+					this.completed = true;
+					return;
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Error resolving AST path '%s': %s", this.ast_path, e.message);
+				this.result = "Error resolving AST path: " + e.message;
+				this.completed = true;
+				return;
+			}
+			
+			this.start = start;
+			this.end = end;
+			
 			switch (this.operation_type) {
 				case OperationType.BEFORE:
 					this.end = this.start;
@@ -181,15 +222,16 @@ namespace OLLMfiles
 					this.start = this.end;
 					break;
 				case OperationType.DELETE:
-					this.replacement = "";
+					if (this.replacement.strip() != "") {
+						this.replacement = "";
+					}
 					break;
 				case OperationType.REPLACE:
-					// No extra adjustment needed.
-					break;
-				default:
 					break;
 			}
-			 
+			
+			this.result = "applied";
+			this.completed = true;
 		}
 		
 		/**
