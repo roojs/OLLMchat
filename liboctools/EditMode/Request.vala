@@ -347,7 +347,11 @@ Don't forget to close it.
 		 * 
 		 * Internal so Stream can call it.
 		 */
-		internal void reply_with_errors(OLLMchat.Response.Chat response, string message = "")
+		internal void reply_with_errors(
+			OLLMchat.Response.Chat response,
+			string error_summary = "",
+			string message = ""
+		)
 		{
 			this.chat_response = null;
 			
@@ -364,8 +368,8 @@ Don't forget to close it.
 			var chat = this.agent.chat();
 			
 			// Build reply: errors first (if any), then message
-			string reply_text = (this.stream_handler.error_messages.size > 0 
-				? string.joinv("\n", this.stream_handler.error_messages.to_array()) + (message != "" ? "\n" : "") 
+			var reply_text = (error_summary != ""
+				? error_summary + (message != "" ? "\n" : "")
 				: "") + message;
 			
 			// Schedule send_append() to run on idle to avoid race condition:

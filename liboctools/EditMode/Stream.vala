@@ -31,8 +31,6 @@ namespace OLLMtools.EditMode
 		// Captured changes and non-change errors
 		public Gee.ArrayList<OLLMfiles.FileChange> changes { 
 			get; private set; default = new Gee.ArrayList<OLLMfiles.FileChange>(); }
-		public Gee.ArrayList<string> error_messages { 
-			get; private set; default = new Gee.ArrayList<string>(); }
 		
 		// Indicates whether any changes have been captured
 		public bool has_changes { get; private set; default = false; }
@@ -124,6 +122,7 @@ namespace OLLMtools.EditMode
 					return "AST path";
 			}
 		}
+
 
 		private bool ensure_mode_allows(string detected_mode)
 		{
@@ -251,8 +250,7 @@ namespace OLLMtools.EditMode
 				return true;
 			}
 			
-			var ast_path_parts = parts[1:parts.length];
-			if (ast_path_parts.length == 0 || ast_path_parts[0] == "") {
+			if (parts.length < 2 || parts[1] == "") {
 				this.current_line = "";
 				this.current_change = new OLLMfiles.FileChange.with_error(
 					this.file,
@@ -260,43 +258,47 @@ namespace OLLMtools.EditMode
 				);
 				return true;
 			}
+			
+			if (parts.length > 3) {
+				this.current_line = "";
+				this.current_change = new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Invalid code block format: expected type:ast-path or type:ast-path:suffix"
+				);
+				return true;
+			}
+
+			var ast_path = parts[1];
+			var suffix = parts.length == 3 ? parts[2] : "";
 			var operation_type = OLLMfiles.OperationType.REPLACE;
 			var include_comments = false;
-			var parsed_suffix = true;
-			
-			while (ast_path_parts.length > 0 && parsed_suffix) {
-				parsed_suffix = false;
-				switch (ast_path_parts[ast_path_parts.length - 1]) {
-					case "with-comment":
-						include_comments = true;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						parsed_suffix = true;
-						break;
-					case "before-comment":
-						include_comments = true;
-						operation_type = OLLMfiles.OperationType.BEFORE;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						parsed_suffix = true;
-						break;
-					case "before":
-						operation_type = OLLMfiles.OperationType.BEFORE;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						parsed_suffix = true;
-						break;
-					case "after":
-						operation_type = OLLMfiles.OperationType.AFTER;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						parsed_suffix = true;
-						break;
-					case "remove":
-						include_comments = true;
-						operation_type = OLLMfiles.OperationType.DELETE;
-						ast_path_parts = ast_path_parts[0:ast_path_parts.length - 1];
-						parsed_suffix = true;
-						break;
-					default:
-						break;
-				}
+			switch (suffix) {
+				case "":
+					break;
+				case "with-comment":
+					include_comments = true;
+					break;
+				case "before-comment":
+					include_comments = true;
+					operation_type = OLLMfiles.OperationType.BEFORE;
+					break;
+				case "before":
+					operation_type = OLLMfiles.OperationType.BEFORE;
+					break;
+				case "after":
+					operation_type = OLLMfiles.OperationType.AFTER;
+					break;
+				case "remove":
+					include_comments = true;
+					operation_type = OLLMfiles.OperationType.DELETE;
+					break;
+				default:
+					this.current_line = "";
+					this.current_change = new OLLMfiles.FileChange.with_error(
+						this.file,
+						"Invalid code block format: unknown AST suffix '" + suffix + "'"
+					);
+					return true;
 			}
 			
 			
@@ -306,7 +308,7 @@ namespace OLLMtools.EditMode
 			this.current_line = "";
 			this.current_change = new OLLMfiles.FileChange(this.file) {
 				operation_type = operation_type,
-				ast_path = string.joinv("-", ast_path_parts),
+				ast_path = ast_path,
 				include_comments = include_comments
 			};
 			return true;
@@ -409,7 +411,7 @@ namespace OLLMtools.EditMode
 				// Yield for resolution - no timeout loops needed
 				yield change.resolve_ast_path();
 			}
-			
+
 			// Apply change after resolution (change is already in changes array, don't add again)
 			// apply_change() sets result and completed - does not throw errors
 			yield change.apply_change(this.request.edit_mode == "complete_file");
@@ -459,12 +461,7 @@ namespace OLLMtools.EditMode
 			
 			if (has_line_based_changes) {
 				// Apply line-based changes serially
-				try {
-					yield this.apply_line_based_changes();
-				} catch (GLib.Error e) {
-					GLib.warning("Error applying line-based changes to %s: %s", this.request.normalized_path, e.message);
-					this.error_messages.add("There was a problem applying the changes: " + e.message);
-				}
+				yield this.apply_line_based_changes();
 			}
 			
 			// Check queue status (not changes array - both line-based and AST changes go in changes array)
@@ -493,6 +490,17 @@ namespace OLLMtools.EditMode
 			// to ensure line numbers remain valid
 			// File and project_manager are already set up (file is stored in Stream, project_manager via file.manager)
 			
+			var valid_changes = new Gee.ArrayList<OLLMfiles.FileChange>();
+			foreach (var change in this.changes) {
+				if (!change.completed && change.ast_path == "") {
+					valid_changes.add(change);
+				}
+			}
+			
+			if (valid_changes.size == 0) {
+				return;
+			}
+			
 			var project_manager = this.file.manager;
 			var normalized_path = this.request.normalized_path;
 			var is_in_project = (this.file.id > 0);
@@ -507,22 +515,27 @@ namespace OLLMtools.EditMode
 			this.file.manager.buffer_provider.create_buffer(this.file);
 			
 			// Ensure file history is created on first edit (before changes for modified files)
-			var change_type = this.request.creating_file ? "added" : "modified";
-			yield this.create_file_history(project_manager, this.file, change_type);
-			
-			this.validate_complete_file_changes();
-			
-			// Filter out completed changes and AST changes - only process line-based changes that are not yet completed
-			var valid_changes = new Gee.ArrayList<OLLMfiles.FileChange>();
-			foreach (var change in this.changes) {
-				if (!change.completed && change.ast_path == "") {
-					valid_changes.add(change);
-				}
-			}
-			
-			if (valid_changes.size == 0) {
+			try {
+				var change_type = this.request.creating_file ? "added" : "modified";
+				yield this.create_file_history(project_manager, this.file, change_type);
+			} catch (GLib.Error e) {
+				this.changes.insert(0, new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Error creating file history: " + e.message
+				));
 				return;
 			}
+			
+			try {
+				this.validate_complete_file_changes();
+			} catch (GLib.Error e) {
+				this.changes.insert(0, new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Error validating complete file changes: " + e.message
+				));
+				return;
+			}
+			
 			// Apply line-based changes serially (from end to start)
 			// The LLM line numbers are based on the original file snapshot.
 			// Applying from end to start keeps earlier line numbers valid.
@@ -549,7 +562,14 @@ namespace OLLMtools.EditMode
 			}
 			
 			// Sync buffer to file and update metadata
-			yield this.sync_and_update_metadata();
+			try {
+				yield this.sync_and_update_metadata();
+			} catch (GLib.Error e) {
+				this.changes.add(new OLLMfiles.FileChange.with_error(
+					this.file,
+					"Error syncing changes: " + e.message
+				));
+			}
 		}
 		
 		/**
@@ -562,6 +582,7 @@ namespace OLLMtools.EditMode
 			// Send message to LLM that edit mode was enabled but no changes were provided
 			this.request.reply_with_errors(
 				response,
+				"",
 				"You enabled edit mode for '" + this.request.normalized_path +
 					"' but did not provide any code blocks with changes. " +
 					"Please provide code blocks with the changes you want to make."
@@ -591,40 +612,32 @@ namespace OLLMtools.EditMode
 			// Build summary and send response
 			int applied_count = 0;
 			int failed_count = 0;
-			var summary_lines = new Gee.ArrayList<string>();
+			string[] summary_lines = {};
 			
 			foreach (var change in this.changes) {
 				if (change.result != "applied") {
 					failed_count++;
-					summary_lines.add("  • " + change.get_description() + " was not applied: " +
-						(change.result != "" ? change.result : "unknown error"));
-					this.error_messages.add(change.get_description() + " was not applied: " +
-						(change.result != "" ? change.result : "unknown error"));
+					summary_lines += "  • " + change.get_description() + " was not applied: " +
+						(change.result != "" ? change.result : "unknown error");
 					continue;
 				}
 				
 				applied_count++;
-				summary_lines.add("  • " + change.get_description() + " applied");
+				summary_lines += "  • " + change.get_description() + " applied";
 			}
 			
 			// Build summary message
 			var summary = "All changes were applied.\n\n";
 			if (failed_count > 0 && applied_count > 0) {
-				summary = "Some changes were applied.\n\n";
+				summary = "Some changes were applied.\n\n"  +
+				 	string.joinv("\n", summary_lines) + "\n";
 			} else if (failed_count > 0) {
-				summary = "No changes were applied.\n\n";
-			}
-			
-			foreach (var line in summary_lines) {
-				summary += line + "\n";
-			}
-			
-			if (failed_count > 0) {
-				this.error_messages.insert(0, summary);
+				summary = "No changes were applied.\n\n" +
+				 	string.joinv("\n", summary_lines) + "\n";
 			}
 			
 			// Calculate line count for success message
-			int line_count = 0;
+			var line_count = 0;
 			try {
 				line_count = this.count_file_lines();
 			} catch (GLib.Error e) {
@@ -635,11 +648,10 @@ namespace OLLMtools.EditMode
 			// This will trigger the "messages completed" signal to UI after response is sent
 			this.request.reply_with_errors(
 				this.request.chat_response,
-				(line_count > 0)
-					? "File '" + this.request.normalized_path +
-						"' has been updated. It now has " +
-						line_count.to_string() + " lines."
-					: "File '" + this.request.normalized_path + "' has been updated."
+				summary,
+				"File '" + this.request.normalized_path +
+					"' has been updated. It now has " +
+					line_count.to_string() + " lines."
 			);
 		}
 		

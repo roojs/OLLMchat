@@ -62,6 +62,7 @@ namespace OLLMfiles
 		 * AST path for this change (empty string when using line numbers).
 		 */
 		public string ast_path { get; set; default = ""; }
+
 		
 		/**
 		 * Whether to include preceding comments when resolving AST path.
@@ -155,6 +156,7 @@ namespace OLLMfiles
 			
 			this.replacement = string.joinv("\n", ret);
 		}
+
 		
 		/**
 		 * Returns a human-readable description of this change.
@@ -173,6 +175,15 @@ namespace OLLMfiles
 				
 			return "lines " + this.start.to_string() + "-" + this.end.to_string();
 		}
+
+		/**
+		 * Returns the UI label for this change.
+		 */
+		public string get_ui_label()
+		{
+			return "ast-path: " + this.ast_path;
+		}
+
 		
 		/**
 		 * Resolve AST path to line range.
@@ -258,6 +269,9 @@ namespace OLLMfiles
 		 */
 		public async void apply_change(bool write_complete_file)
 		{
+			if (this.completed) {
+				return;
+			}
 			// File is already set as a property of FileChange
 			// Project manager is available via file.manager
 			this.file.manager.buffer_provider.create_buffer(this.file);
