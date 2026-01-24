@@ -418,7 +418,8 @@ namespace OLLMtools.EditMode
 			
 			if (this.write_complete_file) {
 				if (valid_changes.size > 0) {
-					yield this.create_new_file_with_changes(file, valid_changes[0]);
+					// Write replacement content using buffer (handles backup and directory creation automatically)
+					yield file.buffer.write(valid_changes[0].replacement);
 				}
 			} else {
 				if (valid_changes.size > 0) {
@@ -448,7 +449,6 @@ namespace OLLMtools.EditMode
 			if (is_in_project) {
 				project_manager.active_project.project_files.review_files.refresh();
 			}
-			this.emit_change_signals();
 			
 			if (project_manager.db != null) {
 				project_manager.db.backupDB();
@@ -537,14 +537,6 @@ namespace OLLMtools.EditMode
 			this.request.send_ui("txt", "Changes Applied", success_message);
 		}
 		
-		private void emit_change_signals()
-		{
-			var edit_tool = (Tool) this.request.tool;
-			foreach (var change in this.changes) {
-				edit_tool.change_done(this.request.normalized_path, change);
-			}
-		}
-		
 		private async void apply_edits(OLLMfiles.File file, Gee.ArrayList<OLLMfiles.FileChange> changes) throws Error
 		{
 			// Ensure buffer is loaded
@@ -563,12 +555,6 @@ namespace OLLMtools.EditMode
 			// This will use GTK buffer operations for GtkSourceFileBuffer
 			// or in-memory lines array for DummyFileBuffer
 			yield file.buffer.apply_edits(changes);
-		}
-		
-		private async void create_new_file_with_changes(OLLMfiles.File file, OLLMfiles.FileChange change) throws Error
-		{
-			// Write replacement content using buffer (handles backup and directory creation automatically)
-			yield file.buffer.write(change.replacement);
 		}
 		
 		/**

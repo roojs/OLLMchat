@@ -176,7 +176,6 @@ namespace OLLMfiles
 		public async void resolve_ast_path()
 		{
 			if (this.ast_path == "") {
-				this.completed = true;
 				return;
 			}
 			
@@ -229,9 +228,7 @@ namespace OLLMfiles
 				case OperationType.REPLACE:
 					break;
 			}
-			
-			this.result = "applied";
-			this.completed = true;
+ 
 		}
 		
 		/**
@@ -279,10 +276,6 @@ namespace OLLMfiles
 				}
 				return;
 			}
-			
-			// For line-number-based operations, mark as completed immediately (no AST resolution needed)
-			// Result will be determined when applying, but we mark as completed so Request doesn't wait
-			this.completed = true;
 		}
 	}
 }
