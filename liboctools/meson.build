@@ -38,6 +38,8 @@ octools_src = files([
   'GoogleSearch/Request.vala',
   'GoogleSearch/Config.vala',
   'ToolBuilder.vala',
+  'Child/Parser.vala',
+  'Child/Tool.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory
