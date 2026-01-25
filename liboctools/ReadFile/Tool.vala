@@ -27,11 +27,9 @@ namespace OLLMtools.ReadFile
 	public class Tool : OLLMchat.Tool.BaseTool
 	{
 		
-		public override string name { get { return "read_file"; } }
-		
-		public override string title { get { return "Read File Tool"; } }
-		
-		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+	public override string name { get { return "read_file"; } }
+	
+	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 			
 		public override string description { get {
 			return """
@@ -70,10 +68,16 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	{
+		base();
+		this.project_manager = project_manager;
+		this.title = "Read File Tool";
+	}
+		
+		public OLLMchat.Tool.BaseTool? clone()
 		{
-			base();
-			this.project_manager = project_manager;
+			return new Tool(this.project_manager);
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)

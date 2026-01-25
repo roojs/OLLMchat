@@ -135,7 +135,7 @@ namespace OLLMchat.Agent
 				this.name,
 				section_name + ".md"
 			);
-			var file = GLib.File.new_for_uri(@"resource://$(resource_path)");
+			var file = GLib.File.new_for_uri("resource://" + resource_path);
 			
 			if (file.query_exists()) {
 				try {

@@ -299,7 +299,7 @@ oc_migrate_editors = executable('oc-migrate-editors',
 ocvector_resources = gnome.compile_resources(
   'ocvector-resources',
   '../resources/gresources.xml',
-  source_dir: ['../resources/ollmchat-agents', '../resources'],
+  source_dir: ['../resources/ollmchat-agents/code-assistant', '../resources', '../resources/wrapped-tools', '../resources/ocvector'],
   c_name: 'ocvector_resources'
 )
 

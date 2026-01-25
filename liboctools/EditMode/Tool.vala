@@ -28,11 +28,9 @@ namespace OLLMtools.EditMode
 	public class Tool : OLLMchat.Tool.BaseTool
 	{
 		
-		public override string name { get { return "edit_mode"; } }
-		
-		public override string title { get { return "Edit Mode Tool"; } }
-		
-		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+	public override string name { get { return "edit_mode"; } }
+	
+	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 			
 		public override string description { get {
 			return """
@@ -92,10 +90,16 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 			return a.request_id == b.request_id;
 		});
 		
-		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	{
+		base();
+		this.project_manager = project_manager;
+		this.title = "Edit Mode Tool";
+	}
+		
+		public OLLMchat.Tool.BaseTool? clone()
 		{
-			base();
-			this.project_manager = project_manager;
+			return new Tool(this.project_manager);
 		}
 		
 		/**

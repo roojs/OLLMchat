@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/ollmchat-agents">
-    <file>code-assistant/introduction.md</file>
-    <file>code-assistant/communication.md</file>
-    <file>code-assistant/tool_calling.md</file>
-    <file>code-assistant/search_and_reading.md</file>
-    <file>code-assistant/making_code_changes.md</file>
-    <file>code-assistant/debugging.md</file>
-    <file>code-assistant/calling_external_apis.md</file>
-    <file>code-assistant/citation_format.md</file>
+  <gresource prefix="/ollmchat-agents/code-assistant">
+    <file>introduction.md</file>
+    <file>communication.md</file>
+    <file>tool_calling.md</file>
+    <file>search_and_reading.md</file>
+    <file>making_code_changes.md</file>
+    <file>debugging.md</file>
+    <file>calling_external_apis.md</file>
+    <file>citation_format.md</file>
   </gresource>
   <gresource prefix="/ollmchat">
     <file>style.css</file>
@@ -16,9 +16,17 @@
     <file>ollama-models.json</file>
   </gresource>
   <gresource prefix="/ocvector">
-    <file>ocvector/ocvector-prompt.txt</file>
-    <file>ocvector/analysis-prompt.txt</file>
-    <file>ocvector/analysis-prompt-file.txt</file>
+    <file>ocvector-prompt.txt</file>
+    <file>analysis-prompt.txt</file>
+    <file>analysis-prompt-file.txt</file>
+  </gresource>
+  <gresource prefix="/wrapped-tools">
+    <file>glob.tool</file>
+    <file>grep.tool</file>
+    <file>ls.tool</file>
+    <file>Read.tool</file>
+    <file>WebFetch.tool</file>
+    <file>WebSearch.tool</file>
   </gresource>
 </gresources>
 

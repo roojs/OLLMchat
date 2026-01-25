@@ -983,6 +983,14 @@ namespace OLLMapp
 			
 			GLib.debug("Window.register_tools: Registered %d tools with project_manager", 
 				this.history_manager.tools.size);
+			
+			// Register wrapped tools from .tool definition files
+			// ToolBuilder uses resource:// URIs to access compiled resources
+			var builder = new OLLMtools.ToolBuilder(this.history_manager.tools);
+			builder.scan_and_build();
+			
+			GLib.debug("Window.register_tools: Registered wrapped tools (total tools: %d)", 
+				this.history_manager.tools.size);
 		}
 		
 	}

@@ -28,28 +28,15 @@ namespace OLLMchat.Tool
 	 */
 	public class Function : Object, Json.Serializable
 	{
-		private BaseTool tool;
-		
-		public Function(BaseTool tool)
-		{
-			this.tool = tool;
-		}
+		/**
+		 * The name of the function.
+		 */
+		public string name { get; set; default = ""; }
 		
 		/**
-		 * The name of the function (from Tool).
+		 * The description of the function.
 		 */
-		public string name
-		{
-			get { return this.tool.name; }
-		}
-		
-		/**
-		 * The description of the function (from Tool).
-		 */
-		public string description
-		{
-			get { return this.tool.description; }
-		}
+		public string description { get; set; default = ""; }
 		
 		/**
 		 * The parameters of the function.
@@ -57,12 +44,9 @@ namespace OLLMchat.Tool
 		public ParamObject parameters { get; set; default = new ParamObject(); }
 		
 		/**
-		 * The textual parameter description (from Tool).
+		 * The textual parameter description.
 		 */
-		public string? parameter_description
-		{
-			get { return this.tool.parameter_description; }
-		}
+		public string? parameter_description { get; set; default = null; }
 
 		public unowned ParamSpec? find_property(string name)
 		{

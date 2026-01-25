@@ -25,7 +25,7 @@ namespace OLLMtools.RunCommand
 	 * use permission caching based on resolved executable realpath.
 	 * Complex commands (with bash operators or multiple &&) always require approval.
 	 */
-	public class Tool : OLLMchat.Tool.BaseTool
+	public class Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.WrapInterface
 	{
 		
 		// Base description (without directory note)
@@ -41,11 +41,9 @@ namespace OLLMtools.RunCommand
 			}
 		}
 		
-		public override string name { get { return "run_command"; } }
-		
-		public override string title { get { return "Run Shell Commands Tool"; } }
-		
-		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+	public override string name { get { return "run_command"; } }
+	
+	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 			
 		public override string description { 
 			get {
@@ -81,17 +79,71 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	{
+		base();
+		
+		this.project_manager = project_manager;
+		this.title = "Run Shell Commands Tool";
+		// base_directory is now a computed property that checks active_project dynamically
+	}
+		
+		public OLLMchat.Tool.BaseTool clone()
 		{
-			base();
-			
-			this.project_manager = project_manager;
-			// base_directory is now a computed property that checks active_project dynamically
+			return new Tool(this.project_manager);
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
 			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
+		}
+		
+		/**
+		 * Implements WrapInterface.deserialize_wrapped() for wrapped tool execution.
+		 * 
+		 * Extracts the arguments array from JSON parameters, replaces {arguments}
+		 * in the command template with the joined arguments, and creates a
+		 * RunCommand.Request with the constructed command.
+		 * 
+		 * @param parameters_node The parameters as a Json.Node
+		 * @param command_template The command template with {arguments} placeholder
+		 * @return A Request instance or null if deserialization fails
+		 */
+		public OLLMchat.Tool.RequestBase? deserialize_wrapped(Json.Node parameters_node, string command_template)
+		{
+			if (parameters_node.get_node_type() != Json.NodeType.OBJECT) {
+				return null;
+			}
+			
+			var parameters_obj = parameters_node.get_object();
+			
+			// Extract arguments array
+			if (!parameters_obj.has_member("arguments")) {
+				return null;
+			}
+			
+			var arguments_array = parameters_obj.get_array_member("arguments");
+			if (arguments_array == null) {
+				return null;
+			}
+			string[] quoted_args = {};
+			
+			for (uint i = 0; i < arguments_array.get_length(); i++) {
+				quoted_args += GLib.Shell.quote(arguments_array.get_string_element(i));
+			}
+			
+			var joined_args = string.joinv(" ", quoted_args);
+			
+			// Replace {arguments} in template with joined arguments
+			var command = command_template.replace("{arguments}", joined_args);
+			
+			// Create Request with constructed command
+			var request = new Request();
+			request.command = command;
+			request.working_dir = "";
+			request.network = false;
+			
+			return request;
 		}
 	}
 }

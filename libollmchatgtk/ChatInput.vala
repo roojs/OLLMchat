@@ -524,8 +524,14 @@ namespace OLLMchatGtk
 					margin_bottom = 10
 				};
 
-				// Create checkboxes for each tool (tools are on Manager)
-				foreach (var tool in this.manager.tools.values) {
+			// Create checkboxes for each tool (tools are on Manager)
+			// Hide aliased tools (where key != tool.name and is_wrapped == false)
+				foreach (var entry in this.manager.tools.entries) {
+					var tool = entry.value;
+					// Skip aliases: tool name doesn't match the key and it's not a wrapped tool
+					if (tool.name != entry.key && !tool.is_wrapped) {
+						continue;
+					}
 					var check_button = new Gtk.CheckButton.with_label(
 						tool.title
 					);

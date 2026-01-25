@@ -78,6 +78,14 @@ namespace OLLMchat.Tool
 		public bool one_time_only { get; protected set; default = false; }
 		
 		/**
+		 * Whether this request is from a wrapped tool.
+		 * 
+		 * When true, indicates that this request was created by a wrapped tool
+		 * and should use the wrapped tool execution flow.
+		 */
+		public bool is_wrapped { get; set; default = false; }
+		
+		/**
 		 * Default constructor.
 		 * Request objects are created via Json.gobject_deserialize from parameters JSON.
 		 * Tool and agent are set after deserialization.

@@ -74,12 +74,11 @@ namespace OLLMvector.Indexing
 		 */
 		private PromptTemplate load_prompt_template() throws GLib.Error
 		{
-			var resource_path = GLib.Path.build_filename(
-				RESOURCE_BASE_PREFIX,
-				"ocvector",
-				"analysis-prompt.txt"
-			);
-			var file = GLib.File.new_for_uri("resource://" + resource_path);
+		var resource_path = GLib.Path.build_filename(
+			RESOURCE_BASE_PREFIX,
+			"analysis-prompt.txt"
+		);
+		var file = GLib.File.new_for_uri("resource://" + resource_path);
 			
 			uint8[] data;
 			string etag;
@@ -172,12 +171,11 @@ namespace OLLMvector.Indexing
 		 */
 		private PromptTemplate load_file_prompt_template() throws GLib.Error
 		{
-			var resource_path = GLib.Path.build_filename(
-				RESOURCE_BASE_PREFIX,
-				"ocvector",
-				"analysis-prompt-file.txt"
-			);
-			var file = GLib.File.new_for_uri("resource://" + resource_path);
+		var resource_path = GLib.Path.build_filename(
+			RESOURCE_BASE_PREFIX,
+			"analysis-prompt-file.txt"
+		);
+		var file = GLib.File.new_for_uri("resource://" + resource_path);
 			
 			uint8[] data;
 			string etag;

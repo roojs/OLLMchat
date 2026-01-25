@@ -20,7 +20,7 @@ ollmchat_deps = [
 ollmchat_resources = gnome.compile_resources(
   'ollmchat-resources',
   '../resources/gresources.xml',
-  source_dir: ['../resources/ollmchat-agents', '../resources'],
+  source_dir: ['../resources/ollmchat-agents/code-assistant', '../resources', '../resources/wrapped-tools', '../resources/ocvector'],
   c_name: 'ollmchat_resources'
 )
 
@@ -66,6 +66,8 @@ ollmchat_ollama_src = files([
   'ChatContentInterface.vala',
   'Tool/RequestBase.vala',
   'Tool/Tool.vala',
+  'Tool/WrapInterface.vala',
+  'Tool/ParamParser.vala',
   'Tool/Param.vala',
   'Tool/ParamSimple.vala',
   'Tool/ParamObject.vala',

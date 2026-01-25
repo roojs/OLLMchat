@@ -26,13 +26,11 @@ namespace OLLMtools.WebFetch
 	 * converted to base64. The tool automatically detects content types and applies
 	 * appropriate conversions.
 	 */
-	public class Tool : OLLMchat.Tool.BaseTool
+	public class Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.WrapInterface
 	{
-		public override string name { get { return "web_fetch"; } }
-		
-		public override string title { get { return "Web Fetch URL Tool"; } }
-		
-		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+	public override string name { get { return "web_fetch"; } }
+	
+	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 			
 		public override string description { get {
 			return """
@@ -59,15 +57,37 @@ The tool requires permission to access the domain of the URL being fetched.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	public Tool(OLLMfiles.ProjectManager? project_manager = null)
+	{
+		base();
+		this.project_manager = project_manager;
+		this.title = "Web Fetch URL Tool";
+	}
+		
+		public OLLMchat.Tool.BaseTool clone()
 		{
-			base();
-			this.project_manager = project_manager;
+			return new Tool(this.project_manager);
 		}
 		
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
 			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
+		}
+		
+		/**
+		 * Implements WrapInterface.deserialize_wrapped() for wrapped tool execution.
+		 * 
+		 * For WebFetch, no special handling is needed - simply calls the regular
+		 * deserialize() method since wrapped tools can pass parameters directly.
+		 * 
+		 * @param parameters_node The parameters as a Json.Node
+		 * @param command_template The command template (not used for WebFetch)
+		 * @return A Request instance or null if deserialization fails
+		 */
+		public OLLMchat.Tool.RequestBase? deserialize_wrapped(Json.Node parameters_node, string command_template)
+		{
+			// No special handling needed - just call regular deserialize
+			return this.deserialize(parameters_node);
 		}
 	}
 }

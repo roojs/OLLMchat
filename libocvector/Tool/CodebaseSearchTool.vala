@@ -49,11 +49,9 @@ namespace OLLMvector.Tool
 			config.tools.set("codebase_search", tool_config);
 		}
 		
-		public override string name { get { return "codebase_search"; } }
-		
-		public override string title { get { return "Sematic Codebase Search Tool"; } }
-		
-		public override string description { get {
+	public override string name { get { return "codebase_search"; } }
+	
+	public override string description { get {
 			return """
 Search the codebase using semantic vector search to find code elements that match a query.
 
@@ -121,20 +119,22 @@ making it more effective than simple text search for finding relevant code.
 		* 
 		* @param project_manager Project manager for accessing active project and database (nullable for Phase 1)
 		*/
-		public CodebaseSearchTool(
-			OLLMfiles.ProjectManager? project_manager = null
-		)
-		{
-			base();
-			
-			// If project_manager is provided, initialize dependencies immediately
-			if (project_manager != null) {
-				this.init_dependencies(project_manager);
-			}
-			
-			// Embedding client will be extracted lazily when config is available
-			// (e.g., in init_databases or when tool is used with Manager context)
+	public CodebaseSearchTool(
+		OLLMfiles.ProjectManager? project_manager = null
+	)
+	{
+		base();
+		
+		this.title = "Sematic Codebase Search Tool";
+		
+		// If project_manager is provided, initialize dependencies immediately
+		if (project_manager != null) {
+			this.init_dependencies(project_manager);
 		}
+		
+		// Embedding client will be extracted lazily when config is available
+		// (e.g., in init_databases or when tool is used with Manager context)
+	}
 		
 		/**
 		* Initializes tool dependencies after creation.

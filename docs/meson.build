@@ -126,6 +126,8 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Tool/namespace.vala',  # Tool namespace documentation
     '../libollmchat/Tool/RequestBase.vala',
     '../libollmchat/Tool/Tool.vala',
+    '../libollmchat/Tool/WrapInterface.vala',
+    '../libollmchat/Tool/ParamParser.vala',
     '../libollmchat/Tool/Param.vala',
     '../libollmchat/Tool/ParamSimple.vala',
     '../libollmchat/Tool/ParamObject.vala',
@@ -175,6 +177,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/GoogleSearch/Tool.vala',
     '../liboctools/GoogleSearch/Request.vala',
     '../liboctools/GoogleSearch/Config.vala',
+    '../liboctools/ToolBuilder.vala',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
