@@ -130,13 +130,14 @@ namespace OLLMtools
 			
 			var wrapped_tool = this.tools.get(parser.wrapped);
 			
-		// Check if this is a simple alias (only @name and @wrapped)
-		bool is_alias = (parser.title == "" && parser.description == "" && 
-			parser.command_template == "" && parser.parameter_description == "");
-			
+			// Check if this is a simple alias (only @name and @wrapped, no @param)
+			// Aliases don't define parameters - they use the wrapped tool's existing parameters
+			// Wrapped tools always define their own parameters with @param
+			bool is_alias = (parser.parameter_description == "");
+				
 			if (is_alias) {
 				if (this.tools.has_key(parser.name)) {
-					GLib.warning("Tool name '%s' already exists, skipping alias", parser.name);
+					GLib.critical("Tool name '%s' already exists, skipping alias", parser.name);
 					return;
 				}
 				
@@ -146,7 +147,7 @@ namespace OLLMtools
 			
 			// For full wrapped tools, require WrapInterface
 			if (!(wrapped_tool is OLLMchat.Tool.WrapInterface)) {
-				GLib.warning("Tool '%s' does not implement WrapInterface, cannot wrap", parser.wrapped);
+				GLib.critical("Tool '%s' does not implement WrapInterface, cannot wrap", parser.wrapped);
 				return;
 			}
 			
