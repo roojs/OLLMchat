@@ -180,6 +180,9 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/ToolBuilder.vala',
     '../liboctools/Child/Parser.vala',
     '../liboctools/Child/Tool.vala',
+    '../liboctools/Child/Factory.vala',
+    '../liboctools/Child/Agent.vala',
+    '../liboctools/Child/Request.vala',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',

@@ -40,6 +40,9 @@ octools_src = files([
   'ToolBuilder.vala',
   'Child/Parser.vala',
   'Child/Tool.vala',
+  'Child/Factory.vala',
+  'Child/Agent.vala',
+  'Child/Request.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

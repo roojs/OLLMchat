@@ -125,9 +125,7 @@ namespace OLLMtools.Child
 		 */
 		protected override OLLMchat.Tool.RequestBase? deserialize(Json.Node parameters_node)
 		{
-			// Phase 1: Return null - Request class will be implemented in Phase 2
-			// return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
-			return null;
+			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
 	}
 }
