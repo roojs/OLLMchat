@@ -163,12 +163,10 @@ Examples:
 			}
 			
 			// Get query from leftover arguments (current behavior), stdin, or interactive mode
-			string query = "";
-			if (args.length > 1) {
-				// Join all remaining arguments as the query (current behavior)
-				// Use string.joinv() here because we already have an array (args) - no need to build another
-				query = string.joinv(" ", args[1:args.length]);
-			} else {
+			var query = args.length > 1 ? string.joinv(" ", args[1:args.length]).strip() : ""; 
+			
+			// If no query from args, try stdin or interactive mode
+			if (query.length == 0) {
 				// No leftover arguments: smart stdin detection (non-blocking check using GLib.IOChannel)
 				try {
 					var stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
@@ -185,7 +183,6 @@ Examples:
 					return 1;
 				}
 			}
-			
 			if (query == "") {
 				command_line.printerr("Error: No query provided.\n");
 				return 1;
@@ -280,7 +277,7 @@ Examples:
 			// Wait briefly (100ms) to see if data arrives (e.g., from pipe that hasn't started yet)
 			Posix.usleep(100000); // 100ms wait (100000 microseconds)
 			
-			// Check if stdin has data available using GLib.IOChannel
+			// Check if stdin has data available using GLib.IOChannel (non-blocking)
 			var stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
 			stdin_channel.set_flags(GLib.IOFlags.NONBLOCK);
 			if ((stdin_channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
@@ -292,12 +289,20 @@ Examples:
 			stdout.printf("Talk to me:\n");
 			stdout.flush();
 			
-			// Read one line (Enter triggers execution)
-			string? line = GLib.stdin.read_line();
-			if (line == null) {
+			// Use blocking IOChannel to read one line (will block until user presses Enter)
+			var blocking_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
+			// Don't set NONBLOCK flag - this makes it blocking
+			blocking_channel.set_flags(GLib.IOFlags.NONE);
+			
+			string? line = null;
+			size_t length = 0;
+			var status = blocking_channel.read_line(out line, out length, null);
+			
+			if (status != GLib.IOStatus.NORMAL || line == null) {
 				throw new GLib.IOError.INVALID_ARGUMENT("No query provided");
 			}
 			
+			// Remove trailing newline if present
 			string query = line.strip();
 			if (query == "") {
 				throw new GLib.IOError.INVALID_ARGUMENT("No query provided");
