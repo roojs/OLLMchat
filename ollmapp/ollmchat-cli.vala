@@ -16,6 +16,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+namespace OLLMapp
+{
+
 class OllmchatCliApp : Application, OLLMchat.ApplicationInterface
 {
 	private static bool opt_debug = false;
@@ -31,6 +34,10 @@ class OllmchatCliApp : Application, OLLMchat.ApplicationInterface
 	
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
+	
+	private OLLMchat.History.Manager? manager { get; set; default = null; }
+	private OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
+	private ToolRegistry tools_registry { get; set; }
 	
 	const OptionEntry[] options = {
 		{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
@@ -57,6 +64,10 @@ class OllmchatCliApp : Application, OLLMchat.ApplicationInterface
 		this.data_dir = GLib.Path.build_filename(
 			GLib.Environment.get_home_dir(), ".local", "share", "ollmchat"
 		);
+		
+		// Phase 1: Initialize tool config types (before loading config)
+		this.tools_registry = new ToolRegistry();
+		this.tools_registry.init_config();
 		
 		// Load config (no vector types needed for simple CLI)
 		this.config = this.load_config();
@@ -175,6 +186,110 @@ Examples:
 		});
 		
 		return 0;
+	}
+	
+	private async void setup_manager() throws Error
+	{
+		// Create Manager instance
+		this.manager = new OLLMchat.History.Manager(this);
+		
+		// Connect to Manager signals for streaming output (works for both agent tool and standard agent modes)
+		this.manager.stream_chunk.connect((new_text, is_thinking, response) => {
+			if (!is_thinking) {  // Only output content, not thinking
+				stdout.write(new_text.data);
+				stdout.flush();
+			}
+		});
+		
+		// Connect to tool_message signal for tool status messages
+		this.manager.tool_message.connect((message) => {
+			stdout.printf("[Tool] %s\n", message.content);
+			stdout.flush();
+		});
+		
+		// Override model if --model option was provided (must be done before ensure_model_usage)
+		// This ensures ensure_model_usage() verifies the command-line model, not the config model
+		// Note: opt_model is converted to "" if null early in command_line() processing
+		if (opt_model != "") {
+			if (this.manager.default_model_usage != null) {
+				this.manager.default_model_usage.model = opt_model;
+			}
+		}
+		
+		// Ensure model usage is valid
+		// What it does:
+		//   - Verifies that default_model_usage.model exists on the server connection
+		//   - Calls verify_model() which checks if the model is available via API call
+		// Error handling:
+		//   - Throws GLib.IOError.FAILED if default_model_usage is null
+		//   - Throws GLib.IOError.FAILED if model doesn't exist on the connection
+		//   - Error message includes model name and connection URL for debugging
+		yield this.manager.ensure_model_usage();
+	}
+	
+	private async void setup_project_manager(SQ.Database db) throws Error
+	{
+		if (opt_project == "") {
+			return; // No project manager needed
+		}
+		
+		// Verify project directory exists
+		if (!GLib.FileUtils.test(opt_project, GLib.FileTest.IS_DIR)) {
+			throw new GLib.IOError.NOT_FOUND("Project directory does not exist: %s", opt_project);
+		}
+		
+		// Create ProjectManager
+		this.project_manager = new OLLMfiles.ProjectManager(db);
+		
+		// Load existing projects from database
+		yield this.project_manager.load_projects_from_db();
+		
+		// Get project from database (if it exists)
+		var project = this.project_manager.projects.path_map.get(opt_project);
+		
+		// Error: --create-project cannot be used with existing projects
+		if (opt_create_project && project != null) {
+			throw new GLib.IOError.EXISTS(
+				"Project already exists: %s (id=%lld). " +
+				"Cannot use --create-project with existing projects. " +
+				"Remove --create-project flag to use the existing project.",
+				opt_project,
+				project.id
+			);
+		}
+		
+		// Error: Project doesn't exist and --create-project not provided
+		if (project == null && !opt_create_project) {
+			throw new GLib.IOError.NOT_FOUND(
+				"Project not found in database: %s\n" +
+				"  Projects must be created using the main application or use --create-project flag",
+				opt_project
+			);
+		}
+		
+		// Create new project if it doesn't exist
+		if (project == null) {
+			project = new OLLMfiles.Folder(this.project_manager);
+			project.path = opt_project;
+			project.is_project = true;
+			project.display_name = GLib.Path.get_basename(opt_project);
+			
+			// Save project to database
+			project.saveToDB(db, null, false);
+			this.project_manager.projects.append(project);
+		}
+		
+		// Load existing project files from database first
+		yield project.load_files_from_db();
+		
+		// Disable background recursion for CLI (faster, but may miss some files)
+		OLLMfiles.Folder.background_recurse = false;
+		
+		// Scan directory and populate project files
+		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		
+		// Activate the project so it becomes the active project
+		yield this.project_manager.activate_project(project);
 	}
 	
 	private async void run_test(string query, ApplicationCommandLine command_line) throws Error
@@ -423,8 +538,10 @@ Examples:
 	}
 }
 
+} // namespace OLLMapp
+
 int main(string[] args)
 {
-	var app = new OllmchatCliApp();
+	var app = new OLLMapp.OllmchatCliApp();
 	return app.run(args);
 }

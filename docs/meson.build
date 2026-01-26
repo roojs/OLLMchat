@@ -236,6 +236,7 @@ valadoc_docs = custom_target('valadoc',
     # Note: version_fake.vala must come first as it defines OLLMapp.APP_VERSION (internal, not documented)
     'version_fake.vala',
     '../ollmapp/Application.vala',
+    '../ollmapp/ToolRegistry.vala',
     '../ollmapp/About.vala',
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',

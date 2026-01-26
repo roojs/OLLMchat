@@ -70,6 +70,7 @@ ollmchat = executable('ollmchat',
   sources: [
     version_vala,
     'Application.vala',
+    'ToolRegistry.vala',
     'About.vala',
     'Window.vala',
     'WindowPane.vala',
@@ -186,7 +187,7 @@ ollmchat_cli = executable('ollmchat-cli',
     octools_vapi_dep,
     ocvector_vapi_dep
   ],
-  sources: ['ollmchat-cli.vala'],
+  sources: ['ollmchat-cli.vala', 'ToolRegistry.vala'],
   link_with: [ollmchat_base_lib],
   include_directories: [
     include_directories('../libollmchat'),
