@@ -39,6 +39,24 @@ namespace OLLMapp
 		private OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		private ToolRegistry tools_registry { get; set; }
 		
+		protected string help { get; set; default = """
+Usage: {ARG} [OPTIONS] [QUERY]
+
+Send a query to the LLM or execute an agent tool.
+
+Query Input:
+  QUERY can be provided as leftover arguments, or:
+  - If stdin has data (pipe/file): reads from stdin until EOF
+  - If stdin is empty (interactive): prompts "Talk to me:" and reads one line
+
+Examples:
+  {ARG} "What is the capital of France?"
+  {ARG} --model llama2 "Write a hello world program"
+  {ARG} --agent-tool=codebase-locator --project=/path/to/project "Find all files related to authentication"
+  {ARG} --agent-tool=codebase-analyzer --project=/path/to/project "Explain how the database connection is established"
+  echo "Find files that handle user login" | {ARG} --agent-tool=codebase-locator --project=/path/to/project
+"""; }
+		
 		const OptionEntry[] options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
 			{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
@@ -93,6 +111,14 @@ namespace OLLMapp
 			opt_create_project = false;
 			
 			string[] args = command_line.get_arguments();
+			
+			// Check for help flag before parsing (to show custom help if available)
+			if (this.check_help_arg(args)) {
+				var custom_help = this.build_help_text(args[0]);
+				command_line.print("%s", custom_help != null ? custom_help : "No help available");
+				return 0;
+			}
+			
 			var opt_context = new OptionContext("OLLMchat Test CLI - Test LLM interactions and agent tools");
 			opt_context.set_help_enabled(true);
 			opt_context.add_main_entries(options, null);
@@ -120,17 +146,6 @@ namespace OLLMapp
 				});
 			}
 			
-			// Get remaining arguments as the query
-			string query = "";
-			if (args.length > 1) {
-				// Join all remaining arguments as the query
-				var query_parts = new Gee.ArrayList<string>();
-				for (int i = 1; i < args.length; i++) {
-					query_parts.add(args[i]);
-				}
-				query = string.joinv(" ", query_parts.to_array());
-			}
-			
 			// Handle --list-models early (before query processing)
 			if (opt_list_models) {
 				this.hold();
@@ -147,45 +162,148 @@ namespace OLLMapp
 				return 0;
 			}
 			
+			// Get query from leftover arguments (current behavior), stdin, or interactive mode
+			string query = "";
+			if (args.length > 1) {
+				// Join all remaining arguments as the query (current behavior)
+				// Use string.joinv() here because we already have an array (args) - no need to build another
+				query = string.joinv(" ", args[1:args.length]);
+			} else {
+				// No leftover arguments: smart stdin detection (non-blocking check using GLib.IOChannel)
+				try {
+					var stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
+					stdin_channel.set_flags(GLib.IOFlags.NONBLOCK);
+					if ((stdin_channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+						// Stdin has data available (pipe/file) → read immediately and execute
+						query = this.read_query_from_stdin();
+					} else {
+						// Stdin is empty → wait briefly (100ms), then prompt for interactive mode
+						query = this.read_query_interactive();
+					}
+				} catch (Error e) {
+					command_line.printerr("Error: %s\n", e.message);
+					return 1;
+				}
+			}
+			
 			if (query == "") {
-				var usage = @"Usage: $(args[0]) [OPTIONS] <query>
-
-	Send a query to the LLM and display the response.
-
-	Options:
-	-d, --debug          Enable debug output
-	--url=URL           Ollama server URL (required if config not found)
-	--api-key=KEY       API key (optional)
-	-m, --model=MODEL    Model name (overrides config)
-	--stats=FILE         Output statistics from last message to file
-	--list-models        List available models and exit
-	--ctx-num=NUM        Context window size in tokens (1K = 1024)
-
-	Examples:
-	$(args[0]) \"What is the capital of France?\"
-	$(args[0]) --model llama2 \"Write a hello world program\"
-	$(args[0]) --debug --url http://localhost:11434/api \"Tell me a joke\"
-	";
-				command_line.printerr("%s", usage);
+				command_line.printerr("Error: No query provided.\n");
 				return 1;
 			}
 			
-			// Hold the application to keep main loop running during async operations
-			this.hold();
+			// Validate --create-project is only used with --project
+			if (opt_create_project && opt_project == "") {
+				command_line.printerr("Error: --create-project can only be used with --project.\n");
+				return 1;
+			}
 			
+			// Validate --project is provided when using --agent-tool
+			// Most agent tools require ProjectManager for tools like ReadFile, RunCommand, EditMode, CodebaseSearchTool
+			bool use_agent_tool = (opt_agent_tool != "");
+			if (use_agent_tool && opt_project == "") {
+				command_line.printerr("Error: --project is required when using --agent-tool.\n");
+				command_line.printerr("  Most agent tools require ProjectManager for file operations, codebase search, etc.\n");
+				command_line.printerr("  Use --project=PATH or --project=PATH --create-project to specify a project.\n");
+				return 1;
+			}
+			
+			// Hold application and execute
+			this.hold();
+			if (use_agent_tool) {
+				// Agent tool mode
+				this.run_agent_tool.begin(opt_agent_tool, query, command_line, (obj, res) => {
+					try {
+						this.run_agent_tool.end(res);
+					} catch (Error e) {
+						command_line.printerr("Error: %s\n", e.message);
+					} finally {
+						this.release();
+						this.quit();
+					}
+				});
+				return 0;
+			}
+			
+			// Standard agent mode (existing behavior)
 			this.run_test.begin(query, command_line, (obj, res) => {
 				try {
 					this.run_test.end(res);
 				} catch (Error e) {
 					command_line.printerr("Error: %s\n", e.message);
 				} finally {
-					// Release hold and quit when done
 					this.release();
 					this.quit();
 				}
 			});
-			
 			return 0;
+		}
+		
+		/**
+		 * Returns custom help text for this application.
+		 * If 'help' property is set, outputs it (with {ARG} replaced) followed by
+		 * auto-generated options from GLib's OptionContext.
+		 * 
+		 * @param program_name The program name (args[0]) to use in help text
+		 * @return Custom help text string, or null to use default auto-generated help
+		 */
+		private string? build_help_text(string program_name)
+		{
+			// Build OptionContext to get auto-generated options text
+			var opt_context = new OptionContext("OLLMchat Test CLI - Test LLM interactions and agent tools");
+			opt_context.set_help_enabled(true);
+			opt_context.add_main_entries(options, null);
+			
+			// Use the method from ApplicationInterface
+			return this.get_help_text(this.help, program_name, opt_context);
+		}
+		
+		private string read_query_from_stdin() throws Error
+		{
+			// Read all lines from stdin (data is available)
+			// Use plain string concatenation - building array just to join it is unnecessary
+			string query = "";
+			string? line;
+			while ((line = GLib.stdin.read_line()) != null) {
+				query += line + "\n";
+			}
+			
+			query = query.strip();
+			if (query == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("No query provided");
+			}
+			
+			return query;
+		}
+		
+		private string read_query_interactive() throws Error
+		{
+			// Wait briefly (100ms) to see if data arrives (e.g., from pipe that hasn't started yet)
+			Posix.usleep(100000); // 100ms wait (100000 microseconds)
+			
+			// Check if stdin has data available using GLib.IOChannel
+			var stdin_channel = new GLib.IOChannel.unix_new(Posix.STDIN_FILENO);
+			stdin_channel.set_flags(GLib.IOFlags.NONBLOCK);
+			if ((stdin_channel.get_buffer_condition() & GLib.IOCondition.IN) != 0) {
+				// Data arrived during wait - use stdin mode instead
+				return this.read_query_from_stdin();
+			}
+			
+			// Still no data - enter interactive mode
+			stdout.printf("Talk to me:\n");
+			stdout.flush();
+			
+			// Read one line (Enter triggers execution)
+			string? line = GLib.stdin.read_line();
+			if (line == null) {
+				throw new GLib.IOError.INVALID_ARGUMENT("No query provided");
+			}
+			
+			string query = line.strip();
+			if (query == "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("No query provided");
+			}
+			
+			return query;
 		}
 		
 		private async void setup_manager() throws Error

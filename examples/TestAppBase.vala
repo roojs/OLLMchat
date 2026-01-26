@@ -84,20 +84,10 @@
 			string[] args = command_line.get_arguments();
 			
 			// Check for help flag before parsing (to show custom help if available)
-			bool help_requested = false;
-			foreach (var arg in args) {
-				if (arg == "--help" || arg == "-h") {
-					help_requested = true;
-					break;
-				}
-			}
-			
-			if (help_requested) {
-				string? custom_help = this.get_help_text(args[0]);
-				if (custom_help != null) {
-					command_line.print("%s", custom_help);
-					return 0;
-				}
+			if (this.check_help_arg(args)) {
+				var custom_help = this.build_help_text(args[0]);
+				command_line.print("%s", custom_help != null ? custom_help : "No help available");
+				return 0;
 			}
 			
 			var opt_context = this.app_options();
@@ -171,30 +161,14 @@
 		 * @param program_name The program name (args[0]) to use in help text
 		 * @return Custom help text string, or null to use default auto-generated help
 		 */
-		protected virtual string? get_help_text(string program_name)
+		protected virtual string? build_help_text(string program_name)
 		{
 			if (this.help == "") {
 				return null;
 			}
 			
-			// Build OptionContext to get auto-generated options text
-			
-			// Extract only the options section (skip usage line)
-			// Find the first section header (e.g., "Help Options:" or "Application Options:")
-			var  lines = this.app_options().get_help(false, null).split("\n");
-			string options_text = "";
-			bool found_options = false;
-			foreach (string line in lines) {
-				if (!found_options && line.has_suffix("Options:")) {
-					found_options = true;
-				}
-				if (found_options) {
-					options_text +=  "\n" + line;
-				}
-			}
-			
-			// Output custom help (without options) + auto-generated options
-			return this.help.replace("{ARG}", program_name) + "\n" + options_text;
+			// Use the method from ApplicationInterface
+			return this.get_help_text(this.help, program_name, this.app_options());
 		}
 
 		

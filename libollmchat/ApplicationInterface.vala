@@ -157,6 +157,56 @@ namespace OLLMchat
 		public abstract OLLMchat.Settings.Config2 load_config();
 		
 		/**
+		 * Checks if help flag (--help or -h) is present in command-line arguments.
+		 * 
+		 * @param args Command-line arguments array
+		 * @return true if help flag is found, false otherwise
+		 */
+		public bool check_help_arg(string[] args)
+		{
+			foreach (var arg in args) {
+				if (arg == "--help" || arg == "-h") {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		/**
+		 * Returns custom help text for this application.
+		 * If 'help' property is set, outputs it (with {ARG} replaced) followed by
+		 * auto-generated options from GLib's OptionContext.
+		 * 
+		 * @param help_text Custom help text (may contain {ARG} placeholder)
+		 * @param program_name The program name (args[0]) to use in help text
+		 * @param opt_context OptionContext to extract options from
+		 * @return Custom help text string, or null if help_text is empty
+		 */
+		public string? get_help_text(string help_text, string program_name, OptionContext opt_context)
+		{
+			if (help_text == "") {
+				return null;
+			}
+			
+			// Extract only the options section (skip usage line)
+			// Find the first section header (e.g., "Help Options:" or "Application Options:")
+			var lines = opt_context.get_help(false, null).split("\n");
+			string options_text = "";
+			bool found_options = false;
+			foreach (string line in lines) {
+				if (!found_options && line.has_suffix("Options:")) {
+					found_options = true;
+				}
+				if (found_options) {
+					options_text += "\n" + line;
+				}
+			}
+			
+			// Output custom help (without options) + auto-generated options
+			return help_text.replace("{ARG}", program_name) + "\n" + options_text;
+		}
+		
+		/**
 		 * Debug logging function that writes to ~/.cache/ollmchat/{app_id}.debug.log
 		 * Also writes to stderr for immediate console output.
 		 *
