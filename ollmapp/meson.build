@@ -153,3 +153,65 @@ install_data(
   'org.roojs.ollmchat.desktop',
   install_dir: get_option('datadir') / 'applications'
 )
+
+# Dependencies for ollmchat-cli executable (CLI tool, no GTK)
+valac = meson.get_compiler('vala')
+ollmchat_cli_deps = [
+  dependency('gee-0.8'),
+  dependency('gio-2.0'),
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('json-glib-1.0'),
+  dependency('libsoup-3.0'),
+  valac.find_library('posix'),
+]
+
+# Build rpath for ollmchat-cli executable
+ollmchat_cli_build_rpath = ':'.join([
+  meson.current_build_dir() / '..' / 'libocsqlite',
+  meson.current_build_dir() / '..' / 'libocmarkdown',
+  meson.current_build_dir() / '..' / 'libocfiles',
+  meson.current_build_dir() / '..' / 'libollmchat',
+  meson.current_build_dir() / '..' / 'liboctools',
+  meson.current_build_dir() / '..' / 'libocvector'
+])
+
+# Build ollmchat-cli executable (command-line tool for testing agent tools)
+ollmchat_cli = executable('ollmchat-cli',
+  dependencies: [
+    ollmchat_cli_deps,
+    ocsqlite_vapi_dep,
+    ocfiles_vapi_dep,
+    ollmchat_vapi_dep,
+    octools_vapi_dep,
+    ocvector_vapi_dep
+  ],
+  sources: ['ollmchat-cli.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libollmchat'),
+    include_directories('../libocfiles'),
+    include_directories('../libocvector'),
+    include_directories('../libocsqlite')
+  ],
+  build_rpath: ollmchat_cli_build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',  # Required for ocfiles (TreeBase uses GModule)
+    '--pkg=tree-sitter',  # Required for ocfiles and octools (TreeBase and ReadFileSummarize use TreeSitter)
+    '--pkg=ocfiles',  # Required for ProjectManager
+    '--pkg=ollmchat',  # Required for Manager, Client, etc.
+    '--pkg=octools',  # Tools library
+    '--pkg=ocvector',  # For CodebaseSearchTool
+    '--pkg=fiass',  # Required for ocvector.vapi (Faiss.IDSelector)
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboctools',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_source_dir() / '../vapi'  # For tree-sitter.vapi
+  ],
+  install: true,
+  install_dir: get_option('bindir')
+)

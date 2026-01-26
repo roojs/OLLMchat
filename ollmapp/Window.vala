@@ -991,6 +991,15 @@ namespace OLLMapp
 			
 			GLib.debug("Window.register_tools: Registered wrapped tools (total tools: %d)", 
 				this.history_manager.tools.size);
+			
+			// Register agent tools from resources/agents/
+			(new OLLMtools.Child.Parser()).scan_and_register(
+				this.history_manager,
+				this.project_manager
+			);
+			
+			GLib.debug("Window.register_tools: Registered agent tools (total tools: %d)", 
+				this.history_manager.tools.size);
 		}
 		
 	}

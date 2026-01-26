@@ -13,6 +13,8 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
 - **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
 - **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
+- **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
+- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -777,6 +779,130 @@ return string.joinv("\n", lines[start_line:end_line+1]);
 ```
 
 Note: Array slicing uses `[start:end]` where `end` is exclusive, so use `end_line+1` to include the end line.
+
+## StringBuilder Usage
+
+**IMPORTANT:** Only use `GLib.StringBuilder` when frequently building and rebuilding strings in loops with **hundreds** of iterations (not tens). For general string concatenation, use normal string concatenation with `+` operator or `string.joinv()` instead. StringBuilder should only be used when there is a distinct performance advantage from avoiding repeated string allocations.
+
+**IMPORTANT:** Do NOT use StringBuilder for:
+- Simple string concatenation (use `+` operator)
+- Joining a small number of strings (use `+` operator)
+- Reading a few to dozens of lines from input (use `string.joinv()` with a `string[]` array)
+- Any loop with fewer than hundreds of iterations
+
+**Bad:**
+```vala
+var builder = new GLib.StringBuilder();
+builder.append("Hello");
+builder.append(" ");
+builder.append("World");
+var result = builder.str;
+```
+
+**Also Bad (reading stdin - typically only dozens of lines, not hundreds):**
+```vala
+var lines = new GLib.StringBuilder();
+string? line;
+while ((line = GLib.stdin.read_line()) != null) {
+    if (lines.len > 0) {
+        lines.append_c('\n');
+    }
+    lines.append(line);
+}
+var result = lines.str;
+```
+
+**Good:**
+```vala
+var result = "Hello" + " " + "World";
+```
+
+**Also Good (reading stdin with plain string concatenation - don't build array just to join):**
+```vala
+string result = "";
+string? line;
+while ((line = GLib.stdin.read_line()) != null) {
+    result += line + "\n";
+}
+result = result.strip(); // Remove trailing newline
+```
+
+**Exception (StringBuilder only for hundreds of iterations):**
+```vala
+// Only use StringBuilder when you have hundreds of iterations
+// Example: Processing thousands of log entries, building very large reports
+var builder = new GLib.StringBuilder();
+for (int i = 0; i < 1000; i++) {
+    builder.append(process_item(i));
+    builder.append_c('\n');
+}
+var result = builder.str;
+```
+
+## ArrayList for Strings
+
+**IMPORTANT:** Never use `Gee.ArrayList<string>` when building an array of strings just to join it. 
+
+**IMPORTANT:** If you're building an array of strings **only** to join it, use plain string concatenation instead. Do NOT build an array just to join it - use string concatenation directly.
+
+**IMPORTANT:** Only use `string[]` arrays when:
+- You already have an array and need to join it (use `string.joinv()` with existing array)
+- You need the array for other purposes besides joining
+- You're using array slicing on an existing array
+
+**Bad:**
+```vala
+var query_parts = new Gee.ArrayList<string>();
+for (int i = 1; i < args.length; i++) {
+    query_parts.add(args[i]);
+}
+var result = string.joinv(" ", query_parts.to_array());
+```
+
+**Also Bad (building array just to join it):**
+```vala
+string[] query_parts = {};
+string? line;
+while ((line = GLib.stdin.read_line()) != null) {
+    query_parts += line;
+}
+var result = string.joinv("\n", query_parts);
+```
+
+**Good (using plain string concatenation when building just to join):**
+```vala
+string result = "";
+string? line;
+bool first = true;
+while ((line = GLib.stdin.read_line()) != null) {
+    if (!first) {
+        result += "\n";
+    }
+    result += line;
+    first = false;
+}
+```
+
+**Also Good (using existing array with string.joinv):**
+```vala
+// args is already an array - use it directly with array slicing
+var result = string.joinv(" ", args[1:args.length]);
+```
+
+**Also Good (when you need the array for other purposes):**
+```vala
+// If you need the array for filtering, processing, etc., then building it is OK
+string[] lines = {};
+string? line;
+while ((line = GLib.stdin.read_line()) != null) {
+    if (line.has_prefix("#")) {
+        continue; // Skip comments
+    }
+    lines += line;
+}
+// Now we use it for joining AND we filtered it, so array is justified
+var result = string.joinv("\n", lines);
+```
 
 ## Property Getters vs Get Methods
 

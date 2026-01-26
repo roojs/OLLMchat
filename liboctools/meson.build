@@ -43,6 +43,7 @@ octools_src = files([
   'Child/Factory.vala',
   'Child/Agent.vala',
   'Child/Request.vala',
+  'Child/Config.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

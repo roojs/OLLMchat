@@ -52,6 +52,7 @@ exec "$EXECUTABLE" "$@"
 # List of executables and their paths
 executables_info = [
   ['ollmchat.bin', 'ollmapp/ollmchat'],  # Wrapper for testing ollama chat with latest code
+  ['ollmchat-cli', 'ollmapp/ollmchat-cli'],  # CLI tool for testing agent tools
   ['oc-test-cli', 'examples/oc-test-cli'],
   ['oc-test-pull', 'examples/oc-test-pull'],
   ['oc-test-fetch', 'examples/oc-test-fetch'],
