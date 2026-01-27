@@ -147,6 +147,29 @@ namespace OLLMvector
 		public string md5_hash { get; set; default = ""; }
 		
 		/**
+		 * Parent VectorMetadata reference (for documentation section hierarchy).
+		 * 
+		 * Null for document root or code elements (which use parent_class instead).
+		 * Used to traverse up the hierarchy to build context headers.
+		 */
+		public VectorMetadata? parent { get; set; default = null; }
+		
+		/**
+		 * Document category (for documentation files only).
+		 * 
+		 * Values: "plan", "documentation", "rule", "configuration", "data", "license", "changelog", "other"
+		 * Empty string for code elements.
+		 */
+		public string category { get; set; default = ""; }
+		
+		/**
+		 * Child sections (for documentation files only).
+		 * 
+		 * Used for top-down traversal during analysis. Empty for leaf sections and code elements.
+		 */
+		public Gee.ArrayList<VectorMetadata> children { get; private set; default = new Gee.ArrayList<VectorMetadata>(); }
+		
+		/**
 		 * Constructor.
 		 */
 		public VectorMetadata()
@@ -195,6 +218,17 @@ namespace OLLMvector
 					GLib.debug("Migration note (may be expected): %s", errmsg);
 				}
 			}
+			
+			// Migrate: add category column if it doesn't exist
+			var migrate_category = "ALTER TABLE vector_metadata ADD COLUMN category TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_category, null, out errmsg)) {
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Note: parent and children are not stored in database (runtime-only references)
+			// They are reconstructed from ast_path hierarchy during analysis
 			
 			// Create indexes for efficient lookups
 			if (Sqlite.OK != db.db.exec(
@@ -370,6 +404,40 @@ namespace OLLMvector
 				vector_ids.add(metadata.vector_id);
 			}
 			return vector_ids;
+		}
+		
+		/**
+		 * Gets section context by traversing up the parent chain.
+		 * 
+		 * Collects descriptions from all parent sections and returns them as a formatted string.
+		 * Used to build SECTION CONTEXT headers for documentation chunks.
+		 * 
+		 * @return Formatted context string, or empty string if no parents
+		 */
+		public string get_section_context()
+		{
+			// Early return: no parent
+			if (this.parent == null) {
+				return "";
+			}
+			
+			// Get parent's context first (recursive call - goes up the chain)
+			var parent_context = this.parent.get_section_context();
+			
+			// Get current parent's description
+			var current_desc = this.parent.description;
+			
+			// Build result: parent context (if any) > current description
+			// This builds from outermost to innermost as we recurse back down
+			if (parent_context != "" && current_desc != "") {
+				return parent_context + " > " + current_desc;
+			}
+			
+			if (current_desc != "") {
+				return current_desc;
+			}
+			
+			return parent_context;
 		}
 		
 		/**

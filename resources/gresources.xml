@@ -19,6 +19,8 @@
     <file>ocvector-prompt.txt</file>
     <file>analysis-prompt.txt</file>
     <file>analysis-prompt-file.txt</file>
+    <file>analysis-documentation-prompt.txt</file>
+    <file>analysis-documentation-document-prompt.txt</file>
   </gresource>
   <gresource prefix="/wrapped-tools">
     <file>glob.tool</file>

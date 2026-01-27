@@ -39,9 +39,9 @@ namespace OLLMvector.Indexing
 	 */
 	public class VectorBuilder : Object
 	{
-		private OLLMchat.Settings.Config2 config;
-		private OLLMvector.Database database;
-		private SQ.Database sql_db;
+		protected OLLMchat.Settings.Config2 config;
+		protected OLLMvector.Database database;
+		protected SQ.Database sql_db;
 		
 		/**
 		 * Constructor.
@@ -351,7 +351,7 @@ namespace OLLMvector.Indexing
 		/**
 		 * Converts embedding from ArrayList<double?> to float[].
 		 */
-		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws GLib.Error
+		protected float[] embed_to_floats(Gee.ArrayList<double?> embed) throws GLib.Error
 		{
 			var float_array = new float[embed.size];
 			for (int i = 0; i < embed.size; i++) {
