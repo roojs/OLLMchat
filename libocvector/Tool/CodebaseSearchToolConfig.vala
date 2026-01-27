@@ -30,20 +30,27 @@ namespace OLLMvector.Tool
 	 *
 	 * @since 1.0
 	 */
-	public class CodebaseSearchToolConfig : OLLMchat.Settings.BaseToolConfig
+	public class CodebaseSearchToolConfig : 
+		OLLMchat.Settings.BaseToolConfig, OLLMchat.Settings.RequiresModelsInterface
 	{
 		/**
 		 * Embedding model configuration (connection, model, options).
 		 *
 		 * Used for converting code text into vector embeddings for semantic search.
 		 */
+		[Description(nick = "Embedding Model", blurb = "Model used for converting code text into vector embeddings for semantic search")]
 		public OLLMchat.Settings.ModelUsage embed { get; set; default = new OLLMchat.Settings.ModelUsage(); }
 		
 		/**
 		 * Analysis model configuration (connection, model, options).
 		 *
 		 * Used for analyzing code elements and generating descriptions during indexing.
+		 *
+		 * Default is "qwen3:1.7b" (smaller, faster). For better analysis quality,
+		 * users can change this to "qwen3-coder:30b" in settings (larger model with
+		 * better code understanding).
 		 */
+		[Description(nick = "Analysis Model", blurb = "Model used for analyzing code elements and generating descriptions during indexing. Default is qwen3:1.7b (smaller, faster). For better analysis quality, use qwen3-coder:30b (larger model with better code understanding).")]
 		public OLLMchat.Settings.ModelUsage analysis { get; set; default = new OLLMchat.Settings.ModelUsage(); }
 
 		/**
@@ -54,11 +61,29 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
+		 * Returns list of required models (embed and analysis models are required for app startup).
+		 * 
+		 * @return List of required ModelUsage objects
+		 */
+		public Gee.ArrayList<OLLMchat.Settings.ModelUsage> required_models()
+		{
+			var required = new Gee.ArrayList<OLLMchat.Settings.ModelUsage>();
+			
+			// Embed model is required for codebase search functionality
+			required.add(this.embed);
+			
+			// Analysis model is required for code analysis during indexing
+			required.add(this.analysis);
+			
+			return required;
+		}
+		
+		/**
 		 * Sets up default values for embed and analysis model configurations.
 		 * 
 		 * Sets default model names, options, and connection:
 		 * - Embed: model "bge-m3:latest", temperature 0.0, num_ctx 2048
-		 * - Analysis: model "qwen3-coder:30b", temperature 0.0
+		 * - Analysis: model "qwen3:1.7b", temperature 0.0 (smaller, faster default)
 		 * - Both use the provided connection URL
 		 * 
 		 * @param connection_url The connection URL to use for both embed and analysis models
@@ -76,7 +101,7 @@ namespace OLLMvector.Tool
 			
 			this.analysis = new OLLMchat.Settings.ModelUsage() {
 				connection = connection_url,
-				model = "qwen3-coder:30b"
+				model = "qwen3:1.7b"  // CHANGED: from "qwen3-coder:30b" to smaller default
 			};
 			this.analysis.options = new OLLMchat.Call.Options() {
 				temperature = 0.0
