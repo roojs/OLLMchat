@@ -567,6 +567,37 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Whether this file is a documentation file (plain text or markdown, not code).
+		 * 
+		 * Uses is_text and language (from BufferProvider.detect_language()).
+		 * Returns true for markdown, plain text, and unknown text; false for code and structured formats.
+		 */
+		public bool is_documentation()
+		{
+			if (!this.is_text) {
+				return false;
+			}
+			
+			var lang = this.language;
+			if (lang == null || lang == "") {
+				return true;
+			}
+			
+			var lang_lower = lang.down();
+			
+			switch (lang_lower) {
+				case "markdown":
+				case "txt":
+				case "text":
+				case "plaintext":
+					return true;
+				default:
+					// Code languages (vala, python, c, etc.) and structured formats (html, xml, json, yaml, css, etc.)
+					return false;
+			}
+		}
+		
+		/**
 		 * Revert this file to previous version from FileHistory backup.
 		 * 
 		 * Finds the most recent FileHistory record with a backup for this file

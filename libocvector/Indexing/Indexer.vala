@@ -97,8 +97,7 @@ namespace OLLMvector.Indexing
 		/**
 		 * Index a single file.
 		 * 
-		 * Processes the file through Tree → Analysis → VectorBuilder pipeline.
-		 * Updates last_vector_scan timestamp after successful indexing.
+		 * Routes to documentation or code indexing pipeline based on file type.
 		 * 
 		 * @param file The file to index (must exist in database)
 		 * @param force If true, skip incremental check and force re-indexing
@@ -118,7 +117,27 @@ namespace OLLMvector.Indexing
 				return false;
 			}
 			
+			// Route to appropriate pipeline
+			if (file.is_documentation()) {
+				return yield this.index_documentation_file(file, force);
+			}
+			return yield this.index_code_file(file, force);
 			
+		}
+		
+		/**
+		 * Indexes a documentation file using documentation pipeline.
+		 * 
+		 * Processes documentation files through DocumentationTree → DocumentationAnalysis → DocumentationVectorBuilder.
+		 * Updates last_vector_scan timestamp after successful indexing.
+		 * 
+		 * @param file The documentation file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		private async bool index_documentation_file(OLLMfiles.File file, bool force = false) throws GLib.Error
+		{
+			// Incremental check
 			if (!force) {
 				var mtime = file.mtime_on_disk();
 				if (file.last_vector_scan >= mtime && mtime > 0) {
@@ -127,7 +146,114 @@ namespace OLLMvector.Indexing
 				}
 			}
 			
-			GLib.debug("Processing file '%s'", file.path);
+			GLib.debug("Processing documentation file '%s'", file.path);
+			
+			// Create DocumentationTree
+			var tree = new DocumentationTree(file);
+			
+			// Parse file
+			yield tree.parse();
+			
+			if (tree.elements.size == 0) {
+				GLib.debug("No elements found in documentation file '%s'", file.path);
+				
+				// After scanning completes, check if file was deleted before saving
+				var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);
+				var check_file = new Gee.ArrayList<OLLMfiles.FileBase>();
+				yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+				
+				// Check if file was deleted during scan or no longer exists
+				if (check_file.size == 0) {
+					GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+					return true;
+				}
+				
+				var db_file = check_file.get(0);
+				if (db_file.delete_id > 0) {
+					GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+						file.path, db_file.delete_id);
+					return true;
+				}
+				
+				// File not deleted - proceed with normal save
+				file.last_vector_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			
+			// Create DocumentationAnalysis
+			var analysis = new DocumentationAnalysis(this.config, this.sql_db);
+			
+			// Connect to element_analyzed signal and forward as element_scanned
+			analysis.element_analyzed.connect((element_name, element_number, total_elements) => {
+				this.element_scanned(element_name, element_number, total_elements);
+			});
+			
+			// Analyze tree (Level A, B, C processing)
+			tree = yield analysis.analyze_tree(tree);
+			
+			// Create DocumentationVectorBuilder
+			var vector_builder = new DocumentationVectorBuilder(
+				this.config, this.vector_db, this.sql_db);
+			
+			// Process file
+			yield vector_builder.process_file(tree);
+			
+			// After scanning completes, check if file was deleted before saving
+			var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);
+			var check_file = new Gee.ArrayList<OLLMfiles.FileBase>();
+			yield query.select_async("WHERE id = " + file.id.to_string(), check_file);
+			
+			// Check if file was deleted during scan or no longer exists
+			if (check_file.size == 0) {
+				GLib.debug("Indexer: Skipping saveToDB for file '%s' (not found in database)", file.path);
+				return true;
+			}
+			
+			var db_file = check_file.get(0);
+			if (db_file.delete_id > 0) {
+				GLib.debug("Indexer: Skipping saveToDB for deleted file '%s' (delete_id=%lld)", 
+					file.path, db_file.delete_id);
+				return true;
+			}
+			
+			// File not deleted - proceed with normal save
+			file.last_vector_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			
+			// Save vector database after each file
+			try {
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after indexing '%s': %s", file.path, e.message);
+			}
+			
+			GLib.debug("Completed indexing documentation file '%s' (%d elements)", file.path, tree.elements.size);
+			return true;
+		}
+		
+		/**
+		 * Indexes a code file using code pipeline.
+		 * 
+		 * Processes code files through Tree → Analysis → VectorBuilder pipeline.
+		 * Updates last_vector_scan timestamp after successful indexing.
+		 * 
+		 * @param file The code file to index (must exist in database)
+		 * @param force If true, skip incremental check and force re-indexing
+		 * @return true if file was indexed, false if skipped (not modified)
+		 */
+		private async bool index_code_file(OLLMfiles.File file, bool force = false) throws GLib.Error
+		{
+			// Incremental check
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_vector_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			
+			GLib.debug("Processing code file '%s'", file.path);
 			
 			// Create Tree
 			var tree = new Tree(file);
@@ -177,16 +303,15 @@ namespace OLLMvector.Indexing
 			
 			tree = yield analysis.analyze_tree(tree);
 			
-			
 			// Analyze file and create file-level summary
 			tree = yield analysis.analyze_file(tree);
 			
 			// VectorBuilder already takes config
 			var vector_builder = new VectorBuilder(
 				this.config, this.vector_db, this.sql_db);
-
-				
+			
 			yield vector_builder.process_file(tree);
+			
 			// After scanning completes, check if file was deleted before saving
 			// Fetch filebase from database again to check current delete_id
 			var query = OLLMfiles.FileBase.query(this.sql_db, this.manager);

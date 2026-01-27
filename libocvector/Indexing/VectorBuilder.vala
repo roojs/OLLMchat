@@ -311,32 +311,10 @@ namespace OLLMvector.Indexing
 			// Code snippet - skip for classes and namespaces (only use signature)
 			if (element.element_type != "class" && element.element_type != "namespace") {
 				doc.append("Code:\n");
-				var code_snippet = this.get_code_snippet(element, tree);
-				doc.append(code_snippet);
+				doc.append(tree.lines_to_string(element.start_line, element.end_line));
 			}
 			
 			return doc.str;
-		}
-		
-		/**
-		 * Gets a code snippet as a string using Tree.lines_to_string().
-		 * 
-		 * Uses the Tree object's lines_to_string method to extract code snippets
-		 * from the file content.
-		 * 
-		 * @param element The VectorMetadata element
-		 * @param tree The Tree object with lines_to_string method
-		 * @return Code snippet as string
-		 */
-		private string get_code_snippet(VectorMetadata element, Tree tree)
-		{
-			var code_snippet = tree.lines_to_string(element.start_line, element.end_line);
-			
-			if (code_snippet == null || code_snippet == "") {
-				return "";
-			}
-			
-			return code_snippet;
 		}
 		
 		/**
