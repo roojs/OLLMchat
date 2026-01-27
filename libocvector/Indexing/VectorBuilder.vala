@@ -311,7 +311,7 @@ namespace OLLMvector.Indexing
 			// Code snippet - skip for classes and namespaces (only use signature)
 			if (element.element_type != "class" && element.element_type != "namespace") {
 				doc.append("Code:\n");
-				var code_snippet = this.get_truncated_code_snippet(element, tree);
+				var code_snippet = this.get_code_snippet(element, tree);
 				doc.append(code_snippet);
 			}
 			
@@ -319,30 +319,21 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Gets a truncated code snippet as a string using Tree.lines_to_string().
+		 * Gets a code snippet as a string using Tree.lines_to_string().
 		 * 
 		 * Uses the Tree object's lines_to_string method to extract code snippets
-		 * from the file content. Applies simple length-based truncation if needed
-		 * to prevent extremely large snippets.
+		 * from the file content.
 		 * 
 		 * @param element The VectorMetadata element
 		 * @param tree The Tree object with lines_to_string method
 		 * @return Code snippet as string
 		 */
-		private string get_truncated_code_snippet(VectorMetadata element, Tree tree)
+		private string get_code_snippet(VectorMetadata element, Tree tree)
 		{
 			var code_snippet = tree.lines_to_string(element.start_line, element.end_line);
 			
 			if (code_snippet == null || code_snippet == "") {
 				return "";
-			}
-			
-			// Simple truncation if snippet is extremely large (max 200 lines)
-			var lines = code_snippet.split("\n");
-			const int MAX_LINES = 200;
-			if (lines.length > MAX_LINES) {
-				return string.joinv("\n", lines[0:MAX_LINES]) 
-					+ "\n// ... (truncated)";
 			}
 			
 			return code_snippet;

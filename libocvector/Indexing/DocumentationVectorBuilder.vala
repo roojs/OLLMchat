@@ -174,22 +174,13 @@ namespace OLLMvector.Indexing
 				// Get section content
 				var section_content = tree.lines_to_string(section.start_line, section.end_line);
 				
-				// Chunk section content (split into appropriate-sized chunks)
-				var chunks = this.chunk_section_content(section_content);
+				// Process section as single chunk (like code elements)
+				var document = this.format_documentation_chunk(section, section_content, tree);
+				documents.add(document);
 				
-				// Create document for each chunk with context headers
-				foreach (var chunk in chunks) {
-					var document = this.format_documentation_chunk(
-						section,
-						chunk,
-						tree
-					);
-					documents.add(document);
-					
-					// Create metadata for this chunk (copy of section with chunk info)
-					var chunk_meta = this.create_chunk_metadata(section, chunk);
-					chunk_metadata.add(chunk_meta);
-				}
+				// Create metadata for this section
+				var chunk_meta = this.create_chunk_metadata(section, section_content);
+				chunk_metadata.add(chunk_meta);
 			}
 			
 			// Get embed model (unified for code and documentation)
@@ -271,44 +262,6 @@ namespace OLLMvector.Indexing
 			doc += "\n" + chunk_content;
 			
 			return doc;
-		}
-		
-		/**
-		 * Chunks section content into appropriate-sized pieces.
-		 */
-		private Gee.ArrayList<string> chunk_section_content(string content)
-		{
-			var chunks = new Gee.ArrayList<string>();
-			
-			// Simple chunking: split by paragraphs, then combine into ~500 word chunks
-			var paragraphs = content.split("\n\n");
-			var current_chunk = new GLib.StringBuilder();
-			int current_word_count = 0;
-			const int TARGET_WORDS = 500;
-			
-			foreach (var paragraph in paragraphs) {
-				var word_count = paragraph.split(" ").length;
-				
-				if (current_word_count + word_count > TARGET_WORDS && current_chunk.len > 0) {
-					// Save current chunk and start new one
-					chunks.add(current_chunk.str.strip());
-					current_chunk = new GLib.StringBuilder();
-					current_word_count = 0;
-				}
-				
-				if (current_chunk.len > 0) {
-					current_chunk.append("\n\n");
-				}
-				current_chunk.append(paragraph);
-				current_word_count += word_count;
-			}
-			
-			// Add final chunk
-			if (current_chunk.len > 0) {
-				chunks.add(current_chunk.str.strip());
-			}
-			
-			return chunks;
 		}
 		
 		/**
