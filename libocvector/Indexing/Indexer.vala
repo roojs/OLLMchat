@@ -129,7 +129,13 @@ namespace OLLMvector.Indexing
 			
 			GLib.debug("Processing file '%s'", file.path);
 			
+			// Create Tree
 			var tree = new Tree(file);
+			
+			// Load existing metadata into cache before parsing
+			yield tree.load_cached_metadata(this.sql_db);
+			
+			// Parse file (this will also call match_element_with_cache() after parsing)
 			yield tree.parse();
 			
 			if (tree.elements.size == 0) {

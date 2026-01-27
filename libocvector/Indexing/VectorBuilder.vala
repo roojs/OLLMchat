@@ -63,43 +63,148 @@ namespace OLLMvector.Indexing
 		/**
 		 * Processes a Tree and generates vectors for all elements.
 		 * 
-		 * Removes existing metadata for the file before indexing to ensure
-		 * clean re-indexing without orphaned data.
+		 * Implements incremental processing: only creates new embeddings for
+		 * changed/new elements, reuses existing vectors for unchanged elements.
 		 * 
 		 * @param tree The Tree object from Analysis layer
 		 */
 		public async void process_file(Tree tree) throws GLib.Error
 		{
-			// Remove existing metadata for this file before re-indexing
-			this.sql_db.exec("DELETE FROM vector_metadata WHERE file_id = " + tree.file.id.to_string());
-			
 			if (tree.elements.size == 0) {
 				GLib.debug("No elements to process in file: %s", tree.file.path);
 				return;
 			}
 			
-			// Format all elements into documents
-			var documents = new Gee.ArrayList<string>();
-			var element_metadata = new Gee.ArrayList<ElementMetadata>();
+			// Separate elements into unchanged (reuse vector) and changed/new (create new vector)
+			var unchanged_elements = new Gee.ArrayList<VectorMetadata>();
+			var changed_elements = new Gee.ArrayList<VectorMetadata>();
+			var elements_to_delete = new Gee.HashSet<int>();
 			
+			// Build set of current element keys (ast_path or fallback) for deletion detection
+			var current_keys = new Gee.HashSet<string>();
 			foreach (var element in tree.elements) {
-				var document = this.format_element_document(
-					element, tree);
-				documents.add(document);
-				
-				element_metadata.add(new ElementMetadata() {
-					file_id = tree.file.id,
-					start_line = element.start_line,
-					end_line = element.end_line,
-					element_type = element.element_type,
-					element_name = element.element_name
-				});
+				current_keys.add(element.ast_path == "" ? 
+					element.element_type + ":" + element.element_name : 
+					element.ast_path);
 			}
 			
-			// Debug: output documents being sent to embedder
-			GLib.debug("Sending %d documents to embedder for file: %s", documents.size, tree.file.path);
-			for (int i = 0; i < documents.size; i++) {
-				GLib.debug("Document %d for embedding:\n%s", i + 1, documents[i]);
+			// Check each element
+			foreach (var element in tree.elements) {
+				var cache_key = element.ast_path == "" ? 
+					element.element_type + ":" + element.element_name : 
+					element.ast_path;
+				
+				if (!tree.cached_metadata.has_key(cache_key)) {
+					// New element - needs new embedding
+					changed_elements.add(element);
+					continue;
+				}
+				
+				var cached = tree.cached_metadata.get(cache_key);
+				
+				// Check if element is unchanged (can reuse existing vector)
+				// Element is unchanged if:
+				// 1. MD5 hashes match (or both are empty for legacy data that matched by name)
+				// 2. Element has vector_id set (from Tree.match_element_with_cache())
+				bool is_unchanged = false;
+				
+				if (element.vector_id > 0 && element.vector_id == cached.vector_id) {
+					// Vector ID matches - check MD5
+					if (element.md5_hash != "" &&
+						cached.md5_hash != "" &&
+						element.md5_hash == cached.md5_hash) {
+						// MD5 matches - definitely unchanged
+						is_unchanged = true;
+					} else if (element.md5_hash == "" &&
+							cached.md5_hash == "" &&
+							element.element_name == cached.element_name &&
+							element.element_type == cached.element_type) {
+						// Both MD5 empty (legacy) but names match - unchanged (Tree already matched)
+						is_unchanged = true;
+					}
+				}
+				
+				if (is_unchanged) {
+					// Unchanged element - reuse existing vector
+					unchanged_elements.add(element);
+				} else {
+					// Changed element - needs new embedding
+					changed_elements.add(element);
+					// Mark old metadata for deletion (will be replaced with new entry)
+					if (cached.id > 0) {
+						elements_to_delete.add((int)cached.id);
+					}
+				}
+			}
+
+			// Delete metadata for elements that no longer exist in file
+			foreach (var entry in tree.cached_metadata.entries) {
+				if (current_keys.contains(entry.key)) {
+					continue;
+				}
+				
+				// Element was deleted from file
+				if (entry.value.id > 0) {
+					elements_to_delete.add((int)entry.value.id);
+				}
+			}
+
+			// Delete old metadata entries
+			foreach (var id in elements_to_delete) {
+				VectorMetadata.query(this.sql_db).deleteId((int64)id);
+			}
+			
+			GLib.debug("VectorBuilder.process_file: %d unchanged (reuse vector), %d changed/new (create vector), %d deleted", 
+			           unchanged_elements.size, changed_elements.size, elements_to_delete.size);
+			
+			// Process unchanged elements (just update metadata if needed)
+			foreach (var element in unchanged_elements) {
+				var cache_key = element.ast_path == "" ? 
+					element.element_type + ":" + element.element_name : 
+					element.ast_path;
+				
+				if (!tree.cached_metadata.has_key(cache_key)) {
+					continue;
+				}
+				
+				var cached = tree.cached_metadata.get(cache_key);
+				// Check if metadata needs updating (line numbers or MD5 hash)
+				bool needs_update = false;
+				
+				if (cached.start_line != element.start_line || cached.end_line != element.end_line) {
+					cached.start_line = element.start_line;
+					cached.end_line = element.end_line;
+					needs_update = true;
+				}
+				
+				// Update MD5 if it was just calculated (legacy data migration)
+				if (element.md5_hash != "" && cached.md5_hash == "") {
+					cached.md5_hash = element.md5_hash;
+					needs_update = true;
+				}
+				
+				// Update description if it changed (shouldn't happen for unchanged, but be safe)
+				if (cached.description != element.description) {
+					cached.description = element.description;
+					needs_update = true;
+				}
+				
+				if (needs_update) {
+					cached.saveToDB(this.sql_db, false);
+				}
+			}
+
+			// Process changed/new elements (create new embeddings)
+			if (changed_elements.size == 0) {
+				GLib.debug("No changed elements to vectorize for file: %s", tree.file.path);
+				return;
+			}
+			
+			// Format changed elements into documents
+			var documents = new Gee.ArrayList<string>();
+			
+			foreach (var element in changed_elements) {
+				documents.add(this.format_element_document(element, tree));
 			}
 			
 			// Get embed model from codebase_search tool config
@@ -112,26 +217,23 @@ namespace OLLMvector.Indexing
 				throw new GLib.IOError.FAILED("Codebase search tool is disabled");
 			}
 			
-			var embed_model_usage = tool_config.embed;
-			var model = embed_model_usage.model;
-			
-			if (model == "" || embed_model_usage.connection == "" || !this.config.connections.has_key(embed_model_usage.connection)) {
+			if (tool_config.embed.model == "" || tool_config.embed.connection == "" || 
+			    !this.config.connections.has_key(tool_config.embed.connection)) {
 				throw new GLib.IOError.FAILED("Invalid embed_model configuration");
 			}
 			
-			var connection = this.config.connections.get(embed_model_usage.connection);
-			
-			// Create client from connection (no config - Manager owns config)
-			var client = new OLLMchat.Client(connection);
-			// Pass model and options from embed_model usage entry
-			var embed_response = yield client.embed_array(
-				model, 
+			// Create client from connection
+			var embed_response = yield new OLLMchat.Client(
+				this.config.connections.get(tool_config.embed.connection)
+			).embed_array(
+				tool_config.embed.model, 
 				documents,
-				-1,  // dimensions (default)
-				false,  // truncate (default)
-				embed_model_usage.options  // Use options from embed_model usage entry
+				-1,
+				false,
+				tool_config.embed.options
 			);
-			if (embed_response == null || embed_response.embeddings.size == 0) {
+			
+			if (embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embeddings for file");
 			}
 			
@@ -142,8 +244,6 @@ namespace OLLMvector.Indexing
 					", got " +
 					embed_response.embeddings.size.to_string());
 			}
-			
-			// Index will be auto-initialized in add_vectors_batch with the correct dimension
 			
 			// Convert embeddings to float arrays and store in FAISS
 			var vector_batch = OLLMvector.FloatArray(this.database.dimension);
@@ -158,25 +258,14 @@ namespace OLLMvector.Indexing
 			// Add vectors to FAISS index
 			this.database.add_vectors_batch(vector_batch);
 			
-			// Store metadata in SQL database
-			for (int j = 0; j < element_metadata.size; j++) {
-				var metadata = element_metadata[j];
-				var element = tree.elements[j];
-				
-				var vector_id = start_vector_id + j;
-				new VectorMetadata() {
-					vector_id = vector_id,
-					file_id = metadata.file_id,
-					start_line = metadata.start_line,
-					end_line = metadata.end_line,
-					element_type = metadata.element_type,
-					element_name = metadata.element_name,
-					description = element.description,
-					ast_path = element.ast_path
-				}.saveToDB(this.sql_db, false);
+			// Store metadata in SQL database for changed elements
+			for (int j = 0; j < changed_elements.size; j++) {
+				var element = changed_elements.get(j);
+				element.vector_id = start_vector_id + j;
+				element.saveToDB(this.sql_db, false);
 			}
 			
-			GLib.debug("Completed processing %d elements from file: %s", documents.size, tree.file.path);
+			GLib.debug("Completed processing %d changed elements from file: %s", changed_elements.size, tree.file.path);
 		}
 		
 		/**

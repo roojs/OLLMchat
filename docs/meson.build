@@ -208,6 +208,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/VectorBase.vala',  # Base class for vector operations
     '../libocvector/Indexing/namespace.vala',  # Indexing namespace documentation
     '../libocvector/Indexing/Tree.vala',
+    '../libocvector/Indexing/PromptTemplate.vala',  # Must come before Analysis (Analysis uses PromptTemplate)
     '../libocvector/Indexing/Analysis.vala',
     '../libocvector/Indexing/VectorBuilder.vala',
     '../libocvector/Indexing/Indexer.vala',

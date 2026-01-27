@@ -19,11 +19,6 @@
 namespace OLLMvector.Indexing
 {
 	/**
-	 * Base path for ocvector resources.
-	 */
-	private const string RESOURCE_BASE_PREFIX = "/ocvector";
-	
-	/**
 	 * Analysis layer for code file processing.
 	 * 
 	 * Processes Tree objects from the Tree layer and generates one-line descriptions
@@ -33,8 +28,24 @@ namespace OLLMvector.Indexing
 	public class Analysis : VectorBase
 	{
 		private SQ.Database sql_db;
-		private PromptTemplate? cached_template = null;
-		private PromptTemplate? cached_file_template = null;
+		private static PromptTemplate? cached_template = null;
+		private static PromptTemplate? cached_file_template = null;
+		
+		/**
+		 * Static constructor - loads templates at class initialization.
+		 */
+		static construct
+		{
+			try {
+				cached_template = new PromptTemplate("analysis-prompt.txt");
+				cached_template.load();
+				
+				cached_file_template = new PromptTemplate("analysis-prompt-file.txt");
+				cached_file_template.load();
+			} catch (GLib.Error e) {
+				GLib.critical("Failed to load prompt templates in static constructor: %s", e.message);
+			}
+		}
 		
 		/**
 		 * Emitted when an element is finished being analyzed.
@@ -57,45 +68,6 @@ namespace OLLMvector.Indexing
 			this.sql_db = sql_db;
 		}
 		
-		/**
-		 * Prompt template structure.
-		 */
-		private struct PromptTemplate
-		{
-			public string system_message;
-			public string user_template;
-		}
-		
-		/**
-		 * Loads a prompt template from resources.
-		 * Template should use `---` separator between system and user messages.
-		 * 
-		 * @return PromptTemplate with system_message and user_template
-		 */
-		private PromptTemplate load_prompt_template() throws GLib.Error
-		{
-		var resource_path = GLib.Path.build_filename(
-			RESOURCE_BASE_PREFIX,
-			"analysis-prompt.txt"
-		);
-		var file = GLib.File.new_for_uri("resource://" + resource_path);
-			
-			uint8[] data;
-			string etag;
-			file.load_contents(null, out data, out etag);
-			var template = (string)data;
-			
-			// Split on `---` separator
-			var parts = template.split("---", 2);
-			if (parts.length != 2) {
-				throw new GLib.IOError.FAILED("Prompt template must contain '---' separator between system and user messages");
-			}
-			
-			return PromptTemplate() {
-				system_message = parts[0].strip(),
-				user_template = parts[1].strip()
-			};
-		}
 		
 		/**
 		 * Determines if an element should skip LLM analysis.
@@ -147,70 +119,11 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Gets the prompt template, loading and caching it if needed.
+		 * Gets the file-level prompt template (static, loaded in static constructor).
 		 * 
-		 * @return PromptTemplate (cached after first load)
-		 * @throws GLib.Error if template cannot be loaded
+		 * @return PromptTemplate (loaded at class initialization)
+		 * @throws GLib.Error if template was not loaded in static constructor
 		 */
-		private PromptTemplate get_prompt_template() throws GLib.Error
-		{
-			if (this.cached_template != null) {
-				return this.cached_template;
-			}
-			
-			// Load from resources - fail if it doesn't work
-			this.cached_template = this.load_prompt_template();
-			return this.cached_template;
-		}
-		
-		/**
-		 * Loads the file-level prompt template from resources.
-		 * Template should use `---` separator between system and user messages.
-		 * 
-		 * @return PromptTemplate with system_message and user_template
-		 */
-		private PromptTemplate load_file_prompt_template() throws GLib.Error
-		{
-		var resource_path = GLib.Path.build_filename(
-			RESOURCE_BASE_PREFIX,
-			"analysis-prompt-file.txt"
-		);
-		var file = GLib.File.new_for_uri("resource://" + resource_path);
-			
-			uint8[] data;
-			string etag;
-			file.load_contents(null, out data, out etag);
-			var template = (string)data;
-			
-			// Split on `---` separator
-			var parts = template.split("---", 2);
-			if (parts.length != 2) {
-				throw new GLib.IOError.FAILED("Prompt template must contain '---' separator between system and user messages");
-			}
-			
-			return PromptTemplate() {
-				system_message = parts[0].strip(),
-				user_template = parts[1].strip()
-			};
-		}
-		
-		/**
-		 * Gets the file-level prompt template, loading and caching it if needed.
-		 * 
-		 * @return PromptTemplate (cached after first load)
-		 * @throws GLib.Error if template cannot be loaded
-		 */
-		private PromptTemplate get_file_prompt_template() throws GLib.Error
-		{
-			if (this.cached_file_template != null) {
-				return this.cached_file_template;
-			}
-			
-			// Load from resources - fail if it doesn't work
-			this.cached_file_template = this.load_file_prompt_template();
-			return this.cached_file_template;
-		}
-		
 		/**
 		 * Analyzes a Tree object and generates descriptions for elements.
 		 * 
@@ -224,17 +137,24 @@ namespace OLLMvector.Indexing
 		 */
 		public async Tree analyze_tree(Tree tree) throws GLib.Error
 		{
-			// Ensure prompt template is loaded (cached after first load)
-			this.get_prompt_template();
 			
 			// Process elements sequentially
 			int success_count = 0;
 			int failure_count = 0;
+			int skipped_count = 0;
 			int total_elements = tree.elements.size;
 			int element_number = 0;
 			
 			foreach (var element in tree.elements) {
 				element_number++;
+				
+				// Skip if element already has description (pre-populated from cache)
+				if (element.description != "" && element.description != null) {
+					skipped_count++;
+					// Emit signal for skipped elements too
+					this.element_analyzed(element.element_name, element_number, total_elements);
+					continue;
+				}
 				
 				if (this.should_skip_llm(element)) {
 					element.description = "";
@@ -265,8 +185,8 @@ namespace OLLMvector.Indexing
 				}
 			}
 			
-			GLib.debug("Processing file %s - %d elements processed, %d succeeded, %d failed", 
-			           tree.file.path, total_elements, success_count, failure_count);
+			GLib.debug("Processing file %s - %d elements processed, %d skipped (cached), %d succeeded, %d failed", 
+			           tree.file.path, total_elements, skipped_count, success_count, failure_count);
 			
 			GLib.debug("Complete for file %s: %d succeeded, %d failed", 
 			           tree.file.path, success_count, failure_count);
@@ -288,8 +208,6 @@ namespace OLLMvector.Indexing
 		 */
 		public async Tree analyze_file(Tree tree) throws GLib.Error
 		{
-			// Ensure file prompt template is loaded (cached after first load)
-			this.get_file_prompt_template();
 			
 			// Build elements summary (excluding enum members)
 			string[] elements_summary_parts = {};
@@ -314,15 +232,10 @@ namespace OLLMvector.Indexing
 			var file_path = tree.file.path;
 			
 			// Build user message from template
-			var user_message = this.cached_file_template.user_template.replace(
-				"{file_basename}",
-				file_basename != "" ? file_basename : "unknown"
-			).replace(
-				"{file_path}",
-				file_path != "" ? file_path : "unknown"
-			).replace(
-				"{elements_summary}",
-				elements_summary != "" ? elements_summary : "(no elements found)"
+			var user_message = cached_file_template.fill(
+				"file_basename", file_basename != "" ? file_basename : "unknown",
+				"file_path", file_path != "" ? file_path : "unknown",
+				"elements_summary", elements_summary != "" ? elements_summary : "(no elements found)"
 			);
 			
 			// Call LLM to generate file description
@@ -346,8 +259,8 @@ namespace OLLMvector.Indexing
 					// Build messages array
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					
-					if (this.cached_file_template.system_message != "") {
-						messages.add(new OLLMchat.Message("system", this.cached_file_template.system_message));
+					if (cached_file_template.system_message != "") {
+						messages.add(new OLLMchat.Message("system", cached_file_template.system_message));
 					}
 					
 					messages.add(new OLLMchat.Message("user", user_message));
@@ -449,29 +362,11 @@ namespace OLLMvector.Indexing
 			// Get file basename for context
 			var file_basename = GLib.Path.get_basename(tree.file.path);
 			
-			var user_message = this.cached_template.user_template.replace(
-				"{code}",
-				tree.lines_to_string(element.start_line, element.end_line, 100)
-			).replace(			
-				"{documentation}",
-				tree.lines_to_string(element.codedoc_start, element.codedoc_end)
-			).replace(
-				"{element_type}",
-				element.element_type != "" ? element.element_type : "unknown"
-			).replace(
-				"{element_name}",
-				element.element_name != "" ? element.element_name : "unnamed"
-			).replace(
-				"{file_basename}",
-				file_basename != "" ? file_basename : "unknown"
-			);
-			
 			// Add namespace context if available
 			var namespace_context = "";
 			if (element.namespace != null && element.namespace != "") {
 				namespace_context = "- This code is in the namespace '" + element.namespace + "'\n";
 			}
-			user_message = user_message.replace("{namespace_context}", namespace_context);
 			
 			// Add parent class context if available (for methods, properties, fields, etc.)
 			var parent_class_context = "";
@@ -499,14 +394,23 @@ namespace OLLMvector.Indexing
 					parent_class_context = "- This is a " + element.element_type + " of the class '" + element.parent_class + "'\n";
 				}
 			}
-			user_message = user_message.replace("{parent_class_context}", parent_class_context);
 			
 			// Add signature context if available (for methods, functions, properties, etc.)
 			var signature_context = "";
 			if (element.signature != null && element.signature != "") {
 				signature_context = "- Full signature: " + element.signature + "\n";
 			}
-			user_message = user_message.replace("{signature_context}", signature_context);
+			
+			var user_message = cached_template.fill(
+				"code", tree.lines_to_string(element.start_line, element.end_line, 100),
+				"documentation", tree.lines_to_string(element.codedoc_start, element.codedoc_end),
+				"element_type", element.element_type != "" ? element.element_type : "unknown",
+				"element_name", element.element_name != "" ? element.element_name : "unnamed",
+				"file_basename", file_basename != "" ? file_basename : "unknown",
+				"namespace_context", namespace_context,
+				"parent_class_context", parent_class_context,
+				"signature_context", signature_context
+			);
 			
 			// Retry up to 2 times
 			const int MAX_RETRIES = 2;
@@ -527,8 +431,8 @@ namespace OLLMvector.Indexing
 					// Build messages array directly from template and user message
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					
-					if (this.cached_template.system_message != "") {
-						messages.add(new OLLMchat.Message("system", this.cached_template.system_message));
+					if (cached_template.system_message != "") {
+						messages.add(new OLLMchat.Message("system", cached_template.system_message));
 					}
 					
 					messages.add(new OLLMchat.Message("user", user_message));

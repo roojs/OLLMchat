@@ -531,9 +531,21 @@ Note: The `Table` class should have `public bool active { get; set; default = fa
 
 ## Null Checks
 
-**IMPORTANT:** Avoid null checks unless there is an absolutely valid reason why an object will be null. Null checks tend to hide bugs, which is why they're not put in the codebase. Only add null checks when explicitly required by the design.
+**CRITICAL - ZERO TOLERANCE:** Null checks are FORBIDDEN unless you can prove with 100% certainty that the object MUST be null due to an external API contract or system-level constraint that is completely outside your control. "Optional" properties, "might be null", "could be null", "may not be set", "legitimately null", or any similar excuses are NOT valid reasons. These are design flaws that must be fixed, not worked around with null checks.
 
-**IMPORTANT:** Avoid nullable parameters (`Type?`) at all costs. Design your APIs to not require nullable parameters. Use alternative patterns like default objects, empty collections, or separate methods instead.
+**CRITICAL:** Null checks hide bugs and mask design problems. If you find yourself wanting to add a null check, STOP. The correct solution is to redesign the code so null is impossible, not to add a null check.
+
+**CRITICAL:** Avoid nullable parameters (`Type?`) at all costs. Design your APIs to not require nullable parameters. Use alternative patterns like default objects, empty collections, or separate methods instead. If a property "might not be set", it should have a default value (empty string, empty list, default object with an `active` flag, etc.), not be nullable.
+
+**The ONLY acceptable exceptions:**
+1. External API calls that explicitly return nullable types (e.g., database queries, file system operations, network requests) - but even then, handle the null case immediately and convert to a non-nullable design
+2. System-level constraints where null is truly unavoidable (e.g., GObject property bindings, signal handlers with optional parameters)
+
+**If you're about to add a null check, ask yourself:**
+- Can I make this property non-nullable with a default value? YES → Do that instead
+- Can I use a separate method/flag for the "not set" case? YES → Do that instead  
+- Can I redesign the API to not need null? YES → Do that instead
+- Is this truly an external API/system constraint? NO → Fix the design, don't add a null check
 
 **Bad:**
 ```vala
@@ -758,6 +770,73 @@ var sql = "SELECT f.path, vm.vector_id FROM vector_metadata vm JOIN filebase f O
 **Also Good (with JOINs, no aliases):**
 ```vala
 var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata JOIN filebase ON vector_metadata.file_id = filebase.id";
+```
+
+## Character Looping
+
+**CRITICAL - FORBIDDEN:** Do NOT loop through strings character by character. **ANY kind of character looping is FORBIDDEN unless specifically requested.** This includes:
+- `for (int i = 0; i < str.length; i++)` loops accessing `str[i]`
+- `while` loops with character indexing
+- Any iteration that accesses individual characters via indexing
+- Character-by-character processing in any form
+
+This is extremely inefficient and error-prone. Always use string library methods instead.
+
+**CRITICAL:** Before writing any character-by-character loop, examine the GLib string library (`GLib.String`) to find appropriate methods. Common operations:
+- `contains()`, `has_prefix()`, `has_suffix()` - pattern matching
+- `split()`, `split_set()` - splitting strings
+- `replace()`, `replace_set()` - replacing substrings
+- `strip()`, `chomp()` - trimming whitespace
+- `up()`, `down()` - case conversion
+- `substring()` - extracting substrings
+- `index_of()`, `last_index_of()` - finding positions
+- `slice()` - extracting ranges
+
+**Bad:**
+```vala
+for (int i = 0; i < str.length; i++) {
+    if (str[i] == '#') {
+        level++;
+    } else {
+        break;
+    }
+}
+```
+
+**Good:**
+```vala
+// Use regex to replace leading # characters and check length difference
+var regex = new GLib.Regex("^#+");
+var without_hash = regex.replace(str, 0, "", 0);
+var level = str.length - without_hash.length;
+```
+
+**Also Good (using regex match):**
+```vala
+// Use regex to find the match and get its length
+var regex = new GLib.Regex("^#+");
+GLib.MatchInfo match_info;
+if (regex.match(str, 0, out match_info)) {
+    var match = match_info.fetch(0);
+    var level = match.length;
+} else {
+    var level = 0;
+}
+```
+
+**Also Bad:**
+```vala
+string result = "";
+for (int i = 0; i < str.length; i++) {
+    if (str[i] != ' ') {
+        result += str[i];
+    }
+}
+```
+
+**Good:**
+```vala
+var result = str.replace(" ", "");
 ```
 
 ## String Array Operations

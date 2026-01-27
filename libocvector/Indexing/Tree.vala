@@ -32,6 +32,12 @@ namespace OLLMvector.Indexing
 		public Gee.ArrayList<VectorMetadata> elements { get; private set; default = new Gee.ArrayList<VectorMetadata>(); }
 		
 		/**
+		 * Cached metadata from database, keyed by ast_path (or element_type:element_name fallback).
+		 * Loaded before parsing to enable incremental analysis.
+		 */
+		public Gee.HashMap<string, VectorMetadata> cached_metadata { get; private set; default = new Gee.HashMap<string, VectorMetadata>(); }
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param file The OLLMfiles.File to parse
@@ -281,7 +287,118 @@ namespace OLLMvector.Indexing
 			GLib.debug("extract_element_metadata: set ast_path='%s' for %s %s (lines %d-%d)", 
 				metadata.ast_path, element_type, element_name, metadata.start_line, metadata.end_line);
 			
+			// Match with cache and pre-populate description if unchanged
+			this.match_element_with_cache(metadata);
+			
 			return metadata;
+		}
+		
+		/**
+		 * Loads existing metadata from database into cached_metadata hashmap.
+		 * 
+		 * Should be called after Tree construction but before parse().
+		 * Keys cache by ast_path (or element_type:element_name if ast_path is empty).
+		 * 
+		 * @param sql_db The SQLite database instance for querying metadata
+		 * @throws GLib.Error if database query fails
+		 */
+		public async void load_cached_metadata(SQ.Database sql_db) throws GLib.Error
+		{
+			this.cached_metadata.clear();
+			
+			var results = new Gee.ArrayList<VectorMetadata>();
+			yield VectorMetadata.query(sql_db).select_async("WHERE file_id = " + this.file.id.to_string(), results);
+			
+			foreach (var metadata in results) {
+				// Use ast_path as key, fallback to element_type:element_name if ast_path is empty
+				var cache_key = metadata.ast_path == "" ? 
+					metadata.element_type + ":" + metadata.element_name : 
+					metadata.ast_path;
+				
+				// If key already exists (duplicate ast_path or fallback), keep the one with non-empty md5_hash
+				if (this.cached_metadata.has_key(cache_key)) {
+					// Prefer entry with non-empty md5_hash (more recent)
+					if (this.cached_metadata.get(cache_key).md5_hash == "" && metadata.md5_hash != "") {
+						this.cached_metadata.set(cache_key, metadata);
+					}
+				} else {
+					this.cached_metadata.set(cache_key, metadata);
+				}
+			}
+			
+			GLib.debug("Loaded %d cached metadata entries for file %s", 
+			           this.cached_metadata.size, this.file.path);
+		}
+		
+		/**
+		 * Matches element with cached metadata and pre-populates description if unchanged.
+		 * 
+		 * Calculates MD5 hash for element's code content, looks up in cached_metadata,
+		 * and if found with matching MD5, copies description from cache.
+		 * 
+		 * @param metadata The VectorMetadata element to match
+		 */
+		private void match_element_with_cache(VectorMetadata metadata)
+		{
+			// Calculate MD5 for current element content
+			var element_code = this.lines_to_string(metadata.start_line, metadata.end_line);
+			if (element_code == "") {
+				return;
+			}
+			
+			var checksum = new GLib.Checksum(GLib.ChecksumType.MD5);
+			checksum.update((uint8[])element_code.to_utf8(), -1);
+			metadata.md5_hash = checksum.get_string();
+			
+			// Determine cache key (ast_path or fallback)
+			var cache_key = metadata.ast_path == "" ? 
+				metadata.element_type + ":" + metadata.element_name : 
+				metadata.ast_path;
+			
+			// Look up in cache
+			if (!this.cached_metadata.has_key(cache_key)) {
+				return;
+			}
+			
+			var cached = this.cached_metadata.get(cache_key);
+			
+			// Handle legacy data (empty MD5 in cache)
+			if (cached.md5_hash == "") {
+				// Legacy data: check if element name matches
+				if (cached.element_name == metadata.element_name && cached.element_type == metadata.element_type) {
+					// Element name matches - reuse description, calculate and store MD5
+					metadata.description = cached.description;
+					// Update cached metadata with calculated MD5 (for next time)
+					cached.md5_hash = metadata.md5_hash;
+					// Update line numbers if they changed
+					if (cached.start_line != metadata.start_line || cached.end_line != metadata.end_line) {
+						cached.start_line = metadata.start_line;
+						cached.end_line = metadata.end_line;
+					}
+					// Store vector_id from cache for VectorBuilder to reuse
+					metadata.vector_id = cached.vector_id;
+					GLib.debug("Legacy element %s (%s) - reused description, calculated MD5", 
+					           metadata.element_name, metadata.element_type);
+				}
+				return;
+			}
+			
+			// Modern data: compare MD5 hashes
+			if (cached.md5_hash != metadata.md5_hash) {
+				return;
+			}
+			
+			// MD5 matches - element unchanged, reuse description
+			metadata.description = cached.description;
+			// Update line numbers if they changed (element moved but content same)
+			if (cached.start_line != metadata.start_line || cached.end_line != metadata.end_line) {
+				cached.start_line = metadata.start_line;
+				cached.end_line = metadata.end_line;
+			}
+			// Store vector_id from cache for VectorBuilder to reuse
+			metadata.vector_id = cached.vector_id;
+			GLib.debug("Unchanged element %s (%s) - reused description", 
+			           metadata.element_name, metadata.element_type);
 		}
 		
 		/**

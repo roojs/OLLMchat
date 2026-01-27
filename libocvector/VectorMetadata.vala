@@ -140,6 +140,13 @@ namespace OLLMvector
 		public string ast_path { get; set; default = ""; }
 		
 		/**
+		 * MD5 hash of element's code content for change detection.
+		 * Empty string for legacy data (before MD5 support was added).
+		 * Stored in database for incremental analysis.
+		 */
+		public string md5_hash { get; set; default = ""; }
+		
+		/**
 		 * Constructor.
 		 */
 		public VectorMetadata()
@@ -164,7 +171,8 @@ namespace OLLMvector
 				"element_type TEXT NOT NULL, " +
 				"element_name TEXT NOT NULL, " +
 				"description TEXT NOT NULL DEFAULT '', " +
-				"ast_path TEXT NOT NULL DEFAULT ''" +
+				"ast_path TEXT NOT NULL DEFAULT '', " +
+				"md5_hash TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create vector_metadata table: %s", db.db.errmsg());
@@ -173,6 +181,15 @@ namespace OLLMvector
 			// Migrate existing databases: add ast_path column if it doesn't exist
 			var migrate_ast_path = "ALTER TABLE vector_metadata ADD COLUMN ast_path TEXT NOT NULL DEFAULT ''";
 			if (Sqlite.OK != db.db.exec(migrate_ast_path, null, out errmsg)) {
+				// Column might already exist, which is fine
+				if (!errmsg.contains("duplicate column name")) {
+					GLib.debug("Migration note (may be expected): %s", errmsg);
+				}
+			}
+			
+			// Migrate existing databases: add md5_hash column if it doesn't exist
+			var migrate_md5_hash = "ALTER TABLE vector_metadata ADD COLUMN md5_hash TEXT NOT NULL DEFAULT ''";
+			if (Sqlite.OK != db.db.exec(migrate_md5_hash, null, out errmsg)) {
 				// Column might already exist, which is fine
 				if (!errmsg.contains("duplicate column name")) {
 					GLib.debug("Migration note (may be expected): %s", errmsg);

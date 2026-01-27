@@ -57,6 +57,7 @@ ocvector_src = files([
   
   # Indexing/ directory
   'Indexing/Tree.vala',  # Tree-sitter AST parsing and VectorMetadata creation
+  'Indexing/PromptTemplate.vala',  # Prompt template class for loading and filling templates
   'Indexing/Analysis.vala',  # Code analysis layer
   'Indexing/VectorBuilder.vala',  # Vector generation and FAISS storage
   'Indexing/Indexer.vala',  # Main indexing orchestrator
