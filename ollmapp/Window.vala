@@ -525,7 +525,10 @@ namespace OLLMapp
 			});
 			
 			// Register all tools with proper initialization (passing project_manager to constructors)
-			this.register_tools();
+			// Use library-level registries from Application to register tools
+			var app = this.app as OllmchatApplication;
+			app.tools_registry.fill_tools(this.history_manager, this.project_manager);
+			app.vector_registry.fill_tools(this.history_manager, this.project_manager);
 
 			
 			// Register CodeAssistant agent
@@ -642,8 +645,8 @@ namespace OLLMapp
 				return;
 			}
 			
-			// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
-			// Tool was already created with project_manager in register_tools(), so dependencies are initialized
+		// Get the tool from Manager (Phase 3: tools stored on Manager, not Client)
+		// Tool was already created with project_manager when tools were registered, so dependencies are initialized
 			var tool = this.history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
 			
 			// Initialize vector database (embedding_client will be set up lazily)
@@ -944,63 +947,6 @@ namespace OLLMapp
 			return response;
 		}
 		
-		/**
-		 * Registers all tools with proper initialization.
-		 * 
-		 * Creates tool instances using their constructors with project_manager,
-		 * instead of using Object.new() which doesn't pass constructor parameters.
-		 * This ensures tools have access to project_manager for auto-approval of project files.
-		 */
-		private void register_tools()
-		{
-			// Register each tool explicitly with project_manager
-			// This ensures project_manager is set on tools, allowing them to check if files are in active project
-			
-			// ReadFile tool
-			this.history_manager.register_tool(
-				new OLLMtools.ReadFile.Tool(this.project_manager));
-			
-			// RunCommand tool
-			this.history_manager.register_tool(
-				new OLLMtools.RunCommand.Tool(this.project_manager));
-			
-			// WebFetch tool
-			this.history_manager.register_tool(
-				new OLLMtools.WebFetch.Tool(this.project_manager));
-			
-			// EditMode tool
-			this.history_manager.register_tool(
-				new OLLMtools.EditMode.Tool(this.project_manager));
-			
-			// GoogleSearch tool
-			this.history_manager.register_tool
-				(new OLLMtools.GoogleSearch.Tool(this.project_manager));
-			
-			// CodebaseSearchTool (registered separately in initialize_codebase_search_tool)
-			// But we still need to create it here so it's available
-			this.history_manager.register_tool(
-				new OLLMvector.Tool.CodebaseSearchTool(this.project_manager));
-			
-			GLib.debug("Window.register_tools: Registered %d tools with project_manager", 
-				this.history_manager.tools.size);
-			
-			// Register wrapped tools from .tool definition files
-			// ToolBuilder uses resource:// URIs to access compiled resources
-			var builder = new OLLMtools.ToolBuilder(this.history_manager.tools);
-			builder.scan_and_build();
-			
-			GLib.debug("Window.register_tools: Registered wrapped tools (total tools: %d)", 
-				this.history_manager.tools.size);
-			
-			// Register agent tools from resources/agents/
-			(new OLLMtools.Child.Parser()).scan_and_register(
-				this.history_manager,
-				this.project_manager
-			);
-			
-			GLib.debug("Window.register_tools: Registered agent tools (total tools: %d)", 
-				this.history_manager.tools.size);
-		}
 		
 	}
 }

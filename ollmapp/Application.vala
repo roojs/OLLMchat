@@ -26,6 +26,8 @@ namespace OLLMapp
 	{
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
+		public OLLMtools.Registry tools_registry { get; set; }
+		public OLLMvector.Registry vector_registry { get; set; }
 		
 		public static bool opt_debug = false;
 		public static bool opt_debug_critical = false;
@@ -59,20 +61,12 @@ namespace OLLMapp
 			);
 			
 			// Register tool config types before loading config (Phase 1: config type registration)
-			// Use unified tool config registration to discover and register all tool config types
-			// Ensure all tool classes are registered in GType system before discovery.
-			// We can't think of any other way to do this - GType registration is lazy
-			// and classes won't be in the registry until they're explicitly referenced.
-			// This is the only place with all dependencies available.
-			// Note: OLLMchat.Tools.* classes exist but aren't compiled - use OLLMtools.* instead
-			typeof(OLLMtools.ReadFile.Tool).ensure();
-			typeof(OLLMtools.RunCommand.Tool).ensure();
-			typeof(OLLMtools.WebFetch.Tool).ensure();
-			typeof(OLLMtools.EditMode.Tool).ensure();
-			typeof(OLLMvector.Tool.CodebaseSearchTool).ensure();
-			typeof(OLLMtools.GoogleSearch.Tool).ensure();
-			OLLMchat.Tool.BaseTool.register_config();
-			
+			// Use library-level registries to register tools
+			this.tools_registry = new OLLMtools.Registry();
+			this.vector_registry = new OLLMvector.Registry();
+			this.tools_registry.init_config();
+			this.vector_registry.init_config();
+					
 			// Load config after registrations
 			this.config = this.load_config();
 			

@@ -184,6 +184,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/Child/Agent.vala',
     '../liboctools/Child/Request.vala',
     '../liboctools/Child/Config.vala',
+    '../liboctools/Registry.vala',
     # liboccoder sources (depends on libocsqlite and libocfiles)
     '../liboccoder/namespace.vala',  # Namespace documentation
     '../liboccoder/BufferProvider.vala',
@@ -217,6 +218,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/Tool/CodebaseSearchToolConfig.vala',  # Must come before CodebaseSearchTool (CodebaseSearchTool uses CodebaseSearchToolConfig)
     '../libocvector/Tool/CodebaseSearchTool.vala',
     '../libocvector/Tool/RequestCodebaseSearch.vala',
+    '../libocvector/Registry.vala',
     '../libocvector/BackgroundScan.vala',
     # examples base classes (used by vector tools)
     '../examples/TestAppBase.vala',
@@ -236,7 +238,6 @@ valadoc_docs = custom_target('valadoc',
     # Note: version_fake.vala must come first as it defines OLLMapp.APP_VERSION (internal, not documented)
     'version_fake.vala',
     '../ollmapp/Application.vala',
-    '../ollmapp/ToolRegistry.vala',
     '../ollmapp/About.vala',
     '../ollmapp/Window.vala',
     '../ollmapp/WindowPane.vala',

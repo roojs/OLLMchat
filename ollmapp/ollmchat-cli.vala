@@ -37,7 +37,8 @@ namespace OLLMapp
 		
 		private OLLMchat.History.Manager? manager { get; set; default = null; }
 		private OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
-		private ToolRegistry tools_registry { get; set; }
+		private OLLMtools.Registry tools_registry { get; set; }
+		private OLLMvector.Registry vector_registry { get; set; }
 		
 		protected string help { get; set; default = """
 Usage: {ARG} [OPTIONS] [QUERY]
@@ -84,8 +85,10 @@ Examples:
 			);
 			
 			// Phase 1: Initialize tool config types (before loading config)
-			this.tools_registry = new ToolRegistry();
+			this.tools_registry = new OLLMtools.Registry();
+			this.vector_registry = new OLLMvector.Registry();
 			this.tools_registry.init_config();
+			this.vector_registry.init_config();
 			
 			// Load config (no vector types needed for simple CLI)
 			this.config = this.load_config();
@@ -422,9 +425,10 @@ Examples:
 			// Setup manager (creates Manager with session that has just-ask agent)
 			yield this.setup_manager();
 		
-			// Register tools with manager (so agent has access to them)
-			// For standard agent mode, project_manager can be null (tools will work in limited mode)
-			this.tools_registry.fill_tools(this.manager, this.project_manager);
+		// Register tools with manager (so agent has access to them)
+		// For standard agent mode, project_manager can be null (tools will work in limited mode)
+		this.tools_registry.fill_tools(this.manager, this.project_manager);
+		this.vector_registry.fill_tools(this.manager, this.project_manager);
 				
 			// Ensure Manager's session has just-ask agent activated
 			// Manager already registers "just-ask" agent in constructor and creates EmptySession
@@ -489,8 +493,9 @@ Examples:
 					));
 			}
 			
-			// Fill manager with tools (after project manager is set up)
-			this.tools_registry.fill_tools(this.manager, this.project_manager);
+		// Fill manager with tools (after project manager is set up)
+		this.tools_registry.fill_tools(this.manager, this.project_manager);
+		this.vector_registry.fill_tools(this.manager, this.project_manager);
 			
 			// Verify tool exists
 			if (!this.manager.tools.has_key(tool_name)) {
