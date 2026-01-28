@@ -397,9 +397,9 @@ namespace OLLMvector.Indexing
 
 		private async void index_project(OLLMfiles.Folder root_folder, bool force) throws GLib.Error
 		{
-			var project_analysis = new ProjectAnalysis(this.config, this.sql_db);
-			yield project_analysis.extract_dependencies(root_folder);
-			yield project_analysis.analyze(root_folder);
+			var project_analysis = new ProjectAnalysis(this.config, this.sql_db, root_folder);
+			yield project_analysis.analyze_dependencies();
+			yield project_analysis.analyze();
 		}
 
 		/**
