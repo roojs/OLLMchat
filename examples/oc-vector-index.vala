@@ -81,22 +81,24 @@ Examples:
 		return base_load_config();
 	}
 	
-	protected override string? validate_args(string[] remaining_args)
+	protected override int command_line(ApplicationCommandLine command_line)
 	{
-		// Save data_dir value before reset (options are parsed before validate_args is called)
-		var saved_data_dir = opt_data_dir;
-		
-		// Reset static option variables at start of each command line invocation
-		opt_recurse = false;
+		// Reset option variables to defaults before parsing (so parsed values are preserved)
+		opt_recurse = true;
 		opt_reset_database = false;
 		opt_create_project = false;
 		opt_embed_model = null;
 		opt_analyze_model = null;
 		opt_data_dir = null;
 		
-		// Override data_dir if --data-dir option provided
-		if (saved_data_dir != null && saved_data_dir != "") {
-			this.data_dir = saved_data_dir;
+		return base.command_line(command_line);
+	}
+	
+	protected override string? validate_args(string[] remaining_args)
+	{
+		// Apply data_dir from parsed options
+		if (opt_data_dir != null && opt_data_dir != "") {
+			this.data_dir = opt_data_dir;
 		}
 		
 		// Build paths at start
