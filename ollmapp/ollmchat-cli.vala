@@ -92,10 +92,10 @@ Examples:
 			
 			// Load config (no vector types needed for simple CLI)
 			this.config = this.load_config();
-			if (this.config.loaded) {
-				this.tools_registry.setup_config_defaults(this.config);
-				this.vector_registry.setup_config_defaults(this.config);
-			}
+			 
+			this.tools_registry.setup_config_defaults(this.config);
+			this.vector_registry.setup_config_defaults(this.config);
+			 
 		}
 		
 		public OLLMchat.Settings.Config2 load_config()

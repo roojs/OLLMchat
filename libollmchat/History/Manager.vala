@@ -194,7 +194,9 @@ namespace OLLMchat.History
 		 */
 		public void register_tool(OLLMchat.Tool.BaseTool tool)
 		{
-			tool.config = this.config;
+			// Binding tool.active to config.tools[name].enabled (single source of truth) does not work
+			// in the current setup; the previous sync (config → tool.active on load and on settings close)
+			// was not a good design. To be considered later.
 			this.tools.set(tool.name, tool);
 			GLib.debug("Manager.register_tool: Registered tool '%s'", tool.name);
 		}

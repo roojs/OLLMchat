@@ -123,21 +123,14 @@ Examples:
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
 		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
 		
-		string? folder_path = null;
-		string? query = null;
+		string folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
+		string query = remaining_args.length > 2 ? remaining_args[2] : "";
 		
-		if (remaining_args.length > 1) {
-			folder_path = remaining_args[1];
-		}
-		if (remaining_args.length > 2) {
-			query = remaining_args[2];
-		}
-		
-		if (folder_path == null || folder_path == "") {
+		if (folder_path == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
 		// When --show-info is set, query is optional; otherwise required
-		if (opt_show_info == null && (query == null || query == "")) {
+		if (opt_show_info == null && query == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
@@ -151,17 +144,17 @@ Examples:
 	
 	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
-		string? folder_path = remaining_args.length > 1 ? remaining_args[1] : null;
-		string? query = remaining_args.length > 2 ? remaining_args[2] : null;
+		string folder_path = remaining_args.length > 1 ? remaining_args[1] : "";
+		string query = remaining_args.length > 2 ? remaining_args[2] : "";
 		
-		if (folder_path == null) {
+		if (folder_path == "") {
 			throw new GLib.IOError.NOT_FOUND("Folder required");
 		}
 		if (opt_show_info != null) {
 			yield this.run_show_info(folder_path, opt_show_info);
 			return;
 		}
-		if (query == null || query == "") {
+		if (query == "") {
 			throw new GLib.IOError.NOT_FOUND("Query required (or use --show-info=FILE to list metadata for a file)");
 		}
 		yield this.run_search(folder_path, query);
