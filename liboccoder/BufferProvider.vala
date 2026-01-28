@@ -31,7 +31,7 @@ namespace OLLMcoder
 		public override string? detect_language(OLLMfiles.File file)
 		{
 			var lang_manager = GtkSource.LanguageManager.get_default();
-			var language = lang_manager.guess_language(file.path, null);
+			var language = lang_manager.guess_language(GLib.Path.get_basename(file.path), null);
 			return language?.get_id();
 		}
 		

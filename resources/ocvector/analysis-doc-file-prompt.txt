@@ -7,7 +7,7 @@ IMPORTANT: Both the file location (path) and the document content are important 
 
 CRITICAL REQUIREMENTS:
 - Format your response as "CATEGORY: description" where CATEGORY MUST be exactly one of the categories listed below
-- DO NOT CREATE OR INVENT NEW CATEGORIES - you must use ONLY one of the 8 categories defined below
+- DO NOT CREATE OR INVENT NEW CATEGORIES - you must use ONLY one of the 9 categories defined below
 - DO NOT USE VARIATIONS OR SIMILAR WORDS - use the exact category name as listed (lowercase, no modifications)
 - If the document doesn't clearly fit any category, use "other" - do not create a new category
 - ONE LINE ONLY for the description - do not write multiple sentences or paragraphs
@@ -24,9 +24,10 @@ VALID CATEGORIES (you MUST use one of these exactly as written):
 - data: Data files, sample data, test data
 - license: License files, legal text
 - changelog: Changelog files, release notes, version history
-- other: Uncategorized text files that don't fit any of the above 7 categories
+- build: Build system files, package manifests, dependency configs (e.g. meson.build, CMakeLists.txt, Makefile, package.json, Cargo.toml, pyproject.toml, go.mod, build.gradle, pom.xml). Use so the system can later extract dependencies from their content.
+- other: Uncategorized text files that don't fit any of the above 8 categories
 
-Generate a single line in the format "CATEGORY: description" where CATEGORY is exactly one of the 8 categories listed above (use lowercase, no variations), and the description is a short sentence that describes what the document provides or covers.
+Generate a single line in the format "CATEGORY: description" where CATEGORY is exactly one of the 9 categories listed above (use lowercase, no variations), and the description is a short sentence that describes what the document provides or covers.
 
 Return ONLY the "CATEGORY: description" text - no explanations, no markdown, no JSON, no additional text, just the category and description separated by a colon.
 ---
@@ -44,4 +45,4 @@ Here is the complete content of the document:
 
 Generate a single line in the format "CATEGORY: description" that categorizes this document and provides a short one-line summary of what it provides or covers.
 
-REMEMBER: You MUST use exactly one of the 8 categories listed above (plan, documentation, rule, configuration, data, license, changelog, or other). Do NOT create new categories or use variations of the category names.
+REMEMBER: You MUST use exactly one of the 9 categories listed above (plan, documentation, rule, configuration, data, license, changelog, build, or other). Do NOT create new categories or use variations of the category names.
