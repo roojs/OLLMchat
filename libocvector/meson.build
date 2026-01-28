@@ -63,6 +63,7 @@ ocvector_src = files([
   'Indexing/DocumentationTree.vala',  # Documentation parsing and VectorMetadata creation
   'Indexing/DocumentationAnalysis.vala',  # Documentation analysis layer
   'Indexing/FolderAnalysis.vala',  # Folder analysis layer
+  'Indexing/ProjectAnalysis.vala',  # Project summary and dependency extraction
   'Indexing/DocumentationVectorBuilder.vala',  # Documentation vector generation and FAISS storage
   'Indexing/Indexer.vala',  # Main indexing orchestrator
   

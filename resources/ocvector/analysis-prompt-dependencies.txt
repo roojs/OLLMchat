@@ -1,0 +1,26 @@
+You are a code analysis assistant. Your task is to extract build system and dependency information from the following build/manifest file content.
+
+CRITICAL: Use only the content provided. Extract only what is explicitly stated or clearly implied.
+
+Build file content:
+
+{build_file_content}
+
+Output format — fill in each section:
+
+BUILD_SYSTEM:
+<name and version if evident, e.g. Meson, npm, Cargo>
+
+TOOLS_AND_COMMANDS:
+<tools and commands used to build or run the application, one per line if multiple>
+
+DEPENDENCIES:
+<bullet list of dependencies (libraries, packages, modules) mentioned in the content>
+
+Return ONLY the filled template above. No extra text, no markdown code fences.
+---
+Build file content:
+
+{build_file_content}
+
+Extract BUILD_SYSTEM, TOOLS_AND_COMMANDS, and DEPENDENCIES. Return ONLY the filled template. No extra text, no markdown code fences.

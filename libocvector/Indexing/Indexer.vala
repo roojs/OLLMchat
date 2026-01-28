@@ -394,13 +394,20 @@ namespace OLLMvector.Indexing
 			
 			return files_indexed;
 		}
-		
+
+		private async void index_project(OLLMfiles.Folder root_folder, bool force) throws GLib.Error
+		{
+			var project_analysis = new ProjectAnalysis(this.config, this.sql_db);
+			yield project_analysis.extract_dependencies(root_folder);
+			yield project_analysis.analyze(root_folder);
+		}
+
 		/**
 		 * Index a file or folder.
-		 * 
+		 *
 		 * Processes the FileBase object through the appropriate indexing method.
 		 * Handles FileAlias by following to target.
-		 * 
+		 *
 		 * @param filebase The file or folder to index (must exist in database)
 		 * @param recurse If true and filebase is a folder, recursively process subfolders
 		 * @param force If true, skip incremental check and force re-indexing
@@ -423,7 +430,10 @@ namespace OLLMvector.Indexing
 			}
 			
 			if (filebase is OLLMfiles.Folder) {
-				return yield this.index_folder((OLLMfiles.Folder)filebase, recurse, force);
+				var folder = (OLLMfiles.Folder)filebase;
+				int n = yield this.index_folder(folder, recurse, force);
+				yield this.index_project(folder, force);
+				return n;
 			}
 			
 			throw new GLib.IOError.INVALID_ARGUMENT("FileBase is not a file or folder: " + filebase.path);
