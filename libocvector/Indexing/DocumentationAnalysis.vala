@@ -105,58 +105,54 @@ namespace OLLMvector.Indexing
 				"filename", filename,
 				"filepath", filepath
 			);
-			
-			// Call LLM
-			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-			var analysis_conn = yield this.connection("analysis");
-			
-			var chat = new OLLMchat.Call.Chat(
-				analysis_conn,
-				tool_config.analysis.model) {
-				stream = false,
-				options = tool_config.analysis.options
-			};
-			
+
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			if (cached_document_template.system_message != "") {
 				messages.add(new OLLMchat.Message("system", cached_document_template.system_message));
 			}
 			messages.add(new OLLMchat.Message("user", user_message));
-			
-			var response = yield chat.send(messages, null);
-			if (response != null && response.message != null && response.message.content != null) {
-				var result = response.message.content.strip();
-				// Parse result: format is "CATEGORY: description" or just "description"
-				var parts = result.split(":", 2);
-				if (parts.length == 2) {
-					var category_candidate = parts[0].strip().down();
-					// Validate category is one of the known categories
-					switch (category_candidate) {
-						case "plan":
-						case "documentation":
-						case "rule":
-						case "configuration":
-						case "data":
-						case "license":
-						case "changelog":
-						case "other":
-							root_element.category = category_candidate;
-							root_element.description = parts[1].strip();
-							break;
+
+			string result = "";
+			try {
+				result = yield this.request_analysis(messages);
+			} catch (GLib.Error e) {
+				root_element.category = "other";
+				root_element.description = "";
+				tree.category = root_element.category;
+				return;
+			}
+			if (result == "") {
+				root_element.category = "other";
+				root_element.description = "";
+				tree.category = root_element.category;
+				return;
+			}
+			// Parse result: format is "CATEGORY: description" or just "description"
+			var parts = result.split(":", 2);
+			if (parts.length == 2) {
+				var category_candidate = parts[0].strip().down();
+				switch (category_candidate) {
+					case "plan":
+					case "documentation":
+					case "rule":
+					case "configuration":
+					case "data":
+					case "license":
+					case "changelog":
+					case "other":
+						root_element.category = category_candidate;
+						root_element.description = parts[1].strip();
+						break;
 					default:
-						// Invalid category prefix - treat as description only
 						root_element.category = "other";
 						root_element.description = result.strip();
 						break;
 				}
 			} else {
-				// No category prefix - LLM didn't provide one, use "other"
 				root_element.category = "other";
 				root_element.description = result.strip();
 			}
-				// Update tree category
-				tree.category = root_element.category;
-			}
+			tree.category = root_element.category;
 		}
 		
 		/**
@@ -210,37 +206,24 @@ namespace OLLMvector.Indexing
 					parent_context_text = "(top-level section)";
 				}
 				
-				// Build user message
-				// Note: full_content already includes all text from section.start_line to section.end_line,
-				// which includes all subsections and their content
 				var user_message = cached_template.fill(
 					"section_content", full_content,
 					"section_title", section.element_name,
 					"parent_sections", parent_context_text
 				);
-				
-				// Call LLM
-				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-				var analysis_conn = yield this.connection("analysis");
-				
-				var chat = new OLLMchat.Call.Chat(
-					analysis_conn,
-					tool_config.analysis.model) {
-					stream = false,
-					options = tool_config.analysis.options
-				};
-				
+
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				if (cached_template.system_message != "") {
 					messages.add(new OLLMchat.Message("system", cached_template.system_message));
 				}
 				messages.add(new OLLMchat.Message("user", user_message));
-				
-				var response = yield chat.send(messages, null);
-				if (response != null && response.message != null && response.message.content != null) {
-					section.description = response.message.content.strip();
+
+				try {
+					section.description = yield this.request_analysis(messages);
+				} catch (GLib.Error e) {
+					section.description = "";
 				}
-				
+
 				this.element_analyzed(section.element_name, element_number, sections_to_process.size);
 			}
 		}

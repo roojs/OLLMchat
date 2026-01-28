@@ -92,6 +92,56 @@ namespace OLLMvector
 			
 			return connection;
 		}
+
+		/**
+		 * Sends the given messages to the analysis LLM and returns the stripped assistant content.
+		 * Retries up to 2 times on null/empty response or error. Returns "" on failure.
+		 * Call sites should log or warn on empty result as needed.
+		 *
+		 * @param messages Pre-built message list (e.g. system + user)
+		 * @return Stripped content string, or "" if no valid response
+		 */
+		protected async string request_analysis(Gee.ArrayList<OLLMchat.Message> messages) throws GLib.Error
+		{
+			var result = "";
+			const int MAX_RETRIES = 2;
+
+			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+				try {
+					var analysis_conn = yield this.connection("analysis");
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+					var chat = new OLLMchat.Call.Chat(
+						analysis_conn,
+						tool_config.analysis.model
+					) {
+						stream = false,
+						options = tool_config.analysis.options
+					};
+					// Exception: external LLM API contract — chat.send may return null response/message/content
+					OLLMchat.Response.Chat? response = yield chat.send(messages, null);
+					if (response == null || response.message == null) {
+						if (attempt < MAX_RETRIES) {
+							continue;
+						}
+						return "";
+					}
+					result = response.message.content.strip();
+					if (result != "") {
+						return result;
+					}
+					if (attempt < MAX_RETRIES) {
+						continue;
+					}
+					return "";
+				} catch (GLib.Error e) {
+					if (attempt < MAX_RETRIES) {
+						continue;
+					}
+					throw e;
+				}
+			}
+			return result;
+		}
 	}
 }
 

@@ -119,12 +119,6 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Gets the file-level prompt template (static, loaded in static constructor).
-		 * 
-		 * @return PromptTemplate (loaded at class initialization)
-		 * @throws GLib.Error if template was not loaded in static constructor
-		 */
-		/**
 		 * Analyzes a Tree object and generates descriptions for elements.
 		 * 
 		 * Iterates over Tree.elements and:
@@ -238,83 +232,30 @@ namespace OLLMvector.Indexing
 				"elements_summary", elements_summary != "" ? elements_summary : "(no elements found)"
 			);
 			
-			// Call LLM to generate file description
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			if (cached_file_template.system_message != "") {
+				messages.add(new OLLMchat.Message("system", cached_file_template.system_message));
+			}
+			messages.add(new OLLMchat.Message("user", user_message));
+
 			GLib.debug("Analyzing file: %s", file_basename);
-			var file_description = "";
-			const int MAX_RETRIES = 2;
-			
-			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-				try {
-					// Get analysis connection using base class method
-					var analysis_conn = yield this.connection("analysis");
-					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-					
-					var chat = new OLLMchat.Call.Chat(
-							analysis_conn,
-							tool_config.analysis.model) {
-						stream = false,
-						options = tool_config.analysis.options
-					};
-					
-					// Build messages array
-					var messages = new Gee.ArrayList<OLLMchat.Message>();
-					
-					if (cached_file_template.system_message != "") {
-						messages.add(new OLLMchat.Message("system", cached_file_template.system_message));
-					}
-					
-					messages.add(new OLLMchat.Message("user", user_message));
-					
-					// Execute LLM call
-					OLLMchat.Response.Chat? response = null;
-					response = yield chat.send(messages, null);
-					
-					if (response == null || response.message == null || response.message.content == null) {
-						if (attempt < MAX_RETRIES) {
-							continue;
-						}
-						file_description = "";
-						break;
-					}
-					
-					// Process response (strip whitespace and remove markdown formatting)
-					file_description = response.message.content.strip();
-					
-					// Remove markdown code blocks if present
-					if (file_description.has_prefix("```")) {
-						var lines = file_description.split("\n");
-						if (lines.length > 2) {
-							file_description = string.joinv("\n", lines[1:lines.length-1]).strip();
-						}
-					}
-					
-					// If we got a valid description, break out of retry loop
-					if (file_description != null && file_description != "") {
-						GLib.debug("File analysis result: %s", file_description);
-						break;
-					}
-					
-					// Empty description - retry if we have attempts left
-					if (attempt < MAX_RETRIES) {
-						continue;
-					}
-					
-					// All retries exhausted, leave empty
-					file_description = "";
-					break;
-					
-				} catch (GLib.Error e) {
-					// Retry if we have attempts left
-					if (attempt < MAX_RETRIES) {
-						continue;
-					}
-					// All retries exhausted, log warning and continue with empty description
-					GLib.warning("Failed to analyze file %s: %s", tree.file.path, e.message);
-					file_description = "";
-					break;
+			string file_description;
+			try {
+				file_description = yield this.request_analysis(messages);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to analyze file %s: %s", tree.file.path, e.message);
+				file_description = "";
+			}
+			if (file_description != "" && file_description.has_prefix("```")) {
+				var lines = file_description.split("\n");
+				if (lines.length > 2) {
+					file_description = string.joinv("\n", lines[1:lines.length - 1]).strip();
 				}
 			}
-			
+			if (file_description != "") {
+				GLib.debug("File analysis result: %s", file_description);
+			}
+
 			// Get file line count for end_line
 			var file_line_count = tree.file.get_line_count();
 			if (file_line_count <= 0) {
@@ -411,83 +352,24 @@ namespace OLLMvector.Indexing
 				"parent_class_context", parent_class_context,
 				"signature_context", signature_context
 			);
-			
-			// Retry up to 2 times
-			const int MAX_RETRIES = 2;
-			
-			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-				try {
-					// Get analysis connection using base class method
-					var analysis_conn = yield this.connection("analysis");
-					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-					
-					var chat = new OLLMchat.Call.Chat(
-							analysis_conn,
-							tool_config.analysis.model) {
-						stream = false,
-						options = tool_config.analysis.options
-					};
-					
-					// Build messages array directly from template and user message
-					var messages = new Gee.ArrayList<OLLMchat.Message>();
-					
-					if (cached_template.system_message != "") {
-						messages.add(new OLLMchat.Message("system", cached_template.system_message));
-					}
-					
-					messages.add(new OLLMchat.Message("user", user_message));
-					
-					// Execute LLM call
-					OLLMchat.Response.Chat? response = null;
-					response = yield chat.send(messages, null);
-					
-					if (response == null || response.message == null || response.message.content == null) {
-						if (attempt < MAX_RETRIES) {
-							continue;
-						}
-						element.description = "";
-						return;
-					}
-					
-					// Process response (strip whitespace and remove markdown formatting)
-					var description = response.message.content.strip();
-					
-					// Remove markdown code blocks if present
-					if (description.has_prefix("```")) {
-						var lines = description.split("\n");
-						if (lines.length > 2) {
-							description = string.joinv("\n", lines[1:lines.length-1]).strip();
-						}
-					}
-					
-					// Update element description (leave empty if still empty after processing)
-					if (description != null && description != "") {
-						element.description = description;
-						GLib.debug("Element analysis result: %s", description);
-						return;
-					}
-					
-					// Empty description - retry if we have attempts left
-					if (attempt < MAX_RETRIES) {
-						continue;
-					}
-					
-					// All retries exhausted, leave empty
-					element.description = "";
-					return;
-					
-				} catch (GLib.Error e) {
-					// Retry if we have attempts left
-					if (attempt < MAX_RETRIES) {
-						continue;
-					}
-					// All retries exhausted, re-throw the error
-					throw e;
+
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			if (cached_template.system_message != "") {
+				messages.add(new OLLMchat.Message("system", cached_template.system_message));
+			}
+			messages.add(new OLLMchat.Message("user", user_message));
+
+			var description = yield this.request_analysis(messages);
+			if (description != "" && description.has_prefix("```")) {
+				var lines = description.split("\n");
+				if (lines.length > 2) {
+					description = string.joinv("\n", lines[1:lines.length - 1]).strip();
 				}
 			}
-			
-			// Should never reach here, but just in case
-			element.description = "";
+			element.description = description;
+			if (description != "") {
+				GLib.debug("Element analysis result: %s", description);
+			}
 		}
 	}
 }

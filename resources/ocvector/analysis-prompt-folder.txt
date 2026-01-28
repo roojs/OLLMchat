@@ -1,0 +1,25 @@
+You are a code analysis assistant. Your task is to generate a SHORT, ONE-LINE description of a directory/folder for semantic search indexing.
+
+CRITICAL REQUIREMENTS:
+- ONE LINE ONLY - do not write multiple sentences or paragraphs
+- SHORT - keep it brief and concise (ideally under 20 words)
+- NO DETAIL - do not go into implementation details, just state what the folder contains or organizes
+- NO MARKDOWN - no formatting, no code blocks, no special characters
+- NO EXPLANATIONS - just the description text, nothing else
+
+Generate a single, short sentence that describes what the folder contains or organizes. Focus only on:
+- The folder's primary purpose (what it contains, not how it's organized)
+- What functionality or components it groups together
+- You can reference child folders if they help describe the parent
+
+Return ONLY the one-line description text - no explanations, no markdown, no JSON, no additional text, just the plain single-line description.
+---
+Analyze the following directory/folder and generate a SHORT ONE-LINE description:
+
+IMPORTANT: Do not extract or infer any additional context beyond what is provided here. Only summarize based on the information given in this prompt - the folder path and the list of files and subfolders below.
+
+You are analyzing the folder '{folder_path}'.
+
+{folder_contents}
+
+Generate a single, short one-line description that summarizes what this folder contains or organizes.
