@@ -224,7 +224,6 @@ namespace OLLMapp
 			}
 			
 			GLib.debug("Config loaded successfully, initializing client");
-			// Initialize client and test connection (will check for default connection internally)
 			var initializer = new Initialize(this);
 			initializer.reinitialize.connect(() => {
 				this.load_config_and_initialize.begin();
@@ -282,6 +281,11 @@ namespace OLLMapp
 				this.bootstrap_dialog.verified_connection.is_default = true;
 				this.bootstrap_dialog.verified_connection.name = "Default";
 				var config = new OLLMchat.Settings.Config2();
+
+				var app = this.app as OllmchatApplication;
+				app.tools_registry.setup_config_defaults(config);
+				app.vector_registry.setup_config_defaults(config);
+
 				config.connections.set(this.bootstrap_dialog.verified_connection.url, 
 					this.bootstrap_dialog.verified_connection);
 				
@@ -473,10 +477,9 @@ namespace OLLMapp
 		}
 		
 		/**
-		 * Initializes the codebase search tool asynchronously.
-		 * 
-		 * Auto-creates embed and analysis ModelUsage entries in Config2 if they don't exist,
-		 * then creates vector database and registers the tool.
+		 * Initializes the codebase search tool asynchronously: creates vector database
+		 * and registers the tool. Config defaults and tool.active sync are done in
+		 * initialize_client() before this runs.
 		 */
 		private async void initialize_codebase_search_tool(
 			OLLMfiles.ProjectManager project_manager
@@ -493,12 +496,6 @@ namespace OLLMapp
 				this.tool_error_banner.revealed = true;
 				return;
 			}
-			
-			// Setup tool configs with default values if they don't exist (saves automatically if created)
-			// Use Registries instead of discovery
-			var app = this.app as OllmchatApplication;
-			app.tools_registry.setup_config_defaults(config);
-			app.vector_registry.setup_config_defaults(config);
 			
 			// Inline enabled check
 			if (!config.tools.has_key("codebase_search")) {

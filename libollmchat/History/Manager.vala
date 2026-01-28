@@ -194,6 +194,7 @@ namespace OLLMchat.History
 		 */
 		public void register_tool(OLLMchat.Tool.BaseTool tool)
 		{
+			tool.config = this.config;
 			this.tools.set(tool.name, tool);
 			GLib.debug("Manager.register_tool: Registered tool '%s'", tool.name);
 		}

@@ -248,37 +248,23 @@ namespace OLLMvector.Search
 			// FAISS returns -1 as a sentinel value when it can't find enough results
 			// We need to filter out -1 values and IDs not in the filtered set
 			var valid_vector_ids = new Gee.ArrayList<int>();
-			var invalid_count = 0;
-			var sentinel_count = 0;
 			
 			for (int i = 0; i < faiss_results.length; i++) {
 				var vector_id = faiss_results[i].document_id;
 				
 				// Skip -1 sentinel values (invalid results from FAISS)
 				if (vector_id == -1) {
-					sentinel_count++;
 					continue;
 				}
 				
 				// If filtering is active, verify document_id is in filtered set
 				if (this.filtered_vector_ids.size > 0 && !filtered_set.contains((int)vector_id)) {
-					invalid_count++;
-					GLib.debug("Search.execute: WARNING - FAISS returned vector_id=%lld which is NOT in filtered list", 
-						vector_id);
 					continue;
 				}
 				
 				// This is a valid vector ID
 				valid_vector_ids.add((int)vector_id);
 			}
-			
-			// Debug: Log FAISS results
-			GLib.debug("Search.execute: FAISS returned %d results: %d valid, %d invalid (not in filter), %d sentinel (-1)",
-				faiss_results.length,
-				valid_vector_ids.size,
-				invalid_count,
-				sentinel_count
-			);
 			
 			// If no valid results, return empty list
 			if (valid_vector_ids.size == 0) {

@@ -69,6 +69,11 @@ namespace OLLMapp
 					
 			// Load config after registrations
 			this.config = this.load_config();
+			// Ensure config contains all tool entries (fill defaults if missing)
+			if (this.config.loaded) {
+				this.tools_registry.setup_config_defaults(this.config);
+				this.vector_registry.setup_config_defaults(this.config);
+			}
 			
 			// Connect activate signal
 			this.activate.connect(() => {

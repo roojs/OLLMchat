@@ -19,6 +19,7 @@
 class VectorSearchApp : VectorAppBase
 {
 	protected static bool opt_json = false;
+	protected static string? opt_show_info = null;
 	protected static string? opt_language = null;
 	protected static string? opt_element_type = null;
 	protected static string? opt_category = null;
@@ -30,17 +31,22 @@ class VectorSearchApp : VectorAppBase
 	private string vector_db_path;
 	
 	protected override string help { get; set; default = """
-Usage: {ARG} [OPTIONS] <folder> <query>
+Usage: {ARG} [OPTIONS] <folder> [query]
 
 Search indexed codebase using semantic vector search.
 
 Arguments:
   folder                 Folder path to search within (required)
-  query                  Search query text (required)
+  query                  Search query text (required unless --show-info is used)
+
+Options:
+  --show-info=FILE       List all vector metadata for the given file (path relative to folder or absolute)
 
 Examples:
   {ARG} libocvector "database connection"
   {ARG} --json libocvector "async function"
+  {ARG} --show-info README.md libocvector
+  {ARG} --show-info docs/guide.md libocvector
   {ARG} --language=vala --element-type=method libocvector "parse"
   {ARG} --category=documentation libocvector "packaging"
   {ARG} --max-results=20 libocvector "search"
@@ -49,6 +55,7 @@ Examples:
 	
 	protected const OptionEntry[] local_options = {
 		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
+		{ "show-info", 0, 0, OptionArg.STRING, ref opt_show_info, "List vector metadata for a file", "FILE" },
 		{ "language", 'l', 0, OptionArg.STRING, ref opt_language, "Filter by language (e.g., vala, python)", "LANG" },
 		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant, file, document, section)", "TYPE" },
 		{ "category", 'c', 0, OptionArg.STRING, ref opt_category, "Filter docs by category (plan, documentation, rule, configuration, data, license, changelog, other)", "CATEGORY" },
@@ -91,6 +98,7 @@ Examples:
 		// Reset local static option variables at start of each command line invocation
 		// This must happen BEFORE parsing, not in validate_args() which is called AFTER parsing
 		opt_json = false;
+		opt_show_info = null;
 		opt_language = null;
 		opt_element_type = null;
 		opt_category = null;
@@ -125,7 +133,11 @@ Examples:
 			query = remaining_args[2];
 		}
 		
-		if (folder_path == null || folder_path == "" || query == null || query == "") {
+		if (folder_path == null || folder_path == "") {
+			return help.replace("{ARG}", remaining_args[0]);
+		}
+		// When --show-info is set, query is optional; otherwise required
+		if (opt_show_info == null && (query == null || query == "")) {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
@@ -142,11 +154,137 @@ Examples:
 		string? folder_path = remaining_args.length > 1 ? remaining_args[1] : null;
 		string? query = remaining_args.length > 2 ? remaining_args[2] : null;
 		
-		if (folder_path == null || query == null) {
-			throw new GLib.IOError.NOT_FOUND("Folder and query required");
+		if (folder_path == null) {
+			throw new GLib.IOError.NOT_FOUND("Folder required");
+		}
+		if (opt_show_info != null) {
+			yield this.run_show_info(folder_path, opt_show_info);
+			return;
+		}
+		if (query == null || query == "") {
+			throw new GLib.IOError.NOT_FOUND("Query required (or use --show-info=FILE to list metadata for a file)");
+		}
+		yield this.run_search(folder_path, query);
+	}
+	
+	private async void run_show_info(string folder_path, string file_path) throws Error
+	{
+		stdout.printf("=== Vector metadata for file ===\n\n");
+		this.ensure_data_dir();
+		
+		var sql_db = new SQ.Database(this.db_path, false);
+		var manager = new OLLMfiles.ProjectManager(sql_db);
+		
+		var file = GLib.File.new_for_path(folder_path);
+		if (!file.query_exists()) {
+			throw new GLib.IOError.NOT_FOUND("Folder not found: " + folder_path);
+		}
+		var abs_folder = file.get_path();
+		if (abs_folder == null) {
+			throw new GLib.IOError.FAILED("Failed to get absolute path for: " + folder_path);
 		}
 		
-		yield this.run_search(folder_path, query);
+		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
+		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
+		var stmt = query_obj.selectPrepare(
+				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
+		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_folder);
+		query_obj.selectExecute(stmt, results_list);
+		
+		OLLMfiles.Folder? search_folder = null;
+		if (results_list.size > 0 && results_list[0] is OLLMfiles.Folder) {
+			search_folder = (OLLMfiles.Folder)results_list[0];
+		} else {
+			throw new GLib.IOError.NOT_FOUND("Folder not found in database: " + abs_folder);
+		}
+		
+		yield search_folder.load_files_from_db();
+		
+		// Resolve file path: absolute or relative to folder
+		string resolved_path;
+		if (GLib.Path.is_absolute(file_path)) {
+			resolved_path = file_path;
+		} else {
+			resolved_path = GLib.Path.build_filename(abs_folder, file_path);
+		}
+		try {
+			var resolved_file = GLib.File.new_for_path(resolved_path);
+			var canonical = resolved_file.resolve_relative_path(".");
+			if (canonical != null) {
+				resolved_path = canonical.get_path() ?? resolved_path;
+			}
+		} catch (GLib.Error e) {
+			// Keep unresolved path for lookup
+		}
+		
+		var file_base = search_folder.project_files.all_files.get(resolved_path);
+		if (file_base == null) {
+			// Try with folder path + file_path as stored in DB
+			foreach (var entry in search_folder.project_files.all_files.entries) {
+				if (entry.value is OLLMfiles.File && (entry.key.has_suffix(file_path) || entry.key == resolved_path)) {
+					file_base = entry.value;
+					break;
+				}
+			}
+		}
+		if (file_base == null) {
+			throw new GLib.IOError.NOT_FOUND("File not found in project: " + file_path + " (resolved: " + resolved_path + ")");
+		}
+		if (file_base is OLLMfiles.Folder) {
+			throw new GLib.IOError.NOT_FOUND("Path is a folder, not a file: " + file_path);
+		}
+		
+		var metadata_list = new Gee.ArrayList<OLLMvector.VectorMetadata>();
+		OLLMvector.VectorMetadata.query(sql_db).select(
+			"WHERE file_id = " + file_base.id.to_string() + " ORDER BY start_line, id",
+			metadata_list
+		);
+		
+		stdout.printf("Folder: %s\n", search_folder.path);
+		stdout.printf("File: %s (id=%lld)\n", file_base.path, file_base.id);
+		stdout.printf("Vector metadata entries: %d\n\n", metadata_list.size);
+		
+		if (opt_json) {
+			this.output_metadata_json(metadata_list);
+		} else {
+			this.output_metadata_text(metadata_list);
+		}
+	}
+	
+	private void output_metadata_text(Gee.ArrayList<OLLMvector.VectorMetadata> metadata_list)
+	{
+		for (int i = 0; i < metadata_list.size; i++) {
+			var m = metadata_list.get(i);
+			stdout.printf("--- Entry %d ---\n", i + 1);
+			stdout.printf("  id: %lld  vector_id: %lld  file_id: %lld\n", m.id, m.vector_id, m.file_id);
+			stdout.printf("  lines: %d-%d  type: %s  name: %s\n", m.start_line, m.end_line, m.element_type, m.element_name);
+			if (m.ast_path != "") {
+				stdout.printf("  ast_path: %s\n", m.ast_path);
+			}
+			if (m.category != "") {
+				stdout.printf("  category: %s\n", m.category);
+			}
+			if (m.description != "") {
+				stdout.printf("  description: %s\n", m.description);
+			}
+			stdout.printf("\n");
+		}
+	}
+	
+	private void output_metadata_json(Gee.ArrayList<OLLMvector.VectorMetadata> metadata_list)
+	{
+		var json_array = new Json.Array();
+		foreach (var m in metadata_list) {
+			json_array.add_element(Json.gobject_serialize(m));
+		}
+		var json_root = new Json.Node(Json.NodeType.ARRAY);
+		json_root.set_array(json_array);
+		var generator = new Json.Generator();
+		generator.set_root(json_root);
+		generator.set_pretty(true);
+		generator.set_indent(2);
+		stdout.printf("%s\n", generator.to_data(null));
 	}
 	
 	private async void run_search(string folder_path, string query) throws Error

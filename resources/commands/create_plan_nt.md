@@ -211,7 +211,7 @@ After structure approval:
 
 #### 1. [Component/File Group]
 **File**: `path/to/file.ext`
-**Changes**: [Summary of changes]
+**Changes**: [Brief description of what is being refactored or changed—e.g. "Move stream_chunk from Client to Chat"—not a generic label]
 
 ```[language]
 // Specific code to add/modify

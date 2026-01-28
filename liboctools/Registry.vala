@@ -35,20 +35,28 @@ namespace OLLMtools
 			typeof(EditMode.Tool).ensure();
 			typeof(GoogleSearch.Tool).ensure();
 			
-			// Register only liboctools tool config types with Config2
-			// Only register tools with custom config classes (not BaseToolConfig)
+			// Register all liboctools tool config types with Config2
+			// Tools with BaseToolConfig get enabled/disabled in Settings; tools with custom config get that plus their options
+			OLLMchat.Tool.BaseTool.register_config(typeof(ReadFile.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(RunCommand.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(WebFetch.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(EditMode.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
 			
 			GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
 		}
 		
+		/**
+		 * Fill config defaults for liboctools (creates BaseToolConfig or custom config if missing).
+		 * Call only where config is loaded; do not use for syncing tool.active.
+		 */
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
 		{
-			// Setup only liboctools tool configs with custom config classes (not BaseToolConfig)
-			// Creates default configs if they don't exist in the loaded config
-			var tool = new GoogleSearch.Tool(null);
-			tool.setup_tool_config_default(config);
-			
+			(new ReadFile.Tool(null)).setup_tool_config_default(config);
+			(new RunCommand.Tool(null)).setup_tool_config_default(config);
+			(new WebFetch.Tool(null)).setup_tool_config_default(config);
+			(new EditMode.Tool(null)).setup_tool_config_default(config);
+			(new GoogleSearch.Tool(null)).setup_tool_config_default(config);
 			GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
 		

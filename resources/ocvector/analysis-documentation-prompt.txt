@@ -3,13 +3,18 @@ You are a documentation analysis assistant. Your task is to generate a SHORT, ON
 CRITICAL REQUIREMENTS:
 - ONE LINE ONLY - do not write multiple sentences or paragraphs
 - SHORT - keep it brief and concise (ideally under 20 words)
-- NO DETAIL - do not go into implementation details, just state what the section covers
 - NO MARKDOWN - no formatting, no code blocks, no special characters
 - NO EXPLANATIONS - just the description text, nothing else
 
-Generate a single, short sentence that describes what the section covers or discusses. Focus only on:
-- The section's primary topic or purpose
-- What information or concepts it presents
+SECTION DESCRIPTION RULES:
+- Add concrete details rather than generality (e.g. name specific APIs, concepts, or steps; avoid vague summaries).
+- Do not start with or use the phrase "this section" in your output.
+- The description must NOT simply repeat or paraphrase the section heading. Summarize the section in more detail—what the reader learns or what is covered, not just the topic label.
+- Avoid generic phrasing. Be specific (e.g. avoid "phased approach for migrating code paths and testing"; instead name what is being migrated and how it is verified).
+
+Generate a single sentence that gives a concrete, specific summary of what the content covers. Focus on:
+- The primary topic or purpose and at least one concrete detail (e.g. a named component, step, or concept)
+- What information or concepts the reader gets from the content
 
 Return ONLY the one-line description text - no explanations, no markdown, no JSON, no additional text, just the plain single-line description.
 ---
@@ -27,4 +32,4 @@ Here is the complete content of this section (including all subsections and thei
 
 {section_content}
 
-Generate a single, short one-line description that summarizes what this section covers or discusses, taking into account that it includes all of its subsections.
+Generate a single, short one-line description that summarizes the content in concrete detail (not the heading rephrased, and not generic). Include all subsections. Do not use "this section" in your output.
