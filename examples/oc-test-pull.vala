@@ -35,17 +35,17 @@ class TestPullApp : TestAppBase
 		return opt_context;
 	}
 	
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		if (opt_model == null || opt_model == "") {
-			return @"Usage: $(args[0]) [OPTIONS] --model=MODEL
+			return @"Usage: $(remaining_args[0]) [OPTIONS] --model=MODEL
 
 Test tool for ollama pull with streaming enabled.
 
 
 Examples:
-  $(args[0]) --model llama2
-  $(args[0]) --debug --url http://localhost:11434/api --model llama2
+  $(remaining_args[0]) --model llama2
+  $(remaining_args[0]) --debug --url http://localhost:11434/api --model llama2
 ";
 		}
 		return null;

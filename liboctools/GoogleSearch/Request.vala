@@ -175,9 +175,9 @@ namespace OLLMtools.GoogleSearch
 			var config = this.agent.config();
 			
 			// Ensure tool config exists (creates with empty values if needed)
-			new Tool(null).setup_tool_config(config);
+			new Tool(null).setup_tool_config_default(config);
 			
-			// Get tool config (guaranteed to exist after setup_tool_config)
+			// Get tool config (guaranteed to exist after setup_tool_config_default)
 			var tool_config = config.tools.get("google_search") as Config;
 			
 			if (tool_config.api_key == "" || tool_config.engine_id == "") {

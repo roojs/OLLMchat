@@ -119,8 +119,8 @@
 				OLLMchat.ApplicationInterface.debug_log(this.get_application_id(), dom, lvl, msg);
 			});
 			
-			// Validate arguments
-			string? validation_error = this.validate_args(args);
+			// Validate arguments (use remaining_args = positional args after option parsing)
+			string? validation_error = this.validate_args(remaining_args_copy);
 			if (validation_error != null) {
 				command_line.printerr("%s", validation_error);
 				return 1;
@@ -183,9 +183,11 @@
 		 * Validates command-line arguments.
 		 * Override to add custom validation.
 		 * 
+		 * @param remaining_args Positional arguments only (after option parsing).
+		 *                       remaining_args[0] is the program name, remaining_args[1] is the first positional, etc.
 		 * @return Error message string if validation fails, null if valid
 		 */
-		protected virtual string? validate_args(string[] args)
+		protected virtual string? validate_args(string[] remaining_args)
 		{
 			return null;
 		}

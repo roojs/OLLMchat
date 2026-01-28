@@ -341,6 +341,20 @@ namespace OLLMfiles
 					GLib.debug("Migration note (may be expected): %s", errmsg);
 				}
 			}
+			
+			// Migrate existing databases: remove deprecated columns (SQLite 3.35.0+)
+			// These properties were removed/renamed and are no longer used
+			var drop_last_approved = "ALTER TABLE filebase DROP COLUMN last_approved_copy_path";
+			if (Sqlite.OK != db.db.exec(drop_last_approved, null, out errmsg)) {
+				// Column might not exist or SQLite version doesn't support DROP COLUMN - ignore
+				GLib.debug("Migration note (may be expected): %s", errmsg);
+			}
+			
+			var drop_last_scan = "ALTER TABLE filebase DROP COLUMN last_scan";
+			if (Sqlite.OK != db.db.exec(drop_last_scan, null, out errmsg)) {
+				// Column might not exist or SQLite version doesn't support DROP COLUMN - ignore
+				GLib.debug("Migration note (may be expected): %s", errmsg);
+			}
 		}
 		
 		/**

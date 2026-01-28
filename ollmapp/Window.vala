@@ -495,9 +495,10 @@ namespace OLLMapp
 			}
 			
 			// Setup tool configs with default values if they don't exist (saves automatically if created)
-			// This discovers all tools and calls setup_tool_config() on each
-			// Simple tools use the default implementation, complex tools use their overrides
-			OLLMchat.Tool.BaseTool.setup_all_tool_configs(config);
+			// Use Registries instead of discovery
+			var app = this.app as OllmchatApplication;
+			app.tools_registry.setup_config_defaults(config);
+			app.vector_registry.setup_config_defaults(config);
 			
 			// Inline enabled check
 			if (!config.tools.has_key("codebase_search")) {

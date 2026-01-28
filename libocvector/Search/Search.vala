@@ -34,19 +34,19 @@ namespace OLLMvector.Search
 	 * == Usage Example ==
 	 * 
 	 * {{{
-	 * // Create search instance
+	 * // Create search instance (optional via initializer)
 	 * var search = new OLLMvector.Search.Search(
 	 *     vector_db,
 	 *     sql_db,
 	 *     config,
 	 *     active_project,
 	 *     "find authentication logic",
-	 *     10,  // max_results
-	 *     filtered_vector_ids,  // optional filter
-	 *     "method"  // optional element_type filter
-	 * );
-	 * 
-	 * // Execute search
+	 *     filtered_vector_ids
+	 * ) {
+	 *     max_results = 20,
+	 *     element_type_filter = "method",
+	 *     category_filter = "documentation"
+	 * };
 	 * var results = yield search.execute();
 	 * }}}
 	 */
@@ -74,8 +74,9 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Maximum number of results to return.
+		 * Set via object initializer, e.g. { max_results = 20 }. Default 10.
 		 */
-		private uint64 max_results;
+		public uint64 max_results { get; set; default = 10; }
 		
 		/**
 		 * Filtered vector IDs (from SQL filter query).
@@ -85,22 +86,29 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Optional element_type filter for metadata results.
-		 * If set (non-empty), only metadata with matching element_type will be included.
+		 * Set via object initializer, e.g. { element_type_filter = "method" }.
 		 * Empty string means no filtering.
 		 */
-		private string element_type_filter;
+		public string element_type_filter { get; set; default = ""; }
 		
 		/**
-		 * Constructor with all required dependencies.
-		 * 
-		 * @param vector_db Vector database for FAISS search
-		 * @param sql_db SQL database for metadata and filtering
-		 * @param config Configuration for accessing embedding connection and model
-		 * @param folder Project folder for file operations
-		 * @param query Search query text
-		 * @param max_results Maximum number of results (default: 10)
-		 * @param filtered_vector_ids List of vector IDs to filter search (empty list = search all)
-		 * @param element_type_filter Element type to filter metadata results (e.g., "class", "method"). Empty string means no filtering.
+		 * Optional category filter for documentation metadata.
+		 * Set via object initializer, e.g. { category_filter = "documentation" }.
+		 * Valid values: plan, documentation, rule, configuration, data, license, changelog, other.
+		 * Empty string means no filtering.
+		 */
+		public string category_filter { get; set; default = ""; }
+		
+		/**
+		 * Constructor with required dependencies.
+		 * Optional: max_results, element_type_filter, category_filter via object initializer, e.g.
+		 * {{{
+		 * var search = new OLLMvector.Search.Search(..., filtered_vector_ids) {
+		 *     max_results = 20,
+		 *     element_type_filter = "method",
+		 *     category_filter = "documentation"
+		 * };
+		 * }}}
 		 */
 		public Search(
 			OLLMvector.Database vector_db,
@@ -108,9 +116,7 @@ namespace OLLMvector.Search
 			OLLMchat.Settings.Config2 config,
 			OLLMfiles.Folder folder,
 			string query,
-			uint64 max_results = 10,
-			Gee.ArrayList<int> filtered_vector_ids,
-			string element_type_filter = ""
+			Gee.ArrayList<int> filtered_vector_ids
 		)
 		{
 			base(config);
@@ -118,9 +124,7 @@ namespace OLLMvector.Search
 			this.sql_db = sql_db;
 			this.folder = folder;
 			this.query = query;
-			this.max_results = max_results;
 			this.filtered_vector_ids = filtered_vector_ids;
-			this.element_type_filter = element_type_filter;
 		}
 		
 		/**
@@ -290,22 +294,8 @@ namespace OLLMvector.Search
 			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
 			
-			// Filter metadata by element_type if filter is set and not empty
-			if (this.element_type_filter.strip() != "") {
-				var original_count = metadata_list.size;
-				var filtered_metadata = new Gee.ArrayList<OLLMvector.VectorMetadata>();
-				foreach (var metadata in metadata_list) {
-					if (metadata.element_type == this.element_type_filter) {
-						filtered_metadata.add(metadata);
-					}
-				}
-				metadata_list = filtered_metadata;
-				GLib.debug("Search.execute: Filtered metadata from %d to %d entries matching element_type='%s'",
-					original_count,
-					filtered_metadata.size,
-					this.element_type_filter
-				);
-			}
+			// No post-filtering needed: filtered_vector_ids was built from SQL with element_type/category
+			// so FAISS only searched that set and returned metadata already matches the filters.
 			
 			// Create a map of vector_id -> metadata for quick lookup
 			var metadata_map = new Gee.HashMap<int, OLLMvector.VectorMetadata>();

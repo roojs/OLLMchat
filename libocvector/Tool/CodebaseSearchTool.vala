@@ -35,7 +35,7 @@ namespace OLLMvector.Tool
 		 * This method only sets the connection from the default connection. This replaces the separate
 		 * setup_embed_usage() and setup_analysis_usage() methods with a unified setup.
 		 */
-		public override void setup_tool_config(OLLMchat.Settings.Config2 config)
+		public override void setup_tool_config_default(OLLMchat.Settings.Config2 config)
 		{
 			if (config.tools.has_key("codebase_search")) {
 				return;
@@ -79,7 +79,8 @@ making it more effective than simple text search for finding relevant code.
 			return """
 @param query {string} [required] The search query text describing what code to find.
 @param language {string} [optional] Filter results by programming language (e.g., "vala", "python", "javascript").
-@param element_type {string} [optional] Filter results by element type. Supported types: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant", "file". Note: "namespace" is not searchable as namespace declarations are not indexed.
+@param element_type {string} [optional] Filter results by element type. Code: "class", "struct", "interface", "enum_type", "enum", "function", "method", "constructor", "property", "field", "delegate", "signal", "constant", "file". Documentation: "document", "section". Note: "namespace" is not searchable.
+@param category {string} [optional] Filter documentation by category. Valid values: "plan", "documentation", "rule", "configuration", "data", "license", "changelog", "other". Only applies to doc elements (document/section).
 @param max_results {integer} [optional] Maximum number of results to return (default: 10).
 """;
 		} }

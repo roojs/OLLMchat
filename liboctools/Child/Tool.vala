@@ -88,7 +88,7 @@ namespace OLLMtools.Child
 		 * 
 		 * TODO: Will be fully implemented in Phase 5 with Child.Config
 		 */
-		public override void setup_tool_config(OLLMchat.Settings.Config2 config)
+		public override void setup_tool_config_default(OLLMchat.Settings.Config2 config)
 		{
 			// Phase 1: Basic implementation - will be enhanced in Phase 5
 			if (config.tools.has_key(this.agent_name)) {

@@ -21,7 +21,8 @@ class VectorSearchApp : VectorAppBase
 	protected static bool opt_json = false;
 	protected static string? opt_language = null;
 	protected static string? opt_element_type = null;
-	protected static int opt_max_results = 10;
+	protected static string? opt_category = null;
+	protected static int opt_max_results = 3;
 	protected static int opt_max_snippet_lines = 10;
 	protected static string? opt_embed_model = null;
 	
@@ -41,6 +42,7 @@ Examples:
   {ARG} libocvector "database connection"
   {ARG} --json libocvector "async function"
   {ARG} --language=vala --element-type=method libocvector "parse"
+  {ARG} --category=documentation libocvector "packaging"
   {ARG} --max-results=20 libocvector "search"
   {ARG} --max-snippet-lines=5 libocvector "search"
 """; }
@@ -48,8 +50,9 @@ Examples:
 	protected const OptionEntry[] local_options = {
 		{ "json", 'j', 0, OptionArg.NONE, ref opt_json, "Output results as JSON", null },
 		{ "language", 'l', 0, OptionArg.STRING, ref opt_language, "Filter by language (e.g., vala, python)", "LANG" },
-		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant, file)", "TYPE" },
-		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 10)", "N" },
+		{ "element-type", 'e', 0, OptionArg.STRING, ref opt_element_type, "Filter by element type (e.g., class, method, function, property, struct, interface, enum, constructor, field, delegate, signal, constant, file, document, section)", "TYPE" },
+		{ "category", 'c', 0, OptionArg.STRING, ref opt_category, "Filter docs by category (plan, documentation, rule, configuration, data, license, changelog, other)", "CATEGORY" },
+		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 3)", "N" },
 		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ null }
@@ -75,7 +78,9 @@ Examples:
 	public override OLLMchat.Settings.Config2 load_config()
 	{
 		// Register all tool config types before loading config
-		OLLMchat.Tool.BaseTool.register_config();
+		// Use Registry to ensure GTypes are registered first
+		var registry = new OLLMvector.Registry();
+		registry.init_config();
 		
 		// Call base implementation
 		return base_load_config();
@@ -88,7 +93,8 @@ Examples:
 		opt_json = false;
 		opt_language = null;
 		opt_element_type = null;
-		opt_max_results = 10;
+		opt_category = null;
+		opt_max_results = 3;
 		opt_max_snippet_lines = 10;
 		opt_embed_model = null;
 		
@@ -96,10 +102,14 @@ Examples:
 		return base.command_line(command_line);
 	}
 	
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		// Note: Option variables are already reset in command_line() before parsing,
-		// so they now contain the parsed values
+		// so they now contain the parsed values. Normalize string options to "" when unset.
+		opt_language = opt_language == null ? "" : opt_language;
+		opt_element_type = opt_element_type == null ? "" : opt_element_type;
+		opt_category = opt_category == null ? "" : opt_category;
+		opt_embed_model = opt_embed_model == null ? "" : opt_embed_model;
 		
 		// Build paths at start
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
@@ -108,15 +118,15 @@ Examples:
 		string? folder_path = null;
 		string? query = null;
 		
-		if (args.length > 1) {
-			folder_path = args[1];
+		if (remaining_args.length > 1) {
+			folder_path = remaining_args[1];
 		}
-		if (args.length > 2) {
-			query = args[2];
+		if (remaining_args.length > 2) {
+			query = remaining_args[2];
 		}
 		
 		if (folder_path == null || folder_path == "" || query == null || query == "") {
-			return help.replace("{ARG}", args[0]);
+			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
 		return null;
@@ -129,9 +139,8 @@ Examples:
 	
 	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
-		string[] args = command_line.get_arguments();
-		string? folder_path = args.length > 1 ? args[1] : null;
-		string? query = args.length > 2 ? args[2] : null;
+		string? folder_path = remaining_args.length > 1 ? remaining_args[1] : null;
+		string? query = remaining_args.length > 2 ? remaining_args[2] : null;
 		
 		if (folder_path == null || query == null) {
 			throw new GLib.IOError.NOT_FOUND("Folder and query required");
@@ -202,7 +211,7 @@ Examples:
 		yield search_folder.load_files_from_db();
 		
 		// Get all file IDs from project_files (optionally filtered by language)
-		var language_filter = opt_language != null ? opt_language : "";
+		var language_filter = opt_language;
 		var file_ids = search_folder.project_files.get_ids(language_filter);
 		
 		if (file_ids.size == 0) {
@@ -220,8 +229,11 @@ Examples:
 		var file_id_list = string.joinv(",", file_ids.to_array());
 		var sql = "SELECT DISTINCT vector_id FROM vector_metadata WHERE file_id IN (" + file_id_list + ")";
 		
-		if (opt_element_type != null) {
+		if (opt_element_type != "") {
 			sql = sql + " AND element_type = $element_type";
+		}
+		if (opt_category != "") {
+			sql = sql + " AND category = $category AND element_type IN ('document','section')";
 		}
 		
 		GLib.debug("Filter SQL: %s", sql);
@@ -229,9 +241,13 @@ Examples:
 		var vector_query = OLLMvector.VectorMetadata.query(sql_db);
 		var vector_stmt = vector_query.selectPrepare(sql);
 		
-		if (opt_element_type != null) {
+		if (opt_element_type != "") {
 			vector_stmt.bind_text(
 				vector_stmt.bind_parameter_index("$element_type"), opt_element_type);
+		}
+		if (opt_category != "") {
+			vector_stmt.bind_text(
+				vector_stmt.bind_parameter_index("$category"), opt_category);
 		}
 		
 		foreach (var vector_id_str in vector_query.fetchAllString(vector_stmt)) {
@@ -240,28 +256,33 @@ Examples:
 		
 		GLib.debug("Filtered to %lld vector IDs", filtered_vector_ids.size);
 		
-		// Create search instance
+		// Create search instance (optional set via object initializer)
 		var search = new OLLMvector.Search.Search(
 			vector_db,
 			sql_db,
 			this.config,
 			search_folder,
 			query,
-			(uint64)opt_max_results,
-			filtered_vector_ids,
-			opt_element_type // Pass element_type filter to Search for secondary filtering (empty string if null)
-		);
+			filtered_vector_ids
+		) {
+			max_results = (uint64)opt_max_results,
+			element_type_filter = opt_element_type,
+			category_filter = opt_category
+		};
 		
 		// Execute search
 		stdout.printf("Folder: %s\n", search_folder.path);
 		stdout.printf("Query: %s\n", query);
-		if (opt_language != null || opt_element_type != null) {
+		if (opt_language != "" || opt_element_type != "" || opt_category != "") {
 			var filters = new Gee.ArrayList<string>();
-			if (opt_language != null) {
+			if (opt_language != "") {
 				filters.add("language: " + opt_language);
 			}
-			if (opt_element_type != null) {
+			if (opt_element_type != "") {
 				filters.add("element-type: " + opt_element_type);
+			}
+			if (opt_category != "") {
+				filters.add("category: " + opt_category);
 			}
 			stdout.printf("Filters: %s\n", string.joinv(", ", filters.to_array()));
 		}

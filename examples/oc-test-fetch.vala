@@ -70,7 +70,7 @@ Examples:
 		return new OLLMchat.Settings.Config2();
 	}
 	
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		// Reset static option variables at start of each command line invocation
 		opt_format = null;
@@ -78,15 +78,15 @@ Examples:
 		string url = "";
 		string format_arg = "";
 		
-		if (args.length > 1) {
-			url = args[1];
+		if (remaining_args.length > 1) {
+			url = remaining_args[1];
 		}
-		if (args.length > 2) {
-			format_arg = args[2];
+		if (remaining_args.length > 2) {
+			format_arg = remaining_args[2];
 		}
 		
 		if (url == "") {
-			return help.replace("{ARG}", args[0]);
+			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
 		// Validate format if provided
@@ -110,9 +110,8 @@ Examples:
 	
 	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
 	{
-		string[] args = command_line.get_arguments();
-		string url = args.length > 1 ? args[1] : "";
-		string format_arg = args.length > 2 ? args[2] : "";
+		string url = remaining_args.length > 1 ? remaining_args[1] : "";
+		string format_arg = remaining_args.length > 2 ? remaining_args[2] : "";
 		
 		if (url == "") {
 			throw new GLib.IOError.NOT_FOUND("URL is required");

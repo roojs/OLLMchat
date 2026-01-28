@@ -71,7 +71,7 @@ Examples:
 		return opt_context;
 	}
 
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		// Validate required arguments
 		if (opt_project == null || opt_project == "") {
@@ -79,7 +79,7 @@ Examples:
 		}
 
 		// Get command from remaining arguments (skip program name)
-		if (args.length < 2) {
+		if (remaining_args.length < 2) {
 			return "ERROR: command argument is required\n";
 		}
 

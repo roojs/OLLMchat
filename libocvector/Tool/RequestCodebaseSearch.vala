@@ -36,6 +36,7 @@ namespace OLLMvector.Tool
 		public string query { get; set; default = ""; }
 		public string language { get; set; default = ""; }
 		public string element_type { get; set; default = ""; }
+		public string category { get; set; default = ""; }
 		public int max_results { get; set; default = 10; }
 		
 		/**
@@ -56,7 +57,23 @@ namespace OLLMvector.Tool
 			"delegate",
 			"signal",
 			"constant",
-			"file"
+			"file",
+			"document",
+			"section"
+		};
+		
+		/**
+		 * Valid document categories (for documentation elements only).
+		 */
+		private static string[] VALID_CATEGORIES = {
+			"plan",
+			"documentation",
+			"rule",
+			"configuration",
+			"data",
+			"license",
+			"changelog",
+			"other"
 		};
 		
 		/**
@@ -106,6 +123,25 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
+		 * Validate category parameter (documentation filter).
+		 */
+		private static void validate_category(string category) throws GLib.IOError
+		{
+			if (category == null || category.strip() == "") {
+				return;
+			}
+			var normalized = category.strip().down();
+			foreach (var valid in VALID_CATEGORIES) {
+				if (normalized == valid) {
+					return;
+				}
+			}
+			throw new GLib.IOError.INVALID_ARGUMENT(
+				"You requested category \"%s\"; valid values: plan, documentation, rule, configuration, data, license, changelog, other".printf(category)
+			);
+		}
+		
+		/**
 		 * Default constructor.
 		 */
 		public RequestCodebaseSearch()
@@ -139,14 +175,16 @@ namespace OLLMvector.Tool
 				throw new GLib.IOError.INVALID_ARGUMENT("Query parameter is required");
 			}
 			
-			// Validate element type if provided
+			// Validate element type and category if provided
 			validate_element_type(this.element_type);
+			validate_category(this.category);
 			
 			// Debug: Log input parameters
-			GLib.debug("codebase_search input: query='%s', language='%s', element_type='%s', max_results=%d",
+			GLib.debug("codebase_search input: query='%s', language='%s', element_type='%s', category='%s', max_results=%d",
 				this.query,
 				this.language != "" ? this.language : "none",
 				this.element_type != "" ? this.element_type : "none",
+				this.category != "" ? this.category : "none",
 				this.max_results
 			);
 			
@@ -157,6 +195,9 @@ namespace OLLMvector.Tool
 			}
 			if (this.element_type != "") {
 				request_message += "\nElement Type: " + this.element_type;
+			}
+			if (this.category != "") {
+				request_message += "\nCategory: " + this.category;
 			}
 			request_message += "\nMax Results: " + this.max_results.to_string();
 			
@@ -199,11 +240,15 @@ namespace OLLMvector.Tool
 					sql = sql + " AND element_type = $element_type";
 				}
 			}
+			if (this.category != "") {
+				sql = sql + " AND category = $category AND element_type IN ('document','section')";
+			}
 			
 			// Debug: Log vector filtering query
-			GLib.debug("codebase_search vector filter: file_ids_count=%d, element_type='%s', sql='%s'",
+			GLib.debug("codebase_search vector filter: file_ids_count=%d, element_type='%s', category='%s', sql='%s'",
 				file_ids.size,
 				this.element_type != "" ? this.element_type : "none",
+				this.category != "" ? this.category : "none",
 				sql
 			);
 			
@@ -219,6 +264,10 @@ namespace OLLMvector.Tool
 			if (this.element_type != "" && !search_both_function_and_method) {
 				vector_stmt.bind_text(
 					vector_stmt.bind_parameter_index("$element_type"), this.element_type);
+			}
+			if (this.category != "") {
+				vector_stmt.bind_text(
+					vector_stmt.bind_parameter_index("$category"), this.category);
 			}
 			
 			// Fetch vector IDs as strings and parse to int
@@ -241,10 +290,12 @@ namespace OLLMvector.Tool
 				config,
 				active_project,
 				this.query,
-				(uint64)this.max_results,
-				filtered_vector_ids,
-				this.element_type  // Pass element_type filter to Search 
-			);
+				filtered_vector_ids
+			) {
+				max_results = (uint64)this.max_results,
+				element_type_filter = this.element_type,
+				category_filter = this.category
+			};
 			
 			// Execute search
 			var results = yield search.execute();

@@ -475,6 +475,7 @@ namespace OLLMfiles
 				} else {
 					// it really does not exist.
 					new_item.points_to.saveToDB(this.manager.db, null,false);
+					this.manager.db.backupDB();
 					new_item.points_to_id = new_item.points_to.id;
 					if (new_item.points_to is Folder) { 
 						yield ((Folder)new_item.points_to).load_files_from_db();
@@ -501,6 +502,7 @@ namespace OLLMfiles
 				new_item.last_modified = new_item.mtime_on_disk();
 
 				new_item.saveToDB(this.manager.db, null, false);
+				this.manager.db.backupDB();
 				return;
 			}
 			
@@ -515,6 +517,7 @@ namespace OLLMfiles
 				// Ensure last_modified is set from filesystem
 				new_item.last_modified = new_item.mtime_on_disk();
 				new_item.saveToDB(this.manager.db, null, false);
+				this.manager.db.backupDB();
 				
 				return;
 			}
@@ -526,6 +529,7 @@ namespace OLLMfiles
 			new_item.last_modified = new_item.mtime_on_disk();
 			// database manager has to be set other wise all this will break
 			old_item.saveToDB(this.manager.db, new_item, false);
+			this.manager.db.backupDB();
 			
 			// Ensure it's in children list
 			// this will not actually do anything as it's 

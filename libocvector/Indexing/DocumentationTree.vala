@@ -209,17 +209,17 @@ namespace OLLMvector.Indexing
 				return;
 			}
 			
-			// Get line numbers
+			// Get start line from heading node (1-based). Section end_line is set by update_section_end_lines()
+			// so use start_line here; the heading node's end_point is only the heading line, not the section extent.
 			var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
-			var end_line = (int)TreeSitter.node_get_end_point(node).row + 1;
 			
-			// Create section metadata
+			// Create section metadata (end_line set later by update_section_end_lines())
 			var section = new VectorMetadata() {
 				element_type = "section",
 				element_name = heading_name,
 				file_id = this.file.id,
 				start_line = start_line,
-				end_line = end_line,
+				end_line = start_line,
 				category = this.category,
 				ast_path = ""
 			};

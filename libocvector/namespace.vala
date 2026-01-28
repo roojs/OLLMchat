@@ -98,12 +98,12 @@
  *     config,
  *     active_project,
  *     "find authentication logic",
- *     10,  // max_results
- *     new Gee.ArrayList<int>(),  // filtered_vector_ids (empty = search all)
- *     null  // element_type_filter (optional)
- * );
- * 
- * // Execute search
+ *     new Gee.ArrayList<int>()  // filtered_vector_ids (empty = search all)
+ * ) {
+ *     max_results = 20,
+ *     element_type_filter = "method",
+ *     category_filter = "documentation"
+ * };
  * var results = yield search.execute();
  * 
  * // Access results

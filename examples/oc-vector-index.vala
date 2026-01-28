@@ -18,7 +18,7 @@
 
 class VectorIndexerApp : VectorAppBase
 {
-	protected static bool opt_recurse = false;
+	protected static bool opt_recurse = true;
 	protected static bool opt_reset_database = false;
 	protected static bool opt_create_project = false;
 	protected static string? opt_embed_model = null;
@@ -44,7 +44,7 @@ Examples:
 """; }
 	
 	protected const OptionEntry[] local_options = {
-		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (only for folders)", null },
+		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (default: true)", null },
 		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
 		{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Create the folder as a project if it's not already one", null },
 		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
@@ -73,13 +73,15 @@ Examples:
 	public override OLLMchat.Settings.Config2 load_config()
 	{
 		// Register all tool config types before loading config
-		OLLMchat.Tool.BaseTool.register_config();
+		// Use Registry to ensure GTypes are registered first
+		var registry = new OLLMvector.Registry();
+		registry.init_config();
 		
 		// Call base implementation
 		return base_load_config();
 	}
 	
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		// Save data_dir value before reset (options are parsed before validate_args is called)
 		var saved_data_dir = opt_data_dir;
@@ -102,12 +104,12 @@ Examples:
 		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
 		
 		string? path = null;
-		if (args.length > 1) {
-			path = args[1];
+		if (remaining_args.length > 1) {
+			path = remaining_args[1];
 		}
 		
 		if (path == null && !opt_reset_database) {
-			return help.replace("{ARG}", args[0]);
+			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
 		return null;
@@ -131,10 +133,9 @@ Examples:
 		
 		GLib.debug("opt_reset_database is false - proceeding with normal indexing");
 		
-		string[] args = command_line.get_arguments();
 		string? path = null;
-		if (args.length > 1) {
-			path = args[1];
+		if (remaining_args.length > 1) {
+			path = remaining_args[1];
 		}
 		
 		if (path == null) {
@@ -192,7 +193,7 @@ Examples:
 		}
 		
 		// Ensure tool config exists
-		new OLLMvector.Tool.CodebaseSearchTool(null).setup_tool_config(this.config);
+		new OLLMvector.Tool.CodebaseSearchTool(null).setup_tool_config_default(this.config);
 		
 		// Inline tool config access
 		if (!this.config.tools.has_key("codebase_search")) {

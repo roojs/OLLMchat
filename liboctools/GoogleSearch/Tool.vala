@@ -50,12 +50,12 @@ The tool requires permission to access the Google Custom Search API.""";
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-	public Tool(OLLMfiles.ProjectManager? project_manager = null)
-	{
-		base();
-		this.project_manager = project_manager;
-		this.title = "Google Search Tool";
-	}
+		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+		{
+			base();
+			this.project_manager = project_manager;
+			this.title = "Google Search Tool";
+		}
 		
 		public override Type config_class() { return typeof(Config); }
 		

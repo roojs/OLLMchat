@@ -286,7 +286,7 @@ namespace OLLMchat.Tool
 		 *
 		 * @param config The Config2 instance
 		 */
-		public virtual void setup_tool_config(Settings.Config2 config)
+		public virtual void setup_tool_config_default(Settings.Config2 config)
 		{
 			// If config already exists, nothing to do
 			if (config.tools.has_key(this.name)) {
@@ -298,77 +298,24 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
-		 * Sets up all tool configurations by discovering tools and calling setup_tool_config() on each.
+		 * Registers a single tool config type with Config2.
 		 *
-		 * This discovers all tool classes, creates dummy instances, and calls setup_tool_config()
-		 * on each. Simple tools will use the default implementation, complex tools will use their overrides.
+		 * Creates a tool instance (without dependencies), gets its config class type,
+		 * and registers it with Config2. Must be called before config.load_config().
 		 *
-		 * @param config The Config2 instance
+		 * @param tool_type The GType of the tool class to register
 		 */
-		public static void setup_all_tool_configs(Settings.Config2 config)
+		public static void register_config(Type tool_type)
 		{
-			foreach (var tool_type in discover_classes()) {
-				// Create tool instance without parameters - works because constructors are nullable
-				// Call setup_tool_config() on the instance
-				// Simple tools will use the default implementation, complex tools will use their overrides
-				var tool = Object.new(tool_type) as Tool.BaseTool;
-				tool.init(); // Ensure tool is properly initialized
-				tool.setup_tool_config(config);
-			}
-		}
-		
-		/**
-		 * Discovers all tool classes that extend Tool.BaseTool via GType registry.
-		 *
-		 * Queries the GType registry to find all registered types that extend
-		 * Tool.BaseTool (abstract base class) and returns them as a list.
-		 * All tools extend BaseTool directly, so we only need to check direct children.
-		 *
-		 * @return List of tool class GTypes
-		 */
-		public static Gee.ArrayList<Type> discover_classes()
-		{
-			var tool_types = new Gee.ArrayList<Type>();
+			// Create tool instance without parameters - works because constructors are nullable
+			// Constructors handle null values gracefully (for Phase 1, we only need config_class())
+			var tool = Object.new(tool_type) as Tool.BaseTool;
 			
-			// Get direct children of Tool.BaseTool (all tools extend it directly)
-			Type[] children = typeof(Tool.BaseTool).children();
-			
-			foreach (var child_type in children) {
-				// Check if it's a class and not abstract
-				if (!child_type.is_classed() || child_type.is_abstract()) {
-					continue;
-				}
-				
-				tool_types.add(child_type);
-			}
-			
-			GLib.debug("discover_classes: found %d tool classes", tool_types.size);
-			return tool_types;
-		}
-		
-		/**
-		 * Registers all tool config types with Config2 (Phase 1: before loading config).
-		 *
-		 * This method discovers all tool classes, creates tool instances (without
-		 * dependencies), calls config_class() on each to get the config GType, and
-		 * registers it with Config2. Must be called before config.load_config().
-		 *
-		 * Constructors must handle null values gracefully since this is called
-		 * before dependencies (client, project_manager) are available.
-		 */
-		public static void register_config()
-		{
-			var tool_classes = discover_classes();
-			
-			foreach (var tool_type in tool_classes) {
-				// Create tool instance without parameters - works because constructors are nullable
-				// Constructors handle null values gracefully (for Phase 1, we only need config_class())
-				var tool = Object.new(tool_type) as Tool.BaseTool;
-				tool.init(); // Ensure tool is properly initialized
-				
-				// Register config type with Config2
-				Settings.Config2.register_tool_type(tool.name, tool.config_class());
-			}
+			// Register config type with Config2
+			// We only need name and config_class(), which don't require init()
+			var config_type = tool.config_class();
+			GLib.debug("register_config: registering tool '%s' with config type %s", tool.name, config_type.name());
+			Settings.Config2.register_tool_type(tool.name, config_type);
 		}
 		
 	}

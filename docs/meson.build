@@ -126,7 +126,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Response/ToolCall.vala',
     '../libollmchat/Tool/namespace.vala',  # Tool namespace documentation
     '../libollmchat/Tool/RequestBase.vala',
-    '../libollmchat/Tool/Tool.vala',
+    '../libollmchat/Tool/BaseTool.vala',
     '../libollmchat/Tool/WrapInterface.vala',
     '../libollmchat/Tool/ParamParser.vala',
     '../libollmchat/Tool/Param.vala',

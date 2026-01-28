@@ -35,10 +35,21 @@ namespace OLLMtools
 			typeof(EditMode.Tool).ensure();
 			typeof(GoogleSearch.Tool).ensure();
 			
-			// Register all tool config types with Config2
-			OLLMchat.Tool.BaseTool.register_config();
+			// Register only liboctools tool config types with Config2
+			// Only register tools with custom config classes (not BaseToolConfig)
+			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
 			
 			GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
+		}
+		
+		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
+		{
+			// Setup only liboctools tool configs with custom config classes (not BaseToolConfig)
+			// Creates default configs if they don't exist in the loaded config
+			var tool = new GoogleSearch.Tool(null);
+			tool.setup_tool_config_default(config);
+			
+			GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
 		
 		public void fill_tools(

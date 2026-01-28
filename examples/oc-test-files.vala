@@ -131,7 +131,7 @@ Examples:
 		return opt_context;
 	}
 
-	protected override string? validate_args(string[] args)
+	protected override string? validate_args(string[] remaining_args)
 	{
 		// Count how many actions are specified
 		int action_count = 0;
@@ -170,7 +170,7 @@ Examples:
 		}
 		
 		if (action_count == 0) {
-			return help.replace("{ARG}", args[0]);
+			return help.replace("{ARG}", remaining_args[0]);
 		}
 		if (action_count > 1) {
 			return "Error: Multiple actions specified. Only one action is allowed at a time.\n";

@@ -30,10 +30,20 @@ namespace OLLMvector
 			// Ensure libocvector tool GTypes are registered
 			typeof(Tool.CodebaseSearchTool).ensure();
 			
-			// Register all tool config types with Config2
-			OLLMchat.Tool.BaseTool.register_config();
+			// Register only libocvector tool config types with Config2
+			OLLMchat.Tool.BaseTool.register_config(typeof(Tool.CodebaseSearchTool));
 			
 			GLib.debug("OLLMvector.Registry.init_config: Registered libocvector tool config types");
+		}
+		
+		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
+		{
+			// Setup only libocvector tool configs
+			// Creates default configs if they don't exist in the loaded config
+			var tool = new Tool.CodebaseSearchTool(null);
+			tool.setup_tool_config_default(config);
+			
+			GLib.debug("OLLMvector.Registry.setup_config_defaults: Set up libocvector tool configs");
 		}
 		
 		public void fill_tools(
