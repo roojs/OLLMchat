@@ -183,6 +183,16 @@ namespace OLLMchat.Settings
 					value.set_object(this.features);
 					return true;
 					
+				case "downloads":
+					// Default gint64 deserializer does not accept JSON null; handle null and delegate the rest
+					if (property_node.get_node_type() == Json.NodeType.NULL) {
+						this.downloads = 0;
+						value = Value(typeof(int64));
+						value.set_int64(0);
+						return true;
+					}
+					return default_deserialize_property(property_name, out value, pspec, property_node);
+					
 				default:
 					// Use default deserialization for other properties
 					return default_deserialize_property(property_name, out value, pspec, property_node);

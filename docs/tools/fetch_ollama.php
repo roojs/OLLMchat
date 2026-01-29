@@ -26,8 +26,12 @@ class OllamaModelScraper {
     private int $fetchedCount = 0;
     private int $popularCount = 0; // Models from popular page
     private int $newestCount = 0;  // Models from newest page
-    private const MAX_FETCH_PER_RUN = 10;
+    private const MAX_FETCH_PER_RUN = 50;
+    /** Cache expiry for category/search pages (hours). Only search data expires. */
     private const CACHE_AGE_HOURS = 24;
+    /** Cache expiry for popular/newest search pages (hours). */
+    private const SEARCH_POPULAR_NEWEST_CACHE_HOURS = 168; // 7 days
+    /** Model detail (tags) HTML is fetched once and never re-fetched; no expiry. */
     private const ORIGINAL_URL = 'https://ollama-models.zwz.workers.dev/';
     
     public function __construct() {
@@ -106,8 +110,9 @@ class OllamaModelScraper {
     
     private function printStatusReport(): void {
         $totalModels = count($this->models);
-        $baseModels = 0;
+        $topLevel = 0;      // non-derivative (no namespace in slug)
         $derivatives = 0;
+        $orphanDerivatives = 0; // derivatives with no library/base model of same name
         $fetched = 0;
         $needsFetching = 0;
         $skippedOriginal = 0;
@@ -117,15 +122,19 @@ class OllamaModelScraper {
         foreach ($this->models as $slug => $model) {
             $isDerivative = isset($this->derivativeModels[$slug]);
             
-            // Check if it's a derivative
             if ($isDerivative) {
                 $derivatives++;
+                // Orphan = derivative with no library base (no "short name" in seed or as top-level slug)
+                $shortName = strpos($slug, '/') !== false ? substr($slug, strpos($slug, '/') + 1) : $slug;
+                $hasBase = isset($this->originalModels[$shortName]) || isset($this->originalModels[$model['name']]) || isset($this->models[$shortName]);
+                if (!$hasBase) {
+                    $orphanDerivatives++;
+                }
             } else {
-                $baseModels++;
+                $topLevel++;
             }
             
             // Check if model already exists in original models and has tags
-            // This matches the logic in fetchModelDetails
             $modelName = $model['name'];
             $hasOriginalTags = false;
             if (isset($this->originalModels[$modelName])) {
@@ -136,10 +145,8 @@ class OllamaModelScraper {
                 }
             }
             
-            // Check if HTML file exists (has been fetched)
             $fileSlug = str_replace('/', '_', $slug);
             $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
-            
             $isFetched = file_exists($modelFile) || $hasOriginalTags;
             
             if ($isFetched) {
@@ -158,27 +165,31 @@ class OllamaModelScraper {
         $totalOriginal = count($this->originalModels);
         $progress = $totalModels > 0 ? round(($fetched / $totalModels) * 100, 1) : 0;
         $derivativesProgress = $derivatives > 0 ? round(($derivativesFetched / $derivatives) * 100, 1) : 0;
+        $withTags = $this->countModelsWithTags();
         
         echo "\n" . str_repeat('=', 60) . "\n";
         echo "STATUS REPORT\n";
         echo str_repeat('=', 60) . "\n";
-        echo "Original source models:     " . str_pad(number_format($totalOriginal), 10) . "\n";
-        echo "Total discovered models:     " . str_pad(number_format($totalModels), 10) . "\n";
-        echo "  ├─ Base models:            " . str_pad(number_format($baseModels), 10) . "\n";
-        echo "  └─ Derivatives:            " . str_pad(number_format($derivatives), 10) . "\n";
+        echo "Seed list (original URL):   " . str_pad(number_format($totalOriginal), 10) . " models\n";
+        echo "Discovered (this run):     " . str_pad(number_format($totalModels), 10) . " models\n";
+        echo "  ├─ Top-level (no ns):    " . str_pad(number_format($topLevel), 10) . "\n";
+        echo "  └─ Derivatives (a/b):    " . str_pad(number_format($derivatives), 10) . "\n";
+        if ($orphanDerivatives > 0) {
+            echo "      └─ Orphan (no base):  " . str_pad(number_format($orphanDerivatives), 10) . " (treated as top-level)\n";
+        }
         echo "\n";
         echo "Fetch status:\n";
-        echo "  ├─ Fetched (have HTML):    " . str_pad(number_format($fetched), 10) . " (" . $progress . "%)\n";
-        echo "  └─ Needs fetching:         " . str_pad(number_format($needsFetching), 10) . "\n";
+        echo "  ├─ Fetched (have HTML):   " . str_pad(number_format($fetched), 10) . " (" . $progress . "%)\n";
+        echo "  └─ Needs fetching:       " . str_pad(number_format($needsFetching), 10) . "\n";
         if ($skippedOriginal > 0) {
-            echo "  └─ From original source:  " . str_pad(number_format($skippedOriginal), 10) . "\n";
+            echo "  └─ From seed (has tags): " . str_pad(number_format($skippedOriginal), 10) . "\n";
         }
         echo "\n";
         echo "Derivatives fetch status:\n";
-        echo "  ├─ Fetched:                " . str_pad(number_format($derivativesFetched), 10) . " (" . $derivativesProgress . "%)\n";
-        echo "  └─ Needs fetching:        " . str_pad(number_format($derivativesNeedsFetching), 10) . "\n";
+        echo "  ├─ Fetched:               " . str_pad(number_format($derivativesFetched), 10) . " (" . $derivativesProgress . "%)\n";
+        echo "  └─ Needs fetching:       " . str_pad(number_format($derivativesNeedsFetching), 10) . "\n";
         echo "\n";
-        echo "Models with tags:           " . str_pad(number_format($this->countModelsWithTags()), 10) . "\n";
+        echo "Models with tags (→ JSON): " . str_pad(number_format($withTags), 10) . "\n";
         echo str_repeat('=', 60) . "\n\n";
     }
     
@@ -203,9 +214,12 @@ class OllamaModelScraper {
         return $ageHours >= $maxAgeHours;
     }
     
-    private function fetchUrl(string $url, string $outputPath, bool $checkAge = true): bool {
-        if ($checkAge && !$this->shouldFetch($outputPath)) {
-            return true;
+    private function fetchUrl(string $url, string $outputPath, bool $checkAge = true, ?int $maxAgeHours = null): bool {
+        if ($checkAge) {
+            $maxAge = $maxAgeHours ?? self::CACHE_AGE_HOURS;
+            if (!$this->shouldFetch($outputPath, $maxAge)) {
+                return true;
+            }
         }
         
         echo "  Fetching: {$url}\n";
@@ -458,15 +472,8 @@ class OllamaModelScraper {
             $this->printStatusReport();
             
             echo "Completed successfully!\n";
-            echo "Total models from original source: {$totalOriginal}\n";
-            echo "Total unique models (after merging): {$totalUnique}\n";
-            echo "Models that can have tags: {$modelsThatCanHaveTags}\n";
-            echo "Models that need fetching: {$needsFetching}\n";
-            echo "Models from popular page: {$this->popularCount}\n";
-            echo "Models from newest page: {$this->newestCount}\n";
-            echo "Models with tags (in output): {$modelsWithTags}\n";
-            echo "Completion: {$percentage}% (of models that can have tags)\n";
-            echo "Output: {$this->outputFile}\n";
+            echo "Output: {$modelsWithTags} models (with tags) → " . basename($this->outputFile) . "\n";
+            echo "  Merged: {$totalUnique} unique (seed {$totalOriginal} + discovered); {$percentage}% have tags.\n";
             
         } catch (Exception $e) {
             echo "\nError: " . $e->getMessage() . "\n";
@@ -534,14 +541,23 @@ class OllamaModelScraper {
     private function fetchSearchPages(): void {
         echo "Step 1: Fetching search pages...\n";
         
-        $popularUrl = 'https://ollama.com/search';
-        $popularFile = $this->cacheDir . '/popular.html';
+        $pages = [
+            ['url' => 'https://ollama.com/search', 'file' => $this->cacheDir . '/popular.html', 'maxAgeHours' => self::SEARCH_POPULAR_NEWEST_CACHE_HOURS],
+            ['url' => 'https://ollama.com/search?o=newest', 'file' => $this->cacheDir . '/newest.html', 'maxAgeHours' => self::SEARCH_POPULAR_NEWEST_CACHE_HOURS],
+            ['url' => 'https://ollama.com/search?c=embedding', 'file' => $this->cacheDir . '/search-embedding.html'],
+            ['url' => 'https://ollama.com/search?c=embedding&o=newest', 'file' => $this->cacheDir . '/newest-embedding.html'],
+            ['url' => 'https://ollama.com/search?c=vision', 'file' => $this->cacheDir . '/search-vision.html'],
+            ['url' => 'https://ollama.com/search?c=vision&o=newest', 'file' => $this->cacheDir . '/newest-vision.html'],
+            ['url' => 'https://ollama.com/search?c=tools', 'file' => $this->cacheDir . '/search-tools.html'],
+            ['url' => 'https://ollama.com/search?c=tools&o=newest', 'file' => $this->cacheDir . '/newest-tools.html'],
+            ['url' => 'https://ollama.com/search?c=thinking', 'file' => $this->cacheDir . '/search-thinking.html'],
+            ['url' => 'https://ollama.com/search?c=thinking&o=newest', 'file' => $this->cacheDir . '/newest-thinking.html'],
+        ];
         
-        $newestUrl = 'https://ollama.com/search?o=newest';
-        $newestFile = $this->cacheDir . '/newest.html';
-        
-        $this->fetchUrl($popularUrl, $popularFile);
-        $this->fetchUrl($newestUrl, $newestFile);
+        foreach ($pages as $page) {
+            $maxAge = $page['maxAgeHours'] ?? null;
+            $this->fetchUrl($page['url'], $page['file'], true, $maxAge);
+        }
         
         echo "\n";
     }
@@ -551,7 +567,15 @@ class OllamaModelScraper {
         
         $files = [
             ['file' => $this->cacheDir . '/popular.html', 'source' => 'popular'],
-            ['file' => $this->cacheDir . '/newest.html', 'source' => 'newest']
+            ['file' => $this->cacheDir . '/newest.html', 'source' => 'newest'],
+            ['file' => $this->cacheDir . '/search-embedding.html', 'source' => 'embedding'],
+            ['file' => $this->cacheDir . '/newest-embedding.html', 'source' => 'embedding'],
+            ['file' => $this->cacheDir . '/search-vision.html', 'source' => 'vision'],
+            ['file' => $this->cacheDir . '/newest-vision.html', 'source' => 'vision'],
+            ['file' => $this->cacheDir . '/search-tools.html', 'source' => 'tools'],
+            ['file' => $this->cacheDir . '/newest-tools.html', 'source' => 'tools'],
+            ['file' => $this->cacheDir . '/search-thinking.html', 'source' => 'thinking'],
+            ['file' => $this->cacheDir . '/newest-thinking.html', 'source' => 'thinking'],
         ];
         
         $foundModels = [];
@@ -729,7 +753,7 @@ class OllamaModelScraper {
             $fileSlug = str_replace('/', '_', $slug);
             $modelFile = $this->modelsDir . '/' . $fileSlug . '.html';
             
-            // Only fetch if file doesn't exist (one-time download)
+            // Tags never expire: only fetch if file doesn't exist (one-time download)
             if (file_exists($modelFile)) {
                 $skipped++;
                 continue;
@@ -748,6 +772,7 @@ class OllamaModelScraper {
             }
             
             $attempted++;
+            // checkAge = false: never re-fetch tags once we have the file
             if ($this->fetchUrl($url, $modelFile, false)) {
                 $this->fetchedCount++;
                 if ($isDerivative && !$resetCounter) {
@@ -1075,6 +1100,7 @@ class OllamaModelScraper {
                 // Base model - has /library/
                 $derivativeUrl = 'https://ollama.com/library/' . $derivativeSlug . '/tags';
             }
+            // checkAge = false: tags never expire, fetch once only
             if ($this->fetchUrl($derivativeUrl, $derivativeFile, false)) {
                 $fetched++;
                 $this->fetchedCount++;

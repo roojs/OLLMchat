@@ -84,14 +84,13 @@ namespace OLLMapp.SettingsDialog
 			this.connection_urls = new Gee.ArrayList<string>();
 			this.connection_list = new Gtk.StringList(null);
 			
-		// Connection row
-		// Use expression for StringList (simpler than factory)
-		this.connection_dropdown = new Gtk.DropDown(this.connection_list, 
-			new Gtk.PropertyExpression(typeof(string), null, "string")) {
-			vexpand = false,
-			valign = Gtk.Align.CENTER
-		};
-			this.connection_row = new Adw.ActionRow() {
+			// Connection row: factory avoids PropertyExpression on gchararray (GTK does not support it)
+		 
+			this.connection_dropdown = new Gtk.DropDown(this.connection_list, null) {
+				vexpand = false,
+				valign = Gtk.Align.CENTER
+			};
+ 			this.connection_row = new Adw.ActionRow() {
 				title = "OpenAPI / Ollama server",
 				subtitle = "Select the server connection to use"
 			};

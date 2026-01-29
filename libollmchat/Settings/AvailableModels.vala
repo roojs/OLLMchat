@@ -32,10 +32,17 @@ namespace OLLMchat.Settings
 	public class AvailableModels : Object, GLib.ListModel
 	{
 		/**
-		 * Backing store: ArrayList containing AvailableModel objects.
+		 * Backing store: ArrayList for order and ListModel.
 		 */
-		private Gee.ArrayList<AvailableModel> store { get; set; 
-			default= new Gee.ArrayList<AvailableModel>();
+		private Gee.ArrayList<AvailableModel> store { get; set;
+			default = new Gee.ArrayList<AvailableModel>();
+		}
+		
+		/**
+		 * Name => model for duplicate check on append.
+		 */
+		private Gee.HashMap<string, AvailableModel> by_name { get; set;
+			default = new Gee.HashMap<string, AvailableModel>();
 		}
 		
 		/**
@@ -67,11 +74,16 @@ namespace OLLMchat.Settings
 		
 		/**
 		 * Append an item to the list.
+		 * If a model with the same name is already present, the new one is ignored.
 		 *
 		 * @param item The AvailableModel item to append
 		 */
 		public void append(AvailableModel item)
 		{
+			if (this.by_name.has_key(item.name)) {
+				return;
+			}
+			this.by_name.set(item.name, item);
 			var position = this.store.size;
 			this.store.add(item);
 			this.items_changed(position, 0, 1);
@@ -85,6 +97,7 @@ namespace OLLMchat.Settings
 			var n_items = this.store.size;
 			if (n_items > 0) {
 				this.store.clear();
+				this.by_name.clear();
 				this.items_changed(0, n_items, 0);
 			}
 		}
@@ -221,6 +234,10 @@ namespace OLLMchat.Settings
 		 */
 		private Json.Node? try_parse_json_from_file(string path)
 		{
+			var file = GLib.File.new_for_path(path);
+			if (!file.query_exists()) {
+				return null;
+			}
 			try {
 				var parser = new Json.Parser();
 				parser.load_from_file(path);
@@ -268,58 +285,43 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Loads models from cache file.
-		 *
-		 * First checks for ollama-models.json in data_dir (if it exists),
-		 * then falls back to cache file, then to resource.
+		 * Loads models: resource first, then from file (ollama-models.json in data_dir) if it exists.
+		 * Duplicates by name are skipped on append.
 		 *
 		 * @throws Error if load fails
 		 */
 		public async void load() throws Error
 		{
-			// First, try to load from local ollama-models.json file in data_dir
-			var ollama_models_path = this.get_ollama_models_path();
-			var ollama_models_file = GLib.File.new_for_path(ollama_models_path);
+			this.remove_all();
 			
-			if (ollama_models_file.query_exists()) {
-				var root = this.try_parse_json_from_file(ollama_models_path);
-				if (this.try_load_from_json_node(root, "ollama-models.json: " + ollama_models_path)) {
-					return;
-				}
-			}
-			
-			// Load from cache
-			var cache_root = this.try_parse_json_from_file(this.cache_path);
-			if (this.try_load_from_json_node(cache_root, "cache: " + this.cache_path)) {
-				return;
-			}
-			
-			// Fallback to resource
 			try {
 				var resource_file = GLib.File.new_for_uri("resource:///ollmchat/ollama-models.json");
 				uint8[] data;
 				resource_file.load_contents(null, out data, null);
-				
 				var resource_root = this.try_parse_json_from_data((string)data);
-				if (this.try_load_from_json_node(resource_root, "resource")) {
-					return;
-				}
+				this.load_models_from_json(resource_root);
+				GLib.debug("Loaded models from resource");
 			} catch (GLib.Error e) {
 				GLib.debug("Failed to load from resource: %s", e.message);
+				throw new GLib.IOError.NOT_FOUND("No models data found in resources");
 			}
 			
-			// If we get here, no valid data was found
-			throw new GLib.IOError.NOT_FOUND("No models data found in data_dir, cache, or resources");
+			var ollama_models_path = this.get_ollama_models_path();
+			var ollama_models_file = GLib.File.new_for_path(ollama_models_path);
+			if (ollama_models_file.query_exists()) {
+				var root = this.try_parse_json_from_file(ollama_models_path);
+				if (root != null && root.get_node_type() == Json.NodeType.ARRAY) {
+					this.load_models_from_json(root);
+					GLib.debug("Loaded models from file: %s", ollama_models_path);
+				}
+			}
 		}
 		
 		/**
-		 * Loads models from a JSON array node into the store.
+		 * Loads models from a JSON array node into the store (appends; duplicates by name are skipped).
 		 */
 		private void load_models_from_json(Json.Node root)
 		{
-			// Clear existing models
-			this.remove_all();
-			
 			var array = root.get_array();
 			for (int i = 0; i < array.get_length(); i++) {
 				// Deserialize AvailableModel directly from JSON node
@@ -332,8 +334,6 @@ namespace OLLMchat.Settings
 					this.append(model);
 				}
 			}
-			
-			GLib.debug("Loaded %u models into store", this.get_n_items());
 		}
 	}
 }
