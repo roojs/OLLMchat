@@ -7,7 +7,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Nullable types**: Are new APIs and properties designed to avoid nullable types where possible (using default objects/flags instead)?
 - **Null checks**: Does the plan avoid adding generic null checks, and only use them where the design explicitly requires null?
 - **String interpolation**: Does the plan avoid `@"..."` string interpolation except for multi-line usage/help text or documentation?
-- **Temporary variables**: Does the plan avoid introducing one-use temporaries or trivial aliases when describing new code?
+- **Temporary variables**: Does the plan avoid one-use temporaries and forbid trivial aliases (except aliasing long chains like a.b.c.d.e)?
 - **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)?
 - **`this.` prefix**: Does the plan assume/describe using `this.` for instance members in new/modified Vala code?
 - **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
@@ -56,9 +56,9 @@ Options:
 
 **IMPORTANT:** Avoid temporary variables that are just pointers to object properties. Access the property directly instead.
 
-**IMPORTANT:** Avoid simple aliased variables and trivial aliases. If a variable is just an alias for a property or method result that's used once or trivially, inline it instead.
+**IMPORTANT:** Trivial aliases are forbidden. A variable that is only an alias for a single property or method result (e.g. `var path = file.path`, `var x = a.b`) must never be used — inline the expression at each use site instead.
 
-**EXCEPTION:** Long property chains (4+ properties deep) may be aliased into a local variable for readability. This exception applies when accessing deeply nested properties like `agent.session.manager.permission_provider`.
+**EXCEPTION:** The only allowed aliases are for long chains (4+ steps). Aliasing is permitted only when the expression is a long property/method chain such as `a.b.c.d.e` or `agent.session.manager.permission_provider`; in those cases a local may be used for readability.
 
 **Bad:**
 ```vala

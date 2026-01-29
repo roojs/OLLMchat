@@ -21,8 +21,8 @@ namespace OLLMvector.Indexing
 	/**
 	 * Analysis layer for documentation file processing.
 	 *
-	 * Uses analysis-doc-file-prompt (whole-document category and summary) and
-	 * analysis-doc-section-prompt (section descriptions). Used for shell, meson,
+	 * Uses analysis-prompt-doc-file (whole-document category and summary) and
+	 * analysis-prompt-doc-section (section descriptions). Used for shell, meson,
 	 * and other non-coding-language text files (docs, configs, etc.).
 	 *
 	 * Processes DocumentationTree objects and generates descriptions using LLM
@@ -40,10 +40,10 @@ namespace OLLMvector.Indexing
 		static construct
 		{
 			try {
-				cached_template = new PromptTemplate("analysis-doc-section-prompt.txt");
+				cached_template = new PromptTemplate("analysis-prompt-doc-section.txt");
 				cached_template.load();
 				
-				cached_document_template = new PromptTemplate("analysis-doc-file-prompt.txt");
+				cached_document_template = new PromptTemplate("analysis-prompt-doc-file.txt");
 				cached_document_template.load();
 			} catch (GLib.Error e) {
 				GLib.critical("Failed to load prompt templates in static constructor: %s", e.message);

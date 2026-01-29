@@ -16,12 +16,11 @@
     <file>ollama-models.json</file>
   </gresource>
   <gresource prefix="/ocvector">
-    <file>analysis-doc-file-prompt.txt</file>
-    <file>analysis-doc-section-prompt.txt</file>
+    <file>analysis-prompt-doc-file.txt</file>
+    <file>analysis-prompt-doc-section.txt</file>
     <file>analysis-prompt-file.txt</file>
     <file>analysis-prompt-folder.txt</file>
     <file>analysis-prompt.txt</file>
-    <file>ocvector-prompt.txt</file>
   </gresource>
   <gresource prefix="/wrapped-tools">
     <file>glob.tool</file>
