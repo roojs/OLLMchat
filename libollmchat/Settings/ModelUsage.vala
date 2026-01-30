@@ -129,6 +129,17 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
+		 * Returns a pretty string for context size (e.g. "128K ctx"), or "" if none.
+		 * Uses options.num_ctx when set, else model_obj.context_length.
+		 */
+		public string context_size()
+		{
+			int ctx = this.options.num_ctx > 0 ? this.options.num_ctx :
+				(this.model_obj != null && this.model_obj.context_length > 0) ? this.model_obj.context_length : 0;
+			return ctx <= 0 ? "" : "%dK ctx".printf(ctx / 1024);
+		}
+
+		/**
 		 * Returns the display name for this model (just the model name).
 		 * 
 		 * @return The model name
@@ -139,17 +150,18 @@ namespace OLLMchat.Settings
 		}
 		
 		/**
-		 * Returns the display name with size in parentheses (e.g., "llama3.1:70b (4.1 GB)").
-		 * Uses model_obj if available, otherwise just returns the model name.
+		 * Returns the display name with size (and optional context from this usage).
+		 * Uses model_obj.display_name when available, plus context_size() when set.
 		 * 
-		 * @return The model name with size, or just the model name if model_obj is null
+		 * @return The model name with size and optional ctx, or just the model name if model_obj is null
 		 */
 		public string display_name_with_size()
 		{
-			if (this.model_obj != null) {
-				return this.model_obj.name_with_size;
+			if (this.model_obj == null) {
+				return this.model;
 			}
-			return this.model;
+			string c = this.context_size();
+			return c != "" ? this.model_obj.display_name + " (" + c + ")" : this.model_obj.display_name;
 		}
 		
 		/**

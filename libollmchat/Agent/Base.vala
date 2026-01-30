@@ -125,12 +125,13 @@ namespace OLLMchat.Agent
 				agent = this  // Set agent reference so tools can access session
 			};
 			
-			// Configure tools for this chat (Phase 3: tools stored on Manager, accessed via Session)
-			// Copy tools from Manager to Chat
+			// Only add tools when the model supports tool calling (verified here, not at request time)
+			if (usage.model_obj == null || !usage.model_obj.can_call) {
+				return;
+			}
 			foreach (var tool in this.session.manager.tools.values) {
 				this.chat_call.add_tool(tool);
 			}
-			// Agent can also configure/filter tools if needed
 			this.factory.configure_tools(this.chat_call);
 			
 			// Signal connections removed - agent usage now uses direct method calls from Chat
@@ -287,10 +288,12 @@ namespace OLLMchat.Agent
 		 */
 		public void rebuild_tools()
 		{
-			// Rebuild tools from Manager (they may have updated config/active state)
+			var usage = this.session.model_usage;
+			if (usage.model_obj == null || !usage.model_obj.can_call) {
+				this.chat_call.tools.clear();
+				return;
+			}
 			this.chat_call.tools = this.session.manager.tools;
-			
-			// Agent can reconfigure/filter tools if needed
 			this.factory.configure_tools(this.chat_call);
 		}
 		
@@ -336,20 +339,20 @@ namespace OLLMchat.Agent
 			
 			// Phase 4: Customize model if num_ctx is set (not auto)
 			// Call model.customize() to get the model name to use (creates temp model if needed)
-			
-			try {
-				var customized_model_name = yield this.session.model_usage.model_obj.customize(
-					this.connection, 
-					this.chat_call.options
-				);
-				
-				// Update chat_call.model with the customized model name
-				this.chat_call.model = customized_model_name;
-			} catch (Error e) {
-				// Error handling: fall back to base model if create fails
-				GLib.warning("Agent.send_async: Failed to customize model '%s': %s. Using base model.", 
-					this.session.model_usage.model_obj.name, e.message);
-				// chat_call.model remains as the base model name
+			// When model_obj is null (e.g. CLI --url without verification), use model name as-is
+			if (this.session.model_usage.model_obj != null) {
+				try {
+					var customized_model_name = yield this.session.model_usage.model_obj.customize(
+						this.connection,
+						this.chat_call.options
+					);
+					this.chat_call.model = customized_model_name;
+				} catch (Error e) {
+					GLib.warning("Agent.send_async: Failed to customize model '%s': %s. Using base model.",
+						this.session.model_usage.model_obj.name, e.message);
+				}
+			} else {
+				this.chat_call.model = this.session.model_usage.model;
 			}
 			
 			

@@ -40,7 +40,7 @@ namespace OLLMchatGtk.List
 		}
 		
 		/**
-		 * Compare two items for sorting.
+		 * Compare two items for sorting by display name (base + size + [variant] + optional ctx).
 		 * 
 		 * @param a First item to compare
 		 * @param b Second item to compare
@@ -55,18 +55,10 @@ namespace OLLMchatGtk.List
 				return Gtk.Ordering.EQUAL;
 			}
 			
-			string name_a = model_usage_a.model;
-			string name_b = model_usage_b.model;
-			
-			// Split by "/" and use the second part if it exists
-			var parts_a = name_a.split("/", 2);
-			var parts_b = name_b.split("/", 2);
-			
-			string sort_key_a = parts_a.length > 1 ? parts_a[1] : parts_a[0];
-			string sort_key_b = parts_b.length > 1 ? parts_b[1] : parts_b[0];
-			
-			// Case-insensitive comparison
-			int cmp = strcmp(sort_key_a.down(), sort_key_b.down());
+			int cmp = strcmp(
+				model_usage_a.display_name_with_size().down(),
+				model_usage_b.display_name_with_size().down()
+			);
 			if (cmp < 0) {
 				return Gtk.Ordering.SMALLER;
 			} else if (cmp > 0) {

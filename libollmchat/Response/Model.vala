@@ -211,21 +211,38 @@ namespace OLLMchat.Response
 		}
 
 		/**
+		 * Returns a pretty string for model size in GB (e.g. "4.1 GB", "<1GB"), or "" if size is 0.
+		 */
+		public string size_gb()
+		{
+			if (this.size == 0) {
+				return "";
+			}
+			var size_gb_val = (double)this.size / (1024.0 * 1024.0 * 1024.0);
+			return size_gb_val >= 1.0 ? "%.1f GB".printf(size_gb_val) : "<1GB";
+		}
+
+		/**
 		 * Returns model name with size in parentheses (e.g., "llama3.1:70b (4.1 GB)")
 		 */
 		public string name_with_size {
 			owned get {
-				if (this.size == 0) {
-					return this.name;
-				}
-				double size_gb_val = (double)this.size / (1024.0 * 1024.0 * 1024.0);
-				string size_str;
-				if (size_gb_val >= 1.0) {
-					size_str = "%.1f GB".printf(size_gb_val);
-				} else {
-					size_str = "<1GB";
-				}
-				return "%s (%s)".printf(this.name, size_str);
+				return this.size == 0 ? this.name : this.name + " (" + this.size_gb() + ")";
+			}
+		}
+
+		/**
+		 * Display name for lists: base name (with size) then variant in brackets.
+		 * Names have at most one slash; e.g. "roojs/glm-345" → "glm-345 (4.1 GB) [roojs]".
+		 * Context is part of ModelUsage, not Model.
+		 * Used for sorting and display in list models and CLI.
+		 */
+		public string display_name {
+			owned get {
+				string[] parts = this.name.split("/", 2);
+				return (parts.length > 1 ? parts[1] : this.name) +
+					(this.size == 0 ? "" : " (" + this.size_gb() + ")") +
+					(parts.length > 1 ? " [" + parts[0] + "]" : "");
 			}
 		}
 
@@ -242,6 +259,7 @@ namespace OLLMchat.Response
 				case "is-thinking":
 				case "can-call":
 				case "name-with-size":
+				case "display-name":
 				case "client":
 					// These are computed properties or internal references, skip serialization
 					return null;
@@ -272,6 +290,7 @@ namespace OLLMchat.Response
 				case "is-thinking":
 				case "can-call":
 				case "name-with-size":
+				case "display-name":
 					// These are computed properties, skip deserialization
 					value = Value(pspec.value_type);
 					return true;

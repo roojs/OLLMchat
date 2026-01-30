@@ -111,13 +111,11 @@ namespace OLLMchatGtk.List
 				}
 
 				// Update label and icon visibility based on model_obj capabilities
+				name_label.label = model_usage.display_name_with_size();
 				if (model_usage.model_obj != null) {
-					name_label.label = model_usage.model_obj.name_with_size;
 					tools_icon.visible = model_usage.model_obj.can_call;
 					thinking_icon.visible = model_usage.model_obj.is_thinking;
 				} else {
-					// should never happen really - as our model useage has to have model obj.
-					name_label.label = model_usage.model;
 					tools_icon.visible = false;
 					thinking_icon.visible = false;
 				}

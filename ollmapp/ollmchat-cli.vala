@@ -58,6 +58,9 @@ Examples:
   {ARG} --agent-tool=codebase-analyzer --project=/path/to/project "Explain how the database connection is established"
   echo "Find files that handle user login" | {ARG} --agent-tool=codebase-locator --project=/path/to/project
   {ARG} --model llama3.2-vision --image screenshot.png "What is shown in this image?"
+
+Note: Use --image=PATH or --image PATH with PATH immediately after the option,
+so the next token is not consumed as the image path (e.g. avoid: --image --model ...).
 """; }
 		
 		const OptionEntry[] options = {
@@ -341,23 +344,57 @@ Examples:
 				stdout.flush();
 			});
 			
-			// Override model if --model option was provided (must be done before ensure_model_usage)
-			// This ensures ensure_model_usage() verifies the command-line model, not the config model
-			// Note: opt_model is converted to "" if null early in command_line() processing
+			// Override connection and/or model from CLI options (before ensure_model_usage)
+			var usage = this.manager.default_model_usage;
+			if (usage == null) {
+				yield this.manager.ensure_model_usage();
+				return;
+			}
+			bool url_specified = (opt_url != null && opt_url != "");
+			if (url_specified) {
+				// --url: use that connection only; add to config if not present
+				if (!this.config.connections.has_key(opt_url)) {
+					var conn = new OLLMchat.Settings.Connection() {
+						name = "CLI",
+						url = opt_url,
+						api_key = opt_api_key ?? "",
+						is_default = false
+					};
+					this.config.connections.set(opt_url, conn);
+				}
+				usage.connection = opt_url;
+				if (opt_model != "") {
+					usage.model = opt_model;
+				}
+				// Skip model verification when user explicitly chose --url (and optionally --model)
+				return;
+			}
 			if (opt_model != "") {
-				if (this.manager.default_model_usage != null) {
-					this.manager.default_model_usage.model = opt_model;
+				// --model only: search all connections for the model
+				bool found = false;
+				foreach (var entry in this.config.connections.entries) {
+					var conn = entry.value;
+					try {
+						yield conn.load_models();
+					} catch (GLib.Error e) {
+						continue;
+					}
+					if (!conn.models.has_key(opt_model)) {
+						continue;
+					}
+					usage.connection = entry.key;
+					usage.model = opt_model;
+					found = true;
+					break;
+				}
+				if (!found) {
+					throw new GLib.IOError.FAILED(
+						"Manager: model '%s' not found on any connection. " +
+						"Use --url to specify a server or ensure the model is available.",
+						opt_model
+					);
 				}
 			}
-			
-			// Ensure model usage is valid
-			// What it does:
-			//   - Verifies that default_model_usage.model exists on the server connection
-			//   - Calls verify_model() which checks if the model is available via API call
-			// Error handling:
-			//   - Throws GLib.IOError.FAILED if default_model_usage is null
-			//   - Throws GLib.IOError.FAILED if model doesn't exist on the connection
-			//   - Error message includes model name and connection URL for debugging
 			yield this.manager.ensure_model_usage();
 		}
 		
@@ -577,53 +614,47 @@ Examples:
 		
 		private async void list_models(ApplicationCommandLine command_line) throws Error
 		{
-			OLLMchat.Settings.Connection connection;
-			
-			// Get connection
-			if (this.config.loaded) {
-				var model_usage = this.config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
-				if (model_usage == null || model_usage.connection == "" || 
-					!this.config.connections.has_key(model_usage.connection)) {
-					throw new GLib.IOError.NOT_FOUND("default_model not configured in config.2.json");
+			// Build list of connections to query
+			var connections_to_query = new Gee.ArrayList<OLLMchat.Settings.Connection>();
+			if (this.config.loaded && this.config.connections.size > 0) {
+				foreach (var entry in this.config.connections.entries) {
+					connections_to_query.add(entry.value);
 				}
-				connection = this.config.connections.get(model_usage.connection);
 			} else {
-				// Config not loaded - check if URL provided
+				// Config not loaded or empty - use --url if provided
 				if (opt_url == null || opt_url == "") {
 					command_line.printerr("Error: Config not found and --url not provided.\n");
 					command_line.printerr("Please set up the server first or provide --url option.\n");
 					throw new GLib.IOError.NOT_FOUND("Config not found and --url not provided");
 				}
-				
-				// Create connection from command line args
-				connection = new OLLMchat.Settings.Connection() {
+				var connection = new OLLMchat.Settings.Connection() {
 					name = "CLI",
 					url = opt_url,
 					api_key = opt_api_key ?? "",
 					is_default = true
 				};
-				
-				// Add connection to config
-				this.config.connections.set(opt_url, connection);
-				
-				// Test connection
+				connections_to_query.add(connection);
+			}
+			// Query each connection and print url + models
+			foreach (var connection in connections_to_query) {
+				stdout.printf("url : %s\n", connection.url);
 				var original_timeout = connection.timeout;
-				connection.timeout = 5;  // 5 seconds - connection check should be quick
+				connection.timeout = 5;
 				try {
 					var models_call = new OLLMchat.Call.Models(connection);
-					yield models_call.exec_models();
+					var models = yield models_call.exec_models();
+					models.sort((a, b) => strcmp(a.display_name.down(), b.display_name.down()));
+					foreach (var model in models) {
+						if (model.name.has_prefix("ollmchat-temp/") || connection.hidden_models.contains(model.name)) {
+							continue;
+						}
+						stdout.printf("  - %s - %s\n", model.display_name, model.name);
+					}
 				} catch (GLib.Error e) {
-					throw new GLib.IOError.FAILED("Failed to connect to server: %s", e.message);
+					stdout.printf("  (unavailable: %s)\n", e.message);
 				} finally {
 					connection.timeout = original_timeout;
 				}
-			}
-			
-			// List models
-			var models_call = new OLLMchat.Call.Models(connection);
-			var models = yield models_call.exec_models();
-			foreach (var model in models) {
-				stdout.printf("%s\n", model.name);
 			}
 		}
 		

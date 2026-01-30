@@ -258,32 +258,10 @@ namespace OLLMchat.Call
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "tools":
-					// Only serialize tools if tools exist
+					// Only serialize tools if present (model capability is validated when chat is set up)
 					if (this.tools.size == 0) {
 						return null;
 					}
-					
-					// Check if model supports tools
-					// First try via agent.session.manager.connection_models (if agent is set)
-					// Otherwise check directly from connection.models
-					if (this.agent != null) {
-						var model_usage = this.agent.session.manager.connection_models.find_model(
-							this.connection.url, 
-							this.model
-						);
-						
-						if (model_usage != null && !model_usage.model_obj.can_call) {
-							return null;
-						}
-					} 
-					if (this.connection.models.has_key(this.model)) {
-						// Check directly from connection.models if agent is not set
-						var model_obj = this.connection.models.get(this.model);
-						if (model_obj != null && !model_obj.can_call) {
-							return null;
-						}
-					}
-					
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();
