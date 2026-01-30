@@ -34,14 +34,10 @@ namespace OLLMvector.Indexing
 
 		static construct
 		{
-			try {
-				project_template = new PromptTemplate("analysis-prompt-project.txt");
-				project_template.load();
-				dependencies_template = new PromptTemplate("analysis-prompt-dependencies.txt");
-				dependencies_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load project/dependencies prompt templates: %s", e.message);
-			}
+			project_template = new PromptTemplate("analysis-prompt-project.txt");
+			project_template.load();
+			dependencies_template = new PromptTemplate("analysis-prompt-dependencies.txt");
+			dependencies_template.load();
 		}
 
 		public ProjectAnalysis(OLLMchat.Settings.Config2 config, SQ.Database sql_db, OLLMfiles.Folder root_folder)

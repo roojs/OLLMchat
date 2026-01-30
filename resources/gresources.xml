@@ -20,6 +20,7 @@
     <file>analysis-prompt-doc-section.txt</file>
     <file>analysis-prompt-file.txt</file>
     <file>analysis-prompt-folder.txt</file>
+    <file>analysis-prompt-image.txt</file>
     <file>analysis-prompt.txt</file>
   </gresource>
   <gresource prefix="/wrapped-tools">

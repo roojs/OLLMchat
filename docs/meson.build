@@ -216,6 +216,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocvector/Indexing/DocumentationAnalysis.vala',  # Uses DocumentationTree and PromptTemplate
     '../libocvector/Indexing/FolderAnalysis.vala',  # Folder analysis layer (2.20.4)
     '../libocvector/Indexing/ProjectAnalysis.vala',  # Project summary and dependency extraction (2.20.5)
+    '../libocvector/Indexing/ImageAnalyzer.vala',
     '../libocvector/Indexing/DocumentationVectorBuilder.vala',  # Extends VectorBuilder
     '../libocvector/Indexing/Indexer.vala',
     '../libocvector/Search/namespace.vala',  # Search namespace documentation

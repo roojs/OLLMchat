@@ -269,6 +269,49 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
+		 * Embed a single description and store one VectorMetadata (e.g. for image files).
+		 * Get or create the single row for file_id + element_type; fill fields; embed; set vector_id; save.
+		 */
+		public async void add_single(
+			OLLMfiles.File file,
+			string element_type,
+			string element_name,
+			string description) throws GLib.Error
+		{
+			var existing = new Gee.ArrayList<VectorMetadata>();
+			VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id = %lld AND element_type = '%s'".printf(file.id, element_type),
+				existing
+			);
+
+			var meta = existing.size > 0 ? existing.get(0) : new VectorMetadata() {
+				file_id = file.id,
+				element_type = element_type,
+				element_name = element_name,
+				description = description
+			};
+
+			meta.element_name = element_name;
+			meta.description = description;
+
+			var documents = new Gee.ArrayList<string>();
+			documents.add(description);
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var embed_conn = this.config.connections.get(tool_config.embed.connection);
+			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
+				tool_config.embed.model, documents, -1, false, tool_config.embed.options
+			);
+			if (embed_response.embeddings.size == 0) {
+				return;
+			}
+			var vector_batch = OLLMvector.FloatArray(this.database.dimension);
+			vector_batch.add(this.embed_to_floats(embed_response.embeddings[0]));
+			meta.vector_id = (int64)this.database.vector_count;
+			this.database.add_vectors_batch(vector_batch);
+			meta.saveToDB(this.sql_db, false);
+		}
+
+		/**
 		 * Formats a VectorMetadata into a document string for vectorization.
 		 * 
 		 * Format follows the specification in the plan document:

@@ -35,12 +35,8 @@ namespace OLLMvector.Indexing
 		 */
 		static construct
 		{
-			try {
-				cached_folder_template = new PromptTemplate("analysis-prompt-folder.txt");
-				cached_folder_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load folder prompt template in static constructor: %s", e.message);
-			}
+			cached_folder_template = new PromptTemplate("analysis-prompt-folder.txt");
+			cached_folder_template.load();
 		}
 
 		/**

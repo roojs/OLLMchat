@@ -370,35 +370,33 @@ namespace OLLMchat
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			if (property_name == "images") {
-				this.images.clear();
-				var json_array = property_node.get_array();
-				for (uint i = 0; i < json_array.get_length(); i++) {
-					this.images.add(json_array.get_string_element(i));
-				}
-				value = Value(typeof(Gee.ArrayList));
-				value.set_object(this.images);
-				return true;
+			switch (property_name) {
+				case "images":
+					//this.images.clear();
+					var images_array = property_node.get_array();
+					for (uint i = 0; i < images_array.get_length(); i++) {
+						this.images.add(images_array.get_string_element(i));
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.images);
+					return true;
+				case "tool-calls":
+					// Vala converts tool_calls to tool-calls in JSON
+					//this.tool_calls.clear();
+					var json_array = property_node.get_array();
+					GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
+					for (uint i = 0; i < json_array.get_length(); i++) {
+						var element_node = json_array.get_element(i);
+						this.tool_calls.add(
+							Json.gobject_deserialize(typeof(Response.ToolCall), element_node) as Response.ToolCall
+						);
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.tool_calls);
+					return true;
+				default:
+					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
-			// Handle tool-calls (kebab-case from JSON) - Vala converts tool_calls to tool-calls in JSON
-			if (property_name != "tool-calls") {
-				return default_deserialize_property(property_name, out value, pspec, property_node);
-			}
-			
-			// Convert Json.Array to Gee.ArrayList<ToolCall>
-			this.tool_calls.clear();
-			var json_array = property_node.get_array();
-			GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
-			for (uint i = 0; i < json_array.get_length(); i++) {
-				var element_node = json_array.get_element(i);
-				this.tool_calls.add(
-					Json.gobject_deserialize(typeof(Response.ToolCall), element_node) as Response.ToolCall
-				);
-			}
-			
-			value = Value(typeof(Gee.ArrayList));
-			value.set_object(this.tool_calls);
-			return true;
 		}
 	}
 }

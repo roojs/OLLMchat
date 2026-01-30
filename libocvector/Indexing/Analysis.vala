@@ -36,15 +36,10 @@ namespace OLLMvector.Indexing
 		 */
 		static construct
 		{
-			try {
-				cached_template = new PromptTemplate("analysis-prompt.txt");
-				cached_template.load();
-				
-				cached_file_template = new PromptTemplate("analysis-prompt-file.txt");
-				cached_file_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load prompt templates in static constructor: %s", e.message);
-			}
+			cached_template = new PromptTemplate("analysis-prompt.txt");
+			cached_template.load();
+			cached_file_template = new PromptTemplate("analysis-prompt-file.txt");
+			cached_file_template.load();
 		}
 		
 		/**

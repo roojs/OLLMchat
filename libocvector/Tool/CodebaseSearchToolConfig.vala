@@ -54,6 +54,13 @@ namespace OLLMvector.Tool
 		public OLLMchat.Settings.ModelUsage analysis { get; set; default = new OLLMchat.Settings.ModelUsage(); }
 
 		/**
+		 * Vision model configuration (connection, model, options).
+		 * Optional. When not set or is_valid is false, image analysis is skipped during indexing.
+		 */
+		[Description(nick = "Vision Model", blurb = "Model used for describing images during indexing (default llama3.2-vision:latest). Optional; when invalid, image analysis is skipped.")]
+		public OLLMchat.Settings.ModelUsage vision { get; set; default = new OLLMchat.Settings.ModelUsage(); }
+
+		/**
 		 * Default constructor.
 		 */
 		public CodebaseSearchToolConfig()
@@ -104,6 +111,13 @@ namespace OLLMvector.Tool
 				model = "qwen3:1.7b"  // CHANGED: from "qwen3-coder:30b" to smaller default
 			};
 			this.analysis.options = new OLLMchat.Call.Options() {
+				temperature = 0.0
+			};
+			this.vision = new OLLMchat.Settings.ModelUsage() {
+				connection = connection_url,
+				model = "llama3.2-vision:latest"
+			};
+			this.vision.options = new OLLMchat.Call.Options() {
 				temperature = 0.0
 			};
 		}

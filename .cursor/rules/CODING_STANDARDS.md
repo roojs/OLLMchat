@@ -8,7 +8,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Null checks**: Does the plan avoid adding generic null checks, and only use them where the design explicitly requires null?
 - **String interpolation**: Does the plan avoid `@"..."` string interpolation except for multi-line usage/help text or documentation?
 - **Temporary variables**: Does the plan avoid one-use temporaries and forbid trivial aliases (except aliasing long chains like a.b.c.d.e)?
-- **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)?
+- **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)? Does it avoid one-line if/else with body (always put opening brace and body on separate lines)?
 - **`this.` prefix**: Does the plan assume/describe using `this.` for instance members in new/modified Vala code?
 - **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
 - **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
@@ -141,6 +141,8 @@ this.tools_button_binding = model_usage.model_obj.bind_property(
 
 **IMPORTANT:** Use line breaks for braces in namespaces, classes, and methods. Do NOT use line breaks for braces in control structures (if, case, switch, while, for, etc.).
 
+**IMPORTANT:** Never put the whole if/else (or other control structure) on one line. Always use line breaks so the opening brace and body are on separate lines.
+
 **Bad:**
 ```vala
 class MyClass {
@@ -154,6 +156,11 @@ class MyClass {
 }
 ```
 
+**Also Bad (one-line if with body):**
+```vala
+if (embed_response.embeddings.size == 0) { return; }
+```
+
 **Good:**
 ```vala
 class MyClass
@@ -164,6 +171,13 @@ class MyClass
             doSomething();
         }
     }
+}
+```
+
+**Also Good (body on separate line):**
+```vala
+if (embed_response.embeddings.size == 0) {
+    return;
 }
 ```
 
