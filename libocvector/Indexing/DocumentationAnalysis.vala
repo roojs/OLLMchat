@@ -39,15 +39,10 @@ namespace OLLMvector.Indexing
 		 */
 		static construct
 		{
-			try {
-				cached_template = new PromptTemplate("analysis-prompt-doc-section.txt");
-				cached_template.load();
-				
-				cached_document_template = new PromptTemplate("analysis-prompt-doc-file.txt");
-				cached_document_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load prompt templates in static constructor: %s", e.message);
-			}
+			cached_template = new PromptTemplate("analysis-prompt-doc-section.txt");
+			cached_template.load();
+			cached_document_template = new PromptTemplate("analysis-prompt-doc-file.txt");
+			cached_document_template.load();
 		}
 		
 		/**
@@ -118,7 +113,8 @@ namespace OLLMvector.Indexing
 
 			string result = "";
 			try {
-				result = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				result = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				root_element.category = "other";
 				root_element.description = "";
@@ -224,7 +220,8 @@ namespace OLLMvector.Indexing
 				messages.add(new OLLMchat.Message("user", user_message));
 
 				try {
-					section.description = yield this.request_analysis(messages);
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+					section.description = yield this.request_analysis(messages, tool_config.analysis);
 				} catch (GLib.Error e) {
 					section.description = "";
 				}

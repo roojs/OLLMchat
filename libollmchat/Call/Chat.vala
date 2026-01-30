@@ -338,6 +338,7 @@ namespace OLLMchat.Call
 					var array = node.get_array();
 					foreach (var m in this.messages) {
 						var msg_node = Json.gobject_serialize(m);
+						m.serialize_images(msg_node.get_object());
 						array.add_element(msg_node);
 					}
 					return node;

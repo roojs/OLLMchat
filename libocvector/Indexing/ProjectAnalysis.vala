@@ -34,14 +34,10 @@ namespace OLLMvector.Indexing
 
 		static construct
 		{
-			try {
-				project_template = new PromptTemplate("analysis-prompt-project.txt");
-				project_template.load();
-				dependencies_template = new PromptTemplate("analysis-prompt-dependencies.txt");
-				dependencies_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load project/dependencies prompt templates: %s", e.message);
-			}
+			project_template = new PromptTemplate("analysis-prompt-project.txt");
+			project_template.load();
+			dependencies_template = new PromptTemplate("analysis-prompt-dependencies.txt");
+			dependencies_template.load();
 		}
 
 		public ProjectAnalysis(OLLMchat.Settings.Config2 config, SQ.Database sql_db, OLLMfiles.Folder root_folder)
@@ -94,7 +90,8 @@ namespace OLLMvector.Indexing
 			messages.add(new OLLMchat.Message("user", user_message));
 			string raw_response = "";
 			try {
-				raw_response = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				raw_response = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze_dependencies LLM failed: %s", e.message);
 				return;
@@ -193,7 +190,8 @@ namespace OLLMvector.Indexing
 			messages.add(new OLLMchat.Message("user", user_message));
 			string raw_response = "";
 			try {
-				raw_response = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				raw_response = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze LLM failed: %s", e.message);
 				return new VectorMetadata() {

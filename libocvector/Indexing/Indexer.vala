@@ -111,10 +111,9 @@ namespace OLLMvector.Indexing
 				return false;
 			}
 			
-			// Only index text files
+			// Only index text files or supported binary (e.g. images)
 			if (!file.is_text) {
-				GLib.debug("Skipping file '%s' (not a text file, is_text=false)", file.path);
-				return false;
+				return yield this.index_image_file(file, force);
 			}
 			
 			// Route to appropriate pipeline
@@ -345,6 +344,35 @@ namespace OLLMvector.Indexing
 			}
 			
 			GLib.debug("Completed indexing file '%s' (%d elements)", file.path, tree.elements.size);
+			return true;
+		}
+
+		private async bool index_image_file(OLLMfiles.File file, bool force = false) throws GLib.Error
+		{
+			if (!force) {
+				var mtime = file.mtime_on_disk();
+				if (file.last_vector_scan >= mtime && mtime > 0) {
+					GLib.debug("Skipping image file '%s' (not modified since last scan)", file.path);
+					return false;
+				}
+			}
+			var analyzer = new OLLMvector.Indexing.ImageAnalyzer(this.config);
+			var description = yield analyzer.describe_image(file);
+			if (description == "") {
+				file.last_vector_scan = new DateTime.now_local().to_unix();
+				file.saveToDB(this.sql_db, null, false);
+				return true;
+			}
+			var vector_builder = new VectorBuilder(this.config, this.vector_db, this.sql_db);
+			yield vector_builder.add_single(file, "image", GLib.Path.get_basename(file.path), description);
+			file.last_vector_scan = new DateTime.now_local().to_unix();
+			file.saveToDB(this.sql_db, null, false);
+			try {
+				this.vector_db.save_index();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to save vector database after image '%s': %s", file.path, e.message);
+			}
+			GLib.debug("Completed indexing image file '%s'", file.path);
 			return true;
 		}
 		

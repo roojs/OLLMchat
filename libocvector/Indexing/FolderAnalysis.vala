@@ -35,12 +35,8 @@ namespace OLLMvector.Indexing
 		 */
 		static construct
 		{
-			try {
-				cached_folder_template = new PromptTemplate("analysis-prompt-folder.txt");
-				cached_folder_template.load();
-			} catch (GLib.Error e) {
-				GLib.critical("Failed to load folder prompt template in static constructor: %s", e.message);
-			}
+			cached_folder_template = new PromptTemplate("analysis-prompt-folder.txt");
+			cached_folder_template.load();
 		}
 
 		/**
@@ -183,7 +179,8 @@ namespace OLLMvector.Indexing
 			GLib.debug("Folder: %s", folder.path);
 			string folder_description;
 			try {
-				folder_description = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				folder_description = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to analyze folder %s: %s", folder.path, e.message);
 				folder_description = "";

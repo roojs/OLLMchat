@@ -133,6 +133,7 @@ namespace OLLMchat
 		
 		public string content { get; set; default = ""; }
 		public string thinking { get; set; default = ""; }
+		public Gee.ArrayList<string> images { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set; default = new Gee.ArrayList<Response.ToolCall>(); }
 		public string tool_call_id { get; set; default = ""; }
 		public string name { get; set; default = ""; }
@@ -253,6 +254,53 @@ namespace OLLMchat
 			return null;
 		}
 
+		/**
+		 * Writes base64-encoded images onto the serialized message object at send time.
+		 * Uses this.images (paths only). Updates message_obj in place; does not mutate the Message.
+		 * Validates: file exists, MIME type is image. Skips invalid paths.
+		 */
+		public void serialize_images(Json.Object message_obj)
+		{
+			if (!message_obj.has_member("images")) {
+				return;
+			}
+			message_obj.remove_member("images");
+			var arr = new Json.Array();
+			foreach (var path in this.images) {
+				var file = GLib.File.new_for_path(path);
+				if (!file.query_exists()) {
+					continue;
+				}
+				string? content_type = null;
+				try {
+					var info = file.query_info(
+						GLib.FileAttribute.STANDARD_CONTENT_TYPE,
+						GLib.FileQueryInfoFlags.NONE,
+						null
+					);
+					content_type = info.get_content_type();
+				} catch (GLib.Error e) {
+					continue;
+				}
+				if (content_type == null || !content_type.has_prefix("image/")) {
+					continue;
+				}
+				uint8[] data;
+				try {
+					GLib.FileUtils.get_data(path, out data);
+				} catch (GLib.Error e) {
+					continue;
+				}
+				arr.add_string_element(GLib.Base64.encode(data));
+			}
+			if (arr.get_length() == 0) {
+				return;
+			}
+			var n = new Json.Node(Json.NodeType.ARRAY);
+			n.init_array(arr);
+			message_obj.set_member("images", n);
+		}
+
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
@@ -303,6 +351,18 @@ namespace OLLMchat
 					}
 					return default_serialize_property(property_name, value, pspec);
 				
+				case "images":
+					if (this.images.size == 0) {
+						return null;
+					}
+					var arr = new Json.Array();
+					for (int i = 0; i < this.images.size; i++) {
+						arr.add_string_element(this.images.get(i));
+					}
+					var n = new Json.Node(Json.NodeType.ARRAY);
+					n.init_array(arr);
+					return n;
+				
 				default:
 					return default_serialize_property(property_name, value, pspec);
 			}
@@ -310,25 +370,33 @@ namespace OLLMchat
 		
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			// Handle tool-calls (kebab-case from JSON) - Vala converts tool_calls to tool-calls in JSON
-			if (property_name != "tool-calls") {
-				return default_deserialize_property(property_name, out value, pspec, property_node);
+			switch (property_name) {
+				case "images":
+					//this.images.clear();
+					var images_array = property_node.get_array();
+					for (uint i = 0; i < images_array.get_length(); i++) {
+						this.images.add(images_array.get_string_element(i));
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.images);
+					return true;
+				case "tool-calls":
+					// Vala converts tool_calls to tool-calls in JSON
+					//this.tool_calls.clear();
+					var json_array = property_node.get_array();
+					GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
+					for (uint i = 0; i < json_array.get_length(); i++) {
+						var element_node = json_array.get_element(i);
+						this.tool_calls.add(
+							Json.gobject_deserialize(typeof(Response.ToolCall), element_node) as Response.ToolCall
+						);
+					}
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.tool_calls);
+					return true;
+				default:
+					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
-			
-			// Convert Json.Array to Gee.ArrayList<ToolCall>
-			this.tool_calls.clear();
-			var json_array = property_node.get_array();
-			GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
-			for (uint i = 0; i < json_array.get_length(); i++) {
-				var element_node = json_array.get_element(i);
-				this.tool_calls.add(
-					Json.gobject_deserialize(typeof(Response.ToolCall), element_node) as Response.ToolCall
-				);
-			}
-			
-			value = Value(typeof(Gee.ArrayList));
-			value.set_object(this.tool_calls);
-			return true;
 		}
 	}
 }
