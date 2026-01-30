@@ -20,7 +20,13 @@ ollmchat_deps = [
 ollmchat_resources = gnome.compile_resources(
   'ollmchat-resources',
   '../resources/gresources.xml',
-  source_dir: ['../resources/ollmchat-agents/code-assistant', '../resources', '../resources/wrapped-tools', '../resources/ocvector'],
+  source_dir: [
+	'../resources/agents', 
+	'../resources/ollmchat-agents/code-assistant', 
+	'../resources', 
+	'../resources/wrapped-tools', 
+	'../resources/ocvector'
+	],
   c_name: 'ollmchat_resources'
 )
 

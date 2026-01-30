@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
+  <gresource prefix="/agents">
+    <file>codebase-analyzer.md</file>
+    <file>codebase-locator.md</file>
+    <file>codebase-pattern-finder.md</file>
+    <file>document-analyzer.md</file>
+    <file>document-locator.md</file>
+    <file>web-search-researcher.md</file>
+  </gresource>
   <gresource prefix="/ollmchat-agents/code-assistant">
     <file>introduction.md</file>
     <file>communication.md</file>
