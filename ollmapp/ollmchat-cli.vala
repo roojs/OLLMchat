@@ -31,6 +31,7 @@ namespace OLLMapp
 		private static string? opt_agent_tool = null;
 		private static string? opt_project = null;
 		private static bool opt_create_project = false;
+		private static string? opt_image = null;
 		
 		public OLLMchat.Settings.Config2 config { get; set; }
 		public string data_dir { get; set; }
@@ -56,19 +57,21 @@ Examples:
   {ARG} --agent-tool=codebase-locator --project=/path/to/project "Find all files related to authentication"
   {ARG} --agent-tool=codebase-analyzer --project=/path/to/project "Explain how the database connection is established"
   echo "Find files that handle user login" | {ARG} --agent-tool=codebase-locator --project=/path/to/project
+  {ARG} --model llama3.2-vision --image screenshot.png "What is shown in this image?"
 """; }
 		
 		const OptionEntry[] options = {
 			{ "debug", 'd', 0, OptionArg.NONE, ref opt_debug, "Enable debug output", null },
-			{ "url", 0, 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
+			{ "url", 'u', 0, OptionArg.STRING, ref opt_url, "Ollama server URL", "URL" },
 			{ "api-key", 0, 0, OptionArg.STRING, ref opt_api_key, "API key (optional)", "KEY" },
 			{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model name", "MODEL" },
-			{ "stats", 0, 0, OptionArg.STRING, ref opt_stats, "Output statistics from last message to file", "FILE" },
-			{ "list-models", 0, 0, OptionArg.NONE, ref opt_list_models, "List available models and exit", null },
-			{ "ctx-num", 0, 0, OptionArg.INT, ref opt_ctx_num, "Context window size in tokens (1K = 1024)", "NUM" },
-			{ "agent-tool", 0, 0, OptionArg.STRING, ref opt_agent_tool, "Agent tool name to execute (optional)", "NAME" },
+			{ "stats", 's', 0, OptionArg.STRING, ref opt_stats, "Output statistics from last message to file", "FILE" },
+			{ "list-models", 'l', 0, OptionArg.NONE, ref opt_list_models, "List available models and exit", null },
+			{ "ctx-num", 'c', 0, OptionArg.INT, ref opt_ctx_num, "Context window size in tokens (1K = 1024)", "NUM" },
+			{ "agent-tool", 'a', 0, OptionArg.STRING, ref opt_agent_tool, "Agent tool name to execute (optional)", "NAME" },
 			{ "project", 'p', 0, OptionArg.STRING, ref opt_project, "Project directory path (REQUIRED with --agent-tool)", "PATH" },
 			{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Allow creating project if it doesn't exist (use with --project)", null },
+			{ "image", 'i', 0, OptionArg.STRING, ref opt_image, "Image file path to send with the query (vision models)", "PATH" },
 			{ null }
 		};
 		
@@ -116,6 +119,7 @@ Examples:
 			opt_agent_tool = null;
 			opt_project = null;
 			opt_create_project = false;
+			opt_image = null;
 			
 			string[] args = command_line.get_arguments();
 			
@@ -457,6 +461,9 @@ Examples:
 			// Create user message and send through Manager's session
 			// Manager signals are already connected in setup_manager() for streaming output
 			var user_message = new OLLMchat.Message("user", query);
+			if (opt_image != null && opt_image != "") {
+				user_message.images.add(opt_image);
+			}
 			yield this.manager.send(this.manager.session, user_message, null);
 			
 			// Get final response from session messages
