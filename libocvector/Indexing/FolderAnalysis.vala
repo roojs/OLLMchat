@@ -183,7 +183,8 @@ namespace OLLMvector.Indexing
 			GLib.debug("Folder: %s", folder.path);
 			string folder_description;
 			try {
-				folder_description = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				folder_description = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to analyze folder %s: %s", folder.path, e.message);
 				folder_description = "";

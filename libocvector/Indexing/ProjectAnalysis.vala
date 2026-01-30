@@ -94,7 +94,8 @@ namespace OLLMvector.Indexing
 			messages.add(new OLLMchat.Message("user", user_message));
 			string raw_response = "";
 			try {
-				raw_response = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				raw_response = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze_dependencies LLM failed: %s", e.message);
 				return;
@@ -193,7 +194,8 @@ namespace OLLMvector.Indexing
 			messages.add(new OLLMchat.Message("user", user_message));
 			string raw_response = "";
 			try {
-				raw_response = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				raw_response = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze LLM failed: %s", e.message);
 				return new VectorMetadata() {

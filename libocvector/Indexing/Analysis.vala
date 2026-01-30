@@ -241,7 +241,8 @@ namespace OLLMvector.Indexing
 			GLib.debug("Analyzing file: %s", file_basename);
 			string file_description;
 			try {
-				file_description = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				file_description = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to analyze file %s: %s", tree.file.path, e.message);
 				file_description = "";
@@ -359,7 +360,8 @@ namespace OLLMvector.Indexing
 			}
 			messages.add(new OLLMchat.Message("user", user_message));
 
-			var description = yield this.request_analysis(messages);
+			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var description = yield this.request_analysis(messages, tool_config.analysis);
 			if (description != "" && description.has_prefix("```")) {
 				var lines = description.split("\n");
 				if (lines.length > 2) {

@@ -118,7 +118,8 @@ namespace OLLMvector.Indexing
 
 			string result = "";
 			try {
-				result = yield this.request_analysis(messages);
+				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+				result = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				root_element.category = "other";
 				root_element.description = "";
@@ -224,7 +225,8 @@ namespace OLLMvector.Indexing
 				messages.add(new OLLMchat.Message("user", user_message));
 
 				try {
-					section.description = yield this.request_analysis(messages);
+					var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+					section.description = yield this.request_analysis(messages, tool_config.analysis);
 				} catch (GLib.Error e) {
 					section.description = "";
 				}
