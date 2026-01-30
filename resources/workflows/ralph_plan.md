@@ -1,7 +1,7 @@
 ---
 name: ralph_plan
 description: Create implementation plan for highest priority Linear ticket ready for spec
-model: opus
+model: glm-4.7-flash:Q8_0
 manages: plan-file
 agents:
   - codebase-locator

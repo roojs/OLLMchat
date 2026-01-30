@@ -1,7 +1,7 @@
 ---
 name: debug
 description: Debug issues by investigating logs, database state, and git history
-model: opus
+model: glm-4.7-flash:Q8_0
 agents:
   - codebase-locator
   - codebase-analyzer
