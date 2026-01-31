@@ -347,10 +347,9 @@ namespace OLLMfiles
 			project.is_project = true;
 			this.file_cache.set(project.path, project);
 			this.projects.append(project);
-			if (this.db != null) {
-				project.saveToDB(this.db, null, false);
-				this.db.is_dirty = true;
-			}
+			project.saveToDB(this.db, null, false);
+			this.db.is_dirty = true;
+		
 			return project;
 		}
 
@@ -367,10 +366,9 @@ namespace OLLMfiles
 				this.active_project_changed(null);
 			}
 			this.projects.remove(project);
-			if (this.db != null) {
-				project.saveToDB(this.db, null, false);
-				this.db.is_dirty = true;
-			}
+			project.saveToDB(this.db, null, false);
+			this.db.is_dirty = true;
+		
 		}
 		
 		/**
