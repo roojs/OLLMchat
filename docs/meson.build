@@ -71,6 +71,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/Diff/Differ.vala',
     # libocmarkdown sources (must come before libocmarkdowngtk)
     '../libocmarkdown/Parser.vala',
+    '../libocmarkdown/TableState.vala',
     '../libocmarkdown/MarkerMap.vala',
     '../libocmarkdown/FormatMap.vala',
     '../libocmarkdown/BlockMap.vala',

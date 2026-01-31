@@ -91,12 +91,12 @@ namespace Markdown
 	 */
 	public class Parser
 	{
-		
-		private RenderBase renderer;
+		internal RenderBase renderer { get; private set; }
 		public FormatMap formatmap { get; set; default = new FormatMap(); }
+		internal TableState? table_state { get; set; }
 		public BlockMap blockmap { get; set; default = new BlockMap(); }
-		private Gee.ArrayList<FormatType> state_stack { 
-			set; get; default = new Gee.ArrayList<FormatType>(); }
+		internal Gee.ArrayList<FormatType> state_stack {
+			get; set; default = new Gee.ArrayList<FormatType>(); }
 
 		private string leftover_chunk = "";
 		private bool in_literal = false;
@@ -314,7 +314,7 @@ namespace Markdown
 		 * 
 		 * @param format_type The format type detected
 		 */
-		private void got_format(FormatType format_type)
+		internal void got_format(FormatType format_type)
 		{
 			// some format types dont have start and end flags..
 			switch (format_type) {
@@ -348,7 +348,7 @@ namespace Markdown
 		 * @param is_start True to start the format, false to end it
 		 * @param format_type The format type
 		 */
-		private void do_format(bool is_start, FormatType format_type)
+		internal void do_format(bool is_start, FormatType format_type)
 		{
 			switch (format_type) {
 				case FormatType.BOLD_ITALIC:
@@ -705,7 +705,7 @@ namespace Markdown
 			}
 		}
 
-		private string add_html(string chunk)
+		internal string add_html(string chunk)
 		{
 			// If chunk is empty, return "<" to be picked up next time
 			if (chunk.length == 0) {
