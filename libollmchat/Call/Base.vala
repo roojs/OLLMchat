@@ -32,6 +32,8 @@ namespace OLLMchat.Call
 		public string chat_content { get; set; default = ""; }
 		protected string url_endpoint;
 		protected string http_method = "POST";
+		/** If true, base URL has /api stripped so the request goes to host/v1/... (OpenAI-compatible). */
+		protected bool is_openai = false;
 		public GLib.Cancellable? cancellable { get; set; default = null; }
 		public Response.Base? streaming_response { get; set; default = null; }
 
@@ -65,6 +67,10 @@ namespace OLLMchat.Call
 		var base_url = this.connection.url;
 		if (!base_url.has_suffix("/")) {
 			base_url += "/";
+		}
+		if (this.is_openai && base_url.has_suffix("api/")) {
+			// OpenAI-compatible v1 endpoints live at host/v1/..., not host/api/v1/...
+			base_url = base_url.substring(0, base_url.length - 4);
 		}
 		return base_url + this.url_endpoint;
 	}
@@ -376,23 +382,11 @@ namespace OLLMchat.Call
 			});
 
 			for (int i = 0; i < array.get_length(); i++) {
-				var element_node = array.get_element(i);
-				var generator = new Json.Generator();
-				generator.set_root(element_node);
-				var json_str = generator.to_data(null);
-				var item_obj = Json.gobject_from_data(typeof(Response.Model), json_str, -1) as Response.Model;
+				var item_obj = Json.gobject_deserialize(
+					typeof(Response.Model), array.get_element(i)) as Response.Model;
 				if (item_obj == null) {
 					continue;
 				}
-				
-				// For ps() API responses: set name from model property
-				// This ensures name is always set for consistency
-				// Only do this for Ps, as Models already has name set correctly
-				if (this is Ps) {
-					GLib.debug("PsCall: setting name='%s' from model='%s'", item_obj.model, item_obj.name);
-					item_obj.name = item_obj.model;
-				}
-				
 				items.add(item_obj);
 			}
 

@@ -19,7 +19,11 @@
 namespace OLLMchat.Call
 {
 	/**
-	 * API call to list available models on the Ollama server.
+	 * API call to list available models (OpenAI-compatible).
+	 *
+	 * Uses the /api/v1/models endpoint (OpenAI API standard). See
+	 * [[https://docs.ollama.com/api/openai-compatibility#/v1/models]] for the API.
+	 * Returns a standardized response format with model metadata.
 	 *
 	 * Retrieves a list of all models that are available for use.
 	 */
@@ -28,13 +32,20 @@ namespace OLLMchat.Call
 		public Models(Settings.Connection connection)
 		{
 			base(connection);
-			this.url_endpoint = "tags";
+			this.is_openai = true;
+			this.url_endpoint = "v1/models";
 			this.http_method = "GET";
 		}
 
 		public async Gee.ArrayList<Response.Model> exec_models() throws Error
 		{
-			return yield this.get_models("models");
+			var list = yield this.get_models("data");
+			foreach (var m in list) {
+				if (m.name == "" && m.id != "") {
+					m.name = m.id;
+				}
+			}
+			return list;
 		}
 	}
 }

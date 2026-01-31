@@ -75,13 +75,9 @@ namespace OLLMapp
 				}
 				
 				// Found a working connection - now ensure default model is set before creating history manager
-				yield this.initialize_model(config, working_conn);
-				
-				// Check if model is still empty after initialization
-				var default_model = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
-				if (default_model == null || default_model.model == "") {
+				if (!(yield this.initialize_model(config, working_conn))) {
 					if (!(yield this.show_settings(
-						"No model configured. Please select a model.",
+						"No chat model found (only embedding models available). Please add or select a model.",
 						"models"))) {
 						return false;
 					}
@@ -108,11 +104,19 @@ namespace OLLMapp
 					}
 				}
 				
-				// Try to verify model, but don't block initialization if it fails
+				// Try to verify model; if it fails, fix default in place with first non-embedding model
 				try {
 					yield this.window.history_manager.ensure_model_usage();
 				} catch (GLib.Error e) {
-					GLib.warning("Initialize.vala: Model verification failed: %s. Continuing initialization - user can select model later.", e.message);
+					GLib.warning("Initialize.vala: Model verification failed: %s. Fixing default model.", e.message);
+					if (!(yield this.initialize_model(config, working_conn))) {
+						if (!(yield this.show_settings(
+							"No chat model found (only embedding models available). Please add or select a model.",
+							"models"))) {
+							return false;
+						}
+						continue;
+					}
 				}
 				
 				break;
@@ -123,64 +127,93 @@ namespace OLLMapp
 		
 		/**
 		 * Initializes the default model if it's not set.
-		 * Finds the first available model from the working connection and sets it in config.
-		 * 
+		 * Finds the first available non-embedding, non-hidden model from the working connection and sets it in config.
+		 *
 		 * @param config The Config2 instance (contains connection and model configuration)
 		 * @param working_conn The working connection to use for finding models
+		 * @return true if default model was set, false if no chat model available (e.g. only embedding models)
 		 */
-		private async void initialize_model(OLLMchat.Settings.Config2 config, OLLMchat.Settings.Connection working_conn)
+		private async bool initialize_model(OLLMchat.Settings.Config2 config, OLLMchat.Settings.Connection working_conn)
 		{
 			var default_model = config.usage.get("default_model") as OLLMchat.Settings.ModelUsage;
-			
-			// If model is set, verify it exists on the connection
+
+			// Load models from working connection first so we can check is_embedding
+			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(config);
+			yield temp_connection_models.refresh();
+
+			var connection_models = temp_connection_models.connection_map.get(working_conn.url);
+			if (connection_models == null || connection_models.size == 0) {
+				GLib.warning("Initialize.vala: No models found for working connection '%s'", working_conn.url);
+				return false;
+			}
+
+			// If default model is set, check if it's embedding and unset it (chat default must not be embedding-only)
 			if (default_model != null && default_model.model != "") {
 				if (default_model.connection == "") {
 					default_model.connection = working_conn.url;
 				}
-				
+				var usage = temp_connection_models.find_model(default_model.connection, default_model.model);
+				if (usage != null && usage.model_obj != null && usage.model_obj.is_embedding) {
+					default_model.model = "";
+				}
+			}
+
+			// If model is still set, verify it exists and is not embedding before keeping it
+			if (default_model != null && default_model.model != "") {
 				// Check if connection already has models loaded to avoid redundant API call
 				var conn_obj = config.connections.get(default_model.connection);
 				if (conn_obj != null && conn_obj.models.size > 0 && conn_obj.models.has_key(default_model.model)) {
-					return;
+					var usage = temp_connection_models.find_model(default_model.connection, default_model.model);
+					if (usage == null || usage.model_obj == null || !usage.model_obj.is_embedding) {
+						return true;
+					}
+					default_model.model = "";
+				} else {
+					// Models not loaded or model not found, verify (will load models if needed)
+					if (yield default_model.verify_model(config)) {
+						var usage = temp_connection_models.find_model(default_model.connection, default_model.model);
+						if (usage == null || usage.model_obj == null || !usage.model_obj.is_embedding) {
+							return true;
+						}
+						default_model.model = "";
+					} else {
+						// Model doesn't exist, clear it and find a new one
+						default_model.model = "";
+					}
 				}
-				
-				// Models not loaded or model not found, verify (will load models if needed)
-				if (yield default_model.verify_model(config)) {
-					return;
+			}
+
+			// Pick first non-embedding, non-hidden model (chat default)
+			OLLMchat.Settings.ModelUsage? first_chat_model = null;
+			foreach (var model_usage in connection_models.values) {
+				if (model_usage.model_obj == null
+					|| model_usage.model_obj.is_hidden
+					|| model_usage.model_obj.is_embedding) {
+					continue;
 				}
-				
-				// Model doesn't exist, clear it and find a new one
-				default_model.model = "";
+				first_chat_model = model_usage;
+				break;
+			}
+			if (first_chat_model == null) {
+				GLib.warning("Initialize.vala: No non-embedding chat model found for connection '%s'", working_conn.url);
+				return false;
 			}
 			
-			// Load models from working connection
-			var temp_connection_models = new OLLMchat.Settings.ConnectionModels(config);
-			yield temp_connection_models.refresh();
-			
-			var connection_models = temp_connection_models.connection_map.get(working_conn.url);
-			if (connection_models == null || connection_models.size == 0) {
-				GLib.warning("Initialize.vala: No models found for working connection '%s'", working_conn.url);
-				return;
-			}
-			
-			// Get first model (already verified to exist by refresh())
-			var first_model = connection_models.values.to_array()[0];
 			if (default_model == null) {
 				default_model = new OLLMchat.Settings.ModelUsage() {
-					connection = working_conn.url,
-					model = first_model.model,
-					options = new OLLMchat.Call.Options()
+					connection = first_chat_model.connection,
+					model = first_chat_model.model,
+					options = first_chat_model.options.clone()
 				};
 				config.usage.set("default_model", default_model);
 			} else {
-				default_model.model = first_model.model;
-				if (default_model.connection == "") {
-					default_model.connection = working_conn.url;
-				}
+				default_model.connection = first_chat_model.connection;
+				default_model.model = first_chat_model.model;
+				default_model.options = first_chat_model.options.clone();
 			}
 			
-			// No need to verify again - refresh() already loaded and verified the model exists
 			config.save();
+			return true;
 		}
 		
 		/**

@@ -45,6 +45,27 @@ namespace OLLMchat.Response
 		 * use update_from_list_model() to preserve the name from the list API.
 		 */
 		public string name { get; set; default = ""; }
+
+		/**
+		 * Model identifier from v1/model list API (JSON "id").
+		 * Callers sync to name when needed (e.g. Call.Models post-process).
+		 */
+		public string id { get; set; default = ""; }
+
+		/**
+		 * Object type from v1/model API (e.g. "model").
+		 */
+		public string object { get; set; default = ""; }
+
+		/**
+		 * Creation timestamp (Unix epoch) from v1/model API.
+		 */
+		public int64 created { get; set; default = 0; }
+
+		/**
+		 * Owner from v1/model API (e.g. "library", "roojs").
+		 */
+		public string owned_by { get; set; default = ""; }
 		
 		/**
 		 * Last modified timestamp in ISO 8601 format.
@@ -262,6 +283,16 @@ namespace OLLMchat.Response
 		}
 
 		/**
+		 * Whether this model is embedding-only (capability from show API).
+		 * Single place for embedding check; Ollama may use "embed" or "embedding" in capabilities.
+		 */
+		public bool is_embedding {
+			get {
+				return this.capabilities.contains("embedding");
+			}
+		}
+
+		/**
 		 * Pango markup for subtitle: model name + capability badges (tools, embed, vision, thinking).
 		 * Each badge has a distinct background colour and bold label.
 		 */
@@ -273,8 +304,8 @@ namespace OLLMchat.Response
 				if (this.can_call) {
 					s += " " + span_fmt.printf("#ffdd99", GLib.Markup.escape_text("tools", -1));
 				}
-				if (this.capabilities.contains("embed") || this.capabilities.contains("embedding")) {
-					s += " " + span_fmt.printf("#e1bee7", GLib.Markup.escape_text("embed", -1));
+				if (this.is_embedding) {
+					s += " " + span_fmt.printf("#e1bee7", GLib.Markup.escape_text("embedding", -1));
 				}
 				if (this.capabilities.contains("vision")) {
 					s += " " + span_fmt.printf("#c8e6c9", GLib.Markup.escape_text("vision", -1));

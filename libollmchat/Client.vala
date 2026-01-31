@@ -146,15 +146,16 @@ namespace OLLMchat
 		}
 
 		/**
-		* Lists all available models on the Ollama server.
-		*
-		* Retrieves a list of all models that are available for use on the server.
-		* This calls the /api/tags endpoint to get the complete list of installed models.
-		*
-		* @return ArrayList of Response.Model objects representing available models
-		* @throws Error if the request fails or response is invalid
-		* @since 1.0
-		*/
+		 * Lists all available models (OpenAI-compatible).
+		 *
+		 * Retrieves a list of all models that are available for use on the server.
+		 * This calls the /api/v1/model endpoint (OpenAI API standard), which works
+		 * with Ollama and other OpenAI-compatible servers.
+		 *
+		 * @return ArrayList of Response.Model objects representing available models
+		 * @throws Error if the request fails or response is invalid
+		 * @since 1.0
+		 */
 		public async Gee.ArrayList<Response.Model> models() throws Error
 		{
 			var call = new Call.Models(this.connection);

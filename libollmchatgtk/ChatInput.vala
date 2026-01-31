@@ -450,6 +450,13 @@ namespace OLLMchatGtk
 					
 					// Activate model on session (stores ModelUsage with options overlaid from config)
 					this.manager.session.activate_model(model_usage);
+
+					// Persist selected model as default for next run (config.usage["default_model"] == default_model_usage)
+					var def = this.manager.default_model_usage;
+					def.connection = model_usage.connection;
+					def.model = model_usage.model;
+					def.options = model_usage.options.clone();
+					this.manager.config.save();
 					
 					// Update binding to new model's can_call property for automatic visibility updates
 					this.update_model_widgets_visibility();
@@ -558,8 +565,6 @@ namespace OLLMchatGtk
 		 */
 		public async void update_models()
 		{
-			GLib.debug("update_models: session.model='%s'", this.manager.session.model);
-			
 			// Set selection to match session.model_usage - no refresh, just update selection
 			if (this.manager.session != null) {
 				// Find position in sorted_models

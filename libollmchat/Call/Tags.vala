@@ -19,26 +19,25 @@
 namespace OLLMchat.Call
 {
 	/**
-	 * API call to list currently running models on the Ollama server.
+	 * API call to list available models using the /api/tags endpoint (Ollama-specific).
 	 *
-	 * Shows which models are currently loaded in memory and running.
+	 * This endpoint is Ollama-specific and not part of the OpenAI API standard.
+	 * For new code, use Call.Models which uses /api/v1/model (OpenAI-compatible).
+	 *
+	 * @deprecated Use Call.Models instead
 	 */
-	public class Ps : Base
+	public class Tags : Base
 	{
-	public Ps(Settings.Connection connection)
-	{
-		base(connection);
-		this.url_endpoint = "ps";
-		this.http_method = "GET";
-	}
+		public Tags(Settings.Connection connection)
+		{
+			base(connection);
+			this.url_endpoint = "tags";
+			this.http_method = "GET";
+		}
 
 		public async Gee.ArrayList<Response.Model> exec_models() throws Error
 		{
-			var list = yield this.get_models("models");
-			foreach (var m in list) {
-				m.name = m.model;
-			}
-			return list;
+			return yield this.get_models("models");
 		}
 	}
 }

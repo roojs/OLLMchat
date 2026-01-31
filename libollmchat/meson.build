@@ -64,6 +64,7 @@ ollmchat_ollama_src = files([
   'Call/Chat.vala',
   'Call/Embed.vala',
   'Call/Models.vala',
+  'Call/Tags.vala',
   'Call/Options.vala',
   'Call/Ps.vala',
   'Call/Pull.vala',

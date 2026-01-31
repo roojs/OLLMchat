@@ -54,7 +54,11 @@ namespace OLLMchatGtk.List
 			if (model_usage_a == null || model_usage_b == null) {
 				return Gtk.Ordering.EQUAL;
 			}
-			
+			// Same (connection, model) means same model – equal for matching (e.g. find_position)
+			if (model_usage_a.connection == model_usage_b.connection
+				 && model_usage_a.model == model_usage_b.model) {
+				return Gtk.Ordering.EQUAL;
+			}
 			int cmp = strcmp(
 				model_usage_a.display_name_with_size().down(),
 				model_usage_b.display_name_with_size().down()

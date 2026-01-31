@@ -224,14 +224,9 @@ namespace OLLMtools.Child
 			
 			// Step 2: Try to use model listed in agent frontmatter
 			var model_usage = this.model == "" ? null : manager.connection_models.find_model_by_name(this.model);
-			if (model_usage != null && model_usage.model_obj != null) {
-				// Check if model is an embedding model (simple name-based check for now)
-				// TODO: Use model_obj.is_embedding() when that method is added to Response.Model
-				var model_name_lower = model_usage.model.down();
-				if (model_name_lower.contains("embed") || model_name_lower.contains("bge")) {
-					// Skip embedding models
-					model_usage = null;
-				}
+			if (model_usage != null && model_usage.model_obj != null && model_usage.model_obj.is_embedding) {
+				// Skip embedding models
+				model_usage = null;
 			}
 			if (model_usage != null && model_usage.model_obj != null) {
 				// Create/update config with model_usage
@@ -253,14 +248,9 @@ namespace OLLMtools.Child
 			if (connection_models_map != null && connection_models_map.size > 0) {
 				// Get first model from the map (iterate once to get first value)
 				foreach (var default_model_usage in connection_models_map.values) {
-					// If it's not an embedding model, use it; otherwise give up
-					if (default_model_usage.model_obj != null) {
-						// Check if model is an embedding model (simple name-based check for now)
-						// TODO: Use model_obj.is_embedding() when that method is added to Response.Model
-						var model_name_lower = default_model_usage.model.down();
-						if (!model_name_lower.contains("embed") && !model_name_lower.contains("bge")) {
-							return default_model_usage;
-						}
+					if (default_model_usage.model_obj != null
+							 && !default_model_usage.model_obj.is_embedding) {
+						return default_model_usage;
 					}
 					// If first model is embedding, give up (don't check others)
 					return null;

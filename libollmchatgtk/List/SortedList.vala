@@ -119,9 +119,9 @@ namespace OLLMchatGtk.List
 		
 		/**
 		 * Find the position of an object in the sorted list.
-		 * 
-		 * Uses object reference comparison for efficiency.
-		 * 
+		 *
+		 * Uses list equality from sorter (items are equal when sorter.compare returns EQUAL).
+		 *
 		 * @param item The object to find
 		 * @return The position if found, Gtk.INVALID_LIST_POSITION otherwise
 		 */
