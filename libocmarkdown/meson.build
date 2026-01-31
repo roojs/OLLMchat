@@ -21,6 +21,10 @@ ocmarkdown_deps = [
 
 ocmarkdown_src = files([
   'Parser.vala',
+  'MarkerMap.vala',
+  'FormatMap.vala',
+  'BlockMap.vala',
+  'ListMap.vala',
   'RenderBase.vala',
   'PangoRender.vala',
   'DummyRenderer.vala',
