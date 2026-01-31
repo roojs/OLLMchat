@@ -89,6 +89,11 @@ namespace Markdown
 		public virtual void on_code_block(bool is_start, string lang) {}
 		public virtual void on_quote(bool is_start, uint level) {}
 		public virtual void on_hr() {}
+		// Table callbacks (block-level; default empty so subclasses can override)
+		public virtual void on_table(bool is_start) {}
+		public virtual void on_table_row(bool is_start) {}
+		public virtual void on_table_hcell(bool is_start, int align) {}
+		public virtual void on_table_cell(bool is_start, int align) {}
 		public virtual void on_a(bool is_start, string href, string title, bool is_autolink) {}
 		public virtual void on_img(string src, string? title) {}
 		public virtual void on_br() {}

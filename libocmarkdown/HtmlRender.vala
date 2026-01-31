@@ -93,10 +93,10 @@ namespace Markdown
 		{
 			// Find the tag in the stack (search from end to start)
 			for (int i = this.open_tags.size - 1; i >= 0; i--) {
-				if (this.open_tags[i] == tag) {
+				if (this.open_tags.get(i) == tag) {
 					// Close all tags after this one first (in reverse order)
 					while (this.open_tags.size > i + 1) {
-						var tag_to_close = this.open_tags[this.open_tags.size - 1];
+						var tag_to_close = this.open_tags.get(this.open_tags.size - 1);
 						this.open_tags.remove_at(this.open_tags.size - 1);
 						this.append_indent();
 						this.html_output.append("</" + tag_to_close + ">");
@@ -132,8 +132,7 @@ namespace Markdown
 			
 			// Close any remaining open tags (including lists)
 			while (this.open_tags.size > 0) {
-				var tag = this.open_tags[this.open_tags.size - 1];
-				this.close_tag(tag);
+				this.close_tag(this.open_tags.get(this.open_tags.size - 1));
 			}
 			
 			return this.html_output.str;
@@ -143,16 +142,16 @@ namespace Markdown
 		public override void on_h(bool is_start, uint level)
 		{
 			if (!is_start) {
-				GLib.debug("HtmlRender.on_h: END h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
+				GLib.debug("END h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
 				this.close_tag("h" + level.to_string());
-				GLib.debug("HtmlRender.on_h: after close, output_length=%ld", (long)this.html_output.len);
+				GLib.debug("after close, output_length=%ld", (long)this.html_output.len);
 				return;
 			}
 			
-			GLib.debug("HtmlRender.on_h: START h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
+			GLib.debug("START h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
 			this.html_output.append("<h" + level.to_string() + ">");
 			this.open_tags.add("h" + level.to_string());
-			GLib.debug("HtmlRender.on_h: after append, output='%s'", this.html_output.str);
+			GLib.debug("after append, output='%s'", this.html_output.str);
 		}
 			
 		public override void on_p(bool is_start)
@@ -208,7 +207,7 @@ namespace Markdown
 		private void close_li_if_needed(uint new_indentation)
 		{
 			// Early return if no open <li> tag
-			if (this.open_tags.size == 0 || this.open_tags[this.open_tags.size - 1] != "li") {
+			if (this.open_tags.size == 0 || this.open_tags.get(this.open_tags.size - 1) != "li") {
 				return;
 			}
 			
@@ -253,12 +252,12 @@ namespace Markdown
 			}
 			
 			// Same level - check if we need to switch list type
-			if (this.list_stack[target_index] == list_type) {
+			if (this.list_stack.get(target_index) == list_type) {
 				return; // Same list type at same level - nothing to do
 			}
 			
 			// Switch list type - close old, open new
-			this.close_list_tag(this.list_stack[target_index]);
+			this.close_list_tag(this.list_stack.get(target_index));
 			this.open_list_tag(list_type);
 			// New list at this level - may need to open multiple nested lists
 			// Fill in any missing levels (for big jumps in indentation)
@@ -304,7 +303,7 @@ namespace Markdown
 			// Find the list tag in open_tags
 			var tag_index = -1;
 			for (int i = this.open_tags.size - 1; i >= 0; i--) {
-				if (this.open_tags[i] == tag) {
+				if (this.open_tags.get(i) == tag) {
 					tag_index = i;
 					break;
 				}
@@ -314,7 +313,7 @@ namespace Markdown
 				// Close all tags after the list tag until we hit another list tag
 				// This ensures we only close direct children (list items) and not parent list items
 				while (this.open_tags.size > tag_index + 1) {
-					var tag_to_close = this.open_tags[this.open_tags.size - 1];
+					var tag_to_close = this.open_tags.get(this.open_tags.size - 1);
 					// Stop if we hit another list tag (ul or ol) - that's a nested list, not a child
 					if (tag_to_close == "ul" || tag_to_close == "ol") {
 						break;
@@ -322,9 +321,9 @@ namespace Markdown
 					// If it's a list item, use on_li to close it properly
 					if (tag_to_close == "li") {
 						this.on_li(false);
-					} else {
-						this.close_tag(tag_to_close);
+						continue;
 					}
+					this.close_tag(tag_to_close);
 				}
 				// Close the list tag itself (with proper indentation)
 				this.append_indent();
@@ -344,7 +343,7 @@ namespace Markdown
 			int min_index = (int)level - 1; // Convert to 0-based index
 			// Only close lists that are deeper (stack size > min_index + 1)
 			while (this.list_stack.size > min_index + 1) {
-				this.close_list_tag(this.list_stack[this.list_stack.size - 1]);
+				this.close_list_tag(this.list_stack.get(this.list_stack.size - 1));
 			}
 		}
 		
@@ -361,7 +360,7 @@ namespace Markdown
 				this.html_output.append("</blockquote>");
 				// Remove from open_tags
 				for (int i = this.open_tags.size - 1; i >= 0; i--) {
-					if (this.open_tags[i] == "blockquote") {
+					if (this.open_tags.get(i) == "blockquote") {
 						this.open_tags.remove_at(i);
 						break;
 					}
@@ -402,7 +401,7 @@ namespace Markdown
 		{
 			// Code block text content - escape HTML
 			var escaped = GLib.Markup.escape_text(text, -1);
-			GLib.debug("HtmlRender.on_code_text: text='%s', escaped='%s'", text.replace("\n", "\\n"), escaped.replace("\n", "\\n"));
+			GLib.debug("text='%s', escaped='%s'", text.replace("\n", "\\n"), escaped.replace("\n", "\\n"));
 			this.html_output.append(escaped);
 		}
 		
@@ -415,11 +414,13 @@ namespace Markdown
 			}
 			
 			// Code block - use <pre><code> with optional language class
-			if (lang != null && lang != "") {
-				this.html_output.append("<pre><code class=\"language-" + GLib.Markup.escape_text(lang, -1) + "\">");
-			} else {
+			if (lang == null || lang == "") {
 				this.html_output.append("<pre><code>");
+				this.open_tags.add("code");
+				this.open_tags.add("pre");
+				return;
 			}
+			this.html_output.append("<pre><code class=\"language-" + GLib.Markup.escape_text(lang, -1) + "\">");
 			this.open_tags.add("code");
 			this.open_tags.add("pre");
 		}
@@ -449,6 +450,52 @@ namespace Markdown
 			this.html_output.append("<hr>");
 		}
 		
+		public override void on_table(bool is_start)
+		{
+			if (!is_start) {
+				this.close_tag("table");
+				return;
+			}
+			this.append_indent(false);
+			this.html_output.append("<table>\n");
+			this.open_tags.add("table");
+		}
+		
+		public override void on_table_row(bool is_start)
+		{
+			if (!is_start) {
+				this.close_tag("tr");
+				return;
+			}
+			this.append_indent(false);
+			this.html_output.append("<tr>\n");
+			this.open_tags.add("tr");
+		}
+		
+		public override void on_table_hcell(bool is_start, int align)
+		{
+			if (!is_start) {
+				this.close_tag("th");
+				return;
+			}
+			this.append_indent(false);
+			this.html_output.append("<th style=\"text-align: "
+				+ (align == 0 ? "center" : (align == 1 ? "right" : "left")) + "\">");
+			this.open_tags.add("th");
+		}
+		
+		public override void on_table_cell(bool is_start, int align)
+		{
+			if (!is_start) {
+				this.close_tag("td");
+				return;
+			}
+			this.append_indent(false);
+			this.html_output.append("<td style=\"text-align: "
+				+ (align == 0 ? "center" : (align == 1 ? "right" : "left")) + "\">");
+			this.open_tags.add("td");
+		}
+		
 		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
 			if (!is_start) {
@@ -458,13 +505,13 @@ namespace Markdown
 			
 			// Link - escape href and title
 			var escaped_href = GLib.Markup.escape_text(href, -1);
-			var escaped_title = GLib.Markup.escape_text(title, -1);
-			
-			if (title != "") {
-				this.html_output.append("<a href=\"" + escaped_href + "\" title=\"" + escaped_title + "\">");
-			} else {
+			if (title == "") {
 				this.html_output.append("<a href=\"" + escaped_href + "\">");
+				this.open_tags.add("a");
+				return;
 			}
+			var escaped_title = GLib.Markup.escape_text(title, -1);
+			this.html_output.append("<a href=\"" + escaped_href + "\" title=\"" + escaped_title + "\">");
 			this.open_tags.add("a");
 		}
 		
@@ -472,12 +519,12 @@ namespace Markdown
 		{
 			// Image - escape src and title
 			var escaped_src = GLib.Markup.escape_text(src, -1);
-			if (title != null && title != "") {
-				var escaped_title = GLib.Markup.escape_text(title, -1);
-				this.html_output.append("<img src=\"" + escaped_src + "\" alt=\"" + escaped_title + "\" title=\"" + escaped_title + "\">");
-			} else {
+			if (title == null || title == "") {
 				this.html_output.append("<img src=\"" + escaped_src + "\" alt=\"\">");
+				return;
 			}
+			var escaped_title = GLib.Markup.escape_text(title, -1);
+			this.html_output.append("<img src=\"" + escaped_src + "\" alt=\"" + escaped_title + "\" title=\"" + escaped_title + "\">");
 		}
 		
 		public override void on_br()
@@ -554,24 +601,15 @@ namespace Markdown
 		{
 			// Check for empty line (just whitespace/newlines)
 			var stripped = text.strip();
-			if (stripped.length == 0 && (text.contains("\n") || text == "")) {
-				this.prev_line_was_empty = true;
-			} else {
-				this.prev_line_was_empty = false;
-			}
+			this.prev_line_was_empty = (stripped.length == 0 && (text.contains("\n") || text == ""));
 			
 			// Check for double newline - if previous text ended with \n and current starts with \n
 			// or if text contains \n\n, that indicates a new block - close list items and lists if open
-			bool has_double_newline = false;
-			if (this.prev_text_ended_with_newline && text.has_prefix("\n")) {
-				has_double_newline = true;
-			} else if (text.contains("\n\n")) {
-				has_double_newline = true;
-			}
+			bool has_double_newline = (this.prev_text_ended_with_newline && text.has_prefix("\n")) || text.contains("\n\n");
 			
 			if (has_double_newline) {
 				// Close all list items first
-				while (this.open_tags.size > 0 && this.open_tags[this.open_tags.size - 1] == "li") {
+				while (this.open_tags.size > 0 && this.open_tags.get(this.open_tags.size - 1) == "li") {
 					this.on_li(false);
 				}
 				// Close all lists on double newline (end of list block)
@@ -589,7 +627,7 @@ namespace Markdown
 			
 			// Escape special HTML characters
 			var escaped = GLib.Markup.escape_text(text, -1);
-			GLib.debug("HtmlRender.on_text: text='%s', escaped='%s', open_tags=%d", text, escaped, this.open_tags.size);
+			GLib.debug("text='%s', escaped='%s', open_tags=%d", text, escaped, this.open_tags.size);
 			this.html_output.append(escaped);
 		}
 			
@@ -613,11 +651,12 @@ namespace Markdown
 			}
 			
 			// Opening tag - reconstruct from tag name and attributes
-			if (attributes != "") {
-				this.html_output.append("<" + tag + " " + attributes + ">");
-			} else {
+			if (attributes == "") {
 				this.html_output.append("<" + tag + ">");
+				this.open_tags.add(tag);
+				return;
 			}
+			this.html_output.append("<" + tag + " " + attributes + ">");
 			this.open_tags.add(tag);
 		}
 		

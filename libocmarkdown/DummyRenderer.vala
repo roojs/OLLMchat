@@ -271,6 +271,58 @@ namespace Markdown
 			stdout.printf("<hr>\n");
 		}
 		
+		public override void on_table(bool is_start)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <table>\n");
+				return;
+			}
+			print_indent();
+			stdout.printf("START: <table>\n");
+			indent_level++;
+		}
+		
+		public override void on_table_row(bool is_start)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <tr>\n");
+				return;
+			}
+			print_indent();
+			stdout.printf("START: <tr>\n");
+			indent_level++;
+		}
+		
+		public override void on_table_hcell(bool is_start, int align)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <th>\n");
+				return;
+			}
+			print_indent();
+			stdout.printf("START: <th>\n");
+			indent_level++;
+		}
+		
+		public override void on_table_cell(bool is_start, int align)
+		{
+			if (!is_start) {
+				indent_level--;
+				print_indent();
+				stdout.printf("END: <td>\n");
+				return;
+			}
+			print_indent();
+			stdout.printf("START: <td>\n");
+			indent_level++;
+		}
+		
 		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
 			if (!is_start) {

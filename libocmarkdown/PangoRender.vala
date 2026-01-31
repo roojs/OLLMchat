@@ -516,6 +516,11 @@ namespace Markdown
 			this.pango_markup.append("<span>━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>\n");
 		}
 		
+		public override void on_table(bool is_start) {}
+		public override void on_table_row(bool is_start) {}
+		public override void on_table_hcell(bool is_start, int align) {}
+		public override void on_table_cell(bool is_start, int align) {}
+		
 		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
 			if (!is_start) {

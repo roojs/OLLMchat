@@ -539,6 +539,11 @@ namespace MarkdownGtk
 			this.create_textview();
 		}
 		
+		public override void on_table(bool is_start) {}
+		public override void on_table_row(bool is_start) {}
+		public override void on_table_hcell(bool is_start, int align) {}
+		public override void on_table_cell(bool is_start, int align) {}
+		
 		/**
 		 * Callback for link spans.
 		 * 
