@@ -97,44 +97,77 @@ namespace OLLMapp.SettingsDialog
 
 
 		/**
-		 * Called when the row is expanded - reparents shared options widget.
+		 * Called when the row is expanded. Collapses others, then waits for collapse
+		 * to settle before doing expand setup (options widget, load_defaults, scroll).
 		 */
 		private void expand()
 		{
-			// Recursion guard - prevent re-entry
 			if (this.is_expanding) {
 				return;
 			}
 			this.is_expanding = true;
 
-			// Collapse other expanded ModelRows
 			foreach (var row in this.models_page.model_rows.values) {
 				if (row != this && row.expanded) {
 					row.collapse();
 				}
 			}
 
-			// If widget already exists, just update values
+			this.models_page.scroll_to(this);
+			this.expand_when_collapse_stable();
+		}
+
+		/**
+		 * Schedules expand setup once the list height has been stable for 2 frames
+		 * (i.e. other rows' collapse animations have finished).
+		 */
+		private void expand_when_collapse_stable()
+		{
+			var list = this.get_parent();
+			var last_height = -1;
+			var stable_count = 0;
+			list.add_tick_callback((widget, frame_clock) => {
+				Gdk.Rectangle alloc;
+				widget.get_allocation(out alloc);
+				var h = alloc.height;
+
+				if (h != last_height) {
+					last_height = h;
+					stable_count = 0;
+					return true;
+				}
+				stable_count++;
+				if (stable_count < 2) {
+					return true;
+				}
+				this.models_page.scroll_to(this);
+				this.expand_phase2();
+				return false;
+			});
+		}
+
+		/**
+		 * Runs after collapse has settled: create options if needed, load defaults, scroll to row.
+		 */
+		private void expand_phase2()
+		{
 			if (this.options_widget != null) {
 				this.load_defaults();
+				this.scroll_when_height_stable();
 				this.is_expanding = false;
 				return;
 			}
-			
-			// Create new Options for this ModelRow, bound to this.options
-			// Create a dummy ModelUsage object with an Options property to get the pspec
+
 			var dummy_config = new OLLMchat.Settings.ModelUsage() {
 				options = this.options
 			};
 			var dummy_pspec = dummy_config.get_class().find_property("options");
 			this.options_widget = new Rows.Options(this.models_page.dialog, dummy_pspec, dummy_config);
-			
-			// Add rows from options_widget to this ExpanderRow
+
 			foreach (var row in this.options_widget.rows) {
 				this.add_row(row);
 			}
 
-			// Remove model row (destructive action)
 			var remove_btn = new Gtk.Button.with_label("Remove model from server") {
 				css_classes = { "destructive-action" },
 				vexpand = false,
@@ -148,18 +181,37 @@ namespace OLLMapp.SettingsDialog
 			remove_btn.clicked.connect(() => {
 				this.confirm_and_delete.begin();
 			});
-				
-			// Load default values from model.options and then load options
+
 			this.load_defaults();
-			
-			// Scroll to position this row 20px below the top of the view
-			// Use timeout to wait for expand animation to complete
-			Timeout.add(300, () => {
-				this.models_page.scroll_to(this);
-				return false; // Don't repeat
-			});
-			
+			this.scroll_when_height_stable();
 			this.is_expanding = false;
+		}
+
+		/**
+		 * Schedules a scroll once this row’s height has been stable for 2 frames
+		 * (i.e. expand animation has finished). Measures allocated height each frame.
+		 */
+		private void scroll_when_height_stable()
+		{
+			var last_height = -1;
+			var stable_count = 0;
+			this.add_tick_callback((widget, frame_clock) => {
+				Gdk.Rectangle alloc;
+				widget.get_allocation(out alloc);
+				var h = alloc.height;
+
+				if (h != last_height) {
+					last_height = h;
+					stable_count = 0;
+					return true;
+				}
+				stable_count++;
+				if (stable_count < 2) {
+					return true;
+				}
+				this.models_page.scroll_to(this);
+				return false;
+			});
 		}
 		
 		/**
@@ -168,11 +220,7 @@ namespace OLLMapp.SettingsDialog
 		private void load_defaults()
 		{
 			// Use model.options for default values (automatically filled from parameters)
-			GLib.debug("load_defaults for model '%s' - parameters: '%s'", this.model.name, this.model.parameters ?? "(null)");
-			GLib.debug("load_defaults: model.options.temperature = %f, top_k = %d, top_p = %f", 
-				this.model.options.temperature, this.model.options.top_k, this.model.options.top_p);
 			foreach (var row in this.options_widget.rows) {
-				GLib.debug("load_defaults: Processing row.pspec.get_name() = '%s'", row.pspec.get_name());
 				// Convert underscore to hyphen for GObject property name
 				var property_name = row.pspec.get_name().replace("_", "-");
 				
@@ -191,7 +239,6 @@ namespace OLLMapp.SettingsDialog
 						Value model_value = Value(typeof(int));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var int_val = model_value.get_int();
-						GLib.debug("load_defaults: %s = %d", row.pspec.get_name(), int_val);
 						if (int_val != -1) {
 							row.set_model_value(model_value);
 						}
@@ -208,7 +255,6 @@ namespace OLLMapp.SettingsDialog
 						Value model_value = Value(typeof(double));
 						((GLib.Object)this.model.options).get_property(property_name, ref model_value);
 						var double_val = model_value.get_double();
-						GLib.debug("load_defaults: %s = %f", row.pspec.get_name(), double_val);
 						if (double_val != -1.0) {
 							row.set_model_value(model_value);
 						}

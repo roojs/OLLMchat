@@ -46,7 +46,7 @@ namespace OLLMapp
 		private Adw.Banner tool_error_banner;
 		private FileChangeBanner file_change_banner;
 		private VectorScanBanner vector_scan_banner;
-		private OLLMfiles.ProjectManager project_manager;
+		public OLLMfiles.ProjectManager? project_manager { get; private set; default = null; }
 		private OLLMvector.BackgroundScan? background_scan = null;
 
 		/**

@@ -1,5 +1,7 @@
 ---
 name: plan_iterate
+requires: plan-filename
+requires: query
 description:  Iterate on existing implementation plans with thorough research and updates
 model: glm-4.7-flash:Q8_0
 next:

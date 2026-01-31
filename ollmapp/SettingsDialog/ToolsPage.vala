@@ -43,6 +43,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public OLLMchat.History.Manager? history_manager { get; set; default = null; }
 		
+		private Gtk.ScrolledWindow scrolled_window;
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
 		private Gee.HashMap<string, Rows.Tool> tool_rows = new Gee.HashMap<string, Rows.Tool>();
@@ -62,28 +63,26 @@ namespace OLLMapp.SettingsDialog
 				spacing: 0
 			);
 			
-			// Add proper margins to the page
-			this.margin_start = 12;
-			this.margin_end = 12;
-			this.margin_top = 12;
-			this.margin_bottom = 12;
-			
 			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
 			};
 			
-			// Create preferences group
-			this.group = new Adw.PreferencesGroup() {
-				title = this.page_title
-			};
+			// Create preferences group (no title; tab already shows "Tools")
+			this.group = new Adw.PreferencesGroup();
 			
 			// Create boxed list for tools (using Box instead of ListBox to avoid hover styles)
 			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 			this.group.add(this.boxed_list);
 			
-			// Add preferences group to page
-			this.append(this.group);
+			// Page has its own ScrolledWindow (no shared outer scroll)
+			this.scrolled_window = new Gtk.ScrolledWindow() {
+				vexpand = true,
+				hexpand = true
+			};
+			this.scrolled_window.set_child(this.group);
+			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			this.append(this.scrolled_window);
 		}
 		
 		/**

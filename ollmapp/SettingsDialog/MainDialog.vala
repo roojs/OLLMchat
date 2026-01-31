@@ -38,17 +38,12 @@ namespace OLLMapp.SettingsDialog
 		
 		private ConnectionsPage connections_page;
 		private ModelsPage models_page;
+		private ProjectsPage projects_page;
 		private ToolsPage tools_page;
 		
 		// ViewStack for pages and ViewSwitcher for tabs
 		private Adw.ViewStack view_stack;
 		private Adw.ViewSwitcher view_switcher;
-		
-		// ScrolledWindow for pages
-		public Gtk.ScrolledWindow scrolled_window { get; private set; }
-		
-		// Viewport for pages (child of ScrolledWindow)
-		public Gtk.Viewport viewport { get; private set; }
 		
 		// Area for pages to add action bars (fixed at bottom, outside scrollable content)
 		public Gtk.Box action_bar_area { get; private set; }
@@ -105,16 +100,10 @@ namespace OLLMapp.SettingsDialog
 			header_bar.set_title_widget(this.view_switcher);
 			main_box.append(header_bar);
 			
-			// Create scrollable area for pages
-			this.scrolled_window = new Gtk.ScrolledWindow() {
-				vexpand = true,
-				hexpand = true
-			};
-			// ScrolledWindow automatically wraps non-scrollable children in a Viewport
-			this.scrolled_window.set_child(this.view_stack);
-			// Get the Viewport that was automatically created
-			this.viewport = this.scrolled_window.get_child() as Gtk.Viewport;
-			main_box.append(this.scrolled_window);
+			// View stack directly in main box; each page has its own ScrolledWindow
+			this.view_stack.vexpand = true;
+			this.view_stack.hexpand = true;
+			main_box.append(this.view_stack);
 			
 			// Create PullManager instance (shared across all pages)
 			this.pull_manager = new PullManager(this.app);
@@ -156,6 +145,14 @@ namespace OLLMapp.SettingsDialog
 			this.action_bar_area.append(this.connections_page.action_widget);
 			this.connections_page.action_widget.visible = false;
 			
+			// Create projects page (store bound when dialog is shown via ensure_loaded())
+			this.projects_page = new ProjectsPage(this);
+			this.view_stack.add_titled(this.projects_page,
+				this.projects_page.page_name,
+				this.projects_page.page_title);
+			this.action_bar_area.append(this.projects_page.action_widget);
+			this.projects_page.action_widget.visible = false;
+
 			// Create tools page
 			this.tools_page = new ToolsPage(this);
 			this.view_stack.add_titled(this.tools_page,
@@ -194,9 +191,6 @@ namespace OLLMapp.SettingsDialog
 			// Show current page's action widget
 			current_page.action_widget.visible = true;
 			this.action_bar_area.visible = true;
-			
-			// Scroll to top when switching tabs
-			this.scrolled_window.vadjustment.value = 0;
 		}
 
 		/**
@@ -221,6 +215,9 @@ namespace OLLMapp.SettingsDialog
 			// Load tools and configs for tools page (non-blocking)
 			this.tools_page.load_tools();
 			this.tools_page.load_configs();
+			
+			// Bind projects list to ProjectManager (once; project_manager not available at dialog creation)
+			this.projects_page.load_projects();
 			
 			// Initialize progress bars for any existing active pulls
 			this.progress_banner.initialize_existing_pulls();

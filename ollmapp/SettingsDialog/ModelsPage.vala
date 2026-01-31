@@ -44,6 +44,7 @@ namespace OLLMapp.SettingsDialog
 		private Gtk.SearchEntry search_entry;
 		private Gtk.Button add_model_btn;
 		private Gtk.Button refresh_btn;
+		private Gtk.ScrolledWindow scrolled_window;
 		private Adw.PreferencesGroup group;
 		private Gtk.Box boxed_list;
 		private Gtk.Box loading_box;
@@ -79,12 +80,6 @@ namespace OLLMapp.SettingsDialog
 				this.connection_models = new OLLMchat.Settings.ConnectionModels(this.dialog.app.config);
 			}
 			
-			// Add proper margins to the page
-			this.margin_start = 12;
-			this.margin_end = 12;
-			this.margin_top = 12;
-			this.margin_bottom = 12;
-
 			// Create horizontal action bar (set as action_widget for SettingsDialog to manage)
 			this.action_widget = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 6) {
 				hexpand = true
@@ -131,10 +126,8 @@ namespace OLLMapp.SettingsDialog
 			});
 			this.action_widget.append(this.refresh_btn);
 
-			// Create preferences group
-			this.group = new Adw.PreferencesGroup() {
-				title = this.page_title
-			};
+			// Create preferences group (no title; tab already shows "Models")
+			this.group = new Adw.PreferencesGroup();
 
 			// Create boxed list for models
 			this.boxed_list = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
@@ -158,8 +151,14 @@ namespace OLLMapp.SettingsDialog
 			this.loading_box.append(this.loading_spinner);
 			this.loading_box.append(this.loading_label);
 
-			// Add preferences group with models list (this will be scrollable)
-			this.append(this.group);
+			// Page has its own ScrolledWindow (no shared outer scroll)
+			this.scrolled_window = new Gtk.ScrolledWindow() {
+				vexpand = true,
+				hexpand = true
+			};
+			this.scrolled_window.set_child(this.group);
+			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			this.append(this.scrolled_window);
 			
 			this.connection_models.items_changed.connect((position, removed, added) => {
 				this.sync_ui_from_store.begin();
@@ -463,26 +462,30 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public void scroll_to(Gtk.Widget widget)
 		{
-			var vadjustment = this.dialog.scrolled_window.vadjustment;
+			var vadjustment = this.scrolled_window.vadjustment;
 			
-			// Get the viewport's child (the ViewStack) - this is our reference point
-			var viewport_child = this.dialog.viewport.get_child();
+			// Get the scrolled content (this page's group) as reference point
+			var viewport_child = this.scrolled_window.get_child();
+		
 			
-			// Calculate Y position relative to viewport's child by walking up parent chain
-			double y = 0.0;
+			// Y from allocation walk is in viewport coords (negative when widget is above visible area).
+			// Add current scroll to get position in content space.
+			double y_viewport = 0.0;
 			Gtk.Widget? current_widget = widget;
 			while (current_widget != null && current_widget != viewport_child) {
 				Gdk.Rectangle widget_alloc;
 				current_widget.get_allocation(out widget_alloc);
-				y += widget_alloc.y;
+				y_viewport += widget_alloc.y;
 				current_widget = current_widget.get_parent();
 			}
-			
+			double y_content = y_viewport + vadjustment.value;
+
 			// Scroll so the top of the widget is 20px below the top of the viewport
-			vadjustment.value = (y - 20.0).clamp(
-				vadjustment.lower,
-				vadjustment.upper - vadjustment.page_size
-			);
+			double target = y_content - 20.0;
+			double max_val = double.max(vadjustment.lower, vadjustment.upper - vadjustment.page_size);
+			vadjustment.value = target.clamp(vadjustment.lower, max_val);
+			GLib.debug("scroll_to: y_viewport=%.0f y_content=%.0f target=%.0f -> value=%.0f",
+				y_viewport, y_content, target, vadjustment.value);
 		}
 		
 		/**

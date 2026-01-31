@@ -303,6 +303,77 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Find a Folder at the given path (e.g. subfolder of a project, or in DB).
+		 * Caller must have already verified the path is not already a project (path_map).
+		 * Checks each project's folder_map, then the database. Does not check path_map or file_cache.
+		 *
+		 * @param path Normalized absolute path
+		 * @return The Folder if found, null otherwise
+		 */
+		public Folder? get_folder_at_path(string path)
+		{
+			var folder = this.projects.get_folder_in_any_project(path);
+			if (folder != null) {
+				return folder;
+			}
+			if (this.db == null) {
+				return null;
+			}
+			var query = FileBase.query(this.db, this);
+			var list = new Gee.ArrayList<FileBase>();
+			query.select(
+				"WHERE path = '%s' AND base_type = 'd' AND delete_id = 0 LIMIT 1".printf(
+					path.replace("'", "''")), list);
+			return list.size == 0 ? null : list.get(0) as Folder;
+		}
+
+		/**
+		 * Ensure a project exists at the given path.
+		 * Caller must have verified the path is not already a project (path_map).
+		 * If we have a Folder at this path (folder_map or DB), promote it; otherwise create new.
+		 *
+		 * @param path Normalized absolute path to the folder
+		 * @return The Folder that is the project at that path (existing or new)
+		 */
+		public Folder create_project(string path)
+		{
+			var existing = this.get_folder_at_path(path);
+			var project = existing != null
+				? existing
+				: new Folder(this) {
+					is_project = true,
+					path = path
+				};
+			project.is_project = true;
+			this.file_cache.set(project.path, project);
+			this.projects.append(project);
+			if (this.db != null) {
+				project.saveToDB(this.db, null, false);
+				this.db.is_dirty = true;
+			}
+			return project;
+		}
+
+		/**
+		 * Remove a project from the projects list by clearing the is_project flag.
+		 * Does not delete any filebase or file_history data.
+		 *
+		 * @param project The project folder to remove
+		 */
+		public void remove_project(Folder project)
+		{
+			if (this.active_project == project) {
+				this.active_project = null;
+				this.active_project_changed(null);
+			}
+			this.projects.remove(project);
+			if (this.db != null) {
+				project.saveToDB(this.db, null, false);
+				this.db.is_dirty = true;
+			}
+		}
+		
+		/**
 		 * Check if a file path is in the active project.
 		 * 
 		 * @param file_path The normalized file path to check

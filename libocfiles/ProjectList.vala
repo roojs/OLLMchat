@@ -149,8 +149,25 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Return a Folder at the given path if it exists in any project's folder_map.
+		 * Uses the backing store (items) so we can foreach; does not use ListModel.
+		 *
+		 * @param path Normalized absolute path
+		 * @return The Folder if found in any project's folder_map, null otherwise
+		 */
+		public Folder? get_folder_in_any_project(string path)
+		{
+			foreach (var p in this.items) {
+				if (p.project_files.folder_map.has_key(path)) {
+					return p.project_files.folder_map.get(path);
+				}
+			}
+			return null;
+		}
+
+		/**
 		 * Get the active project from the projects list.
-		 * 
+		 *
 		 * @return The active Folder (project), or null if no project is active
 		 */
 		public Folder? get_active_project()
