@@ -47,13 +47,13 @@ namespace MarkdownGtk
 	 */
 	public class Render : Markdown.RenderBase
 	{
-		public TopState? top_state { get; private set; default = null; }
+		public TopState? top_state { get; internal set; default = null; }
 		public State? current_state { get; internal set; default = null; }
 		
 		// Properties for Gtk.Box model
 		public Gtk.Box? box { get; private set; default = null; }
-		public Gtk.TextView? current_textview { get; private set; default = null; }
-		public Gtk.TextBuffer? current_buffer { get; private set; default = null; }
+		public Gtk.TextView? current_textview { get; internal set; default = null; }
+		public Gtk.TextBuffer? current_buffer { get; internal set; default = null; }
 		
 		// Configuration
 		public bool scroll_to_end { get; set; default = true; }
@@ -71,6 +71,9 @@ namespace MarkdownGtk
 		
 		// Track the current indentation level for the next on_li call
 		private uint current_list_indentation = 0;
+		
+		// Table: current table when inside on_table(true)..on_table(false)
+		internal Table? current_table { get; private set; default = null; }
 		
 		// Signal emitted when code block ends (delegates to source_view_handler)
 		public signal void code_block_ended(string content, string language);
@@ -539,10 +542,41 @@ namespace MarkdownGtk
 			this.create_textview();
 		}
 		
-		public override void on_table(bool is_start) {}
-		public override void on_table_row(bool is_start) {}
-		public override void on_table_hcell(bool is_start, int align) {}
-		public override void on_table_cell(bool is_start, int align) {}
+		public override void on_table(bool is_start)
+		{
+			if (is_start) {
+				this.current_table = new Table(this);
+				return;
+			}
+			this.clear();
+			this.current_table = null;
+			// Create new textview for content after the table (like on_hr / code block)
+			this.create_textview();
+		}
+
+		public override void on_table_row(bool is_start)
+		{
+			if (this.current_table == null) {
+				return;
+			}
+			this.current_table.on_row(is_start);
+		}
+
+		public override void on_table_hcell(bool is_start, int align)
+		{
+			if (this.current_table == null) {
+				return;
+			}
+			this.current_table.on_hcell(is_start, align);
+		}
+
+		public override void on_table_cell(bool is_start, int align)
+		{
+			if (this.current_table == null) {
+				return;
+			}
+			this.current_table.on_cell(is_start, align);
+		}
 		
 		/**
 		 * Callback for link spans.

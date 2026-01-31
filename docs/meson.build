@@ -89,7 +89,6 @@ valadoc_docs = custom_target('valadoc',
     '../libocmarkdowngtk/State.vala',
     '../libocmarkdowngtk/TopState.vala',
     '../libocmarkdowngtk/Table.vala',
-    '../libocmarkdowngtk/TableCell.vala',
     # libollmchat sources (depends on libocsqlite)
     '../libollmchat/namespace.vala',  # Namespace documentation
     '../libollmchat/ApplicationInterface.vala',

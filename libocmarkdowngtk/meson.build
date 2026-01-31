@@ -27,7 +27,6 @@ ocmarkdowngtk_src = files([
   'State.vala',
   'TopState.vala',
   'Table.vala',
-  'TableCell.vala',
 ])
 
 # Build rpath for libraries to find each other in build directory

@@ -20,122 +20,109 @@ namespace MarkdownGtk
 {
 	internal class Table
 	{
-		public virtual bool active { get; set; default = true; }
-		public Gtk.Frame? frame = null;
-		public Gtk.Grid? grid = null;
-		public Gtk.TextChildAnchor? anchor = null;
-		public uint col_count = 0;
-		public uint current_row = 0;
-		public uint current_col = 0;
-		public bool in_header = false;
-		public bool error = false;
-		// Store cell content to be inserted at end
-		private Gee.ArrayList<TableCell> cells;
-		
-		public Table(Render? renderer, uint cols)
+		private Render renderer;
+		private Gtk.Grid grid;
+		private int current_row = 0;
+		private int current_cell = 0;
+
+		// Fake stack and buffer when inside table but not in a cell (avoids nulls; add() never sees null)
+		private Gtk.TextView table_fake_textview;
+		private Gtk.TextBuffer table_fake_buffer;
+		private TopState table_fake_top_state;
+
+		public Table(Render renderer)
 		{
-			this.col_count = cols;
-			this.cells = new Gee.ArrayList<TableCell>();
-			
-			if (renderer == null) {
-				this.active = false;
+			this.renderer = renderer;
+			this.table_fake_textview = new Gtk.TextView();
+			this.table_fake_buffer = this.table_fake_textview.buffer;
+			this.table_fake_top_state = new TopState(this.renderer);
+			this.table_fake_top_state.initialize();
+			this.renderer.current_textview = this.table_fake_textview;
+			this.renderer.current_buffer = this.table_fake_buffer;
+			this.renderer.top_state = this.table_fake_top_state;
+			this.renderer.current_state = this.table_fake_top_state;
+
+			this.grid = new Gtk.Grid() {
+				column_homogeneous = false,
+				row_homogeneous = false,
+				column_spacing = 4,
+				row_spacing = 4,
+				margin_start = 2,
+				margin_end = 2,
+				margin_top = 2,
+				margin_bottom = 2
+			};
+			if (this.renderer.box == null) {
 				return;
 			}
-			
-			try {
-				// Create frame and grid
-				this.frame = new Gtk.Frame(null) {
-					hexpand = true,
-					margin_start = 5,
-					margin_end = 5,
-					margin_top = 5,
-					margin_bottom = 5
-				};
-				this.frame.add_css_class("code-block-box");
-				
-				this.grid = new Gtk.Grid() {
-					column_homogeneous = false,
-					row_homogeneous = false,
-					column_spacing = 5,
-					row_spacing = 5,
-					margin_start = 5,
-					margin_end = 5,
-					margin_top = 5,
-					margin_bottom = 5
-				};
-				
-				this.frame.set_child(this.grid);
-				
-				// Create child anchor - will be set when building table
-				
-			} catch (Error e) {
-				this.error = true;
-				this.active = false;
-			}
+			this.renderer.box.append(this.grid);
 		}
-		
-		public void store_cell_content(string content, uint row, uint col, bool is_header)
+
+		private void set_renderer_to_fake()
 		{
-			this.cells.add(new TableCell(content, row, col, is_header));
+			this.renderer.current_textview = this.table_fake_textview;
+			this.renderer.current_buffer = this.table_fake_buffer;
+			this.renderer.top_state = this.table_fake_top_state;
+			this.renderer.current_state = this.table_fake_top_state;
 		}
-		
-		public void build_and_insert_table(Render renderer)
+
+		public void on_row(bool is_start)
 		{
-			if (!this.active || this.error || this.frame == null || this.grid == null) {
+			if (is_start) {
+				this.current_cell = 0;
 				return;
 			}
-			
-			try {
-				// Create child anchor at current position
-				if (renderer.current_buffer == null) {
-					return;
-				}
-				Gtk.TextIter iter;
-				// Use end of buffer (TopState's end mark is protected)
-				renderer.current_buffer.get_end_iter(out iter);
-				
-				this.anchor = renderer.current_buffer.create_child_anchor(iter);
-				
-				// Build all cells
-				foreach (var cell in this.cells) {
-					var label = new Gtk.Label(null) {
-						use_markup = true,
-						wrap = true,
-						halign = Gtk.Align.START,
-						valign = Gtk.Align.START
-					};
-					
-					if (cell.is_header) {
-						label.add_css_class("table-header");
-					}
-					
-					label.set_markup(cell.content);
-					
-					this.grid.attach(label, (int)cell.col, (int)cell.row, 1, 1);
-				}
-				
-				// Insert frame via child anchor
-				// Note: text_view handling removed - tables will be handled separately
-				// TODO: Implement table insertion when table handling is added
-				
-				// Show frame
-				this.frame.set_visible(true);
-				
-			} catch (Error e) {
-				this.error = true;
-				// Note: table_error property removed - tables will be handled separately
-			}
+			this.current_row++;
 		}
-	}
-	
-	internal class TableEmpty : Table
-	{
-		public override bool active { get; set; default = false; }
-		
-		public TableEmpty()
+
+		public void on_hcell(bool is_start, int align)
 		{
-			base(null, 0);
+			if (is_start) {
+				this.create_cell(align);
+				return;
+			}
+			this.set_renderer_to_fake();
+			this.current_cell++;
+		}
+
+		public void on_cell(bool is_start, int align)
+		{
+			if (is_start) {
+				this.create_cell(align);
+				return;
+			}
+			this.set_renderer_to_fake();
+			this.current_cell++;
+		}
+
+		private void create_cell(int align)
+		{
+			var cell_view = new Gtk.TextView() {
+				editable = false,
+				cursor_visible = false,
+				wrap_mode = Gtk.WrapMode.WORD,
+				hexpand = true,
+				vexpand = false
+			};
+
+			switch (align) {
+				case 0:
+					cell_view.halign = Gtk.Align.CENTER;
+					break;
+				case 1:
+					cell_view.halign = Gtk.Align.END;
+					break;
+				default:
+					cell_view.halign = Gtk.Align.START;
+					break;
+			}
+
+			this.grid.attach(cell_view, this.current_cell, this.current_row, 1, 1);
+			this.renderer.current_textview = cell_view;
+			this.renderer.current_buffer = cell_view.buffer;
+			this.renderer.top_state = new TopState(this.renderer);
+			this.renderer.top_state.initialize();
+			this.renderer.current_state = this.renderer.top_state;
 		}
 	}
 }
-
