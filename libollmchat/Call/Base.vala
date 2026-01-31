@@ -82,8 +82,16 @@ namespace OLLMchat.Call
 		
 		var message = this.connection.soup_message(this.http_method, url);
 
-		if (needs_body && this.http_method == "POST") {
-			this.set_request_body(message);
+		switch (this.http_method) {
+			case "POST":
+			case "DELETE":
+				if (!needs_body) {
+					break;
+				}
+				this.set_request_body(message);
+				break;
+			default:
+				break;
 		}
 
 		GLib.debug("Request URL: %s", url);

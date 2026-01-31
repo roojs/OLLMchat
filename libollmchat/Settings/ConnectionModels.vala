@@ -124,14 +124,19 @@ namespace OLLMchat.Settings
 			}
 			
 			// Process each model from connection.models (which now has details including capabilities)
+			// Do not create ModelUsage for hidden models (ollmchat-temp/ derived only)
 			foreach (var model in connection.models.values) {
+				if (model.is_hidden) {
+					// Skip: don't add to store; if already in store it stays in models_to_remove and will be removed
+					continue;
+				}
 				// Find and remove from models_to_remove if it exists (model still exists)
 				var existing_model_usage = this.find_model(connection.url, model.name);
 				if (existing_model_usage != null) {
 					models_to_remove.remove(existing_model_usage);
 					continue;
 				}
-				
+
 				// New model - create ModelUsage and add to store
 				this.append(new ModelUsage() {
 					connection = connection.url,

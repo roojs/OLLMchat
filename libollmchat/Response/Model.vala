@@ -233,16 +233,56 @@ namespace OLLMchat.Response
 
 		/**
 		 * Display name for lists: base name (with size) then variant in brackets.
-		 * Names have at most one slash; e.g. "roojs/glm-345" → "glm-345 (4.1 GB) [roojs]".
+		 * split by "/"; base = length > 1 ? split[length-1] : name;
+		 * prefix = length > 1 ? joinv(split[0:length-1]) : "".
+		 * E.g. "roojs/glm-345" → "glm-345 (4.1 GB) [roojs]",
+		 * "org/roojs/glm-345" → "glm-345 (4.1 GB) [org/roojs]".
 		 * Context is part of ModelUsage, not Model.
 		 * Used for sorting and display in list models and CLI.
 		 */
 		public string display_name {
 			owned get {
-				string[] parts = this.name.split("/", 2);
-				return (parts.length > 1 ? parts[1] : this.name) +
+				var split = this.name.split("/");
+				var base_name = split.length > 1 ? split[split.length - 1] : this.name;
+				var prefix = split.length > 1 ? string.joinv("/", split[0:split.length - 1]) : "";
+				return base_name +
 					(this.size == 0 ? "" : " (" + this.size_gb() + ")") +
-					(parts.length > 1 ? " [" + parts[0] + "]" : "");
+					(prefix != "" ? " [" + prefix + "]" : "");
+			}
+		}
+
+		/**
+		 * Whether this model should be hidden from model lists.
+		 * True for derived temp models (ollmchat-temp/ prefix only).
+		 */
+		public bool is_hidden {
+			get {
+				return this.name.has_prefix("ollmchat-temp/");
+			}
+		}
+
+		/**
+		 * Pango markup for subtitle: model name + capability badges (tools, embed, vision, thinking).
+		 * Each badge has a distinct background colour and bold label.
+		 */
+		public string subtitle_markup {
+			owned get {
+				// span_fmt: background colour, black foreground (#000000), bold (Pango: foreground, weight)
+				var span_fmt = "<span background=\"%s\" foreground=\"#000000\" weight=\"bold\"> %s </span>";
+				var s = GLib.Markup.escape_text(this.name, -1);
+				if (this.can_call) {
+					s += " " + span_fmt.printf("#ffdd99", GLib.Markup.escape_text("tools", -1));
+				}
+				if (this.capabilities.contains("embed") || this.capabilities.contains("embedding")) {
+					s += " " + span_fmt.printf("#e1bee7", GLib.Markup.escape_text("embed", -1));
+				}
+				if (this.capabilities.contains("vision")) {
+					s += " " + span_fmt.printf("#c8e6c9", GLib.Markup.escape_text("vision", -1));
+				}
+				if (this.is_thinking) {
+					s += " " + span_fmt.printf("#fff9c4", GLib.Markup.escape_text("thinking", -1));
+				}
+				return s;
 			}
 		}
 
@@ -260,6 +300,8 @@ namespace OLLMchat.Response
 				case "can-call":
 				case "name-with-size":
 				case "display-name":
+				case "is-hidden":
+				case "subtitle-markup":
 				case "client":
 					// These are computed properties or internal references, skip serialization
 					return null;

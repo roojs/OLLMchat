@@ -67,11 +67,6 @@ namespace OLLMchat.Settings
 		public bool is_working = true;
 		
 		/**
-		 * List of model names to hide from the UI
-		 */
-		public Gee.ArrayList<string> hidden_models { get; set; default = new Gee.ArrayList<string>(); }
-
-		/**
 		 * HTTP session for making requests.
 		 * 
 		 * Shared across all Clients using this Connection (connection pooling).
@@ -168,15 +163,6 @@ namespace OLLMchat.Settings
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
-				case "hidden-models":
-					// Serialize hidden_models list as a JSON array
-					var array_node = new Json.Node(Json.NodeType.ARRAY);
-					array_node.init_array(new Json.Array());
-					var json_array = array_node.get_array();
-					foreach (var model in this.hidden_models) {
-						json_array.add_string_element(model);
-					}
-					return array_node;
 				case "soup":
 				case "timeout":
 				case "models":
@@ -188,25 +174,6 @@ namespace OLLMchat.Settings
 
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			switch (property_name) {
-				case "hidden-models":
-					// Deserialize hidden_models from JSON array
-					if (property_node.get_node_type() != Json.NodeType.ARRAY) {
-						break;
-					}
-					
-					var json_array = property_node.get_array();
-					json_array.foreach_element((array, index, node) => {
-						if (node.get_value_type() == typeof(string)) {
-							this.hidden_models.add(node.get_string());
-						}
-					});
-					
-					// Return the hidden_models list as the value
-					value = Value(typeof(Gee.ArrayList));
-					value.set_object(this.hidden_models);
-					return true;
-			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 
@@ -270,19 +237,22 @@ namespace OLLMchat.Settings
 			// Replicates original: yield this.show_model(model.name) for each
 			foreach (var model in models_list) {
 				current_model_names.add(model.name);
-				
+				model.connection = this;
+
 				// Skip if model already exists in cache
 				if (this.models.has_key(model.name)) {
+					this.models.get(model.name).connection = this;
 					continue;
 				}
-				
+
 				// Try to load from file cache
 				var cached_model = model.load_from_cache();
 				if (cached_model != null) {
+					cached_model.connection = this;
 					this.models.set(model.name, cached_model);
 					continue;
 				}
-				
+
 				// Fetch from API (only this part needs error handling)
 				try {
 					var show_call = new OLLMchat.Call.ShowModel(this, model.name);
@@ -290,7 +260,8 @@ namespace OLLMchat.Settings
 					
 					// Update detailed model with relevant data from list model (size, digest, etc.)
 					detailed_model.update_from_list_model(model);
-					
+					detailed_model.connection = this;
+
 					// Save to file cache
 					detailed_model.save_to_cache();
 					

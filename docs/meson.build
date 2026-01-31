@@ -113,6 +113,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Call/Version.vala',
     '../libollmchat/Call/Pull.vala',
     '../libollmchat/Call/Create.vala',
+    '../libollmchat/Call/Delete.vala',
     '../libollmchat/Message.vala',
     '../libollmchat/ChatContentInterface.vala',
     '../libollmchat/Response/namespace.vala',  # Response namespace documentation

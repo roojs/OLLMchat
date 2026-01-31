@@ -66,7 +66,8 @@ namespace OLLMapp.SettingsDialog
 				model: model,
 				connection: connection,
 				models_page: models_page,
-				title: model.name
+				title: model.display_name,
+				subtitle: model.subtitle_markup
 			);
 			this.options = options.clone();
 
@@ -132,6 +133,21 @@ namespace OLLMapp.SettingsDialog
 			foreach (var row in this.options_widget.rows) {
 				this.add_row(row);
 			}
+
+			// Remove model row (destructive action)
+			var remove_btn = new Gtk.Button.with_label("Remove model from server") {
+				css_classes = { "destructive-action" },
+				vexpand = false,
+				valign = Gtk.Align.CENTER
+			};
+			var remove_row = new Adw.ActionRow();
+			remove_row.add_suffix(remove_btn);
+			remove_row.set_activatable_widget(remove_btn);
+			this.add_row(remove_row);
+
+			remove_btn.clicked.connect(() => {
+				this.confirm_and_delete.begin();
+			});
 				
 			// Load default values from model.options and then load options
 			this.load_defaults();
@@ -235,6 +251,33 @@ namespace OLLMapp.SettingsDialog
 			this.models_page.save_options(this.model.name, this.options);
 			
 			this.is_expanding = false;
+		}
+
+		private async void confirm_and_delete()
+		{
+			var message = "Are you sure you want to delete '%s'? This will permanently remove the model from the server. Models are large files and re-downloading them may take a significant amount of time. Only delete if you're certain or running low on disk space.".printf(this.model.name);
+			var dialog = new Adw.AlertDialog("Delete Model?", message);
+			dialog.add_response("cancel", "Cancel");
+			dialog.add_response("delete", "Delete");
+			dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE);
+
+			var response = yield dialog.choose(this.models_page.dialog, null);
+			if (response != "delete") {
+				return;
+			}
+
+			this.expanded = false;
+			this.sensitive = false;
+			try {
+				var delete_call = new OLLMchat.Call.Delete(this.connection, this.model.name);
+				yield delete_call.exec_delete();
+				yield this.models_page.connection_models.refresh();
+			} catch (GLib.Error e) {
+				this.sensitive = true;
+				var err_dialog = new Adw.AlertDialog("Delete failed", e.message);
+				err_dialog.add_response("ok", "OK");
+				yield err_dialog.choose(this.models_page.dialog, null);
+			}
 		}
 	}
 }

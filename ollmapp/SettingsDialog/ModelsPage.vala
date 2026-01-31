@@ -53,7 +53,7 @@ namespace OLLMapp.SettingsDialog
 		private Gee.HashMap<string, Gtk.Widget> section_headers = new Gee.HashMap<string, Gtk.Widget>();
 		private bool is_rendering = false;
 		private AddModelDialog? add_model_dialog = null;
-		private OLLMchat.Settings.ConnectionModels connection_models;
+		public OLLMchat.Settings.ConnectionModels connection_models { get; private set; }
 
 		/**
 		 * Creates a new ModelsPage.
@@ -161,9 +161,12 @@ namespace OLLMapp.SettingsDialog
 			// Add preferences group with models list (this will be scrollable)
 			this.append(this.group);
 			
-			// Connect to pull manager to reload models when a pull completes
+			this.connection_models.items_changed.connect((position, removed, added) => {
+				this.sync_ui_from_store.begin();
+			});
+
 			this.dialog.pull_manager.model_complete.connect((model_name) => {
-				this.render_models.begin();
+				this.connection_models.refresh.begin();
 			});
 			
 			// Action bar will be added to dialog's action_bar_area on activation
@@ -182,32 +185,31 @@ namespace OLLMapp.SettingsDialog
 			}
 			this.is_rendering = true;
 
-			// Show loading indicator and hide existing items
 			this.show_loading(true);
-
-			// Refresh ConnectionModels (this will update the list)
 			yield this.connection_models.refresh();
+			yield this.sync_ui_from_store();
+			this.show_loading(false);
 
-			// Update models for each connection using ConnectionModels connection_map
+			this.is_rendering = false;
+		}
+
+		/**
+		 * Syncs the boxed_list (model rows, section headers) to the current store state.
+		 * Does not refetch; use when the store has already been updated (e.g. after items_changed).
+		 */
+		private async void sync_ui_from_store()
+		{
 			foreach (var entry in this.connection_models.connection_map.entries) {
 				var connection_url = entry.key;
 				var connection = this.dialog.app.config.connections.get(connection_url);
 				if (connection == null || !connection.is_working) {
 					continue;
 				}
-				
 				var models_list = new Gee.ArrayList<OLLMchat.Settings.ModelUsage>();
 				models_list.add_all(entry.value.values);
 				yield this.update_models_from_connection_models(connection, models_list);
 			}
-
-			// Remove models that no longer exist in any connection
 			this.cleanup_removed_models();
-
-			// Hide loading indicator and show items
-			this.show_loading(false);
-
-			this.is_rendering = false;
 		}
 
 		/**
@@ -295,6 +297,23 @@ namespace OLLMapp.SettingsDialog
 				var row = this.model_rows.get(key);
 				row.unparent();
 				this.model_rows.unset(key);
+			}
+
+			// Desired order (already sorted by ModelUsageSort / display name)
+			var desired_rows = new Gee.ArrayList<ModelRow>();
+			foreach (var model_usage in models_list) {
+				var composite_key = "%s#%s".printf(connection.url, model_usage.model);
+				if (this.model_rows.has_key(composite_key)) {
+					desired_rows.add(this.model_rows.get(composite_key));
+				}
+			}
+			Gtk.Widget? prev = header_row;
+			foreach (var row in desired_rows) {
+				// Only reorder if this row is not already immediately after prev
+				if (row.get_prev_sibling() != prev) {
+					this.boxed_list.reorder_child_after(row, prev);
+				}
+				prev = row;
 			}
 		}
 

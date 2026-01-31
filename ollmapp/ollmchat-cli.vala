@@ -645,7 +645,7 @@ so the next token is not consumed as the image path (e.g. avoid: --image --model
 					var models = yield models_call.exec_models();
 					models.sort((a, b) => strcmp(a.display_name.down(), b.display_name.down()));
 					foreach (var model in models) {
-						if (model.name.has_prefix("ollmchat-temp/") || connection.hidden_models.contains(model.name)) {
+						if (model.is_hidden) {
 							continue;
 						}
 						stdout.printf("  - %s - %s\n", model.display_name, model.name);
