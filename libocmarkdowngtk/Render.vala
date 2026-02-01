@@ -105,15 +105,20 @@ namespace MarkdownGtk
 		 */
 		private void create_textview()
 		{
-			// Create new TextView
+			// Create new TextView (tight margins so no extra padding below text)
 			this.current_textview = new Gtk.TextView() {
 				editable = false,
 				cursor_visible = false,
 				wrap_mode = Gtk.WrapMode.WORD,
 				hexpand = true,
-				vexpand = false
+				vexpand = false,
+				top_margin = 0,
+				bottom_margin = 0,
+				margin_top = 0,
+				margin_bottom = 0
 			};
-			
+			this.current_textview.add_css_class("oc-markdown-text");
+
 			// Get the buffer from the TextView
 			this.current_buffer = this.current_textview.buffer;
 			

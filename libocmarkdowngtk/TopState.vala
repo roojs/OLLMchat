@@ -46,12 +46,24 @@ namespace MarkdownGtk
 			Gtk.TextIter iter;
 			this.render.current_buffer.get_end_iter(out iter);
 			var insertion_mark = this.render.current_buffer.create_mark(null, iter, true);
-			this.initialize_tag_and_marks(insertion_mark);
+			this.initialize_tag_and_marks(this.render.current_buffer, insertion_mark);
 			this.render.current_buffer.delete_mark(insertion_mark);
-			
+
 			// TopState's end mark should start at the end of the buffer
 			this.render.current_buffer.get_end_iter(out iter);
 			this.render.current_buffer.move_mark(this.end, iter);
+		}
+
+		/** Initialize for a specific buffer (e.g. table cell) without changing render.current_buffer. */
+		internal void initialize_for_buffer(Gtk.TextBuffer buffer)
+		{
+			Gtk.TextIter iter;
+			buffer.get_end_iter(out iter);
+			var insertion_mark = buffer.create_mark(null, iter, true);
+			this.initialize_tag_and_marks(buffer, insertion_mark);
+			buffer.delete_mark(insertion_mark);
+			buffer.get_end_iter(out iter);
+			buffer.move_mark(this.end, iter);
 		}
 		
 		public override void close_state()

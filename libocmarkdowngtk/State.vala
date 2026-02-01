@@ -60,22 +60,19 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Initializes this state's tag and marks.
-		 * Can be called from State constructor or from Render for TopState.
-		 * 
+		 * Initializes this state's tag and marks in the given buffer.
+		 * Used by State (from parent's buffer), TopState.initialize(), and TopState.initialize_for_buffer() (table cells).
+		 *
+		 * @param buffer The buffer to create tag and marks in
 		 * @param insertion_point The TextMark to use as the insertion point for marks
 		 */
-		internal void initialize_tag_and_marks(Gtk.TextMark insertion_point)
+		internal void initialize_tag_and_marks(Gtk.TextBuffer buffer, Gtk.TextMark insertion_point)
 		{
-			// Generate unique tag name and create TextTag
-			this.style = this.render.current_buffer.create_tag("style-%u".printf(tag_counter++), null);
-			
-			// Create marks at insertion point
+			this.style = buffer.create_tag("style-%u".printf(tag_counter++), null);
 			Gtk.TextIter iter;
-			this.render.current_buffer.get_iter_at_mark(out iter, insertion_point);
-			
-			this.start = this.render.current_buffer.create_mark(null, iter, true);
-			this.end = this.render.current_buffer.create_mark(null, iter, true);
+			buffer.get_iter_at_mark(out iter, insertion_point);
+			this.start = buffer.create_mark(null, iter, true);
+			this.end = buffer.create_mark(null, iter, true);
 		}
 		
 		/**
@@ -84,7 +81,7 @@ namespace MarkdownGtk
 		 */
 		private void initialize_from_parent(State parent)
 		{
-			this.initialize_tag_and_marks(parent.end);
+			this.initialize_tag_and_marks(parent.end.get_buffer(), parent.end);
 		}
 		
 		/**
@@ -125,26 +122,14 @@ namespace MarkdownGtk
 		public void add_text(string text)
 		{
 			Gtk.TextIter start_iter, end_iter;
-		 // Validate UTF-8
-		 
 
-			// Get start position from mark (before insertion)
-			this.render.current_buffer.get_iter_at_mark(out start_iter, this.end);
-			
-			// Insert plain text (no escaping needed - TextBuffer handles it)
-			// After insert, start_iter is updated to point after the inserted text
-			this.render.current_buffer.insert(ref start_iter, text, -1);
-			
-			// Get the start position again from the mark (which hasn't moved yet)
-			// This ensures we have a valid iter for the start of the inserted range
-			this.render.current_buffer.get_iter_at_mark(out end_iter, this.end);
-			
-			// Apply this state's tag to the inserted text range
-			this.render.current_buffer.apply_tag(this.style, end_iter, start_iter);
-			
-			// Update end mark to point after the inserted text
-			this.render.current_buffer.move_mark(this.end, start_iter);
-			
+			var buf = this.render.current_buffer;
+			buf.get_iter_at_mark(out start_iter, this.end);
+			buf.insert(ref start_iter, text, -1);
+			buf.get_iter_at_mark(out end_iter, this.end);
+			buf.apply_tag(this.style, end_iter, start_iter);
+			buf.move_mark(this.end, start_iter);
+
 			// Update parent ranges and apply parent tags
 			if (this.parent != null) {
 				this.parent.update_ranges_from(this);

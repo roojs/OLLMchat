@@ -10,6 +10,16 @@
 .chat-view-text > viewport {
 	margin-left: 10px;
 	margin-right: 5px;
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+/* Remove theme vertical padding/margin from markdown TextViews (flow + table cells) */
+.oc-markdown-text text {
+	padding-top: 0;
+	padding-bottom: 0;
+	margin-top: 0;
+	margin-bottom: 0;
 }
 
 

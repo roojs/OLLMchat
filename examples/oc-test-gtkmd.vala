@@ -20,75 +20,88 @@
  * Example: oc-test-gtkmd {markdown file}
  *
  * Opens a window with the GTK markdown widget and renders the given markdown file.
- * Uses the same structural pattern as other examples (option parsing, help, validation).
+ * Extends TestAppBase and uses ApplicationInterface for standard debug options,
+ * log handling, and help.
  */
-class TestGtkMd : Gtk.Application
+class TestGtkMd : TestAppBase
 {
-	private static bool opt_help = false;
 	private static string? opt_file = null;
 
-	private const OptionEntry[] options = {
-		{ "help", 'h', 0, OptionArg.NONE, ref opt_help, "Show help and exit", null },
-		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render", "FILE" },
-		{ null }
-	};
+	protected override string help { get; set; default = """
+Usage: {ARG} [OPTIONS] <markdown_file>
+
+Opens a window with the GTK markdown widget and renders the given markdown file.
+
+Arguments:
+  markdown_file              Path to a markdown file to render
+
+Examples:
+  {ARG} README.md
+  {ARG} --file=docs/notes.md
+  {ARG} -d tests/data/markdown/tables.md
+"""; }
 
 	public TestGtkMd()
 	{
-		Object(
-			application_id: "com.roojs.ollmchat.test-gtkmd",
-			flags: ApplicationFlags.HANDLES_COMMAND_LINE
-		);
+		base("com.roojs.ollmchat.test-gtkmd");
 	}
 
-	protected override int command_line(ApplicationCommandLine command_line)
+	protected override string get_app_name()
 	{
-		opt_help = false;
-		opt_file = null;
+		return "oc-test-gtkmd";
+	}
 
-		string[] args = command_line.get_arguments();
-		unowned string[] remaining = args;
+	private const OptionEntry[] local_options = {
+		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render (alternative to positional arg)", "FILE" },
+		{ null }
+	};
 
-		var opt_context = new OptionContext("oc-test-gtkmd");
-		opt_context.set_help_enabled(true);
-		opt_context.add_main_entries(options, null);
+	protected override OptionContext app_options()
+	{
+		var opt_context = new OptionContext(this.get_app_name());
+		var base_opts = new OptionEntry[3];
+		base_opts[0] = base_options[0];  // debug
+		base_opts[1] = base_options[1];   // debug-critical
+		base_opts[2] = { null };
+		opt_context.add_main_entries(base_opts, null);
 
-		try {
-			opt_context.parse(ref remaining);
-		} catch (OptionError e) {
-			command_line.printerr("error: %s\n", e.message);
-			command_line.printerr("Run '%s --help' for options.\n", args[0]);
-			return 1;
-		}
+		var app_group = new OptionGroup("oc-test-gtkmd", "GTK Markdown Viewer Options", "Show oc-test-gtkmd options");
+		app_group.add_entries(local_options);
+		opt_context.add_group(app_group);
 
-		if (opt_help) {
-			command_line.print(help_text());
-			return 0;
-		}
+		return opt_context;
+	}
 
-		// File: from --file or first positional argument
+	protected override string? validate_args(string[] remaining_args)
+	{
 		string? file_path = (opt_file != null && opt_file != "") ? opt_file : null;
-		if (file_path == null && remaining.length > 1) {
-			file_path = remaining[1];
+		if (file_path == null && remaining_args.length > 1) {
+			file_path = remaining_args[1];
 		}
 		if (file_path == null || file_path == "") {
-			command_line.printerr("ERROR: Markdown file is required.\n");
-			command_line.printerr("Usage: %s <markdown_file>\n", args[0]);
-			command_line.printerr("Run '%s --help' for options.\n", args[0]);
-			return 1;
+			return "ERROR: Markdown file is required.\nUsage: %s <markdown_file>\n".printf(remaining_args[0]);
+		}
+		return null;
+	}
+
+	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
+	{
+		if (!Gtk.init_check()) {
+			command_line.printerr("ERROR: Failed to initialize GTK (no display?)\n");
+			throw new GLib.IOError.FAILED("Failed to initialize GTK");
 		}
 
-		// Resolve path
+		string? file_path = (opt_file != null && opt_file != "") ? opt_file : remaining_args[1];
 		if (!GLib.Path.is_absolute(file_path)) {
 			file_path = GLib.Path.build_filename(GLib.Environment.get_current_dir(), file_path);
 		}
 		if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
 			command_line.printerr("ERROR: File not found: %s\n", file_path);
-			return 1;
+			throw new GLib.IOError.NOT_FOUND("File not found: " + file_path);
 		}
 		if (!GLib.FileUtils.test(file_path, GLib.FileTest.IS_REGULAR)) {
 			command_line.printerr("ERROR: Not a regular file: %s\n", file_path);
-			return 1;
+			throw new GLib.IOError.INVALID_ARGUMENT("Not a regular file: " + file_path);
 		}
 
 		string markdown_content;
@@ -96,32 +109,23 @@ class TestGtkMd : Gtk.Application
 			GLib.FileUtils.get_contents(file_path, out markdown_content);
 		} catch (GLib.FileError e) {
 			command_line.printerr("ERROR: Failed to read file: %s\n", e.message);
-			return 1;
+			throw new GLib.IOError.FAILED("Failed to read file: %s", e.message);
 		}
 
-		// Hold so app stays alive until window is closed
-		this.hold();
-
-		// Create window with markdown widget
 		var window = build_markdown_window(file_path, markdown_content);
 		var loop = new MainLoop();
 		window.close_request.connect(() => {
 			loop.quit();
-			this.release();
-			this.quit();
 			return false;  // allow default close behaviour
 		});
 		window.present();
 
-		// Block until window is closed
 		loop.run();
-
-		return 0;
 	}
 
 	private Gtk.Window build_markdown_window(string title, string markdown_content)
 	{
-		var window = new Gtk.ApplicationWindow(this) {
+		var window = new Gtk.Window() {
 			title = title,
 			default_width = 700,
 			default_height = 500
@@ -155,37 +159,10 @@ class TestGtkMd : Gtk.Application
 		window.set_child(scrolled);
 		return window;
 	}
-
-	internal static string help_text()
-	{
-		return """
-Usage: oc-test-gtkmd [OPTIONS] <markdown_file>
-
-Opens a window with the GTK markdown widget and renders the given markdown file.
-
-Arguments:
-  markdown_file              Path to a markdown file to render
-
-Options:
-  -f, --file=FILE            Markdown file to render (alternative to positional arg)
-  -h, --help                  Show this help and exit
-
-Examples:
-  oc-test-gtkmd README.md
-  oc-test-gtkmd --file=docs/notes.md
-""";
-	}
 }
 
 int main(string[] args)
 {
-	// Handle --help without starting GTK (avoids "Failed to open display" when no display)
-	for (int i = 1; i < args.length; i++) {
-		if (args[i] == "--help" || args[i] == "-h") {
-			stdout.printf("%s", TestGtkMd.help_text());
-			return 0;
-		}
-	}
 	var app = new TestGtkMd();
 	return app.run(args);
 }

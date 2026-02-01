@@ -32,7 +32,6 @@ namespace Markdown
 				return;
 			}
 			mp = new Gee.HashMap<string, FormatType>();
-			GLib.debug("ListMap.init: initializing static map");
 
 			// Continue list: 2 spaces to continue list items
 			mp[" "] = FormatType.INVALID;

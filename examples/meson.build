@@ -145,18 +145,27 @@ test_markdown_parser = executable('oc-markdown-test',
 )
 
 # Build oc-test-gtkmd executable (GTK markdown widget viewer)
-# Renders a markdown file in a window using MarkdownGtk.Render
+# Extends TestAppBase for standard debug options and ApplicationInterface
 # Use ocmarkdowngtk_vapi_dep only (no link_with) to avoid meson auto-including ocmarkdowngtk-meson.vapi
 test_gtkmd = executable('oc-test-gtkmd',
-  dependencies: [test_window_deps, ocmarkdown_vapi_dep, ocmarkdowngtk_vapi_dep],
-  sources: ['oc-test-gtkmd.vala'],
-  include_directories: include_directories('../libocmarkdown'),
+  dependencies: [test_window_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep, ocmarkdowngtk_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-test-gtkmd.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libocmarkdown'),
+    include_directories('../libollmchat')
+  ],
   build_rpath: build_rpath,
   vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
     '--pkg=ocmarkdown',
     '--pkg=ocmarkdowngtk',
+    '--pkg=ollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
