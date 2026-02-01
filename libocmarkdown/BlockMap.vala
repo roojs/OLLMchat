@@ -194,32 +194,29 @@ namespace Markdown
 			if (matched_block == FormatType.TABLE) {
 				var rest = chunk.substring(chunk_pos);
 				var lines = rest.split("\n");
-				if (lines.length < 1) {
+				// Wait for first \n so we have a complete line 1 before checking
+				if (lines.length < 2) {
+					if (is_end_of_chunks) {
+						return 0;
+					}
+					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: no first newline yet (rest_len=%d)", (int)rest.length);
 					return -1;
 				}
 				// Line 1 must start and end with | (trim for generosity)
 				if (!lines[0].strip().has_prefix("|") || !lines[0].strip().has_suffix("|")) {
 					return 0;
 				}
-				if (lines.length < 2) {
-					if (is_end_of_chunks) {
-						return 0;
-					}
-					return -1;
-				}
-				// We have at least partial line 2; if any content after trim, it must start with |
+				// If we have the second line and it doesn't start with |, reject
 				if (lines[1].strip() != "" && !lines[1].strip().has_prefix("|")) {
 					return 0;
 				}
 				if (lines.length < 3) {
 					if (is_end_of_chunks) {
+						GLib.debug("[TABLE_DEBUG] BlockMap TABLE reject: only 1 line at eof");
 						return 0;
 					}
+					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: 1 line (rest_len=%d)", (int)rest.length);
 					return -1;
-				}
-				// As soon as we have first | on line 3 we have line 2 complete: line 2 must end with |
-				if (!lines[1].strip().has_suffix("|")) {
-					return 0;
 				}
 				// Then validate separator (only space, |, -, :)
 				try {
@@ -229,8 +226,21 @@ namespace Markdown
 				} catch (GLib.RegexError e) {
 					return 0;
 				}
-				// Line 3 must start and end with |
-				if (!lines[2].strip().has_prefix("|") || !lines[2].strip().has_suffix("|")) {
+				// Third line: not empty and must start with |
+				if (lines[2].strip() != "" && !lines[2].strip().has_prefix("|")) {
+					return 0;
+				}
+				// Wait for third newline so we have 3 complete lines
+				if (lines.length < 4) {
+					if (is_end_of_chunks) {
+						GLib.debug("[TABLE_DEBUG] BlockMap TABLE reject: only 2 lines at eof");
+						return 0;
+					}
+					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: 2 lines (rest_len=%d)", (int)rest.length);
+					return -1;
+				}
+				// Line 3 must end with |
+				if (!lines[2].strip().has_suffix("|")) {
 					return 0;
 				}
 				// byte_length = 3 lines including newlines (support multi-byte newline)
@@ -240,6 +250,7 @@ namespace Markdown
 				byte_length = lines[0].length + nl_byte_len
 					+ lines[1].length + nl_byte_len
 					+ lines[2].length + nl_byte_len;
+				GLib.debug("[TABLE_DEBUG] BlockMap TABLE matched 3 lines (byte_length=%d)", byte_length);
 				return 1;
 			}
 

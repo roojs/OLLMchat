@@ -134,6 +134,7 @@ namespace Markdown
 				return;
 			}
 			if (this.table_row_index == 2) {
+				GLib.debug("[TABLE_DEBUG] TableState feed_line emitting on_table(true) (first body row)");
 				this.parser.renderer.on_table(true);
 				var cells1 = this.split_row(this.table_header_line);
 				this.emit_row(cells1, true);

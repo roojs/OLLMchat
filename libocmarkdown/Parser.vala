@@ -236,11 +236,13 @@ namespace Markdown
 							var rest = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 							var stripped = rest.strip();
 							if (stripped != "" && !stripped.has_prefix("|")) {
+								GLib.debug("[TABLE_DEBUG] Parser TABLE_END (non-| line while in table)");
 								this.do_block(false, FormatType.TABLE);
 								this.current_block = FormatType.NONE;
 								this.in_literal = false;
 								continue;
 							}
+							GLib.debug("[TABLE_DEBUG] Parser TABLE_NEED_MORE no newline in chunk, chunk_rest_len=%d", (int)(chunk.length - chunk_pos));
 							this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 							return;
 						}
@@ -257,6 +259,7 @@ namespace Markdown
 						this.at_line_start = true;
 						continue;
 					}
+					GLib.debug("[TABLE_DEBUG] Parser TABLE_END (line has no |, re-process as non-table)");
 					this.do_block(false, FormatType.TABLE);
 					this.current_block = FormatType.NONE;
 					this.in_literal = false;
@@ -462,6 +465,7 @@ namespace Markdown
 				return;
 			}
 			if (this.current_block == FormatType.TABLE) {
+				GLib.debug("[TABLE_DEBUG] Parser TABLE_END (newline in table – empty line or end)");
 				this.do_block(false, FormatType.TABLE);
 				this.current_block = FormatType.NONE;
 				this.at_line_start = true;
@@ -500,6 +504,11 @@ namespace Markdown
 		) {
 			if (block_match == -1) {
 				this.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
+				if (matched_block == FormatType.TABLE) {
+					var lines = this.leftover_chunk.split("\n");
+					GLib.debug("[TABLE_DEBUG] Parser handle_block_result TABLE need more: %d lines in chunk, leftover_len=%d",
+						(int)lines.length, (int)this.leftover_chunk.length);
+				}
 				return true;
 			}
 			if (block_match == 0) {
@@ -577,6 +586,7 @@ namespace Markdown
 					var consumed_block = chunk.substring(chunk_pos, byte_length);
 					var lines = consumed_block.split("\n");
 					// BlockMap guarantees 3 lines; ensure we have at least 3
+					GLib.debug("[TABLE_DEBUG] Parser TABLE_START consumed 3 lines (byte_length=%d)", byte_length);
 					this.table_state.feed_line(lines[0]);
 					this.table_state.feed_line(lines[1]);
 					this.table_state.feed_line(lines[2]);

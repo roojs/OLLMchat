@@ -528,6 +528,7 @@ namespace MarkdownGtk
 		
 		public override void on_table(bool is_start)
 		{
+			GLib.debug("[TABLE_DEBUG] Render on_table is_start=%s", is_start.to_string());
 			if (is_start) {
 				this.current_table = new Table(this);
 				return;
@@ -540,6 +541,7 @@ namespace MarkdownGtk
 
 		public override void on_table_row(bool is_start)
 		{
+			GLib.debug("[TABLE_DEBUG] Render on_table_row is_start=%s current_table=%s", is_start.to_string(), (this.current_table != null).to_string());
 			if (this.current_table == null) {
 				return;
 			}

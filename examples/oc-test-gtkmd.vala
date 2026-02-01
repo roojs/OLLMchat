@@ -43,6 +43,8 @@ Examples:
   {ARG} README.md
   {ARG} --stream tests/data/markdown/tables.md
   {ARG} -s -f docs/notes.md
+
+Table streaming debug (parser/render): run with -d and G_MESSAGES_DEBUG=all to see [TABLE_DEBUG] logs.
 """; }
 
 	public TestGtkMd()
