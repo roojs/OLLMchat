@@ -144,6 +144,24 @@ test_markdown_parser = executable('oc-markdown-test',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-test-gtkmd executable (GTK markdown widget viewer)
+# Renders a markdown file in a window using MarkdownGtk.Render
+# Use ocmarkdowngtk_vapi_dep only (no link_with) to avoid meson auto-including ocmarkdowngtk-meson.vapi
+test_gtkmd = executable('oc-test-gtkmd',
+  dependencies: [test_window_deps, ocmarkdown_vapi_dep, ocmarkdowngtk_vapi_dep],
+  sources: ['oc-test-gtkmd.vala'],
+  include_directories: include_directories('../libocmarkdown'),
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=ocmarkdown',
+    '--pkg=ocmarkdowngtk',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdowngtk'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-test-fetch executable (WebFetchTool test)
 test_web_fetch = executable('oc-test-fetch',
   dependencies: [test_ollama_deps, ocsqlite_vapi_dep, ocmarkdown_vapi_dep, octools_vapi_dep],
