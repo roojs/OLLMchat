@@ -503,7 +503,6 @@ namespace OLLMchatGtk
 				case ContentState.CONTENT:
 					// Send new text directly to progressive renderer (handles code blocks automatically)
 					this.renderer.add(text);
-					// No need to update end_mark anymore (box model handles it)
 					return;
 					
 				case ContentState.NONE:
@@ -637,7 +636,6 @@ namespace OLLMchatGtk
 					
 					// Flush renderer to finalize
 					this.renderer.flush();
-					
 					// Call renderer.end_block() to end current block
 					// (start() will be called when starting the next block)
 					this.renderer.end_block();

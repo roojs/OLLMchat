@@ -21,7 +21,7 @@ namespace MarkdownGtk
 	internal class Table
 	{
 		private Render renderer;
-		private Gtk.Grid grid;
+		public Gtk.Grid grid { get; private set; }
 		private int current_row = 0;
 		private int current_cell = 0;
 

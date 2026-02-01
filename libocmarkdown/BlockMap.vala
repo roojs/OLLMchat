@@ -199,7 +199,6 @@ namespace Markdown
 					if (is_end_of_chunks) {
 						return 0;
 					}
-					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: no first newline yet (rest_len=%d)", (int)rest.length);
 					return -1;
 				}
 				// Line 1 must start and end with | (trim for generosity)
@@ -212,10 +211,8 @@ namespace Markdown
 				}
 				if (lines.length < 3) {
 					if (is_end_of_chunks) {
-						GLib.debug("[TABLE_DEBUG] BlockMap TABLE reject: only 1 line at eof");
 						return 0;
 					}
-					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: 1 line (rest_len=%d)", (int)rest.length);
 					return -1;
 				}
 				// Then validate separator (only space, |, -, :)
@@ -233,10 +230,8 @@ namespace Markdown
 				// Wait for third newline so we have 3 complete lines
 				if (lines.length < 4) {
 					if (is_end_of_chunks) {
-						GLib.debug("[TABLE_DEBUG] BlockMap TABLE reject: only 2 lines at eof");
 						return 0;
 					}
-					GLib.debug("[TABLE_DEBUG] BlockMap TABLE need more: 2 lines (rest_len=%d)", (int)rest.length);
 					return -1;
 				}
 				// Line 3 must end with |
@@ -250,7 +245,6 @@ namespace Markdown
 				byte_length = lines[0].length + nl_byte_len
 					+ lines[1].length + nl_byte_len
 					+ lines[2].length + nl_byte_len;
-				GLib.debug("[TABLE_DEBUG] BlockMap TABLE matched 3 lines (byte_length=%d)", byte_length);
 				return 1;
 			}
 
