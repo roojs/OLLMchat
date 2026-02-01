@@ -24,6 +24,11 @@ namespace MarkdownGtk
 		public Gtk.Grid grid { get; private set; }
 		private int current_row = 0;
 		private int current_cell = 0;
+		private int num_cols = 0;
+		private Gee.HashMap<int, Gee.HashMap<int, Gtk.ScrolledWindow>> cells {
+			get; set; default = new Gee.HashMap<int, Gee.HashMap<int, Gtk.ScrolledWindow>>();
+		}
+		private Gee.HashMap<int, int> cellwidths { get; set; default = new Gee.HashMap<int, int>(); }
 
 		// Fake stack and buffer when inside table but not in a cell (avoids nulls; add() never sees null)
 		private Gtk.TextView table_fake_textview;
@@ -74,12 +79,71 @@ namespace MarkdownGtk
 			this.renderer.current_state = this.table_fake_top_state;
 		}
 
+		/** Measure cell content width by line: Pango layout per line, max width. */
+		private int measure_cell_width(Gtk.TextView text_view)
+		{
+			var buffer = text_view.buffer;
+			Gtk.TextIter start_iter;
+			buffer.get_start_iter(out start_iter);
+			int max_width = 0;
+			while (!start_iter.is_end()) {
+				var end_iter = start_iter;
+				end_iter.forward_to_line_end();
+				string line = buffer.get_text(start_iter, end_iter, false);
+				if (line.length > 0) {
+					var layout = text_view.create_pango_layout(line);
+					int line_width;
+					layout.get_pixel_size(out line_width, null);
+					max_width = int.max(max_width, line_width);
+				}
+				if (!start_iter.forward_line()) {
+					break;
+				}
+			}
+			int margin = text_view.left_margin + text_view.right_margin;
+			return max_width > 0 ? max_width + margin : margin;
+		}
+
+		private void resize(Gee.HashMap<int, int> widths)
+		{
+			foreach (var row_entry in this.cells.entries) {
+				var row_cells = row_entry.value;
+				foreach (var col_entry in row_cells.entries) {
+					var  c = col_entry.key;
+					var sw = col_entry.value;
+					var w = widths.has_key(c) ? widths.get(c) : 100;
+					sw.width_request = w;
+				}
+			}
+		}
+
+		private void build_widths_and_resize()
+		{
+			var ncols = this.num_cols > 0 ? this.num_cols : this.current_cell;
+			var container = 400;
+			if (this.grid.get_width() > 0) {
+				container = this.grid.get_width();
+			}
+			var min_col = (ncols < 5) ? (int)(0.10 * container) : 50;
+			var max_col = (ncols <= 5) ? (int)(0.60 * container) : 400;
+
+			var widths = new Gee.HashMap<int, int>();
+			foreach (var e in this.cellwidths.entries) {
+				var c = e.key;
+				var w = e.value.clamp(min_col, max_col);
+				widths.set(c, w);
+			}
+			this.resize(widths);
+		}
+
 		public void on_row(bool is_start)
 		{
 			if (is_start) {
 				this.current_cell = 0;
+				this.cells.set(this.current_row, new Gee.HashMap<int, Gtk.ScrolledWindow>());
 				return;
 			}
+			this.num_cols = int.max(this.num_cols, this.current_cell);
 			// Add a bottom-only separator line below this row
 			var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
 				hexpand = true,
@@ -87,6 +151,10 @@ namespace MarkdownGtk
 			};
 			sep.add_css_class(this.current_row == 0 ? "oc-table-header-sep" : "oc-table-body-sep");
 			this.grid.attach(sep, 0, this.current_row * 2 + 1, this.current_cell, 1);
+			GLib.Idle.add(() => {
+				this.build_widths_and_resize();
+				return false;
+			});
 			this.current_row++;
 		}
 
@@ -96,6 +164,9 @@ namespace MarkdownGtk
 				this.create_cell(align, true);
 				return;
 			}
+			var nat_w = this.measure_cell_width(this.renderer.current_textview);
+			var cur = this.cellwidths.has_key(this.current_cell) ? this.cellwidths.get(this.current_cell) : 0;
+			this.cellwidths.set(this.current_cell, int.max(cur, nat_w));
 			this.set_renderer_to_fake();
 			this.current_cell++;
 		}
@@ -106,6 +177,9 @@ namespace MarkdownGtk
 				this.create_cell(align, false);
 				return;
 			}
+			var nat_w = this.measure_cell_width(this.renderer.current_textview);
+			var cur = this.cellwidths.has_key(this.current_cell) ? this.cellwidths.get(this.current_cell) : 0;
+			this.cellwidths.set(this.current_cell, int.max(cur, nat_w));
 			this.set_renderer_to_fake();
 			this.current_cell++;
 		}
@@ -150,6 +224,7 @@ namespace MarkdownGtk
 			cell_scrolled.set_child(cell_view);
 			// Grid row = current_row * 2 (separator rows go at current_row * 2 + 1)
 			this.grid.attach(cell_scrolled, this.current_cell, this.current_row * 2, 1, 1);
+			this.cells.get(this.current_row).set(this.current_cell, cell_scrolled);
 			// Initialize new cell's top state for this buffer without changing render's
 			// current_buffer/current_state yet, so we never have buffer A with state from buffer B
 			var cell_top = new TopState(this.renderer);
