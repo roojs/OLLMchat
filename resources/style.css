@@ -22,6 +22,14 @@
 	margin-bottom: 0;
 }
 
+/* Table row separators: Gtk.Separator horizontal line */
+.oc-table-header-sep {
+	background-color: #666;
+}
+.oc-table-body-sep {
+	background-color: #505050;
+	min-height: 2px;
+}
 
 /* Shared frame header styling - layout and sizing */
 .oc-frame-header {

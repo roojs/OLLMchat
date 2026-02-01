@@ -80,6 +80,13 @@ namespace MarkdownGtk
 				this.current_cell = 0;
 				return;
 			}
+			// Add a bottom-only separator line below this row
+			var sep = new Gtk.Separator(Gtk.Orientation.HORIZONTAL) {
+				hexpand = true,
+				height_request = (this.current_row == 0) ? 4 : 2
+			};
+			sep.add_css_class(this.current_row == 0 ? "oc-table-header-sep" : "oc-table-body-sep");
+			this.grid.attach(sep, 0, this.current_row * 2 + 1, this.current_cell, 1);
 			this.current_row++;
 		}
 
@@ -141,13 +148,17 @@ namespace MarkdownGtk
 				margin_bottom = 0
 			};
 			cell_scrolled.set_child(cell_view);
-			this.grid.attach(cell_scrolled, this.current_cell, this.current_row, 1, 1);
+			// Grid row = current_row * 2 (separator rows go at current_row * 2 + 1)
+			this.grid.attach(cell_scrolled, this.current_cell, this.current_row * 2, 1, 1);
 			// Initialize new cell's top state for this buffer without changing render's
 			// current_buffer/current_state yet, so we never have buffer A with state from buffer B
 			var cell_top = new TopState(this.renderer);
 			cell_top.initialize_for_buffer(cell_view.buffer);
-			// Column alignment via TextTag justification (view keeps FILL for expansion)
+			// Header bold and column alignment via TextTag justification (view keeps FILL for expansion)
 			if (cell_top.style != null) {
+				if (is_header) {
+					cell_top.style.weight = Pango.Weight.BOLD;
+				}
 				switch (align) {
 					case 0:
 						cell_top.style.justification = Gtk.Justification.CENTER;

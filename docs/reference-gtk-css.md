@@ -67,6 +67,8 @@ This document provides a reference for valid CSS properties and values in GTK4.
 | `border-bottom` | Shorthand | |
 | `border-left` | Shorthand | |
 
+**GtkScrolledWindow:** Borders on `Gtk.ScrolledWindow` only paint when `has_frame` is `true`. Set `scrolled_window.has_frame = true` in code, then apply border CSS to your class (e.g. `.oc-table-header-cell { border-bottom-width: 2px; border-bottom-style: solid; border-bottom-color: black; }`). Using longhand (`border-bottom-width`, `border-bottom-style`, `border-bottom-color`) can be more reliable than the shorthand.
+
 ### Typography
 
 | Property | Valid Values | Notes |
