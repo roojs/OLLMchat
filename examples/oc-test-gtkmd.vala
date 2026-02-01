@@ -26,6 +26,7 @@
 class TestGtkMd : TestAppBase
 {
 	private static string? opt_file = null;
+	private static bool opt_stream = false;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <markdown_file>
@@ -35,10 +36,13 @@ Opens a window with the GTK markdown widget and renders the given markdown file.
 Arguments:
   markdown_file              Path to a markdown file to render
 
+Options:
+  -s, --stream               Emulate streaming: feed content in small chunks with delay
+
 Examples:
   {ARG} README.md
-  {ARG} --file=docs/notes.md
-  {ARG} -d tests/data/markdown/tables.md
+  {ARG} --stream tests/data/markdown/tables.md
+  {ARG} -s -f docs/notes.md
 """; }
 
 	public TestGtkMd()
@@ -53,6 +57,7 @@ Examples:
 
 	private const OptionEntry[] local_options = {
 		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render (alternative to positional arg)", "FILE" },
+		{ "stream", 's', 0, OptionArg.NONE, ref opt_stream, "Emulate streaming: feed content in small chunks" },
 		{ null }
 	};
 
@@ -112,7 +117,7 @@ Examples:
 			throw new GLib.IOError.FAILED("Failed to read file: %s", e.message);
 		}
 
-		var window = build_markdown_window(file_path, markdown_content);
+		var window = build_markdown_window(file_path, markdown_content, opt_stream);
 		var loop = new MainLoop();
 		window.close_request.connect(() => {
 			loop.quit();
@@ -123,8 +128,24 @@ Examples:
 		loop.run();
 	}
 
-	private Gtk.Window build_markdown_window(string title, string markdown_content)
+	private Gtk.Window build_markdown_window(string title, string markdown_content, bool stream)
 	{
+		// Load CSS from resources (same as ChatView; resources are in libollmchat)
+		string[] css_files = { "pulldown.css", "style.css" };
+		foreach (var css_file in css_files) {
+			var css_provider = new Gtk.CssProvider();
+			try {
+				css_provider.load_from_resource(@"/ollmchat/$(css_file)");
+				Gtk.StyleContext.add_provider_for_display(
+					Gdk.Display.get_default(),
+					css_provider,
+					Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+				);
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to load %s resource: %s", css_file, e.message);
+			}
+		}
+
 		var window = new Gtk.Window() {
 			title = title,
 			default_width = 700,
@@ -145,8 +166,32 @@ Examples:
 		};
 
 		renderer.start();
-		renderer.add(markdown_content);
-		renderer.flush();
+		if (stream) {
+			// Feed content in random-sized chunks (2–8 chars) every ~30ms to emulate streaming.
+			// Advance by full UTF-8 characters so we never split a multi-byte character (substring uses byte offsets).
+			int[] pos = { 0 };
+			const uint interval_ms = 30;
+			GLib.Timeout.add(interval_ms, () => {
+				if (pos[0] >= markdown_content.length) {
+					renderer.flush();
+					return false;
+				}
+				int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);  // 2–8 characters
+				int end_byte = pos[0];
+				for (int i = 0; i < chunk_chars && end_byte < markdown_content.length; i++) {
+					end_byte += markdown_content.get_char(end_byte).to_string().length;
+				}
+				if (end_byte > markdown_content.length) {
+					end_byte = (int) markdown_content.length;
+				}
+				renderer.add(markdown_content.substring(pos[0], end_byte - pos[0]));
+				pos[0] = end_byte;
+				return true;
+			});
+		} else {
+			renderer.add(markdown_content);
+			renderer.flush();
+		}
 
 		var scrolled = new Gtk.ScrolledWindow() {
 			hexpand = true,

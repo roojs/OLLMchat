@@ -272,13 +272,10 @@ namespace MarkdownGtk
 		private void close_lists_to_level(uint level)
 		{
 			int min_index = (int)level - 1; // Convert to 0-based index
-			GLib.debug("Render.close_lists_to_level: level=%u, min_index=%d, stack.size=%d", level, min_index, this.list_stack.size);
 			// Only close lists that are deeper (stack size > min_index + 1)
 			while (this.list_stack.size > min_index + 1) {
-				var removed = this.list_stack.remove_at(this.list_stack.size - 1);
-				GLib.debug("Render.close_lists_to_level: removed stack entry, new size=%d", this.list_stack.size);
+				this.list_stack.remove_at(this.list_stack.size - 1);
 			}
-			GLib.debug("Render.close_lists_to_level: after closing, stack.size=%d", this.list_stack.size);
 		}
 		
 		/**
@@ -288,7 +285,6 @@ namespace MarkdownGtk
 		 */
 		public override void on_ul(bool is_start, uint indentation)
 		{
-			GLib.debug("Render.on_ul: is_start=%s, indentation=%u, list_stack.size=%d", is_start ? "true" : "false", indentation, this.list_stack.size);
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
@@ -314,9 +310,6 @@ namespace MarkdownGtk
 			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
 			
-			GLib.debug("Render.on_ul: after setup, list_stack.size=%d, current_list_indentation=%u, stack[%d]=%d", 
-				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index));
-			
 			// Always open a list item when we see a list marker (like HTML renderer does)
 			this.on_li(true);
 			
@@ -330,7 +323,6 @@ namespace MarkdownGtk
 		 */
 		public override void on_ol(bool is_start, uint indentation)
 		{
-			GLib.debug("Render.on_ol: is_start=%s, indentation=%u, list_stack.size=%d", is_start ? "true" : "false", indentation, this.list_stack.size);
 			if (!is_start) {
 				this.current_state.close_state();
 				return;
@@ -351,7 +343,6 @@ namespace MarkdownGtk
 			// But only if it's already > 0 (continuing a list) or if we're starting fresh
 			// Actually, we should always increment - if it's 0, it becomes 1, if it's > 0, it increments
 			int old_value = this.list_stack.get(target_index);
-			GLib.debug("Render.on_ol: before increment, stack[%d]=%d", target_index, old_value);
 			// Only increment if this level was already an ordered list (> 0)
 			// If it was 0 (unordered or new), start at 1
 			if (old_value > 0) {
@@ -365,9 +356,6 @@ namespace MarkdownGtk
 			
 			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
-			
-			GLib.debug("Render.on_ol: after setup, list_stack.size=%d, current_list_indentation=%u, stack[%d]=%d (was %d)", 
-				this.list_stack.size, this.current_list_indentation, target_index, this.list_stack.get(target_index), old_value);
 			
 			// Always open a list item when we see a list marker (like HTML renderer does)
 			this.on_li(true);
@@ -399,7 +387,6 @@ namespace MarkdownGtk
 			uint current_level = this.current_list_indentation;
 			if (current_level == 0) {
 				// No list context - just add state
-				GLib.debug("Render.on_li: no list context (current_level=0), just adding state");
 				this.current_state.add_state();
 				return;
 			}
@@ -410,8 +397,6 @@ namespace MarkdownGtk
 			// Ensure the stack has this level
 			if (target_index >= this.list_stack.size) {
 				// Stack not set up - just add state without marker
-				GLib.debug("Render.on_li: stack not set up (target_index=%d >= stack.size=%d), adding state without marker", 
-					target_index, this.list_stack.size);
 				this.current_state.add_state();
 				return;
 			}
@@ -419,13 +404,9 @@ namespace MarkdownGtk
 			// Get the list type and number for the current level
 			int list_number = this.list_stack.get(target_index);
 			
-			GLib.debug("Render.on_li: current_level=%u, target_index=%d, list_number=%d", 
-				current_level, target_index, list_number);
-			
 			// Add tabs for indentation
 			// Level 1 gets 1 tab, level 2 gets 2 tabs, etc.
 			uint indent_tabs = current_level;
-			GLib.debug("Render.on_li: adding %u tabs for indentation (level %u)", indent_tabs, current_level);
 			for (uint i = 0; i < indent_tabs; i++) {
 				this.current_state.add_text("\t");
 			}
@@ -433,12 +414,10 @@ namespace MarkdownGtk
 			// Add marker based on list type
 			if (list_number == 0) {
 				// Unordered list - use bullet point (circle)
-				GLib.debug("Render.on_li: adding unordered list bullet '•'");
 				this.current_state.add_text("●");
 			} else {
 				// Ordered list - use number + "." with bold formatting
 				string number_marker = list_number.to_string() + ".";
-				GLib.debug("Render.on_li: adding ordered list marker '%s'", number_marker);
 				// Create a new state with bold formatting for the number marker
 				var bold_state = this.current_state.add_state();
 				bold_state.style.weight = Pango.Weight.BOLD;

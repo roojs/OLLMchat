@@ -138,8 +138,8 @@ namespace OLLMchat.History
 				// Placeholder not found, just append the real session
 				this.manager.sessions.append(real_session);
 			} else {
-				// e) Replace the placeholder with the real session in manager.sessions
-				this.manager.sessions.replace_at(index, real_session);
+				// e) Replace the placeholder with the real session in manager.sessions (same index). Silent so nothing triggers (no selection jump).
+				this.manager.sessions.replace_at(index, real_session, true);
 			}
 			GLib.debug("resulting  Session: %s", real_session.to_string());
 			

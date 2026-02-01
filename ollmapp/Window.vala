@@ -423,6 +423,7 @@ namespace OLLMapp
 			var sidebar_motion = new Gtk.EventControllerMotion();
 			sidebar_motion.leave.connect(() => {
 				if (this.split_view.show_sidebar && this.history_leave_ignore_timeout_id == 0) {
+					GLib.debug("Window: hiding sidebar (mouse leave)");
 					this.history_toggle_button.active = false;
 				}
 			});

@@ -257,11 +257,14 @@ namespace OLLMchat.History
 		/**
 		 * Replace an item at a specific position.
 		 * Updates both id_map and fid_map.
-		 * 
+		 *
+		 * When silent is true, no items_changed is emitted (e.g. placeholder→Session replace on restore).
+		 *
 		 * @param position The position of the item to replace
 		 * @param item The new SessionBase item to replace with
+		 * @param silent If true, do not emit items_changed so nothing downstream triggers
 		 */
-		public void replace_at(uint position, SessionBase item)
+		public void replace_at(uint position, SessionBase item, bool silent = false)
 		{
 			if (position >= this.items.size) {
 				return; // Invalid position
@@ -284,6 +287,9 @@ namespace OLLMchat.History
 				this.fid_map.set(item.fid, item);
 			}
 			
+			if (silent) {
+				return;
+			}
 			// Emit items_changed signal (1 removed, 1 added at same position)
 			this.items_changed(position, 1, 1);
 		}

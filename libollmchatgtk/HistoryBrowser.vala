@@ -102,11 +102,8 @@ namespace OLLMchatGtk
 				}
 				var position = selection_model.selected;
 				if (position != Gtk.INVALID_LIST_POSITION) {
-					// Use sorted_store to get the item at the selected position
 					var session = this.sorted_store.get_item(position) as OLLMchat.History.SessionBase;
-					
 					this.session_selected(session);
-					
 				}
 			});
 			
@@ -295,7 +292,6 @@ namespace OLLMchatGtk
 		/**
 		 * Handler for sorted_store's items_changed signal.
 		 * 
-		 * Called when items are added, removed, or changed in the sorted list.
 		 * When a new session is added at position 0 (after sorting by updated_at_timestamp DESC),
 		 * we select it and scroll to top.
 		 * 
@@ -317,7 +313,6 @@ namespace OLLMchatGtk
 			
 			// Use Idle to defer selection, giving time for title to be set
 			Idle.add(() => {
-				// Set selection to the new session (at position 0)
 				this.changing_selection = true;
 				var selection = this.list_view.model as Gtk.SingleSelection;
 				selection.selected = 0;

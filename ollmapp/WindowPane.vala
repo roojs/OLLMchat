@@ -336,9 +336,9 @@ namespace OLLMapp
 				this.tab_view.add_named(widget, widget_id);
 			} 
 			// if ti exists it will be the same object - no need to check..
-			// Show widget and set as visible child
+			// Show widget and set as visible child (use widget_id: we added with add_named(widget, widget_id))
 			widget.visible = true;
-			this.tab_view.set_visible_child_name(widget.name);
+			this.tab_view.set_visible_child_name(widget_id);
 			
 			return widget;
 		}
