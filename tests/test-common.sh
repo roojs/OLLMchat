@@ -136,8 +136,7 @@ test-match() {
         test_fail "$full_description"
         echo "  Actual file: $actual_file"
         echo "  Expected file: $expected_file"
-        echo "  Diff:"
-        # Show unified diff
+        echo "  Diff (expected -> actual):"
         diff -u "$expected_file" "$actual_file" | sed 's/^/    /' || true
         return 1
     fi
@@ -233,7 +232,11 @@ print_test_summary() {
     echo ""
     echo "=== Test Summary ==="
     echo -e "${GREEN}Passed: $TESTS_PASSED${NC}"
-    echo -e "${RED}Failed: $TESTS_FAILED${NC}"
+    if [ "$TESTS_FAILED" -eq 0 ]; then
+        echo -e "${GREEN}Failed: NONE${NC}"
+    else
+        echo -e "${RED}Failed: $TESTS_FAILED${NC}"
+    fi
     
     if [ ${#FAILED_TESTS[@]} -gt 0 ]; then
         echo ""

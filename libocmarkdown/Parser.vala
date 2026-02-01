@@ -227,6 +227,43 @@ namespace Markdown
 		
 				 
 				
+				// In table: at line start, consume one full line and either feed as row or end table
+				if (this.at_line_start && this.current_block == FormatType.TABLE) {
+					var newline_pos = chunk.index_of_char('\n', chunk_pos);
+					if (newline_pos == -1) {
+						if (!is_end_of_chunks) {
+							// If we already have content and it doesn't start with |, this line can't be a table row – exit table now
+							var rest = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+							var stripped = rest.strip();
+							if (stripped != "" && !stripped.has_prefix("|")) {
+								this.do_block(false, FormatType.TABLE);
+								this.current_block = FormatType.NONE;
+								this.in_literal = false;
+								continue;
+							}
+							this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+							return;
+						}
+						newline_pos = chunk.length;
+					}
+					var line_len = newline_pos - chunk_pos;
+					var line = chunk.substring(chunk_pos, line_len);
+					if (line.contains("|")) {
+						this.table_state.feed_line(line);
+						chunk_pos = newline_pos;
+						if (chunk_pos < chunk.length) {
+							chunk_pos += chunk.get_char(chunk_pos).to_string().length;
+						}
+						this.at_line_start = true;
+						continue;
+					}
+					this.do_block(false, FormatType.TABLE);
+					this.current_block = FormatType.NONE;
+					this.in_literal = false;
+					// do_block(TABLE, false) clears table_state; do not advance chunk_pos – re-process this line as non-table
+					continue;
+				}
+
 				// At line start - check for block markers
 				if (this.at_line_start) {
 					var saved_chunk_pos = chunk_pos;
@@ -424,6 +461,13 @@ namespace Markdown
 				chunk_pos += 1;
 				return;
 			}
+			if (this.current_block == FormatType.TABLE) {
+				this.do_block(false, FormatType.TABLE);
+				this.current_block = FormatType.NONE;
+				this.at_line_start = true;
+				chunk_pos += 1;
+				return;
+			}
 			if (str != "") {
 				this.renderer.on_text(str);
 				str = "";
@@ -524,6 +568,19 @@ namespace Markdown
 					var list_marker = chunk.substring(chunk_pos, byte_length);
 					this.do_block(true, matched_block, list_marker);
 					this.at_line_start = false;
+					chunk_pos = seq_pos;
+					return false;
+
+				case FormatType.TABLE:
+					this.current_block = FormatType.TABLE;
+					this.table_state = new TableState(this);
+					var consumed_block = chunk.substring(chunk_pos, byte_length);
+					var lines = consumed_block.split("\n");
+					// BlockMap guarantees 3 lines; ensure we have at least 3
+					this.table_state.feed_line(lines[0]);
+					this.table_state.feed_line(lines[1]);
+					this.table_state.feed_line(lines[2]);
+					this.at_line_start = true;
 					chunk_pos = seq_pos;
 					return false;
 
@@ -695,6 +752,13 @@ namespace Markdown
 				case FormatType.BLOCKQUOTE:
 			
 					this.renderer.on_quote(is_start, lang.length /2 );
+					break;
+				case FormatType.TABLE:
+					// Table start is handled by TableState (feed_line emits on_table(true) when emitting the first body row)
+					if (!is_start) {
+						this.renderer.on_table(false);
+						this.table_state = null;
+					}
 					break;
 				case FormatType.NONE:
 					// No block to handle

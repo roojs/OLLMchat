@@ -26,8 +26,11 @@ namespace Markdown
 	{
 		private static Gee.HashMap<string, FormatType> mp;
 
-		static construct
+		private static void init()
 		{
+			if (mp != null) {
+				return;
+			}
 			mp = new Gee.HashMap<string, FormatType>();
 
 			// Asterisk sequences (most common)
@@ -62,6 +65,7 @@ namespace Markdown
 
 		public FormatMap()
 		{
+			FormatMap.init();
 			base(FormatMap.mp);
 		}
 	}

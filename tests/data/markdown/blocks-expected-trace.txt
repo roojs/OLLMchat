@@ -1,0 +1,102 @@
+=== PARSING MARKDOWN FILE: data/markdown/blocks.md ===
+=== FILE CONTENT (first 200 chars) ===
+# Heading 1
+
+Paragraph one.
+
+## Heading 2
+
+- Unordered item A
+- Unordered item B
+
+1. Ordered first
+2. Ordered second
+
+> Blockquote line one.
+> Blockquote line two.
+
+---
+Horizontal rule above.
+
+```vala...
+
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: " Heading 1"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Paragraph one."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <h2>
+  TEXT: " Heading 2"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Unordered item A"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Unordered item B"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "Ordered first"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "Ordered second"
+END: <ol> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <blockquote level=1>
+  TEXT: "Blockquote line one."
+END: <blockquote>
+TEXT: "
+"
+START: <blockquote level=1>
+  TEXT: "Blockquote line two."
+END: <blockquote>
+TEXT: "
+"
+TEXT: "
+"
+<hr>
+START: <p>
+  TEXT: "Horizontal rule above."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang=vala)
+  CODE_TEXT: "void main() {"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "    print("code block\n");"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "}"
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: ""
+TEXT: ""
+=== END TRACE ===

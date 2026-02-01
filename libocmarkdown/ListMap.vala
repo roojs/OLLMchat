@@ -26,9 +26,13 @@ namespace Markdown
 	{
 		private static Gee.HashMap<string, FormatType> mp;
 
-		static construct
+		private static void init()
 		{
+			if (mp != null) {
+				return;
+			}
 			mp = new Gee.HashMap<string, FormatType>();
+			GLib.debug("ListMap.init: initializing static map");
 
 			// Continue list: 2 spaces to continue list items
 			mp[" "] = FormatType.INVALID;
@@ -70,6 +74,7 @@ namespace Markdown
 
 		public ListMap()
 		{
+			ListMap.init();
 			base(ListMap.mp);
 		}
 
@@ -131,7 +136,12 @@ namespace Markdown
 						var continue_byte_length = cp - chunk_pos;
 						FormatType recursive_matched_block;
 						int recursive_byte_length;
-						var recursive_result = this.peek(chunk, cp, is_end_of_chunks, out recursive_matched_block, out recursive_byte_length);
+						var recursive_result = this.peek(
+							chunk, 
+							cp, 
+							is_end_of_chunks,
+							 out recursive_matched_block, 
+							 out recursive_byte_length);
 						if (recursive_result == -1) {
 							return -1;
 						}

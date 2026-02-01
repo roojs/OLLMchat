@@ -1,4 +1,4 @@
-# Test suite for file operations
+# Test suite for file operations and markdown parser
 
 # Test script for oc-test-files
 test_file_ops_script = files('test-file-ops.sh')
@@ -20,5 +20,21 @@ test('test-file-ops',
   workdir: meson.current_source_dir(),
   timeout: 300,  # 5 minute timeout
   suite: 'file-ops'
+)
+
+# Markdown parser tests (formatting, blocks, tables)
+test_markdown_parser_script = files('test-markdown-parser.sh')
+oc_markdown_test_exe = get_variable('test_markdown_parser', disabler())
+oc_md2html_exe = get_variable('vmd2html', disabler())
+test('test-markdown-parser',
+  find_program('bash'),
+  args: [
+    test_markdown_parser_script,
+    meson.current_build_dir() / '..'
+  ],
+  depends: [oc_markdown_test_exe, oc_md2html_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'markdown'
 )
 

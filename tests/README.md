@@ -12,6 +12,15 @@ From the repo root:
 - Edit ops: `./tests/test-edit-ops.sh`
 - File ops: `./tests/test-file-ops.sh`
 - Bubble tests: `./tests/test-bubble.sh`
+- Markdown parser: `./tests/test-markdown-parser.sh build`
+
+### Running via Meson (full suite)
+
+`meson test -C build` runs all test scripts. To see **which** tests failed and **why** (diffs, file paths), use:
+
+`meson test -C build --print-errorlogs`
+
+That prints each failing script’s stdout/stderr so you get the per-test PASS/FAIL list and any diff output.
 
 ### Build dir override
 
