@@ -114,6 +114,10 @@ namespace Markdown
 
 			// Reached end of chunk
 			if (!is_end_of_chunks) {
+				// Longest possible format marker for * and _ is 3 chars (BOLD_ITALIC)
+				if (char_count >= 3) {
+					return max_match_length;
+				}
 				return -1;
 			}
 			return max_match_length;

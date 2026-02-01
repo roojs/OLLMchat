@@ -672,7 +672,8 @@ namespace MarkdownGtk
 				return;
 			}
 			
-			this.current_state.add_state();
+			var code_state = this.current_state.add_state();
+			code_state.style.family = "monospace";
 		}
 		
 		/**

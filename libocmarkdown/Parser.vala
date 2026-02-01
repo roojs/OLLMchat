@@ -514,33 +514,32 @@ namespace Markdown
 			var seq_pos = chunk_pos + byte_length;
 			switch (matched_block) {
 				case FormatType.HORIZONTAL_RULE:
-					this.do_block(true, matched_block);
-					var pos = seq_pos;
-					if (!chunk.contains("\n") && !is_end_of_chunks) {
+					// HR only if rest of line (after ***/___/---) is whitespace. Otherwise treat as paragraph.
+					var newline_pos = chunk.index_of_char('\n', seq_pos);
+					var rest = newline_pos != -1
+						? chunk.substring(seq_pos, newline_pos - seq_pos)
+						: chunk.substring(seq_pos, chunk.length - seq_pos);
+					if (rest.strip() != "") {
+						if (this.current_block == FormatType.NONE) {
+							this.current_block = FormatType.PARAGRAPH;
+							this.do_block(true, FormatType.PARAGRAPH);
+						}
+						this.at_line_start = false;
+						return false;
+					}
+					if (newline_pos == -1 && !is_end_of_chunks) {
 						this.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
 						return true;
 					}
-					var newline_pos = chunk.index_of_char('\n', pos);
+					this.do_block(true, matched_block);
 					if (newline_pos != -1) {
 						var newline_char = chunk.get_char(newline_pos);
 						this.at_line_start = true;
 						chunk_pos = newline_pos + newline_char.to_string().length;
-						return false;
+					} else {
+						this.at_line_start = true;
+						chunk_pos = (int) chunk.length;
 					}
-					if (!is_end_of_chunks) {
-						this.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
-						return true;
-					}
-					while (pos < chunk.length) {
-						var ch = chunk.get_char(pos);
-						if (!ch.isspace()) {
-							this.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
-							return true;
-						}
-						pos += ch.to_string().length;
-					}
-					this.at_line_start = true;
-					chunk_pos = pos;
 					return false;
 
 				case FormatType.FENCED_CODE_QUOTE:
