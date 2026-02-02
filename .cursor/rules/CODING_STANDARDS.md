@@ -15,6 +15,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
 - **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
 - **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
+- **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -788,15 +789,22 @@ var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata 
 
 ## Character Looping
 
-**CRITICAL - FORBIDDEN:** Do NOT loop through strings character by character. **ANY kind of character looping is FORBIDDEN unless specifically requested.** This includes:
+**CRITICAL - FORBIDDEN:** Do NOT loop through strings character by character unless there is **absolutely 100% no other way** to do it. **Always** check string methods and regex first — only use character loops when every other option has been ruled out.
+
+**CRITICAL:** This includes:
 - `for (int i = 0; i < str.length; i++)` loops accessing `str[i]`
 - `while` loops with character indexing
 - Any iteration that accesses individual characters via indexing
 - Character-by-character processing in any form
 
-This is extremely inefficient and error-prone. Always use string library methods instead.
+Character looping is extremely inefficient and error-prone. Prefer string library methods and regex.
 
-**CRITICAL:** Before writing any character-by-character loop, examine the GLib string library (`GLib.String`) to find appropriate methods. Common operations:
+**CRITICAL:** Before writing any character-by-character loop:
+1. Check the GLib string library (`GLib.String`) for methods that do what you need.
+2. Check whether a regex (`GLib.Regex`) can match or extract what you need.
+3. Only if there is genuinely no string method and no regex that can do it, consider a character loop — and document why.
+
+Common string operations:
 - `contains()`, `has_prefix()`, `has_suffix()` - pattern matching
 - `split()`, `split_set()` - splitting strings
 - `replace()`, `replace_set()` - replacing substrings
