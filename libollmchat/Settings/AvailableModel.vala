@@ -83,60 +83,47 @@ namespace OLLMchat.Settings
 		public string list_markup {
 			owned get {
 				// Build pango markup: name + line break + small grey description + tags
-				var escaped_name = GLib.Markup.escape_text(this.name, -1);
-				var markup_builder = new StringBuilder();
-				markup_builder.append(escaped_name);
-				
-				// Add description if available
+				var s = GLib.Markup.escape_text(this.name, -1);
 				if (this.description != "") {
-					var escaped_desc = GLib.Markup.escape_text(this.description, -1);
-					markup_builder.append("\n<span size=\"small\" foreground=\"grey\">%s</span>".printf(escaped_desc));
+					s += "\n<span size=\"small\" foreground=\"grey\">%s</span>".printf(GLib.Markup.escape_text(this.description, -1));
 				}
-				
-				// Add size tags with styling (light yellow background, spaced)
-				// Show unique sizes (e.g., "7b", "34b") - context is shown in the size dropdown
-				if (this.unique_sizes.size > 0 || this.features.size > 0 || this.downloads > 0) {
-					markup_builder.append("\n");
-					bool first_item = true;
-					
-					// Display sizes with light yellow background
-					foreach (var size in this.unique_sizes) {
-						if (!first_item) {
-							markup_builder.append(" ");  // Space between items
-						}
-						var escaped_size = GLib.Markup.escape_text(size, -1);
-						// Light yellow background (#ffffcc or similar), with padding effect using spaces
-						markup_builder.append("<span background=\"#ffffcc\" size=\"small\"> %s </span>".printf(escaped_size));
-						first_item = false;
-					}
-					
-					// Display features with light cyan background
-					foreach (var feature in this.features) {
-						if (!first_item) {
-							markup_builder.append(" ");  // Space between items
-						}
-						var escaped_feature = GLib.Markup.escape_text(feature, -1);
-						// Light cyan background (#ccffff or similar), with padding effect using spaces
-						markup_builder.append("<span background=\"#ccffff\" size=\"small\"> %s </span>".printf(escaped_feature));
-						first_item = false;
-					}
-					
-					// Display downloads in small grey text
-					if (this.downloads > 0) {
-						string downloads_str;
-						if (this.downloads >= 1000000) {
-							downloads_str = "%.1fM pulls".printf((double)this.downloads / 1000000.0);
-						} else if (this.downloads >= 1000) {
-							downloads_str = "%.1fk pulls".printf((double)this.downloads / 1000.0);
-						} else {
-							downloads_str = "%s pulls".printf(this.downloads.to_string());
-						}
-						var escaped_downloads = GLib.Markup.escape_text(downloads_str, -1);
-						markup_builder.append(" <span size=\"small\" foreground=\"grey\">%s</span>".printf(escaped_downloads));
+				if (this.unique_sizes.size == 0 && this.features.size == 0 && this.downloads == 0) {
+					return s;
+				}
+				string[] tags = {};
+				foreach (var size in this.unique_sizes) {
+					tags += "<span background=\"#ffffcc\" size=\"small\"> %s </span>".printf(GLib.Markup.escape_text(size, -1));
+				}
+				var span_fmt = "<span background=\"%s\" foreground=\"#000000\" weight=\"bold\" size=\"small\"> %s </span>";
+				foreach (var feature in this.features) {
+					switch (feature) {
+						case "embedding":
+							tags += span_fmt.printf("#e1bee7", "🏭 embedding");
+							break;
+						case "tools":
+							tags += span_fmt.printf("#ffdd99", "🔧 tools");
+							break;
+						case "vision":
+							tags += span_fmt.printf("#c8e6c9", "👁️ vision");
+							break;
+						case "thinking":
+							tags += span_fmt.printf("#fff9c4", "🧠 thinking");
+							break;
+						case "cloud":
+							tags += span_fmt.printf("#e3f2fd", "☁️ cloud");
+							break;
+						default:
+							tags += "<span background=\"#ccffff\" size=\"small\"> %s </span>".printf(GLib.Markup.escape_text(feature, -1));
+							break;
 					}
 				}
-				
-				return markup_builder.str;
+				if (this.downloads > 0) {
+					string downloads_str = this.downloads >= 1000000 ? "%.1fM pulls".printf((double)this.downloads / 1000000.0)
+						: this.downloads >= 1000 ? "%.1fk pulls".printf((double)this.downloads / 1000.0)
+						: "%s pulls".printf(this.downloads.to_string());
+					tags += "<span size=\"small\" foreground=\"grey\">%s</span>".printf(GLib.Markup.escape_text(downloads_str, -1));
+				}
+				return s + "\n" + string.joinv(" ", tags);
 			}
 		}
 		
