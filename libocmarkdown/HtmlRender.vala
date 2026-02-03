@@ -496,7 +496,7 @@ namespace Markdown
 			this.open_tags.add("td");
 		}
 		
-		public override void on_a(bool is_start, string href, string title, bool is_autolink)
+		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{
 			if (!is_start) {
 				this.close_tag("a");

@@ -1,0 +1,48 @@
+=== PARSING MARKDOWN FILE: data/markdown/links.md ===
+=== FILE CONTENT (first 200 chars) ===
+# Links
+
+Inline: [OpenAI](https://openai.com) and [example](https://example.com).
+
+With title: [see here](https://example.org "Example site").
+
+Reference-style: [text][ref] and [short][].
+
+Task list (...
+
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: " Links"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Inline: [OpenAI](https://openai.com) and [example](https://example.com)."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "With title: [see here](https://example.org "Example site")."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Reference-style: [text][ref] and [short][]."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Task list (not links): [ ] unchecked and [x] checked."
+END: <p>
+TEXT: "
+"
+TEXT: ""
+=== END TRACE ===

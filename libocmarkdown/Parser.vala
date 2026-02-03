@@ -74,6 +74,7 @@ namespace Markdown
 		CONTINUE_LIST,
 		TASK_LIST,
 		TASK_LIST_DONE,
+		LINK,
 		DEFINITION_LIST,
 		INDENTED_CODE,
 		FENCED_CODE_QUOTE,
@@ -92,7 +93,7 @@ namespace Markdown
 	public class Parser
 	{
 		internal RenderBase renderer { get; private set; }
-		public FormatMap formatmap { get; set; default = new FormatMap(); }
+		public FormatMap formatmap { get; set; }
 		internal TableState? table_state { get; set; }
 		public BlockMap blockmap { get; set; default = new BlockMap(); }
 		internal Gee.ArrayList<FormatType> state_stack {
@@ -112,6 +113,7 @@ namespace Markdown
 		public Parser(RenderBase renderer)
 		{
 			this.renderer = renderer;
+			this.formatmap = new FormatMap(this);
 		}
 		
 
@@ -355,6 +357,8 @@ namespace Markdown
 		{
 			// some format types dont have start and end flags..
 			switch (format_type) {
+				case FormatType.LINK:
+					return; // Handled in handle_format_result / process_inline; never pushed via got_format
 				case FormatType.TASK_LIST:
 				case FormatType.TASK_LIST_DONE:
 					//GLib.debug("got_format: TASK_LIST_DONE called");
@@ -430,6 +434,9 @@ namespace Markdown
 						this.renderer.on_task_list(true, true);
 					}
 					break;
+				case FormatType.LINK:
+					// Handled in formatmap.eat_link(); no stack push
+					break;
 				case FormatType.HTML:
 					if (is_start) {
 						// HTML needs special handling - for now use on_other
@@ -468,6 +475,8 @@ namespace Markdown
 				chunk_pos += 1;
 				return;
 			}
+			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
+			this.state_stack.clear();
 			if (str != "") {
 				this.renderer.on_text(str);
 				str = "";
@@ -670,6 +679,21 @@ namespace Markdown
 				var ch = chunk.get_char(seq_pos);
 				seq_pos += ch.to_string().length;
 			}
+			if (matched_format == FormatType.LINK) {
+				var link_result = this.formatmap.eat_link(chunk, chunk_pos, seq_pos, is_end_of_chunks);
+				if (link_result == -1) {
+					this.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					return true;
+				}
+				if (link_result == 0) {
+					this.renderer.on_text(chunk.substring(chunk_pos, seq_pos - chunk_pos));
+					chunk_pos = seq_pos;
+					return false;
+				}
+				this.formatmap.handle_link(chunk, chunk_pos, seq_pos, link_result);
+				chunk_pos = link_result;
+				return false;
+			}
 			if (matched_format != FormatType.HTML) {
 				this.got_format(matched_format);
 				chunk_pos = seq_pos;
@@ -697,6 +721,87 @@ namespace Markdown
 				return true;
 			}
 			return false;
+		}
+
+		/**
+		 * Parse a string as inline only (no block handling). Uses formatmap.eat(), on_text, got_format, add_html;
+		 * escape and code-span literal as in main parser; at end pops state_stack and emits closing format callbacks.
+		 * Used for link text and table cells.
+		 */
+		public void process_inline(string text)
+		{
+			var pos = 0;
+			var str = "";
+			while (pos < text.length) {
+				// Escape: \ + next char → emit next as literal, advance by 1 + next char byte length
+				if (text.get_char(pos) == '\\' && pos + 1 < text.length) {
+					this.renderer.on_text(str);
+					str = "";
+					this.renderer.on_text(text.get_char(pos + 1).to_string());
+					pos += 1 + text.get_char(pos + 1).to_string().length;
+					continue;
+				}
+				var matched_format = FormatType.NONE;
+				var byte_length = 0;
+				var match_len = this.formatmap.eat(text, pos, true, out matched_format, out byte_length);
+				// Code-span literal: inside LITERAL/CODE, only same format closes
+				if (this.state_stack.size > 0) {
+					var top = this.state_stack.get(this.state_stack.size - 1);
+					if ((top == FormatType.LITERAL || top == FormatType.CODE) && matched_format != top) {
+						match_len = 0;
+					}
+				}
+				if (match_len == -1) {
+					this.renderer.on_text(str);
+					str = "";
+					var c = text.get_char(pos);
+					this.renderer.on_text(c.to_string());
+					pos += c.to_string().length;
+					continue;
+				}
+				if (match_len == 0) {
+					var c = text.get_char(pos);
+					str += c.to_string();
+					pos += c.to_string().length;
+					continue;
+				}
+				this.renderer.on_text(str);
+				str = "";
+				if (matched_format == FormatType.LINK) {
+					// Inline context (e.g. table cell): try full link; if no match, emit 3 chars as literal.
+					var seq_pos = pos + byte_length;
+					var link_result = this.formatmap.eat_link(text, pos, seq_pos, true);
+					if (link_result == -1) {
+						var c = text.get_char(pos);
+						this.renderer.on_text(c.to_string());
+						pos += c.to_string().length;
+						continue;
+					}
+					if (link_result == 0) {
+						this.renderer.on_text(text.substring(pos, byte_length));
+						pos += byte_length;
+						continue;
+					}
+					this.formatmap.handle_link(text, pos, seq_pos, link_result);
+					pos = link_result;
+					continue;
+				}
+				if (matched_format != FormatType.HTML) {
+					this.got_format(matched_format);
+					pos += byte_length;
+					continue;
+				}
+				var sub = text.substring(pos + byte_length);
+				var rest = this.add_html(sub);
+				pos += byte_length + (sub.length - rest.length);
+			}
+			for (var i = this.state_stack.size - 1; i >= 0; i--) {
+				this.do_format(false, this.state_stack.get(i));
+			}
+			this.state_stack.clear();
+			if (str != "") {
+				this.renderer.on_text(str);
+			}
 		}
 
 		/**

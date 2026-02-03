@@ -50,53 +50,6 @@ namespace Markdown
 			return s.has_prefix(":") && s.has_suffix(":") ? 0 : (s.has_suffix(":") ? 1 : -1);
 		}
 
-		/**
-		 * Process inline formatting inside a table cell. Uses the parser's formatmap and
-		 * renderer callbacks. At end, pops any state pushed during the cell and emits closing format callbacks.
-		 */
-		private void process_cell(string cell_text)
-		{
-			var pos = 0;
-			var str = "";
-			while (pos < cell_text.length) {
-				FormatType matched_format;
-				int byte_length;
-				var match_len = this.parser.formatmap.eat(
-					cell_text, pos, true, out matched_format, out byte_length);
-				if (match_len == -1) {
-					this.parser.renderer.on_text(str);
-					str = "";
-					var c = cell_text.get_char(pos);
-					this.parser.renderer.on_text(c.to_string());
-					pos += c.to_string().length;
-					continue;
-				}
-				if (match_len == 0) {
-					var c = cell_text.get_char(pos);
-					str += c.to_string();
-					pos += c.to_string().length;
-					continue;
-				}
-				this.parser.renderer.on_text(str);
-				str = "";
-				if (matched_format != FormatType.HTML) {
-					this.parser.got_format(matched_format);
-					pos += byte_length;
-					continue;
-				}
-				var sub = cell_text.substring(pos + byte_length);
-				var rest = this.parser.add_html(sub);
-				pos += byte_length + (sub.length - rest.length);
-			}
-			for (var i = this.parser.state_stack.size - 1; i >= 0; i--) {
-				this.parser.do_format(false, this.parser.state_stack.get(i));
-			}
-			this.parser.state_stack.clear();
-			if (str != "") {
-				this.parser.renderer.on_text(str);
-			}
-		}
-
 		private void emit_row(string[] cells, bool is_header)
 		{
 			this.parser.renderer.on_table_row(true);
@@ -107,7 +60,7 @@ namespace Markdown
 				} else {
 					this.parser.renderer.on_table_cell(true, align);
 				}
-				this.process_cell(cells[i]);
+				this.parser.process_inline(cells[i]);
 				if (is_header) {
 					this.parser.renderer.on_table_hcell(false, align);
 				} else {

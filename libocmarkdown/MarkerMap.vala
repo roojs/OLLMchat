@@ -88,6 +88,7 @@ namespace Markdown
 			int max_match_length = 0;
 			int char_count = 0;
 			var sequence = "";
+			var wildcard_sequence = "";
 
 			for (var cp = chunk_pos; cp < chunk.length; ) {
 				var char_at_cp = chunk.get_char(cp);
@@ -96,24 +97,41 @@ namespace Markdown
 				char_count++;
 
 				var last_char = char_at_cp;
+				wildcard_sequence += char_at_cp.isalpha() ? "?" : (char_at_cp.isdigit() ? "1" : char_at_cp.to_string());
+
+				if (map.has_key(sequence)) {
+					matched_type = map.get(sequence);
+					if (matched_type == FormatType.INVALID) {
+						continue; // e.g. "[" alone: keep building to try "[a", "[ ]", etc.
+					}
+					max_match_length = char_count;
+					byte_length = cp - chunk_pos;
+					continue; // try next char for longer match (e.g. * → ** → ***)
+				}
+				if (map.has_key(wildcard_sequence)) {
+					matched_type = map.get(wildcard_sequence);
+					if (matched_type == FormatType.INVALID) {
+						continue; // let the loop eat another character
+					}
+					max_match_length = char_count;
+					byte_length = cp - chunk_pos;
+					break; // exit loop; end-of-loop returns max_match_length
+				}
+				if (matched_type != FormatType.NONE) {
+					break;
+				}
 				if (last_char.isalpha() && last_char.tolower() != 'x') {
 					return max_match_length;
 				}
-
-				if (!map.has_key(sequence)) {
-					return max_match_length;
-				}
-
-				matched_type = map.get(sequence);
-
-				if (matched_type != FormatType.INVALID) {
-					max_match_length = char_count;
-					byte_length = cp - chunk_pos;
-				}
+				return max_match_length;
 			}
 
-			// Reached end of chunk
+			// Reached end of chunk (no more characters to eat)
 			if (!is_end_of_chunks) {
+				// Wildcard INVALID (e.g. "[?") means need more characters to decide
+				if (map.has_key(wildcard_sequence) && map.get(wildcard_sequence) == FormatType.INVALID) {
+					return -1;
+				}
 				// Longest possible format marker for * and _ is 3 chars (BOLD_ITALIC)
 				if (char_count >= 3) {
 					return max_match_length;

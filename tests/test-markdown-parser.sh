@@ -50,9 +50,10 @@ MARKDOWN_TEST_LABELS=(
 	"1. Formatting (HTML)"
 	"2. Blocks (callback trace)"
 	"3. Tables (HTML)"
+	"4. Links (callback trace)"
 )
 # Substrings that identify each test in FAILED_TESTS descriptions
-MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML")
+MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback")
 
 # Test 1: Simple formatting (bold, italic, code, etc.) → HTML
 test_formatting() {
@@ -88,6 +89,17 @@ test_tables() {
 	test-match "$testname" "$actual" "$expected" "Tables HTML output" || true
 }
 
+# Test 4: Links (inline, title, reference-style, task list not links) → callback trace
+test_links() {
+	echo "=== Test 4: Links (callback trace) ==="
+	reset_test_state
+	local testname="markdown_links"
+	local actual="$TEST_DIR/links-actual-trace.txt"
+	local expected="$MD_DATA/links-expected-trace.txt"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "data/markdown/links.md" 2>/dev/null) > "$actual"
+	test-match "$testname" "$actual" "$expected" "Links callback trace" || true
+}
+
 # Actual/expected paths for each test (order matches MARKDOWN_TEST_LABELS)
 MARKDOWN_ACTUAL_FILES=(
 	"$TEST_DIR/formatting-actual.html"
@@ -115,9 +127,9 @@ print_markdown_results() {
 	done
 	echo ""
 	if [ "$TESTS_FAILED" -eq 0 ]; then
-		echo -e "${GREEN}Markdown parser: all 3 tests passed.${NC}"
+		echo -e "${GREEN}Markdown parser: all 4 tests passed.${NC}"
 	else
-		echo -e "${RED}Markdown parser: $TESTS_FAILED of 3 tests failed.${NC}"
+		echo -e "${RED}Markdown parser: $TESTS_FAILED of 4 tests failed.${NC}"
 		echo ""
 		echo "=== FAILURE DETAILS (diffs below) ==="
 		for i in "${!MARKDOWN_TEST_LABELS[@]}"; do
@@ -141,16 +153,18 @@ print_markdown_results() {
 
 # Main
 echo ""
-echo "=== Markdown parser test suite (3 tests) ==="
+echo "=== Markdown parser test suite (4 tests) ==="
 echo "  • Formatting: oc-md2html on data/markdown/formatting.md → HTML"
 echo "  • Blocks:     oc-markdown-test on data/markdown/blocks.md → callback trace"
 echo "  • Tables:     oc-md2html on data/markdown/tables.md → HTML"
+echo "  • Links:      oc-markdown-test on data/markdown/links.md → callback trace"
 echo ""
 
 setup_test_env
 test_formatting
 test_blocks
 test_tables
+test_links
 print_test_summary
 print_markdown_results
 exit $([ "$TESTS_FAILED" -eq 0 ] && echo 0 || echo 1)
