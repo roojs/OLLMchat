@@ -176,7 +176,6 @@ namespace Markdown
 		*/
 		public void add(string in_chunk, bool is_end_of_chunks = false)
 		{
-			//GLib.debug("add(%s)", in_chunk);
 			var chunk = this.leftover_chunk + in_chunk; // Prepend leftover_chunk so it's processed first
 			this.leftover_chunk = ""; // Clear leftover_chunk after using it
 			var chunk_pos = 0;
@@ -475,6 +474,8 @@ namespace Markdown
 				chunk_pos += 1;
 				return;
 			}
+			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
+			this.state_stack.clear();
 			if (str != "") {
 				this.renderer.on_text(str);
 				str = "";
