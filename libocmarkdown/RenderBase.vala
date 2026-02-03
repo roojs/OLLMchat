@@ -47,7 +47,7 @@ namespace Markdown
 		{
 			this.parser.add(text);
 		}
-		
+
 		/**
 		 * Finalizes the current chunk. Call this before starting a new chunk with add_start
 		 * to ensure all pending content is processed.
@@ -94,7 +94,7 @@ namespace Markdown
 		public virtual void on_table_row(bool is_start) {}
 		public virtual void on_table_hcell(bool is_start, int align) {}
 		public virtual void on_table_cell(bool is_start, int align) {}
-		public virtual void on_a(bool is_start, string href, string title, bool is_autolink) {}
+		public virtual void on_a(bool is_start, string href, string title, bool is_reference) {}
 		public virtual void on_img(string src, string? title) {}
 		public virtual void on_br() {}
 		public virtual void on_softbr() {}
