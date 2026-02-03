@@ -564,11 +564,11 @@ namespace MarkdownGtk
 		/**
 		 * Callback for link spans.
 		 * 
-		 * @param href The link URL
-		 * @param title The link title 
-		 * @param is_autolink Whether this is an autolink
+		 * @param href The link URL (or reference label when is_reference is true)
+		 * @param title The link title
+		 * @param is_reference Whether this is a reference-style link (href is ref label)
 		 */
-		public override void on_a(bool is_start, string href, string title, bool is_autolink)
+		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{
 			if (!is_start) {
 				this.current_state.close_state();

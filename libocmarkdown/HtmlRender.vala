@@ -142,16 +142,12 @@ namespace Markdown
 		public override void on_h(bool is_start, uint level)
 		{
 			if (!is_start) {
-				GLib.debug("END h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
 				this.close_tag("h" + level.to_string());
-				GLib.debug("after close, output_length=%ld", (long)this.html_output.len);
 				return;
 			}
 			
-			GLib.debug("START h%u, open_tags=%d, current_output_length=%ld", level, this.open_tags.size, (long)this.html_output.len);
 			this.html_output.append("<h" + level.to_string() + ">");
 			this.open_tags.add("h" + level.to_string());
-			GLib.debug("after append, output='%s'", this.html_output.str);
 		}
 			
 		public override void on_p(bool is_start)
@@ -401,7 +397,6 @@ namespace Markdown
 		{
 			// Code block text content - escape HTML
 			var escaped = GLib.Markup.escape_text(text, -1);
-			GLib.debug("text='%s', escaped='%s'", text.replace("\n", "\\n"), escaped.replace("\n", "\\n"));
 			this.html_output.append(escaped);
 		}
 		
@@ -496,7 +491,7 @@ namespace Markdown
 			this.open_tags.add("td");
 		}
 		
-		public override void on_a(bool is_start, string href, string title, bool is_autolink)
+		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{
 			if (!is_start) {
 				this.close_tag("a");
@@ -627,7 +622,6 @@ namespace Markdown
 			
 			// Escape special HTML characters
 			var escaped = GLib.Markup.escape_text(text, -1);
-			GLib.debug("text='%s', escaped='%s', open_tags=%d", text, escaped, this.open_tags.size);
 			this.html_output.append(escaped);
 		}
 			
