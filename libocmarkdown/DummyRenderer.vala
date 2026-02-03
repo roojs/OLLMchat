@@ -323,17 +323,17 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_a(bool is_start, string href, string title, bool is_reference)
+		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
+				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", autolink=%s)\n", href, title, is_autolink.to_string());
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
+			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", autolink=%s)\n", href, title, is_autolink.to_string());
 			indent_level++;
 		}
 		

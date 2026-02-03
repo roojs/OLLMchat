@@ -98,4 +98,5 @@ START: <code_block> (lang=vala)
 "
 END: <code_block> (lang=)
 TEXT: ""
+TEXT: ""
 === END TRACE ===

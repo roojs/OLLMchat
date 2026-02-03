@@ -129,24 +129,16 @@ test_html_parser_to_md = executable('oc-html2md',
 )
 
 # Build test-markdown-parser executable (Markdown parser test with dummy renderer)
-# Extends TestAppBase for standard debug options and help (same pattern as oc-test-gtkmd, oc-test-fetch)
+# Only depends on libocmarkdown (not libocmarkdowngtk) since it uses DummyRenderer
+# Use ocmarkdown_vapi_dep instead of link_with to avoid meson auto-including ocmarkdown-meson.vapi
 test_markdown_parser = executable('oc-markdown-test',
-  dependencies: [ocmarkdown_test_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep],
-  sources: ['TestAppBase.vala', 'oc-markdown-test.vala'],
-  link_with: [ollmchat_base_lib],
-  include_directories: [
-    include_directories('../libocmarkdown'),
-    include_directories('../libollmchat')
-  ],
+  dependencies: [ocmarkdown_test_deps, ocmarkdown_vapi_dep],
+  sources: ['oc-markdown-test.vala'],
+  include_directories: include_directories('../libocmarkdown'),
   build_rpath: build_rpath,
   vala_args: [
-    '--pkg=sqlite3',
-    '--pkg=ocsqlite',
-    '--pkg=ollmchat',
     '--pkg=ocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
-    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
-    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat'
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown'
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
@@ -328,21 +320,6 @@ oc_migrate_editors = executable('oc-migrate-editors',
   ],
   install: true,
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
-)
-
-# Minimal deps for Vala repro examples (no project libs)
-minimal_deps = [
-  dependency('glib-2.0'),
-  dependency('gio-2.0'),
-  dependency('gobject-2.0'),
-]
-
-# Reproducible example: Vala "free short if" codegen bug (nested ternary use-after-free)
-oc_vala_ternary_bug = executable('oc-vala-ternary-bug',
-  dependencies: minimal_deps,
-  sources: ['oc-vala-ternary-bug.vala'],
-  install: true,
-  install_dir: get_option('bindir')
 )
 
 # Compile resources for ocvector (needed by oc-vector-index)

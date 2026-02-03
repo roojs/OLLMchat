@@ -72,17 +72,13 @@ namespace Markdown
 			var ch = chunk.get_char(chunk_pos);
 			var next_pos = chunk_pos + ch.to_string().length;
 			if (next_pos >= chunk.length) {
-				// only hit at end of chunk
-				matched_type = map.get(single_char);
-				if (matched_type == FormatType.INVALID) {
-					// INVALID at end of chunk: need more input to resolve (e.g. [ → [?, [??; ~ → ~~)
-					if (!is_end_of_chunks) {
-						return -1;
-					}
-					return 0;
-				}
 				if (!is_end_of_chunks) {
 					return -1; // Might be longer match
+				}
+				// At end of chunks - check if single char FormatType is INVALID → return 0
+				matched_type = map.get(single_char);
+				if (matched_type == FormatType.INVALID) {
+					return 0;
 				}
 				byte_length = next_pos - chunk_pos;
 				return 1; // Definitive single char match
@@ -91,61 +87,33 @@ namespace Markdown
 			// Loop-based sequence matching
 			int max_match_length = 0;
 			int char_count = 0;
-			string sequence = "";
-			string wildcard_sequence = "";
+			var sequence = "";
 
 			for (var cp = chunk_pos; cp < chunk.length; ) {
 				var char_at_cp = chunk.get_char(cp);
-				var wc_char = char_at_cp.to_string();
-				// NOTE done this way as vala frees a?b:c assignemnts whcich borks this loop
-				if (char_at_cp.isdigit()) {
-					wc_char = "1";
-				}
-				sequence += wc_char;
-				if (char_at_cp.isalpha()) {
-					wc_char = "?";
-				}
-				wildcard_sequence += wc_char;
-
+				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
 				cp += char_at_cp.to_string().length;
 				char_count++;
 
 				var last_char = char_at_cp;
-				
-
-				if (map.has_key(sequence)) {
-					matched_type = map.get(sequence);
-					if (matched_type == FormatType.INVALID) {
-						continue; // e.g. "[" alone: keep building to try "[a", "[ ]", etc.
-					}
-					max_match_length = char_count;
-					byte_length = cp - chunk_pos;
-					continue; // try next char for longer match (e.g. * → ** → ***)
-				}
-				if (map.has_key(wildcard_sequence)) {
-					matched_type = map.get(wildcard_sequence);
-					if (matched_type == FormatType.INVALID) {
-						continue; // let the loop eat another character
-					}
-					max_match_length = char_count;
-					byte_length = cp - chunk_pos;
-					break; // exit loop; end-of-loop returns max_match_length
-				}
-				if (matched_type != FormatType.NONE) {
-					break;
-				}
 				if (last_char.isalpha() && last_char.tolower() != 'x') {
 					return max_match_length;
 				}
-				return max_match_length;
+
+				if (!map.has_key(sequence)) {
+					return max_match_length;
+				}
+
+				matched_type = map.get(sequence);
+
+				if (matched_type != FormatType.INVALID) {
+					max_match_length = char_count;
+					byte_length = cp - chunk_pos;
+				}
 			}
 
-			// Reached end of chunk (no more characters to eat)
+			// Reached end of chunk
 			if (!is_end_of_chunks) {
-				// Wildcard INVALID (e.g. "[?") means need more characters to decide
-				if (map.has_key(wildcard_sequence) && map.get(wildcard_sequence) == FormatType.INVALID) {
-					return -1;
-				}
 				// Longest possible format marker for * and _ is 3 chars (BOLD_ITALIC)
 				if (char_count >= 3) {
 					return max_match_length;

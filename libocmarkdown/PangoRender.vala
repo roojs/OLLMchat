@@ -521,7 +521,7 @@ namespace Markdown
 		public override void on_table_hcell(bool is_start, int align) {}
 		public override void on_table_cell(bool is_start, int align) {}
 		
-		public override void on_a(bool is_start, string href, string title, bool is_reference)
+		public override void on_a(bool is_start, string href, string title, bool is_autolink)
 		{
 			if (!is_start) {
 				this.close_tag("span");

@@ -16,101 +16,39 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-/**
- * Example: oc-markdown-test {markdown file}
- *
- * Parses markdown file and outputs callback trace using DummyRenderer.
- * Extends TestAppBase for standard debug options, log handling, and help.
- */
-class TestMarkdown : TestAppBase
-{
-	protected override string help { get; set; default = """
-Usage: {ARG} [OPTIONS] <markdown_file>
-
-Parses markdown file and outputs callback trace using DummyRenderer.
-
-Arguments:
-  markdown_file              Path to a markdown file to parse
-
-Options:
-  -d, --debug                 Enable debug output
-
-Examples:
-  {ARG} README.md
-  {ARG} --debug tests/data/markdown/links.md
-"""; }
-
-	public TestMarkdown()
-	{
-		base("com.roojs.ollmchat.test-markdown");
-	}
-
-	protected override string get_app_name()
-	{
-		return "oc-markdown-test";
-	}
-
-	protected override OptionContext app_options()
-	{
-		var opt_context = new OptionContext(this.get_app_name());
-		var base_opts = new OptionEntry[3];
-		base_opts[0] = base_options[0];  // debug
-		base_opts[1] = base_options[1];  // debug-critical
-		base_opts[2] = { null };
-		opt_context.add_main_entries(base_opts, null);
-		return opt_context;
-	}
-
-	public override OLLMchat.Settings.Config2 load_config()
-	{
-		return new OLLMchat.Settings.Config2();
-	}
-
-	protected override string? validate_args(string[] remaining_args)
-	{
-		if (remaining_args.length < 2 || remaining_args[1] == "") {
-			return "ERROR: Markdown file is required.\n" + help.replace("{ARG}", remaining_args[0]);
-		}
-		return null;
-	}
-
-	protected override async void run_test(ApplicationCommandLine command_line, string[] remaining_args) throws Error
-	{
-		var file_path = remaining_args[1];
-		if (!GLib.Path.is_absolute(file_path)) {
-			file_path = GLib.Path.build_filename(GLib.Environment.get_current_dir(), file_path);
-		}
-		if (!GLib.FileUtils.test(file_path, GLib.FileTest.EXISTS)) {
-			command_line.printerr("ERROR: File not found: %s\n", file_path);
-			throw new GLib.IOError.NOT_FOUND("File not found: " + file_path);
-		}
-
-		string markdown_content;
-		try {
-			GLib.FileUtils.get_contents(file_path, out markdown_content);
-		} catch (GLib.FileError e) {
-			command_line.printerr("ERROR: Failed to read file '%s': %s\n", file_path, e.message);
-			throw new GLib.IOError.FAILED("Failed to read file: %s", e.message);
-		}
-
-		var renderer = new Markdown.DummyRenderer();
-
-		// Print path as given so test output is stable (not absolute)
-		command_line.print("=== PARSING MARKDOWN FILE: %s ===\n", remaining_args[1]);
-		command_line.print("=== FILE CONTENT (first 200 chars) ===\n");
-		command_line.print("%.200s...\n\n", markdown_content);
-		command_line.print("=== CALLBACK TRACE ===\n");
-
-		renderer.start();
-		renderer.add(markdown_content);
-		renderer.flush();
-
-		command_line.print("=== END TRACE ===\n");
-	}
-}
-
 int main(string[] args)
 {
-	var app = new TestMarkdown();
-	return app.run(args);
+	if (args.length < 2) {
+		stderr.printf("Usage: %s <markdown_file>\n", args[0]);
+		stderr.printf("Parses markdown file and outputs callback trace using DummyRenderer.\n");
+		return 1;
+	}
+
+	var file_path = args[1];
+	
+	// Read markdown file
+	string markdown_content;
+	try {
+		GLib.FileUtils.get_contents(file_path, out markdown_content);
+	} catch (GLib.FileError e) {
+		stderr.printf("Error: Failed to read file '%s': %s\n", file_path, e.message);
+		return 1;
+	}
+
+	// Create Render instance (using DummyRenderer for testing)
+	var renderer = new Markdown.DummyRenderer();
+	
+	stdout.printf("=== PARSING MARKDOWN FILE: %s ===\n", file_path);
+	stdout.printf("=== FILE CONTENT (first 200 chars) ===\n");
+	stdout.printf("%.200s...\n\n", markdown_content);
+	stdout.printf("=== CALLBACK TRACE ===\n");
+	
+	// Parse the markdown
+	renderer.start();
+	renderer.add(markdown_content);
+	renderer.flush();
+	
+	stdout.printf("=== END TRACE ===\n");
+	
+	return 0;
 }
