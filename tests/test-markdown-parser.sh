@@ -101,15 +101,18 @@ test_links() {
 }
 
 # Actual/expected paths for each test (order matches MARKDOWN_TEST_LABELS)
+# Expected files define correct output; test fails if parser output does not match.
 MARKDOWN_ACTUAL_FILES=(
 	"$TEST_DIR/formatting-actual.html"
 	"$TEST_DIR/blocks-actual-trace.txt"
 	"$TEST_DIR/tables-actual.html"
+	"$TEST_DIR/links-actual-trace.txt"
 )
 MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/formatting-expected.html"
 	"$MD_DATA/blocks-expected-trace.txt"
 	"$MD_DATA/tables-expected.html"
+	"$MD_DATA/links-expected-trace.txt"
 )
 
 # Print which tests passed/failed and, if any failed, show diffs again at the end

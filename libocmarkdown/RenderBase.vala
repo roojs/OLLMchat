@@ -47,7 +47,7 @@ namespace Markdown
 		{
 			this.parser.add(text);
 		}
-		
+
 		/**
 		 * Finalizes the current chunk. Call this before starting a new chunk with add_start
 		 * to ensure all pending content is processed.
