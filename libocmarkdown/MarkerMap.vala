@@ -72,13 +72,17 @@ namespace Markdown
 			var ch = chunk.get_char(chunk_pos);
 			var next_pos = chunk_pos + ch.to_string().length;
 			if (next_pos >= chunk.length) {
-				if (!is_end_of_chunks) {
-					return -1; // Might be longer match
-				}
-				// At end of chunks - check if single char FormatType is INVALID → return 0
+				// only hit at end of chunk
 				matched_type = map.get(single_char);
 				if (matched_type == FormatType.INVALID) {
+					// INVALID at end of chunk: need more input to resolve (e.g. [ → [?, [??; ~ → ~~)
+					if (!is_end_of_chunks) {
+						return -1;
+					}
 					return 0;
+				}
+				if (!is_end_of_chunks) {
+					return -1; // Might be longer match
 				}
 				byte_length = next_pos - chunk_pos;
 				return 1; // Definitive single char match
@@ -87,17 +91,27 @@ namespace Markdown
 			// Loop-based sequence matching
 			int max_match_length = 0;
 			int char_count = 0;
-			var sequence = "";
-			var wildcard_sequence = "";
+			string sequence = "";
+			string wildcard_sequence = "";
 
 			for (var cp = chunk_pos; cp < chunk.length; ) {
 				var char_at_cp = chunk.get_char(cp);
-				sequence += char_at_cp.isdigit() ? "1" : char_at_cp.to_string();
+				var wc_char = char_at_cp.to_string();
+				// NOTE done this way as vala frees a?b:c assignemnts whcich borks this loop
+				if (char_at_cp.isdigit()) {
+					wc_char = "1";
+				}
+				sequence += wc_char;
+				if (char_at_cp.isalpha()) {
+					wc_char = "?";
+				}
+				wildcard_sequence += wc_char;
+
 				cp += char_at_cp.to_string().length;
 				char_count++;
 
 				var last_char = char_at_cp;
-				wildcard_sequence += char_at_cp.isalpha() ? "?" : (char_at_cp.isdigit() ? "1" : char_at_cp.to_string());
+				
 
 				if (map.has_key(sequence)) {
 					matched_type = map.get(sequence);

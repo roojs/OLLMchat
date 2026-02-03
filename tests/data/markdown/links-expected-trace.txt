@@ -21,11 +21,11 @@ TEXT: "
 START: <p>
   TEXT: "Inline: "
   START: <a> (href="https://openai.com", title="", is_reference=false)
-  TEXT: "OpenAI"
+    TEXT: "OpenAI"
   END: <a> (href="https://openai.com", title="", is_reference=false)
   TEXT: " and "
   START: <a> (href="https://example.com", title="", is_reference=false)
-  TEXT: "example"
+    TEXT: "example"
   END: <a> (href="https://example.com", title="", is_reference=false)
   TEXT: "."
 END: <p>
@@ -36,7 +36,7 @@ TEXT: "
 START: <p>
   TEXT: "With title: "
   START: <a> (href="https://example.org", title="Example site", is_reference=false)
-  TEXT: "see here"
+    TEXT: "see here"
   END: <a> (href="https://example.org", title="Example site", is_reference=false)
   TEXT: "."
 END: <p>
@@ -47,11 +47,11 @@ TEXT: "
 START: <p>
   TEXT: "Reference-style: "
   START: <a> (href="ref", title="", is_reference=true)
-  TEXT: "text"
+    TEXT: "text"
   END: <a> (href="ref", title="", is_reference=true)
   TEXT: " and "
   START: <a> (href="short", title="", is_reference=true)
-  TEXT: "short"
+    TEXT: "short"
   END: <a> (href="short", title="", is_reference=true)
   TEXT: "."
 END: <p>
@@ -60,9 +60,7 @@ TEXT: "
 TEXT: "
 "
 START: <p>
-  TEXT: "Task list (not links): "
-  START: <task_list> (checked=false)
-  TEXT: " unchecked and "
+  TEXT: "Task list (not links): [ ] unchecked and "
   START: <task_list> (checked=true)
   TEXT: " checked."
 END: <p>
