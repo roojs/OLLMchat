@@ -293,25 +293,27 @@ namespace OLLMchat.Response
 		}
 
 		/**
-		 * Pango markup for subtitle: model name + capability badges (tools, embed, vision, thinking).
-		 * Each badge has a distinct background colour and bold label.
+		 * Pango markup for subtitle: model name + capability badges (tools, embedding, vision, thinking, cloud).
+		 * Each badge has an icon prefix, distinct background colour and bold label.
 		 */
 		public string subtitle_markup {
 			owned get {
-				// span_fmt: background colour, black foreground (#000000), bold (Pango: foreground, weight)
 				var span_fmt = "<span background=\"%s\" foreground=\"#000000\" weight=\"bold\"> %s </span>";
 				var s = GLib.Markup.escape_text(this.name, -1);
 				if (this.can_call) {
-					s += " " + span_fmt.printf("#ffdd99", GLib.Markup.escape_text("tools", -1));
+					s += " " + span_fmt.printf("#ffdd99", "🔧 tools");
 				}
 				if (this.is_embedding) {
-					s += " " + span_fmt.printf("#e1bee7", GLib.Markup.escape_text("embedding", -1));
+					s += " " + span_fmt.printf("#e1bee7", "🏭 embedding");
 				}
 				if (this.capabilities.contains("vision")) {
-					s += " " + span_fmt.printf("#c8e6c9", GLib.Markup.escape_text("vision", -1));
+					s += " " + span_fmt.printf("#c8e6c9", "👁️ vision");
 				}
 				if (this.is_thinking) {
-					s += " " + span_fmt.printf("#fff9c4", GLib.Markup.escape_text("thinking", -1));
+					s += " " + span_fmt.printf("#fff9c4", "🧠 thinking");
+				}
+				if (this.capabilities.contains("cloud")) {
+					s += " " + span_fmt.printf("#e3f2fd", "☁️ cloud");
 				}
 				return s;
 			}
