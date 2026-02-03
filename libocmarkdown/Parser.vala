@@ -475,8 +475,6 @@ namespace Markdown
 				chunk_pos += 1;
 				return;
 			}
-			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
-			this.state_stack.clear();
 			if (str != "") {
 				this.renderer.on_text(str);
 				str = "";
