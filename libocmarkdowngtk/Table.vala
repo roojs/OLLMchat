@@ -61,6 +61,7 @@ namespace MarkdownGtk
 				margin_top = 2,
 				margin_bottom = 2
 			};
+			/* Column widths are set when rows are added (on_row Idle); GTK4 does not expose a signal for grid resize. */
 			if (this.renderer.box == null) {
 				return;
 			}
@@ -104,15 +105,12 @@ namespace MarkdownGtk
 			return max_width > 0 ? max_width + margin : margin;
 		}
 
-		private void resize(Gee.HashMap<int, int> widths)
+		private void resize(Gee.HashMap<int, int> widths, double scale)
 		{
 			foreach (var row_entry in this.cells.entries) {
 				var row_cells = row_entry.value;
 				foreach (var col_entry in row_cells.entries) {
-					var  c = col_entry.key;
-					var sw = col_entry.value;
-					var w = widths.has_key(c) ? widths.get(c) : 100;
-					sw.width_request = w;
+					col_entry.value.width_request = (int)(widths.get(col_entry.key)  * scale)  ;
 				}
 			}
 		}
@@ -122,18 +120,24 @@ namespace MarkdownGtk
 			var ncols = this.num_cols > 0 ? this.num_cols : this.current_cell;
 			var container = 400;
 			if (this.grid.get_width() > 0) {
-				container = this.grid.get_width();
+				container = this.grid.get_width() - 50;
 			}
 			var min_col = (ncols < 5) ? (int)(0.10 * container) : 50;
 			var max_col = (ncols <= 5) ? (int)(0.60 * container) : 400;
 
 			var widths = new Gee.HashMap<int, int>();
+			var total = 0;
 			foreach (var e in this.cellwidths.entries) {
 				var c = e.key;
 				var w = e.value.clamp(min_col, max_col);
 				widths.set(c, w);
+				total += w;
 			}
-			this.resize(widths);
+			/* Scale down so total width does not overfill container */
+			var scale = (total > 0 && total > container) ? (double) container / total : 1.0;
+			var col0_w = widths.has_key(0) ? (int)(widths.get(0) * scale) : 100;
+			GLib.debug("table resize: container=%d total=%d scale=%.2f col0_width=%d", container, total, scale, col0_w);
+			this.resize(widths, scale);
 		}
 
 		public void on_row(bool is_start)
