@@ -602,7 +602,7 @@ namespace Markdown
 
 		/**
 		 * Handles fenced-code closing fence result. Updates chunk_pos when consuming input.
-		 * @param fence_result Result from blockmap.peekFencedEnd (-1 need more, 0 not fence, 3 match)
+		 * @param fence_result Result from blockmap.peekFencedEnd (-1 need more, 0 not fence, >0 bytes consumed)
 		 * @param chunk_pos Updated to position after consumed input
 		 * @param chunk The current chunk
 		 * @return true (need more characters or flushed text; leftover_chunk may be set), false to keep processing the rest of the chunk
@@ -626,12 +626,8 @@ namespace Markdown
 				this.at_line_start = false;
 				return false;
 			}
-			// fence_result > 0: found closing fence - end the block
-			var after_fence = chunk_pos + 3;
-			var rest = chunk.substring(after_fence, chunk.length - after_fence);
-			var newline_pos_in_substring = rest.index_of_char('\n');
-			chunk_pos = (newline_pos_in_substring != -1) ? 
-				(after_fence + newline_pos_in_substring + 1) : after_fence;
+			// fence_result > 0: found closing fence - end the block (fence_result is byte length consumed)
+			chunk_pos += fence_result;
 			this.do_block(false, this.current_block);
 			this.last_line_block = this.current_block;
 			this.current_block = FormatType.NONE;

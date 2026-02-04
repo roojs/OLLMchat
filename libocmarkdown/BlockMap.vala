@@ -28,6 +28,9 @@ namespace Markdown
 
 		private ListMap listmap = new ListMap();
 
+		/** The whole matched string that opened the fenced block (e.g. "```" or "   ```"). Set by peek() when matching fenced code. */
+		public string fence_open { get; private set; }
+
 		private static void init()
 		{
 			if (mp != null) {
@@ -88,13 +91,15 @@ namespace Markdown
 			mp[" "] = FormatType.INVALID;
 			mp["  "] = FormatType.CONTINUE_LIST;
 
-			// Fenced Code: ``` or ~~~ with optional language
+			// Fenced Code: ``` or ~~~ with optional language; allow 3 spaces (indented in list items), none or 3 only
 			mp["`"] = FormatType.INVALID;
 			mp["``"] = FormatType.INVALID;
 			mp["```"] = FormatType.FENCED_CODE_QUOTE;
+			mp["   ```"] = FormatType.FENCED_CODE_QUOTE;
 			mp["~"] = FormatType.INVALID;
 			mp["~~"] = FormatType.INVALID;
 			mp["~~~"] = FormatType.FENCED_CODE_TILD;
+			mp["   ~~~"] = FormatType.FENCED_CODE_TILD;
 
 			// Blockquotes: > quote text (up to 6 levels deep)
 			mp[">"] = FormatType.INVALID;
@@ -136,6 +141,7 @@ namespace Markdown
 			lang_out = "";
 			matched_block = FormatType.NONE;
 			byte_length = 0;
+			this.fence_open = "";
 
 			int result = base.eat(
 				chunk, 
@@ -148,9 +154,10 @@ namespace Markdown
 				return result;
 			}
 
-			// Fenced code: need newline and optional language
+			// Fenced code: need newline and optional language; store whole match for matching closing fence
 			if (matched_block == FormatType.FENCED_CODE_QUOTE 
 				|| matched_block == FormatType.FENCED_CODE_TILD) {
+				this.fence_open = chunk.substring(chunk_pos, byte_length);
 				if (!chunk.contains("\n")) {
 					return -1;
 				}
@@ -252,18 +259,19 @@ namespace Markdown
 		}
 
 		/**
-		 * Checks if we're at a closing fenced code fence.
+		 * Checks if we're at a closing fenced code fence. Uses fence_open so the closing
+		 * line must start with the same whole match that opened the block {{{(e.g. "   ```")}}}
 		 *
 		 * @param chunk The text chunk
 		 * @param chunk_pos The position to check
 		 * @param fence_type The type of fence we're looking for (FENCED_CODE_QUOTE or FENCED_CODE_TILD)
 		 * @param is_end_of_chunks If true, end of stream indicator
-		 * @return -1 if need more data, 0 if not a match, 3 if match found
+		 * @return -1 if need more data, 0 if not a match, >0 byte length consumed (through newline) if match
 		 */
 		public int peekFencedEnd(
-			string chunk, 
-			int chunk_pos, 
-			FormatType fence_type, 
+			string chunk,
+			int chunk_pos,
+			FormatType fence_type,
 			bool is_end_of_chunks)
 		{
 			if (!chunk.contains("\n") && !is_end_of_chunks) {
@@ -274,43 +282,37 @@ namespace Markdown
 				return 0;
 			}
 
-			var fence_str = (fence_type == FormatType.FENCED_CODE_QUOTE) ? "```" : "~~~";
-			var fence_char = fence_str.substring(0, 1);
-
-			var first_char = chunk.get_char(chunk_pos);
-			if (first_char.to_string() != fence_char) {
-				return 0;
-			}
-
-			if (chunk_pos + 3 > chunk.length) {
+			if (chunk_pos + this.fence_open.length > chunk.length) {
 				if (is_end_of_chunks) {
 					return 0;
 				}
 				return -1;
 			}
 
-			var match_str = chunk.substring(chunk_pos, 3);
-			if (match_str != fence_str) {
+			var at_marker = chunk.substring(chunk_pos, this.fence_open.length);
+			if (at_marker != this.fence_open) {
 				return 0;
 			}
 
-			var pos = chunk_pos + 3;
+			var pos = chunk_pos + this.fence_open.length;
 			if (pos >= chunk.length) {
 				if (is_end_of_chunks) {
-					return 3;
+					return this.fence_open.length;
 				}
 				return -1;
 			}
 
 			var newline_pos = chunk.index_of_char('\n', pos);
 			if (newline_pos == pos) {
-				return 3;
+				var nl_char = chunk.get_char(newline_pos);
+				return this.fence_open.length + nl_char.to_string().length;
 			}
 
 			if (newline_pos != -1) {
 				var between = chunk.substring(pos, newline_pos - pos);
 				if (between.strip().length == 0) {
-					return 3;
+					var nl_char = chunk.get_char(newline_pos);
+					return newline_pos - chunk_pos + nl_char.to_string().length;
 				}
 				return 0;
 			}
@@ -318,7 +320,7 @@ namespace Markdown
 			var remaining = chunk.substring(pos);
 			if (remaining.strip().length == 0) {
 				if (is_end_of_chunks) {
-					return 3;
+					return (int) chunk.length - chunk_pos;
 				}
 				return -1;
 			}
