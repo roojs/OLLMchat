@@ -102,6 +102,21 @@ namespace OLLMchatGtk
 			this.renderer = new MarkdownGtk.Render(this.text_view_box) {
 				scroll_to_end = this.scroll_enabled
 			};
+
+			this.renderer.link_clicked.connect((href, title) => {
+				if (!href.has_prefix("http://") && !href.has_prefix("https://")) {
+					return;
+				}
+				var win = this.get_root() as Gtk.Window;
+				if (win == null) {
+					return;
+				}
+				try {
+					Gtk.show_uri(win, href, 0);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to open link %s: %s", href, e.message);
+				}
+			});
 			
 			// Connect to code block content updates to scroll when sourceviews receive content
 			this.renderer.code_block_content_updated.connect(() => {

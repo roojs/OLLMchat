@@ -36,14 +36,13 @@ namespace MarkdownGtk
 		public Render render { get; private set; }
 		
 		/**
-		 * Creates a new State instance.
-		 * 
-		 * @param parent The parent state (null for root)
-		 * @param render Reference to the top-level Render instance
+		 * Creates a new State, optionally reusing an existing tag for the same range.
+		 *
+		 * @param parent Parent state (null for root)
+		 * @param render Render instance
+		 * @param use_tag If non-null, use this tag instead of creating a new one (marks only)
 		 */
-		public State(
-			State? parent, 
-			Render render)
+		public State(State? parent, Render render, Gtk.TextTag? use_tag = null)
 		{
 			this.parent = parent;
 			this.render = render;
@@ -54,9 +53,7 @@ namespace MarkdownGtk
 				// TopState - will be initialized later (properties default to null)
 				return;
 			}
-		 
-			// Initialize tag and marks from parent's end mark
-			this.initialize_from_parent(parent);
+			this.init_from_parent(parent, use_tag);
 		}
 		
 		/**
@@ -65,23 +62,21 @@ namespace MarkdownGtk
 		 *
 		 * @param buffer The buffer to create tag and marks in
 		 * @param insertion_point The TextMark to use as the insertion point for marks
+		 * @param use_style If non-null, use this tag; otherwise create a new one
 		 */
-		internal void initialize_tag_and_marks(Gtk.TextBuffer buffer, Gtk.TextMark insertion_point)
+		internal void init_tags_and_marks(Gtk.TextBuffer buffer, Gtk.TextMark insertion_point, Gtk.TextTag? use_style = null)
 		{
-			this.style = buffer.create_tag("style-%u".printf(tag_counter++), null);
+			this.style = (use_style != null) ? use_style :
+				 buffer.create_tag("style-%u".printf(tag_counter++), null);
 			Gtk.TextIter iter;
 			buffer.get_iter_at_mark(out iter, insertion_point);
 			this.start = buffer.create_mark(null, iter, true);
 			this.end = buffer.create_mark(null, iter, true);
 		}
 		
-		/**
-		 * Initializes this state's tag and marks from parent's end mark.
-		 * Used by regular State instances (not TopState).
-		 */
-		private void initialize_from_parent(State parent)
+		private void init_from_parent(State parent, Gtk.TextTag? use_tag = null)
 		{
-			this.initialize_tag_and_marks(parent.end.get_buffer(), parent.end);
+			this.init_tags_and_marks(parent.end.get_buffer(), parent.end, use_tag);
 		}
 		
 		/**
@@ -137,18 +132,16 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Creates a new child state and sets it as the current state on Render.
-		 * 
-		 * @return The newly created State
+		 * Creates a child state. If use_tag is non-null, the child reuses that tag for styling.
+		 *
+		 * @param use_tag Optional existing tag to apply (e.g. shared "link" tag)
+		 * @return The new child state
 		 */
-		public State add_state()
+		public State add_state(Gtk.TextTag? use_tag = null)
 		{
-			var new_state = new State(this, this.render);
+			var new_state = new State(this, this.render, use_tag);
 			this.cn.add(new_state);
-			
-			// Update render's current_state
 			this.render.current_state = new_state;
-			
 			return new_state;
 		}
 		

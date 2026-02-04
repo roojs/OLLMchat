@@ -46,7 +46,7 @@ namespace MarkdownGtk
 			Gtk.TextIter iter;
 			this.render.current_buffer.get_end_iter(out iter);
 			var insertion_mark = this.render.current_buffer.create_mark(null, iter, true);
-			this.initialize_tag_and_marks(this.render.current_buffer, insertion_mark);
+			this.init_tags_and_marks(this.render.current_buffer, insertion_mark);
 			this.render.current_buffer.delete_mark(insertion_mark);
 
 			// TopState's end mark should start at the end of the buffer
@@ -60,7 +60,7 @@ namespace MarkdownGtk
 			Gtk.TextIter iter;
 			buffer.get_end_iter(out iter);
 			var insertion_mark = buffer.create_mark(null, iter, true);
-			this.initialize_tag_and_marks(buffer, insertion_mark);
+			this.init_tags_and_marks(buffer, insertion_mark);
 			buffer.delete_mark(insertion_mark);
 			buffer.get_end_iter(out iter);
 			buffer.move_mark(this.end, iter);

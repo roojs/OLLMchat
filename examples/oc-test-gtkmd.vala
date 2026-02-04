@@ -164,6 +164,16 @@ Examples:
 		var renderer = new MarkdownGtk.Render(text_view_box) {
 			scroll_to_end = false
 		};
+		renderer.link_clicked.connect((href, title) => {
+			// Only open http/https URLs; reference-style links have href as a label
+			if (href.has_prefix("http://") || href.has_prefix("https://")) {
+				try {
+					Gtk.show_uri(window, href, 0);
+				} catch (GLib.Error e) {
+					GLib.warning("Failed to open link %s: %s", href, e.message);
+				}
+			}
+		});
 
 		renderer.start();
 		if (stream) {

@@ -74,6 +74,10 @@ namespace MarkdownGtk
 		
 		// Table: current table when inside on_table(true)..on_table(false)
 		internal Table? current_table { get; private set; default = null; }
+		private Gtk.TextView? last_link_view = null;
+		private string last_tooltip_markup = "";
+		/** Emitted when the user activates a link. Connect to open URL or handle app-specific navigation. */
+		public signal void link_clicked(string href, string title);
 		// Signal emitted when code block ends (delegates to source_view_handler)
 		public signal void code_block_ended(string content, string language);
 		
@@ -81,19 +85,124 @@ namespace MarkdownGtk
 		public signal void code_block_content_updated();
 		
 		/**
-		 * Creates a new Render instance with a Gtk.Box.
-		 * 
-		 * The Render will create TextViews as needed and add them to the box.
-		 * 
-		 * @param box The Gtk.Box to add TextViews to
+		 * Creates a renderer that appends content to the given box.
+		 *
+		 * @param box Gtk.Box to add TextViews to
 		 */
 		public Render(Gtk.Box box)
 		{
 			base();
 			this.box = box;
-			
-			// Don't create top_state here - wait until start() when buffer is ready
-			// top_state will be null until start() is called
+			var click_gesture = new Gtk.GestureClick();
+			click_gesture.released.connect((n_press, x, y) => {
+				this.on_link_click_released(x, y);
+			});
+			this.box.add_controller(click_gesture);
+			var motion = new Gtk.EventControllerMotion();
+			motion.motion.connect((x, y) => {
+				this.on_link_motion(x, y);
+			});
+			motion.leave.connect(() => {
+				this.on_link_leave();
+			});
+			this.box.add_controller(motion);
+		}
+
+		private void on_link_click_released(double x, double y)
+		{
+			Gtk.TextView? view;
+			var tag = this.tag_at_iter(x, y, out view);
+			if (tag == null) {
+				return;
+			}
+			var href = tag.get_data<string>("href") ?? "";
+			var title = tag.get_data<string>("title") ?? "";
+			this.link_clicked(href, title);
+		}
+
+		private void on_link_motion(double x, double y)
+		{
+			Gtk.TextView? view;
+			var tag = this.tag_at_iter(x, y, out view);
+			if (view == null) {
+				if (this.last_link_view != null) {
+					this.last_link_view.tooltip_markup = null;
+					this.last_link_view.set_cursor(null);
+					this.last_link_view = null;
+					this.last_tooltip_markup = "";
+				}
+				return;
+			}
+			if (tag != null) {
+				this.last_link_view = view;
+				var href = tag.get_data<string>("href") ?? "";
+				var title = tag.get_data<string>("title") ?? "";
+				var markup =
+					(title != "" ? "<b>" + GLib.Markup.escape_text(title, -1) + "</b>\n" : "") +
+					GLib.Markup.escape_text(href, -1);
+				if (markup == this.last_tooltip_markup) {
+					return;
+				}
+				this.last_link_view.tooltip_markup = markup;
+				this.last_tooltip_markup = markup;
+				var cursor = new Gdk.Cursor.from_name("pointer", null);
+				if (cursor != null) {
+					this.last_link_view.set_cursor(cursor);
+				}
+				return;
+			}
+			if (this.last_link_view != null) {
+				this.last_link_view.tooltip_markup = null;
+				this.last_link_view.set_cursor(null);
+				this.last_link_view = null;
+				this.last_tooltip_markup = "";
+			}
+		}
+
+		private void on_link_leave()
+		{
+			if (this.last_link_view != null) {
+				this.last_link_view.tooltip_markup = null;
+				this.last_link_view.set_cursor(null);
+				this.last_link_view = null;
+				this.last_tooltip_markup = "";
+			}
+		}
+
+		/** Returns the link tag at (x, y) in box coordinates, or null. Sets out_view to the TextView at (x, y) when over one. */
+		private Gtk.TextTag? tag_at_iter(double x, double y, out Gtk.TextView? out_view)
+		{
+			out_view = null;
+			var tv = this.box.pick((float) x, (float) y, Gtk.PickFlags.DEFAULT) as Gtk.TextView;
+			if (tv == null) {
+				return null;
+			}
+			out_view = tv;
+			Graphene.Point pt = { (float) x, (float) y };
+			Graphene.Point out_pt;
+			this.box.compute_point(tv, pt, out out_pt);
+			int buf_x = (int) out_pt.x;
+			int buf_y = (int) out_pt.y;
+			Gtk.TextIter iter;
+			if (!tv.get_iter_at_location(out iter, buf_x, buf_y)) {
+				return null;
+			}
+			var buf = tv.get_buffer();
+			var link_tag = buf.get_tag_table().lookup("link");
+			if (link_tag == null || !iter.has_tag(link_tag)) {
+				return null;
+			}
+			var tags = iter.get_tags();
+			if (tags == null || tags.length() < 1) {
+				return null;
+			}
+			for (int i = (int) tags.length() - 1; i >= 0; i--) {
+				var href = tags.nth_data(i).get_data<string>("href");
+				if (href != null) {
+					return tags.nth_data(i);
+				}
+			}
+			return null;
 		}
 		
 		/**
@@ -562,36 +671,30 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Callback for link spans.
-		 * 
-		 * @param href The link URL (or reference label when is_reference is true)
-		 * @param title The link title
-		 * @param is_reference Whether this is a reference-style link (href is ref label)
+		 * Callback for link spans. Renders link text with shared style and stores href/title on a per-link tag.
+		 *
+		 * @param is_start True for open, false for close
+		 * @param href URL or reference label
+		 * @param title Link title (may be empty)
+		 * @param is_reference True if href is a reference label
 		 */
 		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
+				this.current_state.close_state();
 				return;
 			}
-			
-			// Add span state (blue, underlined) for the link
-			var link_state = this.current_state.add_state();
-			link_state.style.foreground = "blue";
-			link_state.style.underline = Pango.Underline.SINGLE;
-			
-			// Add the href text
-			link_state.add_text(href);
-			
-			// Close the link span
-			link_state.close_state();
-			this.current_state.add_text(" ");
-			var bold_state = this.current_state.add_state();
-			bold_state.style.weight = Pango.Weight.BOLD;
-			// If there's a title, add it in bold after a space (leave bold state open)
-			if (title != "") {
-				this.current_state.add_text(title);
+			var link_tag = this.current_buffer.get_tag_table().lookup("link");
+			if (link_tag == null) {
+				link_tag = this.current_buffer.create_tag("link", null);
+				link_tag.foreground = "blue";
+				link_tag.underline = Pango.Underline.SINGLE;
 			}
+			this.current_state.add_state(link_tag);
+			var inner = this.current_state.add_state();
+			inner.style.set_data<string>("href", href);
+			inner.style.set_data<string>("title", title);
 		}
 		
 		/**
