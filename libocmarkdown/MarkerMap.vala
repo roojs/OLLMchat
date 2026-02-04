@@ -93,7 +93,7 @@ namespace Markdown
 			int char_count = 0;
 			string sequence = "";
 			string wildcard_sequence = "";
-
+ 
 			for (var cp = chunk_pos; cp < chunk.length; ) {
 				var char_at_cp = chunk.get_char(cp);
 				var wc_char = char_at_cp.to_string();
@@ -136,8 +136,14 @@ namespace Markdown
 					byte_length = cp - chunk_pos;
 					break; // exit loop; end-of-loop returns max_match_length
 				}
-
-				
+				// if we have had a match, gone pase and ended up with none
+				// we can return it.
+				GLib.debug("matched_type=%s max_match_length=%d byte_length=%d",
+					matched_type.to_string(), max_match_length, byte_length);
+				if (matched_type != FormatType.LINK && matched_type != FormatType.NONE) {
+					return max_match_length;
+				}
+				break; /// we did not get a match..
 			}
 
 			// Reached end of chunk (no more characters to eat)
@@ -149,8 +155,11 @@ namespace Markdown
 				if (char_count >= 3 && matched_type == FormatType.LINK) {
 					return max_match_length;
 				}
-				// Longest format marker: 3 for */_ (BOLD_ITALIC), 6 for headings (######)
-				if (char_count >= 6) {
+				if (!map.has_key(wildcard_sequence) &&
+					(!map.has_key(sequence) || map.get(sequence) == FormatType.NONE) &&
+					matched_type != FormatType.NONE
+					) {
+				 
 					return max_match_length;
 				}
 				return -1;

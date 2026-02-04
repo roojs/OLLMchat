@@ -302,16 +302,27 @@ namespace OLLMchat.History
 			
 			// Add placeholders to sessions list and set manager
 			foreach (var placeholder in placeholder_list) {
+				// Skip sessions with no messages
+				if (placeholder.total_messages == 0) {
+					continue;
+				}
+				// Verify the session file exists and has content before adding
+				var file = placeholder.session_file();
+				if (!file.query_exists()) {
+					continue;
+				}
+				var info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
+				if (info.get_size() == 0) {
+					continue;
+				}
 				// Check if model exists in connection_models before adding
-				
 				if (this.connection_models.find_model_by_name(placeholder.model_usage_model) == null) {
 					// Model not found, skip this placeholder
 					continue;
 				}
 				placeholder.reconstruct_model_usage_from_model();
-	
+
 				this.sessions.append(placeholder);
-				// Reconstruct model_usage to ensure model_obj is set from connection_models
 			}
 		}
 		

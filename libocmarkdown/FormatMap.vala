@@ -158,15 +158,7 @@ namespace Markdown
 			}
 			mp = new Gee.HashMap<string, FormatType>();
 
-			// Asterisk sequences (most common)
-			mp["*"] = FormatType.ITALIC;
-			mp["**"] = FormatType.BOLD;
-			mp["***"] = FormatType.BOLD_ITALIC;
-
-			// Underscore sequences (alternative syntax)
-			mp["_"] = FormatType.ITALIC;
-			mp["__"] = FormatType.BOLD;
-			mp["___"] = FormatType.BOLD_ITALIC;
+			// Asterisk and underscore emphasis: handled by StartMap (line start), LeftMap (preceded by space), RightMap (followed by whitespace/newline)
 
 			// Code and inline code
 			mp["`"] = FormatType.LITERAL;
@@ -192,6 +184,80 @@ namespace Markdown
 			FormatMap.init();
 			base(FormatMap.mp);
 			this.parser = parser;
+		}
+
+		/**
+		 * Handles format peek result. Caller calls eat() then this.
+		 * Updates chunk_pos, str, chunk when consuming; may set parser.leftover_chunk.
+		 * @return true (need more characters or flushed; leftover_chunk may be set), false to keep processing the rest of the chunk
+		 */
+		public bool handle_format_result(
+			int match_len,
+			FormatType matched_format,
+			unichar c,
+			ref int chunk_pos,
+			ref string str,
+			ref string chunk,
+			bool is_end_of_chunks
+		) {
+			if (match_len == -1) {
+				this.parser.renderer.on_text(str);
+				this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				return true;
+			}
+			if (match_len == 0) {
+				// No match - caller advances chunk_pos and adds char to str
+				return false;
+			}
+			this.parser.renderer.on_text(str);
+			str = "";
+			var seq_pos = chunk_pos;
+			for (int i = 0; i < match_len; i++) {
+				var ch = chunk.get_char(seq_pos);
+				seq_pos += ch.to_string().length;
+			}
+			if (matched_format == FormatType.LINK) {
+				var link_result = this.eat_link(chunk, chunk_pos, seq_pos, is_end_of_chunks);
+				if (link_result == -1) {
+					this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					return true;
+				}
+				if (link_result == 0) {
+					this.parser.renderer.on_text(chunk.substring(chunk_pos, seq_pos - chunk_pos));
+					chunk_pos = seq_pos;
+					return false;
+				}
+				this.handle_link(chunk, chunk_pos, seq_pos, link_result);
+				chunk_pos = link_result;
+				return false;
+			}
+			if (matched_format != FormatType.HTML) {
+				this.parser.got_format(matched_format);
+				chunk_pos = seq_pos;
+				return false;
+			}
+			var html_res = this.parser.peekHTML(chunk, seq_pos, is_end_of_chunks);
+			if (html_res == -1) {
+				this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				return true;
+			}
+			if (html_res == 0) {
+				var html_text = chunk.substring(chunk_pos, seq_pos - chunk_pos);
+				str += html_text;
+				chunk_pos = seq_pos;
+				return false;
+			}
+			chunk_pos = seq_pos;
+			chunk = this.parser.add_html(chunk.substring(chunk_pos, chunk.length - chunk_pos));
+			chunk_pos = 0;
+			if (chunk.length > 0 && chunk.get_char(0) == '<' && is_end_of_chunks) {
+				return false;
+			}
+			if (chunk.length > 0 && chunk.get_char(0) == '<') {
+				this.parser.leftover_chunk = chunk;
+				return true;
+			}
+			return false;
 		}
 	}
 }

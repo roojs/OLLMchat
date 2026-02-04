@@ -20,13 +20,14 @@ namespace Markdown
 {
 	/**
 	 * Marker map for block-level markers (headings, HR, lists, fenced code, blockquote, etc.).
-	 * Used by the parser for peekBlock().
+	 * Used by the parser for handle_block_result().
 	 */
 	public class BlockMap : MarkerMap
 	{
 		private static Gee.HashMap<string, FormatType> mp;
 
 		private ListMap listmap = new ListMap();
+		private Parser parser;
 
 		/** The whole matched string that opened the fenced block (e.g. "```" or "   ```"). Set by peek() when matching fenced code. */
 		public string fence_open { get; private set; }
@@ -119,10 +120,11 @@ namespace Markdown
 			mp["|"] = FormatType.TABLE;
 		}
 
-		public BlockMap()
+		public BlockMap(Parser parser)
 		{
 			BlockMap.init();
 			base(BlockMap.mp);
+			this.parser = parser;
 		}
 
 		/**
@@ -138,6 +140,8 @@ namespace Markdown
 			out FormatType matched_block,
 			out int byte_length
 		) {
+			GLib.debug("ENTER chunk_pos=%d chunk.length=%d is_end=%s last_line_block=%s chunk=%s",
+				chunk_pos, chunk.length, is_end_of_chunks.to_string(), last_line_block.to_string(), chunk);
 			lang_out = "";
 			matched_block = FormatType.NONE;
 			byte_length = 0;
@@ -151,6 +155,7 @@ namespace Markdown
 				out byte_length);
 
 			if (result < 1) {
+				GLib.debug("EXIT result=%d", result);
 				return result;
 			}
 
@@ -159,10 +164,12 @@ namespace Markdown
 				|| matched_block == FormatType.FENCED_CODE_TILD) {
 				this.fence_open = chunk.substring(chunk_pos, byte_length);
 				if (!chunk.contains("\n")) {
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				var newline_pos = chunk.index_of_char('\n', chunk_pos);
 				if (newline_pos == -1) {
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				var fence_end_pos = chunk_pos + byte_length;
@@ -174,12 +181,15 @@ namespace Markdown
 				}
 				var unstripped_lang = chunk.substring(fence_end_pos, newline_pos - fence_end_pos);
 				lang_out = unstripped_lang.strip();
-				return newline_pos - chunk_pos + 1;
+				var ret = newline_pos - chunk_pos + 1;
+				GLib.debug("EXIT result=%d", ret);
+				return ret;
 			}
 
 			// CONTINUE_LIST: only valid after list block; then delegate to listmap
 			if (matched_block == FormatType.CONTINUE_LIST) {
 				if (last_line_block != FormatType.ORDERED_LIST && last_line_block != FormatType.UNORDERED_LIST) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				var continue_end_pos = chunk_pos + byte_length;
@@ -191,10 +201,13 @@ namespace Markdown
 					 out matched_block, 
 					 out byte_length);
 				if (list_result == -1) {
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				byte_length += continue_length;
-				return continue_length + list_result;
+				var ret = continue_length + list_result;
+				GLib.debug("EXIT result=%d", ret);
+				return ret;
 			}
 
 			// TABLE: need 3 full lines (header, separator, first body row); verify progressively
@@ -204,45 +217,57 @@ namespace Markdown
 				// Wait for first \n so we have a complete line 1 before checking
 				if (lines.length < 2) {
 					if (is_end_of_chunks) {
+						GLib.debug("EXIT result=0");
 						return 0;
 					}
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Line 1 must start and end with | (trim for generosity)
 				if (!lines[0].strip().has_prefix("|") || !lines[0].strip().has_suffix("|")) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// If we have the second line and it doesn't start with |, reject
 				if (lines[1].strip() != "" && !lines[1].strip().has_prefix("|")) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				if (lines.length < 3) {
 					if (is_end_of_chunks) {
+						GLib.debug("EXIT result=0");
 						return 0;
 					}
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Then validate separator (only space, |, -, :)
 				try {
 					if (!(new GLib.Regex("^[- |:]*$").match(lines[1].strip()))) {
+						GLib.debug("EXIT result=0");
 						return 0;
 					}
 				} catch (GLib.RegexError e) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// Third line: not empty and must start with |
 				if (lines[2].strip() != "" && !lines[2].strip().has_prefix("|")) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// Wait for third newline so we have 3 complete lines
 				if (lines.length < 4) {
 					if (is_end_of_chunks) {
+						GLib.debug("EXIT result=0");
 						return 0;
 					}
+					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Line 3 must end with |
 				if (!lines[2].strip().has_suffix("|")) {
+					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// byte_length = 3 lines including newlines (support multi-byte newline)
@@ -252,10 +277,118 @@ namespace Markdown
 				byte_length = lines[0].length + nl_byte_len
 					+ lines[1].length + nl_byte_len
 					+ lines[2].length + nl_byte_len;
+				GLib.debug("EXIT result=1");
 				return 1;
 			}
 
+			GLib.debug("EXIT result=%d", result);
 			return result;
+		}
+
+		/**
+		 * Handles block peek result. Caller calls peek() then this.
+		 * Updates chunk_pos when a block is consumed.
+		 * @return true (need more characters; parser.leftover_chunk set), false (to keep processing the rest of the chunk)
+		 */
+		public bool handle_block_result(
+			int block_match,
+			string block_lang,
+			FormatType matched_block,
+			int byte_length,
+			ref int chunk_pos,
+			string chunk,
+			int saved_chunk_pos,
+			bool is_end_of_chunks
+		) {
+			if (block_match == -1) {
+				this.parser.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
+				return true;
+			}
+			if (block_match == 0) {
+				// No block detected - start a paragraph (caller sets at_line_start when falling through)
+				if (this.parser.current_block == FormatType.NONE) {
+					this.parser.current_block = FormatType.PARAGRAPH;
+					this.parser.do_block(true, FormatType.PARAGRAPH);
+				}
+				return false;
+			}
+			var seq_pos = chunk_pos + byte_length;
+			switch (matched_block) {
+				case FormatType.HORIZONTAL_RULE:
+					var newline_pos = chunk.index_of_char('\n', seq_pos);
+					var rest = newline_pos != -1
+						? chunk.substring(seq_pos, newline_pos - seq_pos)
+						: chunk.substring(seq_pos, chunk.length - seq_pos);
+					if (rest.strip() != "") {
+						if (this.parser.current_block == FormatType.NONE) {
+							this.parser.current_block = FormatType.PARAGRAPH;
+							this.parser.do_block(true, FormatType.PARAGRAPH);
+						}
+						this.parser.at_line_start = false;
+						return false;
+					}
+					if (newline_pos == -1 && !is_end_of_chunks) {
+						this.parser.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
+						return true;
+					}
+					this.parser.do_block(true, matched_block);
+					if (newline_pos != -1) {
+						var newline_char = chunk.get_char(newline_pos);
+						this.parser.at_line_start = true;
+						chunk_pos = newline_pos + newline_char.to_string().length;
+					} else {
+						this.parser.at_line_start = true;
+						chunk_pos = (int) chunk.length;
+					}
+					return false;
+
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+					this.parser.current_block = matched_block;
+					this.parser.do_block(true, matched_block, block_lang);
+					this.parser.at_line_start = true;
+					chunk_pos = seq_pos;
+					return false;
+
+				case FormatType.BLOCKQUOTE:
+					if (this.parser.current_block != FormatType.NONE) {
+						this.parser.at_line_start = false;
+						return false;
+					}
+					this.parser.current_block = matched_block;
+					var marker_string = chunk.substring(chunk_pos, byte_length);
+					this.parser.do_block(true, matched_block, marker_string);
+					chunk_pos = seq_pos;
+					return false;
+
+				case FormatType.ORDERED_LIST:
+				case FormatType.UNORDERED_LIST:
+					this.parser.current_block = matched_block;
+					var list_marker = chunk.substring(chunk_pos, byte_length);
+					this.parser.do_block(true, matched_block, list_marker);
+					this.parser.at_line_start = false;
+					chunk_pos = seq_pos;
+					return false;
+
+				case FormatType.TABLE:
+					this.parser.current_block = FormatType.TABLE;
+					this.parser.table_state = new TableState(this.parser);
+					var consumed_block = chunk.substring(chunk_pos, byte_length);
+					var lines = consumed_block.split("\n");
+					this.parser.table_state.feed_line(lines[0]);
+					this.parser.table_state.feed_line(lines[1]);
+					this.parser.table_state.feed_line(lines[2]);
+					this.parser.at_line_start = true;
+					chunk_pos = seq_pos;
+					return false;
+
+				default:
+					this.parser.current_block = matched_block;
+					this.parser.do_block(true, matched_block, block_lang);
+					this.parser.at_line_start = false;
+					chunk_pos = seq_pos;
+					return false;
+			}
 		}
 
 		/**
@@ -326,6 +459,63 @@ namespace Markdown
 			}
 
 			return 0;
+		}
+
+		/**
+		 * When in fenced code block and not at line start: collect code text up to next newline (or all remaining).
+		 * @param chunk_pos Updated to position after consumed code text (at newline if found)
+		 * @param chunk The current chunk
+		 * @return true (flushed and need to return from add), false to continue loop
+		 */
+		public bool check_fenced_newline(ref int chunk_pos, string chunk)
+		{
+			var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+			if (!remaining.contains("\n")) {
+				this.parser.renderer.on_code_text(remaining);
+				return true;
+			}
+			var newline_pos = chunk.index_of_char('\n', chunk_pos);
+			var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+			this.parser.renderer.on_code_text(code_text);
+			chunk_pos = newline_pos;
+			return false;
+		}
+
+		/**
+		 * Handles fenced-code closing fence result. Caller calls peekFencedEnd() then this.
+		 * Updates chunk_pos when consuming input.
+		 * @param fence_result Result from peekFencedEnd (-1 need more, 0 not fence, >0 bytes consumed)
+		 * @param chunk_pos Updated to position after consumed input
+		 * @param chunk The current chunk
+		 * @return true (need more characters or flushed text; parser.leftover_chunk may be set), false to keep processing the rest of the chunk
+		 */
+		public bool handle_fence_result(int fence_result, ref int chunk_pos, string chunk)
+		{
+			if (fence_result == -1) {
+				this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				return true;
+			}
+			if (fence_result == 0) {
+				var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				if (!remaining.contains("\n")) {
+					this.parser.renderer.on_code_text(remaining);
+					return true;
+				}
+				var newline_pos = chunk.index_of_char('\n', chunk_pos);
+				var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
+				this.parser.renderer.on_code_text(code_text);
+				chunk_pos = newline_pos;
+				this.parser.at_line_start = false;
+				return false;
+			}
+			// fence_result > 0: found closing fence - end the block (fence_result is byte length consumed)
+			chunk_pos += fence_result;
+			this.parser.do_block(false, this.parser.current_block);
+			this.parser.last_line_block = this.parser.current_block;
+			this.parser.current_block = FormatType.NONE;
+			this.parser.in_literal = false;
+			this.parser.at_line_start = true;
+			return false;
 		}
 	}
 }
