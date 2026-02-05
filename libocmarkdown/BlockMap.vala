@@ -523,7 +523,7 @@ namespace Markdown
 			this.parser.do_block(false, this.parser.current_block);
 			this.parser.last_line_block = this.parser.current_block;
 			this.parser.current_block = FormatType.NONE;
-			this.parser.in_literal = false;
+			this.parser.is_literal = "";
 			this.parser.at_line_start = true;
 			return false;
 		}

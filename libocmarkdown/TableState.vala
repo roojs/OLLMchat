@@ -85,7 +85,7 @@ namespace Markdown
 					if (stripped != "" && !stripped.has_prefix("|")) {
 						this.parser.do_block(false, FormatType.TABLE);
 						this.parser.current_block = FormatType.NONE;
-						this.parser.in_literal = false;
+						this.parser.is_literal = "";
 						return false;
 					}
 					this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
@@ -106,7 +106,7 @@ namespace Markdown
 			}
 			this.parser.do_block(false, FormatType.TABLE);
 			this.parser.current_block = FormatType.NONE;
-			this.parser.in_literal = false;
+			this.parser.is_literal = "";
 			return false;
 		}
 

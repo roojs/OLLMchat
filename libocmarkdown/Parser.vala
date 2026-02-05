@@ -103,7 +103,7 @@ namespace Markdown
 			get; set; default = new Gee.ArrayList<FormatType>(); }
 
 		public string leftover_chunk { get; set; default = ""; }
-		public bool in_literal { get; set; default = false; }
+		public string is_literal { get; set; default = ""; }
 		public FormatType last_line_block { get; set; default = FormatType.NONE; }
 		public FormatType current_block { get; set; default = FormatType.NONE; }
 		public bool at_line_start { get; set; default = true; }
@@ -126,7 +126,7 @@ namespace Markdown
 
 		public void flush()
 		{
-			this.in_literal = false;
+			this.is_literal = "";
 			this.add("", true);
 		}
 
@@ -138,7 +138,7 @@ namespace Markdown
 		*/
 		public void start()
 		{
-			this.in_literal = false;
+			this.is_literal = "";
 			this.leftover_chunk = "";
 			this.state_stack.clear();
 			this.last_line_block = FormatType.NONE;
@@ -255,6 +255,28 @@ namespace Markdown
 					continue;
 				}
 
+				if (this.is_literal != "") {
+					var result = this.formatmap.peek_literal(chunk, chunk_pos, is_end_of_chunks, this.is_literal);
+					if (result == -1) {
+						this.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
+						str = "";
+						return;
+					}
+					if (result == 0) {
+						str += c.to_string();
+						chunk_pos += c.to_string().length;
+						this.at_line_start = false;
+						continue;
+					}
+					this.renderer.on_text(str);
+					str = "";
+					this.state_stack.remove_at(this.state_stack.size - 1);
+					this.do_format(false, this.is_literal.length == 1 ? FormatType.LITERAL : FormatType.CODE);
+					this.is_literal = "";
+					chunk_pos += result;
+					this.at_line_start = false;
+					continue;
+				}
 
 				// At line start - check for block markers
 				if (this.at_line_start) {
@@ -378,7 +400,7 @@ namespace Markdown
 					continue;
 				}
 
-				// Use formatmap.eat to detect format sequences (needed even in literal mode for backtick toggle)
+				// Use formatmap.eat to detect format sequences
 				FormatType matched_format = FormatType.NONE;
 				int unused_byte_length;
 				var match_len = this.formatmap.eat(
@@ -388,10 +410,6 @@ namespace Markdown
 					out matched_format,
 					out unused_byte_length
 				);
-				// If in literal mode, ignore all matches except LITERAL (to close literal mode)
-				if (this.in_literal) {
-					match_len = (matched_format != FormatType.LITERAL) ? 0 : 1;
-				}
 
 				if (this.formatmap.handle_format_result(
 					match_len,
@@ -487,11 +505,19 @@ namespace Markdown
 					this.renderer.on_strong(is_start);
 					break;
 				case FormatType.CODE:
+					if (is_start) {
+						this.is_literal = "``";
+					} else {
+						this.is_literal = "";
+					}
 					this.renderer.on_code_span(is_start);
 					break;
 				case FormatType.LITERAL:
-					// Toggle in_literal flag when entering/leaving code span
-					this.in_literal = is_start;
+					if (is_start) {
+						this.is_literal = "`";
+					} else {
+						this.is_literal = "";
+					}
 					this.renderer.on_code_span(is_start);
 					break;
 				case FormatType.STRIKETHROUGH:
@@ -563,7 +589,7 @@ namespace Markdown
 				this.do_block(false, this.current_block);
 				this.last_line_block = this.current_block;
 				this.current_block = FormatType.NONE;
-				this.in_literal = false;
+				this.is_literal = "";
 			}
 			this.renderer.on_text("\n");
 			this.at_line_start = true;
@@ -592,6 +618,27 @@ namespace Markdown
 				}
 				var saved_pos = pos;
 				var c = text.get_char(pos);
+
+				if (this.is_literal != "") {
+					var result = this.formatmap.peek_literal(text, pos, true, this.is_literal);
+					if (result == -1) {
+						result = 0;
+					}
+					if (result == 0) {
+						str += c.to_string();
+						pos += c.to_string().length;
+						this.at_line_start = false;
+						continue;
+					}
+					this.renderer.on_text(str);
+					str = "";
+					this.state_stack.remove_at(this.state_stack.size - 1);
+					this.do_format(false, this.is_literal.length == 1 ? FormatType.LITERAL : FormatType.CODE);
+					this.is_literal = "";
+					pos += result;
+					this.at_line_start = false;
+					continue;
+				}
 
 				// At line start - check start-of-line emphasis (*, _)
 				if (this.at_line_start) {
@@ -631,13 +678,6 @@ namespace Markdown
 				var matched_format = FormatType.NONE;
 				var byte_length = 0;
 				var match_len = this.formatmap.eat(text, pos, true, out matched_format, out byte_length);
-				// Code-span literal: inside LITERAL/CODE, only same format closes
-				if (this.state_stack.size > 0) {
-					var top = this.state_stack.get(this.state_stack.size - 1);
-					if ((top == FormatType.LITERAL || top == FormatType.CODE) && matched_format != top) {
-						match_len = 0;
-					}
-				}
 				if (match_len == -1) {
 					this.renderer.on_text(str);
 					str = "";

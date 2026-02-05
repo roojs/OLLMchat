@@ -187,6 +187,35 @@ namespace Markdown
 		}
 
 		/**
+		 * Peek for closing backtick delimiter when inside a code span (is_literal != "").
+		 * @return 0 no match (treat char as literal), -1 need more data, N match length in bytes
+		 */
+		public int peek_literal(string chunk, int chunk_pos, bool is_end_of_chunks, string is_literal)
+		{
+			if (is_literal == "" || chunk_pos >= chunk.length) {
+				return 0;
+			}
+			var c0 = chunk.get_char(chunk_pos);
+			if (c0 != '`') {
+				return 0;
+			}
+			if (is_literal.length == 1) {
+				return 1;
+			}
+			if (chunk_pos + 1 >= chunk.length) {
+				if (!is_end_of_chunks) {
+					return -1;
+				}
+				return 0;
+			}
+			var c1 = chunk.get_char(chunk_pos + 1);
+			if (c1 != '`') {
+				return 0;
+			}
+			return 2;
+		}
+
+		/**
 		 * Handles format peek result. Caller calls eat() then this.
 		 * Updates chunk_pos, str, chunk when consuming; may set parser.leftover_chunk.
 		 * @return true (need more characters or flushed; leftover_chunk may be set), false to keep processing the rest of the chunk
