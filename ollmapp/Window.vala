@@ -179,10 +179,11 @@ namespace OLLMapp
 						this.history_leave_ignore_timeout_id = 0;
 						return false;
 					});
-					// Scroll to top when expanding history sidebar
+					// Scroll to top and focus search when expanding history sidebar
 					// in theroy history browse might not exist but its so unlikely we dont check
 					GLib.Idle.add(() => {
 						this.history_browser.scrolled_window.vadjustment.value = 0;
+						this.history_browser.search_entry.grab_focus();
 						return false;
 					});
 				} else {

@@ -19,6 +19,33 @@
 namespace OLLMchatGtk
 {
 	/**
+	 * Gtk.Filter for history list: filters by session title (case-insensitive contains).
+	 */
+	private class HistorySearchFilter : Gtk.Filter
+	{
+		public string query { get; set; default = ""; }
+
+		construct
+		{
+			this.notify["query"].connect(() => {
+				this.changed(Gtk.FilterChange.DIFFERENT);
+			});
+		}
+
+		public override bool match(GLib.Object? item)
+		{
+			var session = item as OLLMchat.History.SessionBase;
+			if (session == null) {
+				return false;
+			}
+			if (this.query == "") {
+				return true;
+			}
+			return session.title.down().contains(this.query.down());
+		}
+	}
+
+	/**
 	 * History browser widget that displays a list of past chat sessions.
 	 * 
 	 * Uses Gtk.ListView to display sessions with title, model, reply count, and date.
@@ -29,9 +56,13 @@ namespace OLLMchatGtk
 	public class HistoryBrowser : Gtk.Box
 	{
 		private OLLMchat.History.Manager manager;
+		private Gtk.FilterListModel filtered_store;
 		private Gtk.SortListModel sorted_store;
 		private Gtk.ListView list_view;
 		public Gtk.ScrolledWindow scrolled_window { get; set; }
+		private Gtk.SearchBar search_bar;
+		public Gtk.SearchEntry search_entry { get; private set; }
+		private HistorySearchFilter search_filter;
 		private bool changing_selection = false;
 		private bool is_loading = false;
 		
@@ -62,9 +93,24 @@ namespace OLLMchatGtk
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			this.manager = manager;
 			
-			// Use manager.sessions directly as ListModel (SessionList implements GLib.ListModel)
-			// Create SortListModel that wraps manager.sessions and sorts by updated_at_timestamp DESC
-			this.sorted_store = new Gtk.SortListModel(this.manager.sessions,
+			// Search bar (always visible at top)
+			this.search_bar = new Gtk.SearchBar();
+			this.search_entry = new Gtk.SearchEntry() {
+				placeholder_text = "Search chats",
+				hexpand = true
+			};
+			this.search_filter = new HistorySearchFilter();
+			this.search_entry.bind_property(
+				"text", this.search_filter, "query", BindingFlags.SYNC_CREATE);
+			this.search_bar.connect_entry(this.search_entry);
+			this.search_bar.set_child(this.search_entry);
+			this.search_bar.set_key_capture_widget(this);
+			this.search_bar.set_search_mode(true);
+			this.append(this.search_bar);
+			
+			// Model chain: sessions -> filter (by title) -> sort -> selection -> list
+			this.filtered_store = new Gtk.FilterListModel(this.manager.sessions, this.search_filter);
+			this.sorted_store = new Gtk.SortListModel(this.filtered_store,
 				new Gtk.CustomSorter((a, b) => {
 					var aa = a as OLLMchat.History.SessionBase;
 					var bb = b as OLLMchat.History.SessionBase;
