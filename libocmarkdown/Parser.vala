@@ -213,6 +213,7 @@ namespace Markdown
 					 || this.current_block == FormatType.FENCED_CODE_TILD) {
 					if (!this.at_line_start) {
 						if (this.blockmap.check_fenced_newline(ref chunk_pos, chunk)) {
+							assert(str == "");
 							return;
 						}
 						continue;
@@ -220,6 +221,7 @@ namespace Markdown
 					// At line start - check for closing fence
 					var fence_result = this.blockmap.peekFencedEnd(chunk, chunk_pos, this.current_block, is_end_of_chunks);
 					if (this.blockmap.handle_fence_result(fence_result, ref chunk_pos, chunk)) {
+						assert(str == "");
 						return;
 					}
 					continue;
@@ -231,6 +233,7 @@ namespace Markdown
 				// In table: at line start, consume one full line and either feed as row or end table
 				if (this.at_line_start && this.current_block == FormatType.TABLE) {
 					if (this.table_state.handle_line_start(ref chunk_pos, chunk, is_end_of_chunks)) {
+						assert(str == "");
 						return;
 					}
 					continue;
@@ -277,6 +280,7 @@ namespace Markdown
 						saved_chunk_pos,
 						is_end_of_chunks
 					)) {
+						assert(str == "");
 						return;
 					}
 					// Only continue when we consumed a block (chunk_pos advanced);
@@ -306,6 +310,7 @@ namespace Markdown
 						saved_chunk_pos,
 						is_end_of_chunks
 					)) {
+						assert(str == "");
 						return;
 					}
 					if (chunk_pos != saved_chunk_pos) {
@@ -339,6 +344,7 @@ namespace Markdown
 					saved_chunk_pos,
 					is_end_of_chunks
 				)) {
+					assert(str == "");
 					return;
 				}
 				if (chunk_pos != saved_chunk_pos) {
@@ -365,6 +371,7 @@ namespace Markdown
 					saved_chunk_pos,
 					is_end_of_chunks
 				)) {
+					assert(str == "");
 					return;
 				}
 				if (chunk_pos != saved_chunk_pos) {
@@ -394,6 +401,7 @@ namespace Markdown
 					ref str, 
 					ref chunk, 
 					is_end_of_chunks)) {
+					assert(str == "");
 					return;
 				}
 				// If we consumed (chunk_pos advanced), continue; else no match - advance here
@@ -402,7 +410,6 @@ namespace Markdown
 					continue;
 				}
 				str += c.to_string();
-				GLib.debug("str= %s",str);
 				chunk_pos += c.to_string().length;
 				this.at_line_start = false;
 				continue;
@@ -546,11 +553,12 @@ namespace Markdown
 				return;
 			}
 			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
-			this.state_stack.clear();
 			if (str != "") {
 				this.renderer.on_text(str);
 				str = "";
 			}
+			this.state_stack.clear();
+
 			if (this.current_block != FormatType.NONE) {
 				this.do_block(false, this.current_block);
 				this.last_line_block = this.current_block;
@@ -571,6 +579,7 @@ namespace Markdown
 		{
 			var pos = 0;
 			var str = "";
+			this.at_line_start = true;
 			while (pos < text.length) {
 				// Escape: \ + next char → emit next as literal, advance by 1 + next char byte length
 				if (text.get_char(pos) == '\\' && pos + 1 < text.length) {
@@ -578,8 +587,47 @@ namespace Markdown
 					str = "";
 					this.renderer.on_text(text.get_char(pos + 1).to_string());
 					pos += 1 + text.get_char(pos + 1).to_string().length;
+					this.at_line_start = false;
 					continue;
 				}
+				var saved_pos = pos;
+				var c = text.get_char(pos);
+
+				// At line start - check start-of-line emphasis (*, _)
+				if (this.at_line_start) {
+					FormatType start_matched = FormatType.NONE;
+					int start_byte_length = 0;
+					var start_result = this.startmap.peek(text, pos, true, out start_matched, out start_byte_length);
+					if (start_result > 0) {
+						this.renderer.on_text(str);
+						str = "";
+						this.startmap.handle_start_result(start_result, start_matched, start_byte_length, ref pos, text, saved_pos, true);
+						continue;
+					}
+				}
+
+				// Left (opening) delimiter: must be preceded by whitespace
+				if (str.length != 0 && c.isspace()) {
+					this.renderer.on_text(str);
+					str = "";
+				}
+				FormatType left_matched = FormatType.NONE;
+				int left_byte_length = 0;
+				var left_match = this.leftmap.peek(text, pos, true, out left_matched, out left_byte_length);
+				if (left_match > 0) {
+					this.leftmap.handle_left_result(left_match, left_matched, left_byte_length, ref pos, ref str, text, saved_pos, true);
+					continue;
+				}
+
+				// Right (closing) delimiter: must be followed by whitespace or newline
+				FormatType right_matched = FormatType.NONE;
+				int right_byte_length = 0;
+				var right_match = this.rightmap.peek(text, pos, true, out right_matched, out right_byte_length);
+				if (right_match > 0) {
+					this.rightmap.handle_right_result(right_match, right_matched, right_byte_length, ref pos, ref str, text, saved_pos, true);
+					continue;
+				}
+
 				var matched_format = FormatType.NONE;
 				var byte_length = 0;
 				var match_len = this.formatmap.eat(text, pos, true, out matched_format, out byte_length);
@@ -593,15 +641,15 @@ namespace Markdown
 				if (match_len == -1) {
 					this.renderer.on_text(str);
 					str = "";
-					var c = text.get_char(pos);
 					this.renderer.on_text(c.to_string());
 					pos += c.to_string().length;
+					this.at_line_start = false;
 					continue;
 				}
 				if (match_len == 0) {
-					var c = text.get_char(pos);
 					str += c.to_string();
 					pos += c.to_string().length;
+					this.at_line_start = false;
 					continue;
 				}
 				this.renderer.on_text(str);
@@ -611,28 +659,32 @@ namespace Markdown
 					var seq_pos = pos + byte_length;
 					var link_result = this.formatmap.eat_link(text, pos, seq_pos, true);
 					if (link_result == -1) {
-						var c = text.get_char(pos);
 						this.renderer.on_text(c.to_string());
 						pos += c.to_string().length;
+						this.at_line_start = false;
 						continue;
 					}
 					if (link_result == 0) {
 						this.renderer.on_text(text.substring(pos, byte_length));
 						pos += byte_length;
+						this.at_line_start = false;
 						continue;
 					}
 					this.formatmap.handle_link(text, pos, seq_pos, link_result);
 					pos = link_result;
+					this.at_line_start = false;
 					continue;
 				}
 				if (matched_format != FormatType.HTML) {
 					this.got_format(matched_format);
 					pos += byte_length;
+					this.at_line_start = false;
 					continue;
 				}
 				var sub = text.substring(pos + byte_length);
 				var rest = this.add_html(sub);
 				pos += byte_length + (sub.length - rest.length);
+				this.at_line_start = false;
 			}
 			for (var i = this.state_stack.size - 1; i >= 0; i--) {
 				this.do_format(false, this.state_stack.get(i));

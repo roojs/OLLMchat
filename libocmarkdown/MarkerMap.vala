@@ -138,8 +138,6 @@ namespace Markdown
 				}
 				// if we have had a match, gone pase and ended up with none
 				// we can return it.
-				GLib.debug("matched_type=%s max_match_length=%d byte_length=%d",
-					matched_type.to_string(), max_match_length, byte_length);
 				if (matched_type != FormatType.LINK && matched_type != FormatType.NONE) {
 					return max_match_length;
 				}
@@ -159,7 +157,6 @@ namespace Markdown
 					(!map.has_key(sequence) || map.get(sequence) == FormatType.NONE) &&
 					matched_type != FormatType.NONE
 					) {
-				 
 					return max_match_length;
 				}
 				return -1;

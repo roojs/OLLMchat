@@ -201,8 +201,8 @@ namespace Markdown
 			bool is_end_of_chunks
 		) {
 			if (match_len == -1) {
-				this.parser.renderer.on_text(str);
-				this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				this.parser.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				str = "";
 				return true;
 			}
 			if (match_len == 0) {
@@ -219,7 +219,8 @@ namespace Markdown
 			if (matched_format == FormatType.LINK) {
 				var link_result = this.eat_link(chunk, chunk_pos, seq_pos, is_end_of_chunks);
 				if (link_result == -1) {
-					this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					this.parser.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					str = "";
 					return true;
 				}
 				if (link_result == 0) {
@@ -238,7 +239,8 @@ namespace Markdown
 			}
 			var html_res = this.parser.peekHTML(chunk, seq_pos, is_end_of_chunks);
 			if (html_res == -1) {
-				this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				this.parser.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
+				str = "";
 				return true;
 			}
 			if (html_res == 0) {
@@ -254,7 +256,7 @@ namespace Markdown
 				return false;
 			}
 			if (chunk.length > 0 && chunk.get_char(0) == '<') {
-				this.parser.leftover_chunk = chunk;
+				this.parser.leftover_chunk = str + chunk; // a bit werid as we have modified chunk in here
 				return true;
 			}
 			return false;

@@ -1,0 +1,79 @@
+=== PARSING MARKDOWN FILE: markdown/indented-fenced-blocks.md ===
+=== FILE CONTENT (first 200 chars) ===
+# Indented fenced code blocks
+
+Paragraph before list.
+
+- List item with an indented fenced block:
+
+    ```vala
+    void main() {
+        print("indented fenced\n");
+    }
+    ```
+
+- Another item with indented fenced block:
+
+    ```text
+    plain text content
+    ```
+
+Paragraph after list.
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: " Indented fenced code blocks"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Paragraph before list."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "List item with an indented fenced block:"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang=vala)
+  CODE_TEXT: "void main() {"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "    print("indented fenced\n");"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "}"
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Another item with indented fenced block:"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang=text)
+  CODE_TEXT: "plain text content"
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Paragraph after list."
+END: <p>
+TEXT: ""
+=== END TRACE ===

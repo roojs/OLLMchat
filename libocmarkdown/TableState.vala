@@ -60,7 +60,7 @@ namespace Markdown
 				} else {
 					this.parser.renderer.on_table_cell(true, align);
 				}
-				this.parser.process_inline(cells[i]);
+				this.parser.process_inline(cells[i].strip());
 				if (is_header) {
 					this.parser.renderer.on_table_hcell(false, align);
 				} else {

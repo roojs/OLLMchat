@@ -62,17 +62,17 @@ namespace Markdown
 			mp["* "] = FormatType.UNORDERED_LIST;
 			mp["+"] = FormatType.INVALID;
 			mp["+ "] = FormatType.UNORDERED_LIST;
-			mp[" -"] = FormatType.INVALID;
-			mp[" - "] = FormatType.UNORDERED_LIST;
-			mp[" *"] = FormatType.INVALID;
-			mp[" * "] = FormatType.UNORDERED_LIST;
-			mp[" +"] = FormatType.INVALID;
-			mp[" + "] = FormatType.UNORDERED_LIST;
+			//mp[" -"] = FormatType.INVALID;
+			//mp[" - "] = FormatType.UNORDERED_LIST;
+			//mp[" *"] = FormatType.INVALID;
+			//mp[" * "] = FormatType.UNORDERED_LIST;
+			//mp[" +"] = FormatType.INVALID;
+			//mp[" + "] = FormatType.UNORDERED_LIST;
 
 			mp["•"] = FormatType.INVALID;
-			mp[" •"] = FormatType.INVALID;
+			//mp[" •"] = FormatType.INVALID;
 			mp["• "] = FormatType.INVALID;
-			mp[" • "] = FormatType.INVALID;
+			//mp[" • "] = FormatType.INVALID;
 
 			// Ordered Lists: 1. item, 2. item, etc.
 			mp["1"] = FormatType.INVALID;
@@ -81,26 +81,20 @@ namespace Markdown
 			mp["11"] = FormatType.INVALID;
 			mp["11."] = FormatType.INVALID;
 			mp["11. "] = FormatType.ORDERED_LIST;
-			mp[" 1"] = FormatType.INVALID;
-			mp[" 1."] = FormatType.INVALID;
-			mp[" 1. "] = FormatType.ORDERED_LIST;
-			mp[" 11"] = FormatType.INVALID;
-			mp[" 11."] = FormatType.INVALID;
-			mp[" 11. "] = FormatType.ORDERED_LIST;
+			//mp[" 1"] = FormatType.INVALID;
+			//mp[" 1."] = FormatType.INVALID;
+			//mp[" 1. "] = FormatType.ORDERED_LIST;
+			//mp[" 11"] = FormatType.INVALID;
+			//mp[" 11."] = FormatType.INVALID;
+			//mp[" 11. "] = FormatType.ORDERED_LIST;
 
-			// Continue list: 2 spaces to continue list items
-			mp[" "] = FormatType.INVALID;
-			mp["  "] = FormatType.CONTINUE_LIST;
-
-			// Fenced Code: ``` or ~~~ with optional language; allow 3 spaces (indented in list items), none or 3 only
+			// Fenced Code: ``` or ~~~ with optional language; indented case handled by skipping leading spaces before eat
 			mp["`"] = FormatType.INVALID;
 			mp["``"] = FormatType.INVALID;
 			mp["```"] = FormatType.FENCED_CODE_QUOTE;
-			mp["   ```"] = FormatType.FENCED_CODE_QUOTE;
 			mp["~"] = FormatType.INVALID;
 			mp["~~"] = FormatType.INVALID;
 			mp["~~~"] = FormatType.FENCED_CODE_TILD;
-			mp["   ~~~"] = FormatType.FENCED_CODE_TILD;
 
 			// Blockquotes: > quote text (up to 6 levels deep)
 			mp[">"] = FormatType.INVALID;
@@ -128,8 +122,8 @@ namespace Markdown
 		}
 
 		/**
-		 * Block-level peek: wraps base.eat() then handles fenced code (newline/lang) and CONTINUE_LIST (delegates to listmap).
-		 * @param last_line_block Used to validate CONTINUE_LIST (only valid after ORDERED_LIST or UNORDERED_LIST).
+		 * Block-level peek: skips leading spaces then base.eat(); on no match with indent in list, delegates to listmap. Handles fenced code (newline/lang), table, etc.
+		 * @param last_line_block Used when delegating to listmap (only after ORDERED_LIST or UNORDERED_LIST).
 		 */
 		public int peek(
 			string chunk,
@@ -140,36 +134,77 @@ namespace Markdown
 			out FormatType matched_block,
 			out int byte_length
 		) {
-			GLib.debug("ENTER chunk_pos=%d chunk.length=%d is_end=%s last_line_block=%s chunk=%s",
-				chunk_pos, chunk.length, is_end_of_chunks.to_string(), last_line_block.to_string(), chunk);
 			lang_out = "";
 			matched_block = FormatType.NONE;
 			byte_length = 0;
 			this.fence_open = "";
 
+			// Line at chunk_pos (to next \n or end); used for pre-eat and space_skip
+			var line_end = chunk.index_of_char('\n', chunk_pos);
+			var line_len = (line_end == -1) ? (int) chunk.length - chunk_pos : line_end - chunk_pos;
+			var line = chunk_pos < chunk.length ? chunk.substring(chunk_pos, line_len) : "";
+
+			// Pre eat: if line is only whitespace we need more or have no block
+			if (line.length > 0 && line.strip() == "") {
+				if (line_end != -1 || is_end_of_chunks || line.length > 8) {
+					return 0;
+				}
+				return -1;
+			}
+
+			var stripped = line.strip();
+			var space_skip = (stripped.length > 0) ? line.index_of(stripped) : 0;
+
 			int result = base.eat(
-				chunk, 
-				chunk_pos, 
-				is_end_of_chunks, 
-				out matched_block, 
+				chunk,
+				chunk_pos + space_skip,
+				is_end_of_chunks,
+				out matched_block,
 				out byte_length);
 
-			if (result < 1) {
-				GLib.debug("EXIT result=%d", result);
-				return result;
+			if (result == -1) {
+				return -1;
+			}
+			if (result == 0) {
+				// No block matched; if leading indent and inside a list, let listmap interpret
+				if (
+					space_skip > 0
+					&& (
+						last_line_block == FormatType.ORDERED_LIST || 
+						last_line_block == FormatType.UNORDERED_LIST)
+				) {
+					var list_result = this.listmap.peek(
+						chunk,
+						chunk_pos,
+						is_end_of_chunks,
+						out matched_block,
+						out byte_length);
+					return list_result;
+				}
+				return 0;
+			}
+
+			// Match: byte_length from eat is relative to (chunk_pos + space_skip); revert and add space_skip so chunk_pos is unchanged
+			byte_length = space_skip + byte_length;
+
+			// Fenced code: only 0 or 3 spaces allowed before fence
+			if (
+				(matched_block == FormatType.FENCED_CODE_QUOTE || matched_block == FormatType.FENCED_CODE_TILD)
+				&& space_skip != 0
+				&& space_skip != 3
+			) {
+				return 0;
 			}
 
 			// Fenced code: need newline and optional language; store whole match for matching closing fence
 			if (matched_block == FormatType.FENCED_CODE_QUOTE 
 				|| matched_block == FormatType.FENCED_CODE_TILD) {
-				this.fence_open = chunk.substring(chunk_pos, byte_length);
+				this.fence_open = chunk.substring(chunk_pos, space_skip + 3);
 				if (!chunk.contains("\n")) {
-					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				var newline_pos = chunk.index_of_char('\n', chunk_pos);
 				if (newline_pos == -1) {
-					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				var fence_end_pos = chunk_pos + byte_length;
@@ -181,33 +216,7 @@ namespace Markdown
 				}
 				var unstripped_lang = chunk.substring(fence_end_pos, newline_pos - fence_end_pos);
 				lang_out = unstripped_lang.strip();
-				var ret = newline_pos - chunk_pos + 1;
-				GLib.debug("EXIT result=%d", ret);
-				return ret;
-			}
-
-			// CONTINUE_LIST: only valid after list block; then delegate to listmap
-			if (matched_block == FormatType.CONTINUE_LIST) {
-				if (last_line_block != FormatType.ORDERED_LIST && last_line_block != FormatType.UNORDERED_LIST) {
-					GLib.debug("EXIT result=0");
-					return 0;
-				}
-				var continue_end_pos = chunk_pos + byte_length;
-				var continue_length = byte_length;
-				var list_result = this.listmap.peek(
-					chunk, 
-					continue_end_pos,
-					 is_end_of_chunks, 
-					 out matched_block, 
-					 out byte_length);
-				if (list_result == -1) {
-					GLib.debug("EXIT result=-1");
-					return -1;
-				}
-				byte_length += continue_length;
-				var ret = continue_length + list_result;
-				GLib.debug("EXIT result=%d", ret);
-				return ret;
+				return newline_pos - chunk_pos + 1;
 			}
 
 			// TABLE: need 3 full lines (header, separator, first body row); verify progressively
@@ -217,57 +226,45 @@ namespace Markdown
 				// Wait for first \n so we have a complete line 1 before checking
 				if (lines.length < 2) {
 					if (is_end_of_chunks) {
-						GLib.debug("EXIT result=0");
 						return 0;
 					}
-					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Line 1 must start and end with | (trim for generosity)
 				if (!lines[0].strip().has_prefix("|") || !lines[0].strip().has_suffix("|")) {
-					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// If we have the second line and it doesn't start with |, reject
 				if (lines[1].strip() != "" && !lines[1].strip().has_prefix("|")) {
-					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				if (lines.length < 3) {
 					if (is_end_of_chunks) {
-						GLib.debug("EXIT result=0");
 						return 0;
 					}
-					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Then validate separator (only space, |, -, :)
 				try {
 					if (!(new GLib.Regex("^[- |:]*$").match(lines[1].strip()))) {
-						GLib.debug("EXIT result=0");
 						return 0;
 					}
 				} catch (GLib.RegexError e) {
-					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// Third line: not empty and must start with |
 				if (lines[2].strip() != "" && !lines[2].strip().has_prefix("|")) {
-					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// Wait for third newline so we have 3 complete lines
 				if (lines.length < 4) {
 					if (is_end_of_chunks) {
-						GLib.debug("EXIT result=0");
 						return 0;
 					}
-					GLib.debug("EXIT result=-1");
 					return -1;
 				}
 				// Line 3 must end with |
 				if (!lines[2].strip().has_suffix("|")) {
-					GLib.debug("EXIT result=0");
 					return 0;
 				}
 				// byte_length = 3 lines including newlines (support multi-byte newline)
@@ -277,11 +274,24 @@ namespace Markdown
 				byte_length = lines[0].length + nl_byte_len
 					+ lines[1].length + nl_byte_len
 					+ lines[2].length + nl_byte_len;
-				GLib.debug("EXIT result=1");
 				return 1;
 			}
 
-			GLib.debug("EXIT result=%d", result);
+			// Horizontal rule (***, ---, ___): next char must be whitespace or newline; else treat as inline (e.g. ***Bold***)
+			if (matched_block == FormatType.HORIZONTAL_RULE) {
+				if (is_end_of_chunks) {
+					return result;
+				}
+				var seq_pos = chunk_pos + byte_length;
+				if (seq_pos >= chunk.length) {
+					return -1;
+				}
+				var next_char = chunk.get_char(seq_pos);
+				if (next_char != '\n' && !next_char.isspace()) {
+					return 0;
+				}
+			}
+
 			return result;
 		}
 

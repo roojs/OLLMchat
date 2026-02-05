@@ -1,0 +1,202 @@
+=== PARSING MARKDOWN FILE: markdown/nested-lists.md ===
+=== FILE CONTENT (first 200 chars) ===
+# Nested lists
+
+- Outer unordered one
+  - Inner unordered 1.1
+  - Inner unordered 1.2
+- Outer unordered two
+
+1. Outer ordered one
+   1. Inner ordered a
+   2. Inner ordered b
+2. Outer ordered two
+
+- Mi...
+
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: " Nested"
+  TEXT: " lists"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Outer"
+  TEXT: " unordered"
+  TEXT: " one"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=2)
+  TEXT: "Inner"
+  TEXT: " unordered"
+  TEXT: " 1.1"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=2)
+  TEXT: "Inner"
+  TEXT: " unordered"
+  TEXT: " 1.2"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Outer"
+  TEXT: " unordered"
+  TEXT: " two"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "Outer"
+  TEXT: " ordered"
+  TEXT: " one"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "Inner"
+  TEXT: " ordered"
+  TEXT: " a"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "Inner"
+  TEXT: " ordered"
+  TEXT: " b"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "Outer"
+  TEXT: " ordered"
+  TEXT: " two"
+END: <ol> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Mixed:"
+  TEXT: " unordered"
+  TEXT: " outer"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "Ordered"
+  TEXT: " inner"
+  TEXT: " first"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "Ordered"
+  TEXT: " inner"
+  TEXT: " second"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "Back"
+  TEXT: " to"
+  TEXT: " unordered"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <h2>
+  TEXT: " Four"
+  TEXT: " levels"
+  TEXT: " (unordered)"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "L1"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=2)
+  TEXT: "L2"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=3)
+  TEXT: "L3"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=4)
+  TEXT: "L4"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=2)
+  TEXT: "L2"
+  TEXT: " sibling"
+END: <ul> (indentation=0)
+TEXT: "
+"
+START: <ul> (indentation=1)
+  TEXT: "L1"
+  TEXT: " sibling"
+END: <ul> (indentation=0)
+TEXT: "
+"
+TEXT: "
+"
+START: <h2>
+  TEXT: " Four"
+  TEXT: " levels"
+  TEXT: " (ordered)"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "L1"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "L2"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=4)
+  TEXT: "L3"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=5)
+  TEXT: "L4"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=2)
+  TEXT: "L2"
+  TEXT: " sibling"
+END: <ol> (indentation=0)
+TEXT: "
+"
+START: <ol> (indentation=1)
+  TEXT: "L1"
+  TEXT: " sibling"
+END: <ol> (indentation=0)
+TEXT: "
+"
+TEXT: ""
+TEXT: ""
+=== END TRACE ===
