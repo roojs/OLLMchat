@@ -15,9 +15,9 @@ source "$SCRIPT_DIR/test-common.sh"
 BUILD_DIR="${1:-$PROJECT_ROOT/build}"
 OC_TEST_FILES="$BUILD_DIR/oc-test-files"
 
-# Test directory
-TEST_DIR="$HOME/.cache/ollmchat/testing"
-TEST_DB="$TEST_DIR/test.db"
+# Test directory and DB in build dir (workspace, avoids .cache write/sandbox issues)
+TEST_DIR="$BUILD_DIR/testing"
+TEST_DB="$BUILD_DIR/test-file-ops.db"
 DATA_DIR="$SCRIPT_DIR/data"
 
 # Cleanup function

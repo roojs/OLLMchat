@@ -500,6 +500,7 @@ namespace OLLMfiles
 					if (updated) {
 						GLib.debug("UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
 					}
+					GLib.debug("FileBase.saveToDB: after updateOld id=%d", (int)this.id);
 				} else {
 					GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
 					sq.updateById(this);

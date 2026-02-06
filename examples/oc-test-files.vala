@@ -228,7 +228,7 @@ Examples:
 		} else if (opt_check_project != null) {
 			yield this.run_check_project(manager);
 		} else if (opt_cleanup_backups) {
-			yield this.run_cleanup_backups();
+			yield this.run_cleanup_backups(db);
 		} else if (opt_list_buffers) {
 			yield this.run_list_buffers(manager);
 		} else if (opt_create_project != null) {
@@ -487,20 +487,10 @@ PROJECT_PATH: $(manager.active_project.path)
 ");
 	}
 
-	private async void run_cleanup_backups() throws Error
+	private async void run_cleanup_backups(SQ.Database db) throws Error
 	{
-		// Determine database path
-		string db_path;
-		if (opt_test_db != null && opt_test_db != "") {
-			db_path = opt_test_db;
-		} else {
-			// Use main database (normal operation)
-			db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
-		}
-		
-		// Create database
-		var db = new SQ.Database(db_path, false);
-		
+		// Use the same database instance from run_test so file_history table exists
+		// (creating a second Database(db_path) would open an empty db when file wasn't written yet)
 		// Call cleanup with db and default max_deleted_days (30)
 		yield OLLMfiles.FileHistory.cleanup_old_backups(db, 30);
 		
