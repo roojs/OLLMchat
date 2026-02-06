@@ -265,22 +265,21 @@ namespace OLLMtools.RunCommand
 			
 			// Add user namespace (required for overlay support without root)
 			args += "--unshare-user";
-				// Add read-only bind: "--ro-bind", "/", "/"
-			args += "--ro-bind";
-			args += "/";
-			args += "/";
-			// Add tmpfs mount for /tmp (after --ro-bind / / so it overrides the host's /tmp and stays writable)
-			args += "--tmpfs";
-			args += "/tmp";
-			
-			// Mount playground at $HOME/playground; ensure_home_playground_mount_point() creates the host dir if missing
+
+			// Mount playground at $HOME/playground *before* --ro-bind / / so bwrap can create the dir (read-only root would prevent --dir)
 			args += "--dir";
 			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
-			
 			args += "--bind";
 			args += this.playground_path();
 			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
-			
+
+			// Read-only bind root and tmpfs (playground already set up above)
+			args += "--ro-bind";
+			args += "/";
+			args += "/";
+			args += "--tmpfs";
+			args += "/tmp";
+
 			// Mount /dev read-only (like the rest of the system)
 			// This makes the sandbox appear as a regular system, but prevents writes
 			args += "--ro-bind";

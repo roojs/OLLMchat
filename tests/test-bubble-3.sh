@@ -1,7 +1,8 @@
 #!/bin/bash
 # Bubble tests part 3: Move 2-6 (5) + Deletion 1-3 (3) = 8 tests
 
-set -euo pipefail
+# set -e only (nounset/pipefail break under meson test)
+set -e
 
 STOP_ON_FAILURE=false
 if [ "${1:-}" = "--stop-on-failure" ] || [ "${1:-}" = "-x" ]; then
@@ -12,6 +13,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="${1:-$PROJECT_ROOT/build}"
+# Normalize so Meson-passed path (e.g. build/tests/..) works
+BUILD_DIR="$(cd "$SCRIPT_DIR" && cd "$BUILD_DIR" && pwd)"
 source "$SCRIPT_DIR/test-common.sh"
 
 OC_TEST_BUBBLE="$BUILD_DIR/oc-test-bubble"
@@ -165,7 +168,7 @@ main() {
     setup_test_env
     run_part_3
     print_test_summary
-    if [ $TESTS_FAILED -eq 0 ]; then
+    if [ "${TESTS_FAILED:-0}" -eq 0 ]; then
         [ -z "${GENERATE_EXPECTED_MODE:-}" ] && rm -rf "$TEST_DIR"
         echo ""
         echo "All tests passed! Test directory cleaned up."
