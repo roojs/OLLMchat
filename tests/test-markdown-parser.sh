@@ -22,8 +22,7 @@ fi
 OC_MARKDOWN_TEST="$BUILD_DIR/oc-markdown-test"
 OC_MD2HTML="$BUILD_DIR/oc-md2html"
 
-DATA_DIR="$SCRIPT_DIR/data"
-MD_DATA="$DATA_DIR/markdown"
+MD_DATA="$SCRIPT_DIR/markdown"
 # Use build/tests/markdown-parser-out so it works in sandbox and meson test runs
 TEST_DIR="${TEST_DIR:-$BUILD_DIR/tests/markdown-parser-out}"
 
@@ -51,9 +50,11 @@ MARKDOWN_TEST_LABELS=(
 	"2. Blocks (callback trace)"
 	"3. Tables (HTML)"
 	"4. Links (callback trace)"
+	"5. Indented fenced blocks (callback trace)"
+	"6. Nested lists (callback trace)"
 )
 # Substrings that identify each test in FAILED_TESTS descriptions
-MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback")
+MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback" "Indented fenced" "Nested lists")
 
 # Test 1: Simple formatting (bold, italic, code, etc.) → HTML
 test_formatting() {
@@ -63,7 +64,7 @@ test_formatting() {
 	local actual="$TEST_DIR/formatting-actual.html"
 	local expected="$MD_DATA/formatting-expected.html"
 	# Run from tests/ so trace paths are relative; suppress stderr (debug logs)
-	(cd "$SCRIPT_DIR" && "$OC_MD2HTML" "data/markdown/formatting.md" 2>/dev/null) > "$actual"
+	(cd "$SCRIPT_DIR" && "$OC_MD2HTML" "markdown/formatting.md" 2>/dev/null) > "$actual"
 	test-match "$testname" "$actual" "$expected" "Formatting HTML output" || true
 }
 
@@ -74,7 +75,7 @@ test_blocks() {
 	local testname="markdown_blocks"
 	local actual="$TEST_DIR/blocks-actual-trace.txt"
 	local expected="$MD_DATA/blocks-expected-trace.txt"
-	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "data/markdown/blocks.md" 2>/dev/null) > "$actual"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/blocks.md" 2>/dev/null) > "$actual"
 	test-match "$testname" "$actual" "$expected" "Blocks callback trace" || true
 }
 
@@ -85,7 +86,7 @@ test_tables() {
 	local testname="markdown_tables"
 	local actual="$TEST_DIR/tables-actual.html"
 	local expected="$MD_DATA/tables-expected.html"
-	(cd "$SCRIPT_DIR" && "$OC_MD2HTML" "data/markdown/tables.md" 2>/dev/null) > "$actual"
+	(cd "$SCRIPT_DIR" && "$OC_MD2HTML" "markdown/tables.md" 2>/dev/null) > "$actual"
 	test-match "$testname" "$actual" "$expected" "Tables HTML output" || true
 }
 
@@ -96,8 +97,30 @@ test_links() {
 	local testname="markdown_links"
 	local actual="$TEST_DIR/links-actual-trace.txt"
 	local expected="$MD_DATA/links-expected-trace.txt"
-	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "data/markdown/links.md" 2>/dev/null) > "$actual"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/links.md" 2>/dev/null) > "$actual"
 	test-match "$testname" "$actual" "$expected" "Links callback trace" || true
+}
+
+# Test 5: Indented fenced code blocks (e.g. inside list items) → callback trace
+test_indented_fenced_blocks() {
+	echo "=== Test 5: Indented fenced blocks (callback trace) ==="
+	reset_test_state
+	local testname="markdown_indented_fenced_blocks"
+	local actual="$TEST_DIR/indented-fenced-blocks-actual-trace.txt"
+	local expected="$MD_DATA/indented-fenced-blocks-expected-trace.txt"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/indented-fenced-blocks.md" 2>/dev/null) > "$actual"
+	test-match "$testname" "$actual" "$expected" "Indented fenced blocks callback trace" || true
+}
+
+# Test 6: Nested lists (ul/ol with indented sub-items) → callback trace
+test_nested_lists() {
+	echo "=== Test 6: Nested lists (callback trace) ==="
+	reset_test_state
+	local testname="markdown_nested_lists"
+	local actual="$TEST_DIR/nested-lists-actual-trace.txt"
+	local expected="$MD_DATA/nested-lists-expected-trace.txt"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/nested-lists.md" 2>/dev/null) > "$actual"
+	test-match "$testname" "$actual" "$expected" "Nested lists callback trace" || true
 }
 
 # Actual/expected paths for each test (order matches MARKDOWN_TEST_LABELS)
@@ -107,12 +130,16 @@ MARKDOWN_ACTUAL_FILES=(
 	"$TEST_DIR/blocks-actual-trace.txt"
 	"$TEST_DIR/tables-actual.html"
 	"$TEST_DIR/links-actual-trace.txt"
+	"$TEST_DIR/indented-fenced-blocks-actual-trace.txt"
+	"$TEST_DIR/nested-lists-actual-trace.txt"
 )
 MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/formatting-expected.html"
 	"$MD_DATA/blocks-expected-trace.txt"
 	"$MD_DATA/tables-expected.html"
 	"$MD_DATA/links-expected-trace.txt"
+	"$MD_DATA/indented-fenced-blocks-expected-trace.txt"
+	"$MD_DATA/nested-lists-expected-trace.txt"
 )
 
 # Print which tests passed/failed and, if any failed, show diffs again at the end
@@ -130,9 +157,9 @@ print_markdown_results() {
 	done
 	echo ""
 	if [ "$TESTS_FAILED" -eq 0 ]; then
-		echo -e "${GREEN}Markdown parser: all 4 tests passed.${NC}"
+		echo -e "${GREEN}Markdown parser: all 6 tests passed.${NC}"
 	else
-		echo -e "${RED}Markdown parser: $TESTS_FAILED of 4 tests failed.${NC}"
+		echo -e "${RED}Markdown parser: $TESTS_FAILED of 6 tests failed.${NC}"
 		echo ""
 		echo "=== FAILURE DETAILS (diffs below) ==="
 		for i in "${!MARKDOWN_TEST_LABELS[@]}"; do
@@ -156,11 +183,13 @@ print_markdown_results() {
 
 # Main
 echo ""
-echo "=== Markdown parser test suite (4 tests) ==="
-echo "  • Formatting: oc-md2html on data/markdown/formatting.md → HTML"
-echo "  • Blocks:     oc-markdown-test on data/markdown/blocks.md → callback trace"
-echo "  • Tables:     oc-md2html on data/markdown/tables.md → HTML"
-echo "  • Links:      oc-markdown-test on data/markdown/links.md → callback trace"
+echo "=== Markdown parser test suite (6 tests) ==="
+echo "  • Formatting:       oc-md2html on markdown/formatting.md → HTML"
+echo "  • Blocks:           oc-markdown-test on markdown/blocks.md → callback trace"
+echo "  • Tables:           oc-md2html on markdown/tables.md → HTML"
+echo "  • Links:            oc-markdown-test on markdown/links.md → callback trace"
+echo "  • Indented fenced:  oc-markdown-test on markdown/indented-fenced-blocks.md → callback trace"
+echo "  • Nested lists:    oc-markdown-test on markdown/nested-lists.md → callback trace"
 echo ""
 
 setup_test_env
@@ -168,6 +197,8 @@ test_formatting
 test_blocks
 test_tables
 test_links
+test_indented_fenced_blocks
+test_nested_lists
 print_test_summary
 print_markdown_results
 exit $([ "$TESTS_FAILED" -eq 0 ] && echo 0 || echo 1)

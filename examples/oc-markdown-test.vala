@@ -37,7 +37,7 @@ Options:
 
 Examples:
   {ARG} README.md
-  {ARG} --debug tests/data/markdown/links.md
+  {ARG} --debug tests/markdown/links.md
 """; }
 
 	public TestMarkdown()

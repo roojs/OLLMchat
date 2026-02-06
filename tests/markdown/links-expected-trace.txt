@@ -1,4 +1,4 @@
-=== PARSING MARKDOWN FILE: data/markdown/links.md ===
+=== PARSING MARKDOWN FILE: markdown/links.md ===
 === FILE CONTENT (first 200 chars) ===
 # Links
 
@@ -19,11 +19,13 @@ TEXT: "
 TEXT: "
 "
 START: <p>
-  TEXT: "Inline: "
+  TEXT: "Inline:"
+  TEXT: " "
   START: <a> (href="https://openai.com", title="", is_reference=false)
     TEXT: "OpenAI"
   END: <a> (href="https://openai.com", title="", is_reference=false)
-  TEXT: " and "
+  TEXT: " and"
+  TEXT: " "
   START: <a> (href="https://example.com", title="", is_reference=false)
     TEXT: "example"
   END: <a> (href="https://example.com", title="", is_reference=false)
@@ -34,9 +36,12 @@ TEXT: "
 TEXT: "
 "
 START: <p>
-  TEXT: "With title: "
+  TEXT: "With"
+  TEXT: " title:"
+  TEXT: " "
   START: <a> (href="https://example.org", title="Example site", is_reference=false)
-    TEXT: "see here"
+    TEXT: "see"
+    TEXT: " here"
   END: <a> (href="https://example.org", title="Example site", is_reference=false)
   TEXT: "."
 END: <p>
@@ -45,11 +50,13 @@ TEXT: "
 TEXT: "
 "
 START: <p>
-  TEXT: "Reference-style: "
+  TEXT: "Reference-style:"
+  TEXT: " "
   START: <a> (href="ref", title="", is_reference=true)
     TEXT: "text"
   END: <a> (href="ref", title="", is_reference=true)
-  TEXT: " and "
+  TEXT: " and"
+  TEXT: " "
   START: <a> (href="short", title="", is_reference=true)
     TEXT: "short"
   END: <a> (href="short", title="", is_reference=true)
@@ -60,11 +67,20 @@ TEXT: "
 TEXT: "
 "
 START: <p>
-  TEXT: "Task list (not links): [ ] unchecked and "
+  TEXT: "Task"
+  TEXT: " list"
+  TEXT: " (not"
+  TEXT: " links):"
+  TEXT: " ["
+  TEXT: " ]"
+  TEXT: " unchecked"
+  TEXT: " and"
+  TEXT: " "
   START: <task_list> (checked=true)
   TEXT: " checked."
 END: <p>
 TEXT: "
 "
+TEXT: ""
 TEXT: ""
 === END TRACE ===

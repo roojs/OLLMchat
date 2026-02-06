@@ -49,7 +49,16 @@ namespace OLLMchat.History
 			base(manager);
 			// Manager will be set via Object.new_with_properties as a construct property
 		}
-		
+
+		/**
+		 * Returns the session JSON file (caller can use query_exists() on it).
+		 */
+		public GLib.File session_file()
+		{
+			var path = GLib.Path.build_filename(this.manager.history_dir, this.to_path() + ".json");
+			return GLib.File.new_for_path(path);
+		}
+
 		/**
 		 * Converts this(a placeholder)int a real Session by loading it from JSON.
 		 *
@@ -81,14 +90,15 @@ namespace OLLMchat.History
 			};
 			
 			// b) Load the JSON file into a SessionJson
-			// Build full file path
-			var full_path = GLib.Path.build_filename(this.manager.history_dir, this.to_path() + ".json");
-			
-			var file = GLib.File.new_for_path(full_path);
+			var file = this.session_file();
 			if (!file.query_exists()) {
-				throw new GLib.FileError.NOENT("File not found: " + full_path);
+				throw new GLib.FileError.NOENT("File not found: " + file.get_path());
 			}
-			
+			var info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
+			if (info.get_size() == 0) {
+				throw new GLib.FileError.INVAL("Session file is empty (%s)".printf(file.get_path()));
+			}
+
 			// Read file contents
 			uint8[] data;
 			string etag;
@@ -99,18 +109,18 @@ namespace OLLMchat.History
 			try {
 				parser.load_from_data((string)data, -1);
 			} catch (GLib.Error e) {
-				throw new GLib.IOError.FAILED("Failed to parse JSON: " + e.message);
+				throw new GLib.IOError.FAILED("Failed to parse JSON: %s (%s)".printf(e.message, file.get_path()));
 			}
-			
+
 			var root_node = parser.get_root();
 			if (root_node == null || root_node.get_node_type() != Json.NodeType.OBJECT) {
-				throw new GLib.FileError.INVAL("Invalid JSON: root is not an object");
+				throw new GLib.FileError.INVAL("Invalid JSON: root is not an object (%s)".printf(file.get_path()));
 			}
-			
+
 			// Deserialize JSON data into SessionJson
 			var json_session = Json.gobject_deserialize(typeof(SessionJson), root_node) as SessionJson;
 			if (json_session == null) {
-				throw new GLib.FileError.INVAL("Failed to deserialize SessionJson from JSON");
+				throw new GLib.FileError.INVAL("Failed to deserialize SessionJson from JSON (%s)".printf(file.get_path()));
 			}
 			
 			// Copy properties from JSON to real session (in case they differ from DB)

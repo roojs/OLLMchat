@@ -26,7 +26,7 @@
 class TestGtkMd : TestAppBase
 {
 	private static string? opt_file = null;
-	private static bool opt_stream = false;
+	private static int opt_stream_delay_sec = -1;
 
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS] <markdown_file>
@@ -37,12 +37,12 @@ Arguments:
   markdown_file              Path to a markdown file to render
 
 Options:
-  -s, --stream               Emulate streaming: feed content in small chunks with delay
+  -s, --stream SECS          Emulate streaming: wait SECS seconds then feed content in chunks (0 = start immediately)
 
 Examples:
   {ARG} README.md
-  {ARG} --stream tests/data/markdown/tables.md
-  {ARG} -s -f docs/notes.md
+  {ARG} --stream 0 tests/markdown/tables.md
+  {ARG} -s 15 -f docs/notes.md
 """; }
 
 	public TestGtkMd()
@@ -57,7 +57,7 @@ Examples:
 
 	private const OptionEntry[] local_options = {
 		{ "file", 'f', 0, OptionArg.STRING, ref opt_file, "Markdown file to render (alternative to positional arg)", "FILE" },
-		{ "stream", 's', 0, OptionArg.NONE, ref opt_stream, "Emulate streaming: feed content in small chunks" },
+		{ "stream", 's', 0, OptionArg.INT, ref opt_stream_delay_sec, "Seconds to wait before starting stream (0 = immediately)", "SECS" },
 		{ null }
 	};
 
@@ -117,7 +117,8 @@ Examples:
 			throw new GLib.IOError.FAILED("Failed to read file: %s", e.message);
 		}
 
-		var window = build_markdown_window(file_path, markdown_content, opt_stream);
+		bool stream = (opt_stream_delay_sec >= 0);
+		var window = build_markdown_window(file_path, markdown_content, stream, stream ? opt_stream_delay_sec : 0);
 		var loop = new MainLoop();
 		window.close_request.connect(() => {
 			loop.quit();
@@ -128,7 +129,7 @@ Examples:
 		loop.run();
 	}
 
-	private Gtk.Window build_markdown_window(string title, string markdown_content, bool stream)
+	private Gtk.Window build_markdown_window(string title, string markdown_content, bool stream, int stream_delay_sec)
 	{
 		// Load CSS from resources (same as ChatView; resources are in libollmchat)
 		string[] css_files = { "pulldown.css", "style.css" };
@@ -161,8 +162,16 @@ Examples:
 			margin_bottom = 8
 		};
 
+		var scrolled = new Gtk.ScrolledWindow() {
+			hexpand = true,
+			vexpand = true,
+			hscrollbar_policy = Gtk.PolicyType.NEVER,
+			vscrollbar_policy = Gtk.PolicyType.AUTOMATIC
+		};
+		scrolled.set_child(text_view_box);
+
 		var renderer = new MarkdownGtk.Render(text_view_box) {
-			scroll_to_end = false
+			scroll_to_end = stream
 		};
 		renderer.link_clicked.connect((href, title) => {
 			// Only open http/https URLs; reference-style links have href as a label
@@ -177,42 +186,59 @@ Examples:
 
 		renderer.start();
 		if (stream) {
-			// Feed content in random-sized chunks (2–8 chars) every ~30ms to emulate streaming.
-			// Advance by full UTF-8 characters so we never split a multi-byte character (substring uses byte offsets).
-			int[] pos = { 0 };
-			const uint interval_ms = 30;
-			GLib.Timeout.add(interval_ms, () => {
-				if (pos[0] >= markdown_content.length) {
-					renderer.flush();
+			if (stream_delay_sec > 0) {
+				GLib.Timeout.add_full(GLib.Priority.DEFAULT, (uint) (stream_delay_sec * 1000), () => {
+					this.start_streaming(renderer, scrolled, markdown_content);
 					return false;
-				}
-				int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);  // 2–8 characters
-				int end_byte = pos[0];
-				for (int i = 0; i < chunk_chars && end_byte < markdown_content.length; i++) {
-					end_byte += markdown_content.get_char(end_byte).to_string().length;
-				}
-				if (end_byte > markdown_content.length) {
-					end_byte = (int) markdown_content.length;
-				}
-				renderer.add(markdown_content.substring(pos[0], end_byte - pos[0]));
-				pos[0] = end_byte;
-				return true;
-			});
+				});
+			} else {
+				this.start_streaming(renderer, scrolled, markdown_content);
+			}
 		} else {
 			renderer.add(markdown_content);
 			renderer.flush();
 		}
 
-		var scrolled = new Gtk.ScrolledWindow() {
-			hexpand = true,
-			vexpand = true,
-			hscrollbar_policy = Gtk.PolicyType.NEVER,
-			vscrollbar_policy = Gtk.PolicyType.AUTOMATIC
-		};
-		scrolled.set_child(text_view_box);
-
 		window.set_child(scrolled);
 		return window;
+	}
+
+	private void start_streaming(MarkdownGtk.Render renderer, Gtk.ScrolledWindow scrolled, string markdown_content)
+	{
+		// Feed content in random-sized chunks (2–8 chars) every ~30ms to emulate streaming.
+		// Advance by full UTF-8 characters so we never split a multi-byte character (substring uses byte offsets).
+		int[] pos = { 0 };
+		const uint interval_ms = 30;
+		GLib.Timeout.add(interval_ms, () => {
+			if (pos[0] >= markdown_content.length) {
+				renderer.flush();
+				return false;
+			}
+			int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);  // 2–8 characters
+			int end_byte = pos[0];
+			for (int i = 0; i < chunk_chars && end_byte < markdown_content.length; i++) {
+				end_byte += markdown_content.get_char(end_byte).to_string().length;
+			}
+			if (end_byte > markdown_content.length) {
+				end_byte = (int) markdown_content.length;
+			}
+			renderer.add(markdown_content.substring(pos[0], end_byte - pos[0]));
+			pos[0] = end_byte;
+			// Scroll to bottom after layout updates (streaming autoscroll).
+			// Retry on next idle if layout not ready (upper too small); otherwise force to max.
+			GLib.Idle.add(() => {
+				var vadj = scrolled.vadjustment;
+				if (vadj == null) {
+					return false;
+				}
+				if (vadj.upper < 100.0) {
+					return true;  // layout not ready, retry next idle
+				}
+				vadj.value = vadj.upper + 1000.0;  // force scroll to bottom (clamped by GTK)
+				return false;
+			});
+			return true;
+		});
 	}
 }
 

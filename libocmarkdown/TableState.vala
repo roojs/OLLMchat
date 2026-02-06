@@ -60,7 +60,7 @@ namespace Markdown
 				} else {
 					this.parser.renderer.on_table_cell(true, align);
 				}
-				this.parser.process_inline(cells[i]);
+				this.parser.process_inline(cells[i].strip());
 				if (is_header) {
 					this.parser.renderer.on_table_hcell(false, align);
 				} else {
@@ -68,6 +68,46 @@ namespace Markdown
 				}
 			}
 			this.parser.renderer.on_table_row(false);
+		}
+
+		/**
+		 * Handle line at line start when we're in a table block.
+		 * Consumes one full line and either feeds it as a row or ends the table.
+		 * @return true (need more chars; parser.leftover_chunk set), false to continue loop
+		 */
+		internal bool handle_line_start(ref int chunk_pos, string chunk, bool is_end_of_chunks)
+		{
+			var newline_pos = chunk.index_of_char('\n', chunk_pos);
+			if (newline_pos == -1) {
+				if (!is_end_of_chunks) {
+					var rest = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					var stripped = rest.strip();
+					if (stripped != "" && !stripped.has_prefix("|")) {
+						this.parser.do_block(false, FormatType.TABLE);
+						this.parser.current_block = FormatType.NONE;
+						this.parser.is_literal = "";
+						return false;
+					}
+					this.parser.leftover_chunk = chunk.substring(chunk_pos, chunk.length - chunk_pos);
+					return true;
+				}
+				newline_pos = (int) chunk.length;
+			}
+			var line_len = newline_pos - chunk_pos;
+			var line = chunk.substring(chunk_pos, line_len);
+			if (line.contains("|")) {
+				this.feed_line(line);
+				chunk_pos = newline_pos;
+				if (chunk_pos < chunk.length) {
+					chunk_pos += chunk.get_char(chunk_pos).to_string().length;
+				}
+				this.parser.at_line_start = true;
+				return false;
+			}
+			this.parser.do_block(false, FormatType.TABLE);
+			this.parser.current_block = FormatType.NONE;
+			this.parser.is_literal = "";
+			return false;
 		}
 
 		internal void feed_line(string line)
