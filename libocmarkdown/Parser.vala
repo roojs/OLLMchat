@@ -219,7 +219,7 @@ namespace Markdown
 						continue;
 					}
 					// At line start - check for closing fence
-					var fence_result = this.blockmap.peekFencedEnd(chunk, chunk_pos, this.current_block, is_end_of_chunks);
+					var fence_result = this.blockmap.peekFencedEnd(chunk, ref chunk_pos, this.current_block, is_end_of_chunks);
 					if (this.blockmap.handle_fence_result(fence_result, ref chunk_pos, chunk)) {
 						assert(str == "");
 						return;

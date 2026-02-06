@@ -6,36 +6,42 @@ Paragraph before list.
 
 - List item with an indented fenced block:
 
-    ```vala
-    void main() {
-        print("indented fenced\n");
-    }
-    ```
+   ```vala
+   void main() {
+       print("indented fenced\n");
+   }
+   ```
 
-- Another item with indented fenced block:
+- Another item with inden...
 
-    ```text
-    plain text content
-    ```
-
-Paragraph after list.
 === CALLBACK TRACE ===
 START: <h1>
-  TEXT: " Indented fenced code blocks"
+  TEXT: " Indented"
+  TEXT: " fenced"
+  TEXT: " code"
+  TEXT: " blocks"
 END: <h1>
 TEXT: "
 "
 TEXT: "
 "
 START: <p>
-  TEXT: "Paragraph before list."
+  TEXT: "Paragraph"
+  TEXT: " before"
+  TEXT: " list."
 END: <p>
 TEXT: "
 "
 TEXT: "
 "
 START: <ul> (indentation=1)
-  TEXT: "List item with an indented fenced block:"
+  TEXT: "List"
+  TEXT: " item"
+  TEXT: " with"
+  TEXT: " an"
+  TEXT: " indented"
+  TEXT: " fenced"
+  TEXT: " block:"
 END: <ul> (indentation=0)
 TEXT: "
 "
@@ -54,10 +60,13 @@ START: <code_block> (lang=vala)
 END: <code_block> (lang=)
 TEXT: "
 "
-TEXT: "
-"
 START: <ul> (indentation=1)
-  TEXT: "Another item with indented fenced block:"
+  TEXT: "Another"
+  TEXT: " item"
+  TEXT: " with"
+  TEXT: " indented"
+  TEXT: " fenced"
+  TEXT: " block:"
 END: <ul> (indentation=0)
 TEXT: "
 "
@@ -70,10 +79,13 @@ START: <code_block> (lang=text)
 END: <code_block> (lang=)
 TEXT: "
 "
+START: <p>
+  TEXT: "Paragraph"
+  TEXT: " after"
+  TEXT: " list."
+END: <p>
 TEXT: "
 "
-START: <p>
-  TEXT: "Paragraph after list."
-END: <p>
+TEXT: ""
 TEXT: ""
 === END TRACE ===

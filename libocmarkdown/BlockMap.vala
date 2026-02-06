@@ -406,21 +406,17 @@ namespace Markdown
 		 * line must start with the same whole match that opened the block {{{(e.g. "   ```")}}}
 		 *
 		 * @param chunk The text chunk
-		 * @param chunk_pos The position to check
+		 * @param chunk_pos The position to check; may be advanced by 3 when indented content line (fence_open.length > 3 and line starts with "   ")
 		 * @param fence_type The type of fence we're looking for (FENCED_CODE_QUOTE or FENCED_CODE_TILD)
 		 * @param is_end_of_chunks If true, end of stream indicator
 		 * @return -1 if need more data, 0 if not a match, >0 byte length consumed (through newline) if match
 		 */
 		public int peekFencedEnd(
 			string chunk,
-			int chunk_pos,
+			ref int chunk_pos,
 			FormatType fence_type,
 			bool is_end_of_chunks)
 		{
-			if (!chunk.contains("\n") && !is_end_of_chunks) {
-				return -1;
-			}
-
 			if (chunk_pos >= chunk.length) {
 				return 0;
 			}
@@ -434,6 +430,9 @@ namespace Markdown
 
 			var at_marker = chunk.substring(chunk_pos, this.fence_open.length);
 			if (at_marker != this.fence_open) {
+				if (this.fence_open.length > 3 && at_marker.has_prefix("   ")) {
+					chunk_pos += 3;
+				}
 				return 0;
 			}
 
