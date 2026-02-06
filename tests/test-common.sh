@@ -219,7 +219,7 @@ reset_test_state() {
             find "${TEST_DIR}" -mindepth 1 -delete 2>/dev/null || true
         fi
     fi
-    # Clean up project directory if TEST_PROJECT_DIR is set (for test-bubble.sh)
+    # Clean up project directory if TEST_PROJECT_DIR is set (for bubble tests)
     # This ensures each test starts with a clean project directory
     if [ -n "${TEST_PROJECT_DIR:-}" ] && [ -d "${TEST_PROJECT_DIR}" ]; then
         # Remove all contents (files, directories, hidden files) but keep the directory itself
@@ -363,8 +363,8 @@ cleanup() {
     fi
     
     if [ $? -eq 0 ]; then
-        # Test passed - clean up
-        if [ -d "$test_dir" ]; then
+        # Test passed - clean up (unless preserving for expected file generation)
+        if [ -z "${GENERATE_EXPECTED_MODE:-}" ] && [ -d "$test_dir" ]; then
             rm -rf "$test_dir"
             echo "Cleaned up test directory"
         fi
@@ -529,3 +529,199 @@ test_exe() {
     echo "$output"
 }
 
+# --- Bubble test support ---
+FAILED_TEST_FUNC=""
+FAILED_TEST_COMMAND=""
+FAILED_TEST_NAME=""
+DEBUG_RERUN=false
+
+setup_test_env() {
+    if [ ! -f "$OC_TEST_BUBBLE" ]; then
+        echo -e "${RED}Error: oc-test-bubble binary not found at $OC_TEST_BUBBLE${NC}"
+        echo "Please build the project first: meson compile -C build"
+        exit 1
+    fi
+    if ! command -v bwrap > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: bubblewrap (bwrap) not found in PATH${NC}"
+        echo "Some tests may fail. Install bubblewrap to run all tests."
+    fi
+    if [ -d "$TEST_DIR" ]; then
+        echo "Cleaning up leftover test directory from previous run..."
+        rm -rf "$TEST_DIR"
+    fi
+    rm -f "$TEST_DB"
+    mkdir -p "$TEST_DIR"
+    mkdir -p "$TEST_PROJECT_DIR"
+    mkdir -p "$DATA_DIR"
+    mkdir -p "$BUILD_DIR"
+}
+
+bubble_exec() {
+    local testname="$1"
+    local command="$2"
+    local expected_output_file="${3:-}"
+    local output_file="$TEST_DIR/${testname}-stdout.txt"
+
+    if [ "$STOP_ON_FAILURE" = true ] && [ "$DEBUG_RERUN" = false ]; then
+        FAILED_TEST_COMMAND="$command"
+        FAILED_TEST_NAME="$testname"
+    fi
+
+    local debug_flag=""
+    if [ "$DEBUG_RERUN" = true ]; then
+        debug_flag="--debug "
+        output_file="$TEST_DIR/${testname}-stdout-debug.txt"
+    fi
+
+    local test_cmd="\"$OC_TEST_BUBBLE\" ${debug_flag}--project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\""
+
+    if [ "$DEBUG_RERUN" = true ]; then
+        echo "  Running (DEBUG): $OC_TEST_BUBBLE --debug --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\"" >&2
+        eval "$test_cmd"
+        return 0
+    else
+        echo "  Running: $OC_TEST_BUBBLE --project=\"$TEST_PROJECT_DIR\" --test-db=\"$TEST_DB\" \"$command\"" >&2
+    fi
+
+    local output
+    set +e
+    output=$(test_exe "$testname" "$test_cmd" "$output_file" "$testname" "$DATA_DIR")
+    set -e
+    echo "$output"
+}
+
+verify_file_exists() {
+    local testname="$1"
+    local file_path="$2"
+    local description="${3:-File exists}"
+    if [ -f "$file_path" ]; then
+        test_pass "$testname: $description"
+        return 0
+    else
+        test_fail "$testname: $description (file not found: $file_path)"
+        return 0
+    fi
+}
+
+verify_file_content() {
+    local testname="$1"
+    local file_path="$2"
+    local expected_content="$3"
+    local description="${4:-File content}"
+    if [ ! -f "$file_path" ]; then
+        test_fail "$testname: $description (file not found: $file_path)"
+        return 0
+    fi
+    local actual_content
+    actual_content=$(cat "$file_path" 2>/dev/null || echo "")
+    if [ "$actual_content" = "$expected_content" ]; then
+        test_pass "$testname: $description"
+        return 0
+    else
+        test_fail "$testname: $description"
+        echo "  Expected: $expected_content"
+        echo "  Actual: $actual_content"
+        return 0
+    fi
+}
+
+verify_dir_exists() {
+    local testname="$1"
+    local dir_path="$2"
+    local description="${3:-Directory exists}"
+    if [ -d "$dir_path" ]; then
+        test_pass "$testname: $description"
+        return 0
+    else
+        test_fail "$testname: $description (directory not found: $dir_path)"
+        return 0
+    fi
+}
+
+verify_symlink() {
+    local testname="$1"
+    local link_path="$2"
+    local target_path="$3"
+    local description="${4:-Symlink exists}"
+    if [ ! -L "$link_path" ]; then
+        test_fail "$testname: $description (not a symlink: $link_path)"
+        return 0
+    fi
+    local actual_target
+    actual_target=$(readlink "$link_path" 2>/dev/null || echo "")
+    if [ "$actual_target" = "$target_path" ]; then
+        test_pass "$testname: $description"
+        return 0
+    else
+        test_fail "$testname: $description (wrong target)"
+        echo "  Expected: $target_path"
+        echo "  Actual: $actual_target"
+        return 0
+    fi
+}
+
+verify_file_not_exists() {
+    local testname="$1"
+    local file_path="$2"
+    local description="${3:-File does not exist}"
+    if [ -L "$file_path" ] || ([ ! -f "$file_path" ] && [ ! -d "$file_path" ]); then
+        test_pass "$testname: $description"
+        return 0
+    else
+        test_fail "$testname: $description (file still exists: $file_path)"
+        return 0
+    fi
+}
+
+test_exit_code() {
+    if [ "$CURRENT_TEST_FAILED" = "true" ]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+run_test() {
+    local test_func="$1"
+    reset_test_state
+    mkdir -p "$TEST_PROJECT_DIR"
+    CURRENT_TEST_FAILED=false
+
+    if [ "$STOP_ON_FAILURE" = true ]; then
+        FAILED_TEST_FUNC="$test_func"
+        set +e
+        "$test_func"
+        local test_exit=$?
+        set -e
+        local test_failed=false
+        if [ "${CURRENT_TEST_FAILED}" = "true" ]; then
+            test_failed=true
+        elif [ $test_exit -ne 0 ]; then
+            test_failed=true
+        fi
+        if [ "$test_failed" = "true" ]; then
+            echo ""
+            echo -e "${YELLOW}Test failed. Preparing debug re-run...${NC}"
+            if [ -d "$TEST_DIR" ]; then rm -rf "$TEST_DIR"; fi
+            rm -f "$TEST_DB"
+            setup_test_env
+            reset_test_state
+            mkdir -p "$TEST_PROJECT_DIR"
+            echo ""
+            echo -e "${YELLOW}Re-running failed test with --debug:${NC}"
+            echo "  Test function: $test_func"
+            echo ""
+            DEBUG_RERUN=true
+            set +e
+            "$test_func" || true
+            set -e
+            DEBUG_RERUN=false
+            echo ""
+            echo -e "${RED}Stopping on first failure (--stop-on-failure enabled)${NC}"
+            print_test_summary
+            exit 1
+        fi
+    else
+        "$test_func" || cleanup
+    fi
+}

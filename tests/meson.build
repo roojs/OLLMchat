@@ -38,3 +38,19 @@ test('test-markdown-parser',
   suite: 'markdown'
 )
 
+# Bubble overlay tests (split into 4 parts, ~8 tests each)
+oc_test_bubble_exe = get_variable('test_bubble', disabler())
+foreach part : ['1', '2', '3', '4']
+  test('test-bubble-@0@'.format(part),
+    find_program('bash'),
+    args: [
+      files('test-bubble-@0@.sh'.format(part)),
+      meson.current_build_dir() / '..'
+    ],
+    depends: [oc_test_bubble_exe],
+    workdir: meson.current_source_dir(),
+    timeout: 120,
+    suite: 'bubble'
+  )
+endforeach
+

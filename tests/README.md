@@ -11,7 +11,7 @@ From the repo root:
 
 - Edit ops: `./tests/test-edit-ops.sh`
 - File ops: `./tests/test-file-ops.sh`
-- Bubble tests: `./tests/test-bubble.sh`
+- Bubble tests: `./tests/test-bubble-1.sh build` … `./tests/test-bubble-4.sh build` (or `meson test -C build` with suite `bubble`)
 - Markdown parser: `./tests/test-markdown-parser.sh build`
 
 ### Running via Meson (full suite)
