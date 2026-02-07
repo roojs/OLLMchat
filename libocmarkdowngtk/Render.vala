@@ -65,8 +65,9 @@ namespace MarkdownGtk
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
 		private RenderSourceView? current_source_view_handler = null;
 		
-		// List stack: stores list numbers at each indentation level
-		// 0 = unordered list, >0 = ordered list (number is the counter)
+		// Indent levels: actual space_skip values we've seen (on_ul/on_ol), in ascending order
+		private Gee.ArrayList<int> indent_levels = new Gee.ArrayList<int>();
+		// List stack: same length as indent_levels; 0 = unordered, >0 = ordered (counter)
 		private Gee.ArrayList<int> list_stack = new Gee.ArrayList<int>();
 		
 		// Track the current indentation level for the next on_li call
@@ -373,16 +374,34 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Closes lists that are deeper than the specified level.
-		 * Parameter is space_skip (0-based stack index); keep only levels 0..level.
+		 * Closes lists deeper than the given indent (removes levels with indent > level).
 		 *
-		 * @param level Space_skip (raw spaces before list marker), used as 0-based stack index
+		 * @param level space_skip (raw spaces) – keep only levels with indent <= level
 		 */
 		private void close_lists_to_level(uint level)
 		{
-			while (this.list_stack.size > (int)level + 1) {
+			int l = (int)level;
+			while (this.indent_levels.size > 0 && this.indent_levels.get(this.indent_levels.size - 1) > l) {
+				this.indent_levels.remove_at(this.indent_levels.size - 1);
 				this.list_stack.remove_at(this.list_stack.size - 1);
 			}
+		}
+		
+		/**
+		 * Finds or inserts an indent level and returns its depth index (0-based).
+		 */
+		private int ensure_indent_level(int indentation)
+		{
+			int i = 0;
+			while (i < this.indent_levels.size && this.indent_levels.get(i) < indentation) {
+				i++;
+			}
+			if (i < this.indent_levels.size && this.indent_levels.get(i) == indentation) {
+				return i;
+			}
+			this.indent_levels.insert(i, indentation);
+			this.list_stack.insert(i, 0);
+			return i;
 		}
 		
 		/**
@@ -398,27 +417,11 @@ namespace MarkdownGtk
 				return;
 			}
 			
-			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
-			
-			// Use space_skip as 0-based stack index (top-level = 0)
-			int target_index = (int)indentation;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
-				this.list_stack.add(0);
-			}
-			
-			// Set this level to 0 (unordered list)
-			this.list_stack.set(target_index, 0);
-			
-			// Reset all levels above this one
+			int depth_index = this.ensure_indent_level((int)indentation);
+			this.list_stack.set(depth_index, 0);
 			this.reset_lists_above_level(indentation);
-			
-			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
-			
-			// Parser calls on_li(true) immediately after; do not call it here or we get two markers
 			this.current_state.add_state();
 		}
 		
@@ -435,27 +438,12 @@ namespace MarkdownGtk
 				return;
 			}
 			
-			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
-			
-			// Ensure we have enough levels in the stack (space_skip = 0-based index)
-			while (this.list_stack.size <= (int)indentation) {
-				this.list_stack.add(0);
-			}
-			int old_value = this.list_stack.get((int)indentation);
-			if (old_value > 0) {
-				this.list_stack.set((int)indentation, old_value + 1);
-			} else {
-				this.list_stack.set((int)indentation, 1);
-			}
-			
-			// Reset all levels above this one
+			int depth_index = this.ensure_indent_level((int)indentation);
+			int old_value = this.list_stack.get(depth_index);
+			this.list_stack.set(depth_index, old_value > 0 ? old_value + 1 : 1);
 			this.reset_lists_above_level(indentation);
-			
-			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
-			
-			// Parser calls on_li(true) immediately after; do not call it here or we get two markers
 			this.current_state.add_state();
 		}
 		
@@ -470,8 +458,9 @@ namespace MarkdownGtk
 		 * Handles list item start/end.
 		 * 
 		 * @param is_start Whether this is the start of a list item
+		 * @param space_size Raw space count before list marker (space_skip from parser)
 		 */
-		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
+		public override void on_li(bool is_start, uint space_size = 0, int task_checked = -1)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
@@ -480,19 +469,14 @@ namespace MarkdownGtk
 				return;
 			}
 			
-			if ((uint)this.list_stack.size == 0) {
-				this.current_state.add_state();
-				return;
+			// Bootstrap or match: ensure this space_size has a depth (fixes empty stack or same-list nested items)
+			int depth_index = this.indent_levels.index_of((int)space_size);
+			if (depth_index < 0) {
+				depth_index = this.ensure_indent_level((int)space_size);
 			}
-			int target_index = this.list_stack.size - 1;
-			if (target_index >= this.list_stack.size) {
-				this.current_state.add_state();
-				return;
-			}
-			int list_number = this.list_stack.get(target_index);
-			for (uint i = 0; i < (uint)this.list_stack.size; i++) {
-				this.current_state.add_text("\t");
-			}
+			int list_number = this.list_stack.get(depth_index);
+			// Tabs from array depth (one tab per depth level); depth 0 = 1 tab, depth 1 = 2 tabs, ...
+			this.current_state.add_text(string.nfill(depth_index + 1, '\t'));
 			
 			// Add marker based on list type
 			if (list_number == 0) {
@@ -506,6 +490,8 @@ namespace MarkdownGtk
 				bold_state.style.weight = Pango.Weight.BOLD;
 				bold_state.add_text(number_marker);
 				bold_state.close_state();
+				// Advance counter for next item at this depth (parser only calls on_ol once per list)
+				this.list_stack.set(depth_index, list_number + 1);
 			}
 			
 			// Add tab after marker before content
@@ -575,14 +561,13 @@ namespace MarkdownGtk
 			}
 			
 			// For each level, create a state with light orange background
-			// Add 2 spaces to that state, close it, then add 2 spaces to current state
+			// Add 3 spaces to that state, close it, then add 2 spaces to current state
 			for (uint i = 0; i < level; i++) {
-				// Create a new state
 				var bg_state = this.current_state.add_state();
 				bg_state.style.background = "#FFE5CC";
-				bg_state.add_text("   ");
+				bg_state.add_text(string.nfill(3, ' '));
 				bg_state.close_state();
-				this.current_state.add_text("  ");
+				this.current_state.add_text(string.nfill(2, ' '));
 			}
 		}
 			
