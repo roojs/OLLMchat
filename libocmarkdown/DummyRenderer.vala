@@ -328,12 +328,12 @@ namespace Markdown
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
+				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title ?? "null", is_reference.to_string());
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
+			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title ?? "null", is_reference.to_string());
 			indent_level++;
 		}
 		
