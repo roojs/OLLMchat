@@ -813,12 +813,14 @@ namespace Markdown
 				// to make it a bit easier for the users to indent correctly.		
 				case FormatType.UNORDERED_LIST:
 					if (!is_start) {
+						this.renderer.on_li(false);
 						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
 					}
 					this.renderer.on_node_int(FormatType.UNORDERED_LIST, is_start, list_indent);
 					break;
 				case FormatType.ORDERED_LIST:
 					if (!is_start) {
+						this.renderer.on_li(false);
 						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
 					}
 					this.renderer.on_node_int(FormatType.ORDERED_LIST, is_start, list_indent);

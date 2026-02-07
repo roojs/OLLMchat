@@ -23,7 +23,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "Outer"
     TEXT: " unordered"
@@ -45,7 +45,7 @@ START: <ul> (indentation=1)
     TEXT: " two"
   END: <li>
 END: <ul> (indentation=0)
-START: <ol> (indentation=1)
+START: <ol> (indentation=0)
   START: <li>
     TEXT: "Outer"
     TEXT: " ordered"
@@ -67,7 +67,7 @@ START: <ol> (indentation=1)
     TEXT: " two"
   END: <li>
 END: <ol> (indentation=0)
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "Mixed:"
     TEXT: " unordered"
@@ -86,7 +86,7 @@ START: <ol> (indentation=2)
     TEXT: " second"
   END: <li>
 END: <ol> (indentation=0)
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "Back"
     TEXT: " to"
@@ -102,7 +102,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "L1"
   END: <li>
@@ -133,7 +133,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ol> (indentation=1)
+START: <ol> (indentation=0)
   START: <li>
     TEXT: "L1"
   END: <li>

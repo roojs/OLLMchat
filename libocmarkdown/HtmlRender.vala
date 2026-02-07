@@ -37,7 +37,8 @@ namespace Markdown
 	{
 		private StringBuilder html_output;
 		private Gee.ArrayList<string> open_tags;
-		private Gee.ArrayList<int> list_stack; // Stack of open lists: 0 = ul, 1 = ol, index = indentation level - 1
+		private Gee.ArrayList<int> list_stack; // Stack of open lists: 0 = ul, 1 = ol; size = depth
+		private uint current_list_indent = 0; // space_skip of the list that owns the current open <li>
 		private uint current_blockquote_level = 0; // Track current blockquote nesting level (1-6)
 		private bool prev_text_ended_with_newline = false; // Track if previous on_text call ended with \n
 		private bool prev_line_was_empty = false; // Track if previous line was empty
@@ -122,6 +123,7 @@ namespace Markdown
 			this.html_output = new StringBuilder();
 			this.open_tags.clear();
 			this.list_stack.clear();
+			this.current_list_indent = 0;
 			this.prev_text_ended_with_newline = false;
 			this.prev_line_was_empty = false;
 				
@@ -166,15 +168,9 @@ namespace Markdown
 			if (!is_start) {
 				return;
 			}
-			
-			// Handle list nesting based on indentation (0 = ul)
 			this.handle_list_start(0, indentation);
-			
-			// Close previous list item if we're at the same or shallower indentation
-			// (after closing deeper lists, so list_stack reflects current state)
 			this.close_li_if_needed(indentation);
-			
-			// Always open a list item when we see a list marker
+			this.current_list_indent = indentation;
 			this.on_li(true);
 		}
 			
@@ -183,87 +179,54 @@ namespace Markdown
 			if (!is_start) {
 				return;
 			}
-			
-			// Handle list nesting based on indentation (1 = ol)
 			this.handle_list_start(1, indentation);
-			
-			// Close previous list item if we're at the same or shallower indentation
-			// (after closing deeper lists, so list_stack reflects current state)
 			this.close_li_if_needed(indentation);
-			
-			// Always open a list item when we see a list marker
+			this.current_list_indent = indentation;
 			this.on_li(true);
 		}
 		
 		/**
-		 * Closes the current list item if we're starting a new list item at the same or shallower indentation.
-		 * 
-		 * @param new_indentation The indentation of the new list item
+		 * Closes the current list item if we're starting a new list at the same or shallower indentation.
+		 *
+		 * @param new_indentation space_skip of the new list (raw spaces before list marker)
 		 */
 		private void close_li_if_needed(uint new_indentation)
 		{
-			// Early return if no open <li> tag
 			if (this.open_tags.size == 0 || this.open_tags.get(this.open_tags.size - 1) != "li") {
 				return;
 			}
-			
-			// Check if the new indentation is the same or less than current list depth
-			// Current list depth is list_stack.size (0-based index + 1 = 1-based level)
-			uint current_level = (uint)this.list_stack.size;
-			if (new_indentation > current_level) {
-				return; // Deeper level - keep list item open
+			// Close previous <li> when the new list is at same or shallower indent
+			if (new_indentation <= this.current_list_indent) {
+				this.on_li(false);
 			}
-			
-			// Same or shallower level - close the previous list item
-			this.on_li(false);
 		}
 		
 		/**
-		 * Handles starting a list (ul or ol) with proper nesting based on indentation.
-		 * Closes lists that are at deeper indentation levels, and opens new ones as needed.
-		 * 
+		 * Handles starting a list (ul or ol) with proper nesting.
+		 * Parameter is space_skip (0-based); desired depth = indentation + 1, capped at 6.
+		 *
 		 * @param list_type The list type (0 = ul, 1 = ol)
-		 * @param indentation The indentation level (1 = first level, 2 = nested, etc.)
+		 * @param indentation space_skip (raw spaces before list marker), used for stack depth
 		 */
 		private void handle_list_start(int list_type, uint indentation)
 		{
-			// Convert indentation (1-based) to array index (0-based)
-			// Cap at maximum of 5 levels to prevent excessive nesting
-			int target_index = ((int)indentation > 6) ? 5 : (int)indentation - 1;
-			
-			// Close lists that are deeper than this indentation (does nothing if level is higher)
 			this.close_lists_to_level(indentation);
-			
-			// Check if we're at an existing level
-			if (target_index >= this.list_stack.size) {
-				// New list at this level - may need to open multiple nested lists
-				// Fill in any missing levels (for big jumps in indentation)
-				while (this.list_stack.size < target_index) {
-					// Use the same list type for intermediate levels
+			int target_depth = (int)indentation + 1;
+			if (target_depth > 6) {
+				target_depth = 6;
+			}
+			if (this.list_stack.size < target_depth) {
+				while (this.list_stack.size < target_depth) {
 					this.open_list_tag(list_type);
 				}
-				// Add the final list at target level
-				this.open_list_tag(list_type);
 				return;
 			}
-			
-			// Same level - check if we need to switch list type
-			if (this.list_stack.get(target_index) == list_type) {
-				return; // Same list type at same level - nothing to do
+			// Same depth - check if we need to switch list type at this level
+			if (this.list_stack.get(this.list_stack.size - 1) == list_type) {
+				return;
 			}
-			
-			// Switch list type - close old, open new
-			this.close_list_tag(this.list_stack.get(target_index));
+			this.close_list_tag(this.list_stack.get(this.list_stack.size - 1));
 			this.open_list_tag(list_type);
-			// New list at this level - may need to open multiple nested lists
-			// Fill in any missing levels (for big jumps in indentation)
-			while (this.list_stack.size < target_index) {
-				// Use the same list type for intermediate levels
-				this.open_list_tag(list_type);
-			}
-			// Add the final list at target level
-			this.open_list_tag(list_type);
-			
 		}
 		
 		/**
@@ -330,15 +293,14 @@ namespace Markdown
 		}
 		
 		/**
-		 * Closes all lists deeper than the specified indentation level.
-		 * 
-		 * @param level The indentation level - only closes lists deeper than this
+		 * Closes lists until stack depth is at most level + 1.
+		 * Parameter is space_skip (0-based); keep only levels 0..level.
+		 *
+		 * @param level space_skip (raw spaces before list marker)
 		 */
 		private void close_lists_to_level(uint level)
 		{
-			int min_index = (int)level - 1; // Convert to 0-based index
-			// Only close lists that are deeper (stack size > min_index + 1)
-			while (this.list_stack.size > min_index + 1) {
+			while (this.list_stack.size > (int)level + 1) {
 				this.close_list_tag(this.list_stack.get(this.list_stack.size - 1));
 			}
 		}

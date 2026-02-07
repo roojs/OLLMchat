@@ -347,24 +347,21 @@ namespace Markdown
 		 */
 		private void reset_lists_above_level(uint level)
 		{
-			// Convert to 0-based index
-			int target_index = (int)level - 1;
-			// Reset all levels above this one (indices < target_index)
-			for (int i = 0; i < target_index && i < this.list_stack.size; i++) {
+			// Reset all levels above this one (indices < (int)level - 1)
+			for (int i = 0; i < (int)level - 1 && i < this.list_stack.size; i++) {
 				this.list_stack.set(i, 0);
 			}
 		}
 		
 		/**
-		 * Closes lists that are deeper than the specified indentation level.
-		 * 
-		 * @param level The indentation level - only closes lists deeper than this
+		 * Closes lists that are deeper than the specified level.
+		 * Parameter is space_skip (0-based stack index); keep only levels 0..level.
+		 *
+		 * @param level Space_skip (raw spaces before list marker), used as 0-based stack index
 		 */
 		private void close_lists_to_level(uint level)
 		{
-			int min_index = (int)level - 1; // Convert to 0-based index
-			// Only close lists that are deeper (stack size > min_index + 1)
-			while (this.list_stack.size > min_index + 1) {
+			while (this.list_stack.size > (int)level + 1) {
 				this.list_stack.remove_at(this.list_stack.size - 1);
 			}
 		}
@@ -378,19 +375,10 @@ namespace Markdown
 			
 			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
+			while (this.list_stack.size <= (int)indentation) {
 				this.list_stack.add(0);
 			}
-			
-			// Set this level to 0 (unordered list)
-			this.list_stack.set(target_index, 0);
-			
-			// Reset all levels above this one
+			this.list_stack.set((int)indentation, 0);
 			this.reset_lists_above_level(indentation);
 		}
 		
@@ -400,20 +388,11 @@ namespace Markdown
 				this.pango_markup.append("\n");
 				return;
 			}
-			
-			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
+			while (this.list_stack.size <= (int)indentation) {
 				this.list_stack.add(0);
 			}
-			
-			// If this is an ordered list, increment the counter
-			this.list_stack.set(target_index, this.list_stack.get(target_index) + 1);
+			this.list_stack.set((int)indentation, this.list_stack.get((int)indentation) + 1);
 			
 			// Reset all levels above this one
 			this.reset_lists_above_level(indentation);

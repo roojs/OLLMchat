@@ -34,7 +34,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "List"
     TEXT: " item"
@@ -58,7 +58,7 @@ START: <code_block> (lang=vala)
 END: <code_block> (lang=)
 TEXT: "
 "
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "Another"
     TEXT: " item"

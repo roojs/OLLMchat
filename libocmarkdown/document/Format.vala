@@ -69,7 +69,9 @@ namespace Markdown.Document
 					return "<u>" + inner + "</u>";
 				case FormatType.LINK:
 					if (this.is_reference) {
-						return "[" + inner + "]" + (this.href != "" ? "[" + this.href + "]" : "[]");
+						// Implicit ref [text][]: ref key equals link text → emit []; else [ref]
+						bool implicit_ref = (this.href != "" && this.href == inner);
+						return "[" + inner + "]" + (implicit_ref ? "[]" : "[" + this.href + "]");
 					}
 					return "[" + inner + "](" + this.href
 						+ (this.title != "" ? " \"" + this.title + "\"" : "") + ")";

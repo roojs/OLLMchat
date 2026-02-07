@@ -431,6 +431,7 @@ namespace Markdown
 					bool same_list = (this.parser.current_block == list_type);
 					if (same_list) {
 						// Same list type, new item: end previous LIST_ITEM, start new LIST_ITEM (with indent)
+						this.parser.renderer.on_li(false);
 						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
 						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, true, space_skip);
 						this.parser.renderer.on_li(true, space_skip, task_checked);

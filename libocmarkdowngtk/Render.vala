@@ -373,36 +373,36 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Closes lists that are deeper than the specified indentation level.
-		 * 
-		 * @param level The indentation level - only closes lists deeper than this
+		 * Closes lists that are deeper than the specified level.
+		 * Parameter is space_skip (0-based stack index); keep only levels 0..level.
+		 *
+		 * @param level Space_skip (raw spaces before list marker), used as 0-based stack index
 		 */
 		private void close_lists_to_level(uint level)
 		{
-			int min_index = (int)level - 1; // Convert to 0-based index
-			// Only close lists that are deeper (stack size > min_index + 1)
-			while (this.list_stack.size > min_index + 1) {
+			while (this.list_stack.size > (int)level + 1) {
 				this.list_stack.remove_at(this.list_stack.size - 1);
 			}
 		}
 		
 		/**
 		 * Callback for unordered list blocks.
-		 * 
-		 * @param indentation The indentation level
+		 *
+		 * @param indentation space_skip (raw spaces before list marker), used as 0-based stack index
 		 */
 		public override void on_ul(bool is_start, uint indentation)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
+				this.current_state.add_text("\n");
 				return;
 			}
 			
 			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
 			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
+			// Use space_skip as 0-based stack index (top-level = 0)
+			int target_index = (int)indentation;
 			
 			// Ensure we have enough levels in the stack
 			while (this.list_stack.size <= target_index) {
@@ -418,45 +418,35 @@ namespace MarkdownGtk
 			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
 			
-			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true);
-			
+			// Parser calls on_li(true) immediately after; do not call it here or we get two markers
 			this.current_state.add_state();
 		}
 		
 		/**
 		 * Callback for ordered list blocks.
-		 * 
-		 * @param indentation The indentation level
+		 *
+		 * @param indentation space_skip (raw spaces before list marker), used as 0-based stack index
 		 */
 		public override void on_ol(bool is_start, uint indentation)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
+				this.current_state.add_text("\n");
 				return;
 			}
 			
 			// Close lists that are deeper than this indentation
 			this.close_lists_to_level(indentation);
 			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
+			// Ensure we have enough levels in the stack (space_skip = 0-based index)
+			while (this.list_stack.size <= (int)indentation) {
 				this.list_stack.add(0);
 			}
-			
-			// If this is an ordered list, increment the counter
-			// But only if it's already > 0 (continuing a list) or if we're starting fresh
-			// Actually, we should always increment - if it's 0, it becomes 1, if it's > 0, it increments
-			int old_value = this.list_stack.get(target_index);
-			// Only increment if this level was already an ordered list (> 0)
-			// If it was 0 (unordered or new), start at 1
+			int old_value = this.list_stack.get((int)indentation);
 			if (old_value > 0) {
-				this.list_stack.set(target_index, old_value + 1);
+				this.list_stack.set((int)indentation, old_value + 1);
 			} else {
-				this.list_stack.set(target_index, 1);
+				this.list_stack.set((int)indentation, 1);
 			}
 			
 			// Reset all levels above this one
@@ -465,9 +455,7 @@ namespace MarkdownGtk
 			// Track the current indentation for the next on_li call
 			this.current_list_indentation = indentation;
 			
-			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true);
-			
+			// Parser calls on_li(true) immediately after; do not call it here or we get two markers
 			this.current_state.add_state();
 		}
 		
@@ -485,37 +473,24 @@ namespace MarkdownGtk
 		 */
 		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
 		{
-			 
 			if (!is_start) {
 				this.current_state.close_state();
+				// Line break after each list item so next item (or list) starts on new line (same as PangoRender)
+				this.current_state.add_text("\n");
 				return;
 			}
 			
-			// Use the tracked indentation level from the last on_ul/on_ol call
-			uint current_level = this.current_list_indentation;
-			if (current_level == 0) {
-				// No list context - just add state
+			if ((uint)this.list_stack.size == 0) {
 				this.current_state.add_state();
 				return;
 			}
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)current_level - 1;
-			
-			// Ensure the stack has this level
+			int target_index = this.list_stack.size - 1;
 			if (target_index >= this.list_stack.size) {
-				// Stack not set up - just add state without marker
 				this.current_state.add_state();
 				return;
 			}
-			
-			// Get the list type and number for the current level
 			int list_number = this.list_stack.get(target_index);
-			
-			// Add tabs for indentation
-			// Level 1 gets 1 tab, level 2 gets 2 tabs, etc.
-			uint indent_tabs = current_level;
-			for (uint i = 0; i < indent_tabs; i++) {
+			for (uint i = 0; i < (uint)this.list_stack.size; i++) {
 				this.current_state.add_text("\t");
 			}
 			

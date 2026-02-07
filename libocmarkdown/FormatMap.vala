@@ -58,7 +58,7 @@ namespace Markdown
 				var ref_end_byte = end_offset - 1;
 				href = ref_end_byte > ref_start
 					? chunk.substring(ref_start, ref_end_byte - ref_start).strip()
-					: "";  // implicit reference [text][] — keep empty for round-trip
+					: link_text_val.strip();  // implicit reference [text][] — use link text as ref key (no reference table)
 			}
 			if (c1 == '(') {
 				if (inner_link_regex == null) {

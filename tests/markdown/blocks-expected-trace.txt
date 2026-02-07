@@ -45,7 +45,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=1)
+START: <ul> (indentation=0)
   START: <li>
     TEXT: "Unordered"
     TEXT: " item"
@@ -57,7 +57,7 @@ START: <ul> (indentation=1)
     TEXT: " B"
   END: <li>
 END: <ul> (indentation=0)
-START: <ol> (indentation=1)
+START: <ol> (indentation=0)
   START: <li>
     TEXT: "Ordered"
     TEXT: " first"
