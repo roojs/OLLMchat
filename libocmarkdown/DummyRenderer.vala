@@ -337,7 +337,7 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			print_indent();
 			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title ?? "null");

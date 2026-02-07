@@ -480,12 +480,12 @@ namespace Markdown
 		{
 			var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 			if (!remaining.contains("\n")) {
-				this.parser.renderer.on_code_text(remaining);
+				this.parser.renderer.on_node(FormatType.CODE_TEXT, false, remaining);
 				return true;
 			}
 			var newline_pos = chunk.index_of_char('\n', chunk_pos);
 			var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-			this.parser.renderer.on_code_text(code_text);
+			this.parser.renderer.on_node(FormatType.CODE_TEXT, false, code_text);
 			chunk_pos = newline_pos;
 			return false;
 		}
@@ -507,12 +507,12 @@ namespace Markdown
 			if (fence_result == 0) {
 				var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 				if (!remaining.contains("\n")) {
-					this.parser.renderer.on_code_text(remaining);
+					this.parser.renderer.on_node(FormatType.CODE_TEXT, false, remaining);
 					return true;
 				}
 				var newline_pos = chunk.index_of_char('\n', chunk_pos);
 				var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-				this.parser.renderer.on_code_text(code_text);
+				this.parser.renderer.on_node(FormatType.CODE_TEXT, false, code_text);
 				chunk_pos = newline_pos;
 				this.parser.at_line_start = false;
 				return false;

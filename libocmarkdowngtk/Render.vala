@@ -703,7 +703,7 @@ namespace MarkdownGtk
 		 * @param src The image source URL
 		 * @param title The image title (may be null)
 		 */
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			// Images not fully supported - just add placeholder
 			this.current_state.add_text("[IMG:");

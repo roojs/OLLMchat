@@ -510,7 +510,7 @@ namespace Markdown
 			this.open_tags.add("a");
 		}
 		
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			// Image - escape src and title
 			var escaped_src = GLib.Markup.escape_text(src, -1);

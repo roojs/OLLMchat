@@ -102,7 +102,7 @@ namespace Markdown
 			if (match_result == 0) {
 				return false;
 			}
-			this.parser.renderer.on_text(str + " ");
+			this.parser.renderer.on_node(FormatType.TEXT, false, str + " ");
 			str = "";
 			this.parser.got_format(matched_type);
 			chunk_pos = saved_chunk_pos + byte_length;

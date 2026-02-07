@@ -52,22 +52,22 @@ namespace Markdown
 
 		private void emit_row(string[] cells, bool is_header)
 		{
-			this.parser.renderer.on_table_row(true);
+			this.parser.renderer.on_node(FormatType.TABLE_ROW, true);
 			for (var i = 0; i < cells.length; i++) {
 				var align = (i < this.table_alignments.size) ? this.table_alignments.get(i) : -1;
 				if (is_header) {
-					this.parser.renderer.on_table_hcell(true, align);
+					this.parser.renderer.on_node_int(FormatType.TABLE_HCELL, true, align);
 				} else {
-					this.parser.renderer.on_table_cell(true, align);
+					this.parser.renderer.on_node_int(FormatType.TABLE_CELL, true, align);
 				}
 				this.parser.process_inline(cells[i].strip());
 				if (is_header) {
-					this.parser.renderer.on_table_hcell(false, align);
+					this.parser.renderer.on_node_int(FormatType.TABLE_HCELL, false, align);
 				} else {
-					this.parser.renderer.on_table_cell(false, align);
+					this.parser.renderer.on_node_int(FormatType.TABLE_CELL, false, align);
 				}
 			}
-			this.parser.renderer.on_table_row(false);
+			this.parser.renderer.on_node(FormatType.TABLE_ROW, false);
 		}
 
 		/**
@@ -127,7 +127,7 @@ namespace Markdown
 				return;
 			}
 			if (this.table_row_index == 2) {
-				this.parser.renderer.on_table(true);
+				this.parser.renderer.on_node(FormatType.TABLE, true);
 				var cells1 = this.split_row(this.table_header_line);
 				this.emit_row(cells1, true);
 				var cells3 = this.split_row(line);

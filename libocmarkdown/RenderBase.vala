@@ -67,39 +67,157 @@ namespace Markdown
 			this.parser.start();
 		}
 		
-		// Callback methods for parser - all must be implemented by subclasses
-		
-		public abstract void on_text(string text);
-		public abstract void on_em(bool is_start);
-		public abstract void on_strong(bool is_start);
-		public abstract void on_code_span(bool is_start);
-		public abstract void on_del(bool is_start);
-		public abstract void on_other(bool is_start, string tag_name);
-		public abstract void on_html(bool is_start, string tag, string attributes);
-		
-		// Block-level callbacks (can have default empty implementations)
-		public virtual void on_h(bool is_start, uint level) {}
-		public virtual void on_p(bool is_start) {}
-		public virtual void on_ul(bool is_start, uint indentation) {}
-		public virtual void on_ol(bool is_start, uint indentation) {}
-		public virtual void on_li(bool is_start) {}
-		public virtual void on_task_list(bool is_start, bool is_checked) {}
-		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
-		public virtual void on_code_text(string text) {}
-		public virtual void on_code_block(bool is_start, string lang) {}
-		public virtual void on_quote(bool is_start, uint level) {}
-		public virtual void on_hr() {}
-		// Table callbacks (block-level; default empty so subclasses can override)
-		public virtual void on_table(bool is_start) {}
-		public virtual void on_table_row(bool is_start) {}
-		public virtual void on_table_hcell(bool is_start, int align) {}
-		public virtual void on_table_cell(bool is_start, int align) {}
+		/**
+		 * Single entry point for string-based callbacks (type, is_start, 0–3 strings).
+		 * Default implementation switches on type and calls the protected virtual methods.
+		 */
+		public virtual void on_node(FormatType type, bool is_start, string s1 = "", string s2 = "", string s3 = "")
+		{
+			switch (type) {
+				case FormatType.TEXT:
+					this.on_text(s1);
+					return;
+				case FormatType.IMAGE:
+					this.on_img(s1, s2);
+					return;
+				case FormatType.PARAGRAPH:
+					this.on_p(is_start);
+					return;
+				case FormatType.HEADING_1:
+					this.on_h(is_start, 1);
+					return;
+				case FormatType.HEADING_2:
+					this.on_h(is_start, 2);
+					return;
+				case FormatType.HEADING_3:
+					this.on_h(is_start, 3);
+					return;
+				case FormatType.HEADING_4:
+					this.on_h(is_start, 4);
+					return;
+				case FormatType.HEADING_5:
+					this.on_h(is_start, 5);
+					return;
+				case FormatType.HEADING_6:
+					this.on_h(is_start, 6);
+					return;
+				case FormatType.LIST_ITEM:
+					this.on_li(is_start);
+					return;
+				case FormatType.ITALIC:
+					this.on_em(is_start);
+					return;
+				case FormatType.BOLD:
+					this.on_strong(is_start);
+					return;
+				case FormatType.CODE:
+					this.on_code_span(is_start);
+					return;
+				case FormatType.STRIKETHROUGH:
+					this.on_del(is_start);
+					return;
+				case FormatType.U:
+					this.on_u(is_start);
+					return;
+				case FormatType.HTML:
+					this.on_html(is_start, s1, s2);
+					return;
+				case FormatType.OTHER:
+					this.on_other(is_start, s1);
+					return;
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+					this.on_code_block(is_start, s1);
+					return;
+				case FormatType.TABLE:
+					this.on_table(is_start);
+					return;
+				case FormatType.TABLE_ROW:
+					this.on_table_row(is_start);
+					return;
+				case FormatType.BR:
+					this.on_br();
+					return;
+				case FormatType.CODE_TEXT:
+					this.on_code_text(s1);
+					return;
+				case FormatType.HORIZONTAL_RULE:
+					this.on_hr();
+					return;
+				case FormatType.SOFTBR:
+					this.on_softbr();
+					return;
+				case FormatType.ENTITY:
+					this.on_entity(s1);
+					return;
+				case FormatType.TASK_LIST:
+					this.on_task_list(true, false);
+					return;
+				case FormatType.TASK_LIST_DONE:
+					this.on_task_list(true, true);
+					return;
+				default:
+					break;
+			}
+		}
+
+		/**
+		 * Entry point for int/uint-based callbacks (type, is_start, one int).
+		 */
+		public virtual void on_node_int(FormatType type, bool is_start, int v1 = 0)
+		{
+			switch (type) {
+				case FormatType.UNORDERED_LIST:
+					this.on_ul(is_start, (uint)v1);
+					return;
+				case FormatType.ORDERED_LIST:
+					this.on_ol(is_start, (uint)v1);
+					return;
+				case FormatType.BLOCKQUOTE:
+					this.on_quote(is_start, (uint)v1);
+					return;
+				case FormatType.TABLE_HCELL:
+					this.on_table_hcell(is_start, v1);
+					return;
+				case FormatType.TABLE_CELL:
+					this.on_table_cell(is_start, v1);
+					return;
+				default:
+					break;
+			}
+		}
+
+		// Protected virtual callbacks (dispatched from on_node; subclasses override as needed)
+		protected virtual void on_p(bool is_start) {}
+		protected virtual void on_h(bool is_start, uint level) {}
+		protected virtual void on_li(bool is_start) {}
+		protected virtual void on_em(bool is_start) {}
+		protected virtual void on_strong(bool is_start) {}
+		protected virtual void on_code_span(bool is_start) {}
+		protected virtual void on_del(bool is_start) {}
+		protected virtual void on_u(bool is_start) {}
+		protected virtual void on_text(string text) {}
+		protected virtual void on_html(bool is_start, string tag, string attributes) {}
+		protected virtual void on_other(bool is_start, string tag_name) {}
+		protected virtual void on_code_block(bool is_start, string lang) {}
+		protected virtual void on_table(bool is_start) {}
+		protected virtual void on_table_row(bool is_start) {}
+		protected virtual void on_img(string src, string title) {}
+		protected virtual void on_br() {}
+		protected virtual void on_code_text(string text) {}
+		protected virtual void on_hr() {}
+		protected virtual void on_softbr() {}
+		protected virtual void on_entity(string text) {}
+		protected virtual void on_ul(bool is_start, uint indentation) {}
+		protected virtual void on_ol(bool is_start, uint indentation) {}
+		protected virtual void on_quote(bool is_start, uint level) {}
+		protected virtual void on_table_hcell(bool is_start, int align) {}
+		protected virtual void on_table_cell(bool is_start, int align) {}
+		protected virtual void on_task_list(bool is_start, bool is_checked) {}
+
+		// Callbacks not in on_node/on_node_int pipeline (parser calls directly)
 		public virtual void on_a(bool is_start, string href, string title, bool is_reference) {}
-		public virtual void on_img(string src, string? title) {}
-		public virtual void on_br() {}
-		public virtual void on_softbr() {}
-		public virtual void on_entity(string text) {}
-		public virtual void on_u(bool is_start) {}
+		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
 	}
 }
 

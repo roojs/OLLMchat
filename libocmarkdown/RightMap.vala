@@ -105,7 +105,7 @@ namespace Markdown
 			if (match_result == 0) {
 				return false;
 			}
-			this.parser.renderer.on_text(str);
+			this.parser.renderer.on_node(FormatType.TEXT, false, str);
 			str = "";
 			this.parser.state_stack.remove_at(this.parser.state_stack.size - 1);
 			this.parser.do_format(false, matched_type);

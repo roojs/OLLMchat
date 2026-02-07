@@ -238,7 +238,7 @@ namespace Markdown
 				// No match - caller advances chunk_pos and adds char to str
 				return false;
 			}
-			this.parser.renderer.on_text(str);
+			this.parser.renderer.on_node(FormatType.TEXT, false, str);
 			str = "";
 			var seq_pos = chunk_pos;
 			for (int i = 0; i < match_len; i++) {
@@ -253,7 +253,7 @@ namespace Markdown
 					return true;
 				}
 				if (link_result == 0) {
-					this.parser.renderer.on_text(chunk.substring(chunk_pos, seq_pos - chunk_pos));
+					this.parser.renderer.on_node(FormatType.TEXT, false, chunk.substring(chunk_pos, seq_pos - chunk_pos));
 					chunk_pos = seq_pos;
 					return false;
 				}
