@@ -26,9 +26,10 @@ namespace Markdown.Document
 			foreach (var child in this.children) {
 				if (child is List) {
 					result += "\n" + child.to_markdown();
-				} else {
-					result += child.to_markdown();
+					continue;
 				}
+				result += child.to_markdown();
+				
 			}
 			return result;
 		}

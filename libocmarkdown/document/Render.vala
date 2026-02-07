@@ -322,6 +322,15 @@ namespace Markdown.Document
 			}
 		}
 
+		/** Set task list state when BlockMap recognized - [ ] / - [x] at block level. */
+		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
+		{
+			if (is_start && task_checked >= 0 && this.current_list_item != null) {
+				this.current_list_item.is_task_item = true;
+				this.current_list_item.task_checked = (task_checked == 1);
+			}
+		}
+
 		/** Only two callbacks remain public and are called directly by the parser. */
 		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{

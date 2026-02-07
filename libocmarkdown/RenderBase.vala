@@ -198,10 +198,12 @@ namespace Markdown
 			}
 		}
 
+		/** List item start/end; task_checked: -1 = N/A, 0 = unchecked, 1 = checked (parser calls directly). */
+		public virtual void on_li(bool is_start, uint indent = 0, int task_checked = -1) {}
+
 		// Protected virtual callbacks (dispatched from on_node; subclasses override as needed)
 		protected virtual void on_p(bool is_start) {}
 		protected virtual void on_h(bool is_start, uint level) {}
-		protected virtual void on_li(bool is_start, uint indent = 0) {}
 		protected virtual void on_em(bool is_start) {}
 		protected virtual void on_strong(bool is_start) {}
 		protected virtual void on_code_span(bool is_start) {}

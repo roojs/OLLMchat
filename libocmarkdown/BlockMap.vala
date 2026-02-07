@@ -55,9 +55,20 @@ namespace Markdown
 			mp["__"] = FormatType.INVALID;
 			mp["___"] = FormatType.HORIZONTAL_RULE;
 
-			// Unordered Lists: - item, * item, + item
+			// Unordered Lists: - item, * item, + item; task list: - [ ] , - [x] , - [X]
 			mp["-"] = FormatType.INVALID;
 			mp["- "] = FormatType.UNORDERED_LIST;
+			// INVALID prefixes so progressive match reaches "- [ ] " / "- [x] " / "- [X] "
+			mp["- ["] = FormatType.INVALID;
+			mp["- [ "] = FormatType.INVALID;
+			mp["- [ ]"] = FormatType.INVALID;
+			mp["- [ ] "] = FormatType.TASK_LIST;
+			mp["- [x"] = FormatType.INVALID;
+			mp["- [x]"] = FormatType.INVALID;
+			mp["- [x] "] = FormatType.TASK_LIST_DONE;
+			mp["- [X"] = FormatType.INVALID;
+			mp["- [X]"] = FormatType.INVALID;
+			mp["- [X] "] = FormatType.TASK_LIST_DONE;
 			mp["*"] = FormatType.INVALID;
 			mp["* "] = FormatType.UNORDERED_LIST;
 			mp["+"] = FormatType.INVALID;
@@ -408,11 +419,21 @@ namespace Markdown
 
 				case FormatType.ORDERED_LIST:
 				case FormatType.UNORDERED_LIST:
+				case FormatType.TASK_LIST:
+				case FormatType.TASK_LIST_DONE:
 					var list_marker = chunk.substring(chunk_pos, byte_length);
-					if (this.parser.current_block == matched_block) {
+					// Task list markers are block-level unordered list items; use UNORDERED_LIST for list state
+					var is_task = (matched_block == FormatType.TASK_LIST 
+							|| matched_block == FormatType.TASK_LIST_DONE);
+					var task_checked = is_task ? (matched_block == FormatType.TASK_LIST_DONE ? 1 : 0) : -1;
+					var list_type = (matched_block == FormatType.ORDERED_LIST)
+						 ? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
+					bool same_list = (this.parser.current_block == list_type);
+					if (same_list) {
 						// Same list type, new item: end previous LIST_ITEM, start new LIST_ITEM (with indent)
 						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
 						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, true, space_skip);
+						this.parser.renderer.on_li(true, space_skip, task_checked);
 						this.parser.at_line_start = false;
 						chunk_pos = seq_pos;
 						return false;
@@ -422,9 +443,10 @@ namespace Markdown
 						this.parser.last_line_block = this.parser.current_block;
 						this.parser.current_block = FormatType.NONE;
 					}
-					this.parser.current_block = matched_block;
-					this.parser.do_block(true, matched_block, list_marker, "", space_skip);
+					this.parser.current_block = list_type;
+					this.parser.do_block(true, list_type, list_marker, "", space_skip);
 					this.parser.renderer.on_node_int(FormatType.LIST_ITEM, true, space_skip);
+					this.parser.renderer.on_li(true, space_skip, task_checked);
 					this.parser.at_line_start = false;
 					chunk_pos = seq_pos;
 					return false;
