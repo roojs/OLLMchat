@@ -387,7 +387,7 @@ namespace Markdown
 			this.html_output.append("<input type=\"checkbox\" disabled" + (is_checked ? " checked" : "") + ">");
 		}
 		
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			// Inline code - handled by on_code_span
 			this.on_code_span(is_start);

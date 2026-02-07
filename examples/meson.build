@@ -152,6 +152,30 @@ test_markdown_parser = executable('oc-markdown-test',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build document renderer test (structure + JSON round-trip)
+# Extends TestAppBase for standard debug options and help (same pattern as oc-markdown-test)
+test_document_renderer = executable('oc-markdown-doc-test',
+  dependencies: [ocmarkdown_test_deps, ocsqlite_vapi_dep, ollmchat_vapi_dep, ocmarkdown_vapi_dep],
+  sources: ['TestAppBase.vala', 'oc-markdown-doc-test.vala'],
+  link_with: [ollmchat_base_lib],
+  include_directories: [
+    include_directories('../libocmarkdown'),
+    include_directories('../libollmchat')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=ollmchat',
+    '--pkg=ocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-test-gtkmd executable (GTK markdown widget viewer)
 # Extends TestAppBase for standard debug options and ApplicationInterface
 # Use ocmarkdowngtk_vapi_dep only (no link_with) to avoid meson auto-including ocmarkdowngtk-meson.vapi

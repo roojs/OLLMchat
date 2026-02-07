@@ -92,7 +92,12 @@ namespace Markdown
 		OTHER,
 		CODE_TEXT,
 		SOFTBR,
-		ENTITY
+		ENTITY,
+		/** For document model node_type discriminator (JSON polymorphic deserialization). */
+		DOCUMENT,
+		BLOCK,
+		LIST,
+		FORMAT
     }
 	
 	

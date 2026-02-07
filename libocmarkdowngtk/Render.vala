@@ -565,7 +565,7 @@ namespace MarkdownGtk
 		 * @param lang The language identifier (may be null)
 		 * @param fence_char The fence character used
 		 */
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			if (!is_start) {
 				this.current_state.close_state();

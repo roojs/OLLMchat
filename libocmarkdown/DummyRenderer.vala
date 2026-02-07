@@ -217,17 +217,17 @@ namespace Markdown
 			stdout.printf("START: <task_list> (checked=%s)\n", is_checked.to_string());
 		}
 		
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+				stdout.printf("END: <code> (lang=%s, fence='%c')\n", lang, fence_char);
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+			stdout.printf("START: <code> (lang=%s, fence='%c')\n", lang, fence_char);
 			indent_level++;
 		}
 		
@@ -328,19 +328,19 @@ namespace Markdown
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title ?? "null", is_reference.to_string());
+				stdout.printf("END: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title ?? "null", is_reference.to_string());
+			stdout.printf("START: <a> (href=\"%s\", title=\"%s\", is_reference=%s)\n", href, title, is_reference.to_string());
 			indent_level++;
 		}
 		
 		public override void on_img(string src, string title)
 		{
 			print_indent();
-			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title ?? "null");
+			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title);
 		}
 		
 		public override void on_br()

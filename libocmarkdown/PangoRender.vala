@@ -468,7 +468,7 @@ namespace Markdown
 			this.pango_markup.append(marker);
 		}
 		
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			// Inline code - handled by on_code_span
 			// This is for compatibility

@@ -217,7 +217,7 @@ namespace Markdown
 
 		// Callbacks not in on_node/on_node_int pipeline (parser calls directly)
 		public virtual void on_a(bool is_start, string href, string title, bool is_reference) {}
-		public virtual void on_code(bool is_start, string? lang, char fence_char) {}
+		public virtual void on_code(bool is_start, string lang, char fence_char) {}
 	}
 }
 
