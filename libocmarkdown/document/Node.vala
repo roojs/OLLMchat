@@ -69,6 +69,22 @@ namespace Markdown.Document
 					var n = new Json.Node(Json.NodeType.ARRAY);
 					n.init_array(arr);
 					return n;
+				case "task_checked":
+				case "task-checked":
+					if (this is ListItem) {
+						var bn = new Json.Node(Json.NodeType.VALUE);
+						bn.set_boolean((this as ListItem).task_checked);
+						return bn;
+					}
+					return default_serialize_property(property_name, value, pspec);
+				case "is_task_item":
+				case "is-task-item":
+					if (this is ListItem) {
+						var bn = new Json.Node(Json.NodeType.VALUE);
+						bn.set_boolean((this as ListItem).is_task_item);
+						return bn;
+					}
+					return default_serialize_property(property_name, value, pspec);
 				default:
 					return default_serialize_property(property_name, value, pspec);
 			}
@@ -76,11 +92,11 @@ namespace Markdown.Document
 
 		public override bool deserialize_property(string property_name, out GLib.Value value, GLib.ParamSpec pspec, Json.Node property_node)
 		{
-			var key = property_name.replace("-", "_");
-			switch (key) {
+			switch (property_name) {
 				case "parent":
 					return false;
 				case "node_type":
+				case "node-type":
 					value = GLib.Value(typeof(FormatType));
 					value.set_enum((int)property_node.get_int());
 					return true;
@@ -101,6 +117,22 @@ namespace Markdown.Document
 					value = GLib.Value(typeof(Gee.ArrayList));
 					value.set_object(this.children);
 					return true;
+				case "task-checked":
+					if (this is ListItem) {
+						(this as ListItem).task_checked = property_node.get_boolean();
+						value = GLib.Value(typeof(bool));
+						value.set_boolean((this as ListItem).task_checked);
+						return true;
+					}
+					return default_deserialize_property(property_name, out value, pspec, property_node);
+				case "is-task-item":
+					if (this is ListItem) {
+						(this as ListItem).is_task_item = property_node.get_boolean();
+						value = GLib.Value(typeof(bool));
+						value.set_boolean((this as ListItem).is_task_item);
+						return true;
+					}
+					return default_deserialize_property(property_name, out value, pspec, property_node);
 				default:
 					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}

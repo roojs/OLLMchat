@@ -18,12 +18,17 @@ namespace Markdown.Document
 	{
 		public override FormatType node_type { get; set; default = FormatType.LIST_ITEM; }
 		public bool task_checked { get; set; }
+		public bool is_task_item { get; set; default = false; }
 
 		public override string to_markdown()
 		{
-			string result = this.task_checked ? "[x] " : "[ ] ";
+			var result = this.is_task_item ? (this.task_checked ? "[x] " : "[ ] ") : "";
 			foreach (var child in this.children) {
-				result += child.to_markdown();
+				if (child is List) {
+					result += "\n" + child.to_markdown();
+				} else {
+					result += child.to_markdown();
+				}
 			}
 			return result;
 		}

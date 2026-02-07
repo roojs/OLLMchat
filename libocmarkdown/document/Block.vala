@@ -22,6 +22,8 @@ namespace Markdown.Document
 		public int align { get; set; }
 		public bool task_checked { get; set; }
 		public string code_text { get; set; default = ""; }
+		/** Leading indent for fenced code blocks (e.g. "   " when inside list item). Preserved for round-trip. */
+		public string fence_indent { get; set; default = ""; }
 
 		public Block(FormatType k)
 		{
@@ -50,8 +52,21 @@ namespace Markdown.Document
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
 					var fence = this.kind == FormatType.FENCED_CODE_QUOTE ? "```" : "~~~";
+					var code = this.code_text;
+					if (code.has_suffix("\n")) {
+						code = code.substring(0, code.length - 1);
+					}
+					var indent = this.fence_indent;
+					if (indent != "") {
+						var ret = indent + fence + (this.lang != "" ? this.lang : "") + "\n";
+						foreach (var line in code.split("\n")) {
+							ret += indent + line + "\n";
+						}
+						ret += indent + fence;
+						return ret;
+					}
 					return fence + (this.lang != "" ? this.lang : "") +
-						 "\n" + this.code_text + "\n" + fence;
+						"\n" + code + "\n" + fence;
 				case FormatType.HORIZONTAL_RULE:
 					return "---";
 				default:

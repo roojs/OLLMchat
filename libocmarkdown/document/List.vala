@@ -22,12 +22,14 @@ namespace Markdown.Document
 
 		public override string to_markdown()
 		{
-			string[] parts = new string[this.children.size];
+			string line_prefix = string.nfill((int)this.indentation, ' ');
+			string[] parts = {};
 			int i = 0;
 			foreach (var child in this.children) {
 				var item = child as ListItem;
 				string prefix = this.ordered ? (i + 1).to_string() + ". " : "- ";
-				parts[i++] = prefix + (item != null ? item.to_markdown() : "");
+				parts += line_prefix + prefix + (item != null ? item.to_markdown() : "");
+				i++;
 			}
 			return string.joinv("\n", parts);
 		}

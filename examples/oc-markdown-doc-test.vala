@@ -116,6 +116,7 @@ Examples:
 			var root = Json.gobject_serialize(doc);
 			var gen = new Json.Generator();
 			gen.set_root(root);
+			gen.pretty = true;
 			command_line.print(gen.to_data(null));
 		}
 	}
@@ -123,6 +124,8 @@ Examples:
 
 int main(string[] args)
 {
+	// Ensure stdout uses UTF-8 so non-ASCII (e.g. en-dash, ellipsis) is preserved when printing
+	Intl.setlocale(LocaleCategory.ALL, "C.UTF-8");
 	var app = new OcMarkdownDocTest();
 	return app.run(args);
 }

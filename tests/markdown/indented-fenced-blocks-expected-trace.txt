@@ -16,7 +16,7 @@ Paragraph before list.
 
 === CALLBACK TRACE ===
 START: <h1>
-  TEXT: " Indented"
+  TEXT: "Indented"
   TEXT: " fenced"
   TEXT: " code"
   TEXT: " blocks"
@@ -35,18 +35,16 @@ TEXT: "
 TEXT: "
 "
 START: <ul> (indentation=1)
-  TEXT: "List"
-  TEXT: " item"
-  TEXT: " with"
-  TEXT: " an"
-  TEXT: " indented"
-  TEXT: " fenced"
-  TEXT: " block:"
+  START: <li>
+    TEXT: "List"
+    TEXT: " item"
+    TEXT: " with"
+    TEXT: " an"
+    TEXT: " indented"
+    TEXT: " fenced"
+    TEXT: " block:"
+  END: <li>
 END: <ul> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
 START: <code_block> (lang=vala)
   CODE_TEXT: "void main() {"
   CODE_TEXT: "
@@ -61,17 +59,15 @@ END: <code_block> (lang=)
 TEXT: "
 "
 START: <ul> (indentation=1)
-  TEXT: "Another"
-  TEXT: " item"
-  TEXT: " with"
-  TEXT: " indented"
-  TEXT: " fenced"
-  TEXT: " block:"
+  START: <li>
+    TEXT: "Another"
+    TEXT: " item"
+    TEXT: " with"
+    TEXT: " indented"
+    TEXT: " fenced"
+    TEXT: " block:"
+  END: <li>
 END: <ul> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
 START: <code_block> (lang=text)
   CODE_TEXT: "plain text content"
   CODE_TEXT: "

@@ -419,7 +419,7 @@ namespace Markdown
 			this.reset_lists_above_level(indentation);
 		}
 		
-		public override void on_li(bool is_start)
+		public override void on_li(bool is_start, uint indent = 0)
 		{
 			if (!is_start) {
 				this.pango_markup.append("\n");

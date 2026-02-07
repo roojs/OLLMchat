@@ -53,6 +53,13 @@ namespace Markdown
         ITALIC,
         BOLD,
         BOLD_ITALIC,
+        /** Delimiter-preserving (document round-trip); base renderers map to ITALIC/BOLD. */
+        ITALIC_ASTERISK,
+        ITALIC_UNDERSCORE,
+        BOLD_ASTERISK,
+        BOLD_UNDERSCORE,
+        BOLD_ITALIC_ASTERISK,
+        BOLD_ITALIC_UNDERSCORE,
         CODE,
         STRIKETHROUGH,
 		HIGHLIGHT,
@@ -300,6 +307,7 @@ namespace Markdown
 					string block_lang = "";
 					FormatType matched_block = FormatType.NONE;
 					int byte_length = 0;
+					int space_skip = 0;
 					var block_match = this.blockmap.peek(
 						chunk,
 						chunk_pos,
@@ -307,13 +315,15 @@ namespace Markdown
 						this.last_line_block,
 						out block_lang,
 						out matched_block,
-						out byte_length
+						out byte_length,
+						out space_skip
 					);
 					if (this.blockmap.handle_block_result(
 						block_match,
 						block_lang,
 						matched_block,
 						byte_length,
+						space_skip,
 						ref chunk_pos,
 						chunk,
 						saved_chunk_pos,
@@ -455,6 +465,11 @@ namespace Markdown
 			// Flush any remaining text
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_node(FormatType.TEXT, false, str);
+			if (this.current_block != FormatType.NONE) {
+				this.do_block(false, this.current_block);
+				this.last_line_block = this.current_block;
+				this.current_block = FormatType.NONE;
+			}
 		}
 	
 
@@ -496,24 +511,21 @@ namespace Markdown
 		
 		/**
 		 * Calls the appropriate renderer method based on format type.
-		 * For BOLD_ITALIC, handles both bold and italic states correctly.
-		 * 
+		 * Delimiter-preserving types (ITALIC_ASTERISK, etc.) pass through to the renderer.
+		 *
 		 * @param is_start True to start the format, false to end it
 		 * @param format_type The format type
 		 */
 		internal void do_format(bool is_start, FormatType format_type)
 		{
 			switch (format_type) {
-				case FormatType.BOLD_ITALIC:
-					if (is_start) {
-						// Push both bold and italic states
-						this.renderer.on_node(FormatType.BOLD, true);
-						this.renderer.on_node(FormatType.ITALIC, true);
-					} else {
-						// BOLD_ITALIC opened two states, so close both in reverse order
-						this.renderer.on_node(FormatType.ITALIC, false);
-						this.renderer.on_node(FormatType.BOLD, false);
-					}
+				case FormatType.ITALIC_ASTERISK:
+				case FormatType.ITALIC_UNDERSCORE:
+				case FormatType.BOLD_ASTERISK:
+				case FormatType.BOLD_UNDERSCORE:
+				case FormatType.BOLD_ITALIC_ASTERISK:
+				case FormatType.BOLD_ITALIC_UNDERSCORE:
+					this.renderer.on_node(format_type, is_start);
 					break;
 				case FormatType.ITALIC:
 					this.renderer.on_node(FormatType.ITALIC, is_start);
@@ -601,12 +613,19 @@ namespace Markdown
 			this.state_stack.clear();
 
 			if (this.current_block != FormatType.NONE) {
-				this.do_block(false, this.current_block);
-				this.last_line_block = this.current_block;
-				this.current_block = FormatType.NONE;
-				this.is_literal = "";
+				// Keep list open across newlines; we'll end it when we see a non-list line
+				if (this.current_block != FormatType.ORDERED_LIST 
+						&& this.current_block != FormatType.UNORDERED_LIST) {
+					this.do_block(false, this.current_block);
+					this.last_line_block = this.current_block;
+					this.current_block = FormatType.NONE;
+					this.is_literal = "";
+				}
 			}
-			this.renderer.on_node(FormatType.TEXT, false, "\n");
+			// Don't emit newline as TEXT when in a list (list items would get trailing \n and round-trip gets extra blank lines)
+			if (this.current_block != FormatType.ORDERED_LIST && this.current_block != FormatType.UNORDERED_LIST) {
+				this.renderer.on_node(FormatType.TEXT, false, "\n");
+			}
 			this.at_line_start = true;
 			chunk_pos += 1;
 		}
@@ -756,8 +775,14 @@ namespace Markdown
 		 * @param is_start True to start the block, false to end it
 		 * @param block_type The block type
 		 * @param lang Language for fenced code blocks (only used when is_start is true)
+		 * @param fence_indent Leading indent for fenced code (e.g. "   "); only used when starting FENCED_CODE_QUOTE/TILD
 		 */
-		public void do_block(bool is_start, FormatType block_type, string lang = "")
+		public void do_block(
+			bool is_start,
+			FormatType block_type,
+			string lang = "", 
+			string fence_indent = "", 
+			int list_indent = 0)
 		{
 			var sl = lang.strip().length;
 
@@ -787,14 +812,20 @@ namespace Markdown
 				// we are going to send 1 as to lowest level of indentation
 				// to make it a bit easier for the users to indent correctly.		
 				case FormatType.UNORDERED_LIST:
-					this.renderer.on_node_int(FormatType.UNORDERED_LIST, is_start, (int)((lang.length - sl + 1) / 2));
+					if (!is_start) {
+						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
+					}
+					this.renderer.on_node_int(FormatType.UNORDERED_LIST, is_start, list_indent);
 					break;
 				case FormatType.ORDERED_LIST:
-					this.renderer.on_node_int(FormatType.ORDERED_LIST, is_start, (int)((lang.length - sl + 1) / 2));
+					if (!is_start) {
+						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
+					}
+					this.renderer.on_node_int(FormatType.ORDERED_LIST, is_start, list_indent);
 					break;
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
-					this.renderer.on_node(block_type, is_start, lang);
+					this.renderer.on_node(block_type, is_start, lang, fence_indent);
 					break;
 				case FormatType.HORIZONTAL_RULE:
 					this.renderer.on_node(FormatType.HORIZONTAL_RULE, false);

@@ -101,14 +101,25 @@ namespace Markdown
 				case FormatType.HEADING_6:
 					this.on_h(is_start, 6);
 					return;
-				case FormatType.LIST_ITEM:
-					this.on_li(is_start);
-					return;
 				case FormatType.ITALIC:
+				case FormatType.ITALIC_ASTERISK:
+				case FormatType.ITALIC_UNDERSCORE:
 					this.on_em(is_start);
 					return;
 				case FormatType.BOLD:
+				case FormatType.BOLD_ASTERISK:
+				case FormatType.BOLD_UNDERSCORE:
 					this.on_strong(is_start);
+					return;
+				case FormatType.BOLD_ITALIC_ASTERISK:
+				case FormatType.BOLD_ITALIC_UNDERSCORE:
+					if (is_start) {
+						this.on_strong(true);
+						this.on_em(true);
+					} else {
+						this.on_em(false);
+						this.on_strong(false);
+					}
 					return;
 				case FormatType.CODE:
 					this.on_code_span(is_start);
@@ -190,7 +201,7 @@ namespace Markdown
 		// Protected virtual callbacks (dispatched from on_node; subclasses override as needed)
 		protected virtual void on_p(bool is_start) {}
 		protected virtual void on_h(bool is_start, uint level) {}
-		protected virtual void on_li(bool is_start) {}
+		protected virtual void on_li(bool is_start, uint indent = 0) {}
 		protected virtual void on_em(bool is_start) {}
 		protected virtual void on_strong(bool is_start) {}
 		protected virtual void on_code_span(bool is_start) {}

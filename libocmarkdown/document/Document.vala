@@ -23,11 +23,29 @@ namespace Markdown.Document
 
 		public override string to_markdown()
 		{
-			string[] parts = {};
-			foreach (var child in this.children) {
-				parts += child.to_markdown();
+			if (this.children.size == 0) {
+				return "\n";
 			}
-			return string.joinv("\n\n", parts);
+			var result = "";
+			var sep = "";
+			var prev_was_blockquote = false;
+			for (var i = 0; i < this.children.size; i++) {
+				var child = this.children.get(i);
+				sep = (i == 0) ? "" : "\n\n";
+				if (!(child is Block)) {
+					result += sep + child.to_markdown();
+					prev_was_blockquote = false;
+					continue;
+				}
+				var b = (child as Block).kind;
+				// Only use single newline between consecutive blockquotes; otherwise default double newline after blocks
+				if (prev_was_blockquote && b == FormatType.BLOCKQUOTE) {
+					sep = "\n";
+				}
+				result += sep + child.to_markdown();
+				prev_was_blockquote = (b == FormatType.BLOCKQUOTE);
+			}
+			return result + "\n";
 		}
 	}
 }

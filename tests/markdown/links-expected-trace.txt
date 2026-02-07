@@ -12,7 +12,7 @@ Task list (...
 
 === CALLBACK TRACE ===
 START: <h1>
-  TEXT: " Links"
+  TEXT: "Links"
 END: <h1>
 TEXT: "
 "

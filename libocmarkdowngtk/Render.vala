@@ -483,7 +483,7 @@ namespace MarkdownGtk
 		 * 
 		 * @param is_start Whether this is the start of a list item
 		 */
-		public override void on_li(bool is_start)
+		public override void on_li(bool is_start, uint indent = 0)
 		{
 			 
 			if (!is_start) {

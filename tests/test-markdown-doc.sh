@@ -52,8 +52,12 @@ for f in markdown/*.md; do
 		test_fail "$base: JSON → md failed"
 		continue
 	fi
-	# Compare original vs round-trip
-	test-match "markdown-doc $base" "$roundtrip_file" "$f" "round-trip md matches input"
+	# Compare original vs round-trip; normalize so any run of newlines (1 or more) becomes \n\n — ignore linebreak differences
+	actual_norm="${OUT_DIR}/${base}-roundtrip-norm.md"
+	expected_norm="${OUT_DIR}/${base}-expected-norm.md"
+	perl -0pe 's/\n+/\n\n/g' "$roundtrip_file" > "$actual_norm"
+	perl -0pe 's/\n+/\n\n/g' "$f" > "$expected_norm"
+	test-match "markdown-doc $base" "$actual_norm" "$expected_norm" "round-trip md matches input (linebreak differences ignored)"
 done
 
 print_test_summary

@@ -22,7 +22,7 @@ Horizontal rule above.
 
 === CALLBACK TRACE ===
 START: <h1>
-  TEXT: " Heading"
+  TEXT: "Heading"
   TEXT: " 1"
 END: <h1>
 TEXT: "
@@ -38,7 +38,7 @@ TEXT: "
 TEXT: "
 "
 START: <h2>
-  TEXT: " Heading"
+  TEXT: "Heading"
   TEXT: " 2"
 END: <h2>
 TEXT: "
@@ -46,35 +46,27 @@ TEXT: "
 TEXT: "
 "
 START: <ul> (indentation=1)
-  TEXT: "Unordered"
-  TEXT: " item"
-  TEXT: " A"
+  START: <li>
+    TEXT: "Unordered"
+    TEXT: " item"
+    TEXT: " A"
+  END: <li>
+  START: <li>
+    TEXT: "Unordered"
+    TEXT: " item"
+    TEXT: " B"
+  END: <li>
 END: <ul> (indentation=0)
-TEXT: "
-"
-START: <ul> (indentation=1)
-  TEXT: "Unordered"
-  TEXT: " item"
-  TEXT: " B"
-END: <ul> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
 START: <ol> (indentation=1)
-  TEXT: "Ordered"
-  TEXT: " first"
+  START: <li>
+    TEXT: "Ordered"
+    TEXT: " first"
+  END: <li>
+  START: <li>
+    TEXT: "Ordered"
+    TEXT: " second"
+  END: <li>
 END: <ol> (indentation=0)
-TEXT: "
-"
-START: <ol> (indentation=1)
-  TEXT: "Ordered"
-  TEXT: " second"
-END: <ol> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
 START: <blockquote level=1>
   TEXT: "Blockquote"
   TEXT: " line"

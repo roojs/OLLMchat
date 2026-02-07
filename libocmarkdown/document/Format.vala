@@ -48,9 +48,19 @@ namespace Markdown.Document
 				case FormatType.TEXT:
 					return this.text;
 				case FormatType.ITALIC:
+				case FormatType.ITALIC_ASTERISK:
 					return "*" + inner + "*";
+				case FormatType.ITALIC_UNDERSCORE:
+					return "_" + inner + "_";
 				case FormatType.BOLD:
+				case FormatType.BOLD_ASTERISK:
 					return "**" + inner + "**";
+				case FormatType.BOLD_UNDERSCORE:
+					return "__" + inner + "__";
+				case FormatType.BOLD_ITALIC_ASTERISK:
+					return "***" + inner + "***";
+				case FormatType.BOLD_ITALIC_UNDERSCORE:
+					return "___" + inner + "___";
 				case FormatType.CODE:
 					return "`" + (this.text != "" ? this.text : inner) + "`";
 				case FormatType.STRIKETHROUGH:
@@ -58,8 +68,15 @@ namespace Markdown.Document
 				case FormatType.U:
 					return "<u>" + inner + "</u>";
 				case FormatType.LINK:
+					if (this.is_reference) {
+						return "[" + inner + "]" + (this.href != "" ? "[" + this.href + "]" : "[]");
+					}
 					return "[" + inner + "](" + this.href
 						+ (this.title != "" ? " \"" + this.title + "\"" : "") + ")";
+				case FormatType.TASK_LIST:
+					return "[ ]";
+				case FormatType.TASK_LIST_DONE:
+					return "[x]";
 				case FormatType.IMAGE:
 					return "![" + (this.title != "" ? this.title : "image") + "](" + this.src
 						+ (this.title != "" ? " \"" + this.title + "\"" : "") + ")";

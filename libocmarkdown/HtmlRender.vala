@@ -365,7 +365,7 @@ namespace Markdown
 			}
 		}
 		
-		public override void on_li(bool is_start)
+		public override void on_li(bool is_start, uint indent = 0)
 		{
 			if (!is_start) {
 				this.close_tag("li");
