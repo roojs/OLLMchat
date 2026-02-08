@@ -310,8 +310,7 @@ namespace Markdown.Document
 					this.current_list_item = null;
 					return;
 				case FormatType.BLOCKQUOTE:
-					this.on_block(is_start ? new Block(FormatType.BLOCKQUOTE) { 
-						level = (uint)v1 } : null);
+					this.on_block(is_start ? new Block(FormatType.BLOCKQUOTE) { level = (uint)v1 } : null);
 					return;
 				case FormatType.TABLE_HCELL:
 				case FormatType.TABLE_CELL:

@@ -470,6 +470,11 @@ namespace Markdown
 				this.last_line_block = this.current_block;
 				this.current_block = FormatType.NONE;
 			}
+			if (is_end_of_chunks && this.leftover_chunk != "") {
+				var remainder = this.leftover_chunk;
+				this.leftover_chunk = "";
+				this.add(remainder, false);
+			}
 		}
 	
 
@@ -614,7 +619,7 @@ namespace Markdown
 
 			if (this.current_block != FormatType.NONE) {
 				// Keep list open across newlines; we'll end it when we see a non-list line
-				if (this.current_block != FormatType.ORDERED_LIST 
+				if (this.current_block != FormatType.ORDERED_LIST
 						&& this.current_block != FormatType.UNORDERED_LIST) {
 					this.do_block(false, this.current_block);
 					this.last_line_block = this.current_block;

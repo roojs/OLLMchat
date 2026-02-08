@@ -14,6 +14,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
 - **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
 - **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
+- **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
 - **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
 - **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
 
@@ -786,6 +787,37 @@ var sql = "SELECT f.path, vm.vector_id FROM vector_metadata vm JOIN filebase f O
 ```vala
 var sql = "SELECT filebase.path, vector_metadata.vector_id FROM vector_metadata JOIN filebase ON vector_metadata.file_id = filebase.id";
 ```
+
+## Building Strings in Loops
+
+**CRITICAL - FORBIDDEN:** Do NOT build strings inside a loop by repeated concatenation (e.g. `s += "x"` or `prefix += "> "` in a for-loop). Use built-in fill or join methods instead.
+
+**CRITICAL:** Use `string.nfill(n, c)` for a single character repeated; for a multi-character unit use `string.nfill(n, 'X').replace("X", "unit")` or similar. Use `string.joinv(sep, array)` when joining an array. Never accumulate a string with `+=` in a loop.
+
+**Bad:**
+```vala
+string prefix = "";
+for (uint i = 0; i < this.level; i++) {
+    prefix += "> ";
+}
+return prefix + inner;
+```
+
+**Good:**
+```vala
+var prefix = string.nfill((int)this.level, 'X').replace("X", "> ");
+return prefix + inner;
+```
+
+**Also Good (when you have an array to join):**
+```vala
+var parts = new string[this.level];
+for (int i = 0; i < this.level; i++) {
+    parts[i] = "> ";
+}
+var prefix = string.joinv("", parts);
+```
+Prefer `nfill` + `replace` when the repeated unit is a fixed string; use `joinv` when the parts vary.
 
 ## Character Looping
 

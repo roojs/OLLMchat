@@ -32,6 +32,8 @@ namespace Markdown
 		/** The whole matched string that opened the fenced block (e.g. "```" or "   ```"). Set by peek() when matching fenced code. */
 		public string fence_open { get; private set; }
 
+		public int blockquote_depth { get; set; default = 0; }
+
 		private static void init()
 		{
 			if (mp != null) {

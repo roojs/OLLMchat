@@ -48,7 +48,7 @@ namespace Markdown.Document
 					var sharp = string.nfill((int)this.level, '#');
 					return sharp + " " + inner;
 				case FormatType.BLOCKQUOTE:
-					return "> " + inner.replace("\n", "\n> ");
+					return string.nfill((int)this.level, '>').replace(">", "> ") + inner;
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
 					var fence = this.kind == FormatType.FENCED_CODE_QUOTE ? "```" : "~~~";
@@ -69,6 +69,46 @@ namespace Markdown.Document
 						"\n" + code + "\n" + fence;
 				case FormatType.HORIZONTAL_RULE:
 					return "---";
+				case FormatType.TABLE: {
+					if (this.children.size == 0) {
+						return "";
+					}
+					var first_row = (Block) this.children.get(0);
+					var align_row = "| ";
+					for (int i = 0; i < first_row.children.size; i++) {
+						align_row += (i > 0) ? " | " : "";
+						switch (((Block) first_row.children.get(i)).align) {
+							case 0:
+								align_row += ":---:";
+								break;
+							case 1:
+								align_row += "---:";
+								break;
+							default:
+								align_row += ":---";
+								break;
+						}
+					}
+					align_row += " |\n";
+					var body_rows = "";
+					for (int r = 1; r < this.children.size; r++) {
+						body_rows += this.children.get(r).to_markdown();
+					}
+					return first_row.to_markdown() + align_row + body_rows;
+				}
+				case FormatType.TABLE_ROW: {
+					string result = "| ";
+					bool first = true;
+					foreach (var c in this.children) {
+						result += ((!first) ? " | " : "") + c.to_markdown();
+						first = false;
+					}
+					result += " |\n";
+					return result;
+				}
+				case FormatType.TABLE_HCELL:
+				case FormatType.TABLE_CELL:
+					return inner;
 				default:
 					return inner;
 			}

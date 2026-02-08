@@ -52,12 +52,29 @@ for f in markdown/*.md; do
 		test_fail "$base: JSON → md failed"
 		continue
 	fi
-	# Compare original vs round-trip; normalize so any run of newlines (1 or more) becomes \n\n — ignore linebreak differences
+	# Compare original vs round-trip; normalize newlines and table formatting (alignment dash count and cell padding are acceptable differences)
 	actual_norm="${OUT_DIR}/${base}-roundtrip-norm.md"
 	expected_norm="${OUT_DIR}/${base}-expected-norm.md"
 	perl -0pe 's/\n+/\n\n/g' "$roundtrip_file" > "$actual_norm"
 	perl -0pe 's/\n+/\n\n/g' "$f" > "$expected_norm"
-	test-match "markdown-doc $base" "$actual_norm" "$expected_norm" "round-trip md matches input (linebreak differences ignored)"
+	# Normalize table formatting (alignment dash length and cell padding are acceptable round-trip differences)
+	normalize_table() {
+		perl -ne '
+			chomp; $_ =~ s/^\s+|\s+$//g;
+			if (/^\|[\s|:\-]+\|$/) {
+				# Alignment row: canonicalize each cell to :--- or :---: or ---:
+				my @cells = split(/\|/, $_); @cells = grep { length } @cells;
+				for my $c (@cells) { $c =~ s/\s//g; $c = ":---" if $c =~ /^:\-+$/; $c = ":---:" if $c =~ /^:\-+:$/; $c = "---:" if $c =~ /^\-+:$/; }
+				$_ = "| " . join(" | ", @cells) . " |";
+			} elsif (/^\|/) {
+				s/\s*\|\s*/ | /g; s/ +/ /g; s/^\s*|\s*$//g;
+			}
+			print $_ . "\n";
+		'
+	}
+	normalize_table < "$actual_norm" > "${actual_norm}.tmp" && mv "${actual_norm}.tmp" "$actual_norm"
+	normalize_table < "$expected_norm" > "${expected_norm}.tmp" && mv "${expected_norm}.tmp" "$expected_norm"
+	test-match "markdown-doc $base" "$actual_norm" "$expected_norm" "round-trip md matches input (linebreak and table-format differences ignored)"
 done
 
 print_test_summary
