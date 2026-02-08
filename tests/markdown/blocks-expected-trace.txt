@@ -45,28 +45,28 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=0)
-  START: <li>
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Unordered"
     TEXT: " item"
     TEXT: " A"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Unordered"
     TEXT: " item"
     TEXT: " B"
   END: <li>
-END: <ul> (indentation=0)
-START: <ol> (indentation=0)
-  START: <li>
+END: <list block>
+START: <list block>
+  START: <li> (list_number=1, space_skip=0)
     TEXT: "Ordered"
     TEXT: " first"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=0)
     TEXT: "Ordered"
     TEXT: " second"
   END: <li>
-END: <ol> (indentation=0)
+END: <list block>
 START: <blockquote level=1>
   TEXT: "Blockquote"
   TEXT: " line"

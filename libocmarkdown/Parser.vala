@@ -92,6 +92,7 @@ namespace Markdown
 		TABLE_HCELL,
 		TABLE_CELL,
 		LIST_ITEM,
+		LIST_BLOCK,
 		TEXT,
 		IMAGE,
 		BR,
@@ -469,8 +470,17 @@ namespace Markdown
 			// Flush any remaining text
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_node(FormatType.TEXT, false, str);
-			if (this.current_block != FormatType.NONE) {
-				this.do_block(false, this.current_block);
+			// Only at end of chunks (no more data will ever come) do we close the open block.
+			// At end of chunk only, more add() may follow — we must not close or we break the next chunk.
+			if (is_end_of_chunks && this.current_block != FormatType.NONE) {
+				// We only track "in a list (either kind)"; renderer was opened with LIST_BLOCK. Close it that way.
+				if (this.current_block == FormatType.ORDERED_LIST
+					 || this.current_block == FormatType.UNORDERED_LIST) {
+					this.renderer.on_li(false);
+					this.do_block(false, FormatType.LIST_BLOCK);
+				} else {
+					this.do_block(false, this.current_block);
+				}
 				this.last_line_block = this.current_block;
 				this.current_block = FormatType.NONE;
 			}
@@ -621,15 +631,25 @@ namespace Markdown
 			}
 			this.state_stack.clear();
 
-			if (this.current_block != FormatType.NONE) {
-				// Keep list open across newlines; we'll end it when we see a non-list line
-				if (this.current_block != FormatType.ORDERED_LIST
-						&& this.current_block != FormatType.UNORDERED_LIST) {
-					this.do_block(false, this.current_block);
-					this.last_line_block = this.current_block;
-					this.current_block = FormatType.NONE;
-					this.is_literal = "";
-				}
+			// Double newline (blank line): at_line_start is true, so this newline ends the current line which was blank. End list block so next list starts fresh; return so we don't emit \n again (renderer already added it in on_list(false)).
+			if ((this.current_block == FormatType.ORDERED_LIST 
+				|| this.current_block == FormatType.UNORDERED_LIST) && this.at_line_start) {
+				this.renderer.on_li(false);
+				this.do_block(false, FormatType.LIST_BLOCK);
+				this.last_line_block = this.current_block;
+				this.current_block = FormatType.NONE;
+				this.at_line_start = true;
+				chunk_pos += 1;
+				return;
+			}
+			// Close current block on newline iff we're in a block and it's not a list (lists stay open until blank line or non-list line)
+			if (this.current_block != FormatType.NONE
+				&& this.current_block != FormatType.ORDERED_LIST
+				&& this.current_block != FormatType.UNORDERED_LIST) {
+				this.do_block(false, this.current_block);
+				this.last_line_block = this.current_block;
+				this.current_block = FormatType.NONE;
+				this.is_literal = "";
 			}
 			// Don't emit newline as TEXT when in a list (list items would get trailing \n and round-trip gets extra blank lines)
 			if (this.current_block != FormatType.ORDERED_LIST 
@@ -819,21 +839,8 @@ namespace Markdown
 					this.renderer.on_node(FormatType.PARAGRAPH, is_start);
 					break;
 
-				// we are going to send 1 as to lowest level of indentation
-				// to make it a bit easier for the users to indent correctly.		
-				case FormatType.UNORDERED_LIST:
-					if (!is_start) {
-						this.renderer.on_li(false);
-						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
-					}
-					this.renderer.on_node_int(FormatType.UNORDERED_LIST, is_start, list_indent);
-					break;
-				case FormatType.ORDERED_LIST:
-					if (!is_start) {
-						this.renderer.on_li(false);
-						this.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
-					}
-					this.renderer.on_node_int(FormatType.ORDERED_LIST, is_start, list_indent);
+				case FormatType.LIST_BLOCK:
+					this.renderer.on_node_int(FormatType.LIST_BLOCK, is_start, 0);
 					break;
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:

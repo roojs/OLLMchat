@@ -163,28 +163,16 @@ namespace Markdown
 			this.open_tags.add("p");
 		}
 			
-		public override void on_ul(bool is_start, uint indentation)
+		public override void on_list(bool is_start)
 		{
 			if (!is_start) {
-				return;
+				// List block ended: close current <li> and all open <ul>/<ol> so we leave no list tags open.
+				while (this.list_stack.size > 0) {
+					this.close_list_tag(this.list_stack.get(this.list_stack.size - 1));
+				}
 			}
-			this.handle_list_start(0, indentation);
-			this.close_li_if_needed(indentation);
-			this.current_list_indent = indentation;
-			this.on_li(true);
 		}
-			
-		public override void on_ol(bool is_start, uint indentation)
-		{
-			if (!is_start) {
-				return;
-			}
-			this.handle_list_start(1, indentation);
-			this.close_li_if_needed(indentation);
-			this.current_list_indent = indentation;
-			this.on_li(true);
-		}
-		
+
 		/**
 		 * Closes the current list item if we're starting a new list at the same or shallower indentation.
 		 *
@@ -327,13 +315,16 @@ namespace Markdown
 			}
 		}
 		
-		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
 			if (!is_start) {
 				this.close_tag("li");
 				return;
 			}
-			
+			this.close_li_if_needed(space_skip);
+			this.current_list_indent = space_skip;
+			int list_type = (list_number == 0) ? 0 : 1;
+			this.handle_list_start(list_type, space_skip);
 			this.append_indent(true);
 			this.html_output.append("<li>");
 			this.open_tags.add("li");

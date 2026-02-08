@@ -23,76 +23,72 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=0)
-  START: <li>
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Outer"
     TEXT: " unordered"
     TEXT: " one"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=2)
     TEXT: "Inner"
     TEXT: " unordered"
     TEXT: " 1.1"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=2)
     TEXT: "Inner"
     TEXT: " unordered"
     TEXT: " 1.2"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Outer"
     TEXT: " unordered"
     TEXT: " two"
   END: <li>
-END: <ul> (indentation=0)
-START: <ol> (indentation=0)
-  START: <li>
+END: <list block>
+START: <list block>
+  START: <li> (list_number=1, space_skip=0)
     TEXT: "Outer"
     TEXT: " ordered"
     TEXT: " one"
   END: <li>
-  START: <li>
+  START: <li> (list_number=1, space_skip=3)
     TEXT: "Inner"
     TEXT: " ordered"
     TEXT: " a"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=3)
     TEXT: "Inner"
     TEXT: " ordered"
     TEXT: " b"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=0)
     TEXT: "Outer"
     TEXT: " ordered"
     TEXT: " two"
   END: <li>
-END: <ol> (indentation=0)
-START: <ul> (indentation=0)
-  START: <li>
+END: <list block>
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Mixed:"
     TEXT: " unordered"
     TEXT: " outer"
   END: <li>
-END: <ul> (indentation=0)
-START: <ol> (indentation=2)
-  START: <li>
+  START: <li> (list_number=1, space_skip=2)
     TEXT: "Ordered"
     TEXT: " inner"
     TEXT: " first"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=2)
     TEXT: "Ordered"
     TEXT: " inner"
     TEXT: " second"
   END: <li>
-END: <ol> (indentation=0)
-START: <ul> (indentation=0)
-  START: <li>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "Back"
     TEXT: " to"
     TEXT: " unordered"
   END: <li>
-END: <ul> (indentation=0)
+END: <list block>
 START: <h2>
   TEXT: "Four"
   TEXT: " levels"
@@ -102,28 +98,28 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=0)
-  START: <li>
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "L1"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=2)
     TEXT: "L2"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=4)
     TEXT: "L3"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=6)
     TEXT: "L4"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=2)
     TEXT: "L2"
     TEXT: " sibling"
   END: <li>
-  START: <li>
+  START: <li> (list_number=0, space_skip=0)
     TEXT: "L1"
     TEXT: " sibling"
   END: <li>
-END: <ul> (indentation=0)
+END: <list block>
 START: <h2>
   TEXT: "Four"
   TEXT: " levels"
@@ -133,28 +129,28 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ol> (indentation=0)
-  START: <li>
+START: <list block>
+  START: <li> (list_number=1, space_skip=0)
     TEXT: "L1"
   END: <li>
-  START: <li>
+  START: <li> (list_number=1, space_skip=3)
     TEXT: "L2"
   END: <li>
-  START: <li>
+  START: <li> (list_number=1, space_skip=6)
     TEXT: "L3"
   END: <li>
-  START: <li>
+  START: <li> (list_number=1, space_skip=9)
     TEXT: "L4"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=3)
     TEXT: "L2"
     TEXT: " sibling"
   END: <li>
-  START: <li>
+  START: <li> (list_number=2, space_skip=0)
     TEXT: "L1"
     TEXT: " sibling"
     TEXT: ""
+    TEXT: ""
   END: <li>
-END: <ol> (indentation=0)
-TEXT: ""
+END: <list block>
 === END TRACE ===

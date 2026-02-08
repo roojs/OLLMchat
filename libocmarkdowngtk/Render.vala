@@ -404,99 +404,38 @@ namespace MarkdownGtk
 			return i;
 		}
 		
-		/**
-		 * Callback for unordered list blocks.
-		 *
-		 * @param indentation space_skip (raw spaces before list marker), used as 0-based stack index
-		 */
-		public override void on_ul(bool is_start, uint indentation)
+		public override void on_list(bool is_start)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
 				this.current_state.add_text("\n");
-				return;
 			}
-			
-			this.close_lists_to_level(indentation);
-			int depth_index = this.ensure_indent_level((int)indentation);
-			this.list_stack.set(depth_index, 0);
-			this.reset_lists_above_level(indentation);
-			this.current_list_indentation = indentation;
-			this.current_state.add_state();
 		}
-		
-		/**
-		 * Callback for ordered list blocks.
-		 *
-		 * @param indentation space_skip (raw spaces before list marker), used as 0-based stack index
-		 */
-		public override void on_ol(bool is_start, uint indentation)
+
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
 				this.current_state.add_text("\n");
 				return;
 			}
-			
-			this.close_lists_to_level(indentation);
-			int depth_index = this.ensure_indent_level((int)indentation);
-			int old_value = this.list_stack.get(depth_index);
-			this.list_stack.set(depth_index, old_value > 0 ? old_value + 1 : 1);
-			this.reset_lists_above_level(indentation);
-			this.current_list_indentation = indentation;
-			this.current_state.add_state();
-		}
-		
-		/**
-		 * Callback for list item blocks.
-		 * 
-		 * @param is_task Whether this is a task list item
-		 * @param task_mark The task marker character
-		 * @param task_mark_offset The offset of the task marker
-		 */
-		/**
-		 * Handles list item start/end.
-		 * 
-		 * @param is_start Whether this is the start of a list item
-		 * @param space_size Raw space count before list marker (space_skip from parser)
-		 */
-		public override void on_li(bool is_start, uint space_size = 0, int task_checked = -1)
-		{
-			if (!is_start) {
-				this.current_state.close_state();
-				// Line break after each list item so next item (or list) starts on new line (same as PangoRender)
-				this.current_state.add_text("\n");
-				return;
-			}
-			
-			// Bootstrap or match: ensure this space_size has a depth (fixes empty stack or same-list nested items)
-			int depth_index = this.indent_levels.index_of((int)space_size);
-			if (depth_index < 0) {
-				depth_index = this.ensure_indent_level((int)space_size);
-			}
-			int list_number = this.list_stack.get(depth_index);
-			// Tabs from array depth (one tab per depth level); depth 0 = 1 tab, depth 1 = 2 tabs, ...
+
+			this.close_lists_to_level(space_skip);
+			int depth_index = this.ensure_indent_level((int)space_skip);
+			this.list_stack.set(depth_index, list_number == 0 ? 0 : list_number);
+			this.current_list_indentation = space_skip;
+
 			this.current_state.add_text(string.nfill(depth_index + 1, '\t'));
-			
-			// Add marker based on list type
 			if (list_number == 0) {
-				// Unordered list - use bullet point (circle)
 				this.current_state.add_text("●");
 			} else {
-				// Ordered list - use number + "." with bold formatting
 				string number_marker = list_number.to_string() + ".";
-				// Create a new state with bold formatting for the number marker
 				var bold_state = this.current_state.add_state();
 				bold_state.style.weight = Pango.Weight.BOLD;
 				bold_state.add_text(number_marker);
 				bold_state.close_state();
-				// Advance counter for next item at this depth (parser only calls on_ol once per list)
-				this.list_stack.set(depth_index, list_number + 1);
 			}
-			
-			// Add tab after marker before content
 			this.current_state.add_text("\t");
-			
 			this.current_state.add_state();
 		}
 		

@@ -246,69 +246,91 @@ namespace Markdown.Document
 			}
 		}
 
-		/** Int/uint-based callbacks (parser calls on_node_int). */
-		public override void on_node_int(FormatType type, bool is_start, int v1 = 0)
+		private bool in_list_block = false;
+
+		public override void on_list(bool is_start)
 		{
-			switch (type) {
-				case FormatType.UNORDERED_LIST:
-				case FormatType.ORDERED_LIST:
-					if (is_start) {
-						this.list_stack.add((uint)v1);
-						this.push_list(new List() {
-							ordered = (type == FormatType.ORDERED_LIST),
-							indentation = (uint)v1
-						});
-						return;
-					}
-					this.list_stack.remove_at(this.list_stack.size - 1);
-					this.pop_list();
-					return;
-				case FormatType.LIST_ITEM:
-					if (is_start) {
-						uint indent = (uint)v1;
-						// Pop lists until we're at the right level (indent <= stack top)
-						while (this.list_stack.size > 0 && indent < this.list_stack.get(this.list_stack.size - 1)) {
-							this.list_stack.remove_at(this.list_stack.size - 1);
-							this.pop_list();
-						}
-						if (this.list_stack.size > 0 && indent > this.list_stack.get(this.list_stack.size - 1)) {
-							// Nested list: open under the last item of the current list (we already closed it with LIST_ITEM false)
-							var current_list = this.block_stack.get(this.block_stack.size - 1) as List;
-							if (current_list != null && current_list.children.size > 0) {
-								var last_item = current_list.children.get(current_list.children.size - 1) as ListItem;
-								if (last_item != null) {
-									var nested = new List() {
-										ordered = current_list.ordered,
-										indentation = indent
-									};
-									last_item.adopt(nested);
-									this.block_stack.add(nested);
-									this.list_stack.add(indent);
-								}
-							}
-						}
-						var item = new ListItem() {
-							task_checked = this.last_task_checked,
-							is_task_item = this.current_list_is_task_list
-						};
-						item.uid = this.document.uid_count++;
-						this.last_task_checked = false;
-						var parent = this.block_stack.get(this.block_stack.size - 1) as List;
-						parent.adopt(item);
-						this.block_stack.add(item);
-						if (this.current_block_with_inlines != null) {
-							this.inline_target_stack.add(this.current_block_with_inlines);
-						}
-						this.current_block_with_inlines = item;
-						this.current_list_item = item;
-						return;
-					}
+			if (!is_start) {
+				// Pop all ListItems that belong to this list (stack top may be ListItems)
+				while (this.block_stack.size > 1 && this.block_stack.get(this.block_stack.size - 1) is ListItem) {
 					this.block_stack.remove_at(this.block_stack.size - 1);
 					this.current_block_with_inlines = this.inline_target_stack.size > 0
 						? this.inline_target_stack.remove_at(this.inline_target_stack.size - 1)
 						: null;
 					this.current_list_item = null;
-					return;
+				}
+				while (this.list_stack.size > 0) {
+					this.list_stack.remove_at(this.list_stack.size - 1);
+					this.pop_list();
+				}
+			}
+			this.in_list_block = is_start;
+		}
+
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
+		{
+			if (!is_start) {
+				this.block_stack.remove_at(this.block_stack.size - 1);
+				this.current_block_with_inlines = this.inline_target_stack.size > 0
+					? this.inline_target_stack.remove_at(this.inline_target_stack.size - 1)
+					: null;
+				this.current_list_item = null;
+				return;
+			}
+
+			bool ordered = (list_number != 0);
+
+			while (this.list_stack.size > 0 && space_skip < this.list_stack.get(this.list_stack.size - 1)) {
+				this.list_stack.remove_at(this.list_stack.size - 1);
+				this.pop_list();
+			}
+
+			if (this.list_stack.size == 0) {
+				this.list_stack.add(space_skip);
+				this.push_list(new List() { ordered = ordered, indentation = space_skip });
+			} else if (this.list_stack.size > 0 && space_skip > this.list_stack.get(this.list_stack.size - 1)) {
+				var current_list = this.block_stack.get(this.block_stack.size - 1) as List;
+				if (current_list != null && current_list.children.size > 0) {
+					var last_item = current_list.children.get(current_list.children.size - 1) as ListItem;
+					if (last_item != null) {
+						var nested = new List() {
+							ordered = ordered,
+							indentation = space_skip
+						};
+						last_item.adopt(nested);
+						this.block_stack.add(nested);
+						this.list_stack.add(space_skip);
+					}
+				}
+			}
+
+			var item = new ListItem() {
+				task_checked = (task_checked == 1),
+				is_task_item = (task_checked >= 0)
+			};
+			item.uid = this.document.uid_count++;
+			List? parent = null;
+			for (int i = this.block_stack.size - 1; i >= 0; i--) {
+				if (this.block_stack.get(i) is List) {
+					parent = (List)this.block_stack.get(i);
+					break;
+				}
+			}
+			if (parent != null) {
+				parent.adopt(item);
+			}
+			this.block_stack.add(item);
+			if (this.current_block_with_inlines != null) {
+				this.inline_target_stack.add(this.current_block_with_inlines);
+			}
+			this.current_block_with_inlines = item;
+			this.current_list_item = item;
+		}
+
+		/** Int/uint-based callbacks (parser calls on_node_int). */
+		public override void on_node_int(FormatType type, bool is_start, int v1 = 0)
+		{
+			switch (type) {
 				case FormatType.BLOCKQUOTE:
 					if (!is_start) {
 						this.pop_block();
@@ -327,17 +349,11 @@ namespace Markdown.Document
 				case FormatType.TABLE_CELL:
 					this.on_block(is_start ? new Block(type) { align = v1 } : null);
 					return;
+				case FormatType.LIST_BLOCK:
+					this.on_list(is_start);
+					return;
 				default:
 					return;
-			}
-		}
-
-		/** Set task list state when BlockMap recognized - [ ] / - [x] at block level. */
-		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
-		{
-			if (is_start && task_checked >= 0 && this.current_list_item != null) {
-				this.current_list_item.is_task_item = true;
-				this.current_list_item.task_checked = (task_checked == 1);
 			}
 		}
 

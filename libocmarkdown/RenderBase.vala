@@ -178,11 +178,8 @@ namespace Markdown
 		public virtual void on_node_int(FormatType type, bool is_start, int v1 = 0)
 		{
 			switch (type) {
-				case FormatType.UNORDERED_LIST:
-					this.on_ul(is_start, (uint)v1);
-					return;
-				case FormatType.ORDERED_LIST:
-					this.on_ol(is_start, (uint)v1);
+				case FormatType.LIST_BLOCK:
+					this.on_list(is_start);
 					return;
 				case FormatType.BLOCKQUOTE:
 					this.on_quote(is_start, (uint)v1);
@@ -198,8 +195,8 @@ namespace Markdown
 			}
 		}
 
-		/** List item start/end; task_checked: -1 = N/A, 0 = unchecked, 1 = checked (parser calls directly). */
-		public virtual void on_li(bool is_start, uint indent = 0, int task_checked = -1) {}
+		/** List block start/end (one pair per list; parser uses do_block(LIST_BLOCK). No per-level signals. */
+		protected virtual void on_list(bool is_start) {}
 
 		// Protected virtual callbacks (dispatched from on_node; subclasses override as needed)
 		protected virtual void on_p(bool is_start) {}
@@ -228,7 +225,9 @@ namespace Markdown
 		protected virtual void on_table_cell(bool is_start, int align) {}
 		protected virtual void on_task_list(bool is_start, bool is_checked) {}
 
-		// Callbacks not in on_node/on_node_int pipeline (parser calls directly)
+		// Public callbacks not in on_node/on_node_int pipeline (parser/BlockMap call directly)
+		/** List item start/end. list_number: 0 = unordered, 1/2/3… = ordered. space_skip: spaces before marker. task_checked: -1 = N/A, 0 = unchecked, 1 = checked. */
+		public virtual void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1) {}
 		public virtual void on_a(bool is_start, string href, string title, bool is_reference) {}
 		public virtual void on_code(bool is_start, string lang, char fence_char) {}
 	}

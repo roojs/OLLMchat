@@ -165,35 +165,20 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_ul(bool is_start, uint indentation)
+		protected override void on_list(bool is_start)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <ul> (indentation=%u)\n", indentation);
+				stdout.printf("END: <list block>\n");
 				return;
 			}
-			
 			print_indent();
-			stdout.printf("START: <ul> (indentation=%u)\n", indentation);
+			stdout.printf("START: <list block>\n");
 			indent_level++;
 		}
-		
-		public override void on_ol(bool is_start, uint indentation)
-		{
-			if (!is_start) {
-				indent_level--;
-				print_indent();
-				stdout.printf("END: <ol> (indentation=%u)\n", indentation);
-				return;
-			}
-			
-			print_indent();
-			stdout.printf("START: <ol> (indentation=%u)\n", indentation);
-			indent_level++;
-		}
-		
-		public override void on_li(bool is_start, uint indent = 0, int task_checked = -1)
+
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
 			if (!is_start) {
 				indent_level--;
@@ -201,9 +186,8 @@ namespace Markdown
 				stdout.printf("END: <li>\n");
 				return;
 			}
-			
 			print_indent();
-			stdout.printf("START: <li>\n");
+			stdout.printf("START: <li> (list_number=%d, space_skip=%u)\n", list_number, space_skip);
 			indent_level++;
 		}
 		

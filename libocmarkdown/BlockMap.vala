@@ -348,16 +348,16 @@ namespace Markdown
 				this.parser.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
 				return true;
 			}
-			// End list when we see a non-list line (or no block)
-			if (
-					(this.parser.current_block == FormatType.ORDERED_LIST 
-					|| this.parser.current_block == FormatType.UNORDERED_LIST)
-				&& (
-					block_match == 0 || 
-					(block_match > 0 &&
-						 matched_block != FormatType.ORDERED_LIST &&
-						 matched_block != FormatType.UNORDERED_LIST))) {
-				this.parser.do_block(false, this.parser.current_block);
+			// End list when we see a non-list line (or no block). Do not end when next line is a list item (including task).
+			var in_list = (this.parser.current_block == FormatType.ORDERED_LIST
+					|| this.parser.current_block == FormatType.UNORDERED_LIST);
+			var next_line_is_list = (matched_block == FormatType.ORDERED_LIST
+					|| matched_block == FormatType.UNORDERED_LIST
+					|| matched_block == FormatType.TASK_LIST
+					|| matched_block == FormatType.TASK_LIST_DONE);
+			if (in_list && (block_match == 0 || (block_match > 0 && !next_line_is_list))) {
+				this.parser.renderer.on_li(false);
+				this.parser.do_block(false, FormatType.LIST_BLOCK);
 				this.parser.last_line_block = this.parser.current_block;
 				this.parser.current_block = FormatType.NONE;
 			}
@@ -424,32 +424,27 @@ namespace Markdown
 				case FormatType.TASK_LIST:
 				case FormatType.TASK_LIST_DONE:
 					var list_marker = chunk.substring(chunk_pos, byte_length);
-					// Task list markers are block-level unordered list items; use UNORDERED_LIST for list state
 					var is_task = (matched_block == FormatType.TASK_LIST 
-							|| matched_block == FormatType.TASK_LIST_DONE);
+						|| matched_block == FormatType.TASK_LIST_DONE);
 					var task_checked = is_task ? (matched_block == FormatType.TASK_LIST_DONE ? 1 : 0) : -1;
-					var list_type = (matched_block == FormatType.ORDERED_LIST)
-						 ? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
-					bool same_list = (this.parser.current_block == list_type);
-					if (same_list) {
-						// Same list type, new item: end previous LIST_ITEM, start new LIST_ITEM (with indent)
+					var list_number = (matched_block == FormatType.ORDERED_LIST)
+						? int.parse(list_marker.replace(".", "").strip()) : 0;
+
+					// If we're already in a list (either type), do not end or start list block — only item transition.
+					if (this.parser.current_block == FormatType.ORDERED_LIST
+						|| this.parser.current_block == FormatType.UNORDERED_LIST) {
 						this.parser.renderer.on_li(false);
-						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, false, 0);
-						this.parser.renderer.on_node_int(FormatType.LIST_ITEM, true, space_skip);
-						this.parser.renderer.on_li(true, space_skip, task_checked);
+						this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
+						this.parser.current_block = (matched_block == FormatType.ORDERED_LIST)
+							? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
 						this.parser.at_line_start = false;
 						chunk_pos = seq_pos;
 						return false;
 					}
-					if (this.parser.current_block == FormatType.ORDERED_LIST || this.parser.current_block == FormatType.UNORDERED_LIST) {
-						this.parser.do_block(false, this.parser.current_block);
-						this.parser.last_line_block = this.parser.current_block;
-						this.parser.current_block = FormatType.NONE;
-					}
-					this.parser.current_block = list_type;
-					this.parser.do_block(true, list_type, list_marker, "", space_skip);
-					this.parser.renderer.on_node_int(FormatType.LIST_ITEM, true, space_skip);
-					this.parser.renderer.on_li(true, space_skip, task_checked);
+					this.parser.current_block = (matched_block == FormatType.ORDERED_LIST)
+						? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
+					this.parser.do_block(true, FormatType.LIST_BLOCK);
+					this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
 					this.parser.at_line_start = false;
 					chunk_pos = seq_pos;
 					return false;
