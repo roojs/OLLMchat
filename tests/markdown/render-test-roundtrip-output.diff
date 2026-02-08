@@ -1,0 +1,42 @@
+--- render-test-roundtrip-output.md
++++ render-test-roundtrip-output.md
+@@ -1,5 +1,4 @@
+ The two tables are almost the same, but **pressrelease_notify_archive** is missing a few columns (and a few indexes) that exist in **pressrelease_notify**.  
+-
+ The quickest way to bring the archive table up‑to‑date is to issue a series of `ALTER TABLE … ADD COLUMN` (and `ADD KEY`) statements that match the definition in the main table.
+ 
+ Below is a ready‑to‑run script that adds every column that is present in **pressrelease_notify** but absent in **pressrelease_notify_archive**, and then adds the indexes that are also missing.
+@@ -58,15 +57,15 @@
+ ### What the script does
+ 
+ | Step | What is added | Why it matters |
+-| :--- | :--- | :--- |
++|------|---------------|----------------|
+ | **Columns** | `field`, `evtype`, `domain_id`, `ipv6_id`, `email_id` | These columns exist in `pressrelease_notify` but are absent from the archive table. |
+ | **Indexes** | All keys that are present in the live table but missing from the archive (`is_open_idx`, `lookup_c`, `lookup_h`, `lookup_g`, `lookup_x`, `lookup_j`, `lookup_k`, `ix_match`, `lookup_to_email`, `lookup_reject`, `lookup_em`, `lookup_q`) | Indexes dramatically affect query performance and are part of the “identical schema” requirement. |
+ | **Verification** | `SHOW CREATE TABLE` for both tables | Lets you double‑check that the definitions now match. |
+ 
+ ### Optional tweaks
+ 
+-- If you want the archive table **exactly** like the live one (including column order), you can add `AFTER <column>` clauses to place each column where it belongs.
+-- If the live table’s columns `field`, `evtype`, and `domain_id` are **nullable** (the `CREATE TABLE` you posted shows them as nullable), you may want to `MODIFY` those columns after adding them to match the nullability:
++* If you want the archive table **exactly** like the live one (including column order), you can add `AFTER <column>` clauses to place each column where it belongs.
++* If the live table’s columns `field`, `evtype`, and `domain_id` are **nullable** (the `CREATE TABLE` you posted shows them as nullable), you may want to `MODIFY` those columns after adding them to match the nullability:
+ 
+ ```sql
+ ALTER TABLE pressrelease_notify_archive
+@@ -78,13 +77,12 @@
+ ### Running it safely
+ 
+ 1. **Backup** the archive table (or the whole DB) first.  
+-
+    ```sql
+    CREATE TABLE pressrelease_notify_archive_backup LIKE pressrelease_notify_archive;
+    INSERT INTO pressrelease_notify_archive_backup SELECT * FROM pressrelease_notify_archive;
+    ```
+ 
+-1. **Wrap in a transaction** (if your storage engine supports it) so you can roll back on error:
++2. **Wrap in a transaction** (if your storage engine supports it) so you can roll back on error:
+ 
+ ```sql
+ START TRANSACTION;

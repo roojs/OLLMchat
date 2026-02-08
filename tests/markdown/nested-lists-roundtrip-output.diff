@@ -1,0 +1,13 @@
+--- nested-lists-roundtrip-output.md
++++ nested-lists-roundtrip-output.md
+@@ -11,10 +11,8 @@
+ 2. Outer ordered two
+ 
+ - Mixed: unordered outer
+-
+   1. Ordered inner first
+   2. Ordered inner second
+-
+ - Back to unordered
+ 
+ ## Four levels (unordered)

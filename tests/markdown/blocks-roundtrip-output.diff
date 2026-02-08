@@ -1,0 +1,9 @@
+--- blocks-roundtrip-output.md
++++ blocks-roundtrip-output.md
+@@ -14,7 +14,6 @@
+ > Blockquote line two.
+ 
+ ---
+-
+ Horizontal rule above.
+ 
