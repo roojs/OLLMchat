@@ -43,8 +43,9 @@ namespace Markdown
 	{
 		private StringBuilder pango_markup;
 		private Gee.ArrayList<string> open_tags;
-		private Gee.ArrayList<int> list_stack; // Stack of list numbers: 0 = ul, >0 = ol (number is the counter)
-		
+		/** Indent at each nesting level (space_skip). Used only to compute how many tabs for this line. */
+		private Gee.ArrayList<int> indent_levels;
+
 		/**
 		 * Creates a new PangoRender instance.
 		 */
@@ -53,7 +54,7 @@ namespace Markdown
 			base();
 			this.pango_markup = new StringBuilder();
 			this.open_tags = new Gee.ArrayList<string>();
-			this.list_stack = new Gee.ArrayList<int>();
+			this.indent_levels = new Gee.ArrayList<int>();
 		}
 		
 		/**
@@ -79,7 +80,7 @@ namespace Markdown
 		{
 			this.pango_markup = new StringBuilder();
 			this.open_tags.clear();
-			this.list_stack.clear();
+			this.indent_levels.clear();
 			
 			// Use parser to process HTML tags
 			this.start();
@@ -345,114 +346,52 @@ namespace Markdown
 		 * 
 		 * @param level The indentation level (1-based) - resets levels above this
 		 */
-		private void reset_lists_above_level(uint level)
+			/** Pop indent levels deeper than space_skip so we only keep levels we're still inside. */
+		private void close_lists_to_level(uint space_skip)
 		{
-			// Convert to 0-based index
-			int target_index = (int)level - 1;
-			// Reset all levels above this one (indices < target_index)
-			for (int i = 0; i < target_index && i < this.list_stack.size; i++) {
-				this.list_stack.set(i, 0);
+			while (this.indent_levels.size > 0 && 
+				this.indent_levels.get(this.indent_levels.size - 1) > (int)space_skip) {
+				this.indent_levels.remove_at(this.indent_levels.size - 1);
 			}
 		}
-		
-		/**
-		 * Closes lists that are deeper than the specified indentation level.
-		 * 
-		 * @param level The indentation level - only closes lists deeper than this
-		 */
-		private void close_lists_to_level(uint level)
+
+		/** Find or add space_skip in indent_levels; return 0-based depth index (number of tabs = 1 + this). After close_lists_to_level we only have a nesting prefix, so new level is either present or deeper than last — add at end only. */
+		private int ensure_indent_level(int space_skip)
 		{
-			int min_index = (int)level - 1; // Convert to 0-based index
-			// Only close lists that are deeper (stack size > min_index + 1)
-			while (this.list_stack.size > min_index + 1) {
-				this.list_stack.remove_at(this.list_stack.size - 1);
+			var idx = this.indent_levels.index_of(space_skip);
+			if (idx >= 0) {
+				return idx;
+			}
+			this.indent_levels.add(space_skip);
+			return this.indent_levels.size - 1;
+		}
+
+		public override void on_list(bool is_start)
+		{
+			if (!is_start) {
+				this.pango_markup.append("\n");
 			}
 		}
-		
-		public override void on_ul(bool is_start, uint indentation)
+
+		public override void on_li(
+			bool is_start, 
+			int list_number = 0, 
+			uint space_skip = 0, 
+			int task_checked = -1)
 		{
 			if (!is_start) {
 				this.pango_markup.append("\n");
 				return;
 			}
-			
-			// Close lists that are deeper than this indentation
-			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
-				this.list_stack.add(0);
-			}
-			
-			// Set this level to 0 (unordered list)
-			this.list_stack.set(target_index, 0);
-			
-			// Reset all levels above this one
-			this.reset_lists_above_level(indentation);
-		}
-		
-		public override void on_ol(bool is_start, uint indentation)
-		{
-			if (!is_start) {
-				this.pango_markup.append("\n");
-				return;
-			}
-			
-			// Close lists that are deeper than this indentation
-			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
-				this.list_stack.add(0);
-			}
-			
-			// If this is an ordered list, increment the counter
-			this.list_stack.set(target_index, this.list_stack.get(target_index) + 1);
-			
-			// Reset all levels above this one
-			this.reset_lists_above_level(indentation);
-		}
-		
-		public override void on_li(bool is_start)
-		{
-			if (!is_start) {
-				this.pango_markup.append("\n");
-				return;
-			}
-			
-			// Get the current indentation level (based on list_stack size)
-			uint current_level = (uint)this.list_stack.size;
-			if (current_level == 0) {
-				// No list context - just add content
-				return;
-			}
-			
-			// Get the list type and number for the current level
-			int list_number = this.list_stack.get((int)(current_level - 1));
-			
-			// Add tabs for indentation (1 + indent size)
-			// indent size is current_level - 1 (since level 1 has 0 indent)
-			uint indent_tabs = 1 + (current_level - 1);
-			for (uint i = 0; i < indent_tabs; i++) {
-				this.pango_markup.append("\t");
-			}
-			
-			// Add marker based on list type
+			this.close_lists_to_level(space_skip);
+			int depth_index = this.ensure_indent_level((int)space_skip);
+			uint indent_tabs = 1 + (uint)depth_index;
+			this.pango_markup.append(string.nfill((int)indent_tabs, '\t'));
 			if (list_number == 0) {
-				// Unordered list - use bullet point
 				this.pango_markup.append("•");
 			} else {
-				// Ordered list - use number + "."
 				this.pango_markup.append(list_number.to_string() + ".");
 			}
-			
-			// Add tab after marker before content
 			this.pango_markup.append("\t");
 		}
 		
@@ -468,7 +407,7 @@ namespace Markdown
 			this.pango_markup.append(marker);
 		}
 		
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			// Inline code - handled by on_code_span
 			// This is for compatibility
@@ -543,7 +482,7 @@ namespace Markdown
 			}
 		}
 		
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			// Image - use placeholder text
 			var escaped_src = GLib.Markup.escape_text(src, -1);

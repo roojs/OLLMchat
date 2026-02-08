@@ -36,14 +36,14 @@ namespace Markdown
 			mp = new Gee.HashMap<string, FormatType>();
 
 			// Asterisk sequences (valid opener at start of line)
-			mp["*"] = FormatType.ITALIC;
-			mp["**"] = FormatType.BOLD;
-			mp["***"] = FormatType.BOLD_ITALIC;
+			mp["*"] = FormatType.ITALIC_ASTERISK;
+			mp["**"] = FormatType.BOLD_ASTERISK;
+			mp["***"] = FormatType.BOLD_ITALIC_ASTERISK;
 
 			// Underscore sequences (valid opener at start of line)
-			mp["_"] = FormatType.ITALIC;
-			mp["__"] = FormatType.BOLD;
-			mp["___"] = FormatType.BOLD_ITALIC;
+			mp["_"] = FormatType.ITALIC_UNDERSCORE;
+			mp["__"] = FormatType.BOLD_UNDERSCORE;
+			mp["___"] = FormatType.BOLD_ITALIC_UNDERSCORE;
 		}
 
 		public StartMap(Parser parser)

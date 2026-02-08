@@ -60,6 +60,7 @@ executables_info = [
   ['oc-test-bubble', 'examples/oc-test-bubble'],
   ['oc-test-gtkmd', 'examples/oc-test-gtkmd'],
   ['oc-markdown-test', 'examples/oc-markdown-test'],
+  ['oc-markdown-doc-test', 'examples/oc-markdown-doc-test'],
   ['oc-html2md', 'examples/oc-html2md'],
   ['oc-md2html', 'examples/oc-md2html'],
   ['oc-diff', 'examples/oc-diff'],

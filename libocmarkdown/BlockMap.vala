@@ -32,6 +32,8 @@ namespace Markdown
 		/** The whole matched string that opened the fenced block (e.g. "```" or "   ```"). Set by peek() when matching fenced code. */
 		public string fence_open { get; private set; }
 
+		public int blockquote_depth { get; set; default = 0; }
+
 		private static void init()
 		{
 			if (mp != null) {
@@ -55,9 +57,20 @@ namespace Markdown
 			mp["__"] = FormatType.INVALID;
 			mp["___"] = FormatType.HORIZONTAL_RULE;
 
-			// Unordered Lists: - item, * item, + item
+			// Unordered Lists: - item, * item, + item; task list: - [ ] , - [x] , - [X]
 			mp["-"] = FormatType.INVALID;
 			mp["- "] = FormatType.UNORDERED_LIST;
+			// INVALID prefixes so progressive match reaches "- [ ] " / "- [x] " / "- [X] "
+			mp["- ["] = FormatType.INVALID;
+			mp["- [ "] = FormatType.INVALID;
+			mp["- [ ]"] = FormatType.INVALID;
+			mp["- [ ] "] = FormatType.TASK_LIST;
+			mp["- [x"] = FormatType.INVALID;
+			mp["- [x]"] = FormatType.INVALID;
+			mp["- [x] "] = FormatType.TASK_LIST_DONE;
+			mp["- [X"] = FormatType.INVALID;
+			mp["- [X]"] = FormatType.INVALID;
+			mp["- [X] "] = FormatType.TASK_LIST_DONE;
 			mp["*"] = FormatType.INVALID;
 			mp["* "] = FormatType.UNORDERED_LIST;
 			mp["+"] = FormatType.INVALID;
@@ -96,8 +109,8 @@ namespace Markdown
 			mp["~~"] = FormatType.INVALID;
 			mp["~~~"] = FormatType.FENCED_CODE_TILD;
 
-			// Blockquotes: > quote text (up to 6 levels deep)
-			mp[">"] = FormatType.INVALID;
+			// Blockquotes: > quote text (up to 6 levels deep). ">" alone (no space) = empty blockquote line.
+			mp[">"] = FormatType.BLOCKQUOTE;
 			mp["> "] = FormatType.BLOCKQUOTE;
 			mp["> >"] = FormatType.INVALID;
 			mp["> > "] = FormatType.BLOCKQUOTE;
@@ -132,11 +145,13 @@ namespace Markdown
 			FormatType last_line_block,
 			out string lang_out,
 			out FormatType matched_block,
-			out int byte_length
+			out int byte_length,
+			out int space_skip
 		) {
 			lang_out = "";
 			matched_block = FormatType.NONE;
 			byte_length = 0;
+			space_skip = 0;
 			this.fence_open = "";
 
 			// Line at chunk_pos (to next \n or end); used for pre-eat and space_skip
@@ -153,7 +168,7 @@ namespace Markdown
 			}
 
 			var stripped = line.strip();
-			var space_skip = (stripped.length > 0) ? line.index_of(stripped) : 0;
+			space_skip = (stripped.length > 0) ? line.index_of(stripped) : 0;
 
 			int result = base.eat(
 				chunk,
@@ -186,6 +201,24 @@ namespace Markdown
 
 			// Match: byte_length from eat is relative to (chunk_pos + space_skip); revert and add space_skip so chunk_pos is unchanged
 			byte_length = space_skip + byte_length;
+
+			// ATX heading: require non-empty stripped content starting with alphanumeric; include leading space in byte_length
+			if (matched_block >= FormatType.HEADING_1 && matched_block <= FormatType.HEADING_6) {
+				var rest_start = chunk_pos + byte_length;
+				var rest_len = (line_end != -1) ? line_end - rest_start : (int)chunk.length - rest_start;
+				var rest = rest_len > 0 ? chunk.substring(rest_start, rest_len) : "";
+				var heading_stripped = rest.strip();
+				if (heading_stripped.length == 0 || !heading_stripped.get_char(0).isalnum()) {
+					if (is_end_of_chunks) {
+						return 0;
+					}
+					return -1;
+				}
+				var lead_skip = rest.index_of(heading_stripped);
+				if (lead_skip > 0) {
+					byte_length += lead_skip;
+				}
+			}
 
 			// Fenced code: only 0 or 3 spaces allowed before fence
 			if (
@@ -305,6 +338,7 @@ namespace Markdown
 			string block_lang,
 			FormatType matched_block,
 			int byte_length,
+			int space_skip,
 			ref int chunk_pos,
 			string chunk,
 			int saved_chunk_pos,
@@ -313,6 +347,19 @@ namespace Markdown
 			if (block_match == -1) {
 				this.parser.leftover_chunk = chunk.substring(saved_chunk_pos, chunk.length - saved_chunk_pos);
 				return true;
+			}
+			// End list when we see a non-list line (or no block). Do not end when next line is a list item (including task).
+			var in_list = (this.parser.current_block == FormatType.ORDERED_LIST
+					|| this.parser.current_block == FormatType.UNORDERED_LIST);
+			var next_line_is_list = (matched_block == FormatType.ORDERED_LIST
+					|| matched_block == FormatType.UNORDERED_LIST
+					|| matched_block == FormatType.TASK_LIST
+					|| matched_block == FormatType.TASK_LIST_DONE);
+			if (in_list && (block_match == 0 || (block_match > 0 && !next_line_is_list))) {
+				this.parser.renderer.on_li(false);
+				this.parser.do_block(false, FormatType.LIST_BLOCK);
+				this.parser.last_line_block = this.parser.current_block;
+				this.parser.current_block = FormatType.NONE;
 			}
 			if (block_match == 0) {
 				// No block detected - start a paragraph (caller sets at_line_start when falling through)
@@ -355,7 +402,8 @@ namespace Markdown
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
 					this.parser.current_block = matched_block;
-					this.parser.do_block(true, matched_block, block_lang);
+					var fence_indent = this.fence_open.length > 3 ? "   " : "";
+					this.parser.do_block(true, matched_block, block_lang, fence_indent);
 					this.parser.at_line_start = true;
 					chunk_pos = seq_pos;
 					return false;
@@ -373,9 +421,30 @@ namespace Markdown
 
 				case FormatType.ORDERED_LIST:
 				case FormatType.UNORDERED_LIST:
-					this.parser.current_block = matched_block;
+				case FormatType.TASK_LIST:
+				case FormatType.TASK_LIST_DONE:
 					var list_marker = chunk.substring(chunk_pos, byte_length);
-					this.parser.do_block(true, matched_block, list_marker);
+					var is_task = (matched_block == FormatType.TASK_LIST 
+						|| matched_block == FormatType.TASK_LIST_DONE);
+					var task_checked = is_task ? (matched_block == FormatType.TASK_LIST_DONE ? 1 : 0) : -1;
+					var list_number = (matched_block == FormatType.ORDERED_LIST)
+						? int.parse(list_marker.replace(".", "").strip()) : 0;
+
+					// If we're already in a list (either type), do not end or start list block — only item transition.
+					if (this.parser.current_block == FormatType.ORDERED_LIST
+						|| this.parser.current_block == FormatType.UNORDERED_LIST) {
+						this.parser.renderer.on_li(false);
+						this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
+						this.parser.current_block = (matched_block == FormatType.ORDERED_LIST)
+							? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
+						this.parser.at_line_start = false;
+						chunk_pos = seq_pos;
+						return false;
+					}
+					this.parser.current_block = (matched_block == FormatType.ORDERED_LIST)
+						? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
+					this.parser.do_block(true, FormatType.LIST_BLOCK);
+					this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
 					this.parser.at_line_start = false;
 					chunk_pos = seq_pos;
 					return false;
@@ -480,12 +549,12 @@ namespace Markdown
 		{
 			var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 			if (!remaining.contains("\n")) {
-				this.parser.renderer.on_code_text(remaining);
+				this.parser.renderer.on_node(FormatType.CODE_TEXT, false, remaining);
 				return true;
 			}
 			var newline_pos = chunk.index_of_char('\n', chunk_pos);
 			var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-			this.parser.renderer.on_code_text(code_text);
+			this.parser.renderer.on_node(FormatType.CODE_TEXT, false, code_text);
 			chunk_pos = newline_pos;
 			return false;
 		}
@@ -507,12 +576,12 @@ namespace Markdown
 			if (fence_result == 0) {
 				var remaining = chunk.substring(chunk_pos, chunk.length - chunk_pos);
 				if (!remaining.contains("\n")) {
-					this.parser.renderer.on_code_text(remaining);
+					this.parser.renderer.on_node(FormatType.CODE_TEXT, false, remaining);
 					return true;
 				}
 				var newline_pos = chunk.index_of_char('\n', chunk_pos);
 				var code_text = chunk.substring(chunk_pos, newline_pos - chunk_pos);
-				this.parser.renderer.on_code_text(code_text);
+				this.parser.renderer.on_node(FormatType.CODE_TEXT, false, code_text);
 				chunk_pos = newline_pos;
 				this.parser.at_line_start = false;
 				return false;

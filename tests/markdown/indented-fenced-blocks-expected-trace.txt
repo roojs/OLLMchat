@@ -16,7 +16,7 @@ Paragraph before list.
 
 === CALLBACK TRACE ===
 START: <h1>
-  TEXT: " Indented"
+  TEXT: "Indented"
   TEXT: " fenced"
   TEXT: " code"
   TEXT: " blocks"
@@ -34,19 +34,17 @@ TEXT: "
 "
 TEXT: "
 "
-START: <ul> (indentation=1)
-  TEXT: "List"
-  TEXT: " item"
-  TEXT: " with"
-  TEXT: " an"
-  TEXT: " indented"
-  TEXT: " fenced"
-  TEXT: " block:"
-END: <ul> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
+    TEXT: "List"
+    TEXT: " item"
+    TEXT: " with"
+    TEXT: " an"
+    TEXT: " indented"
+    TEXT: " fenced"
+    TEXT: " block:"
+  END: <li>
+END: <list block>
 START: <code_block> (lang=vala)
   CODE_TEXT: "void main() {"
   CODE_TEXT: "
@@ -60,18 +58,16 @@ START: <code_block> (lang=vala)
 END: <code_block> (lang=)
 TEXT: "
 "
-START: <ul> (indentation=1)
-  TEXT: "Another"
-  TEXT: " item"
-  TEXT: " with"
-  TEXT: " indented"
-  TEXT: " fenced"
-  TEXT: " block:"
-END: <ul> (indentation=0)
-TEXT: "
-"
-TEXT: "
-"
+START: <list block>
+  START: <li> (list_number=0, space_skip=0)
+    TEXT: "Another"
+    TEXT: " item"
+    TEXT: " with"
+    TEXT: " indented"
+    TEXT: " fenced"
+    TEXT: " block:"
+  END: <li>
+END: <list block>
 START: <code_block> (lang=text)
   CODE_TEXT: "plain text content"
   CODE_TEXT: "

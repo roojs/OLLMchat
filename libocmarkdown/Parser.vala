@@ -53,6 +53,13 @@ namespace Markdown
         ITALIC,
         BOLD,
         BOLD_ITALIC,
+        /** Delimiter-preserving (document round-trip); base renderers map to ITALIC/BOLD. */
+        ITALIC_ASTERISK,
+        ITALIC_UNDERSCORE,
+        BOLD_ASTERISK,
+        BOLD_UNDERSCORE,
+        BOLD_ITALIC_ASTERISK,
+        BOLD_ITALIC_UNDERSCORE,
         CODE,
         STRIKETHROUGH,
 		HIGHLIGHT,
@@ -80,7 +87,25 @@ namespace Markdown
 		FENCED_CODE_QUOTE,
 		FENCED_CODE_TILD,
 		BLOCKQUOTE,
-		TABLE
+		TABLE,
+		TABLE_ROW,
+		TABLE_HCELL,
+		TABLE_CELL,
+		LIST_ITEM,
+		LIST_BLOCK,
+		TEXT,
+		IMAGE,
+		BR,
+		U,
+		OTHER,
+		CODE_TEXT,
+		SOFTBR,
+		ENTITY,
+		/** For document model node_type discriminator (JSON polymorphic deserialization). */
+		DOCUMENT,
+		BLOCK,
+		LIST,
+		FORMAT
     }
 	
 	
@@ -249,6 +274,10 @@ namespace Markdown
 					continue;
 				}
 				if (c == '\\') {
+					if (this.at_line_start && this.current_block == FormatType.NONE) {
+						this.current_block = FormatType.PARAGRAPH;
+						this.do_block(true, FormatType.PARAGRAPH);
+					}
 					escape_next = true;
 					chunk_pos += c.to_string().length;
 					this.at_line_start = false;
@@ -268,7 +297,7 @@ namespace Markdown
 						this.at_line_start = false;
 						continue;
 					}
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
 					this.state_stack.remove_at(this.state_stack.size - 1);
 					this.do_format(false, this.is_literal.length == 1 ? FormatType.LITERAL : FormatType.CODE);
@@ -283,6 +312,7 @@ namespace Markdown
 					string block_lang = "";
 					FormatType matched_block = FormatType.NONE;
 					int byte_length = 0;
+					int space_skip = 0;
 					var block_match = this.blockmap.peek(
 						chunk,
 						chunk_pos,
@@ -290,13 +320,15 @@ namespace Markdown
 						this.last_line_block,
 						out block_lang,
 						out matched_block,
-						out byte_length
+						out byte_length,
+						out space_skip
 					);
 					if (this.blockmap.handle_block_result(
 						block_match,
 						block_lang,
 						matched_block,
 						byte_length,
+						space_skip,
 						ref chunk_pos,
 						chunk,
 						saved_chunk_pos,
@@ -344,7 +376,7 @@ namespace Markdown
 				// Left (opening) delimiter: must be preceded by whitespace; peek + handle
 				// If str is empty and current char is space, flush str and leave space in chunk for left check
 				if (str.length != 0 && c.isspace()) {
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
 				}
 				FormatType left_matched = FormatType.NONE;
@@ -437,7 +469,26 @@ namespace Markdown
 
 			// Flush any remaining text
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
-			this.renderer.on_text(str);
+			this.renderer.on_node(FormatType.TEXT, false, str);
+			// Only at end of chunks (no more data will ever come) do we close the open block.
+			// At end of chunk only, more add() may follow — we must not close or we break the next chunk.
+			if (is_end_of_chunks && this.current_block != FormatType.NONE) {
+				// We only track "in a list (either kind)"; renderer was opened with LIST_BLOCK. Close it that way.
+				if (this.current_block == FormatType.ORDERED_LIST
+					 || this.current_block == FormatType.UNORDERED_LIST) {
+					this.renderer.on_li(false);
+					this.do_block(false, FormatType.LIST_BLOCK);
+				} else {
+					this.do_block(false, this.current_block);
+				}
+				this.last_line_block = this.current_block;
+				this.current_block = FormatType.NONE;
+			}
+			if (is_end_of_chunks && this.leftover_chunk != "") {
+				var remainder = this.leftover_chunk;
+				this.leftover_chunk = "";
+				this.add(remainder, false);
+			}
 		}
 	
 
@@ -479,30 +530,27 @@ namespace Markdown
 		
 		/**
 		 * Calls the appropriate renderer method based on format type.
-		 * For BOLD_ITALIC, handles both bold and italic states correctly.
-		 * 
+		 * Delimiter-preserving types (ITALIC_ASTERISK, etc.) pass through to the renderer.
+		 *
 		 * @param is_start True to start the format, false to end it
 		 * @param format_type The format type
 		 */
 		internal void do_format(bool is_start, FormatType format_type)
 		{
 			switch (format_type) {
-				case FormatType.BOLD_ITALIC:
-					if (is_start) {
-						// Push both bold and italic states
-						this.renderer.on_strong(true);
-						this.renderer.on_em(true);
-					} else {
-						// BOLD_ITALIC opened two states, so close both in reverse order
-						this.renderer.on_em(false); // Close italic
-						this.renderer.on_strong(false); // Close bold
-					}
+				case FormatType.ITALIC_ASTERISK:
+				case FormatType.ITALIC_UNDERSCORE:
+				case FormatType.BOLD_ASTERISK:
+				case FormatType.BOLD_UNDERSCORE:
+				case FormatType.BOLD_ITALIC_ASTERISK:
+				case FormatType.BOLD_ITALIC_UNDERSCORE:
+					this.renderer.on_node(format_type, is_start);
 					break;
 				case FormatType.ITALIC:
-					this.renderer.on_em(is_start);
+					this.renderer.on_node(FormatType.ITALIC, is_start);
 					break;
 				case FormatType.BOLD:
-					this.renderer.on_strong(is_start);
+					this.renderer.on_node(FormatType.BOLD, is_start);
 					break;
 				case FormatType.CODE:
 					if (is_start) {
@@ -510,7 +558,7 @@ namespace Markdown
 					} else {
 						this.is_literal = "";
 					}
-					this.renderer.on_code_span(is_start);
+					this.renderer.on_node(FormatType.CODE, is_start);
 					break;
 				case FormatType.LITERAL:
 					if (is_start) {
@@ -518,23 +566,21 @@ namespace Markdown
 					} else {
 						this.is_literal = "";
 					}
-					this.renderer.on_code_span(is_start);
+					this.renderer.on_node(FormatType.CODE, is_start);
 					break;
 				case FormatType.STRIKETHROUGH:
-					this.renderer.on_del(is_start);
+					this.renderer.on_node(FormatType.STRIKETHROUGH, is_start);
 					break;
 				case FormatType.TASK_LIST:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
-						//GLib.debug("Parser.do_format: TASK_LIST called");
-						this.renderer.on_task_list(true, false);
+						this.renderer.on_node(FormatType.TASK_LIST, true);
 					}
 					break;
 				case FormatType.TASK_LIST_DONE:
 					// Task lists only send start (end is handled by list item)
 					if (is_start) {
-						//GLib.debug("Parser.do_format: TASK_LIST_DONE called");
-						this.renderer.on_task_list(true, true);
+						this.renderer.on_node(FormatType.TASK_LIST_DONE, true);
 					}
 					break;
 				case FormatType.LINK:
@@ -542,9 +588,9 @@ namespace Markdown
 					break;
 				case FormatType.HTML:
 					if (is_start) {
-						// HTML needs special handling - for now use on_other
+						// HTML needs special handling - for now use OTHER
 						// TODO: Parse HTML tag and attributes
-						this.renderer.on_other(true, "html");
+						this.renderer.on_node(FormatType.OTHER, true, "html");
 					}
 					// HTML closing is handled in add_html()
 					break;
@@ -566,7 +612,7 @@ namespace Markdown
 		{
 			if (this.current_block == FormatType.FENCED_CODE_QUOTE
 				|| this.current_block == FormatType.FENCED_CODE_TILD) {
-				this.renderer.on_code_text("\n");
+				this.renderer.on_node(FormatType.CODE_TEXT, false, "\n");
 				this.at_line_start = true;
 				chunk_pos += 1;
 				return;
@@ -580,18 +626,36 @@ namespace Markdown
 			}
 			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
 			if (str != "") {
-				this.renderer.on_text(str);
+				this.renderer.on_node(FormatType.TEXT, false, str);
 				str = "";
 			}
 			this.state_stack.clear();
 
-			if (this.current_block != FormatType.NONE) {
+			// Double newline (blank line): at_line_start is true, so this newline ends the current line which was blank. End list block so next list starts fresh; return so we don't emit \n again (renderer already added it in on_list(false)).
+			if ((this.current_block == FormatType.ORDERED_LIST 
+				|| this.current_block == FormatType.UNORDERED_LIST) && this.at_line_start) {
+				this.renderer.on_li(false);
+				this.do_block(false, FormatType.LIST_BLOCK);
+				this.last_line_block = this.current_block;
+				this.current_block = FormatType.NONE;
+				this.at_line_start = true;
+				chunk_pos += 1;
+				return;
+			}
+			// Close current block on newline iff we're in a block and it's not a list (lists stay open until blank line or non-list line)
+			if (this.current_block != FormatType.NONE
+				&& this.current_block != FormatType.ORDERED_LIST
+				&& this.current_block != FormatType.UNORDERED_LIST) {
 				this.do_block(false, this.current_block);
 				this.last_line_block = this.current_block;
 				this.current_block = FormatType.NONE;
 				this.is_literal = "";
 			}
-			this.renderer.on_text("\n");
+			// Don't emit newline as TEXT when in a list (list items would get trailing \n and round-trip gets extra blank lines)
+			if (this.current_block != FormatType.ORDERED_LIST 
+				&& this.current_block != FormatType.UNORDERED_LIST) {
+				this.renderer.on_node(FormatType.TEXT, false, "\n");
+			}
 			this.at_line_start = true;
 			chunk_pos += 1;
 		}
@@ -609,9 +673,9 @@ namespace Markdown
 			while (pos < text.length) {
 				// Escape: \ + next char → emit next as literal, advance by 1 + next char byte length
 				if (text.get_char(pos) == '\\' && pos + 1 < text.length) {
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
-					this.renderer.on_text(text.get_char(pos + 1).to_string());
+					this.renderer.on_node(FormatType.TEXT, false, text.get_char(pos + 1).to_string());
 					pos += 1 + text.get_char(pos + 1).to_string().length;
 					this.at_line_start = false;
 					continue;
@@ -630,7 +694,7 @@ namespace Markdown
 						this.at_line_start = false;
 						continue;
 					}
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
 					this.state_stack.remove_at(this.state_stack.size - 1);
 					this.do_format(false, this.is_literal.length == 1 ? FormatType.LITERAL : FormatType.CODE);
@@ -646,7 +710,7 @@ namespace Markdown
 					int start_byte_length = 0;
 					var start_result = this.startmap.peek(text, pos, true, out start_matched, out start_byte_length);
 					if (start_result > 0) {
-						this.renderer.on_text(str);
+						this.renderer.on_node(FormatType.TEXT, false, str);
 						str = "";
 						this.startmap.handle_start_result(start_result, start_matched, start_byte_length, ref pos, text, saved_pos, true);
 						continue;
@@ -655,7 +719,7 @@ namespace Markdown
 
 				// Left (opening) delimiter: must be preceded by whitespace
 				if (str.length != 0 && c.isspace()) {
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
 				}
 				FormatType left_matched = FormatType.NONE;
@@ -679,9 +743,9 @@ namespace Markdown
 				var byte_length = 0;
 				var match_len = this.formatmap.eat(text, pos, true, out matched_format, out byte_length);
 				if (match_len == -1) {
-					this.renderer.on_text(str);
+					this.renderer.on_node(FormatType.TEXT, false, str);
 					str = "";
-					this.renderer.on_text(c.to_string());
+					this.renderer.on_node(FormatType.TEXT, false, c.to_string());
 					pos += c.to_string().length;
 					this.at_line_start = false;
 					continue;
@@ -692,20 +756,20 @@ namespace Markdown
 					this.at_line_start = false;
 					continue;
 				}
-				this.renderer.on_text(str);
+				this.renderer.on_node(FormatType.TEXT, false, str);
 				str = "";
 				if (matched_format == FormatType.LINK) {
 					// Inline context (e.g. table cell): try full link; if no match, emit 3 chars as literal.
 					var seq_pos = pos + byte_length;
 					var link_result = this.formatmap.eat_link(text, pos, seq_pos, true);
 					if (link_result == -1) {
-						this.renderer.on_text(c.to_string());
+						this.renderer.on_node(FormatType.TEXT, false, c.to_string());
 						pos += c.to_string().length;
 						this.at_line_start = false;
 						continue;
 					}
 					if (link_result == 0) {
-						this.renderer.on_text(text.substring(pos, byte_length));
+						this.renderer.on_node(FormatType.TEXT, false, text.substring(pos, byte_length));
 						pos += byte_length;
 						this.at_line_start = false;
 						continue;
@@ -731,7 +795,7 @@ namespace Markdown
 			}
 			this.state_stack.clear();
 			if (str != "") {
-				this.renderer.on_text(str);
+				this.renderer.on_node(FormatType.TEXT, false, str);
 			}
 		}
 
@@ -741,57 +805,58 @@ namespace Markdown
 		 * @param is_start True to start the block, false to end it
 		 * @param block_type The block type
 		 * @param lang Language for fenced code blocks (only used when is_start is true)
+		 * @param fence_indent Leading indent for fenced code (e.g. "   "); only used when starting FENCED_CODE_QUOTE/TILD
 		 */
-		public void do_block(bool is_start, FormatType block_type, string lang = "")
+		public void do_block(
+			bool is_start,
+			FormatType block_type,
+			string lang = "", 
+			string fence_indent = "", 
+			int list_indent = 0)
 		{
 			var sl = lang.strip().length;
 
 			switch (block_type) {
 				case FormatType.HEADING_1:
-					this.renderer.on_h(is_start, 1);
+					this.renderer.on_node(FormatType.HEADING_1, is_start);
 					break;
 				case FormatType.HEADING_2:
-					this.renderer.on_h(is_start, 2);
+					this.renderer.on_node(FormatType.HEADING_2, is_start);
 					break;
 				case FormatType.HEADING_3:
-					this.renderer.on_h(is_start, 3);
+					this.renderer.on_node(FormatType.HEADING_3, is_start);
 					break;
 				case FormatType.HEADING_4:
-					this.renderer.on_h(is_start, 4);
+					this.renderer.on_node(FormatType.HEADING_4, is_start);
 					break;
 				case FormatType.HEADING_5:
-					this.renderer.on_h(is_start, 5);
+					this.renderer.on_node(FormatType.HEADING_5, is_start);
 					break;
 				case FormatType.HEADING_6:
-					this.renderer.on_h(is_start, 6);
+					this.renderer.on_node(FormatType.HEADING_6, is_start);
 					break;
 				case FormatType.PARAGRAPH:
-					this.renderer.on_p(is_start);
+					this.renderer.on_node(FormatType.PARAGRAPH, is_start);
 					break;
 
-				// we are going to send 1 as to lowest level of indentation
-				// to make it a bit easier for the users to indent correctly.		
-				case FormatType.UNORDERED_LIST:
-					this.renderer.on_ul(is_start, (uint)((lang.length - sl + 1) / 2));
+				case FormatType.LIST_BLOCK:
+					this.renderer.on_node_int(FormatType.LIST_BLOCK, is_start, 0);
 					break;
-				case FormatType.ORDERED_LIST:
-					this.renderer.on_ol(is_start, (uint)((lang.length - sl + 1) / 2));
-				break;
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
-					this.renderer.on_code_block(is_start, lang);
+					this.renderer.on_node(block_type, is_start, lang, fence_indent);
 					break;
 				case FormatType.HORIZONTAL_RULE:
-					this.renderer.on_hr();
+					this.renderer.on_node(FormatType.HORIZONTAL_RULE, false);
 					break;
 				case FormatType.BLOCKQUOTE:
-			
-					this.renderer.on_quote(is_start, lang.length /2 );
+					// ">" (no space) or "> " -> level 1; "> > " -> 2; lang is the marker string
+					this.renderer.on_node_int(FormatType.BLOCKQUOTE, is_start, (int)((lang.length + 1) / 2));
 					break;
 				case FormatType.TABLE:
-					// Table start is handled by TableState (feed_line emits on_table(true) when emitting the first body row)
+					// Table start is handled by TableState (feed_line emits on_table via on_node when emitting the first body row)
 					if (!is_start) {
-						this.renderer.on_table(false);
+						this.renderer.on_node(FormatType.TABLE, false);
 						this.table_state = null;
 					}
 					break;
@@ -832,7 +897,7 @@ namespace Markdown
  
 			// If we didn't get any tag (first char after '<' is not alpha), error condition
 			if (tag.length == 0) {
-				this.renderer.on_text("<");
+				this.renderer.on_node(FormatType.TEXT, false, "<");
 				return chunk;
 			}
 			
@@ -856,11 +921,11 @@ namespace Markdown
 
 			// Next char should be '>' or space
 			if (pos < chunk.length && chunk.get_char(pos) == '>') {
-				// we got tag then '>' so we either fire on_html with the tag and an empty attribute or on_end
+				// we got tag then '>' so we either fire on_node(HTML) with the tag and an empty attribute or on_end
 				if (is_closing) {
-					this.renderer.on_html(false, tag, "");
+					this.renderer.on_node(FormatType.HTML, false, tag, "");
 				} else {
-					this.renderer.on_html(true, tag, "");
+					this.renderer.on_node(FormatType.HTML, true, tag, "");
 				}
 				var ch = chunk.get_char(pos);
 				var next_pos = pos + ch.to_string().length;
@@ -869,13 +934,13 @@ namespace Markdown
 			
 			// if we are in closing and have got to this point then it's rubbish and we need to add it as text and return the left overs
 			if (is_closing) {
-				this.renderer.on_text("</" + tag);
+				this.renderer.on_node(FormatType.TEXT, false, "</" + tag);
 				return chunk.substring(pos, chunk.length - pos);
 			}
 			
 			// if we did not get white space and it's not > then it's rubbish and we need to add it as text and return the left overs
 			if (!got_ws) {
-				this.renderer.on_text("<" + chunk.substring(0, pos));
+				this.renderer.on_node(FormatType.TEXT, false, "<" + chunk.substring(0, pos));
 				return chunk.substring(pos, chunk.length - pos);
 			}
 
@@ -899,14 +964,14 @@ namespace Markdown
 			}
 			
 			if (chunk.get_char(pos) == '>') {
-				this.renderer.on_html(true, tag, attributes);
+				this.renderer.on_node(FormatType.HTML, true, tag, attributes);
 				var ch = chunk.get_char(pos);
 				var next_pos = pos + ch.to_string().length;
 				return chunk.substring(next_pos, chunk.length - next_pos);
 			}
 			
 			// chunk[pos] == '\n' || chunk[pos] == '\r'
-			this.renderer.on_text("<" + chunk.substring(0, pos));
+			this.renderer.on_node(FormatType.TEXT, false, "<" + chunk.substring(0, pos));
 			return chunk.substring(pos, chunk.length - pos);
 		}
  

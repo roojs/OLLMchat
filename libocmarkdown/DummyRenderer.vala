@@ -165,35 +165,20 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_ul(bool is_start, uint indentation)
+		protected override void on_list(bool is_start)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <ul> (indentation=%u)\n", indentation);
+				stdout.printf("END: <list block>\n");
 				return;
 			}
-			
 			print_indent();
-			stdout.printf("START: <ul> (indentation=%u)\n", indentation);
+			stdout.printf("START: <list block>\n");
 			indent_level++;
 		}
-		
-		public override void on_ol(bool is_start, uint indentation)
-		{
-			if (!is_start) {
-				indent_level--;
-				print_indent();
-				stdout.printf("END: <ol> (indentation=%u)\n", indentation);
-				return;
-			}
-			
-			print_indent();
-			stdout.printf("START: <ol> (indentation=%u)\n", indentation);
-			indent_level++;
-		}
-		
-		public override void on_li(bool is_start)
+
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
 			if (!is_start) {
 				indent_level--;
@@ -201,9 +186,8 @@ namespace Markdown
 				stdout.printf("END: <li>\n");
 				return;
 			}
-			
 			print_indent();
-			stdout.printf("START: <li>\n");
+			stdout.printf("START: <li> (list_number=%d, space_skip=%u)\n", list_number, space_skip);
 			indent_level++;
 		}
 		
@@ -217,17 +201,17 @@ namespace Markdown
 			stdout.printf("START: <task_list> (checked=%s)\n", is_checked.to_string());
 		}
 		
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			if (!is_start) {
 				indent_level--;
 				print_indent();
-				stdout.printf("END: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+				stdout.printf("END: <code> (lang=%s, fence='%c')\n", lang, fence_char);
 				return;
 			}
 			
 			print_indent();
-			stdout.printf("START: <code> (lang=%s, fence='%c')\n", lang ?? "null", fence_char);
+			stdout.printf("START: <code> (lang=%s, fence='%c')\n", lang, fence_char);
 			indent_level++;
 		}
 		
@@ -337,10 +321,10 @@ namespace Markdown
 			indent_level++;
 		}
 		
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			print_indent();
-			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title ?? "null");
+			stdout.printf("<img> (src=\"%s\", title=\"%s\")\n", src, title);
 		}
 		
 		public override void on_br()

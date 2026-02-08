@@ -65,8 +65,9 @@ namespace MarkdownGtk
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
 		private RenderSourceView? current_source_view_handler = null;
 		
-		// List stack: stores list numbers at each indentation level
-		// 0 = unordered list, >0 = ordered list (number is the counter)
+		// Indent levels: actual space_skip values we've seen (on_ul/on_ol), in ascending order
+		private Gee.ArrayList<int> indent_levels = new Gee.ArrayList<int>();
+		// List stack: same length as indent_levels; 0 = unordered, >0 = ordered (counter)
 		private Gee.ArrayList<int> list_stack = new Gee.ArrayList<int>();
 		
 		// Track the current indentation level for the next on_li call
@@ -373,169 +374,68 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Closes lists that are deeper than the specified indentation level.
-		 * 
-		 * @param level The indentation level - only closes lists deeper than this
+		 * Closes lists deeper than the given indent (removes levels with indent > level).
+		 *
+		 * @param level space_skip (raw spaces) – keep only levels with indent <= level
 		 */
 		private void close_lists_to_level(uint level)
 		{
-			int min_index = (int)level - 1; // Convert to 0-based index
-			// Only close lists that are deeper (stack size > min_index + 1)
-			while (this.list_stack.size > min_index + 1) {
+			int l = (int)level;
+			while (this.indent_levels.size > 0 && this.indent_levels.get(this.indent_levels.size - 1) > l) {
+				this.indent_levels.remove_at(this.indent_levels.size - 1);
 				this.list_stack.remove_at(this.list_stack.size - 1);
 			}
 		}
 		
 		/**
-		 * Callback for unordered list blocks.
-		 * 
-		 * @param indentation The indentation level
+		 * Finds or inserts an indent level and returns its depth index (0-based).
 		 */
-		public override void on_ul(bool is_start, uint indentation)
+		private int ensure_indent_level(int indentation)
 		{
-			if (!is_start) {
-				this.current_state.close_state();
-				return;
+			int i = 0;
+			while (i < this.indent_levels.size && this.indent_levels.get(i) < indentation) {
+				i++;
 			}
-			
-			// Close lists that are deeper than this indentation
-			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
-				this.list_stack.add(0);
+			if (i < this.indent_levels.size && this.indent_levels.get(i) == indentation) {
+				return i;
 			}
-			
-			// Set this level to 0 (unordered list)
-			this.list_stack.set(target_index, 0);
-			
-			// Reset all levels above this one
-			this.reset_lists_above_level(indentation);
-			
-			// Track the current indentation for the next on_li call
-			this.current_list_indentation = indentation;
-			
-			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true);
-			
-			this.current_state.add_state();
+			this.indent_levels.insert(i, indentation);
+			this.list_stack.insert(i, 0);
+			return i;
 		}
 		
-		/**
-		 * Callback for ordered list blocks.
-		 * 
-		 * @param indentation The indentation level
-		 */
-		public override void on_ol(bool is_start, uint indentation)
+		public override void on_list(bool is_start)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
-				return;
+				this.current_state.add_text("\n");
 			}
-			
-			// Close lists that are deeper than this indentation
-			this.close_lists_to_level(indentation);
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)indentation - 1;
-			
-			// Ensure we have enough levels in the stack
-			while (this.list_stack.size <= target_index) {
-				this.list_stack.add(0);
-			}
-			
-			// If this is an ordered list, increment the counter
-			// But only if it's already > 0 (continuing a list) or if we're starting fresh
-			// Actually, we should always increment - if it's 0, it becomes 1, if it's > 0, it increments
-			int old_value = this.list_stack.get(target_index);
-			// Only increment if this level was already an ordered list (> 0)
-			// If it was 0 (unordered or new), start at 1
-			if (old_value > 0) {
-				this.list_stack.set(target_index, old_value + 1);
-			} else {
-				this.list_stack.set(target_index, 1);
-			}
-			
-			// Reset all levels above this one
-			this.reset_lists_above_level(indentation);
-			
-			// Track the current indentation for the next on_li call
-			this.current_list_indentation = indentation;
-			
-			// Always open a list item when we see a list marker (like HTML renderer does)
-			this.on_li(true);
-			
-			this.current_state.add_state();
 		}
-		
-		/**
-		 * Callback for list item blocks.
-		 * 
-		 * @param is_task Whether this is a task list item
-		 * @param task_mark The task marker character
-		 * @param task_mark_offset The offset of the task marker
-		 */
-		/**
-		 * Handles list item start/end.
-		 * 
-		 * @param is_start Whether this is the start of a list item
-		 */
-		public override void on_li(bool is_start)
+
+		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
 		{
-			 
 			if (!is_start) {
 				this.current_state.close_state();
+				this.current_state.add_text("\n");
 				return;
 			}
-			
-			// Use the tracked indentation level from the last on_ul/on_ol call
-			uint current_level = this.current_list_indentation;
-			if (current_level == 0) {
-				// No list context - just add state
-				this.current_state.add_state();
-				return;
-			}
-			
-			// Convert indentation (1-based) to array index (0-based)
-			int target_index = (int)current_level - 1;
-			
-			// Ensure the stack has this level
-			if (target_index >= this.list_stack.size) {
-				// Stack not set up - just add state without marker
-				this.current_state.add_state();
-				return;
-			}
-			
-			// Get the list type and number for the current level
-			int list_number = this.list_stack.get(target_index);
-			
-			// Add tabs for indentation
-			// Level 1 gets 1 tab, level 2 gets 2 tabs, etc.
-			uint indent_tabs = current_level;
-			for (uint i = 0; i < indent_tabs; i++) {
-				this.current_state.add_text("\t");
-			}
-			
-			// Add marker based on list type
+
+			this.close_lists_to_level(space_skip);
+			int depth_index = this.ensure_indent_level((int)space_skip);
+			this.list_stack.set(depth_index, list_number == 0 ? 0 : list_number);
+			this.current_list_indentation = space_skip;
+
+			this.current_state.add_text(string.nfill(depth_index + 1, '\t'));
 			if (list_number == 0) {
-				// Unordered list - use bullet point (circle)
 				this.current_state.add_text("●");
 			} else {
-				// Ordered list - use number + "." with bold formatting
 				string number_marker = list_number.to_string() + ".";
-				// Create a new state with bold formatting for the number marker
 				var bold_state = this.current_state.add_state();
 				bold_state.style.weight = Pango.Weight.BOLD;
 				bold_state.add_text(number_marker);
 				bold_state.close_state();
 			}
-			
-			// Add tab after marker before content
 			this.current_state.add_text("\t");
-			
 			this.current_state.add_state();
 		}
 		
@@ -565,7 +465,7 @@ namespace MarkdownGtk
 		 * @param lang The language identifier (may be null)
 		 * @param fence_char The fence character used
 		 */
-		public override void on_code(bool is_start, string? lang, char fence_char)
+		public override void on_code(bool is_start, string lang, char fence_char)
 		{
 			if (!is_start) {
 				this.current_state.close_state();
@@ -600,14 +500,13 @@ namespace MarkdownGtk
 			}
 			
 			// For each level, create a state with light orange background
-			// Add 2 spaces to that state, close it, then add 2 spaces to current state
+			// Add 3 spaces to that state, close it, then add 2 spaces to current state
 			for (uint i = 0; i < level; i++) {
-				// Create a new state
 				var bg_state = this.current_state.add_state();
 				bg_state.style.background = "#FFE5CC";
-				bg_state.add_text("   ");
+				bg_state.add_text(string.nfill(3, ' '));
 				bg_state.close_state();
-				this.current_state.add_text("  ");
+				this.current_state.add_text(string.nfill(2, ' '));
 			}
 		}
 			
@@ -703,7 +602,7 @@ namespace MarkdownGtk
 		 * @param src The image source URL
 		 * @param title The image title (may be null)
 		 */
-		public override void on_img(string src, string? title)
+		public override void on_img(string src, string title)
 		{
 			// Images not fully supported - just add placeholder
 			this.current_state.add_text("[IMG:");

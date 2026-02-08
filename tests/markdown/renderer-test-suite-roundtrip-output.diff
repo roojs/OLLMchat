@@ -1,0 +1,95 @@
+--- renderer-test-suite-roundtrip-output.md
++++ renderer-test-suite-roundtrip-output.md
+@@ -1,7 +1,6 @@
+ # Markdown Renderer Test Suite
+ 
+ Below is a comprehensive example that uses **as many** Markdown features and block types as possible.
+-
+ Feel free to copy‑paste this into your renderer to see how each element is displayed.
+ 
+ ---
+@@ -18,15 +17,10 @@
+ ```
+ 
+ # H1 – Largest heading
+-
+ ## H2 – Second level
+-
+ ### H3 – Third level
+-
+ #### H4 – Fourth level
+-
+ ##### H5 – Fifth level
+-
+ ###### H6 – Smallest heading
+ 
+ ---
+@@ -41,11 +35,8 @@
+ ```
+ 
+ *Italic* or _Italic_
+-
+ **Bold** or __Bold__
+-
+ ***Bold + Italic***
+-
+ ~~Strikethrough~~
+ 
+ ---
+@@ -113,9 +104,7 @@
+ ```
+ 
+ - [x] Completed task
+-
+ - [ ] Incomplete task
+-
+ - [ ] Another pending task
+ 
+ ---
+@@ -130,9 +119,9 @@
+ ```
+ 
+ | Header 1 | Header 2 | Header 3 |
+-| :--- | :---: | ---: |
+-| left | center | right |
+-| **bold** | *italic* | `code` |
++|:--------|:--------:|--------:|
++| left    | center   |   right |
++| **bold**| *italic* | `code`  |
+ 
+ ---
+ 
+@@ -203,10 +192,6 @@
+ </div>
+ ```
+ 
+-
+-
+-
+-
+ <div style="border:2px solid #4CAF50; padding:10px;">
+     <strong>Raw HTML block</strong> – will be rendered as HTML if the renderer allows it.
+ </div>
+@@ -238,11 +223,9 @@
+ ```
+ 
+ Term 1
+-
+ : Definition of term 1.
+ 
+ Term 2
+-
+ : Definition of term 2, which can be **bold** or *italic*.
+ 
+ ---
+@@ -274,9 +257,7 @@
+ Display math:
+ 
+ $$
+-
+-int_{-infty}^{infty} e^{-x^2} dx = sqrt{pi}
+-
++\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
+ $$
+ 
+ ---

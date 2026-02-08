@@ -38,6 +38,18 @@ test('test-markdown-parser',
   suite: 'markdown'
 )
 
+# Document renderer: round-trip all tests/markdown/*.md (md → JSON in build dir → md, compare)
+oc_document_renderer_test_exe = get_variable('test_document_renderer', disabler())
+test_markdown_doc_script = files('test-markdown-doc.sh')
+test('test-markdown-doc',
+  find_program('bash'),
+  args: [test_markdown_doc_script, meson.current_build_dir() / '..'],
+  depends: [oc_document_renderer_test_exe],
+  workdir: meson.current_source_dir(),
+  timeout: 60,
+  suite: 'markdown'
+)
+
 # Bubble tests: run sequentially (is_parallel: false) so they can share TEST_DIR/DB
 bubble_build_dir = meson.current_build_dir() / '..'
 oc_test_bubble_exe = get_variable('test_bubble', disabler())
