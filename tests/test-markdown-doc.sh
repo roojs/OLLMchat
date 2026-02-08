@@ -39,6 +39,9 @@ cd "$SCRIPT_DIR"
 for f in markdown/*.md; do
 	[ -f "$f" ] || continue
 	base=$(basename "$f" .md)
+	[ "$base" = "README" ] && continue
+	# -expected.md files are comparison fixtures, not inputs to round-trip
+	case "$base" in *-expected) continue ;; esac
 	json_file="$OUT_DIR/$base.json"
 	roundtrip_file="$OUT_DIR/$base-roundtrip.md"
 
@@ -52,29 +55,21 @@ for f in markdown/*.md; do
 		test_fail "$base: JSON → md failed"
 		continue
 	fi
-	# Compare original vs round-trip; normalize newlines and table formatting (alignment dash count and cell padding are acceptable differences)
-	actual_norm="${OUT_DIR}/${base}-roundtrip-norm.md"
-	expected_norm="${OUT_DIR}/${base}-expected-norm.md"
-	perl -0pe 's/\n+/\n\n/g' "$roundtrip_file" > "$actual_norm"
-	perl -0pe 's/\n+/\n\n/g' "$f" > "$expected_norm"
-	# Normalize table formatting (alignment dash length and cell padding are acceptable round-trip differences)
-	normalize_table() {
-		perl -ne '
-			chomp; $_ =~ s/^\s+|\s+$//g;
-			if (/^\|[\s|:\-]+\|$/) {
-				# Alignment row: canonicalize each cell to :--- or :---: or ---:
-				my @cells = split(/\|/, $_); @cells = grep { length } @cells;
-				for my $c (@cells) { $c =~ s/\s//g; $c = ":---" if $c =~ /^:\-+$/; $c = ":---:" if $c =~ /^:\-+:$/; $c = "---:" if $c =~ /^\-+:$/; }
-				$_ = "| " . join(" | ", @cells) . " |";
-			} elsif (/^\|/) {
-				s/\s*\|\s*/ | /g; s/ +/ /g; s/^\s*|\s*$//g;
-			}
-			print $_ . "\n";
-		'
-	}
-	normalize_table < "$actual_norm" > "${actual_norm}.tmp" && mv "${actual_norm}.tmp" "$actual_norm"
-	normalize_table < "$expected_norm" > "${expected_norm}.tmp" && mv "${expected_norm}.tmp" "$expected_norm"
-	test-match "markdown-doc $base" "$actual_norm" "$expected_norm" "round-trip md matches input (linebreak and table-format differences ignored)"
+	# Compare: roundtrip-output vs original (the input file). Diffs handle accepted round-trip differences.
+	roundtrip_output="${OUT_DIR}/${base}-roundtrip-output.md"
+	expected_src="$f"
+	if [ -f "$MD_DATA/${base}-roundtrip-output.diff" ]; then
+		expected_side="${OUT_DIR}/${base}-original-with-patch.md"
+	else
+		expected_side="${OUT_DIR}/${base}-original.md"
+	fi
+	cp "$roundtrip_file" "$roundtrip_output"
+	cp "$expected_src" "$expected_side"
+	# No normalization; only apply an optional diff for accepted round-trip differences.
+	if [ -f "$MD_DATA/${base}-roundtrip-output.diff" ]; then
+		(cd "$OUT_DIR" && patch -p0 --forward -i "$SCRIPT_DIR/markdown/${base}-roundtrip-output.diff") || true
+	fi
+	test-match "markdown-doc $base" "$roundtrip_output" "$expected_side" "round-trip md matches original (diffs only for accepted differences)"
 done
 
 print_test_summary

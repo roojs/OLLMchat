@@ -109,8 +109,8 @@ namespace Markdown
 			mp["~~"] = FormatType.INVALID;
 			mp["~~~"] = FormatType.FENCED_CODE_TILD;
 
-			// Blockquotes: > quote text (up to 6 levels deep)
-			mp[">"] = FormatType.INVALID;
+			// Blockquotes: > quote text (up to 6 levels deep). ">" alone (no space) = empty blockquote line.
+			mp[">"] = FormatType.BLOCKQUOTE;
 			mp["> "] = FormatType.BLOCKQUOTE;
 			mp["> >"] = FormatType.INVALID;
 			mp["> > "] = FormatType.BLOCKQUOTE;

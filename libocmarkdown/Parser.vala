@@ -273,6 +273,10 @@ namespace Markdown
 					continue;
 				}
 				if (c == '\\') {
+					if (this.at_line_start && this.current_block == FormatType.NONE) {
+						this.current_block = FormatType.PARAGRAPH;
+						this.do_block(true, FormatType.PARAGRAPH);
+					}
 					escape_next = true;
 					chunk_pos += c.to_string().length;
 					this.at_line_start = false;
@@ -628,7 +632,8 @@ namespace Markdown
 				}
 			}
 			// Don't emit newline as TEXT when in a list (list items would get trailing \n and round-trip gets extra blank lines)
-			if (this.current_block != FormatType.ORDERED_LIST && this.current_block != FormatType.UNORDERED_LIST) {
+			if (this.current_block != FormatType.ORDERED_LIST 
+				&& this.current_block != FormatType.UNORDERED_LIST) {
 				this.renderer.on_node(FormatType.TEXT, false, "\n");
 			}
 			this.at_line_start = true;
@@ -838,7 +843,8 @@ namespace Markdown
 					this.renderer.on_node(FormatType.HORIZONTAL_RULE, false);
 					break;
 				case FormatType.BLOCKQUOTE:
-					this.renderer.on_node_int(FormatType.BLOCKQUOTE, is_start, (int)(lang.length / 2));
+					// ">" (no space) or "> " -> level 1; "> > " -> 2; lang is the marker string
+					this.renderer.on_node_int(FormatType.BLOCKQUOTE, is_start, (int)((lang.length + 1) / 2));
 					break;
 				case FormatType.TABLE:
 					// Table start is handled by TableState (feed_line emits on_table via on_node when emitting the first body row)

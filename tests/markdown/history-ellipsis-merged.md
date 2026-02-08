@@ -18,7 +18,6 @@ Let's produce code reference for original lines for context. Use CODE REFERENCE 
 
 We will then call edit_mode tool with modifications.
 
-
 I'll add an ellipsis setting to the `Gtk.Label` that displays the language name. By setting the label's `ellipsize` property to `Pango.EllipsizeMode.END`, the text will be truncated with an ellipsis when the available width is insufficient, preventing a horizontal scrollbar.
 
 **Current label creation (lines 116‑122):**
@@ -57,7 +56,6 @@ Project file: yes (auto-approved)
 ```
 
 We need to output a code block with type vala (since file is Vala) and range. The original lines 116-122 we are replacing, but we also added a new line (123) which shifts later lines. So we need to replace from 116 to 123 (exclusive). That means start 116, end 124 (since exclusive). We'll provide new lines 116-124. Let's include the modified block.
-
 
 ```vala:116:124
             var title_label = new Gtk.Label(language_label_text) {

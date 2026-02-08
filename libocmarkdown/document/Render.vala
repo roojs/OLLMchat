@@ -310,7 +310,18 @@ namespace Markdown.Document
 					this.current_list_item = null;
 					return;
 				case FormatType.BLOCKQUOTE:
-					this.on_block(is_start ? new Block(FormatType.BLOCKQUOTE) { level = (uint)v1 } : null);
+					if (!is_start) {
+						this.pop_block();
+						return;
+					}
+					// One blockquote = one line: if top is a blockquote, close it so this one is a new line (sibling)
+					if (this.block_stack.size > 1) {
+						var top = this.block_stack.get(this.block_stack.size - 1);
+						if (top is Block && (top as Block).kind == FormatType.BLOCKQUOTE) {
+							this.pop_block();
+						}
+					}
+					this.push_block(new Block(FormatType.BLOCKQUOTE) { level = (uint)v1 });
 					return;
 				case FormatType.TABLE_HCELL:
 				case FormatType.TABLE_CELL:

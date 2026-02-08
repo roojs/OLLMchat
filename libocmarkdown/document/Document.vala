@@ -29,12 +29,14 @@ namespace Markdown.Document
 			var result = "";
 			var sep = "";
 			var prev_was_blockquote = false;
+			var prev_was_table = false;
 			for (var i = 0; i < this.children.size; i++) {
 				var child = this.children.get(i);
 				sep = (i == 0) ? "" : "\n\n";
 				if (!(child is Block)) {
 					result += sep + child.to_markdown();
 					prev_was_blockquote = false;
+					prev_was_table = false;
 					continue;
 				}
 				var b = (child as Block).kind;
@@ -42,8 +44,13 @@ namespace Markdown.Document
 				if (prev_was_blockquote && b == FormatType.BLOCKQUOTE) {
 					sep = "\n";
 				}
+				// Table to_markdown() already ends with \n; avoid extra blank line before next block
+				if (prev_was_table) {
+					sep = "\n";
+				}
 				result += sep + child.to_markdown();
 				prev_was_blockquote = (b == FormatType.BLOCKQUOTE);
+				prev_was_table = (b == FormatType.TABLE);
 			}
 			return result + "\n";
 		}

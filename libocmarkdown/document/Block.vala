@@ -47,8 +47,10 @@ namespace Markdown.Document
 				case FormatType.HEADING_6:
 					var sharp = string.nfill((int)this.level, '#');
 					return sharp + " " + inner;
-				case FormatType.BLOCKQUOTE:
-					return string.nfill((int)this.level, '>').replace(">", "> ") + inner;
+			case FormatType.BLOCKQUOTE:
+					// inner here will never contain multiple lines (one blockquote block = one line); do not replace newlines
+					return (string.nfill((int)(this.level == 0 ? 1 : this.level), '>').replace(">", "> ")
+						+ inner).strip();
 				case FormatType.FENCED_CODE_QUOTE:
 				case FormatType.FENCED_CODE_TILD:
 					var fence = this.kind == FormatType.FENCED_CODE_QUOTE ? "```" : "~~~";

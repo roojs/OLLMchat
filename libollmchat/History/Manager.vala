@@ -311,7 +311,8 @@ namespace OLLMchat.History
 				if (!file.query_exists()) {
 					continue;
 				}
-				var info = file.query_info(GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
+				var info = file.query_info(
+					GLib.FileAttribute.STANDARD_SIZE, GLib.FileQueryInfoFlags.NONE, null);
 				if (info.get_size() == 0) {
 					continue;
 				}
