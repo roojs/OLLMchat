@@ -17,6 +17,8 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
 - **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
 - **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
+- **File info try/catch**: Does the plan use try/catch around file metadata (e.g. `query_info()`) only when file existence is unknown — not when we have just read the file or otherwise established it exists?
+- **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -199,6 +201,26 @@ namespace MyNamespace
 }
 ```
 
+## Underscore prefix on variables and fields
+
+**CRITICAL - FORBIDDEN:** Do NOT use a leading underscore (`_`) on variable names, field names, or property names. Use plain names and access with `this.` where needed.
+
+**Bad:**
+```vala
+private Gee.HashMap<string, Skill> _by_path = new Gee.HashMap<string, Skill>();
+private Gee.HashMap<string, Skill> _by_name = new Gee.HashMap<string, Skill>();
+private string _cached_system_message = "";
+this._by_path.clear();
+```
+
+**Good:**
+```vala
+private Gee.HashMap<string, Skill> by_path = new Gee.HashMap<string, Skill>();
+private Gee.HashMap<string, Skill> by_name = new Gee.HashMap<string, Skill>();
+private string cached_system_message = "";
+this.by_path.clear();
+```
+
 ## This Prefix
 
 **IMPORTANT:** Always use `this.` prefix when accessing properties or calling methods on the current instance.
@@ -357,6 +379,43 @@ var home = Environment.get_home_dir();
 var path = GLib.Path.build_filename("/home", "user");
 var file = GLib.File.new_for_path(path);
 var home = GLib.Environment.get_home_dir();
+```
+
+## File info and try/catch
+
+**IMPORTANT:** Use try/catch around file metadata operations (e.g. `GLib.File.query_info()`, modification time) **only when we do not know if the file exists**. If we have already successfully read the file (or otherwise established that it exists), do not wrap the subsequent `query_info()` (or similar) call in try/catch or check `query_exists()` — just call it. Let failures propagate.
+
+**Bad (redundant when file was just read):**
+```vala
+// ... we just read this.path into body ...
+var file = GLib.File.new_for_path(this.path);
+if (file.query_exists()) {
+    try {
+        var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        this.mtime = info.get_modification_time().to_unix();
+    } catch (GLib.Error e) {
+        this.mtime = 0;
+    }
+}
+```
+
+**Good (file known to exist):**
+```vala
+// ... we just read this.path into body ...
+var file = GLib.File.new_for_path(this.path);
+var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+this.mtime = info.get_modification_time().to_unix();
+```
+
+**Good (file may not exist — try/catch appropriate):**
+```vala
+var file = GLib.File.new_for_path(path);
+try {
+    var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+    return info.get_modification_time().to_unix();
+} catch (GLib.Error e) {
+    return 0;
+}
 ```
 
 ## Using Statements

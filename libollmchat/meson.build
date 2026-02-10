@@ -94,6 +94,7 @@ ollmchat_ollama_src = files([
   'History/TitleGenerator.vala',
   'Call/Generate.vala',
   'Response/Generate.vala',
+  'Prompt/Template.vala',
 ])
 
 

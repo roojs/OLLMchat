@@ -30,6 +30,7 @@ occoder_src = files([
   'Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
   'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
   'Approvals.vala',
+  'Skill/PromptTemplate.vala',  # OLLMcoder.Skill.PromptTemplate
 ])
 
 # Build rpath for libraries to find each other in build directory

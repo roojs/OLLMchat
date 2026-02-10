@@ -66,6 +66,19 @@ namespace Markdown
 		{
 			this.parser.start();
 		}
+
+		/**
+		 * Parse a full document in one call: equivalent to start(), add(text) with end-of-chunks, flush().
+		 * Use when the entire markdown content is already in memory.
+		 *
+		 * @param text Full markdown text to parse
+		 */
+		public void parse(string text)
+		{
+			this.parser.start();
+			this.parser.add(text, true);
+			this.parser.flush();
+		}
 		
 		/**
 		 * Single entry point for string-based callbacks (type, is_start, 0–3 strings).
@@ -227,7 +240,8 @@ namespace Markdown
 
 		// Public callbacks not in on_node/on_node_int pipeline (parser/BlockMap call directly)
 		/** List item start/end. list_number: 0 = unordered, 1/2/3… = ordered. space_skip: spaces before marker. task_checked: -1 = N/A, 0 = unchecked, 1 = checked. */
-		public virtual void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1) {}
+		public virtual void on_li(bool is_start,
+			 int list_number = 0, uint space_skip = 0, int task_checked = -1) {}
 		public virtual void on_a(bool is_start, string href, string title, bool is_reference) {}
 		public virtual void on_code(bool is_start, string lang, char fence_char) {}
 	}

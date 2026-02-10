@@ -16,18 +16,19 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMvector.Indexing
+namespace OLLMcoder.Skill
 {
 	/**
-	 * Prompt template that loads from ocvector GResource (resource:///ocvector/...).
+	 * Prompt template that loads from the skills directory (filesystem).
+	 * Set base_dir to the primary skills path; use for system.template.md and user.template.md.
 	 */
 	public class PromptTemplate : OLLMchat.Prompt.Template
 	{
-		public PromptTemplate(string filename)
+		public PromptTemplate(string base_dir, string filename)
 		{
 			base(filename);
-			this.source = "resource://";
-			this.base_dir = "/ocvector";
+			this.source = "file://";
+			this.base_dir = base_dir;
 		}
 	}
 }

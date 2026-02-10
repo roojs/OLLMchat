@@ -154,6 +154,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ChatPermission/Provider.vala',
     '../libollmchat/ChatPermission/Dummy.vala',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
+    '../libollmchat/Prompt/Template.vala',  # Must come before libocvector PromptTemplate (extends this)
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
     '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
@@ -215,6 +216,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
+    '../liboccoder/Skill/PromptTemplate.vala',  # OLLMcoder.Skill.PromptTemplate
     '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
