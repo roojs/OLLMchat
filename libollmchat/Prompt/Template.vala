@@ -20,7 +20,7 @@ namespace OLLMchat.Prompt
 {
 	/**
 	 * Base prompt template: load from resource URI or filesystem, fill placeholders.
-	 * Subclasses set source and base_dir (e.g. resource:// + /ocvector, or filesystem path).
+	 * Subclasses set source and base_dir (e.g. {{{resource:// + /ocvector}}}, or filesystem path).
 	 */
 	public class Template : Object
 	{
@@ -38,7 +38,7 @@ namespace OLLMchat.Prompt
 
 		/**
 		 * Returns true if the template exists and can be loaded.
-		 * For source == "resource://", assumes always exists; otherwise checks filesystem.
+		 * For source == {{{"resource://"}}}, assumes always exists; otherwise checks filesystem.
 		 */
 		public bool exists() throws GLib.Error
 		{
@@ -61,7 +61,7 @@ namespace OLLMchat.Prompt
 			uint8[] data;
 			string etag;
 			GLib.File.new_for_uri(
-					.source + GLib.Path.build_filename(this.base_dir, this.filename)
+					this.source + GLib.Path.build_filename(this.base_dir, this.filename)
 				).load_contents(null, out data, out etag);
 			var parts = ((string) data).split("---", 2);
 			if (parts.length != 2) {
@@ -79,6 +79,28 @@ namespace OLLMchat.Prompt
 		public string fill(...)
 		{
 			var result = this.user_template;
+			var args = va_list();
+			while (true) {
+				unowned string? key = args.arg<string?>();
+				if (key == null) {
+					break;
+				}
+				unowned string? value = args.arg<string?>();
+				if (value == null) {
+					break;
+				}
+				result = result.replace("{" + key + "}", value);
+			}
+			return result;
+		}
+
+		/**
+		 * Same as fill() but operates on system_message.
+		 * Varargs key-value pairs: system_fill("key1", value1, "key2", value2, ...).
+		 */
+		public string system_fill(...)
+		{
+			var result = this.system_message;
 			var args = va_list();
 			while (true) {
 				unowned string? key = args.arg<string?>();

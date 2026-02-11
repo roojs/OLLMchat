@@ -20,6 +20,46 @@ namespace Markdown.Document
 		public bool task_checked { get; set; }
 		public bool is_task_item { get; set; default = false; }
 
+		/** Append a nested ListItem under this list item; creates a List if needed. Returns the new ListItem (uid from document). */
+		public ListItem? append_li()
+		{
+			var doc = this.document() as Document;
+			if (doc == null) {
+				return null;
+			}
+			List? list = null;
+			if (this.children.size > 0 && this.children.get(this.children.size - 1) is List) {
+				list = (List) this.children.get(this.children.size - 1);
+			}
+			if (list == null) {
+				list = new List() { 
+					ordered = false, 
+					indentation = 0 
+				};
+				list.uid = doc.uid_count++;
+				this.adopt(list);
+			}
+			var item = new ListItem();
+			item.uid = doc.uid_count++;
+			list.adopt(item);
+			return item;
+		}
+
+		/** Append a child node from raw markdown (parsed as inline/one paragraph). */
+		public void append_raw(string raw)
+		{
+			var doc = this.document() as Document;
+			if (doc == null) {
+				return;
+			}
+			var temp = new Render();
+			temp.parse(raw);
+			foreach (var c in temp.document.children) {
+				c.uid = doc.uid_count++;
+				this.adopt(c);
+			}
+		}
+
 		public override string to_markdown()
 		{
 			var result = this.is_task_item ? (this.task_checked ? "[x] " : "[ ] ") : "";

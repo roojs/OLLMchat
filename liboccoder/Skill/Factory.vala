@@ -16,18 +16,27 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-namespace OLLMvector.Indexing
+namespace OLLMcoder.Skill
 {
 	/**
-	 * Prompt template that loads from ocvector GResource ({{{resource:///ocvector/...}}}).
+	 * Lightweight factory: creates Manager and Runner only. Message building lives in Runner.
 	 */
-	public class PromptTemplate : OLLMchat.Prompt.Template
+	public class Factory : OLLMchat.Agent.Factory
 	{
-		public PromptTemplate(string filename)
+		public Manager skill_manager { get; private set; }
+		public string skill_name { get; private set; }
+
+		public Factory(Gee.ArrayList<string> skills_directories, string skill_name = "")
 		{
-			base(filename);
-			this.source = "resource://";
-			this.base_dir = "/ocvector";
+			this.name = "skill-runner";
+			this.title = "Skills Agent";
+			this.skill_manager = new Manager(skills_directories);
+			this.skill_name = skill_name != "" ? skill_name : "task_creator";
+		}
+
+		public override OLLMchat.Agent.Base create_agent(OLLMchat.History.SessionBase session)
+		{
+			return new Runner(this, session);
 		}
 	}
 }

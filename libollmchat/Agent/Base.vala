@@ -298,6 +298,29 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
+		 * Set chat_call.model from session; customize if model_obj is set. On customize failure,
+		 * add ui-warning message and use default model. Override in subclasses (e.g. Skill Runner).
+		 */
+		protected virtual async void fill_model()
+		{
+			if (this.session.model_usage.model_obj == null) {
+				this.chat_call.model = this.session.model_usage.model;
+				return;
+			}
+			try {
+				var customized_model_name = yield this.session.model_usage.model_obj.customize(
+					this.connection,
+					this.chat_call.options
+				);
+				this.chat_call.model = customized_model_name;
+			} catch (Error e) {
+				this.session.add_message(new Message("ui-warning",
+					"You selected this model, however we were unable to use it. Using the default model instead."));
+				this.chat_call.model = this.session.model_usage.model;
+			}
+		}
+
+		/**
 		* Sends a Message object asynchronously with streaming support.
 		* 
 		* This is the new method for sending messages. Builds full message history from
@@ -335,26 +358,9 @@ namespace OLLMchat.Agent
 			// Set is_running = true when sending (for both initial sends and tool continuation replies)
 			// This ensures the session appears as "running" when tool replies continue the conversation
 			this.session.is_running = true;
-			GLib.debug("Agent.send_async: Setting is_running=true for session %s", this.session.fid);
+			GLib.debug("is_running=true session %s", this.session.fid);
 			
-			// Phase 4: Customize model if num_ctx is set (not auto)
-			// Call model.customize() to get the model name to use (creates temp model if needed)
-			// When model_obj is null (e.g. CLI --url without verification), use model name as-is
-			if (this.session.model_usage.model_obj != null) {
-				try {
-					var customized_model_name = yield this.session.model_usage.model_obj.customize(
-						this.connection,
-						this.chat_call.options
-					);
-					this.chat_call.model = customized_model_name;
-				} catch (Error e) {
-					GLib.warning("Agent.send_async: Failed to customize model '%s': %s. Using base model.",
-						this.session.model_usage.model_obj.name, e.message);
-				}
-			} else {
-				this.chat_call.model = this.session.model_usage.model;
-			}
-			
+			yield this.fill_model();
 			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;

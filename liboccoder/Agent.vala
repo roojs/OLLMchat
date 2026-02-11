@@ -87,10 +87,7 @@ namespace OLLMcoder
 				// (these are for UI/persistence only)
 			}
 			
-			// Model and options should not be set here - this is too late in the flow and breaks the chain.
-			// They should be set when the chat is created in the constructor or when session properties change,
-			// not at the last step before sending a message. See 1.2.7 cleanup plan for decision on where
-			// model/options get set properly.
+			yield this.fill_model();
 			
 			// Update cancellable for this request
 			this.chat_call.cancellable = cancellable;

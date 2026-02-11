@@ -19,16 +19,18 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * Prompt template that loads from the skills directory (filesystem).
-	 * Set base_dir to the primary skills path; use for system.template.md and user.template.md.
+	 * Prompt template that loads from the skills templates directory (filesystem).
+	 * Path is hard-coded for now; constructor takes filename only (e.g. "system.template.md", "user.template.md").
 	 */
 	public class PromptTemplate : OLLMchat.Prompt.Template
 	{
-		public PromptTemplate(string base_dir, string filename)
+		private const string BASE_DIR = "resources/skills";
+
+		public PromptTemplate(string filename)
 		{
 			base(filename);
 			this.source = "file://";
-			this.base_dir = base_dir;
+			this.base_dir = GLib.Path.build_filename(GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", BASE_DIR);
 		}
 	}
 }

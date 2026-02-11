@@ -106,9 +106,33 @@ namespace Markdown
 		BLOCK,
 		LIST,
 		FORMAT
+		;
+		/** True if this type is a block (Block node) for document create(); otherwise Format. */
+		public bool is_block()
+		{
+			switch (this) {
+				case FormatType.PARAGRAPH:
+				case FormatType.HEADING_1:
+				case FormatType.HEADING_2:
+				case FormatType.HEADING_3:
+				case FormatType.HEADING_4:
+				case FormatType.HEADING_5:
+				case FormatType.HEADING_6:
+				case FormatType.BLOCKQUOTE:
+				case FormatType.HORIZONTAL_RULE:
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+				case FormatType.TABLE:
+				case FormatType.TABLE_ROW:
+				case FormatType.TABLE_HCELL:
+				case FormatType.TABLE_CELL:
+					return true;
+				default:
+					return false;
+			}
+		}
     }
-	
-	
+
 	/**
 	 * Parser for markdown text that calls specific callbacks on Render.
 	 * 

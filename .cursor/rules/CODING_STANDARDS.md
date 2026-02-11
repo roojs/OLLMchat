@@ -15,10 +15,12 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
 - **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
 - **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
-- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
+- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead? When initializing string arrays, use **`string[] name = {}`** only — do not use `var x = new string[0]` or similar.
+- **Loops and nesting**: In loops, use **`continue`** to skip cases and keep the rest of the loop body at top level; avoid **`else`** and nested `if` inside loops.
 - **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
 - **File info try/catch**: Does the plan use try/catch around file metadata (e.g. `query_info()`) only when file existence is unknown — not when we have just read the file or otherwise established it exists?
 - **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
+- **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -258,6 +260,10 @@ class MyClass
 ## Reducing Nesting
 
 **IMPORTANT:** Avoid nested code by using early returns, break/continue statements, and avoiding else clauses when possible. This improves readability and reduces cognitive complexity.
+
+**STRICT — Loops:** In `foreach`/`for`/`while` loops, use **`continue`** to handle each case and keep the loop body flat. Do **not** use `else` or chain `else if` inside the loop; denest by handling one case, then `continue`, then the next case. The remainder of the iteration (the “default” path) stays at top level without being inside an `else`.
+
+**STRICT — Else:** Prefer to avoid `else`. Use early return or `continue` so the main path is not inside an `else` block. If you have `if (a) { ... } else if (b) { ... } else { ... }`, restructure so each branch returns or continues and the flow is linear.
 
 **IMPORTANT:** Put shorter code in if statements and return/continue if feasible, rather than having large nested code blocks. Extract complex logic into separate methods when the main flow becomes hard to follow.
 
@@ -721,7 +727,9 @@ this.some_method(
 );
 ```
 
-## Debug Statements
+## Debug and Warning Statements
+
+**IMPORTANT:** When using `GLib.debug()` or `GLib.warning()`, do NOT include class names, method names, or location information in the message. The runtime logs file and line automatically, so including them is redundant.
 
 **IMPORTANT:** When adding debug output using `GLib.debug()`, do NOT prefix the message with function names, class names, or location information. The debug output system already includes the filename and line number automatically, making such prefixes redundant.
 
@@ -730,6 +738,7 @@ this.some_method(
 **Bad:**
 ```vala
 GLib.debug("[Client.models] Starting models() call");
+GLib.warning("SkillRunner.fill_model: Failed to customize model");
 GLib.debug("[BaseCall.parse_models_array] Called for %s", call_type);
 GLib.debug("[ChatInput.update_models] Got %d models", count);
 ```
@@ -759,6 +768,8 @@ GLib.debug("Model '%s' not found in available_models (current: '%s', available: 
 ```
 
 The debug output will automatically show the file and line number, so you don't need to include that information in the message itself.
+
+**Same rule for GLib.warning():** Never include class or method names (e.g. `"MyClass.method_name:"`). Use a short, user- or operator-friendly phrase; file and line are in the log.
 
 
 ## Gee.HashMap Access
@@ -1035,6 +1046,19 @@ var result = builder.str;
 
 **IMPORTANT:** Never use `Gee.ArrayList<string>` when building an array of strings just to join it. 
 
+**STRICT — String array initialization:** When you declare a string array that you will grow with `+=`, initialize it **only** as `string[] name = {}`. Do **not** use `var name = new string[0]` or any other form. The empty array literal `{}` is the required form.
+
+**Bad (string array init):**
+```vala
+var parts = new string[0];
+string[] parts = new string[0];
+```
+
+**Good (string array init):**
+```vala
+string[] parts = {};
+```
+
 **IMPORTANT:** If you're building an array of strings **only** to join it, use plain string concatenation instead. Do NOT build an array just to join it - use string concatenation directly.
 
 **IMPORTANT:** Only use `string[]` arrays when:
@@ -1098,7 +1122,7 @@ var result = string.joinv("\n", lines);
 
 ## Property Getters vs Get Methods
 
-**IMPORTANT:** Avoid `get_*()` methods for simple property access. Use property getters with `get; private set;` or `get; set;` instead. Only use `get_*()` methods when the operation is complex, involves computation, or requires parameters.
+**IMPORTANT:** Generally avoid `get_*()` method names. They conflict with Vala/GLib conventions (e.g. property getters expose `get_*` in C), are redundant when a verb-less or action name works (e.g. `system_message()` instead of `get_system_message()`), and encourage wasteful wrappers. Prefer: (1) **properties** with `get; private set;` or `get; set;` for simple or computed values; (2) **verb-less or action method names** for methods that build or compute something (e.g. `system_message()`, `user_prompt()`, `project_manager` property). Only use a `get_*()` name when the operation clearly requires parameters and “get” is the natural verb (e.g. `get_file_by_path(string path)`).
 
 **Bad:**
 ```vala

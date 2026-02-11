@@ -214,11 +214,13 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/SourceView.vala',
     '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
+    '../liboccoder/Skill/PromptTemplate.vala',
+    '../liboccoder/Skill/Definition.vala',
+    '../liboccoder/Skill/Manager.vala',
+    '../liboccoder/Skill/Factory.vala',
+    '../liboccoder/Skill/Runner.vala',
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
-    '../liboccoder/Skill/PromptTemplate.vala',  # OLLMcoder.Skill.PromptTemplate
-    '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
-    '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
     '../libocvector/namespace.vala',  # Namespace documentation
     '../libocvector/VectorMetadata.vala',

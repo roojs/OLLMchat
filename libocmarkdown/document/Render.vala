@@ -39,6 +39,7 @@ namespace Markdown.Document
 			this.block_stack.add(this.document);
 		}
 
+		/** Pop format from format stack and append it to current target. */
 		private void pop_inline()
 		{
 			if (this.format_stack.size == 0) {
@@ -46,10 +47,11 @@ namespace Markdown.Document
 			}
 			var top = this.format_stack.get(this.format_stack.size - 1);
 			this.format_stack.remove_at(this.format_stack.size - 1);
-			this.add_format_to_current(top);
+			this.append_format(top);
 		}
 
-		private void add_format_to_current(Format f)
+		/** Append inline format to current target (format stack top or current block). Assigns uid. */
+		private void append_format(Format f)
 		{
 			f.uid = this.document.uid_count++;
 			if (this.format_stack.size > 0) {
@@ -61,16 +63,22 @@ namespace Markdown.Document
 			}
 		}
 
-		private void add_block_to_current(Block b)
+		/** Append block to current block stack top. Assigns uid; adopt() does the actual add to parent's children. Registers heading when parent is document. */
+		private void append_block(Block b)
 		{
 			b.uid = this.document.uid_count++;
 			var parent = this.block_stack.get(this.block_stack.size - 1) as Node;
 			parent.adopt(b);
+			if (parent == this.document && b.kind >= FormatType.HEADING_1
+				 && b.kind <= FormatType.HEADING_6) {
+				this.document.register_heading(b);
+			}
 		}
 
+		/** Append block to current parent and push it onto the block stack; set current_block_with_inlines when block can hold inlines. */
 		private void push_block(Block b)
 		{
-			this.add_block_to_current(b);
+			this.append_block(b);
 			this.block_stack.add(b);
 			if (b.kind == FormatType.PARAGRAPH
 			    || (b.kind >= FormatType.HEADING_1 && b.kind <= FormatType.HEADING_6)
@@ -84,6 +92,7 @@ namespace Markdown.Document
 			}
 		}
 
+		/** Append list to current block stack top (adopt does the add) and push list onto block stack. */
 		private void push_list(List list)
 		{
 			list.uid = this.document.uid_count++;
@@ -92,6 +101,7 @@ namespace Markdown.Document
 			this.block_stack.add(list);
 		}
 
+		/** Pop block from block stack; emit block_ended and restore current_block_with_inlines if needed. */
 		private void pop_block()
 		{
 			if (this.block_stack.size <= 1) {
@@ -109,6 +119,7 @@ namespace Markdown.Document
 			}
 		}
 
+		/** Pop list from block stack and clear list-item state. */
 		private void pop_list()
 		{
 			if (this.block_stack.size <= 1) {
@@ -148,11 +159,11 @@ namespace Markdown.Document
 			switch (type) {
 				case FormatType.TEXT:
 					if (s1 != "") {
-						this.add_format_to_current(new Format.from_text(s1));
+						this.append_format(new Format.from_text(s1));
 					}
 					return;
 				case FormatType.IMAGE:
-					this.add_format_to_current(new Format(FormatType.IMAGE) { src = s1, title = s2 });
+					this.append_format(new Format(FormatType.IMAGE) { src = s1, title = s2 });
 					return;
 				case FormatType.PARAGRAPH:
 					this.on_block(is_start ? new Block(FormatType.PARAGRAPH) : null);
@@ -206,7 +217,7 @@ namespace Markdown.Document
 					this.pop_block();
 					return;
 				case FormatType.BR:
-					this.add_format_to_current(new Format(FormatType.BR));
+					this.append_format(new Format(FormatType.BR));
 					return;
 				case FormatType.CODE_TEXT:
 					var code_parent = this.block_stack.get(this.block_stack.size - 1);
@@ -220,13 +231,13 @@ namespace Markdown.Document
 					pb.code_text += s1;
 					return;
 				case FormatType.HORIZONTAL_RULE:
-					this.add_block_to_current(new Block(FormatType.HORIZONTAL_RULE));
+					this.append_block(new Block(FormatType.HORIZONTAL_RULE));
 					return;
 				case FormatType.SOFTBR:
-					this.add_format_to_current(new Format.from_text("\n"));
+					this.append_format(new Format.from_text("\n"));
 					return;
 				case FormatType.ENTITY:
-					this.add_format_to_current(new Format.from_text(s1));
+					this.append_format(new Format.from_text(s1));
 					return;
 				case FormatType.TASK_LIST:
 				case FormatType.TASK_LIST_DONE:
@@ -239,7 +250,7 @@ namespace Markdown.Document
 						return;
 					}
 					// In paragraph/heading/blockquote/table or after other inlines: emit as literal.
-					this.add_format_to_current(new Format(type));
+					this.append_format(new Format(type));
 					return;
 				default:
 					return;
