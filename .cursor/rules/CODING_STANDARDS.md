@@ -19,6 +19,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Loops and nesting**: In loops, use **`continue`** to skip cases and keep the rest of the loop body at top level; avoid **`else`** and nested `if` inside loops.
 - **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
 - **File info try/catch**: Does the plan use try/catch around file metadata (e.g. `query_info()`) only when file existence is unknown — not when we have just read the file or otherwise established it exists?
+- **Try/catch scope**: Does the plan keep try/catch focused on the minimal code that can throw — not blanketing large areas? Wrap only the specific call(s) that may throw; keep setup and non-throwing code outside the try block.
 - **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
 - **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
 
@@ -422,6 +423,90 @@ try {
 } catch (GLib.Error e) {
     return 0;
 }
+```
+
+## Try/Catch Scope
+
+**IMPORTANT:** Keep try/catch focused on the **minimal code that can throw**. Do not blanket large areas of code. Wrap only the specific call(s) that may throw; keep setup, building arguments, and non-throwing code outside the try block.
+
+**Bad (blanketing a large area):**
+```vala
+try {
+    var definition = this.runner.task_definition.get(this);
+    var tpl = PromptTemplate.template("task_refinement");
+    var user_content = tpl.fill(...);
+    var system_content = tpl.system_fill();
+    var messages = new Gee.ArrayList<...>();
+    messages.add(...);
+    messages.add(...);
+    var response = yield this.chat_call.send(messages, null);
+    var response_text = response != null ? (response.content ?? "") : "";
+    var parsed = Parser.parse(response_text);
+    if (parsed.issues != "") {
+        this.refine_error = new GLib.IOError.INVAL(parsed.issues);
+    } else {
+        this.tool_calls.clear();
+        foreach (var call in parsed.tool_calls) {
+            this.tool_calls.add(call);
+        }
+    }
+} catch (GLib.Error e) {
+    this.refine_error = e;
+}
+```
+
+**Good (try only around the call that can throw):**
+```vala
+var definition = this.runner.task_definition.get(this);
+var tpl = PromptTemplate.template("task_refinement");
+var user_content = tpl.fill(...);
+var system_content = tpl.system_fill();
+var messages = new Gee.ArrayList<...>();
+messages.add(...);
+messages.add(...);
+string response_text;
+try {
+    var response = yield this.chat_call.send(messages, null);
+    response_text = response != null ? (response.content ?? "") : "";
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+RefinementOutputParserResult parsed;
+try {
+    parsed = RefinementOutputParser.parse(response_text);
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+if (parsed.issues != "") {
+    this.refine_error = new GLib.IOError.INVAL(parsed.issues);
+} else {
+    this.tool_calls.clear();
+    foreach (var call in parsed.tool_calls) {
+        this.tool_calls.add(call);
+    }
+}
+this.refined_done = true;
+```
+
+Alternatively, a single try can wrap only the send + parse if both are the only operations that throw:
+```vala
+// ... setup outside try ...
+string response_text;
+RefinementOutputParserResult parsed;
+try {
+    var response = yield this.chat_call.send(messages, null);
+    response_text = response != null ? (response.content ?? "") : "";
+    parsed = RefinementOutputParser.parse(response_text);
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+// ... handle parsed outside try ...
 ```
 
 ## Using Statements
