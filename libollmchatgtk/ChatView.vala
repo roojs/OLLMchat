@@ -61,6 +61,9 @@ namespace OLLMchatGtk
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
 		public bool scroll_enabled = true;
+		/** When true, user has scrolled up so we temporarily disable autoscroll until they scroll back to bottom. */
+		private bool autoscroll_paused_by_user = false;
+		private bool programmatic_scroll_in_progress = false;
 		
 
 		/**
@@ -131,8 +134,31 @@ namespace OLLMchatGtk
 			this.append(this.scrolled_window);
 			this.scrolled_window.add_css_class("chat-view-text");
 
-			
-			
+			// Wheel scroll up over the chat area → pause autoscroll immediately (no threshold)
+			var wheel_controller = new Gtk.EventControllerScroll(
+				Gtk.EventControllerScrollFlags.VERTICAL |
+				Gtk.EventControllerScrollFlags.DISCRETE |
+				Gtk.EventControllerScrollFlags.KINETIC
+			);
+			wheel_controller.scroll.connect((dx, dy) => {
+				// dy < 0 = content goes up = user wheeled up
+				if (dy < 0) {
+					this.autoscroll_paused_by_user = true;
+				}
+				return false;  // let scroll happen normally
+			});
+			this.scrolled_window.add_controller(wheel_controller);
+
+			// Detect scroll position: when user scrolls back to bottom, resume autoscroll
+			this.scrolled_window.vadjustment.value_changed.connect(() => {
+				if (this.programmatic_scroll_in_progress) {
+					this.programmatic_scroll_in_progress = false;
+					return;
+				}
+				var vadj = this.scrolled_window.vadjustment;  // non-null: we are in its value_changed handler
+				// within a few px of bottom = "at bottom" → resume autoscroll; else pause (small scroll up = pause)
+				this.autoscroll_paused_by_user = (vadj.value < vadj.upper - vadj.page_size - 3.0);
+			});
 		}
 
 		/**
@@ -810,6 +836,7 @@ namespace OLLMchatGtk
 			// Reset flags when clearing chat
 			this.has_displayed_user_message = false;
 			this.scroll_enabled = true;
+			this.autoscroll_paused_by_user = false;
 			
 			// Clear renderer state (includes sourceview handlers)
 			this.renderer.clear();
@@ -1063,15 +1090,15 @@ namespace OLLMchatGtk
 
 		public void scroll_to_bottom()
 		{
-			// Skip scrolling if disabled (e.g., when loading history)
-			if (!this.scroll_enabled) {
+			// Skip scrolling if disabled (e.g., when loading history) or user has scrolled up
+			if (!this.scroll_enabled || this.autoscroll_paused_by_user) {
 				return;
 			}
 			
 			// Use Idle to scroll after layout is updated, with retry logic
 			GLib.Idle.add(() => {
 				// Check if scrolling is still enabled (might have been disabled during loading)
-				if (!this.scroll_enabled) {
+				if (!this.scroll_enabled || this.autoscroll_paused_by_user) {
 					return false;
 				}
 				
@@ -1087,9 +1114,11 @@ namespace OLLMchatGtk
 				// If upper is 0 or very small, layout might not be complete yet
 				if (vadjustment.upper < 100.0) {
 					// Layout not ready yet, try again on next idle (but only if scrolling is still enabled)
-					return this.scroll_enabled;
+					return this.scroll_enabled && !this.autoscroll_paused_by_user;
 				}
 				
+				// Mark as programmatic so the value_changed handler does not set autoscroll_paused_by_user
+				this.programmatic_scroll_in_progress = true;
 				// Set value higher than upper to force scroll to maximum
 				// This ensures we scroll to bottom even if layout hasn't fully updated
 				vadjustment.value = vadjustment.upper + 1000.0;
@@ -1098,11 +1127,12 @@ namespace OLLMchatGtk
 				// Also use a timeout as backup in case Idle doesn't catch all layout updates
 				GLib.Timeout.add(100, () => {
 					// Check if scrolling is still enabled (might have been disabled during loading)
-					if (!this.scroll_enabled) {
+					if (!this.scroll_enabled || this.autoscroll_paused_by_user) {
 						return false;
 					}
 					
 					if (vadjustment != null && vadjustment.upper > 100.0) {
+						this.programmatic_scroll_in_progress = true;
 						vadjustment.value = vadjustment.upper + 1000.0;
 						this.last_scroll_pos = vadjustment.upper + 1000.0;
 					}

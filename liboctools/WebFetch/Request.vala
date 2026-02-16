@@ -36,23 +36,8 @@ namespace OLLMtools.WebFetch
 		
 		protected override bool build_perm_question()
 		{
-			// Validate required parameter
-			if (this.url == "") {
-				return false;
-			}
-			
-			// Extract and normalize domain
-			var domain = this.extract_domain(this.url);
-			if (domain == "") {
-				return false;
-			}
-			
-			// Set permission properties
-			this.permission_target_path = domain;
-			this.permission_operation = OLLMchat.ChatPermission.Operation.READ;
-			this.permission_question = "Fetch URL: " + this.url + "?";
-			
-			return true;
+			// Permission check removed - web fetch does not require user approval to fetch a URL
+			return false;
 		}
 		
 		protected override async string execute_request() throws Error
