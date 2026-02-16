@@ -34,13 +34,20 @@ namespace OLLMchatGtk
 		[CCode (type = "OLLMchatUIChatPermission*", transfer = "none")]
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
+		private ChatBar chat_bar;
 		private Gtk.Paned paned;
+		private Gtk.Box lower_box;
+		/** Height of text area (paned end child) to restore when showing after streaming. */
+		private int saved_bottom_height = 0;
 		public OLLMchat.History.Manager manager { get; private set; }
 		
 		private string? last_sent_text = null;
 		private int min_bottom_size = 115;
+		private bool _streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
 		private bool restoring_session = false;
+		/** When true, ignore position changes (we are setting position programmatically). */
+		private bool locking_paned_position = false;
 
 		/**
 		* Default message text to display in the input field.
@@ -95,21 +102,53 @@ namespace OLLMchatGtk
 
 			this.manager = manager;
 
-			// Create paned widget to allow resizing between chat view and input area
+			// Create permission widget (hidden by default)
+			this.permission_widget = new ChatPermission() {
+				vexpand = false
+			};
+
+			// ChatWidget assembles layout: text area in paned, ChatBar + permission in lower box
+			this.chat_input = new ChatInput();
+			this.chat_bar = new ChatBar(this.manager);
+
+			this.chat_input.send_clicked.connect(this.on_send_clicked);
+			this.chat_bar.send_requested.connect(() => {
+				string text = this.chat_input.get_text_to_send();
+				if (text.length > 0) {
+					this.on_send_clicked(text);
+				}
+			});
+			this.chat_bar.stop_clicked.connect(this.on_stop_clicked);
+
+			// Layout: Box -> [ Paned(chat_view | chat_input), lower_box(permission, chat_bar) ]
 			this.paned = new Gtk.Paned(Gtk.Orientation.VERTICAL) {
 				hexpand = true,
 				vexpand = true
 			};
-
-			// Create chat view with reference to this widget
 			this.chat_view = new ChatView(this) {
 				hexpand = true,
 				vexpand = true
 			};
 			this.paned.set_start_child(this.chat_view);
-			// Allow start child to resize when paned resizes (top pane should grow/shrink)
 			this.paned.set_resize_start_child(true);
-			
+			this.paned.set_end_child(this.chat_input);
+			this.paned.set_resize_end_child(false);
+			this.paned.set_shrink_end_child(false);
+
+			this.lower_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			this.lower_box.append(this.permission_widget);
+			this.lower_box.append(this.chat_bar);
+
+			var main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = true
+			};
+			main_box.append(this.paned);
+			main_box.append(this.lower_box);
+
 			// Connect to manager signals (which relay from active session)
 			this.manager.stream_chunk.connect(this.on_stream_chunk_handler);
 			this.manager.tool_message.connect((message) => {
@@ -118,57 +157,26 @@ namespace OLLMchatGtk
 				}
 				this.chat_view.append_tool_message(message);
 			});
-			// Phase 5: Use new message_added signal (preferred) instead of old add_message signal
 			this.manager.message_added.connect(this.on_message_created);
-			
-			// Connect to session_activated signal to set correct streaming state after restoration
 			this.manager.session_activated.connect(this.on_session_activated);
 
-			// Create a box for the bottom pane containing permission widget and input
-			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = true  // Allow vertical expansion
-			};
-			// Set minimum size request on the bottom box to enforce minimum height
-			// GTK4 Paned respects child widget size requests
-			bottom_box.set_size_request(-1, this.min_bottom_size);
+			this.append(main_box);
 
-			// Create permission widget (hidden by default)
-			this.permission_widget = new ChatPermission() {
-				vexpand = false
-			};
-			bottom_box.append(this.permission_widget);
+			// When streaming, prevent user from dragging the paned separator (revert to full height)
+			this.paned.notify["position"].connect(() => {
+				if (this.locking_paned_position || !this._streaming) {
+					return;
+				}
+				this.locking_paned_position = true;
+				int h = this.paned.get_allocated_height();
+				this.paned.set_position(h);
+				GLib.Idle.add(() => {
+					this.locking_paned_position = false;
+					return false;
+				});
+			});
 
-			// Create chat input
-			this.chat_input = new ChatInput(this.manager) {
-				vexpand = true
-			};
-			this.chat_input.send_clicked.connect(this.on_send_clicked);
-			this.chat_input.stop_clicked.connect(this.on_stop_clicked);
-			bottom_box.append(this.chat_input);
-
-			// Set bottom box as end child of paned
-			this.paned.set_end_child(bottom_box);
-			// Prevent end child from resizing when paned resizes - maintain fixed size
-			this.paned.set_resize_end_child(false);
-			// Set shrink-end-child to false to prevent shrinking below size request
-			// This ensures the bottom pane maintains its minimum height
-			this.paned.set_shrink_end_child(false);
-			
-			// Calculate minimum size based on component minimums:
-			// - ScrolledWindow minimum: 60px (from ChatInput scrolled.set_size_request)
-			// - Button box: ~50px (button height ~35px + margins 10px top + 5px bottom)
-			// - Spacing: 5px (from ChatInput spacing)
-			// - Permission widget: 0px (hidden by default)
-			// Total: ~115px minimum
-			// The minimum size is enforced via set_size_request() on bottom_box
-			// and set_shrink_end_child(false) on the paned
-
-			// Add paned to this widget
-			this.append(this.paned);
-
-			// Set up model dropdown
-			this.chat_input.setup_model_dropdown();
+			this.chat_bar.setup_model_dropdown();
 
 			// Connect to notify signal to propagate default_message when property is set
 			// messy but usefull for testing.
@@ -177,6 +185,44 @@ namespace OLLMchatGtk
 				if (this.chat_input != null) {
 					this.chat_input.default_message = this.default_message;
 				}
+			});
+		}
+
+		/** Updates streaming state: when running, hide text area (paned position = full); when stopped, restore position. */
+		private void streaming_state(bool streaming)
+		{
+			this._streaming = streaming;
+			this.chat_input.set_input_editable(!streaming);
+			this.chat_input.set_input_sensitive(!streaming);
+			this.chat_bar.update_action_button_state(streaming);
+
+			if (streaming) {
+				this.paned.set_cursor(new Gdk.Cursor.from_name("default", null));
+				int h = this.paned.get_allocated_height();
+				if (h > 0) {
+					int pos = this.paned.get_position();
+					this.saved_bottom_height = (int) (h - pos);
+					if (this.saved_bottom_height < this.min_bottom_size) {
+						this.saved_bottom_height = this.min_bottom_size;
+					}
+					this.locking_paned_position = true;
+					this.paned.set_position(h);
+					GLib.Idle.add(() => {
+						this.locking_paned_position = false;
+						return false;
+					});
+				}
+				return;
+			}
+			this.paned.set_cursor(null);
+			GLib.Idle.add(() => {
+				int h = this.paned.get_allocated_height();
+				int want = this.saved_bottom_height > 0 ? this.saved_bottom_height : this.min_bottom_size;
+				if (h > want) {
+					this.paned.set_position(h - want);
+				}
+				this.chat_view.scroll_to_bottom();
+				return false;
 			});
 		}
 		
@@ -189,7 +235,7 @@ namespace OLLMchatGtk
 		public async void switch_to_session(OLLMchat.History.SessionBase session)
 		{
 			this.chat_view.finalize_assistant_message();
-			this.chat_input.set_streaming(true);
+			this.streaming_state(true);
 			this.clear_chat();
 			this.chat_view.scroll_enabled = false;
 			this.restoring_session = true;
@@ -198,7 +244,7 @@ namespace OLLMchatGtk
 				yield this.manager.switch_to_session(session);
 			} catch (Error e) {
 				GLib.warning("Error loading session: %s", e.message);
-				this.chat_input.set_streaming(false);
+				this.streaming_state(false);
 				this.chat_view.scroll_enabled = true;
 				this.restoring_session = false;
 				return;
@@ -280,7 +326,12 @@ namespace OLLMchatGtk
 		{
 			this.restoring_session = false;
 			GLib.Idle.add(() => {
-				this.chat_input.set_streaming(session.is_running);
+				this.streaming_state(session.is_running);
+				// When restoring a session that is still running, turn autoscroll on and scroll to end so live output is visible
+				if (session.is_running) {
+					this.chat_view.scroll_enabled = true;
+					this.chat_view.scroll_to_bottom();
+				}
 				return false;
 			});
 		}
@@ -314,7 +365,7 @@ namespace OLLMchatGtk
 					this.chat_view.show_waiting_indicator();
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
-					this.chat_input.set_streaming(true);
+					this.streaming_state(true);
 					break;
 				case "ui":
 					// Render UI messages using the general renderer (same as assistant messages)
@@ -407,7 +458,7 @@ namespace OLLMchatGtk
 		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
 			// Skip only when session was stopped (e.g. user clicked Stop) and this is not the final chunk.
-			// When response.done is true we must run to finalize the message and call set_streaming(false);
+			// When response.done is true we must run to finalize the message and call streaming_state(false);
 			// Session.finalize_streaming() sets is_running=false before relaying, so we must not return on the final chunk.
 			if (!this.manager.session.is_running && !response.done) {
 				return;
@@ -449,7 +500,7 @@ namespace OLLMchatGtk
 			}
 
 			// No tool calls - this is the final response
-			this.chat_input.set_streaming(false);
+			this.streaming_state(false);
 			
 			// Clear last_sent_text on successful response
 			this.last_sent_text = null;
@@ -470,7 +521,7 @@ namespace OLLMchatGtk
 			this.message_sent(text);
 
 			// Set streaming state
-			this.chat_input.set_streaming(true);
+			this.streaming_state(true);
 
 			// Send chat request asynchronously (EmptySession will convert to Session on first message)
 			// The waiting indicator will be shown when send_starting signal is emitted
@@ -571,7 +622,7 @@ namespace OLLMchatGtk
 		private void cleanup_streaming_state()
 		{
 			// Reset all streaming-related state
-			this.chat_input.set_streaming(false);
+			this.streaming_state(false);
 			// Conversation history is preserved in session.chat
 			// Only clear if explicitly requested via clear_chat()
 		}
@@ -583,7 +634,7 @@ namespace OLLMchatGtk
 
 			// Finalize current message
 			this.chat_view.finalize_assistant_message();
-			this.chat_input.set_streaming(false);
+			this.streaming_state(false);
 			
 			// Conversation history is preserved in session
 			// The user can continue the conversation after stopping
@@ -598,7 +649,7 @@ namespace OLLMchatGtk
 		 */
 		public async void update_models()
 		{
-			yield this.chat_input.update_models();
+			yield this.chat_bar.update_models();
 		}
 
 	}
