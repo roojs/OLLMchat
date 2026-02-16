@@ -39,6 +39,8 @@ namespace OLLMchatGtk
 		
 		private string? last_sent_text = null;
 		private int min_bottom_size = 115;
+		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
+		private bool restoring_session = false;
 
 		/**
 		* Default message text to display in the input field.
@@ -190,6 +192,7 @@ namespace OLLMchatGtk
 			this.chat_input.set_streaming(true);
 			this.clear_chat();
 			this.chat_view.scroll_enabled = false;
+			this.restoring_session = true;
 
 			try {
 				yield this.manager.switch_to_session(session);
@@ -197,6 +200,7 @@ namespace OLLMchatGtk
 				GLib.warning("Error loading session: %s", e.message);
 				this.chat_input.set_streaming(false);
 				this.chat_view.scroll_enabled = true;
+				this.restoring_session = false;
 				return;
 			}
 		}
@@ -274,6 +278,7 @@ namespace OLLMchatGtk
 		
 		private void on_session_activated(OLLMchat.History.SessionBase session)
 		{
+			this.restoring_session = false;
 			GLib.Idle.add(() => {
 				this.chat_input.set_streaming(session.is_running);
 				return false;
@@ -286,9 +291,10 @@ namespace OLLMchatGtk
 		 */
 		private void on_message_created(OLLMchat.Message m, OLLMchat.History.SessionBase? session)
 		{
-			// Re-enable scrolling when new messages arrive (not from history loading)
-			// This ensures scrolling works for new messages but stays disabled after loading history
-			this.chat_view.scroll_enabled = true;
+			// Re-enable scrolling only when new messages arrive live, not during history restoration
+			if (!this.restoring_session) {
+				this.chat_view.scroll_enabled = true;
+			}
 			
 			// Skip messages that shouldn't be displayed in UI
 			if (!m.is_ui_visible) {
@@ -400,8 +406,10 @@ namespace OLLMchatGtk
 	
 		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
-			// Check if streaming is still active (might have been stopped)
-			if (!this.manager.session.is_running) {
+			// Skip only when session was stopped (e.g. user clicked Stop) and this is not the final chunk.
+			// When response.done is true we must run to finalize the message and call set_streaming(false);
+			// Session.finalize_streaming() sets is_running=false before relaying, so we must not return on the final chunk.
+			if (!this.manager.session.is_running && !response.done) {
 				return;
 			}	
 
