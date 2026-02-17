@@ -49,9 +49,12 @@ namespace OLLMvector.Tool
 			config.tools.set("codebase_search", tool_config);
 		}
 		
-	public override string name { get { return "codebase_search"; } }
-	
-	public override string description { get {
+		public override string name { get { return "codebase_search"; } }
+		public override string title { get { return "Semantic Codebase Search Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"codebase_search\", \"arguments\": {\"query\": \"where is file reading implemented\"}}"; }
+		}
+		public override string description { get {
 			return """
 Search the codebase using semantic vector search to find code elements that match a query.
 
@@ -125,9 +128,6 @@ making it more effective than simple text search for finding relevant code.
 	)
 	{
 		base();
-		
-		this.title = "Sematic Codebase Search Tool";
-		
 		// If project_manager is provided, initialize dependencies immediately
 		if (project_manager != null) {
 			this.init_dependencies(project_manager);

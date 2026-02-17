@@ -27,8 +27,11 @@ namespace OLLMtools.GoogleSearch
 	public class Tool : OLLMchat.Tool.BaseTool
 	{
 	public override string name { get { return "google_search"; } }
-	
-	public override string description { get {
+		public override string title { get { return "Google Search Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"google_search\", \"arguments\": {\"query\": \"Vala programming\"}}"; }
+		}
+		public override string description { get {
 			return """
 Perform a web search using Google Custom Search API and return results in markdown format.
 
@@ -54,7 +57,6 @@ The tool requires permission to access the Google Custom Search API.""";
 		{
 			base();
 			this.project_manager = project_manager;
-			this.title = "Google Search Tool";
 		}
 		
 		public override Type config_class() { return typeof(Config); }

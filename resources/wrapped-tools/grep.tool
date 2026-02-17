@@ -7,4 +7,5 @@ or ["-r", "-n", "pattern", "src/"] to search with line numbers in the src direct
 @name Grep
 @wrapped run_command
 @command grep {arguments}
+@example {"name": "Grep", "arguments": {"arguments": ["-r", "pattern", "src/"]}}
 @param arguments {array<string>} [required] Array of strings that will be passed to the grep command

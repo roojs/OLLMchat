@@ -44,7 +44,10 @@ namespace OLLMtools.RunCommand
 	public override string name { get { return "run_command"; } }
 	
 	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
-			
+		public override string title { get { return "Run Shell Commands Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"run_command\", \"arguments\": {\"command\": \"ls -la\"}}"; }
+		}
 		public override string description { 
 			get {
 				return """
@@ -82,10 +85,7 @@ If the command fails, you should handle the error gracefully and provide a helpf
 	public Tool(OLLMfiles.ProjectManager? project_manager = null)
 	{
 		base();
-		
 		this.project_manager = project_manager;
-		this.title = "Run Shell Commands Tool";
-		// base_directory is now a computed property that checks active_project dynamically
 	}
 		
 		public OLLMchat.Tool.BaseTool clone()

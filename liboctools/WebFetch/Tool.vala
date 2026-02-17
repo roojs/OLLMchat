@@ -28,10 +28,13 @@ namespace OLLMtools.WebFetch
 	 */
 	public class Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.WrapInterface
 	{
-	public override string name { get { return "web_fetch"; } }
-	
-	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
-			
+		public override string name { get { return "web_fetch"; } }
+		
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+		public override string title { get { return "Web Fetch URL Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"web_fetch\", \"arguments\": {\"url\": \"https://example.com\"}}"; }
+		}
 		public override string description { get {
 			return """
 Fetch content from a URL and return it in the specified format.
@@ -61,7 +64,6 @@ The tool requires permission to access the domain of the URL being fetched.""";
 	{
 		base();
 		this.project_manager = project_manager;
-		this.title = "Web Fetch URL Tool";
 	}
 		
 		public OLLMchat.Tool.BaseTool clone()

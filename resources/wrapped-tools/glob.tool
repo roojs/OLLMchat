@@ -8,4 +8,5 @@ or ["src/", "-name", "*.json"] to find JSON files in src directory.
 @name Glob
 @wrapped run_command
 @command find {arguments} -type f
+@example {"name": "Glob", "arguments": {"arguments": ["-name", "*.vala"]}}
 @param arguments {array<string>} [required] Array of strings that will be passed to the command

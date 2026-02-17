@@ -31,7 +31,10 @@ namespace OLLMtools.EditMode
 		public override string name { get { return "edit_mode"; } }
 		
 		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
-				
+		public override string title { get { return "Edit Mode Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"edit_mode\", \"arguments\": {\"file_path\": \"src/main.vala\", \"edit_mode\": \"ast_path\"}}"; }
+		}
 		public override string description { get {
 			return """
 Turn on edit mode for a file.
@@ -94,7 +97,6 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 		{
 			base();
 			this.project_manager = project_manager;
-			this.title = "Edit Mode Tool";
 		}
 		
 		public OLLMchat.Tool.BaseTool? clone()

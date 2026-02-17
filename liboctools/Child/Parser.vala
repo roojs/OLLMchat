@@ -49,6 +49,11 @@ namespace OLLMtools.Child
 		public string model { get; private set; default = ""; }
 		
 		/**
+		 * Example call from frontmatter (optional, e.g. one-line JSON for Tool Calls).
+		 */
+		public string example { get; private set; default = ""; }
+		
+		/**
 		 * Agent instructions (everything after frontmatter).
 		 */
 		public string instructions { get; private set; default = ""; }
@@ -159,6 +164,9 @@ namespace OLLMtools.Child
 						break;
 					case "model":
 						this.model = value;
+						break;
+					case "example":
+						this.example = value;
 						break;
 				}
 			}
@@ -335,7 +343,8 @@ namespace OLLMtools.Child
 					agent_description = parser.description,
 					agent_tools = parser.tools,
 					agent_model = parser.model,
-					agent_instructions = parser.instructions
+					agent_instructions = parser.instructions,
+					agent_example = parser.example
 				};
 				manager.tools.set(parser.name, agent_tool);
 			}

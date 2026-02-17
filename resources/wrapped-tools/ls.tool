@@ -7,4 +7,5 @@ or ["-R", "."] to recursively list all subdirectories.
 @name LS
 @wrapped run_command
 @command ls {arguments}
+@example {"name": "LS", "arguments": {"arguments": ["-la", "."]}}
 @param arguments {array<string>} [required] Array of strings that will be passed to the ls command
