@@ -154,7 +154,7 @@ namespace OLLMcoder.Skill
 			if (this.document == null) {
 				return null;
 			}
-			var heading = this.document.headings.get("Available skills");
+			var heading = this.document.headings.get("available-skills");
 			if (heading == null) {
 				return null;
 			}

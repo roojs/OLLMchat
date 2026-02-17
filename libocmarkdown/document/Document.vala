@@ -25,10 +25,15 @@ namespace Markdown.Document
 		public Gee.HashMap<string, Block> headings {
 			get; private set; default = new Gee.HashMap<string, Block>(); }
 
-		/** Call when a top-level heading block is adopted; keeps headings in sync. Only stores the first occurrence of each heading name. */
+		/** Call when a top-level heading block is adopted; keeps headings in sync. Key is GFM-style anchor (lowercase, non-alphanumeric → hyphen, trimmed). Only stores the first occurrence of each key. */
 		internal void register_heading(Block b)
 		{
-			var key = b.text_content().strip();
+			var raw = b.text_content().strip();
+			if (raw == "") {
+				return;
+			}
+			var key = new GLib.Regex("[^a-z0-9]+").replace(raw.down(), -1, 0, "-", 0);
+			key = new GLib.Regex("^-+|-+$").replace(key, -1, 0, "", 0);
 			if (key == "" || this.headings.has_key(key)) {
 				return;
 			}

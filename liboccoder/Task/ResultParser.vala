@@ -99,10 +99,11 @@ public class ResultParser : Object
 		this.task_list = null;
 
 		foreach (var key in new string[] {
-			 "Original prompt",
-			 "Goals / summary",
-			 "General information for all tasks",
-			 "Tasks" }) {
+			"original-prompt",
+			"goals-summary",
+			"general-information-for-all-tasks",
+			"tasks",
+		}) {
 			if (!this.document.headings.has_key(key)) {
 				this.issues += "\n" + "Top-level structure: the response must contain these ## sections in order " +
 					"— Original prompt, Goals / summary, General information for all tasks, Tasks. " +
@@ -112,16 +113,11 @@ public class ResultParser : Object
 		}
 
 		this.task_list = new List(this.runner);
-		var section_keys = new Gee.ArrayList<string>();
 		foreach (var key in this.document.headings.keys) {
-			if (key.has_prefix("Task section")) {
-				section_keys.add(key);
+			if (!key.has_prefix("task-section-")) {
+				continue;
 			}
-		}
-		section_keys.sort((a, b) => strcmp(a, b));
-		foreach (var key in section_keys) {
-			var section_heading = this.document.headings.get(key);
-			Step? step = this.parse_step(section_heading);
+			var step = this.parse_step(this.document.headings.get(key));
 			if (step == null) {
 				continue;
 			}
@@ -187,6 +183,7 @@ public class ResultParser : Object
 				var list_item = (Markdown.Document.ListItem) list_child;
 				var task_data = list_item.to_key_map();
 				var task = new Details(this.runner, this.runner.factory, this.runner.session, task_data);
+				task.validate_references();
 				if (task.issues != "") {
 					this.issues += "\n" + "Section \"" + section_heading.to_markdown() +
 						"\", a task in this section (References): " + task.issues;
@@ -211,7 +208,7 @@ public class ResultParser : Object
 	/**
 	 * Parses single-task refinement output.
 	 *
-	 * Expects section "Refined task": walk contents — List → first
+	 * Expects section "Task": walk contents — List → first
 	 * ''ListItem.to_key_map()'' → ''task.update_props(map)''; Block (FENCED_CODE)
 	 * → ''task.code_blocks.add(block)''. Appends to {@link issues} on missing
 	 * section/list or task validation. Content format: **What is needed**, **Skill**,
@@ -221,15 +218,14 @@ public class ResultParser : Object
 	 */
 	public void extract_refinement(Details task)
 	{
-		var section_title = "Refined task";
-		if (!this.document.headings.has_key(section_title)) {
-			this.issues += "\n" + "Refinement output must include a \"Refined task\" section. " +
-				"No such section was found. Produce a Refined task section with a list containing " +
+		if (!this.document.headings.has_key("task")) {
+			this.issues += "\n" + "Output must include a \"Task\" section. " +
+				"No such section was found. Produce a Task section with a list containing " +
 				"**What is needed**, **Skill**, **References**, **Expected output**, and **Skill call**.";
 			return;
 		}
 		var found_list = false;
-		foreach (var node in this.document.headings.get(section_title).contents()) {
+		foreach (var node in this.document.headings.get("task").contents()) {
 			if (!(node is Markdown.Document.Block) && !(node is Markdown.Document.List)) {
 				continue;
 			}
@@ -245,23 +241,50 @@ public class ResultParser : Object
 			found_list = true;
 			var list_block = (Markdown.Document.List) node;
 			if (list_block.children.size == 0) {
-				this.issues += "\n" + "Section \"" + section_title + "\": the list must contain at least one item " +
-					"(the refined task with **What is needed**, **Skill**, **References**, " +
+				this.issues += "\n" + "Section \"Task\": the list must contain at least one item " +
+					"(**What is needed**, **Skill**, **References**, " +
 					"**Expected output**, **Skill call**).";
 				return;
 			}
 			var list_item = (Markdown.Document.ListItem) list_block.children.get(0);
 			task.update_props(list_item.to_key_map());
 			if (task.issues != "") {
-				this.issues += "\n" + "Section \"" + section_title + "\" (References): " + task.issues;
+				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}
 			break;
 		}
 		if (!found_list) {
-			this.issues += "\n" + "Section \"" + section_title + "\": must contain a list with one item " +
+			this.issues += "\n" + "Section \"Task\": must contain a list with one item " +
 				"(nested list **What is needed**, **Skill**, **References**, **Expected output**, **Skill call**). " +
 				"No list was found — add a list there as in the output format.";
 			return;
+		}
+		if (!this.document.headings.has_key("tool-calls")) {
+			this.document.headings.set("tool-calls", new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH));
+		}
+		var tool_index = 0;
+		foreach (var node in this.document.headings.get("tool-calls").contents()) {
+			if (!(node is Markdown.Document.Block)) {
+				continue;
+			}
+			var block = (Markdown.Document.Block) node;
+			if (block.kind != Markdown.FormatType.FENCED_CODE_QUOTE
+				&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
+				continue;
+			}
+			var tool = new Tool(task);
+			if (!tool.parse(block)) {
+				task.issues += tool.issues;
+				continue;
+			} 
+			tool_index++;
+			tool.tool_call.id = tool.name + "_" + tool_index.to_string();
+			if (!tool.validate()) {
+				task.issues += tool.issues;
+				continue;
+			}
+			
+			task.tools.add(tool);
 		}
 	}
 
@@ -284,14 +307,14 @@ public class ResultParser : Object
 	{
 		task.result = "";
 		task.result_document = this.document;
-		if (!this.document.headings.has_key("Result summary")) {
+		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
 				"Produce a result summary (what was found or produced; whether complete or more work needed).";
 			return;
 		}
 		string[] parts = {};
-		foreach (var node in this.document.headings.get("Result summary").contents()) {
+		foreach (var node in this.document.headings.get("result-summary").contents()) {
 			if (node is Markdown.Document.Block) {
 				parts += ((Markdown.Document.Block) node).to_markdown();
 			}

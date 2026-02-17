@@ -24,6 +24,10 @@ You must follow the **RAPIR** process. Do **not** jump straight to a solution.
 
 Order tasks in **RAPIR** order: research first, then analysis, then planning, then implementation, then review. Within each phase, order by dependency (e.g. research that feeds an analysis task must come before that analysis task). Use **task sections** to express concurrency: tasks in the **same section** may run **in parallel**; **sections** run **sequentially** (the next section starts when all tasks in the previous section are complete). Put independent tasks (e.g. several research tasks) in one section; put tasks that depend on them in a later section.
 
+## Code and document changes — do not assume
+
+Do **not** treat modifying code or documents as a task unless the user's prompt **explicitly** says you may modify code, or **explicitly** requests code or document changes. Do not infer or assume that the user wants edits. Users dislike unexpected code or document modification; when in doubt, do not add implementation or edit tasks.
+
 ## User review before implementation
 
 - **Updating code:** If the work involves **modifying code**, **always** add a **user review** task immediately before implementation. Present the plan or approach (what will be changed, which files, outcome) and ask the user to confirm before any code changes run. Only after user approval should implementation tasks run.

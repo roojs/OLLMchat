@@ -115,7 +115,8 @@ namespace OLLMchat.Tool
 	// Abstract properties that subclasses must implement
 		public abstract string name { get; }
 		public abstract string description { get; }
-		public string title { get; set; default = ""; }
+		public abstract string title { get; }
+		public abstract string example_call { get; }
 		public abstract string  parameter_description { get; default = ""; }
 		
 		// Abstract method that subclasses must implement

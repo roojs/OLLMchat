@@ -109,6 +109,11 @@ public class Details : OLLMchat.Agent.Base
 		get; set; default = new Gee.ArrayList<Markdown.Document.Block>(); }
 
 	/**
+	 * Tool instances from ## Tool Calls section (ResultParser); run_tools() yields tool.execute() for each.
+	 */
+	public Gee.ArrayList<Tool> tools { get; set; default = new Gee.ArrayList<Tool>(); }
+
+	/**
 	 * @task_data from ListItem.to_key_map() for one task list item (keys: exact labels only, see class doc).
 	 */
 	public Details(
@@ -157,30 +162,30 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Validate reference_targets hrefs; append to issues on invalid.
 	 * Call from parsing process, not from ctor.
-	 * Accepts: #section (markdown section reference, not validated);
-	 * output:{task name} (read, not validated); absolute file path (must exist).
-	 * TODO: validate output: and #section references.
+	 * Accepts: #anchor (e.g. #project-description), output:task_name, http(s) URL, absolute file path (must exist).
 	 */
 	public void validate_references()
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
 			if (href.has_prefix("#")) {
+				// FIXME: validate #anchor format and existence; defer for now
 				continue;
 			}
 			if (href.has_prefix("output:")) {
 				continue;
 			}
-			if (!GLib.Path.is_absolute(href)) {
-				this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-					+ "Use only: #section, output:task_name, or absolute file path (must exist).";
+			if (href.has_prefix("http://") || href.has_prefix("https://")) {
 				continue;
 			}
-			if (!GLib.File.new_for_path(href).query_exists()) {
-				this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist.";
+			if (GLib.Path.is_absolute(href)) {
+				if (!GLib.File.new_for_path(href).query_exists()) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist.";
+				}
 				continue;
 			}
-			 
+			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
+				+ "Use only: #anchor (e.g. #project-description), output:task_name, http(s) URL, or absolute file path (must exist).";
 		}
 	}
 
@@ -209,7 +214,7 @@ public class Details : OLLMchat.Agent.Base
 	 * builds task_reference_contents by looping reference_targets and asking
 	 * Runner for each item (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
-	 * FIXME: Caller must handle thrown errors and report to user.
+	 * Caller (Runner) must catch and report to user; see 1.23.14.
 	 */
 	public async void refine() throws GLib.Error
 	{
@@ -219,6 +224,7 @@ public class Details : OLLMchat.Agent.Base
 		var tpl = new OLLMcoder.Skill.PromptTemplate("task_refinement.md");
 		tpl.load();
 		yield this.fill_model();
+		var previous_output = "";
 		for (var i = 0; i < 5; i++) {
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
@@ -226,6 +232,7 @@ public class Details : OLLMchat.Agent.Base
 				"coarse_task", this.coarse_task_markdown(),
 				"skill_input_requirements", definition.skill_input_requirements(),
 				"current_skill_call_issues", this.result_parser.issues,
+				"previous_output", previous_output,
 				"environment", this.runner.env(),
 				"project_description", this.runner.project_manager.active_project != null ?
 					this.runner.project_manager.active_project.summary() : "",
@@ -243,7 +250,8 @@ public class Details : OLLMchat.Agent.Base
 					if (attempt != 2) {
 						continue;
 					}
-					throw e;
+					this.refine_error = new GLib.IOError.INVAL("Task refinement: " + e.message);
+					throw this.refine_error;
 				}
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
@@ -252,8 +260,9 @@ public class Details : OLLMchat.Agent.Base
 				this.refined_done = true;
 				return;
 			}
+			previous_output = response_text;
 		}
-		throw new GLib.IOError.INVAL(this.result_parser.issues);
+		throw new GLib.IOError.INVAL("Task refinement: " + this.result_parser.issues);
 	}
 
 	/**
@@ -348,17 +357,11 @@ public class Details : OLLMchat.Agent.Base
 		return ret;
 	}
 
+	/** Run each tool in sequence. TODO: concurrent execution to be added later. */
 	public async void run_tools() throws GLib.Error
 	{
-		var list = new Gee.ArrayList<OLLMchat.Response.ToolCall>();
-		foreach (var e in this.tool_calls.entries) {
-			list.add(e.value);
-		}
-		var replies = yield this.execute_tools(list);
-		foreach (var msg in replies) {
-			if (msg.role == "tool" && msg.name != null && msg.content != null) {
-				this.tool_outputs.set(msg.name, msg.content);
-			}
+		foreach (var tool in this.tools) {
+			yield tool.execute();
 		}
 	}
 
@@ -401,7 +404,7 @@ public class Details : OLLMchat.Agent.Base
 				return;
 			}
 		}
-		throw new GLib.IOError.INVAL(this.result_parser.issues);
+		throw new GLib.IOError.INVAL("Task executor: " + this.result_parser.issues);
 	}
 }
 
