@@ -30,6 +30,47 @@ namespace Markdown.Document
 			this.kind = k;
 		}
 
+		/** Content nodes from after this heading until the next heading. Default (with_sub_headings = false): stop at any heading; do not include sub-headings. with_sub_headings = true: stop at next heading with level <= this.level (include sub-headings). */
+		public Gee.ArrayList<Node> contents(bool with_sub_headings = false)
+		{
+			var ret = new Gee.ArrayList<Node>();
+			var doc = this.document();
+			if (doc == null) {
+				return ret;
+			}
+			int i = doc.children.index_of(this);
+			for (var j = i + 1; j < doc.children.size; j++) {
+				var n = doc.children.get(j);
+				if (!(n is Block)) {
+					ret.add(n);
+					continue;
+				}
+				var b = (Block) n;
+				if (b.kind < FormatType.HEADING_1 || b.kind > FormatType.HEADING_6) {
+					ret.add(n);
+					continue;
+				}
+				if (!with_sub_headings || b.level <= this.level) {
+					break;
+				}
+				ret.add(n);
+			}
+			return ret;
+		}
+
+		/** Link nodes (Format with kind LINK) among this block's direct children. Each has .href and .title. */
+		public Gee.ArrayList<Format> links()
+		{
+			var ret = new Gee.ArrayList<Format>();
+			for (var i = 0; i < this.children.size; i++) {
+				var n = this.children.get(i);
+				if (n is Format && ((Format) n).kind == FormatType.LINK) {
+					ret.add((Format) n);
+				}
+			}
+			return ret;
+		}
+
 		public override string to_markdown()
 		{
 			string inner = "";

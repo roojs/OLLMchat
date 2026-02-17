@@ -15,15 +15,6 @@ namespace OLLMcoder.Task
 {
 
 /**
- * Markdown link (href and optional title). Used in reference_targets.
- */
-public class Link : Object
-{
-	public string href { get; set; default = ""; }
-	public string title { get; set; default = ""; }
-}
-
-/**
  * One task in the plan. Built from task list output; updated from refinement output.
  *
  * Task list (input): each list item under ### Task section N has a nested list:
@@ -90,17 +81,20 @@ public class Details : OLLMchat.Agent.Base
 	 * Markdown links from references block (project_description, paths, plan:...);
 	 * Runner resolves for prompt fill. Filled in fill_task_data().
 	 */
-	public Gee.ArrayList<Link> reference_targets { get; set; default = new Gee.ArrayList<Link>(); }
+	public Gee.ArrayList<Markdown.Document.Format> reference_targets { 
+		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
 
 	/**
 	 * Tool calls to run (key = tool name); filled by parsing code_blocks in run_tools.
 	 */
-	public Gee.HashMap<string, OLLMchat.Response.ToolCall> tool_calls { get; set; default = new Gee.HashMap<string, OLLMchat.Response.ToolCall>(); }
+	public Gee.HashMap<string, OLLMchat.Response.ToolCall> tool_calls { 
+		get; set; default = new Gee.HashMap<string, OLLMchat.Response.ToolCall>(); }
 
 	/**
 	 * Tool outputs by name; used in executor precursor.
 	 */
-	public Gee.HashMap<string, string> tool_outputs { get; set; default = new Gee.HashMap<string, string>(); }
+	public Gee.HashMap<string, string> tool_outputs {
+		 get; set; default = new Gee.HashMap<string, string>(); }
 
 	/**
 	 * Code blocks from refinement (parser); add directly. Details parses into tool_calls.
@@ -191,6 +185,7 @@ public class Details : OLLMchat.Agent.Base
 
 	private bool refined_done = false;
 	private GLib.Error? refine_error = null;
+	private GLib.SourceFunc? resume_refined = null;
 
 	/**
 	 * True when refinement failed after exhausting communication retries
@@ -200,9 +195,15 @@ public class Details : OLLMchat.Agent.Base
 
 	public async void wait_refined() throws GLib.Error
 	{
-		while (!this.refined_done) {
-			yield GLib.Idle.add((GLib.SourceFunc) (() => { return false; }));
+		if (this.refined_done) {
+			if (this.refine_error != null) {
+				throw this.refine_error;
+			}
+			return;
 		}
+		this.resume_refined = wait_refined.callback;
+		yield;
+		this.resume_refined = null;
 		if (this.refine_error != null) {
 			throw this.refine_error;
 		}
@@ -244,13 +245,13 @@ public class Details : OLLMchat.Agent.Base
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var response = yield this.chat_call.send(messages, null);
-					response_text = response != null ? (response.content ?? "") : "";
+					response_text = response != null ? (response.message.content ?? "") : "";
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {
 						continue;
 					}
-					this.refine_error = new GLib.IOError.INVAL("Task refinement: " + e.message);
+					this.refine_error = new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + e.message);
 					throw this.refine_error;
 				}
 			}
@@ -258,11 +259,14 @@ public class Details : OLLMchat.Agent.Base
 			this.result_parser.extract_refinement(this);
 			if (this.result_parser.issues == "") {
 				this.refined_done = true;
+				if (this.resume_refined != null) {
+					this.resume_refined();
+				}
 				return;
 			}
 			previous_output = response_text;
 		}
-		throw new GLib.IOError.INVAL("Task refinement: " + this.result_parser.issues);
+		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
 
 	/**
@@ -272,7 +276,7 @@ public class Details : OLLMchat.Agent.Base
 	protected override async void fill_model()
 	{
 		var definition = this.runner.task_definition.get(this);
-		if (definition == null || !definition.header.has_key("model")) {
+		if (!definition.header.has_key("model")) {
 			yield base.fill_model();
 			return;
 		}
@@ -374,7 +378,7 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void post_evaluate() throws GLib.Error
 	{
-		var definition = this.runner.task_definition.get(this)!;
+		var definition = this.runner.task_definition.get(this);
 		var tpl = new OLLMcoder.Skill.PromptTemplate("task_execution.md");
 		tpl.load();
 		for (var i = 0; i < 5; i++) {
@@ -388,7 +392,7 @@ public class Details : OLLMchat.Agent.Base
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var response = yield this.chat_call.send(messages, null);
-					response_text = response != null ? (response.content ?? "") : "";
+					response_text = response != null ? (response.message.content ?? "") : "";
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {
@@ -404,7 +408,7 @@ public class Details : OLLMchat.Agent.Base
 				return;
 			}
 		}
-		throw new GLib.IOError.INVAL("Task executor: " + this.result_parser.issues);
+		throw new GLib.IOError.INVALID_ARGUMENT("Task executor: " + this.result_parser.issues);
 	}
 }
 
