@@ -28,51 +28,15 @@ namespace OLLMcoder.Skill
 		private Factory sr_factory {
 			get { return (Factory) this.factory; }
 		}
+		private static PromptTemplate? tpl_cache = null;
 
-		private string _active_template_key = "skill";
-		/** Template key for current step (e.g. "skill", "task_creation_initial", "task_execution"). */
-		public string active_template_key {
-			get { return _active_template_key; }
-			set { _active_template_key = value; }
-		}
-
-		private Gee.HashMap<string, PromptTemplate> templates = new Gee.HashMap<string, PromptTemplate>();
-
-		private const string SKILL_PROMPTS_DIR = "resources/skill-prompts";
-
-		private static string template_filename_for(string key)
+		private static PromptTemplate template_or_load() throws GLib.Error
 		{
-			switch (key) {
-				case "skill":
-					return "skill.template.md";
-				case "task_creation_initial":
-					return "task_creation_initial.md";
-				case "task_refinement":
-					return "task_refinement.md";
-				case "task_post_completion":
-					return "task_post_completion.md";
-				case "task_execution":
-					return "task_execution.md";
-				default:
-					return key + ".md";
+			if (tpl_cache == null) {
+				tpl_cache = new PromptTemplate("skill.template.md");
+				tpl_cache.load();
 			}
-		}
-
-		private PromptTemplate get_template(string key) throws GLib.Error
-		{
-			if (this.templates.has_key(key)) {
-				return this.templates.get(key);
-			}
-			var filename = template_filename_for(key);
-			PromptTemplate t;
-			if (key != "skill") {
-				t = PromptTemplate.from_dir(filename, SKILL_PROMPTS_DIR);
-			} else {
-				t = new PromptTemplate(filename);
-			}
-			t.load();
-			this.templates.set(key, t);
-			return t;
+			return tpl_cache;
 		}
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
@@ -89,29 +53,32 @@ namespace OLLMcoder.Skill
 			}
 
 			this.skill.apply_skills(this.sr_factory.skill_manager.by_name);
-			return get_template(this.active_template_key).system_fill("current_skill", this.skill.to_markdown(), null);
+			return template_or_load().system_fill("current_skill", this.skill.to_markdown(), null);
 		}
 
 		public override async void fill_model()
 		{
-			if (this.skill.header.has_key("model")) {
-				var skill_model = this.skill.header.get("model").strip();
-				if (skill_model != "" && this.connection.models.has_key(skill_model)) {
-					this.chat_call.model = skill_model;
-					this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
-					return;
-				}
-				if (skill_model != "") {
-					this.add_message(new OLLMchat.Message("ui-warning",
-						"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead."));
-				}
+			if (!this.skill.header.has_key("model")) {
+				yield base.fill_model();
+				return;
 			}
+			var skill_model = this.skill.header.get("model").strip();
+			if (skill_model != "" && this.connection.models.has_key(skill_model)) {
+				this.chat_call.model = skill_model;
+				this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
+				return;
+			}
+			if (skill_model != "") {
+				this.add_message(new OLLMchat.Message("ui-warning",
+					"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead."));
+			}
+			
 			yield base.fill_model();
 		}
 
 		private string user_prompt(string user_query) throws GLib.Error
 		{
-			return get_template(this.active_template_key).fill("query", user_query);
+			return template_or_load().fill("query", user_query);
 		}
 
 		private void fill_tools()
