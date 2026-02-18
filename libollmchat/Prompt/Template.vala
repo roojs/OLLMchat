@@ -38,11 +38,11 @@ namespace OLLMchat.Prompt
 
 		/**
 		 * Returns true if the template exists and can be loaded.
-		 * For source == {{{"resource://"}}}, assumes always exists; otherwise checks filesystem.
+		 * For source starting with {{{"resource://"}}}, assumes always exists; otherwise checks filesystem.
 		 */
 		public bool exists() throws GLib.Error
 		{
-			if (this.source == "resource://") {
+			if (this.source.has_prefix("resource://")) {
 				return true;
 			}
 			return GLib.File.new_for_uri(

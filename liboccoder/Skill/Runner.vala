@@ -28,16 +28,6 @@ namespace OLLMcoder.Skill
 		private Factory sr_factory {
 			get { return (Factory) this.factory; }
 		}
-		private static PromptTemplate? tpl_cache = null;
-
-		private static PromptTemplate template_or_load() throws GLib.Error
-		{
-			if (tpl_cache == null) {
-				tpl_cache = new PromptTemplate("skill.template.md");
-				tpl_cache.load();
-			}
-			return tpl_cache;
-		}
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
 		{
@@ -53,7 +43,8 @@ namespace OLLMcoder.Skill
 			}
 
 			this.skill.apply_skills(this.sr_factory.skill_manager.by_name);
-			return template_or_load().system_fill("current_skill", this.skill.to_markdown(), null);
+			var tpl = PromptTemplate.template("skill.template.md");
+			return tpl.system_fill("current_skill", this.skill.to_markdown(), null);
 		}
 
 		public override async void fill_model()
@@ -78,7 +69,7 @@ namespace OLLMcoder.Skill
 
 		private string user_prompt(string user_query) throws GLib.Error
 		{
-			return template_or_load().fill("query", user_query);
+			return PromptTemplate.template("skill.template.md").fill("query", user_query);
 		}
 
 		private void fill_tools()

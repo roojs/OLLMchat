@@ -39,6 +39,12 @@
     <file>WebFetch.tool</file>
     <file>WebSearch.tool</file>
   </gresource>
+  <gresource prefix="/skill-prompts">
+    <file>task_creation_initial.md</file>
+    <file>task_refinement.md</file>
+    <file>task_post_completion.md</file>
+    <file>task_execution.md</file>
+  </gresource>
 </gresources>
 
 

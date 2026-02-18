@@ -222,8 +222,7 @@ public class Details : OLLMchat.Agent.Base
 		this.refined_done = false;
 		this.refine_error = null;
 		var definition = this.runner.task_definition.get(this);
-		var tpl = new OLLMcoder.Skill.PromptTemplate("task_refinement.md");
-		tpl.load();
+		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		yield this.fill_model();
 		var previous_output = "";
 		for (var i = 0; i < 5; i++) {
@@ -315,7 +314,6 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var ret = "";
 		foreach (var link in this.reference_targets) {
-			
 			if (!GLib.Path.is_absolute(link.href)) {
 				ret += this.reference_block(link.href, this.runner.reference_content(link.href));
 				continue;
@@ -325,8 +323,7 @@ public class Details : OLLMchat.Agent.Base
 				found = new OLLMfiles.File.new_fake(this.runner.project_manager, link.href);
 			}
 			this.runner.project_manager.buffer_provider.create_buffer(found);
-			 
-			ret += this.reference_block(link.href,  found.get_contents(0));
+			ret += this.reference_block(link.href, found.get_contents(0));
 		}
 		return ret;
 	}
@@ -336,14 +333,11 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	private string reference_block(string target, string content)
 	{
-		if (content == "" ) {
+		if (content == "") {
 			return "";
 		}
 		var fence = (content.contains("\n```") || content.has_prefix("```")) ? "~~~~" : "```";
-		return "### " + target + "\n\n" 
-			+ fence + "\n" 
-			+ content + "\n" 
-			+ fence + "\n\n";
+		return "### " + target + "\n\n" + fence + "\n" + content + "\n" + fence + "\n\n";
 	}
 
 	/**
@@ -354,7 +348,7 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var ret = this.reference_contents();
 		foreach (var e in this.tool_outputs.entries) {
-			ret += this.reference_block("Tool call " + e.key, 
+			ret += this.reference_block("Tool call " + e.key,
 				Json.gobject_to_data(this.tool_calls.get(e.key), null));
 			ret += this.reference_block("Tool call " + e.key + " Output", e.value);
 		}
@@ -379,8 +373,7 @@ public class Details : OLLMchat.Agent.Base
 	public async void post_evaluate() throws GLib.Error
 	{
 		var definition = this.runner.task_definition.get(this);
-		var tpl = new OLLMcoder.Skill.PromptTemplate("task_execution.md");
-		tpl.load();
+		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
 		for (var i = 0; i < 5; i++) {
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
