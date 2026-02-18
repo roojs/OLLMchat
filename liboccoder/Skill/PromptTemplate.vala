@@ -45,17 +45,22 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Returns a markdown heading line plus body in a fenced code block.
+		 * Returns a markdown heading line plus body, optionally in a fenced code block.
 		 *
-		 * Uses tildes when body contains a line-start backtick fence so the outer fence is not broken;
-		 * otherwise uses a backtick fence.
+		 * When code_block is true (default): uses tildes when body contains a line-start backtick
+		 * fence so the outer fence is not broken; otherwise uses a backtick fence.
+		 * When code_block is false: body is appended after the heading with no fence.
 		 *
 		 * @param heading heading text (e.g. GFM anchor)
 		 * @param body body text to wrap
+		 * @param code_block if true (default), wrap body in a fenced code block; if false, plain text
 		 * @return the concatenated string
 		 */
-		public string header(string heading, string body)
+		public string header(string heading, string body, bool code_block = true)
 		{
+			if (!code_block) {
+				return "## " + heading.strip() + "\n\n" + body + "\n\n";
+			}
 			var fence = body.index_of("\n```") >= 0 ? "~~~~" : "```";
 			return "## " + heading.strip() + "\n\n" + fence + "\n" + body + "\n" + fence + "\n\n";
 		}

@@ -131,7 +131,7 @@ public class ResultParser : Object
 	 * Walks ''section_heading.contents()'' in order. Ignores nodes that are not
 	 * Block or List; Blocks that are not fenced code are skipped. Fenced code
 	 * blocks are appended to ''last_task.code_blocks''; Lists are parsed as
-	 * tasks (each list item → {@link Details} via ''ListItem.to_key_map()'').
+	 * tasks (each list → one {@link Details} via ''List.to_key_map()'').
 	 * Returns ''null'' only when the section has no list at all (appends to
 	 * {@link issues}).
 	 *
@@ -176,22 +176,19 @@ public class ResultParser : Object
 				last_task.code_blocks.add(block);
 				continue;
 			}
-			// node is List; list children are ListItem (per document model)
+			// node is List; one list → one task (to_key_map returns map from list items)
 			found_any_list = true;
 			var list_block = (Markdown.Document.List) node;
-			foreach (var list_child in list_block.children) {
-				var list_item = (Markdown.Document.ListItem) list_child;
-				var task_data = list_item.to_key_map();
-				var task = new Details(this.runner, this.runner.factory, this.runner.session, task_data);
-				task.validate_references();
-				if (task.issues != "") {
-					this.issues += "\n" + "Section \"" + section_heading.to_markdown() +
-						"\", a task in this section (References): " + task.issues;
-					continue;
-				}
-				step.children.add(task);
-				last_task = task;
+			var task_data = list_block.to_key_map();
+			var task = new Details(this.runner, this.runner.sr_factory, this.runner.session, task_data);
+			task.validate_references();
+			if (task.issues != "") {
+				this.issues += "\n" + "Section \"" + section_heading.to_markdown() +
+					"\", a task in this section (References): " + task.issues;
+				continue;
 			}
+			step.children.add(task);
+			last_task = task;
 		}
 		if (!found_any_list) {
 			this.issues += "\n" + "Section \"" + section_heading.to_markdown() +
@@ -209,7 +206,7 @@ public class ResultParser : Object
 	 * Parses single-task refinement output.
 	 *
 	 * Expects section "Task": walk contents — List → first
-	 * ''ListItem.to_key_map()'' → ''task.update_props(map)''; Block (FENCED_CODE)
+	 * ''List.to_key_map()'' → ''task.update_props(map)''; Block (FENCED_CODE)
 	 * → ''task.code_blocks.add(block)''. Appends to {@link issues} on missing
 	 * section/list or task validation. Content format: **What is needed**, **Skill**,
 	 * **References**, **Expected output**, **Skill call**; optional fenced code block.
@@ -246,8 +243,7 @@ public class ResultParser : Object
 					"**Expected output**, **Skill call**).";
 				return;
 			}
-			var list_item = (Markdown.Document.ListItem) list_block.children.get(0);
-			task.update_props(list_item.to_key_map());
+			task.update_props(list_block.to_key_map());
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}

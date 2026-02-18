@@ -24,13 +24,42 @@ namespace OLLMcoder.Skill
 	 */
 	public class Manager : Object
 	{
-		public Gee.ArrayList<string> skills_directories { get; private set; default = new Gee.ArrayList<string>(); }
-		public Gee.HashMap<string, Definition> by_path { get; set; default = new Gee.HashMap<string, Definition>(); }
-		public Gee.HashMap<string, Definition> by_name { get; set; default = new Gee.HashMap<string, Definition>(); }
+		public Gee.ArrayList<string> skills_directories { 
+			get; private set; default = new Gee.ArrayList<string>(); }
+		public Gee.HashMap<string, Definition> by_path { 
+			get; set; default = new Gee.HashMap<string, Definition>(); }
+		public Gee.HashMap<string, Definition> by_name { 
+			get; set; default = new Gee.HashMap<string, Definition>(); }
 
 		public Manager(Gee.ArrayList<string> skills_directories)
 		{
 			this.skills_directories = skills_directories;
+		}
+
+		/** Returns true if task's skill exists in by_name; false otherwise. Caller generates error message. */
+		public bool validate(OLLMcoder.Task.Details task)
+		{
+			var skill_name = task.task_data.get("Skill").to_markdown().strip();
+			return skill_name != "" && this.by_name.has_key(skill_name);
+		}
+
+		/** Skill name from task; call only after validate(task). */
+		public Definition fetch(OLLMcoder.Task.Details task)
+		{
+			var skill_name = task.task_data.get("Skill").to_markdown().strip();
+			return this.by_name.get(skill_name);
+		}
+
+		/**
+		 * One line per skill: "**Skillname** - description". Template already has the heading; caller passes this as the placeholder body only.
+		 */
+		public string to_markdown()
+		{
+			var ret = "";
+			foreach (var e in this.by_name.entries) {
+				ret += "**" + e.key + "** - " + e.value.header.get("description") + "\n";
+			}
+			return ret;
 		}
 
 		public void scan() throws GLib.Error

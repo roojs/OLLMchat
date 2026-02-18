@@ -406,9 +406,13 @@ namespace OLLMapp
 			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
 
 			// Register SkillRunner (Conductor) agent: factory creates SkillManager from directories
+			// big FIXME - we will need t change this.
 			var skills_dirs = new Gee.ArrayList<string>();
-			skills_dirs.add(GLib.Path.build_filename(GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
-			var skill_runner = new OLLMcoder.Skill.Factory(skills_dirs, "");
+			skills_dirs.add(
+				GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
+					
+			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
 			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md

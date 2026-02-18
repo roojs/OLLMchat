@@ -25,128 +25,128 @@ namespace OLLMcoder.Skill
 	public class Runner : OLLMchat.Agent.Base
 	{
 		public Definition skill { get; private set; }
-		private Factory sr_factory {
+		public Factory sr_factory {
 			get { return (Factory) this.factory; }
 		}
+
+		/** True once user has approved running writer (modify) tasks this run. */
+		public bool writer_approval { get; set; default = false; }
+		/** Used by task list flow (send_async(string)); set from template user_to_document(). */
+		public Markdown.Document.Document? user_request { get; set; default = null; }
+		/** Parsed task list; set by send_async when parse and validate_skills succeed. */
+		public OLLMcoder.Task.List? task_list { get; set; default = null; }
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
 		{
 			base(factory, session);
 		}
 
-		private string system_message() throws GLib.Error
+		/** Used only in send_async when filling task_creation_initial (before user_request exists). */
+		public string env()
 		{
-			var missing = this.skill.validate_skills(this.sr_factory.skill_manager.by_name);
-			if (missing.size > 0) {
-				throw new GLib.FileError.INVAL("Skill references missing or unavailable skills: "
-					+ string.joinv(", ", missing.to_array()));
+			var ret = "- **Date** - `" + new GLib.DateTime.now_local().format("%Y-%m-%d") + "`";
+			var os_info = GLib.Environment.get_os_info("PRETTY_NAME");
+			ret += "\n- **OS** - `" + (os_info != null && os_info != "" ? os_info : "linux") + "`";
+			var shell = GLib.Environment.get_variable("SHELL");
+			if (shell != null && shell != "") {
+				ret += "\n- **Shell** - `" + shell + "`";
 			}
-
-			this.skill.apply_skills(this.sr_factory.skill_manager.by_name);
-			var tpl = PromptTemplate.template("skill.template.md");
-			return tpl.system_fill("current_skill", this.skill.to_markdown(), null);
+			if (this.sr_factory.project_manager.active_project != null) {
+				ret += "\n- **Workspace** - `" + this.sr_factory.project_manager.active_project.path + "`";
+			}
+			return ret;
 		}
 
-		public override async void fill_model()
+		private PromptTemplate task_creation(string user_prompt, string previous_proposal, string previous_proposal_issues) throws GLib.Error
 		{
-			if (!this.skill.header.has_key("model")) {
-				yield base.fill_model();
-				return;
-			}
-			var skill_model = this.skill.header.get("model").strip();
-			if (skill_model != "" && this.connection.models.has_key(skill_model)) {
-				this.chat_call.model = skill_model;
-				this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
-				return;
-			}
-			if (skill_model != "") {
-				this.add_message(new OLLMchat.Message("ui-warning",
-					"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead."));
-			}
-			
-			yield base.fill_model();
-		}
-
-		private string user_prompt(string user_query) throws GLib.Error
-		{
-			return PromptTemplate.template("skill.template.md").fill("query", user_query);
+			var tpl = PromptTemplate.template("task_creation_initial.md");
+			var file = this.sr_factory.current_file();
+			var open_files_list = "";
+			tpl.fill(
+				"user_prompt", tpl.header("User Prompt", user_prompt),
+				"environment", tpl.header("Environment", this.env(), false),
+				"project_description", "",
+				"current_file", file == null ? "" : tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"open_files", open_files_list,
+				"previous_proposal", previous_proposal == "" ? "" : tpl.header("Previous Proposal", previous_proposal),
+				"previous_proposal_issues", previous_proposal_issues == "" ? "" : tpl.header("Previous Proposal Issues", previous_proposal_issues),
+				"skill_catalog", this.sr_factory.skill_manager.to_markdown());
+			return tpl;
 		}
 
 		private void fill_tools()
 		{
 			this.chat_call.tools.clear();
-			if (!this.skill.header.has_key("tools")) {
-				return;
+		}
+ 
+
+		/** Entry point. Sends user request only; when finished calls handle_task_list. Current file and open files come from this.project_manager. */
+		public async void send_async(string user_prompt, GLib.Cancellable? cancellable = null) throws GLib.Error
+		{
+			var previous_proposal = "";
+			var previous_proposal_issues = "";
+			for (var try_count = 0; try_count < 5; try_count++) {
+				var tpl = this.task_creation(user_prompt, previous_proposal, previous_proposal_issues);
+				this.user_request = tpl.user_to_document();
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var response_obj = yield this.chat_call.send(messages, cancellable);
+				var response = response_obj != null ? response_obj.message.content : "";
+				var parser = new OLLMcoder.Task.ResultParser(this, response);
+				parser.parse_task_list();
+				if (parser.issues == "") {
+					var skill_issues = parser.task_list.validate_skills();
+					if (skill_issues == "") {
+						this.task_list = parser.task_list;
+						yield this.handle_task_list();
+						return;
+					}
+					parser.issues = skill_issues;
+				}
+				previous_proposal = parser.proposal;
+				previous_proposal_issues = parser.issues;
 			}
-			foreach (var name in this.skill.header.get("tools").split(" ")) {
-				var tool_name = name.strip();
-				if (tool_name == "") {
-					continue;
+			this.add_message(new OLLMchat.Message("ui", "Could not build valid task list after 5 tries."));
+		}
+
+		/** Deals with the task list only. Called by send_async when it has a valid task_list. */
+		private async void handle_task_list() throws GLib.Error
+		{
+			this.writer_approval = false;
+			var hit_max_rounds = true;
+			for (var i = 0; i < 5; i++) {
+				if (!this.task_list.has_pending_exec()) {
+					hit_max_rounds = false;
+					break;
 				}
-				if (!this.session.manager.tools.has_key(tool_name)) {
-					this.add_message(new OLLMchat.Message("ui-warning",
-						"The skill requested the tool \"" + tool_name + "\", but it was not available."));
-					continue;
+				yield this.task_list.refine();
+				yield this.task_list.run_until_user_approval();
+				if (this.task_list.has_tasks_requiring_approval() && !this.writer_approval) {
+					var approved = yield this.request_writer_approval();
+					if (!approved) {
+						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
+						return;
+					}
+					this.writer_approval = true;
 				}
-				this.chat_call.tools.set(tool_name, this.session.manager.tools.get(tool_name));
+				yield this.task_list.run_all_tasks();
+				yield this.run_post_completion();
+			}
+			if (hit_max_rounds && this.task_list.has_pending_exec()) {
+				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
 		}
 
-		public override async void send_async(OLLMchat.Message message, GLib.Cancellable? cancellable = null)
+		/** Stub: request user approval before running writer tasks. Plan: implement UI. */
+		private async bool request_writer_approval()
 		{
-			this.sr_factory.skill_manager.scan();
-			this.skill = this.sr_factory.skill_manager.by_name.get(this.sr_factory.skill_name);
-			if (this.skill == null) {
-				this.add_message(new OLLMchat.Message("ui", "Skill not found: " + this.sr_factory.skill_name));
-				return;
-			}
+			return true;
+		}
 
-			var messages = new Gee.ArrayList<OLLMchat.Message>();
-
-			string system_content;
-			try {
-				system_content = this.system_message();
-			} catch (GLib.Error e) {
-				this.add_message(new OLLMchat.Message("ui", e.message));
-				this.session.is_running = false;
-				return;
-			}
-
-			if (system_content != "") {
-				var system_msg = new OLLMchat.Message("system", system_content);
-				this.session.messages.add(system_msg);
-				messages.add(system_msg);
-			}
-
-			string user_content;
-			try {
-				user_content = this.user_prompt(message.content);
-			} catch (GLib.Error e) {
-				this.add_message(new OLLMchat.Message("ui", e.message));
-				this.session.is_running = false;
-				return;
-			}
-			this.session.messages.add(new OLLMchat.Message("user", user_content));
-
-			foreach (var msg in this.session.messages) {
-				if (msg.role == "user" || msg.role == "assistant" || msg.role == "tool") {
-					messages.add(msg);
-				}
-			}
-
-			this.session.is_running = true;
-			GLib.debug("is_running=true session %s", this.session.fid);
-
-			yield this.fill_model();
-			this.fill_tools();
-
-			this.chat_call.cancellable = cancellable;
-			try {
-				var response = yield this.chat_call.send(messages, cancellable);
-			} catch (GLib.Error e) {
-				this.add_message(new OLLMchat.Message("ui", e.message));
-				this.session.is_running = false;
-			}
+		/** Stub: post-completion hook after all tasks run. Plan: implement per 1.23.14. */
+		private async void run_post_completion() throws GLib.Error
+		{
 		}
 	}
 }

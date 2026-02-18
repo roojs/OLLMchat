@@ -23,15 +23,28 @@ namespace OLLMcoder.Skill
 	 */
 	public class Factory : OLLMchat.Agent.Factory
 	{
+		public OLLMfiles.ProjectManager project_manager { get; private set; }
 		public Manager skill_manager { get; private set; }
 		public string skill_name { get; private set; }
 
-		public Factory(Gee.ArrayList<string> skills_directories, string skill_name = "")
+		public Factory(OLLMfiles.ProjectManager project_manager, Gee.ArrayList<string> skills_directories, string skill_name = "")
 		{
 			this.name = "skill-runner";
 			this.title = "Skills Agent";
+			this.project_manager = project_manager;
 			this.skill_manager = new Manager(skills_directories);
 			this.skill_name = skill_name != "" ? skill_name : "task_creator";
+		}
+
+		/** Returns active file; ensures buffer exists so caller can call get_contents(). */
+		public OLLMfiles.File? current_file()
+		{
+			var file = this.project_manager.active_file;
+			if (file == null) {
+				return null;
+			}
+			this.project_manager.buffer_provider.create_buffer(file);
+			return file;
 		}
 
 		public override OLLMchat.Agent.Base create_agent(OLLMchat.History.SessionBase session)

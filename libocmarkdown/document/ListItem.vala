@@ -20,6 +20,27 @@ namespace Markdown.Document
 		public bool task_checked { get; set; }
 		public bool is_task_item { get; set; default = false; }
 
+		/**
+		 * Get key from this list item and fill value with the rest (operates on this).
+		 * Caller creates value and passes it in. Only checks first child; only BOLD_ASTERISK.
+		 * If first child is not BOLD_ASTERISK → return "". Else return first child's text and append tail to value.children.
+		 */
+		public string key_value(Block value)
+		{
+			if (this.children.size == 0) {
+				return "";
+			}
+			var first = this.children.get(0);
+			if (!(first is Format) || ((Format) first).kind != FormatType.BOLD_ASTERISK) {
+				return "";
+			}
+			var key = ((Format) first).text_content().strip();
+			for (var i = 1; i < this.children.size; i++) {
+				value.children.add(this.children.get(i));
+			}
+			return key;
+		}
+
 		/** Append a nested ListItem under this list item; creates a List if needed. Returns the new ListItem (uid from document). */
 		public ListItem? append_li()
 		{

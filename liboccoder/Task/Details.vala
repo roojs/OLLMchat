@@ -17,20 +17,15 @@ namespace OLLMcoder.Task
 /**
  * One task in the plan. Built from task list output; updated from refinement output.
  *
- * Task list (input): each list item under ### Task section N has a nested list:
- *   - **What is needed** ...
- *   - **Skill** ...
- *   - **References** ... (links: project_description, current_file, paths, plan:...)
- *   - **Expected output** ...
+ * Task list (input): each list item under a task section heading has a nested list
+ * with labels ''What is needed'', ''Skill'', ''References'', ''Expected output''.
+ * Links in References: project_description, current_file, paths, plan:...
  * Keys are exactly these labels (no other format accepted):
- * "What is needed", "Skill", "References", "Expected output",
- * "Requires user approval".
+ * "What is needed", "Skill", "References", "Expected output", "Requires user approval".
  *
- * Refined task (refinement output): section "Refined task" with same list plus:
- *   - **Skill call** ...
- *   ``` optional fenced code block ```
- * Parser uses ListItem.to_key_map() for both; update_props(refined_map);
- * code added directly to code_blocks.
+ * Refined task (refinement output): section "Refined task" with same list plus
+ * ''Skill call'' and an optional fenced code block. Parser uses ListItem.to_key_map()
+ * for both; update_props(refined_map); code added directly to code_blocks.
  */
 public class Details : OLLMchat.Agent.Base
 {
@@ -62,9 +57,14 @@ public class Details : OLLMchat.Agent.Base
 	public string result { get; set; default = ""; }
 
 	/**
-	 * Runner; used for env, task_definition, content_for_reference when filling prompts.
+	 * Runner; used for env, content_for_reference when filling prompts.
 	 */
 	public weak OLLMcoder.Skill.Runner runner { get; set; }
+
+	/** Alias to runner.sr_factory.skill_manager (no setter). */
+	public OLLMcoder.Skill.Manager skill_manager {
+		get { return this.runner.sr_factory.skill_manager; }
+	}
 
 	/**
 	 * Parser for last refine or executor response; result/result_document valid after exec_done.
@@ -108,7 +108,7 @@ public class Details : OLLMchat.Agent.Base
 	public Gee.ArrayList<Tool> tools { get; set; default = new Gee.ArrayList<Tool>(); }
 
 	/**
-	 * @task_data from ListItem.to_key_map() for one task list item (keys: exact labels only, see class doc).
+	 * Initial task_data from ListItem.to_key_map() for one task list item (keys: exact labels only, see class doc).
 	 */
 	public Details(
 		OLLMcoder.Skill.Runner runner,
@@ -210,10 +210,10 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Refinement: fill template. Runner has already validated skills and
-	 * populated task_definition (1.23.14), so definition is non-null. Details
-	 * builds task_reference_contents by looping reference_targets and asking
-	 * Runner for each item (see "Building the task reference block").
+	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
+	 * definition from skill_manager.fetch(this) is non-null. Details builds
+	 * task_reference_contents by looping reference_targets and asking Runner for each item
+	 * (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
 	 */
@@ -221,23 +221,25 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		var definition = this.runner.task_definition.get(this);
+		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		yield this.fill_model();
 		var previous_output = "";
 		for (var i = 0; i < 5; i++) {
+			var file = this.runner.sr_factory.current_file();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
 			messages.add(new OLLMchat.Message("user", tpl.fill(
 				"coarse_task", this.coarse_task_markdown(),
-				"skill_input_requirements", definition.skill_input_requirements(),
-				"current_skill_call_issues", this.result_parser.issues,
-				"previous_output", previous_output,
+				"previous_output_issues", this.result_parser.issues == "" ? "" :
+					tpl.header("Previous Output Issues", this.result_parser.issues),
+				"previous_output", previous_output == "" ? "" :
+					tpl.header("Previous Output", previous_output),
 				"environment", this.runner.env(),
-				"project_description", this.runner.project_manager.active_project != null ?
-					this.runner.project_manager.active_project.summary() : "",
-				"current_file", this.runner.current_file,
-				"task_reference_contents", this.reference_contents())));
+				"project_description", "",
+				"current_file", file == null ? "" : tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"task_reference_contents", this.reference_contents(),
+				"skill_details", definition.full_content)));
 			
 
 			string response_text = "";
@@ -274,7 +276,7 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	protected override async void fill_model()
 	{
-		var definition = this.runner.task_definition.get(this);
+		var definition = this.skill_manager.fetch(this);
 		if (!definition.header.has_key("model")) {
 			yield base.fill_model();
 			return;
@@ -315,14 +317,16 @@ public class Details : OLLMchat.Agent.Base
 		var ret = "";
 		foreach (var link in this.reference_targets) {
 			if (!GLib.Path.is_absolute(link.href)) {
-				ret += this.reference_block(link.href, this.runner.reference_content(link.href));
+				// FIXME: Runner.reference_content(href) not yet implemented (see 1.23.14-outstanding FIXME list).
+				// ret += this.reference_block(link.href, this.runner.reference_content(link.href));
+				ret += this.reference_block(link.href, "");
 				continue;
 			}
-			var found = this.runner.project_manager.get_file_from_active_project(link.href);
+			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(link.href);
 			if (found == null) {
-				found = new OLLMfiles.File.new_fake(this.runner.project_manager, link.href);
+				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, link.href);
 			}
-			this.runner.project_manager.buffer_provider.create_buffer(found);
+			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
 			ret += this.reference_block(link.href, found.get_contents(0));
 		}
 		return ret;
@@ -367,12 +371,12 @@ public class Details : OLLMchat.Agent.Base
 	 * Executor: fill template. Precursor = same reference content as refine
 	 * (reference_contents()) plus this task's tool_outputs in same
 	 * header+code-block format; Details builds from refs and tool_outputs.
-	 * Reads task_definition from Runner.
+	 * Definition from skill_manager.fetch(this).
 	 * Up to 5 attempts; up to 3 communication retries per attempt (same as refine).
 	 */
 	public async void post_evaluate() throws GLib.Error
 	{
-		var definition = this.runner.task_definition.get(this);
+		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
 		for (var i = 0; i < 5; i++) {
 			var messages = new Gee.ArrayList<OLLMchat.Message>();

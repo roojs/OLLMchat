@@ -219,6 +219,11 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Skill/Manager.vala',
     '../liboccoder/Skill/Factory.vala',
     '../liboccoder/Skill/Runner.vala',
+    '../liboccoder/Task/Step.vala',     # Task: Step → Details
+    '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
+    '../liboccoder/Task/Tool.vala',     # Task: Tool → Details
+    '../liboccoder/Task/List.vala',     # Task: List → Step, Details
+    '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)

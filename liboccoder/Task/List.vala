@@ -69,6 +69,26 @@ public class List : Object
 	}
 
 	/**
+	 * For each task (steps → children), call task.skill_manager.validate(task).
+	 * When false, add issue line: skill must be one of the available skills.
+	 * Returns combined issues string; "" when all tasks' skills exist.
+	 */
+	public string validate_skills()
+	{
+		var issues = "";
+		foreach (var step in this.steps) {
+			foreach (var t in step.children) {
+				if (t.skill_manager.validate(t)) {
+					continue;
+				}
+				var skill_name = t.task_data.get("Skill").to_markdown().strip();
+				issues += "Task references skill \"" + skill_name + "\", which is not in the available skills list.\n";
+			}
+		}
+		return issues;
+	}
+
+	/**
 	 * Yields until execution of the current step's children is done
 	 * (num_exec_running is 0). Caller sets num_exec_running before starting
 	 * .begin() calls. Each run_child completion callback resumes this; we

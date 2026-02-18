@@ -30,6 +30,16 @@ namespace Markdown.Document
 			this.kind = k;
 		}
 
+		/** Heading line plus section body as markdown. Used by Runner for template placeholders (e.g. project-description, current-file). */
+		public string to_markdown_with_content()
+		{
+			var out = this.to_markdown();
+			foreach (var node in this.contents(false)) {
+				out += "\n\n" + node.to_markdown();
+			}
+			return out;
+		}
+
 		/** Content nodes from after this heading until the next heading. Default (with_sub_headings = false): stop at any heading; do not include sub-headings. with_sub_headings = true: stop at next heading with level <= this.level (include sub-headings). */
 		public Gee.ArrayList<Node> contents(bool with_sub_headings = false)
 		{
