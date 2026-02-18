@@ -52,9 +52,20 @@ namespace OLLMcoder.Skill
 				ret += "\n- **Shell** - `" + shell + "`";
 			}
 			if (this.sr_factory.project_manager.active_project != null) {
-				ret += "\n- **Workspace** - `" + this.sr_factory.project_manager.active_project.path + "`";
+				ret += "\n- **Workspace** - `" +
+					 this.sr_factory.project_manager.active_project.path + "`";
 			}
 			return ret;
+		}
+
+		/** Resolve non-file reference content for task refs. #anchor → user_request section; output:/http(s) deferred. */
+		public string reference_content(string href)
+		{
+			var anchor = href.has_prefix("#") ? href.substring(1) : "";
+			if (anchor != "" && this.user_request != null && this.user_request.headings.has_key(anchor)) {
+				return this.user_request.headings.get(anchor).to_markdown_with_content();
+			}
+			return "";
 		}
 
 		private PromptTemplate task_creation(string user_prompt, string previous_proposal, string previous_proposal_issues) throws GLib.Error
@@ -66,10 +77,13 @@ namespace OLLMcoder.Skill
 				"user_prompt", tpl.header("User Prompt", user_prompt),
 				"environment", tpl.header("Environment", this.env(), false),
 				"project_description", "",
-				"current_file", file == null ? "" : tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"current_file", file == null ? "" : 
+					tpl.header("Current File - " + file.path, file.get_contents(200)),
 				"open_files", open_files_list,
-				"previous_proposal", previous_proposal == "" ? "" : tpl.header("Previous Proposal", previous_proposal),
-				"previous_proposal_issues", previous_proposal_issues == "" ? "" : tpl.header("Previous Proposal Issues", previous_proposal_issues),
+				"previous_proposal", previous_proposal == "" ? "" : 
+					tpl.header("Previous Proposal", previous_proposal),
+				"previous_proposal_issues", previous_proposal_issues == "" ? "" : 
+					tpl.header("Previous Proposal Issues", previous_proposal_issues),
 				"skill_catalog", this.sr_factory.skill_manager.to_markdown());
 			return tpl;
 		}

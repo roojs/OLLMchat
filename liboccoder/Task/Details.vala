@@ -236,8 +236,11 @@ public class Details : OLLMchat.Agent.Base
 				"previous_output", previous_output == "" ? "" :
 					tpl.header("Previous Output", previous_output),
 				"environment", this.runner.env(),
+				// TODO: project description from active_project when available (OLLMfiles.Folder has no summary()); stubbed empty.
+				// "project_description", this.runner.project_manager.active_project != null ? this.runner.project_manager.active_project.summary() : "",
 				"project_description", "",
-				"current_file", file == null ? "" : tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"current_file", file == null ? "" : 
+					tpl.header("Current File - " + file.path, file.get_contents(200)),
 				"task_reference_contents", this.reference_contents(),
 				"skill_details", definition.full_content)));
 			
@@ -317,9 +320,7 @@ public class Details : OLLMchat.Agent.Base
 		var ret = "";
 		foreach (var link in this.reference_targets) {
 			if (!GLib.Path.is_absolute(link.href)) {
-				// FIXME: Runner.reference_content(href) not yet implemented (see 1.23.14-outstanding FIXME list).
-				// ret += this.reference_block(link.href, this.runner.reference_content(link.href));
-				ret += this.reference_block(link.href, "");
+				ret += this.reference_link_contents(link, this.runner.reference_content(link.href));
 				continue;
 			}
 			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(link.href);
@@ -327,9 +328,18 @@ public class Details : OLLMchat.Agent.Base
 				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, link.href);
 			}
 			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-			ret += this.reference_block(link.href, found.get_contents(0));
+			ret += this.reference_link_contents(link, found.get_contents(0));
 		}
 		return ret;
+	}
+
+	private string reference_link_contents(Markdown.Document.Format link, string contents)
+	{
+		if (contents == "") {
+			return "";
+		}
+		var fence = (contents.contains("\n```") || contents.has_prefix("```")) ? "~~~~" : "```";
+		return "Reference information for " + link.title + "\n\nThe contents of " + link.href + "\n\n" + fence + "\n" + contents + "\n" + fence + "\n\n";
 	}
 
 	/**
