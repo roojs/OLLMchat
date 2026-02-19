@@ -495,7 +495,7 @@ namespace Markdown
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_node(FormatType.TEXT, false, str);
 			// Only at end of chunks (no more data will ever come) do we close the open block.
-			// At end of chunk only, more add() may follow — we must not close or we break the next chunk.
+			// At end of chunk only, more add() may follow - we must not close or we break the next chunk.
 			if (is_end_of_chunks && this.current_block != FormatType.NONE) {
 				// We only track "in a list (either kind)"; renderer was opened with LIST_BLOCK. Close it that way.
 				if (this.current_block == FormatType.ORDERED_LIST

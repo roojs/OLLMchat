@@ -430,7 +430,7 @@ namespace Markdown
 					var list_number = (matched_block == FormatType.ORDERED_LIST)
 						? int.parse(list_marker.replace(".", "").strip()) : 0;
 
-					// If we're already in a list (either type), do not end or start list block — only item transition.
+					// If we're already in a list (either type), do not end or start list block - only item transition.
 					if (this.parser.current_block == FormatType.ORDERED_LIST
 						|| this.parser.current_block == FormatType.UNORDERED_LIST) {
 						this.parser.renderer.on_li(false);

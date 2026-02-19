@@ -58,7 +58,7 @@ namespace Markdown
 				var ref_end_byte = end_offset - 1;
 				href = ref_end_byte > ref_start
 					? chunk.substring(ref_start, ref_end_byte - ref_start).strip()
-					: link_text_val.strip();  // implicit reference [text][] — use link text as ref key (no reference table)
+					: link_text_val.strip();  // implicit reference [text][] - use link text as ref key (no reference table)
 			}
 			if (c1 == '(') {
 				if (inner_link_regex == null) {
@@ -139,7 +139,7 @@ namespace Markdown
 				}
 				return 0;
 			}
-			// c1 == '[' — reference-style: ][ref] or ][]. Parser does not resolve refs; just return end offset.
+			// c1 == '[' - reference-style: ][ref] or ][]. Parser does not resolve refs; just return end offset.
 			var ref_start = after_close + 1;
 			var ref_end = chunk.index_of_char(']', ref_start);
 			if (ref_end == -1) {

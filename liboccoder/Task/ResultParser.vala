@@ -98,21 +98,16 @@ public class ResultParser : Object
 		this.issues = "";
 		this.task_list = null;
 
-		foreach (var key in new string[] {
-			"original-prompt",
-			"goals-summary",
-			"general-information-for-all-tasks",
-			"tasks",
-		}) {
+		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
 			if (!this.document.headings.has_key(key)) {
-				this.issues += "\n" + "Top-level structure: the response must contain these ## sections in order " +
-					"— Original prompt, Goals / summary, General information for all tasks, Tasks. " +
-					"Missing or misnamed: \"" + key + "\".";
-				return;
+				this.issues += "\n" + "Top-level structure: the response must contain these ## sections:" + 
+					" Original prompt, Goals / summary, Tasks. Missing or misnamed: \"" + key + "\".";
+				continue;
 			}
 		}
 
 		this.task_list = new List(this.runner);
+		// Require task sections (### Task section 1, …) as per task_creation_initial.md and task_list_iteration.md; do not change.
 		foreach (var key in this.document.headings.keys) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
@@ -123,6 +118,10 @@ public class ResultParser : Object
 			}
 			this.task_list.steps.add(step);
 		}
+		if (!this.document.headings.has_key("goals-summary")) {
+			return;
+		}
+		this.task_list.goals_summary_md = this.document.headings.get("goals-summary").to_markdown_with_content();
 	}
 
 	/**
@@ -137,15 +136,15 @@ public class ResultParser : Object
 	 *
 	 * Example of what we parse (under ### Task section 1, ### Task section 2, …):
 	 * {{{
-	 * - **What is needed** — Add validation
-	 *   **Skill** — skill_name
-	 *   **References** — [file](path), [Project description](project_description)
-	 *   **Expected output** — Tests pass
+	 * - **What is needed** Add validation
+	 *   **Skill** skill_name
+	 *   **References** [file](path), [Project description](project_description)
+	 *   **Expected output** Tests pass
 	 *
-	 * - **What is needed** — Refactor X
-	 *   **Skill** — other_skill
-	 *   **References** — …
-	 *   **Expected output** — …
+	 * - **What is needed** Refactor X
+	 *   **Skill** other_skill
+	 *   **References** …
+	 *   **Expected output** …
 	 *
 	 * ```optional code block (attaches to previous task)
 	 * some code
@@ -196,7 +195,7 @@ public class ResultParser : Object
 				 "Each list item is one task (nested list with " + 
 				 " **What is needed**, **Skill**, **References**, **Expected output**). "  + 
 				 "No list was found under \"" + section_heading.to_markdown() + 
-				 	"\" — add a list there as in the output format.";
+				 	"\" - add a list there as in the output format.";
 			return null;
 		}
 		return step;
@@ -205,7 +204,7 @@ public class ResultParser : Object
 	/**
 	 * Parses single-task refinement output.
 	 *
-	 * Expects section "Task": walk contents — List → first
+	 * Expects section "Task": walk contents - List → first
 	 * ''List.to_key_map()'' → ''task.update_props(map)''; Block (FENCED_CODE)
 	 * → ''task.code_blocks.add(block)''. Appends to {@link issues} on missing
 	 * section/list or task validation. Content format: **What is needed**, **Skill**,
@@ -252,7 +251,7 @@ public class ResultParser : Object
 		if (!found_list) {
 			this.issues += "\n" + "Section \"Task\": must contain a list with one item " +
 				"(nested list **What is needed**, **Skill**, **References**, **Expected output**, **Skill call**). " +
-				"No list was found — add a list there as in the output format.";
+				"No list was found - add a list there as in the output format.";
 			return;
 		}
 		if (!this.document.headings.has_key("tool-calls")) {
@@ -270,16 +269,17 @@ public class ResultParser : Object
 			}
 			var tool = new Tool(task);
 			if (!tool.parse(block)) {
-				task.issues += tool.issues;
+				this.issues += "\n" + tool.issues + 
+					" Raw block:\n\n```json\n" + block.to_markdown() + "\n```\n\n";
 				continue;
-			} 
+			}
 			tool_index++;
 			tool.tool_call.id = tool.name + "_" + tool_index.to_string();
 			if (!tool.validate()) {
-				task.issues += tool.issues;
+				this.issues += "\n" + tool.issues + 
+					" Raw block:\n\n```json\n" + block.to_markdown() + "\n```\n\n";
 				continue;
 			}
-			
 			task.tools.add(tool);
 		}
 	}

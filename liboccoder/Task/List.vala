@@ -34,6 +34,8 @@ public class List : Object
 
 	public Gee.ArrayList<Step> steps { get; set; default = new Gee.ArrayList<Step>(); }
 
+	public string goals_summary_md { get; set; default = ""; }
+
 	/**
 	 * Number of run_child (execution) callbacks still running for the current
 	 * step. Caller sets = children.size before .begin(); each callback does
@@ -50,6 +52,24 @@ public class List : Object
 	public List(OLLMcoder.Skill.Runner runner)
 	{
 		this.runner = runner;
+	}
+
+	/**
+	 * Returns only ## Tasks and task sections. Runner assembles lead content
+	 * (original prompt, goals_summary_md) when building current_task_list.
+	 */
+	public string to_markdown()
+	{
+		var out = "## Tasks\n\n";
+		var section = 0;
+		foreach (var step in this.steps) {
+			section++;
+			out += "### Task section " + section.to_string() + "\n\n";
+			foreach (var t in step.children) {
+				out += t.to_markdown(MarkdownPhase.LIST) + "\n\n";
+			}
+		}
+		return out;
 	}
 
 	/**

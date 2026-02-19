@@ -14,6 +14,14 @@
 namespace OLLMcoder.Task
 {
 
+public enum MarkdownPhase
+{
+	COARSE,
+	REFINEMENT,
+	LIST,
+	EXECUTION
+}
+
 /**
  * One task in the plan. Built from task list output; updated from refinement output.
  *
@@ -29,7 +37,7 @@ namespace OLLMcoder.Task
  */
 public class Details : OLLMchat.Agent.Base
 {
-	// — stored task content (exact keys only, see class doc)
+	// - stored task content (exact keys only, see class doc)
 	/**
 	 * Map from ListItem.to_key_map(); keys are exact labels only. All task content is read from here.
 	 */
@@ -224,26 +232,19 @@ public class Details : OLLMchat.Agent.Base
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		yield this.fill_model();
-		var previous_output = "";
 		for (var i = 0; i < 5; i++) {
 			var file = this.runner.sr_factory.current_file();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
 			messages.add(new OLLMchat.Message("user", tpl.fill(
-				"coarse_task", this.coarse_task_markdown(),
-				"previous_output_issues", this.result_parser.issues == "" ? "" :
-					tpl.header("Previous Output Issues", this.result_parser.issues),
-				"previous_output", previous_output == "" ? "" :
-					tpl.header("Previous Output", previous_output),
+				"issues", tpl.header("Issues with the current call", this.result_parser.issues),
+				"task_data", tpl.header("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
 				"environment", this.runner.env(),
-				// TODO: project description from active_project when available (OLLMfiles.Folder has no summary()); stubbed empty.
-				// "project_description", this.runner.project_manager.active_project != null ? this.runner.project_manager.active_project.summary() : "",
 				"project_description", "",
 				"current_file", file == null ? "" : 
 					tpl.header("Current File - " + file.path, file.get_contents(200)),
 				"task_reference_contents", this.reference_contents(),
 				"skill_details", definition.full_content)));
-			
 
 			string response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
@@ -268,7 +269,6 @@ public class Details : OLLMchat.Agent.Base
 				}
 				return;
 			}
-			previous_output = response_text;
 		}
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -298,16 +298,60 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Coarse task as bulleted list: bold key, value (no "Key: value" line format).
-	 * Note: no strip() on to_markdown() — Block does not add line breaks for paragraph/default.
+	 * Task as markdown for a given phase. Does not add section headings (e.g. ## Task); caller adds header.
+	 * COARSE: creation keys. REFINEMENT: task list + ## Tool Calls when tools exist. LIST: task list + Output when exec_done. EXECUTION: same as REFINEMENT for Tool Calls.
 	 */
-	private string coarse_task_markdown()
+	public string to_markdown(MarkdownPhase phase)
 	{
-		return "- **What is needed** — " + this.task_data.get("What is needed").to_markdown() + "\n"
-			+ "- **Skill** — " + this.task_data.get("Skill").to_markdown() + "\n"
-			+ "- **References** — " + this.task_data.get("References").to_markdown() + "\n"
-			+ "- **Expected output** — " + this.task_data.get("Expected output").to_markdown();
+		string[] order = {
+			"Name",
+			"What is needed",
+			"Skill",
+			"References",
+			"Expected output",
+			"Output"
+		};
+		var ret = "";
+		for (var i = 0; i < order.length; i++) {
+			var key = order[i];
+			switch (key) {
+				case "Output":
+					if (phase != MarkdownPhase.LIST || !this.exec_done || this.result == "") {
+						continue;
+					}
+					ret += "- **Output** " + this.result.replace("\n", " ") + "\n";
+					continue;
+				default:
+					if (!this.task_data.has_key(key)) {
+						continue;
+					}
+					break;
+			}
+			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
+		}
+		// Include ## Tool Calls for REFINEMENT (retry) and EXECUTION. Omit section when no tools.
+		if (phase != MarkdownPhase.REFINEMENT && phase != MarkdownPhase.EXECUTION && this.tools.size == 0) {
+			return ret;
+		}
+		ret += "\n## Tool Calls\n\n";
+		foreach (var tool in this.tools) {
+			var obj = new Json.Object();
+			obj.set_string_member("name", tool.name);
+			if (tool.tool_call != null && tool.tool_call.id != "") {
+				obj.set_string_member("id", tool.tool_call.id);
+			}
+			if (tool.arguments != null) {
+				obj.set_object_member("arguments", tool.arguments);
+			}
+			var node = new Json.Node(Json.NodeType.OBJECT);
+			node.set_object(obj);
+			var gen = new Json.Generator();
+			gen.set_root(node);
+			ret += "```json\n" + gen.to_data(null) + "\n```\n\n";
+		}
+		return ret;
 	}
+
 
 	/**
 	 * Resolved reference block for this task: loop reference_targets; for each,

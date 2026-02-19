@@ -22,7 +22,7 @@ namespace Markdown
 	 * Marker map for delimiter runs that are valid at **end of line** ("?_").
 	 * Used when the run is at end of line (closing delimiter).
 	 * Contains only emphasis-style sequences (asterisk and underscore); no links, code, etc.
-	 * No integration with parser yet — structure only.
+	 * No integration with parser yet - structure only.
 	 */
 	public class EndMap : MarkerMap
 	{

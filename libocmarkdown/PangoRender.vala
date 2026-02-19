@@ -355,7 +355,9 @@ namespace Markdown
 			}
 		}
 
-		/** Find or add space_skip in indent_levels; return 0-based depth index (number of tabs = 1 + this). After close_lists_to_level we only have a nesting prefix, so new level is either present or deeper than last — add at end only. */
+		/** Find or add space_skip in indent_levels; return 0-based depth index
+		 (number of tabs = 1 + this). After close_lists_to_level we only have a nesting 
+		 prefix, so new level is either present or deeper than last - add at end only. */
 		private int ensure_indent_level(int space_skip)
 		{
 			var idx = this.indent_levels.index_of(space_skip);

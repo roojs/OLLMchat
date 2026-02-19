@@ -145,7 +145,7 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				yield this.task_list.run_all_tasks();
-				yield this.run_task_list_iteration();
+				//yield this.run_task_list_iteration();
 			}
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
@@ -158,9 +158,12 @@ namespace OLLMcoder.Skill
 			return true;
 		}
 
-		/** Stub: post-completion hook after all tasks run. Plan: implement per 1.23.14. */
-		private async void run_post_completion() throws GLib.Error
+		/** Stub: task list iteration. Plan §8: load task_list_iteration.md, fill, send, parse_task_list(), replace this.task_list. */
+		public async void run_task_list_iteration() throws GLib.Error
 		{
+			if (this.task_list == null) {
+				return;
+			}
 		}
 	}
 }
