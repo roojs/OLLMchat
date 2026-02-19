@@ -22,7 +22,7 @@ namespace OLLMcoder.Skill
 	 * Prompt template that loads from the skill-prompts resource only (no filesystem).
 	 *
 	 * Constructor takes filename only. Call sites use filenames such as
-	 * ''task_creation_initial.md'', ''task_refinement.md'', ''task_post_completion.md'',
+	 * ''task_creation_initial.md'', ''task_refinement.md'', ''task_list_iteration.md'',
 	 * ''task_execution.md''.
 	 */
 	public class PromptTemplate : OLLMchat.Prompt.Template

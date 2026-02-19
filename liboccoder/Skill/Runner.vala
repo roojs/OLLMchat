@@ -145,7 +145,7 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				yield this.task_list.run_all_tasks();
-				yield this.run_post_completion();
+				yield this.run_task_list_iteration();
 			}
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));

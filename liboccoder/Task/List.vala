@@ -82,7 +82,8 @@ public class List : Object
 					continue;
 				}
 				var skill_name = t.task_data.get("Skill").to_markdown().strip();
-				issues += "Task references skill \"" + skill_name + "\", which is not in the available skills list.\n";
+				issues += "Task references skill \"" + skill_name + 
+					"\", which is not in the available skills list.\n";
 			}
 		}
 		return issues;

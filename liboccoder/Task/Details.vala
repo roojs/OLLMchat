@@ -339,7 +339,8 @@ public class Details : OLLMchat.Agent.Base
 			return "";
 		}
 		var fence = (contents.contains("\n```") || contents.has_prefix("```")) ? "~~~~" : "```";
-		return "Reference information for " + link.title + "\n\nThe contents of " + link.href + "\n\n" + fence + "\n" + contents + "\n" + fence + "\n\n";
+		return "Reference information for " + link.title + "\n\nThe contents of " + link.href + "\n\n" 
+			+ fence + "\n" + contents + "\n" + fence + "\n\n";
 	}
 
 	/**
