@@ -30,7 +30,8 @@ namespace OLLMvector.Indexing
 		 * Caller may set (e.g. from FolderAnalysis.analyze_children) before calling analyze();
 		 * if unset or empty, analyze() builds the keymap from DB.
 		 */
-		public Gee.HashMap<int, VectorMetadata> metadata_keymap { get; set; default = new Gee.HashMap<int, VectorMetadata>(); }
+		public Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> metadata_keymap {
+			 get; set; default = new Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata>(); }
 
 		static construct
 		{
@@ -56,8 +57,8 @@ namespace OLLMvector.Indexing
 			if (file_ids.length == 0) {
 				return;
 			}
-			var build_rows = new Gee.ArrayList<VectorMetadata>();
-			yield VectorMetadata.query(this.sql_db).select_async(
+			var build_rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			yield OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select_async(
 				"WHERE file_id IN (" + string.joinv(",", file_ids) + ") AND category = 'build' AND element_type = 'file'",
 				build_rows
 			);
@@ -96,7 +97,7 @@ namespace OLLMvector.Indexing
 				GLib.warning("ProjectAnalysis: analyze_dependencies LLM failed: %s", e.message);
 				return;
 			}
-			var deps_meta = new VectorMetadata() {
+			var deps_meta = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "dependencies",
 				element_name = "dependencies",
 				start_line = 0,
@@ -110,12 +111,12 @@ namespace OLLMvector.Indexing
 			this.sql_db.backupDB();
 		}
 
-		private async Gee.HashMap<int, VectorMetadata> build_keymap() throws GLib.Error
+		private async Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> build_keymap() throws GLib.Error
 		{
 			if (this.metadata_keymap != null && this.metadata_keymap.size > 0) {
 				return this.metadata_keymap;
 			}
-			var keymap = new Gee.HashMap<int, VectorMetadata>();
+			var keymap = new Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata>();
 			string[] id_strs = {};
 			foreach (var folder in this.root_folder.project_files.folder_map.values) {
 				id_strs += folder.id.to_string();
@@ -126,8 +127,8 @@ namespace OLLMvector.Indexing
 			if (id_strs.length == 0) {
 				return keymap;
 			}
-			var rows = new Gee.ArrayList<VectorMetadata>();
-			yield VectorMetadata.query(this.sql_db).select_async(
+			var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			yield OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select_async(
 				"WHERE file_id IN (" + string.joinv(",", id_strs) + ") AND (element_type = 'file' OR element_type = 'folder')",
 				rows
 			);
@@ -137,11 +138,11 @@ namespace OLLMvector.Indexing
 			return keymap;
 		}
 
-		public async VectorMetadata analyze() throws GLib.Error
+		public async OLLMfiles.SQT.VectorMetadata analyze() throws GLib.Error
 		{
 			var keymap = yield this.build_keymap();
 			if (keymap.size == 0) {
-				return new VectorMetadata() {
+				return new OLLMfiles.SQT.VectorMetadata() {
 					element_type = "project",
 					element_name = GLib.Path.get_basename(this.root_folder.path),
 					start_line = 0,
@@ -194,7 +195,7 @@ namespace OLLMvector.Indexing
 				raw_response = yield this.request_analysis(messages, tool_config.analysis);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze LLM failed: %s", e.message);
-				return new VectorMetadata() {
+				return new OLLMfiles.SQT.VectorMetadata() {
 					element_type = "project",
 					element_name = GLib.Path.get_basename(this.root_folder.path),
 					start_line = 0,
@@ -205,7 +206,7 @@ namespace OLLMvector.Indexing
 					ast_path = ""
 				};
 			}
-			var project_meta = new VectorMetadata() {
+			var project_meta = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "project",
 				element_name = GLib.Path.get_basename(this.root_folder.path),
 				start_line = 0,

@@ -38,7 +38,7 @@ namespace OLLMvector.Search
 		/**
 		 * Code location metadata.
 		 */
-		public OLLMvector.VectorMetadata metadata { get; set; }
+		public OLLMfiles.SQT.VectorMetadata metadata { get; set; }
 		
 		/**
 		 * Get file object (computed from metadata.file_id).
@@ -74,7 +74,7 @@ namespace OLLMvector.Search
 			OLLMfiles.Folder folder,
 			int64 vector_id,
 			float distance,
-			OLLMvector.VectorMetadata metadata
+			OLLMfiles.SQT.VectorMetadata metadata
 		)
 		{
 			this.sql_db = sql_db;

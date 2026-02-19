@@ -49,8 +49,7 @@ ocvector_src = files([
   # Base class
   'VectorBase.vala',  # Base class for vector operations with tool config access
   
-  # Code structure classes
-  'VectorMetadata.vala',  # Vector metadata storage (SQL database)
+  # VectorMetadata moved to libocfiles (OLLMfiles.SQT.VectorMetadata)
   
   # Files/ directory removed - now using libocfiles instead
   # No need to copy Files classes - use OLLMfiles namespace from libocfiles

@@ -161,7 +161,7 @@ making it more effective than simple text search for finding relevant code.
 			this.project_manager.delete_manager.on_cleanup.connect(() => {
 				// Bulk cleanup: remove all vector_metadata entries for deleted files
 				if (this.project_manager.db != null) {
-					VectorMetadata.cleanup_all_deleted.begin(this.project_manager.db);
+					OLLMfiles.SQT.VectorMetadata.cleanup_all_deleted.begin(this.project_manager.db);
 				}
 			});
 		}

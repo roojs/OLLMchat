@@ -58,7 +58,7 @@ namespace OLLMcoder.Skill
 			return ret;
 		}
 
-		/** Resolve non-file reference content for task refs. #anchor → user_request section; output:/http(s) deferred. */
+		/** Resolve non-file reference content for task refs. #anchor → user_request section or task output; http(s) deferred. */
 		public string reference_content(string href)
 		{
 			var anchor = href.has_prefix("#") ? href.substring(1) : "";
@@ -74,16 +74,16 @@ namespace OLLMcoder.Skill
 			var file = this.sr_factory.current_file();
 			var open_files_list = "";
 			tpl.fill(
-				"user_prompt", tpl.header("User Prompt", user_prompt),
-				"environment", tpl.header("Environment", this.env(), false),
-				"project_description", "",
-				"current_file", file == null ? "" : 
-					tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"user_prompt", tpl.header_fenced("User Prompt", user_prompt, "text"),
+				"environment", tpl.header_raw("Environment", this.env()),
+				"project_description", (this.sr_factory.project_manager.active_project == null ?
+					 "" : this.sr_factory.project_manager.active_project.project_description()),
+				"current_file", file == null ? "" : tpl.header_file("Current File - " + file.path, file),
 				"open_files", open_files_list,
 				"previous_proposal", previous_proposal == "" ? "" : 
-					tpl.header("Previous Proposal", previous_proposal),
-				"previous_proposal_issues", previous_proposal_issues == "" ? "" : 
-					tpl.header("Previous Proposal Issues", previous_proposal_issues),
+					tpl.header_raw("Previous Proposal", previous_proposal),
+				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
+					tpl.header_raw("Previous Proposal Issues", previous_proposal_issues),
 				"skill_catalog", this.sr_factory.skill_manager.to_markdown());
 			return tpl;
 		}
@@ -110,9 +110,8 @@ namespace OLLMcoder.Skill
 				var parser = new OLLMcoder.Task.ResultParser(this, response);
 				parser.parse_task_list();
 				if (parser.issues == "") {
-					var skill_issues = parser.task_list.validate_skills();
+					var skill_issues = this.task_list.validate_skills();
 					if (skill_issues == "") {
-						this.task_list = parser.task_list;
 						yield this.handle_task_list();
 						return;
 					}
@@ -145,7 +144,7 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				yield this.task_list.run_all_tasks();
-				//yield this.run_task_list_iteration();
+				yield this.run_task_list_iteration();
 			}
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));

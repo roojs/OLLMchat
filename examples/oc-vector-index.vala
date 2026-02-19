@@ -128,7 +128,7 @@ Examples:
 		if (opt_reset_database) {
 			GLib.debug("opt_reset_database is true - resetting database");
 			var sql_db = new SQ.Database(this.db_path, false);
-			OLLMvector.VectorMetadata.reset_database(sql_db, this.vector_db_path);
+			OLLMfiles.SQT.VectorMetadata.reset_database(sql_db, this.vector_db_path);
 			stdout.printf("✓ Database reset complete\n");
 			return;
 		}

@@ -163,21 +163,31 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Validate reference_targets hrefs; append to issues on invalid.
-	 * Call from parsing process, not from ctor.
-	 * Accepts: #anchor (e.g. #project-description), output:task_name, http(s) URL, absolute file path (must exist).
+	 * Call from parsing process after fill_names (pass list so task-output anchors can be validated).
+	 * Accepts: #anchor (document section or task output e.g. #slug-N-results), http(s) URL (TODO: validate later, see 1.23.20), absolute file path (must exist).
 	 */
 	public void validate_references()
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
 			if (href.has_prefix("#")) {
-				// FIXME: validate #anchor format and existence; defer for now
-				continue;
-			}
-			if (href.has_prefix("output:")) {
+				var anchor = href.substring(1);
+				if (anchor.has_suffix("-results")) {
+					var name_slug = anchor.substring(0, anchor.length - "-results".length);
+					if (!this.runner.task_list.has_slug(name_slug)) {
+						this.issues += "\n" + "Invalid reference target \"" +
+							 href + "\": no task for \"" + name_slug + "\".";
+					}
+					continue;
+				}
+				if (!this.runner.user_request.headings.has_key(anchor)) {
+					this.issues += "\n" + "Invalid reference target \"" +
+						 href + "\": unknown anchor \"" + anchor + "\".";
+				}
 				continue;
 			}
 			if (href.has_prefix("http://") || href.has_prefix("https://")) {
+				// TODO: http(s) validation deferred to 1.23.20 (post-testing-changes)
 				continue;
 			}
 			if (GLib.Path.is_absolute(href)) {
@@ -187,8 +197,43 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (e.g. #project-description), output:task_name, http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (e.g. #project-description, #task-name-results), http(s) URL, or absolute file path (must exist).";
 		}
+	}
+
+	/**
+	 * If task_data has no "Name" or empty, set Name = (Skill or "Task") + " " + index. Single method.
+	 */
+	public void fill_name(int i)
+	{
+		var name_block = this.task_data.has_key("Name") ?
+			this.task_data.get("Name").to_markdown().strip() : "";
+		if (name_block != "") {
+			return;
+		}
+		// Allow empty skill; validate_skills() will report this as a bad task.
+		var skill = this.task_data.has_key("Skill") ?
+			this.task_data.get("Skill").to_markdown().strip() : "";
+		var name = (skill != "" ? skill : "Task") + " " + i.to_string();
+		var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+		b.adopt(new Markdown.Document.Format.from_text(name));
+		this.task_data.set("Name", b);
+	}
+
+	/**
+	 * This task's name as slug (e.g. "Research 1" → "research-1"). "" if no Name in task_data or empty.
+	 */
+	public string slug()
+	{
+		if (!this.task_data.has_key("Name")) {
+			return "";
+		}
+		var name = this.task_data.get("Name").to_markdown().strip();
+		if (name == "") {
+			return "";
+		}
+		var s = new GLib.Regex("[^a-z0-9]+").replace(name.down(), -1, 0, "-");
+		return new GLib.Regex("^-+|-+$").replace(s, -1, 0, "");
 	}
 
 	private bool refined_done = false;
@@ -237,12 +282,12 @@ public class Details : OLLMchat.Agent.Base
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
 			messages.add(new OLLMchat.Message("user", tpl.fill(
-				"issues", tpl.header("Issues with the current call", this.result_parser.issues),
-				"task_data", tpl.header("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
+				"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
+				"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
 				"environment", this.runner.env(),
-				"project_description", "",
-				"current_file", file == null ? "" : 
-					tpl.header("Current File - " + file.path, file.get_contents(200)),
+				"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
+					"" : this.runner.sr_factory.project_manager.active_project.project_description()),
+				"current_file", file == null ? "" : tpl.header_file("Current File - " + file.path, file),
 				"task_reference_contents", this.reference_contents(),
 				"skill_details", definition.full_content)));
 
@@ -353,18 +398,57 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 
+	/** Line + unfenced body. Use for reference #anchor. */
+	private string header_raw(string line, string body)
+	{
+		if (body == "") {
+			return "";
+		}
+		return line + "\n\n" + body + "\n\n";
+	}
+
+	/** Line + fenced body; content and language from file. Use for reference file path. Exception: we do output the header (and empty block if needed) when content is empty. */
+	private string header_file(string line, OLLMfiles.File file)
+	{
+		var content = file.get_contents(0);
+		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
+		return line + "\n\n"
+			+ fence
+			+ (file.language != "" ? file.language + "\n" : "\n")
+			+ content + "\n"
+			+ fence + "\n\n";
+	}
+
+	/** Line + fenced body with type (e.g. "json", "text"). Use for tool call/output. */
+	private string header_fenced(string line, string body, string type = "")
+	{
+		if (body == "") {
+			return "";
+		}
+		var fence = (body.index_of("\n```") >= 0 || body.has_prefix("```")) ? "~~~~" : "```";
+		return line + "\n\n"
+			+ fence
+			+ (type != "" ? type + "\n" : "\n")
+			+ body + "\n"
+			+ fence + "\n\n";
+	}
+
 	/**
 	 * Resolved reference block for this task: loop reference_targets; for each,
 	 * get content. File paths (absolute): from project manager, or File.new_fake
-	 * if not in project; then create_buffer and get_contents. #section / output:
-	 * from runner.
+	 * if not in project; then create_buffer and get_contents. #anchor from runner.
 	 */
 	private string reference_contents()
 	{
-		var ret = "";
+		var parts = "";
 		foreach (var link in this.reference_targets) {
 			if (!GLib.Path.is_absolute(link.href)) {
-				ret += this.reference_link_contents(link, this.runner.reference_content(link.href));
+				var content = this.runner.reference_content(link.href);
+				if (content != "") {
+					parts += this.header_raw(
+						"Reference information for " + link.title + "\n\nThe contents of " + link.href,
+						content);
+				}
 				continue;
 			}
 			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(link.href);
@@ -372,31 +456,11 @@ public class Details : OLLMchat.Agent.Base
 				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, link.href);
 			}
 			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-			ret += this.reference_link_contents(link, found.get_contents(0));
+			parts += this.header_file(
+				"Reference information for " + link.title + "\n\nThe contents of " + link.href,
+				found);
 		}
-		return ret;
-	}
-
-	private string reference_link_contents(Markdown.Document.Format link, string contents)
-	{
-		if (contents == "") {
-			return "";
-		}
-		var fence = (contents.contains("\n```") || contents.has_prefix("```")) ? "~~~~" : "```";
-		return "Reference information for " + link.title + "\n\nThe contents of " + link.href + "\n\n" 
-			+ fence + "\n" + contents + "\n" + fence + "\n\n";
-	}
-
-	/**
-	 * One reference: header (e.g. ### target) then body in a fenced code block. Use a fence that does not appear at line-start in content so nested ``` does not close our block (CommonMark: use tildes when content has ```).
-	 */
-	private string reference_block(string target, string content)
-	{
-		if (content == "") {
-			return "";
-		}
-		var fence = (content.contains("\n```") || content.has_prefix("```")) ? "~~~~" : "```";
-		return "### " + target + "\n\n" + fence + "\n" + content + "\n" + fence + "\n\n";
+		return parts;
 	}
 
 	/**
@@ -405,13 +469,17 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	private string executor_precursor()
 	{
-		var ret = this.reference_contents();
+		var parts = this.reference_contents();
 		foreach (var e in this.tool_outputs.entries) {
-			ret += this.reference_block("Tool call " + e.key,
-				Json.gobject_to_data(this.tool_calls.get(e.key), null));
-			ret += this.reference_block("Tool call " + e.key + " Output", e.value);
+			var json = Json.gobject_to_data(this.tool_calls.get(e.key), null);
+			if (json != "") {
+				parts += this.header_fenced("### Tool call " + e.key, json, "json");
+			}
+			if (e.value != "") {
+				parts += this.header_fenced("### Tool call " + e.key + " Output", e.value, "text");
+			}
 		}
-		return ret;
+		return parts;
 	}
 
 	/** Run each tool in sequence. TODO: concurrent execution to be added later. */

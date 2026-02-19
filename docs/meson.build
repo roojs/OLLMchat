@@ -69,6 +69,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/Diff/Patch.vala',
     '../libocfiles/Diff/PatchApplier.vala',
     '../libocfiles/Diff/Differ.vala',
+    '../libocfiles/SQT/VectorMetadata.vala',  # OLLMfiles.SQT namespace
     # libocmarkdown sources (must come before libocmarkdowngtk)
     '../libocmarkdown/Parser.vala',
     '../libocmarkdown/TableState.vala',
@@ -228,7 +229,6 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Approvals.vala',
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
     '../libocvector/namespace.vala',  # Namespace documentation
-    '../libocvector/VectorMetadata.vala',
     '../libocvector/Index.vala',
     '../libocvector/Database.vala',
     '../libocvector/VectorBase.vala',  # Base class for vector operations

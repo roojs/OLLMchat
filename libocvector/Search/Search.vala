@@ -277,14 +277,14 @@ namespace OLLMvector.Search
 				result_vector_ids[i] = (int64)valid_vector_ids[i];
 			}
 			
-			var metadata_list = OLLMvector.VectorMetadata.lookup_vectors(
+			var metadata_list = OLLMfiles.SQT.VectorMetadata.lookup_vectors(
 					this.sql_db, result_vector_ids);
 			
 			// No post-filtering needed: filtered_vector_ids was built from SQL with element_type/category
 			// so FAISS only searched that set and returned metadata already matches the filters.
 			
 			// Create a map of vector_id -> metadata for quick lookup
-			var metadata_map = new Gee.HashMap<int, OLLMvector.VectorMetadata>();
+			var metadata_map = new Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata>();
 			foreach (var metadata in metadata_list) {
 				metadata_map.set((int)metadata.vector_id, metadata);
 			}

@@ -28,7 +28,7 @@ namespace OLLMcoder.Task
  * How it fits in the task flow:
  *
  *  * Planning: Runner receives the planning response → ''new ResultParser(this, response)'',
- *    ''parse_task_list()''; caller uses ''parser.task_list'' and ''parser.issues''.
+ *    ''parse_task_list()''; caller uses ''runner.task_list'' and ''parser.issues''.
  *  * Refinement: Details.refine() receives the refinement response → new
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
@@ -51,11 +51,6 @@ public class ResultParser : Object
 	 * Runner used by {@link parse_task_list} to build {@link Details}. Set in constructor.
 	 */
 	private OLLMcoder.Skill.Runner runner;
-
-	/**
-	 * Parsed task list; set by {@link parse_task_list}. ''null'' until parsing succeeds.
-	 */
-	public List? task_list { get; set; default = null; }
 
 	/**
 	 * Raw response string passed to the constructor.
@@ -91,12 +86,12 @@ public class ResultParser : Object
 	 * Parses task list from document; uses ''runner'' from constructor to build {@link Details}.
 	 *
 	 * Appends to {@link issues} on each failure. Caller checks ''parser.issues == ""''
-	 * for success. Populates {@link task_list} on success.
+	 * for success. Populates {@link runner}.task_list on success.
 	 */
 	public void parse_task_list()
 	{
 		this.issues = "";
-		this.task_list = null;
+		this.runner.task_list = null;
 
 		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
 			if (!this.document.headings.has_key(key)) {
@@ -106,7 +101,7 @@ public class ResultParser : Object
 			}
 		}
 
-		this.task_list = new List(this.runner);
+		this.runner.task_list = new List(this.runner);
 		// Require task sections (### Task section 1, …) as per task_creation_initial.md and task_list_iteration.md; do not change.
 		foreach (var key in this.document.headings.keys) {
 			if (!key.has_prefix("task-section-")) {
@@ -116,12 +111,26 @@ public class ResultParser : Object
 			if (step == null) {
 				continue;
 			}
-			this.task_list.steps.add(step);
+			this.runner.task_list.steps.add(step);
 		}
 		if (!this.document.headings.has_key("goals-summary")) {
+			this.runner.task_list = null;
 			return;
 		}
-		this.task_list.goals_summary_md = this.document.headings.get("goals-summary").to_markdown_with_content();
+		this.runner.task_list.goals_summary_md = 
+			this.document.headings.get("goals-summary").to_markdown_with_content();
+		this.runner.task_list.fill_names();
+		foreach (var step in this.runner.task_list.steps) {
+			foreach (var t in step.children) {
+				t.validate_references();
+				if (t.issues != "") {
+					this.issues += "\n" + "Task (References): " + t.issues;
+				}
+			}
+		}
+		if (this.issues != "") {
+			this.runner.task_list = null;
+		}
 	}
 
 	/**
@@ -180,12 +189,6 @@ public class ResultParser : Object
 			var list_block = (Markdown.Document.List) node;
 			var task_data = list_block.to_key_map();
 			var task = new Details(this.runner, this.runner.sr_factory, this.runner.session, task_data);
-			task.validate_references();
-			if (task.issues != "") {
-				this.issues += "\n" + "Section \"" + section_heading.to_markdown() +
-					"\", a task in this section (References): " + task.issues;
-				continue;
-			}
 			step.children.add(task);
 			last_task = task;
 		}

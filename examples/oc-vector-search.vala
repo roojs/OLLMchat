@@ -228,8 +228,8 @@ Examples:
 			throw new GLib.IOError.NOT_FOUND("Path is a folder, not a file: " + file_path);
 		}
 		
-		var metadata_list = new Gee.ArrayList<OLLMvector.VectorMetadata>();
-		OLLMvector.VectorMetadata.query(sql_db).select(
+		var metadata_list = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+		OLLMfiles.SQT.VectorMetadata.query(sql_db).select(
 			"WHERE file_id = " + file_base.id.to_string() + " ORDER BY start_line, id",
 			metadata_list
 		);
@@ -245,7 +245,7 @@ Examples:
 		}
 	}
 	
-	private void output_metadata_text(Gee.ArrayList<OLLMvector.VectorMetadata> metadata_list)
+	private void output_metadata_text(Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> metadata_list)
 	{
 		for (int i = 0; i < metadata_list.size; i++) {
 			var m = metadata_list.get(i);
@@ -265,7 +265,7 @@ Examples:
 		}
 	}
 	
-	private void output_metadata_json(Gee.ArrayList<OLLMvector.VectorMetadata> metadata_list)
+	private void output_metadata_json(Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> metadata_list)
 	{
 		var json_array = new Json.Array();
 		foreach (var m in metadata_list) {
@@ -369,7 +369,7 @@ Examples:
 		
 		GLib.debug("Filter SQL: %s", sql);
 		
-		var vector_query = OLLMvector.VectorMetadata.query(sql_db);
+		var vector_query = OLLMfiles.SQT.VectorMetadata.query(sql_db);
 		var vector_stmt = vector_query.selectPrepare(sql);
 		
 		if (opt_element_type != "") {

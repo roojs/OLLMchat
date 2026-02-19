@@ -85,6 +85,21 @@ namespace OLLMfiles
 		
 			
 		/**
+		 * Project-level description from vector_metadata (ProjectAnalysis). Uses this.manager.db. Caller guarantees manager.db and id are set.
+		 */
+		public string project_description()
+		{
+			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.manager.db).select(
+				"WHERE file_id = " + this.id.to_string() + " AND element_type = 'project'",
+				results);
+			if (results.size == 0) {
+				return "";
+			}
+			return results.get(0).description;
+		}
+
+		/**
 		 * ListStore of all files in project (used by dropdowns).
 		 */
 		public ProjectFiles project_files { get; set; default = new ProjectFiles(); }

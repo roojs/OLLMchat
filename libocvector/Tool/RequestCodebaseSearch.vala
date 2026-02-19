@@ -258,7 +258,7 @@ namespace OLLMvector.Tool
 				throw new GLib.IOError.FAILED("Database not available");
 			}
 			
-			var vector_query = OLLMvector.VectorMetadata.query(sql_db);
+			var vector_query = OLLMfiles.SQT.VectorMetadata.query(sql_db);
 			var vector_stmt = vector_query.selectPrepare(sql);
 			
 			if (this.element_type != "" && !search_both_function_and_method) {

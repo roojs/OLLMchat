@@ -19,23 +19,25 @@
 namespace OLLMvector.Indexing
 {
 	/**
-	 * Tree-sitter AST parsing and VectorMetadata creation.
+	 * Tree-sitter AST parsing and OLLMfiles.SQT.VectorMetadata creation.
 	 * 
 	 * Parses source code files using tree-sitter to extract code elements
-	 * and create VectorMetadata objects with line numbers and documentation.
+	 * and create OLLMfiles.SQT.VectorMetadata objects with line numbers and documentation.
 	 */
 	public class Tree : OLLMfiles.TreeBase
 	{
 		/**
-		 * Array of VectorMetadata objects extracted from the AST.
+		 * Array of OLLMfiles.SQT.VectorMetadata objects extracted from the AST.
 		 */
-		public Gee.ArrayList<VectorMetadata> elements { get; private set; default = new Gee.ArrayList<VectorMetadata>(); }
+		public Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> elements { 
+				get; private set; default = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>(); }
 		
 		/**
 		 * Cached metadata from database, keyed by ast_path (or element_type:element_name fallback).
 		 * Loaded before parsing to enable incremental analysis.
 		 */
-		public Gee.HashMap<string, VectorMetadata> cached_metadata { get; private set; default = new Gee.HashMap<string, VectorMetadata>(); }
+		public Gee.HashMap<string, OLLMfiles.SQT.VectorMetadata> cached_metadata { 
+				get; private set; default = new Gee.HashMap<string, OLLMfiles.SQT.VectorMetadata>(); }
 		
 		/**
 		 * Constructor.
@@ -128,13 +130,13 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Extract code element information from AST node and create VectorMetadata.
+		 * Extract code element information from AST node and create OLLMfiles.SQT.VectorMetadata.
 		 * 
 		 * @param node AST node
 		 * @param code_content Source code content for text extraction
-		 * @return VectorMetadata object, or null if node is not a code element
+		 * @return OLLMfiles.SQT.VectorMetadata object, or null if node is not a code element
 		 */
-		private VectorMetadata? extract_element_metadata(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? namespace = null, string? parent_class = null)
+		private OLLMfiles.SQT.VectorMetadata? extract_element_metadata(TreeSitter.Node node, string code_content, string? parent_enum_name = null, string? namespace = null, string? parent_class = null)
 		{
 			// Only process named nodes (skip anonymous nodes)
 			if (!TreeSitter.node_is_named(node)) {
@@ -174,8 +176,8 @@ namespace OLLMvector.Indexing
 				return null;
 			}
 			
-			// Create VectorMetadata object early and assign values as we compute them
-			var metadata = new VectorMetadata() {
+			// Create OLLMfiles.SQT.VectorMetadata object early and assign values as we compute them
+			var metadata = new OLLMfiles.SQT.VectorMetadata() {
 				file_id = this.file.id,
 				element_type = element_type
 			};
@@ -306,8 +308,8 @@ namespace OLLMvector.Indexing
 		{
 			this.cached_metadata.clear();
 			
-			var results = new Gee.ArrayList<VectorMetadata>();
-			yield VectorMetadata.query(sql_db).select_async("WHERE file_id = " + this.file.id.to_string(), results);
+			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			yield OLLMfiles.SQT.VectorMetadata.query(sql_db).select_async("WHERE file_id = " + this.file.id.to_string(), results);
 			
 			foreach (var metadata in results) {
 				// Use ast_path as key, fallback to element_type:element_name if ast_path is empty
@@ -336,9 +338,9 @@ namespace OLLMvector.Indexing
 		 * Calculates MD5 hash for element's code content, looks up in cached_metadata,
 		 * and if found with matching MD5, copies description from cache.
 		 * 
-		 * @param metadata The VectorMetadata element to match
+		 * @param metadata The OLLMfiles.SQT.VectorMetadata element to match
 		 */
-		private void match_element_with_cache(VectorMetadata metadata)
+		private void match_element_with_cache(OLLMfiles.SQT.VectorMetadata metadata)
 		{
 			// Calculate MD5 for current element content
 			var element_code = this.lines_to_string(metadata.start_line, metadata.end_line);
@@ -365,7 +367,8 @@ namespace OLLMvector.Indexing
 			// Handle legacy data (empty MD5 in cache)
 			if (cached.md5_hash == "") {
 				// Legacy data: check if element name matches
-				if (cached.element_name == metadata.element_name && cached.element_type == metadata.element_type) {
+				if (cached.element_name == metadata.element_name && 
+						cached.element_type == metadata.element_type) {
 					// Element name matches - reuse description, calculate and store MD5
 					metadata.description = cached.description;
 					// Update cached metadata with calculated MD5 (for next time)
@@ -405,9 +408,10 @@ namespace OLLMvector.Indexing
 		 * Extract documentation block line numbers using tree-sitter API.
 		 * 
 		 * @param node AST node for the code element
-		 * @param metadata VectorMetadata object to set codedoc_start and codedoc_end on
+		 * @param metadata OLLMfiles.SQT.VectorMetadata object to set codedoc_start and codedoc_end on
 		 */
-		private void extract_documentation_lines(TreeSitter.Node node, VectorMetadata metadata)
+		private void extract_documentation_lines(
+			TreeSitter.Node node, OLLMfiles.SQT.VectorMetadata metadata)
 		{
 			// Get the element's start position
 			var element_start = TreeSitter.node_get_start_point(node);
@@ -500,7 +504,8 @@ namespace OLLMvector.Indexing
 			// Try to find first identifier using regex-like approach
 			// Look for word characters after common keywords
 			var text_lower = node_text.down();
-			string[] keywords = { "class", "method", "function", "property", "namespace", "public", "private" };
+			string[] keywords = { "class", "method", "function", "property",
+				 "namespace", "public", "private" };
 			foreach (var keyword in keywords) {
 				var keyword_pos = text_lower.index_of(keyword);
 				if (keyword_pos >= 0) {

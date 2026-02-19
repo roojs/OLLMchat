@@ -60,150 +60,88 @@ namespace OLLMfiles
 				GLib.Environment.get_home_dir(), ".config", "Cursor", "User", "globalStorage", "state.vscdb"
 			);
 			
-			GLib.debug("=== Starting Cursor Migration ===");
-			GLib.debug("Checking Cursor database at: %s", cursor_db_path);
-			
 			if (!GLib.File.new_for_path(cursor_db_path).query_exists()) {
-				GLib.debug("Cursor database not found at %s", cursor_db_path);
 				return;
 			}
 			
-			GLib.debug("✓ Cursor database file exists");
-			
 			try {
-				// Open Cursor database
-				GLib.debug("Opening Cursor database...");
 				var cursor_db = new SQ.Database(cursor_db_path);
-				GLib.debug("✓ Database opened successfully");
-				
-				// Use SQ.Query to read from ItemTable
-				GLib.debug("Running SQL query on ItemTable...");
-				GLib.debug("SQL: SELECT * FROM ItemTable WHERE key = 'history.recentlyOpenedPathsList'");
-				
 				var results = new Gee.ArrayList<ItemTable>();
 				new SQ.Query<ItemTable>(cursor_db, "ItemTable")
 					.select("WHERE key = 'history.recentlyOpenedPathsList'", results);
 				
-				GLib.debug("✓ Query executed");
-				GLib.debug("Results found: %u", results.size);
-				
 				if (results.size == 0) {
-					GLib.debug("No recently opened paths found in Cursor database");
 					return;
 				}
 				
-				// Show the raw data
-				GLib.debug("=== Raw Data Retrieved ===");
-				for (int i = 0; i < (int)results.size; i++) {
-					var item = results[i];
-					GLib.debug("Item %d: key=%s, value length=%zu bytes", i + 1, item.key, item.value.length);
-					if (item.value.length < 500) {
-						GLib.debug("  value: %s", item.value);
-					} else {
-						GLib.debug("  value (first 500 chars): %s...", item.value.substring(0, 500));
-					}
-				}
-				
-				// Extract JSON from the value field
-				GLib.debug("=== Parsing JSON ===");
 				var parser = new Json.Parser();
 				parser.load_from_data(results[0].value, -1);
 				var root = parser.get_root();
-				GLib.debug("✓ JSON parsed successfully");
-				GLib.debug("Root node type: %s", root.get_node_type().to_string());
 				
 				Json.Array? array = null;
 				
-				// Handle both formats: direct array or object with "entries" key
 				if (root.get_node_type() == Json.NodeType.ARRAY) {
 					array = root.get_array();
-					GLib.debug("Root is a direct array");
 				} else if (root.get_node_type() == Json.NodeType.OBJECT) {
 					var root_obj = root.get_object();
 					if (root_obj.has_member("entries")) {
 						var entries_node = root_obj.get_member("entries");
 						if (entries_node.get_node_type() == Json.NodeType.ARRAY) {
 							array = entries_node.get_array();
-							GLib.debug("Found 'entries' array in root object");
 						} else {
-							GLib.debug("ERROR: 'entries' member is not an array, got: %s", entries_node.get_node_type().to_string());
 							return;
 						}
 					} else {
-						GLib.debug("ERROR: Root is an object but has no 'entries' member");
 						return;
 					}
 				} else {
-					GLib.debug("ERROR: Root is not an array or object, got: %s", root.get_node_type().to_string());
 					return;
 				}
 				
 				if (array == null) {
-					GLib.debug("ERROR: Failed to extract array from JSON");
 					return;
 				}
 				
-				GLib.debug("Array length: %u", array.get_length());
-				
-				// Process each element
-				GLib.debug("=== Processing Paths ===");
-				uint paths_found = 0;
-				
 				for (uint i = 0; i < array.get_length(); i++) {
 					var element = array.get_element(i);
-					GLib.debug("Element %u: type=%s", i + 1, element.get_node_type().to_string());
 					
 					if (element.get_node_type() == Json.NodeType.VALUE) {
-						var path = element.get_string();
-						GLib.debug("  Path (direct value): %s", path);
-						this.create_project_from_path(path);
-						paths_found++;
+						this.create_project_from_path(element.get_string());
 						continue;
 					}
 					
 					if (element.get_node_type() != Json.NodeType.OBJECT) {
-						GLib.debug("  Skipping (not object or value)");
 						continue;
 					}
 					
 					var obj = element.get_object();
 					string? path = null;
 					
-					// Check for "folderUri" (Cursor format) first, then "folder" (VS Code format)
 					if (obj.has_member("folderUri")) {
 						var folder_uri_node = obj.get_member("folderUri");
 						if (folder_uri_node.get_node_type() == Json.NodeType.VALUE) {
 							var folder_uri = folder_uri_node.get_string();
-							// Convert file:// URI to path
 							if (folder_uri.has_prefix("file://")) {
-								path = folder_uri.substring(7); // Remove "file://" prefix
-								GLib.debug("  Path (from folderUri): %s", path);
+								path = folder_uri.substring(7);
 							} else {
 								path = folder_uri;
-								GLib.debug("  Path (from folderUri, no file:// prefix): %s", path);
 							}
 						}
 					} else if (obj.has_member("folder")) {
 						var folder_node = obj.get_member("folder");
 						if (folder_node.get_node_type() == Json.NodeType.VALUE) {
 							path = folder_node.get_string();
-							GLib.debug("  Path (from folder): %s", path);
 						}
 					}
 					
 					if (path == null) {
-						GLib.debug("  Skipping (no 'folderUri' or 'folder' member)");
 						continue;
 					}
 					
 					this.create_project_from_path(path);
-					paths_found++;
 				}
-				
-				GLib.debug("Total paths processed: %u", paths_found);
 			} catch (GLib.Error e) {
 				GLib.warning("Failed to migrate from Cursor: %s", e.message);
-				GLib.debug("Error code: %d", e.code);
 			}
 		}
 		
@@ -228,7 +166,6 @@ namespace OLLMfiles
 			);
 			
 			if (!GLib.File.new_for_path(projects_list_path).query_exists()) {
-				GLib.debug("roobuilder Projects.list not found at %s", projects_list_path);
 				return;
 			}
 			
@@ -269,7 +206,6 @@ namespace OLLMfiles
 			);
 			
 			if (!GLib.File.new_for_path(storage_json_path).query_exists()) {
-				GLib.debug("VS Code storage.json not found at %s", storage_json_path);
 				return;
 			}
 			

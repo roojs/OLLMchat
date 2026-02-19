@@ -50,7 +50,7 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Find all leaf sections (sections with no children)
-			var leaf_sections = new Gee.ArrayList<VectorMetadata>();
+			var leaf_sections = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			foreach (var element in tree.elements) {
 				if (element.children.size == 0) {
 					leaf_sections.add(element);
@@ -58,9 +58,10 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Load cached metadata for incremental processing
-			var cached_metadata = new Gee.HashMap<string, VectorMetadata>();
-			var results = new Gee.ArrayList<VectorMetadata>();
-			VectorMetadata.query(this.sql_db).select("WHERE file_id = " + tree.file.id.to_string(), results);
+			var cached_metadata = new Gee.HashMap<string, OLLMfiles.SQT.VectorMetadata>();
+			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id = " + tree.file.id.to_string(), results);
 			
 			foreach (var metadata in results) {
 				var cache_key = metadata.ast_path == "" ? 
@@ -70,8 +71,8 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Separate into unchanged and changed (similar to VectorBuilder)
-			var unchanged_elements = new Gee.ArrayList<VectorMetadata>();
-			var changed_elements = new Gee.ArrayList<VectorMetadata>();
+			var unchanged_elements = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			var changed_elements = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			var elements_to_delete = new Gee.HashSet<int>();
 			
 			// Build set of current element keys for deletion detection
@@ -155,7 +156,7 @@ namespace OLLMvector.Indexing
 			
 			// Delete old metadata entries
 			foreach (var id in elements_to_delete) {
-				VectorMetadata.query(this.sql_db).deleteId((int64)id);
+				OLLMfiles.SQT.VectorMetadata.query(this.sql_db).deleteId((int64)id);
 			}
 			
 			GLib.debug("DocumentationVectorBuilder.process_file: %d unchanged (reuse vector), %d changed/new (create vector), %d deleted", 
@@ -168,7 +169,7 @@ namespace OLLMvector.Indexing
 			
 			// Chunk each leaf section and create documents
 			var documents = new Gee.ArrayList<string>();
-			var chunk_metadata = new Gee.ArrayList<VectorMetadata>();
+			var chunk_metadata = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			
 			foreach (var section in changed_elements) {
 				// Get section content
@@ -238,7 +239,7 @@ namespace OLLMvector.Indexing
 		 * Overrides VectorBuilder.format_element_document().
 		 */
 		private string format_documentation_chunk(
-			VectorMetadata section,
+			OLLMfiles.SQT.VectorMetadata section,
 			string chunk_content,
 			DocumentationTree tree)
 		{
@@ -267,10 +268,11 @@ namespace OLLMvector.Indexing
 		/**
 		 * Creates metadata for a chunk (copy of section metadata).
 		 */
-		private VectorMetadata create_chunk_metadata(VectorMetadata section, string chunk)
+		private OLLMfiles.SQT.VectorMetadata create_chunk_metadata(
+			OLLMfiles.SQT.VectorMetadata section, string chunk)
 		{
 			// Create copy of section metadata
-			var chunk_meta = new VectorMetadata() {
+			var chunk_meta = new OLLMfiles.SQT.VectorMetadata() {
 				file_id = section.file_id,
 				element_type = section.element_type,
 				element_name = section.element_name,

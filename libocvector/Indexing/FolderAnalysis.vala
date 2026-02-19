@@ -57,13 +57,15 @@ namespace OLLMvector.Indexing
 		 * For each direct child that is a Folder, yields to analyze_children(child, metadata_keymap).
 		 * For each alias (base_type "fa") whose points_to is a Folder, yields to analyze_children(points_to, metadata_keymap).
 		 * Once all children are done, calls analyze(folder, metadata_keymap) and updates
-		 * metadata_keymap with the new folder VectorMetadata (store full object, do not copy description).
+		 * metadata_keymap with the new folder OLLMfiles.SQT.VectorMetadata (store full object, do not copy description).
 		 *
 		 * @param folder The folder to process
-		 * @param metadata_keymap Id-indexed map ((int)file_id → VectorMetadata); key type is int (cast from int64); updated when this folder is analyzed
+		 * @param metadata_keymap Id-indexed map ((int)file_id → OLLMfiles.SQT.VectorMetadata); key type is int (cast from int64); updated when this folder is analyzed
 		 * @return Number of folders analyzed in this subtree
 		 */
-		public async int analyze_children(OLLMfiles.Folder folder, Gee.HashMap<int, VectorMetadata> metadata_keymap) throws GLib.Error
+		public async int analyze_children(
+			OLLMfiles.Folder folder, 
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> metadata_keymap) throws GLib.Error
 		{
 			int count = 0;
 
@@ -79,7 +81,7 @@ namespace OLLMvector.Indexing
 				}
 			}
 
-			// Then analyze this folder and update keymap with full VectorMetadata (analyze returns non-null; empty description = skip)
+			// Then analyze this folder and update keymap with full OLLMfiles.SQT.VectorMetadata (analyze returns non-null; empty description = skip)
 			var meta = yield this.analyze(folder, metadata_keymap);
 			if (meta.description != "") {
 				metadata_keymap.set((int)folder.id, meta);
@@ -92,14 +94,16 @@ namespace OLLMvector.Indexing
 		/**
 		 * Per-folder analysis: build context from metadata_keymap, call LLM, save to DB, update keymap.
 		 *
-		 * Builds context from metadata_keymap: get VectorMetadata by (int)child.id/(int)file_id, use
+		 * Builds context from metadata_keymap: get OLLMfiles.SQT.VectorMetadata by (int)child.id/(int)file_id, use
 		 * .description and .element_name from the stored object (do not copy out description only).
 		 *
 		 * @param folder The folder to analyze
-		 * @param metadata_keymap Id-indexed map ((int)file_id → VectorMetadata); read for children/files, write for (int)folder.id when done
-		 * @return VectorMetadata for this folder; on failure returns VectorMetadata with description = "" (never null)
+		 * @param metadata_keymap Id-indexed map ((int)file_id → OLLMfiles.SQT.VectorMetadata); read for children/files, write for (int)folder.id when done
+		 * @return OLLMfiles.SQT.VectorMetadata for this folder; on failure returns OLLMfiles.SQT.VectorMetadata with description = "" (never null)
 		 */
-		private async VectorMetadata analyze(OLLMfiles.Folder folder, Gee.HashMap<int, VectorMetadata> metadata_keymap) throws GLib.Error
+		private async OLLMfiles.SQT.VectorMetadata analyze(
+			OLLMfiles.Folder folder, 
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> metadata_keymap) throws GLib.Error
 		{
 			// Build folder contents: one pass over children, each line tagged (folder), (file), or (alias) from base_type.
 			// Descriptions from keymap are stored stripped when saved, so use vm.description as-is.
@@ -186,7 +190,7 @@ namespace OLLMvector.Indexing
 				folder_description = "";
 			}
 
-			var folder_metadata = new VectorMetadata() {
+			var folder_metadata = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "folder",
 				element_name = GLib.Path.get_basename(folder.path),
 				start_line = 0,

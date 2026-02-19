@@ -44,25 +44,39 @@ namespace OLLMcoder.Skill
 			this.base_dir = SKILL_PROMPTS_PREFIX;
 		}
 
-		/**
-		 * Returns a markdown heading line plus body, optionally in a fenced code block.
-		 *
-		 * When code_block is true (default): uses tildes when body contains a line-start backtick
-		 * fence so the outer fence is not broken; otherwise uses a backtick fence.
-		 * When code_block is false: body is appended after the heading with no fence.
-		 *
-		 * @param heading heading text (e.g. GFM anchor)
-		 * @param body body text to wrap
-		 * @param code_block if true (default), wrap body in a fenced code block; if false, plain text
-		 * @return the concatenated string
-		 */
-		public string header(string heading, string body, bool code_block = true)
+		/** ## heading + body, no fence. Unfenced markdown. No output when body is empty. */
+		public string header_raw(string heading, string body)
 		{
-			if (!code_block) {
-				return "## " + heading.strip() + "\n\n" + body + "\n\n";
+			if (body == "") {
+				return "";
 			}
-			var fence = body.index_of("\n```") >= 0 ? "~~~~" : "```";
-			return "## " + heading.strip() + "\n\n" + fence + "\n" + body + "\n" + fence + "\n\n";
+			return "## " + heading.strip() + "\n\n" + body + "\n\n";
+		}
+
+		/** ## heading + fenced code block. Uses file.language (FileBase; set by detect_language()). Exception: we do output the header (and empty block if needed) when file content is empty. Caller must not pass null file. */
+		public string header_file(string heading, OLLMfiles.File file)
+		{
+			var body = file.get_contents(200);
+			var fence = (body.index_of("\n```") >= 0 || body.has_prefix("```")) ? "~~~~" : "```";
+			return "## " + heading.strip() + "\n\n"
+				+ fence
+				+ (file.language != "" ? file.language + "\n" : "\n")
+				+ body + "\n"
+				+ fence + "\n\n";
+		}
+
+		/** ## heading + fenced block with type (e.g. "text", "json", "vala"). No output when body is empty. */
+		public string header_fenced(string heading, string body, string type = "")
+		{
+			if (body == "") {
+				return "";
+			}
+			var fence = (body.index_of("\n```") >= 0 || body.has_prefix("```")) ? "~~~~" : "```";
+			return "## " + heading.strip() + "\n\n"
+				+ fence
+				+ (type != "" ? type + "\n" : "\n")
+				+ body + "\n"
+				+ fence + "\n\n";
 		}
 
 		/**

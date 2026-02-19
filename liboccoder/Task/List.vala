@@ -73,6 +73,37 @@ public class List : Object
 	}
 
 	/**
+	 * Call fill_name(index) on each task in order.
+	 */
+	public void fill_names()
+	{
+		var index = 0;
+		foreach (var step in this.steps) {
+			foreach (var t in step.children) {
+				t.fill_name(++index);
+			}
+		}
+	}
+
+	/**
+	 * True if any task's slug() equals name_slug. name_slug = anchor with "-results" stripped, e.g. "research-1".
+	 */
+	public bool has_slug(string name_slug)
+	{
+		if (name_slug == "") {
+			return false;
+		}
+		foreach (var step in this.steps) {
+			foreach (var t in step.children) {
+				if (t.slug() == name_slug) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * True if any task has no execution result (output) yet; returns as soon
 	 * as one is found.
 	 */

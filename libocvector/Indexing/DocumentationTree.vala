@@ -19,22 +19,22 @@
 namespace OLLMvector.Indexing
 {
 	/**
-	 * Markdown/documentation parsing and VectorMetadata creation.
+	 * Markdown/documentation parsing and OLLMfiles.SQT.VectorMetadata creation.
 	 * 
 	 * Parses documentation files (markdown, plain text) to extract sections
-	 * and create VectorMetadata objects with hierarchical structure.
+	 * and create OLLMfiles.SQT.VectorMetadata objects with hierarchical structure.
 	 */
 	public class DocumentationTree : OLLMfiles.TreeBase
 	{
 		/**
-		 * Array of VectorMetadata objects extracted from document sections.
+		 * Array of OLLMfiles.SQT.VectorMetadata objects extracted from document sections.
 		 */
-		public Gee.ArrayList<VectorMetadata> elements { get; private set; default = new Gee.ArrayList<VectorMetadata>(); }
+		public Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> elements { get; private set; default = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>(); }
 		
 		/**
 		 * Root element (document-level metadata).
 		 */
-		public VectorMetadata? root_element { get; private set; default = null; }
+		public OLLMfiles.SQT.VectorMetadata? root_element { get; private set; default = null; }
 		
 		/**
 		 * Document category (plan, documentation, rule, etc.).
@@ -80,7 +80,7 @@ namespace OLLMvector.Indexing
 		private async void parse_markdown_tree(string content) throws GLib.Error
 		{
 			// Create document-level element (root element)
-			var document_element = new VectorMetadata() {
+			var document_element = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "document",
 				element_name = GLib.Path.get_basename(this.file.path),
 				file_id = this.file.id,
@@ -107,7 +107,7 @@ namespace OLLMvector.Indexing
 			
 			// Traverse AST to extract heading hierarchy
 			var root_node = tree.get_root_node();
-			var root_sections = new Gee.ArrayList<VectorMetadata>();
+			var root_sections = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			this.traverse_markdown_ast(root_node, content, root_sections, null, 0);
 			
 			// Update end lines for all sections based on next heading
@@ -120,7 +120,7 @@ namespace OLLMvector.Indexing
 		private void update_section_end_lines()
 		{
 			// Sort all sections by start_line
-			var sections_list = new Gee.ArrayList<VectorMetadata>();
+			var sections_list = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			foreach (var element in this.elements) {
 				// Early continue: skip non-sections
 				if (element.element_type != "section") {
@@ -163,8 +163,8 @@ namespace OLLMvector.Indexing
 		private void traverse_markdown_ast(
 			TreeSitter.Node node,
 			string content,
-			Gee.ArrayList<VectorMetadata> root_sections,
-			VectorMetadata? current_parent,
+			Gee.ArrayList<OLLMfiles.SQT.VectorMetadata> root_sections,
+			OLLMfiles.SQT.VectorMetadata? current_parent,
 			int current_level)
 		{
 			// Early return: null node
@@ -214,7 +214,7 @@ namespace OLLMvector.Indexing
 			var start_line = (int)TreeSitter.node_get_start_point(node).row + 1;
 			
 			// Create section metadata (end_line set later by update_section_end_lines())
-			var section = new VectorMetadata() {
+			var section = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "section",
 				element_name = heading_name,
 				file_id = this.file.id,
@@ -225,7 +225,7 @@ namespace OLLMvector.Indexing
 			};
 			
 			// Find appropriate parent based on heading level
-			VectorMetadata? parent_section = null;
+			OLLMfiles.SQT.VectorMetadata? parent_section = null;
 			if (current_parent != null && heading_level > current_level) {
 				// Child of current parent
 				parent_section = current_parent;
@@ -284,7 +284,7 @@ namespace OLLMvector.Indexing
 		/**
 		 * Finds parent section by walking up the hierarchy until finding one with level < target_level.
 		 */
-		private VectorMetadata? find_parent_by_level(VectorMetadata current, int target_level)
+		private OLLMfiles.SQT.VectorMetadata? find_parent_by_level(OLLMfiles.SQT.VectorMetadata current, int target_level)
 		{
 			var candidate = current.parent;
 			while (candidate != null) {
@@ -304,7 +304,7 @@ namespace OLLMvector.Indexing
 		private void parse_plain_text()
 		{
 			// Create single element for entire file
-			var metadata = new VectorMetadata() {
+			var metadata = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "document",
 				element_name = GLib.Path.get_basename(this.file.path),
 				file_id = this.file.id,
