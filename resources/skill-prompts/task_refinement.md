@@ -76,7 +76,6 @@ Do **not** include the actual body of files or other precursor content in the ta
 
 {environment}
 {project_description}
-{current_file}
 {task_reference_contents}
 
 ## Skill Details
