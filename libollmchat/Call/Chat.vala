@@ -265,14 +265,18 @@ namespace OLLMchat.Call
 					var tools_node = new Json.Node(Json.NodeType.ARRAY);
 					tools_node.init_array(new Json.Array());
 					var tools_array = tools_node.get_array();
-					foreach (var tool in this.tools.values) {
-						// Only include active tools
+					foreach (var entry in this.tools.entries) {
+						var tool = entry.value;
 						if (!tool.active) {
 							continue;
 						}
 						var tool_node = Json.gobject_serialize(tool);
 						var tool_obj = tool_node.get_object();
-						// Add "type" field for Ollama API compatibility (tool-type is excluded from serialization)
+						// Use map key as tool name so wrapped aliases (e.g. Grep, ls) are sent correctly
+						var func_node = tool_obj.get_member("function");
+						if (func_node != null && func_node.get_node_type() == Json.NodeType.OBJECT) {
+							func_node.get_object().set_string_member("name", entry.key);
+						}
 						tool_obj.set_string_member("type", tool.tool_type);
 						tools_array.add_element(tool_node);
 					}

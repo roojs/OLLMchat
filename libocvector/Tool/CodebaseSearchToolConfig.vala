@@ -97,9 +97,6 @@ namespace OLLMvector.Tool
 		 */
 		public void setup_defaults(string connection_url)
 		{
-			if (connection_url == null || connection_url.strip() == "") {
-				return;
-			}
 			this.embed = new OLLMchat.Settings.ModelUsage() {
 				connection = connection_url,
 				model = "bge-m3:latest"

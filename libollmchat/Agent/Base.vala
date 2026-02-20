@@ -293,7 +293,8 @@ namespace OLLMchat.Agent
 				this.chat_call.tools.clear();
 				return;
 			}
-			this.chat_call.tools = this.session.manager.tools;
+			// Use a dedicated map so configure_tools can clear and repopulate without touching manager.tools
+			this.chat_call.tools = new Gee.HashMap<string, OLLMchat.Tool.BaseTool>();
 			this.factory.configure_tools(this.chat_call);
 		}
 		

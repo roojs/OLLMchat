@@ -241,7 +241,9 @@ namespace OLLMvector.Tool
 				}
 			}
 			if (this.category != "") {
-				sql = sql + " AND category = $category AND element_type IN ('document','section')";
+				sql = sql + " AND file_id IN " + 
+					"(SELECT file_id FROM vector_metadata fvm WHERE fvm.category = $category) " + 
+					"AND element_type IN ('document','section')";
 			}
 			
 			// Debug: Log vector filtering query
@@ -279,6 +281,22 @@ namespace OLLMvector.Tool
 			GLib.debug("codebase_search vector filter: found %d vector_id(s) matching filter",
 				filtered_vector_ids.size
 			);
+			
+			if (filtered_vector_ids.size == 0) {
+				
+				this.send_ui("txt", "Code Search", 
+					"No document matches the criteria that was selected - have asked LLM to try again");
+				
+				if (this.category != "") {
+					return "No document matches the criteria (category=\"" + this.category + "\"). "
+						+ "Try the same query without the category filter to search all docs, "
+						+ "or use a different category. Valid categories: "
+						+ string.joinv(", ", VALID_CATEGORIES) + ".";
+				}
+				return "No document matches the criteria (current filters returned no indexed content). "
+					+ "Try the same query with fewer or different filters (e.g. omit element_type), "
+					+ "or broaden the query.";
+			}
 			
 			// Step 4: Create and execute search (exactly as oc-vector-search.vala does)
 			// Get config via agent interface

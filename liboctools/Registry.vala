@@ -82,12 +82,12 @@ namespace OLLMtools
 			GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)", 
 				manager.tools.size);
 			
-			// Register agent tools from resources/agents/
-			var parser = new Child.Parser();
-			parser.scan_and_register(manager, project_manager);
-				
-			GLib.debug("OLLMtools.Registry.fill_tools: Registered agent tools (total tools: %d)", 
-			manager.tools.size);
+			// Register agent tools from resources/agents/ (commented out for now)
+			// var parser = new Child.Parser();
+			// parser.scan_and_register(manager, project_manager);
+			//
+			// GLib.debug("OLLMtools.Registry.fill_tools: Registered agent tools (total tools: %d)", 
+			// manager.tools.size);
 	}
 	}
 }

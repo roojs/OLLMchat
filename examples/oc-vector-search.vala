@@ -110,6 +110,10 @@ Examples:
 		return base.command_line(command_line);
 	}
 	
+	private static string[] VALID_CATEGORIES = {
+		"plan", "documentation", "rule", "configuration", "data", "license", "changelog", "other"
+	};
+	
 	protected override string? validate_args(string[] remaining_args)
 	{
 		// Note: Option variables are already reset in command_line() before parsing,
@@ -118,6 +122,21 @@ Examples:
 		opt_element_type = opt_element_type == null ? "" : opt_element_type;
 		opt_category = opt_category == null ? "" : opt_category;
 		opt_embed_model = opt_embed_model == null ? "" : opt_embed_model;
+		
+		if (opt_category != "") {
+			var normalized = opt_category.strip().down();
+			bool valid = false;
+			foreach (var v in VALID_CATEGORIES) {
+				if (normalized == v) {
+					valid = true;
+					break;
+				}
+			}
+			if (!valid) {
+				return "Invalid category \"%s\"; valid values: %s".printf(
+					opt_category, string.joinv(", ", VALID_CATEGORIES));
+			}
+		}
 		
 		// Build paths at start
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
@@ -364,9 +383,10 @@ Examples:
 			sql = sql + " AND element_type = $element_type";
 		}
 		if (opt_category != "") {
-			sql = sql + " AND category = $category AND element_type IN ('document','section')";
+			sql = sql + " AND file_id IN (SELECT file_id FROM vector_metadata fvm WHERE fvm.category = $category) AND element_type IN ('document','section')";
 		}
 		
+		GLib.debug("file_id_list from get_ids: %u IDs", file_ids.size);
 		GLib.debug("Filter SQL: %s", sql);
 		
 		var vector_query = OLLMvector.VectorMetadata.query(sql_db);
@@ -386,6 +406,11 @@ Examples:
 		}
 		
 		GLib.debug("Filtered to %lld vector IDs", filtered_vector_ids.size);
+		
+		if (filtered_vector_ids.size == 0) {
+			stdout.printf("No document matches the criteria.\n");
+			return;
+		}
 		
 		// Create search instance (optional set via object initializer)
 		var search = new OLLMvector.Search.Search(

@@ -72,15 +72,21 @@ namespace OLLMtools.Child
 			// Get session from call.agent
 			// call.agent is set by Agent.Base constructor before configure_tools() is called
 			
-			// Add only tools listed in allowed_tools
+			// Add tools listed in allowed_tools, and all wrapped-tool aliases that point to the same instance.
+			// This ensures e.g. run_command also registers Grep, ls, etc., so the model can call any of them.
 			foreach (var tool_name in this.agent_tool.agent_tools) {
 				if (! call.agent.session.manager.tools.has_key(tool_name)) {
 					GLib.warning("Agent tool '%s' requested tool '%s' which is not available", 
 						this.name, tool_name);
 					continue;
 				}
-				var tool =  call.agent.session.manager.tools.get(tool_name);
-				call.add_tool(tool);
+				var tool = call.agent.session.manager.tools.get(tool_name);
+				// Register this tool under every name that maps to it (base name + wrapped aliases)
+				foreach (var entry in call.agent.session.manager.tools.entries) {
+					if (entry.value == tool) {
+						call.tools.set(entry.key, tool);
+					}
+				}
 			}
 		}
 		

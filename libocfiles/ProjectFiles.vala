@@ -112,6 +112,9 @@ namespace OLLMfiles
 		public File? get_by_id(int64 file_id)
 		{
 			if (file_id <= 0 || this.items.size == 0) {
+				if (file_id > 0) {
+					GLib.debug("file_id=%lld not found, items.size=0", file_id);
+				}
 				return null;
 			}
 			
@@ -127,9 +130,9 @@ namespace OLLMfiles
 				)
 			);
 			if (index < 0) {
+				GLib.debug("file_id=%lld not in items (items.size=%u)", file_id, this.items.size);
 				return null;
 			}
-			
 			return this.items[index].file;
 		}
 		

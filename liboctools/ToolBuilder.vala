@@ -159,7 +159,7 @@ namespace OLLMtools
 		// Set wrapped tool properties
 			new_tool.is_wrapped = true;
 			new_tool.command_template = parser.command_template;
-			new_tool.title = parser.title;
+			new_tool.title = parser.title + " (Wrapped)";
 			
 			if (new_tool.title == "") {
 				GLib.critical("Empty title on tool %s", parser.name);
