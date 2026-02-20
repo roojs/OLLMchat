@@ -310,6 +310,43 @@ test_bubble = executable('oc-test-bubble',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-test-skill-agent executable (testable skills agent flow; plan 1.23.19)
+oc_test_skill_agent = executable('oc-test-skill-agent',
+  dependencies: [
+    test_window_deps,
+    ocsqlite_vapi_dep,
+    ocfiles_vapi_dep,
+    ollmchat_vapi_dep,
+    ocmarkdown_vapi_dep
+  ],
+  sources: ['oc-test-skill-agent.vala'],
+  link_with: [ollmchat_base_lib, occoder_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboccoder')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',
+    '--pkg=tree-sitter',
+    '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    '--pkg=ocmarkdown',
+    # Don't use --pkg=occoder when linking with occoder_base_lib
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_source_dir() / '../vapi'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-diff executable (unified diff output)
 # Only depends on libocfiles (no GTK or vector search dependencies)
 # Diff classes moved from liboccoder to libocfiles

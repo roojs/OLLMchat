@@ -148,7 +148,6 @@ The following illustrates the **shape** of the output. Use the same headings and
 {environment}
 {project_description}
 {current_file}
-{open_files}
 {previous_proposal}
 {previous_proposal_issues}
 {user_prompt}

@@ -20,8 +20,6 @@
  * oc-test-skill-agent — testable step-by-step usage of the skills agent flow.
  *
  * Plan: docs/plans/1.23.19-testable-agent-flow.md
- *
- * NOT in build: add to examples/meson.build when ready.
  */
 
 class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
@@ -40,6 +38,9 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
+
+	/** Set by build_runner() when a mode needs project + Runner. */
+	private OLLMcoder.Skill.Runner? runner { get; set; default = null; }
 
 	const OptionEntry[] options = {
 		{ "project", 0, 0, OptionArg.STRING, ref opt_project, "Project path (required for prompt modes)", "PATH" },
@@ -114,14 +115,53 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 		return 0;
 	}
 
+	private async void build_runner(ApplicationCommandLine cl) throws Error
+	{
+		var db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+		var db = new SQ.Database(db_path, false);
+		var project_manager = new OLLMfiles.ProjectManager(db);
+		yield project_manager.load_projects_from_db();
+
+		var project = project_manager.projects.path_map.get(opt_project);
+		if (project == null) {
+			cl.printerr("Project not found: %s\n", opt_project);
+			throw new GLib.IOError.NOT_FOUND("Project not found: " + opt_project);
+		}
+		yield project.load_files_from_db();
+		OLLMfiles.Folder.background_recurse = false;
+		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
+		project.project_files.update_from(project);
+		yield project_manager.activate_project(project);
+
+		var skills_dirs = new Gee.ArrayList<string>();
+		skills_dirs.add(GLib.Path.build_filename(
+			GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
+		var factory = new OLLMcoder.Skill.Factory(project_manager, skills_dirs, "");
+		var history_manager = new OLLMchat.History.Manager(this);
+		var session = new OLLMchat.History.EmptySession(history_manager);
+		if (opt_model != null && opt_model != "") {
+			var default_usage = history_manager.default_model_usage;
+			var override_usage = new OLLMchat.Settings.ModelUsage() {
+				connection = default_usage.connection,
+				model = opt_model,
+				model_obj = null,
+				options = default_usage.options.clone()
+			};
+			session.activate_model(override_usage);
+		}
+		this.runner = (OLLMcoder.Skill.Runner) factory.create_agent(session);
+	}
+
 	private async void run_mode(ApplicationCommandLine cl) throws Error
 	{
 		// §3.1: output task-creation prompt (no LLM)
 		if (!opt_run_prompt && opt_project != null && opt_prompt != null &&
 		    opt_parse_tasklist == null && opt_parse_refine == null && opt_parse_execute == null &&
 		    opt_refine_task < 0 && !opt_run_refine && opt_execute_task == null && opt_run_execute_task_n < 0) {
-			// TODO: build Runner with --project, call build_task_creation_prompt(), print system + user
-			cl.printerr("Not implemented: output task-creation prompt (requires Runner.build_task_creation_prompt API).\n");
+			yield this.build_runner(cl);
+			var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+				this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
+			stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
 			return;
 		}
 
@@ -130,8 +170,15 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 			if (opt_project == null || opt_prompt == null) {
 				throw new GLib.IOError.INVALID_ARGUMENT("--run-prompt requires --project and --prompt");
 			}
-			// TODO: build prompt via Runner, send with --model or default, print response
-			cl.printerr("Not implemented: --run-prompt (requires Runner.build_task_creation_prompt API).\n");
+			yield this.build_runner(cl);
+			var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+				this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			var response_obj = yield this.runner.chat().send(messages, null);
+			var content = response_obj != null && response_obj.message != null ? response_obj.message.content : "";
+			stdout.printf("%s", content ?? "");
 			return;
 		}
 

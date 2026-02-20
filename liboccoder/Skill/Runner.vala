@@ -68,23 +68,30 @@ namespace OLLMcoder.Skill
 			return "";
 		}
 
-		private PromptTemplate task_creation(string user_prompt, string previous_proposal, string previous_proposal_issues) throws GLib.Error
+		public PromptTemplate task_creation_prompt(
+			string user_prompt,
+			string previous_proposal,
+			string previous_proposal_issues,
+			OLLMcoder.Skill.Manager skill_catalog, 
+			OLLMfiles.ProjectManager project_manager) throws GLib.Error
 		{
+			var file = project_manager.active_file;
+			if (file != null) {
+				project_manager.buffer_provider.create_buffer(file);
+			}
 			var tpl = PromptTemplate.template("task_creation_initial.md");
-			var file = this.sr_factory.current_file();
-			var open_files_list = "";
 			tpl.fill(
 				"user_prompt", tpl.header_fenced("User Prompt", user_prompt, "text"),
 				"environment", tpl.header_raw("Environment", this.env()),
-				"project_description", (this.sr_factory.project_manager.active_project == null ?
-					 "" : this.sr_factory.project_manager.active_project.project_description()),
+				"project_description", (project_manager.active_project == null ?
+					"" : project_manager.active_project.project_description()),
 				"current_file", file == null ? "" : tpl.header_file("Current File - " + file.path, file),
-				"open_files", open_files_list,
-				"previous_proposal", previous_proposal == "" ? "" : 
+				"previous_proposal", previous_proposal == "" ? "" :
 					tpl.header_raw("Previous Proposal", previous_proposal),
 				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
 					tpl.header_raw("Previous Proposal Issues", previous_proposal_issues),
-				"skill_catalog", this.sr_factory.skill_manager.to_markdown());
+				"skill_catalog", skill_catalog.to_markdown());
+			tpl.system_fill("skill_catalog", skill_catalog.to_markdown());
 			return tpl;
 		}
 
@@ -100,7 +107,12 @@ namespace OLLMcoder.Skill
 			var previous_proposal = "";
 			var previous_proposal_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
-				var tpl = this.task_creation(user_prompt, previous_proposal, previous_proposal_issues);
+				var tpl = this.task_creation_prompt(
+					user_prompt, 
+					previous_proposal,
+					previous_proposal_issues,
+					this.sr_factory.skill_manager, 
+					this.sr_factory.project_manager);
 				this.user_request = tpl.user_to_document();
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
