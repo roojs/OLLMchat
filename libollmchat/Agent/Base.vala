@@ -129,8 +129,9 @@ namespace OLLMchat.Agent
 			if (usage.model_obj == null || !usage.model_obj.can_call) {
 				return;
 			}
-			foreach (var tool in this.session.manager.tools.values) {
-				this.chat_call.add_tool(tool);
+			// Copy every manager tool entry (key + value) so wrapped aliases (Grep, ls, Read, etc.) are available
+			foreach (var entry in this.session.manager.tools.entries) {
+				this.chat_call.tools.set(entry.key, entry.value);
 			}
 			this.factory.configure_tools(this.chat_call);
 			
