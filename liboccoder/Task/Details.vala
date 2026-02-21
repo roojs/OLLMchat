@@ -305,7 +305,7 @@ public class Details : OLLMchat.Agent.Base
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var response = yield this.chat_call.send(messages, null);
-					response_text = response != null ? (response.message.content ?? "") : "";
+					response_text = response != null ? response.message.content : "";
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {
@@ -492,6 +492,22 @@ public class Details : OLLMchat.Agent.Base
 		return parts;
 	}
 
+	/**
+	 * Build the executor prompt (task_execution.md) for this task.
+	 * Call after run_tools() so tool_outputs are populated. Used by post_evaluate() and by the test CLI.
+	 */
+	public OLLMcoder.Skill.PromptTemplate executor_prompt() throws GLib.Error
+	{
+		var definition = this.skill_manager.fetch(this);
+		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
+		tpl.system_fill();
+		tpl.fill(
+			"query", this.task_data.get("What is needed").to_markdown(),
+			"skill_definition", definition.full_content,
+			"precursor", this.executor_precursor());
+		return tpl;
+	}
+
 	/** Run each tool in sequence. TODO: concurrent execution to be added later. */
 	public async void run_tools() throws GLib.Error
 	{
@@ -501,28 +517,21 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Executor: fill template. Precursor = same reference content as refine
-	 * (reference_contents()) plus this task's tool_outputs in same
-	 * header+code-block format; Details builds from refs and tool_outputs.
-	 * Definition from skill_manager.fetch(this).
+	 * Executor: build prompt via executor_prompt(), send to model, parse result.
 	 * Up to 5 attempts; up to 3 communication retries per attempt (same as refine).
 	 */
 	public async void post_evaluate() throws GLib.Error
 	{
-		var definition = this.skill_manager.fetch(this);
-		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
+		var tpl = this.executor_prompt();
 		for (var i = 0; i < 5; i++) {
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
-			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
-			messages.add(new OLLMchat.Message("user", tpl.fill(
-				"query", this.task_data.get("What is needed").to_markdown(),
-				"skill_definition", definition.full_content,
-				"precursor", this.executor_precursor())));
+			messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			string response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var response = yield this.chat_call.send(messages, null);
-					response_text = response != null ? (response.message.content ?? "") : "";
+					response_text = response != null ? response.message.content : "";
 					break;
 				} catch (GLib.Error e) {
 					if (attempt != 2) {

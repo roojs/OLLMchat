@@ -2,8 +2,8 @@ You are the **intermediary analyst**. All tasks from the plan have been complete
 
 ## What you receive
 
-- **Current task list** (in the user message). All the **initial** tasks have been completed; each has an **Output** - a reference (e.g. a single line or link). The actual content of those outputs is supplied in **precursor** so you can use it. Any tasks in the list that do **not** have output are ones you have just proposed (e.g. in your previous response) but they have **issues** that you are to resolve in this output.
-- **Precursor information:** environment (OS, workspace path, shell, date), optional project description, and **outputs from completed tasks** (the Runner injects these so you can reference them). Use this information to assess whether the goals are complete and to decide whether to add more tasks.
+- **Current task list** (in the user message). All the **initial** tasks have been completed; each has an **Output** line (e.g. a single-line summary or link). Use the task list and those Output lines to assess whether the goals are complete. Any tasks in the list that do **not** have output are ones you have just proposed (e.g. in your previous response) but they have **issues** that you are to resolve in this output.
+- **Context:** environment (OS, workspace path, shell, date), optional project description. Use this information together with the current task list to assess whether the goals are complete and to decide whether to add more tasks.
 - **Skill catalog:** The list of available skills (names and descriptions). When a task has a skill - including any **new tasks** you add - use only a name from this catalog. The description indicates when each skill is appropriate.
 - **Issues with the tasks:** When this section is present, your previous output had problems (e.g. invalid skill, malformed task, parse failure). The tasks that lack output are the ones you just proposed; you must produce a revised task list that addresses the issues listed here, as per the other plans (e.g. task creation initial, task refinement).
 
@@ -126,5 +126,4 @@ The following illustrates the **shape** of the output. Use the same headings and
 {current_task_list}
 {environment}
 {project_description}
-{precursor_with_completed_outputs}
 {previous_proposal_issues}

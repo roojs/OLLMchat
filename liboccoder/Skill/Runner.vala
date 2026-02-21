@@ -169,12 +169,54 @@ namespace OLLMcoder.Skill
 			return true;
 		}
 
-		/** Stub: task list iteration. Plan §8: load task_list_iteration.md, fill, send, parse_task_list(), replace this.task_list. */
+		/**
+		 * Build the task list iteration prompt (task_list_iteration.md) from this.task_list.
+		 * Current task list = this.task_list.to_markdown(). Used by run_task_list_iteration() and by the test CLI.
+		 */
+		public PromptTemplate iteration_prompt(string previous_proposal_issues = "") throws GLib.Error
+		{
+			var tpl = PromptTemplate.template("task_list_iteration.md");
+			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
+
+			tpl.fill(
+				"current_task_list", this.task_list.to_markdown(),
+				"environment", tpl.header_raw("Environment", this.env()),
+				"project_description", this.sr_factory.project_manager.active_project == null ? "" :
+					this.sr_factory.project_manager.active_project.project_description(),
+				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
+					tpl.header_raw("Issues with the tasks", previous_proposal_issues));
+			return tpl;
+		}
+
+		/** Task list iteration: send current list to LLM, parse response; this.task_list is replaced by parse_task_list() on success. Up to 5 retries with previous_proposal_issues. On parse failure parser sets this.task_list = null; restore from saved ref so next iteration_prompt() has a list. */
 		public async void run_task_list_iteration() throws GLib.Error
 		{
 			if (this.task_list == null) {
 				return;
 			}
+			var previous_proposal_issues = "";
+			for (var try_count = 0; try_count < 5; try_count++) {
+				var saved_list = this.task_list;
+				var tpl = this.iteration_prompt(previous_proposal_issues);
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var response_obj = yield this.chat_call.send(messages, null);
+				var response = response_obj != null ? response_obj.message.content : "";
+				var parser = new OLLMcoder.Task.ResultParser(this, response);
+				parser.parse_task_list();
+				if (parser.issues != "") {
+					previous_proposal_issues = parser.issues;
+					this.task_list = saved_list;
+					continue;
+				}
+				var skill_issues = this.task_list.validate_skills();
+				if (skill_issues == "") {
+					return;
+				}
+				previous_proposal_issues = skill_issues;
+			}
+			this.add_message(new OLLMchat.Message("ui", "Task list iteration: could not get valid task list after 5 tries."));
 		}
 	}
 }
