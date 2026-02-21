@@ -27,14 +27,11 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 	private static string? opt_project = null;
 	private static string? opt_prompt = null;
 	private static string? opt_model = null;
-	private static bool opt_run_prompt = false;
-	private static string? opt_parse_tasklist = null;
-	private static string? opt_parse_refine = null;
-	private static string? opt_parse_execute = null;
-	private static int opt_refine_task = -1;
-	private static bool opt_run_refine = false;
-	private static string? opt_execute_task = null;  // N or FILE
-	private static int opt_run_execute_task_n = -1;
+	private static string? opt_input = null;
+	private static string? opt_current_file = null;
+	private static string? opt_run = null;
+	private static int opt_step = 0;
+	private static int opt_task_num = 0;
 
 	public OLLMchat.Settings.Config2 config { get; set; }
 	public string data_dir { get; set; }
@@ -42,18 +39,15 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 	/** Set by build_runner() when a mode needs project + Runner. */
 	private OLLMcoder.Skill.Runner? runner { get; set; default = null; }
 
-	const OptionEntry[] options = {
-		{ "project", 0, 0, OptionArg.STRING, ref opt_project, "Project path (required for prompt modes)", "PATH" },
-		{ "prompt", 0, 0, OptionArg.STRING, ref opt_prompt, "User prompt (required for task-creation modes)", "TEXT" },
-		{ "model", 'm', 0, OptionArg.STRING, ref opt_model, "Model ID (overrides default)", "ID" },
-		{ "run-prompt", 0, 0, OptionArg.NONE, ref opt_run_prompt, "Run task-creation prompt with model; print response", null },
-		{ "parse-tasklist", 0, 0, OptionArg.FILENAME, ref opt_parse_tasklist, "Parse FILE as task-list output; print summary", "FILE" },
-		{ "parse-refine", 0, 0, OptionArg.FILENAME, ref opt_parse_refine, "Parse FILE as refinement output; print summary", "FILE" },
-		{ "parse-execute", 0, 0, OptionArg.FILENAME, ref opt_parse_execute, "Parse FILE as executor output; print summary", "FILE" },
-		{ "refine-task", 0, 0, OptionArg.INT, ref opt_refine_task, "Output refinement prompt for task N (1-based)", "N" },
-		{ "run-refine", 0, 0, OptionArg.NONE, ref opt_run_refine, "Run refinement for task N with LLM; print response", null },
-		{ "execute-task", 0, 0, OptionArg.STRING, ref opt_execute_task, "Run execute-task tools; output executor prompt (N or FILE)", "N|FILE" },
-		{ "run-execute-task", 0, 0, OptionArg.INT, ref opt_run_execute_task_n, "Run executor with LLM for task N; print results", "N" },
+	const GLib.OptionEntry[] options = {
+		{ "project", 0, 0, GLib.OptionArg.STRING, ref opt_project, "Project path (required for prompt/refine/execute)", "PATH" },
+		{ "prompt", 0, 0, GLib.OptionArg.STRING, ref opt_prompt, "User prompt (required for prompt / prompt-run)", "TEXT" },
+		{ "model", 'm', 0, GLib.OptionArg.STRING, ref opt_model, "Model ID (overrides default)", "ID" },
+		{ "input", 'i', 0, GLib.OptionArg.FILENAME, ref opt_input, "Input file (for parse-* or task list for refine/execute)", "FILE" },
+		{ "current-file", 0, 0, GLib.OptionArg.FILENAME, ref opt_current_file, "Current/open file path (within project); if omitted, no file is active", "FILE" },
+		{ "run", 'r', 0, GLib.OptionArg.STRING, ref opt_run, "Mode: prompt|prompt-run|parse-tasklist|parse-refine|parse-execute|refine-prompt|refine|execute-prompt|execute", "MODE" },
+		{ "step", 0, 0, GLib.OptionArg.INT, ref opt_step, "Step index (default 0)", "N" },
+		{ "task-num", 0, 0, GLib.OptionArg.INT, ref opt_task_num, "Task index within step (default 0)", "N" },
 		{ null }
 	};
 
@@ -73,29 +67,26 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 		return base_load_config();
 	}
 
-	protected override int command_line(ApplicationCommandLine command_line)
+	protected override int command_line(GLib.ApplicationCommandLine command_line)
 	{
 		opt_project = null;
 		opt_prompt = null;
 		opt_model = null;
-		opt_run_prompt = false;
-		opt_parse_tasklist = null;
-		opt_parse_refine = null;
-		opt_parse_execute = null;
-		opt_refine_task = -1;
-		opt_run_refine = false;
-		opt_execute_task = null;
-		opt_run_execute_task_n = -1;
+		opt_input = null;
+		opt_current_file = null;
+		opt_run = null;
+		opt_step = 0;
+		opt_task_num = 0;
 
 		string[] args = command_line.get_arguments();
-		var opt_context = new OptionContext("oc-test-skill-agent — testable skills agent flow");
+		var opt_context = new GLib.OptionContext("oc-test-skill-agent — testable skills agent flow");
 		opt_context.set_help_enabled(true);
 		opt_context.add_main_entries(options, null);
 
 		try {
 			unowned string[] unowned_args = args;
 			opt_context.parse(ref unowned_args);
-		} catch (OptionError e) {
+		} catch (GLib.OptionError e) {
 			command_line.printerr("error: %s\n", e.message);
 			return 1;
 		}
@@ -115,7 +106,7 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 		return 0;
 	}
 
-	private async void build_runner(ApplicationCommandLine cl) throws Error
+	private async void build_runner(GLib.ApplicationCommandLine cl) throws Error
 	{
 		var db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
 		var db = new SQ.Database(db_path, false);
@@ -132,6 +123,16 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 		yield project.read_dir(new GLib.DateTime.now_local().to_unix(), true);
 		project.project_files.update_from(project);
 		yield project_manager.activate_project(project);
+		project_manager.activate_file(null);
+		if (opt_current_file != null && opt_current_file != "") {
+			string path = GLib.Path.is_absolute(opt_current_file) ? opt_current_file : GLib.Path.build_filename(project.path, opt_current_file);
+			var file = project_manager.get_file_from_active_project(path);
+			if (file == null) {
+				cl.printerr("File not in project: %s\n", path);
+				throw new GLib.IOError.NOT_FOUND("File not in project: " + path);
+			}
+			project_manager.activate_file(file);
+		} 
 
 		var skills_dirs = new Gee.ArrayList<string>();
 		skills_dirs.add(GLib.Path.build_filename(
@@ -152,79 +153,132 @@ class TestSkillAgentApp : Application, OLLMchat.ApplicationInterface
 		this.runner = (OLLMcoder.Skill.Runner) factory.create_agent(session);
 	}
 
-	private async void run_mode(ApplicationCommandLine cl) throws Error
+	private void load_task_list(GLib.ApplicationCommandLine cl, string path) throws GLib.Error
 	{
-		// §3.1: output task-creation prompt (no LLM)
-		if (!opt_run_prompt && opt_project != null && opt_prompt != null &&
-		    opt_parse_tasklist == null && opt_parse_refine == null && opt_parse_execute == null &&
-		    opt_refine_task < 0 && !opt_run_refine && opt_execute_task == null && opt_run_execute_task_n < 0) {
-			yield this.build_runner(cl);
-			var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
-				this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
-			stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
+		if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
+			cl.printerr("File not found: %s\n", path);
+			throw new GLib.IOError.NOT_FOUND("File not found: " + path);
+		}
+		string content;
+		GLib.FileUtils.get_contents(path, out content);
+		var parser = new OLLMcoder.Task.ResultParser(this.runner, content);
+		parser.parse_task_list();
+		if (parser.issues != "") {
+			cl.printerr("Parse issues: %s\n", parser.issues);
+			throw new GLib.IOError.INVALID_ARGUMENT(parser.issues);
+		}
+	}
+
+	private async void run_mode(GLib.ApplicationCommandLine cl) throws Error
+	{
+		opt_run = opt_run == null ? "" : opt_run;
+		if (opt_run == "") {
+			cl.printerr("--run MODE is required. See --help for modes.\n");
 			return;
 		}
+		if (opt_project == null || opt_project == "") {
+			throw new GLib.IOError.INVALID_ARGUMENT("--project PATH is required");
+		}
 
-		// §3.2: run task-creation prompt
-		if (opt_run_prompt) {
-			if (opt_project == null || opt_prompt == null) {
-				throw new GLib.IOError.INVALID_ARGUMENT("--run-prompt requires --project and --prompt");
+		switch (opt_run) {
+			case "prompt":
+				if (opt_prompt == null || opt_prompt == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run prompt requires --prompt");
+				}
+				yield this.build_runner(cl);
+				var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+					this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
+				stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
+				return;
+			case "prompt-run":
+				if (opt_prompt == null || opt_prompt == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run prompt-run requires --prompt");
+				}
+				yield this.build_runner(cl);
+				var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
+					this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var response_obj = yield this.runner.chat().send(messages, null);
+				var content = response_obj != null && response_obj.message != null ? response_obj.message.content : "";
+				stdout.printf("%s", content ?? "");
+				return;
+			case "parse-tasklist":
+				if (opt_input == null || opt_input == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-tasklist requires --input FILE");
+				}
+				yield this.build_runner(cl);
+				this.load_task_list(cl, opt_input);
+				var list = this.runner.task_list;
+				stdout.printf("Steps: %d\n", (int) list.steps.size);
+				int task_index = 0;
+				foreach (var step in list.steps) {
+					stdout.printf("  Step: %d tasks\n", (int) step.children.size);
+					foreach (var t in step.children) {
+						task_index++;
+						var skill = t.task_data.has_key("Skill") ?
+							t.task_data.get("Skill").to_markdown().strip() : "";
+						var needed = t.task_data.has_key("What is needed") ?
+							t.task_data.get("What is needed").to_markdown().strip() : "";
+						stdout.printf("    Task %d: skill=%s  What is needed: %s\n",
+							task_index, skill, needed.replace("\n", " "));
+					}
+				}
+				return;
+			case "refine-prompt":
+			case "refine": {
+				if (opt_input == null || opt_input == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run refine-prompt / refine requires --input FILE (task list)");
+				}
+				yield this.build_runner(cl);
+				this.load_task_list(cl, opt_input);
+				var list = this.runner.task_list;
+				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
+					cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
+					throw new GLib.IOError.NOT_FOUND("Step out of range");
+				}
+				var step = list.steps.get(opt_step);
+				if (opt_task_num < 0 || opt_task_num >= (int) step.children.size) {
+					cl.printerr("Task %d out of range (0..%d).\n", opt_task_num, (int) step.children.size - 1);
+					throw new GLib.IOError.NOT_FOUND("Task out of range");
+				}
+				var detail = step.children.get(opt_task_num);
+				var tpl = detail.refinement_prompt();
+				if (opt_run != "refine") {
+					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", 
+						tpl.filled_system, tpl.filled_user);
+					return;
+				}
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var response_obj = yield this.runner.chat().send(messages, null);
+				stdout.printf("%s", response_obj != null && response_obj.message != null ? response_obj.message.content ?? "" : "");
+				return;
 			}
-			yield this.build_runner(cl);
-			var tpl = this.runner.task_creation_prompt(opt_prompt, "", "",
-				this.runner.sr_factory.skill_manager, this.runner.sr_factory.project_manager);
-			var messages = new Gee.ArrayList<OLLMchat.Message>();
-			messages.add(new OLLMchat.Message("system", tpl.filled_system));
-			messages.add(new OLLMchat.Message("user", tpl.filled_user));
-			var response_obj = yield this.runner.chat().send(messages, null);
-			var content = response_obj != null && response_obj.message != null ? response_obj.message.content : "";
-			stdout.printf("%s", content ?? "");
-			return;
+			case "parse-refine":
+				if (opt_input == null || opt_input == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-refine requires --input FILE");
+				}
+				cl.printerr("Not implemented: --run parse-refine.\n");
+				return;
+			case "parse-execute":
+				if (opt_input == null || opt_input == "") {
+					throw new GLib.IOError.INVALID_ARGUMENT("--run parse-execute requires --input FILE");
+				}
+				cl.printerr("Not implemented: --run parse-execute.\n");
+				return;
+			case "execute-prompt":
+				cl.printerr("Not implemented: --run execute-prompt (requires Details executor prompt API).\n");
+				return;
+			case "execute":
+				cl.printerr("Not implemented: --run execute.\n");
+				return;
+			default:
+				cl.printerr("Unknown --run mode: %s. Use --help for modes.\n", opt_run);
+				return;
 		}
-
-		// §3.3: parse tasklist file
-		if (opt_parse_tasklist != null) {
-			// TODO: read file, minimal Runner + ResultParser, parse_task_list(), print summary
-			cl.printerr("Not implemented: --parse-tasklist (requires minimal Runner + ProjectManager).\n");
-			return;
-		}
-
-		// §3.3.1: parse refinement file
-		if (opt_parse_refine != null) {
-			// TODO: read file, ResultParser + minimal Details, extract_refinement(), print summary
-			cl.printerr("Not implemented: --parse-refine.\n");
-			return;
-		}
-
-		// §3.3.2: parse execute file
-		if (opt_parse_execute != null) {
-			// TODO: read file, ResultParser + minimal Details, extract_exec(), print summary
-			cl.printerr("Not implemented: --parse-execute.\n");
-			return;
-		}
-
-		// §3.4 / §3.5: refine-task N, run-refine N
-		if (opt_refine_task >= 1 || opt_run_refine) {
-			// TODO: task list in memory or from file; Details.get_refinement_prompt() or run LLM
-			cl.printerr("Not implemented: --refine-task / --run-refine (requires Details refinement prompt API).\n");
-			return;
-		}
-
-		// §3.6: execute-task
-		if (opt_execute_task != null) {
-			// TODO: run_tools(), then Details.get_executor_prompt(), print
-			cl.printerr("Not implemented: --execute-task (requires Details executor prompt API).\n");
-			return;
-		}
-
-		// §3.7: run-execute-task
-		if (opt_run_execute_task_n >= 1) {
-			cl.printerr("Not implemented: --run-execute-task.\n");
-			return;
-		}
-
-		// No mode selected
-		cl.printerr("No mode selected. Use --help for options.\n");
 	}
 
 	public static int main(string[] args)

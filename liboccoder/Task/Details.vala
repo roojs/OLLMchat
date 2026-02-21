@@ -263,6 +263,26 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Build refinement prompt template (no current_file; reference_contents includes
+	 * current file when in the task's References).
+	 */
+	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
+	{
+		var definition = this.skill_manager.fetch(this);
+		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
+		tpl.system_fill();
+		tpl.fill(
+			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
+			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
+			"environment", this.runner.env(),
+			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
+				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
+			"task_reference_contents", this.reference_contents(),
+			"skill_details", definition.full_content);
+		return tpl;
+	}
+
+	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
 	 * definition from skill_manager.fetch(this) is non-null. Details builds
 	 * task_reference_contents by looping reference_targets and asking Runner for each item
@@ -274,22 +294,12 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		var definition = this.skill_manager.fetch(this);
-		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		yield this.fill_model();
 		for (var i = 0; i < 5; i++) {
-			var file = this.runner.sr_factory.current_file();
+			var tpl = this.refinement_prompt();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
-			messages.add(new OLLMchat.Message("system", tpl.system_fill()));
-			messages.add(new OLLMchat.Message("user", tpl.fill(
-				"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
-				"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
-				"environment", this.runner.env(),
-				"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
-					"" : this.runner.sr_factory.project_manager.active_project.project_description()),
-				"current_file", file == null ? "" : tpl.header_file("Current File - " + file.path, file),
-				"task_reference_contents", this.reference_contents(),
-				"skill_details", definition.full_content)));
+			messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			messages.add(new OLLMchat.Message("user", tpl.filled_user));
 
 			string response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
