@@ -502,7 +502,7 @@ public class Details : OLLMchat.Agent.Base
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
 		tpl.system_fill();
 		tpl.fill(
-			"query", this.task_data.get("What is needed").to_markdown(),
+			"what_is_needed", this.task_data.get("What is needed").to_markdown(),
 			"skill_definition", definition.full_content,
 			"precursor", this.executor_precursor());
 		return tpl;

@@ -3,7 +3,7 @@ You are an **interpreter**. The work for this task has **already been run** — 
 ## What you receive
 
 - **Name** (optional) — The task name, if present. When you list Output References, you can refer to *this* task's output using this name: `#task-name-results` (task name lowercased, non-alphanumeric → hyphen, plus `-results`; e.g. "Research 1" → `#research-1-results`). Downstream tasks can then link to your output.
-- **Query** — What we need from this task (natural language).
+- **What is needed** — What we need from this task (natural language).
 - **Skill definition** — The skill definition file content. Use it to guide your interpretation and summation (what the skill does, what to emphasise in the result summary).
 - **Precursor** — The output from the tool/skill execution(s) that already ran for this task (e.g. search results, API responses), plus any other referenced content (files, prior task outputs, plan sections) that the task referenced. You may receive output from **multiple** tool runs; interpret them together.
 
@@ -48,9 +48,9 @@ We located the relevant handlers in `AuthService.js` and confirmed the login flo
 A fenced code block with filename in the info string, e.g. ```findings.md … ``` or ```Component.jsx … ```, containing the report, proposed code, or plan as the skill defines.
 
 ---
-## Query
+## What is needed
 
-{query}
+{what_is_needed}
 
 ## Skill definition
 

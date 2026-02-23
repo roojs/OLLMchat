@@ -80,9 +80,6 @@ namespace OLLMcoder.Skill
 					if (!name.has_suffix(".md")) {
 						continue;
 					}
-					if (name == "skill.template.md") {
-						continue;
-					}
 					var skill_path = GLib.Path.build_filename(skills_base_path, name);
 					int64 file_mtime = (int64) info.get_modification_time().tv_sec;
 					if (this.by_path.has_key(skill_path)
