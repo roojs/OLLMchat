@@ -63,16 +63,12 @@ namespace Markdown.Document
 			}
 		}
 
-		/** Append block to current block stack top. Assigns uid; adopt() does the actual add to parent's children. Registers heading when parent is document. */
+		/** Append block to current block stack top. Assigns uid; adopt() does the actual add to parent's children. Heading registration is done in pop_block when the block has content. */
 		private void append_block(Block b)
 		{
 			b.uid = this.document.uid_count++;
 			var parent = this.block_stack.get(this.block_stack.size - 1) as Node;
 			parent.adopt(b);
-			if (parent == this.document && b.kind >= FormatType.HEADING_1
-				 && b.kind <= FormatType.HEADING_6) {
-				this.document.register_heading(b);
-			}
 		}
 
 		/** Append block to current parent and push it onto the block stack; set current_block_with_inlines when block can hold inlines. */
@@ -101,7 +97,7 @@ namespace Markdown.Document
 			this.block_stack.add(list);
 		}
 
-		/** Pop block from block stack; emit block_ended and restore current_block_with_inlines if needed. */
+		/** Pop block from block stack; emit block_ended and restore current_block_with_inlines if needed. Register heading when closing a top-level heading (content is available now). */
 		private void pop_block()
 		{
 			if (this.block_stack.size <= 1) {
@@ -109,7 +105,12 @@ namespace Markdown.Document
 			}
 			var top = this.block_stack.get(this.block_stack.size - 1);
 			if (top is Block) {
-				this.block_ended(this.document, (Block)top);
+				var b = (Block)top;
+				if (b.parent == this.document && 
+						b.kind >= FormatType.HEADING_1 && b.kind <= FormatType.HEADING_6) {
+					this.document.register_heading(b);
+				}
+				this.block_ended(this.document, b);
 			}
 			this.block_stack.remove_at(this.block_stack.size - 1);
 			if (top == this.current_block_with_inlines) {

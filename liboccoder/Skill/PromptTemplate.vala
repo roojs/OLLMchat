@@ -115,6 +115,9 @@ namespace OLLMcoder.Skill
 		 */
 		public static PromptTemplate template(string filename) throws GLib.Error
 		{
+			if (cache == null) {
+				cache = new Gee.HashMap<string, PromptTemplate>();
+			}
 			if (!cache.has_key(filename)) {
 				var t = new PromptTemplate(filename);
 				cache.set(filename, t);

@@ -90,8 +90,13 @@ namespace OLLMchat.Settings
 			
 			try {
 				yield connection_obj.load_models();
-				
+
 				this.is_valid = connection_obj.models.has_key(this.model);
+				if (this.is_valid) {
+					this.model_obj = connection_obj.models.get(this.model);
+					GLib.debug("ModelUsage.verify_model: model=%s model_obj set is_thinking=%s",
+						this.model, this.model_obj != null && this.model_obj.is_thinking ? "true" : "false");
+				}
 				return this.is_valid;
 			} catch (GLib.Error e) {
 				this.is_valid = false;

@@ -53,7 +53,7 @@ Produce your response in the following structure. Use markdown **headings** for 
 4. **Tasks** - Split into **task sections** as in the current list. **Sections run sequentially**; **within a section**, tasks may run **in parallel**. Use level-3 headings for each section (e.g. `### Task section 1`, `### Task section 2`, …). For each task provide:
    - **Name** (optional) Short stable name (e.g. "Research 1", skill + number) when another task will refer to this task's output; later tasks use e.g. `[Research 1 Results](#research-1-results)`. If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) What we need from this task (or from this skill when one is used), in natural language. For new tasks you add, use information from the completed tasks' outputs to define this.
-   - **Skill** (optional) Name of skill to use, from the skill catalog above. Omit if the task needs no skill.
+   - **Skill** (required) Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Some skills use tools, others do not; choose the skill that best fits what is needed.
    - **References** (optional) Markdown links only (zero or more). For new tasks, include links to the relevant completed-task outputs and to files or project description as needed. Format each as `[Title](target)`. Do **not** paste file contents or long text.
    - **Expected output** What we expect from this task.
    - **Output** For tasks that have **already been executed** (all existing tasks), include this line with the reference to the output (e.g. a single line link). Omit for new tasks you add.

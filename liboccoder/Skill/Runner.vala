@@ -75,6 +75,7 @@ namespace OLLMcoder.Skill
 			OLLMcoder.Skill.Manager skill_catalog, 
 			OLLMfiles.ProjectManager project_manager) throws GLib.Error
 		{
+			skill_catalog.scan();
 			var file = project_manager.active_file;
 			if (file != null) {
 				project_manager.buffer_provider.create_buffer(file);
@@ -175,6 +176,7 @@ namespace OLLMcoder.Skill
 		 */
 		public PromptTemplate iteration_prompt(string previous_proposal_issues = "") throws GLib.Error
 		{
+			this.sr_factory.skill_manager.scan();
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
 
@@ -216,7 +218,8 @@ namespace OLLMcoder.Skill
 				}
 				previous_proposal_issues = skill_issues;
 			}
-			this.add_message(new OLLMchat.Message("ui", "Task list iteration: could not get valid task list after 5 tries."));
+			this.add_message(new OLLMchat.Message("ui", 
+				"Task list iteration: could not get valid task list after 5 tries."));
 		}
 	}
 }

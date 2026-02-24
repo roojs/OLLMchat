@@ -100,6 +100,13 @@ namespace OLLMfiles
 		 * DeleteManager instance for handling file deletions.
 		 */
 		public DeleteManager delete_manager { get; private set; }
+
+		/**
+		 * When true, {@link activate_project} skips the initial directory scan (read_dir).
+		 * Off by default. Once the scan is skipped, this is set to true so it stays disabled.
+		 * Use for tests or lightweight setups that rely on DB state only.
+		 */
+		public bool disable_initial_scan { get; set; default = false; }
 		
 		/**
 		 * Constructor.
@@ -210,10 +217,13 @@ namespace OLLMfiles
 						
 					}
 				}
+
+				if (!this.disable_initial_scan) {
+					// Start async directory scan (don't await - runs in background)
+					yield project.read_dir(new DateTime.now_local().to_unix(), true);
+				}
+				this.disable_initial_scan = false;
 				
-				// Start async directory scan (don't await - runs in background)
-			 
-				yield project.read_dir( new DateTime.now_local().to_unix() , true);
 				
 			}
 			

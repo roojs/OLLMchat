@@ -311,6 +311,7 @@ test_bubble = executable('oc-test-bubble',
 )
 
 # Build oc-test-skill-agent executable (testable skills agent flow; plan 1.23.19)
+# Extends TestAppBase for standard --debug, --model, and log handling.
 oc_test_skill_agent = executable('oc-test-skill-agent',
   dependencies: [
     test_window_deps,
@@ -319,7 +320,7 @@ oc_test_skill_agent = executable('oc-test-skill-agent',
     ollmchat_vapi_dep,
     ocmarkdown_vapi_dep
   ],
-  sources: ['oc-test-skill-agent.vala'],
+  sources: ['TestAppBase.vala', 'oc-test-skill-agent.vala'],
   link_with: [ollmchat_base_lib, occoder_base_lib],
   include_directories: [
     include_directories('../libocfiles'),

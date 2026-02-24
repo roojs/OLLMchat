@@ -247,7 +247,12 @@ namespace OLLMchat.Call
 				case "chat-content":
 				case "message":
 				case "streaming-response":
-					// Exclude these properties from serialization
+				case "connection":
+				case "cancellable":
+				case "format-obj":
+				case "agent":
+					// Exclude runtime/request-internal properties (connection, agent have non-JSON types).
+					// format is serialized explicitly in the "format" case; format-obj is the raw property.
 					return null;
 				
 				case "think":

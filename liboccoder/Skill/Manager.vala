@@ -57,7 +57,7 @@ namespace OLLMcoder.Skill
 		{
 			var ret = "";
 			foreach (var e in this.by_name.entries) {
-				ret += "**" + e.key + "** - " + e.value.header.get("description") + "\n";
+				ret += "- **" + e.key + "** - " + e.value.header.get("description") + "\n";
 			}
 			return ret;
 		}
