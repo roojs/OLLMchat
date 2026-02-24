@@ -1,0 +1,35 @@
+## Original prompt
+
+```
+see what commands are available for the test agent tool
+```
+
+## Goals / summary
+
+Identify and list the commands provided by the **test agent tool** in the current workspace. This requires locating the tool’s implementation (code and/or documentation) and extracting a concise description of each available command.
+
+## Tasks
+
+### Task section 1
+*(Research / analysis tasks that can run in parallel)*
+
+1. **Name:** Analyze codebase for test agent
+   **What is needed:** Locate the source code (functions, classes, CLI entry point) that implements the test agent tool and collect any command definitions or argument parsers.
+   **Skill:** analyze_codebase
+   **References:** [Project description](#project-description)
+   **Expected output:** Raw findings showing where the test agent tool is defined and how its commands are registered.
+
+2. **Name:** Analyze documentation for test agent
+   **What is needed:** Search the project documentation (README files, docs/, wiki, etc.) for mentions of the test agent tool and any listed commands or usage examples.
+   **Skill:** analyze_docsbase
+   **References:** [Project description](#project-description)
+   **Expected output:** Raw documentation excerpts that describe the test agent commands.
+
+### Task section 2
+*(Synthesis of the research findings)*
+
+3. **Name:** Synthesize test agent commands
+   **What is needed:** Produce a clear, concise list of all commands available in the test agent tool, including brief descriptions and any relevant flags/options.
+   **Skill:** analyze_code
+   **References:** [Analyze codebase for test agent Results](#analyze-codebase-for-test-agent-results), [Analyze documentation for test agent Results](#analyze-documentation-for-test-agent-results)
+   **Expected output:** A formatted summary (e.g., markdown list) of the test agent tool’s commands.
