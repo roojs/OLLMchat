@@ -349,13 +349,14 @@ namespace Markdown
 				return true;
 			}
 			// End list when we see a non-list line (or no block). Do not end when next line is a list item (including task).
+			// Do not end when at list item content start (first char after marker); block_match == 0 there is normal (plan 1.8.1).
 			var in_list = (this.parser.current_block == FormatType.ORDERED_LIST
 					|| this.parser.current_block == FormatType.UNORDERED_LIST);
 			var next_line_is_list = (matched_block == FormatType.ORDERED_LIST
 					|| matched_block == FormatType.UNORDERED_LIST
 					|| matched_block == FormatType.TASK_LIST
 					|| matched_block == FormatType.TASK_LIST_DONE);
-			if (in_list && (block_match == 0 || (block_match > 0 && !next_line_is_list))) {
+			if (in_list && !this.parser.at_list_start && (block_match == 0 || (block_match > 0 && !next_line_is_list))) {
 				this.parser.renderer.on_li(false);
 				this.parser.do_block(false, FormatType.LIST_BLOCK);
 				this.parser.last_line_block = this.parser.current_block;
@@ -437,7 +438,8 @@ namespace Markdown
 						this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
 						this.parser.current_block = (matched_block == FormatType.ORDERED_LIST)
 							? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
-						this.parser.at_line_start = false;
+						this.parser.at_line_start = true;  // content start = line start for emphasis (plan 1.8.1)
+						this.parser.at_list_start = true;
 						chunk_pos = seq_pos;
 						return false;
 					}
@@ -445,7 +447,8 @@ namespace Markdown
 						? FormatType.ORDERED_LIST : FormatType.UNORDERED_LIST;
 					this.parser.do_block(true, FormatType.LIST_BLOCK);
 					this.parser.renderer.on_li(true, list_number, space_skip, task_checked);
-					this.parser.at_line_start = false;
+					this.parser.at_line_start = true;  // content start = line start for emphasis (plan 1.8.1)
+					this.parser.at_list_start = true;
 					chunk_pos = seq_pos;
 					return false;
 

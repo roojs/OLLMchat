@@ -13,7 +13,7 @@ The test compares (in `build/tests/markdown-doc-out/`):
 
 - **`*.md`** — Input markdown. Each is run through md→JSON→md; the result is compared to a copy of that same file (original).
 
-- **`*-roundtrip-output.diff`** — Optional. Patch applied to `xxx-roundtrip-output.md` before comparing. Use for any accepted round-trip difference (blank lines, table/list format, etc.). Generate with `diff -u` from `build/tests/markdown-doc-out`; see `docs/plans/1.8.3-round-robin-document-issues.md` (Roundtrip diffs).
+- **`*-roundtrip-output.diff`** — Optional. Patch applied to `xxx-roundtrip-output.md` before comparing. **Only acceptable for minor differences:** extra blank lines or extra spaces. **Not acceptable:** whole content missing, tables emptied, list/heading body lost. The test rejects any diff file over 25 lines. See `docs/plans/1.8.2-markdown-roundtrip-bugs.md`.
 
 ## Other files in this folder
 
