@@ -50,10 +50,10 @@ Produce your response in the following structure. Use markdown **headings** for 
 1. **Original prompt** - Reproduce the user's request as stated (from the current task list).
 2. **Goals / summary** - One short paragraph: what we are trying to achieve with this task list (unchanged from the plan).
 3. **Issues with the tasks (what I changed)** - When you received previous proposal issues and are producing a revised task list, you may include this section. List each issue and what you changed to address it (e.g. invalid skill replaced with one from the catalog, malformed task corrected, invalid reference fixed). Omit when not listing changes.
-4. **Tasks** - Split into **task sections** as in the current list. **Sections run sequentially**; **within a section**, tasks may run **in parallel**. Use level-3 headings for each section (e.g. `### Task section 1`, `### Task section 2`, …). For each task provide:
+4. **Tasks** - Split into **task sections** as in the current list. **Sections run sequentially**; **within a section** you can have multiple tasks (they may run in parallel). Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. For each task provide:
    - **Name** (optional) Short stable name (e.g. "Research 1", skill + number) when another task will refer to this task's output; later tasks use e.g. `[Research 1 Results](#research-1-results)`. If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) What we need from this task (or from this skill when one is used), in natural language. For new tasks you add, use information from the completed tasks' outputs to define this.
-   - **Skill** (required) Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Some skills use tools, others do not; choose the skill that best fits what is needed.
+   - **Skill** (required) Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
    - **References** (optional) Markdown links only (zero or more). For new tasks, include links to the relevant completed-task outputs and to files or project description as needed. Format each as `[Title](target)`. Do **not** paste file contents or long text.
    - **Expected output** What we expect from this task.
    - **Output** For tasks that have **already been executed** (all existing tasks), include this line with the reference to the output (e.g. a single line link). Omit for new tasks you add.
@@ -69,9 +69,18 @@ Produce your response in the following structure. Use markdown **headings** for 
 
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.
 
+## Strict format (required for parsing)
+
+The output is parsed by a machine. You **must** follow this format exactly or the task list will be rejected.
+
+- **Section headings** — Use exactly: `## Original prompt`, `## Goals / summary`, optionally `## Issues with the tasks (what I changed)`, then `## Tasks`. Under Tasks use exactly `### Task section 1`, `### Task section 2`, … (no other wording in the heading text). Do not add comment lines under section headings; go straight to the first task.
+- **Every line starts with `-`** — Under each `### Task section N` you write several tasks. **Every line** must start with `-` (dash). So for each task, every field is on its own line and **each of those lines begins with `-`**: `- **Name** ...`, then `- **What is needed** ...`, then `- **Skill** ...`, and so on. **Do not put a colon after the label** (the parser expects **Name** not **Name:**). No indented continuation lines without a dash. After the last line of one task, a **blank line**, then the next task (again, every line starting with `-`). Do **not** use numbered lists (no `1. 2. 3.`).
+- **One line per field, no blank lines** — Each field is one line. Use exactly these labels **with no colon after the label**: **Name**, **What is needed**, **Skill**, **References**, **Expected output**, **Output** (for completed tasks), and optionally **Requires user approval**. Order as in the example below. Every line starts with `-`.
+- **No variations** — Do not rename sections or use different bold labels. Use standard ASCII where possible.
+
 ## Example of expected output (structure only)
 
-The following illustrates the **shape** of the output. Use the same headings and per-task fields; fill them from the current task list and completed outputs, not from this placeholder text.
+The following illustrates the **exact format** the parser expects. **Every line starts with `-`** (each field on its own line, each line beginning with dash). Blank line between tasks. Use the same headings and list structure. Fill from the current task list and completed outputs, not from this placeholder text.
 
 ## Original prompt
 
@@ -85,41 +94,35 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 ### Task section 1
 
-*(All tasks in this section have been completed - copy each with its Output line.)*
+- **Name** Research 1
+- **What is needed** *(e.g. find where X is implemented.)*
+- **Skill** *(name from catalog.)*
+- **References** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
+- **Expected output** *(e.g. findings document.)*
+- **Output** *(e.g. summary line or link to completed output.)*
 
-1. **Name:** Research 1
-   **What is needed:** *(e.g. find where X is implemented.)*
-   **Skill:** *(name from catalog, or omit)*
-   **References:** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
-   **Expected output:** *(e.g. findings document.)*
-   **Output** *(e.g. summary line or link to completed output.)*
-
-2. **Name:** Research 2
-   **What is needed:** *(e.g. find where Z is defined.)*
-   **Skill:** *(name from catalog, or omit)*
-   **References:** [Project description](#project-description)
-   **Expected output:** *(e.g. findings document.)*
-   **Output** *(e.g. summary line or link to completed output.)*
+- **Name** Research 2
+- **What is needed** *(e.g. find where Z is defined.)*
+- **Skill** *(name from catalog.)*
+- **References** [Project description](#project-description)
+- **Expected output** *(e.g. findings document.)*
+- **Output** *(e.g. summary line or link to completed output.)*
 
 ### Task section 2
 
-*(Runs after section 1. Example: one completed task, then a new task you are adding because goals are not yet complete.)*
+- **Name** Analysis 1
+- **What is needed** *(e.g. produce a plan from the research.)*
+- **Skill** *(name from catalog.)*
+- **References** [Research 1 Results](#research-1-results), [Research 2 Results](#research-2-results)
+- **Expected output** *(e.g. plan section.)*
+- **Output** *(e.g. summary line or link to completed output.)*
 
-3. **Name:** Analysis 1
-   **What is needed:** *(e.g. produce a plan from the research.)*
-   **Skill:** *(name from catalog, or omit)*
-   **References:** [Research 1 Results](#research-1-results), [Research 2 Results](#research-2-results)
-   **Expected output:** *(e.g. plan section.)*
-   **Output** *(e.g. summary line or link to completed output.)*
-
-4. **Name:** Implement 1
-   **What is needed:** *(e.g. apply the agreed changes - new task you are adding.)*
-   **Skill:** *(name from catalog)*
-   **References:** [Analysis 1 Results](#analysis-1-results)
-   **Expected output:** *(e.g. updated file.)*
-   **Requires user approval**
-
-*(Omit new tasks when the goals are already complete. When addressing issues, fix the tasks that lack output and keep the same structure.)*
+- **Name** Implement 1
+- **What is needed** *(e.g. apply the agreed changes - new task you are adding.)*
+- **Skill** *(name from catalog)*
+- **References** [Analysis 1 Results](#analysis-1-results)
+- **Expected output** *(e.g. updated file.)*
+- **Requires user approval**
 
 ---
 

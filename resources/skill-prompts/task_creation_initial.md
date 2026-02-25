@@ -72,13 +72,22 @@ Produce your response in the following structure. Use markdown **headings** for 
 
 1. **Original prompt** — Reproduce the user's request as stated (so the task list carries it).
 2. **Goals / summary** — One short paragraph: what we are trying to achieve with this task list (your reading of the request and what the tasks will accomplish).
-3. **Tasks** — Split into **task sections** when some tasks can run in parallel and others must run after. **Sections run sequentially** (section 2 starts only after all tasks in section 1 are done). **Within a section**, tasks may run **in parallel** (e.g. multiple research tasks in one section; analysis or review in a later section after all prior work is complete). Use a nested structure: level-3 headings for each section (e.g. `### Task section 1`, `### Task section 2`, …) each containing a list of tasks. If everything is sequential, use a single section. For each task provide:
+3. **Tasks** — Split into **task sections** when some tasks can run in parallel and others must run after. **Sections run sequentially** (section 2 starts only after all tasks in section 1 are done). **Within a section** you can have multiple tasks (they may run in parallel). Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. If everything is sequential, use a single section. For each task provide:
    - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis 2"). Use skill + number when another task will refer to this task's output (later tasks use e.g. `#research-1-results`). If omitted, the Runner assigns one (skill + number) so tasks can be referred to in issue messages.
    - **What is needed** (required) — What we need from this task (or from this skill when one is used), in natural language.
-   - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Some skills use tools (e.g. codebase search), others produce output without tools; choose the skill that best fits what is needed.
+   - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
    - **References** (optional) — Reference links can be project description, file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: `#project-description`, file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output anchors (e.g. `#research-1-results`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
    - **Expected output** — What we expect from this task (e.g. "Findings document", "Plan section", "Updated file").
    - **Requires user approval** (optional) — Include this bullet (use the exact label **Requires user approval**) when the task modifies code or files or otherwise needs user confirmation before it runs. The Runner will pause and ask for approval before executing such tasks. Omit for read-only tasks.
+
+## Strict format (required for parsing)
+
+The output is parsed by a machine. You **must** follow this format exactly or the task list will be rejected.
+
+- **Section headings** — Use exactly: `## Original prompt`, `## Goals / summary`, `## Tasks`. Under Tasks use exactly `### Task section 1`, `### Task section 2`, … (no other wording in the heading text). Do not add comment lines under section headings; go straight to the first task.
+- **Every line starts with `-`** — Under each `### Task section N` you write several tasks. **Every line** must start with `-` (dash). So for each task, every field is on its own line and **each of those lines begins with `-`**: `- **Name** ...`, then `- **What is needed** ...`, then `- **Skill** ...`, and so on. **Do not put a colon after the label** (the parser expects **Name** not **Name:**). No indented continuation lines without a dash. After the last line of one task, a **blank line**, then the next task (again, every line starting with `-`). Do **not** use numbered lists (no `1. 2. 3.`).
+- **One line per field, no blank lines** — Each field is one line. Use exactly these labels **with no colon after the label**: **Name**, **What is needed**, **Skill**, **References**, **Expected output**, and optionally **Requires user approval**. Order: Name, What is needed, Skill, References, Expected output, then Requires user approval if needed. Every line starts with `-`.
+- **No variations** — Do not rename sections (e.g. "Task section 1" not "Research tasks"). Do not use different bold labels (e.g. "Skill" not "Assigned skill"). Use standard ASCII where possible (e.g. use `—` or "-" not `?` for dashes).
 
 ## Reference link types (use only these)
 
@@ -92,7 +101,7 @@ Do **not** include the actual body of files or other precursor content in the ta
 
 ## Example of expected output (structure only)
 
-The following illustrates the **shape** of the output. Use the same headings and per-task fields; fill them from the actual user request, not from this placeholder text.
+The following illustrates the **exact format** the parser expects. **Every line starts with `-`** (each field on its own line, each line beginning with dash). Blank line between tasks. Use the same headings and list structure. Fill the content from the actual user request, not from this placeholder text.
 
 ## Original prompt
 
@@ -106,42 +115,34 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 ### Task section 1
 
-*(Tasks in the same section may run in parallel. Example: several independent research tasks.)*
+- **Name** Research 1
+- **What is needed** *(e.g. find where X is implemented and how Y works.)*
+- **Skill** *(Name of skill to use from catalog.)*
+- **References** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
+- **Expected output** *(e.g. findings document.)*
 
-1. **Name:** Research 1
-   **What is needed:** *(e.g. find where X is implemented and how Y works.)*
-   **Skill:** *(Name of skill to use from catalog, or omit)*
-   **References:** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
-   **Expected output:** *(e.g. findings document.)*
-
-2. **Name:** Research 2
-   **What is needed:** *(e.g. find where Z is defined — can run in parallel with task 1.)*
-   **Skill:** *(name of skill to use, or omit)*
-   **References:** [Project description](#project-description)
-   **Expected output:** *(e.g. findings document.)*
+- **Name** Research 2
+- **What is needed** *(e.g. find where Z is defined — can run in parallel with task 1.)*
+- **Skill** *(name of skill to use from catalog.)*
+- **References** [Project description](#project-description)
+- **Expected output** *(e.g. findings document.)*
 
 ### Task section 2
 
-*(Runs after all tasks in section 1 are complete.)*
-
-3. **Name:** Analysis 1
-   **What is needed:** *(e.g. produce a plan from the research, or analyse findings.)*
-   **Skill:** *(name of skill to use, or omit)*
-   **References:** [Research 1 Results](#research-1-results), [Research 2 Results](#research-2-results)
-   **Expected output:** *(e.g. plan section, user confirmation, implementation artifact.)*
+- **Name** Analysis 1
+- **What is needed** *(e.g. produce a plan from the research, or analyse findings.)*
+- **Skill** *(name of skill to use from catalog.)*
+- **References** [Research 1 Results](#research-1-results), [Research 2 Results](#research-2-results)
+- **Expected output** *(e.g. plan section, user confirmation, implementation artifact.)*
 
 ### Task section 3
 
-*(Implementation tasks that modify code or files should include **Requires user approval**.)*
-
-4. **Name:** Implement 1
-   **What is needed:** *(e.g. apply the agreed changes to the codebase.)*
-   **Skill:** *(name of skill to use, or omit)*
-   **References:** [Analysis 1 Results](#analysis-1-results)
-   **Expected output:** *(e.g. updated file.)*
-   **Requires user approval**
-
-*(Further task sections as needed. Use **Requires user approval** on any task that modifies code or files.)*
+- **Name** Implement 1
+- **What is needed** *(e.g. apply the agreed changes to the codebase.)*
+- **Skill** *(name of skill to use from catalog.)*
+- **References** [Analysis 1 Results](#analysis-1-results)
+- **Expected output** *(e.g. updated file.)*
+- **Requires user approval**
 
 ---
 
