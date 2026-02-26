@@ -30,7 +30,7 @@ namespace OLLMcoder.Task
 		public bool parse(Markdown.Document.Block block)
 		{
 			this.issues = "";
-			var body = block.to_markdown().strip();
+			var body = block.code_text.strip();
 			Json.Parser p = new Json.Parser();
 			try {
 				p.load_from_data(body);

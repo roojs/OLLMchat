@@ -273,14 +273,14 @@ public class ResultParser : Object
 			var tool = new Tool(task);
 			if (!tool.parse(block)) {
 				this.issues += "\n" + tool.issues + 
-					" Raw block:\n\n```json\n" + block.to_markdown() + "\n```\n\n";
+					" Raw block:\n\n```json\n" + block.code_text + "\n```\n\n";
 				continue;
 			}
 			tool_index++;
 			tool.tool_call.id = tool.name + "_" + tool_index.to_string();
 			if (!tool.validate()) {
 				this.issues += "\n" + tool.issues + 
-					" Raw block:\n\n```json\n" + block.to_markdown() + "\n```\n\n";
+					" Raw block:\n\n```json\n" + block.code_text + "\n```\n\n";
 				continue;
 			}
 			task.tools.add(tool);

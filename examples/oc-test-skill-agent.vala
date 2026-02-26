@@ -416,6 +416,19 @@ Examples:
 		}
 		// Fetch model details (sets model_obj so Agent.Base can enable think/stream from capabilities)
 		yield session.model_usage.verify_model(this.config);
+		// Register tools so execute/refine can validate and run tool calls (e.g. codebase_search)
+		var vector_registry = new OLLMvector.Registry();
+		vector_registry.init_config();
+		vector_registry.setup_config_defaults(history_manager.config);
+		vector_registry.fill_tools(history_manager, project_manager);
+		var codebase_tool = history_manager.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchTool;
+		if (codebase_tool != null) {
+			try {
+				yield codebase_tool.init_databases(history_manager.config, this.data_dir);
+			} catch (GLib.Error e) {
+				this.cl.printerr("Warning: codebase_search init_databases failed: %s (tool registered but search will fail)\n", e.message);
+			}
+		}
 		this.runner = (OLLMcoder.Skill.Runner) factory.create_agent(session);
 		var chat = this.runner.chat();
 		GLib.debug("oc-test-skill-agent: chat stream=%s think=%s", chat.stream.to_string(), chat.think.to_string());

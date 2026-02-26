@@ -312,20 +312,23 @@ test_bubble = executable('oc-test-bubble',
 
 # Build oc-test-skill-agent executable (testable skills agent flow; plan 1.23.19)
 # Extends TestAppBase for standard --debug, --model, and log handling.
+# Needs ocvector for OLLMvector.Registry (codebase_search tool for execute/refine).
 oc_test_skill_agent = executable('oc-test-skill-agent',
   dependencies: [
     test_window_deps,
     ocsqlite_vapi_dep,
     ocfiles_vapi_dep,
     ollmchat_vapi_dep,
-    ocmarkdown_vapi_dep
+    ocmarkdown_vapi_dep,
+    ocvector_vapi_dep
   ],
   sources: ['TestAppBase.vala', 'oc-test-skill-agent.vala'],
   link_with: [ollmchat_base_lib, occoder_base_lib],
   include_directories: [
     include_directories('../libocfiles'),
     include_directories('../libollmchat'),
-    include_directories('../liboccoder')
+    include_directories('../liboccoder'),
+    include_directories('../libocvector')
   ],
   build_rpath: build_rpath,
   vala_args: [
@@ -336,12 +339,15 @@ oc_test_skill_agent = executable('oc-test-skill-agent',
     '--pkg=ocfiles',
     '--pkg=ollmchat',
     '--pkg=ocmarkdown',
+    '--pkg=ocvector',
+    '--pkg=fiass',
     # Don't use --pkg=occoder when linking with occoder_base_lib
     '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
     '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
     '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
     '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
     '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
     '--vapidir', meson.current_source_dir() / '../vapi'
   ],
   install: true,
