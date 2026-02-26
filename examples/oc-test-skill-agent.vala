@@ -175,7 +175,13 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_input);
+				this.runner.sr_factory.skill_manager.scan();
 				var list = this.runner.task_list;
+				var skill_issues = list.validate_skills();
+				if (skill_issues != "") {
+					this.cl.printerr("%s", skill_issues);
+					throw new GLib.IOError.INVALID_ARGUMENT(skill_issues.strip());
+				}
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
 					throw new GLib.IOError.NOT_FOUND("Step out of range");

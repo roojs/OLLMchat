@@ -180,10 +180,16 @@ public class Details : OLLMchat.Agent.Base
 					}
 					continue;
 				}
-				if (!this.runner.user_request.headings.has_key(anchor)) {
-					this.issues += "\n" + "Invalid reference target \"" +
-						 href + "\": unknown anchor \"" + anchor + "\".";
+				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
+					continue;
 				}
+				// No original prompt (e.g. test loading task list from file): fallback to project summary
+				if (anchor == "project-description" && this.runner.sr_factory.project_manager.active_project != null &&
+				    this.runner.sr_factory.project_manager.active_project.project_description() != "") {
+					continue;
+				}
+				this.issues += "\n" + "Invalid reference target \"" +
+					 href + "\": unknown anchor \"" + anchor + "\".";
 				continue;
 			}
 			if (href.has_prefix("http://") || href.has_prefix("https://")) {

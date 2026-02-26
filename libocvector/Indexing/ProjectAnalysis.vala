@@ -189,10 +189,13 @@ namespace OLLMvector.Indexing
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", project_template.system_message));
 			messages.add(new OLLMchat.Message("user", user_message));
+			GLib.debug("=== Project summary request (system) ===\n%s\n", project_template.system_message);
+			GLib.debug("=== Project summary request (user) ===\n%s\n", user_message);
 			string raw_response = "";
 			try {
 				var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 				raw_response = yield this.request_analysis(messages, tool_config.analysis);
+				GLib.debug("=== Project summary response ===\n%s", raw_response);
 			} catch (GLib.Error e) {
 				GLib.warning("ProjectAnalysis: analyze LLM failed: %s", e.message);
 				return new OLLMfiles.SQT.VectorMetadata() {
