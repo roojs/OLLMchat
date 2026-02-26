@@ -2,8 +2,7 @@
 What you see in the `TABLE_ROWS` column is only a *statistics* value that MySQL updates
 periodically (or when you run `ANALYZE TABLE`).  
 
-When you connect through **MySQL Router** you are usually hitting a **read‑only
-replica** (or a pool of replicas). Those replicas apply the binary log asynchronously,
+When you connect through **MySQL Router** you are usually hitting a **read‑only replica** (or a pool of replicas). Those replicas apply the binary log asynchronously,
 so their statistics can be behind the primary server.  
 Even on the primary, the value is only an estimate for InnoDB tables – it can be
 off by a large factor if the table has been heavily updated since the last

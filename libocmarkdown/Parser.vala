@@ -245,7 +245,7 @@ namespace Markdown
 			// never contains newlines.
 			var str = "";
 			//GLib.debug("  [str] INIT: str='%s' (empty)", str);
-			
+
 			while (chunk_pos < chunk.length) {
 				saved_chunk_pos = chunk_pos;
 				var c = chunk.get_char(chunk_pos);
@@ -370,7 +370,8 @@ namespace Markdown
 						continue;
 					}
 					// At list item content start, no block consumed → clear so next line can end list (plan 1.8.1)
-					if (this.current_block == FormatType.ORDERED_LIST || this.current_block == FormatType.UNORDERED_LIST) {
+					if (this.current_block == FormatType.ORDERED_LIST || 
+						this.current_block == FormatType.UNORDERED_LIST) {
 						this.at_list_start = false;
 					}
 				}
@@ -657,6 +658,7 @@ namespace Markdown
 			}
 			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
 			if (str != "") {
+				//GLib.debug("  [str] FLUSH on newline: str='%s'", str);
 				this.renderer.on_node(FormatType.TEXT, false, str);
 				str = "";
 			}
