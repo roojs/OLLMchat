@@ -206,6 +206,23 @@ namespace OLLMfiles
 		 * Icon name for binding in lists.
 		 * Returns icon_name if set, otherwise derives from file content type.
 		 */
+		public override string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent)
+		{
+			var type = "file";
+			var description = "";
+			if (keymap.has_key((int)this.id)) {
+				var vm = keymap.get((int)this.id);
+				if (vm.category != "" && vm.category != "other") {
+					type = vm.category;
+				}
+				description = vm.description != "" ? ": " + vm.description : "";
+			}
+			if (type == "file" && this.language != "") {
+				type = this.language;
+			}
+			return indent + "- (" + type + ") " + GLib.Path.get_basename(this.path) + description;
+		}
+		
 		public override string icon_name {
 			get {
 				if (this._icon_name != "") {

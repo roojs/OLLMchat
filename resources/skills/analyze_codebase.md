@@ -14,11 +14,17 @@ From the standard input, **What is needed** is the description of what to find i
 
 ### Tool: codebase_search (options worth using)
 
-- **query** (required): search text describing what code to find.
-- **element_type** (optional): narrow results to specific kinds of elements so you get **methods or classes instead of whole files**. Code: `"method"`, `"class"`, `"function"`, `"constructor"`, `"property"`, `"field"`, `"struct"`, `"interface"`, `"enum_type"`, `"enum"`, `"delegate"`, `"signal"`, `"constant"`, `"file"`. Prefer **method**, **class**, or **function** when the goal is "how to use X" or "where X is implemented"; use **file** only when the whole file is the unit of interest.
+- **query** (required): search text describing what code to find. See **Formulating queries** below for two ways to phrase queries.
+- **element_type** (optional): narrow results to specific kinds of elements so you get **methods or classes instead of whole files**. Code: `"method"`, `"class"`, `"function"`, `"constructor"`, `"property"`, `"field"`, `"struct"`, `"interface"`, `"enum_type"`, `"enum"`, `"delegate"`, `"signal"`, `"constant"`, `"file"`. Prefer **method**, **class**, or **function** when the goal is "how to use X" or "where X is implemented"; use **file** only when the whole file is the unit of interest. **Note:** The tool treats `"function"` and `"method"` the same (a search with either returns both). In OOP codebases, callable symbols are often indexed as `"method"`; using either element_type is fine.
 - **language** (optional): filter by language (e.g. `"vala"`, `"python"`, `"javascript"`). Use when the project or goal is language-specific to reduce noise.
 - **max_results** (optional): max hits to return (default 10). Increase when you want more candidates; decrease for a tight shortlist.
 - **category** (optional): for documentation elements only (`element_type` "document" or "section"). Values: `"plan"`, `"documentation"`, `"rule"`, `"configuration"`, `"data"`, `"license"`, `"changelog"`, `"other"`. Omit when searching source code.
+
+**Formulating queries** — use multiple words and match how code is described:
+
+- **Use multiple words.** Searching for a single specific method or symbol name will usually fail. The index stores **descriptions of what code does** (from analysis), so phrase queries in terms of behaviour or purpose, not just names.
+- **Matching is fuzzy** — you don't need synonyms or minor variations (e.g. "parse" vs "parsing" adds little). Different concepts (e.g. parse vs tokenize) can help a bit. A **mix of long sentences and short 3–4 word phrases** often works better: e.g. one query like "where the skill definition is loaded from file" and another like "load skill from file".
+- **How it would be described:** Think about how the code you want would be described—in a comment, docstring, or the analysis summary. Search for that. For example, "load skill definition from file" or "loads skill from file" rather than a single method name. Matching descriptions of behaviour works better than guessing symbol names.
 
 **Encourage:** Multiple tool calls with different **element_type** or **query** (e.g. one call with `element_type: "method"` and one with `element_type: "class"`) to get both call sites and type definitions. Including **element_type** yields symbol-level results; omitting it often returns more whole-file or mixed results.
 
@@ -31,8 +37,8 @@ From the standard input, **What is needed** is the description of what to find i
 
 #### Refinement
 
-- Emit one or more **codebase_search** tool calls. Pass **query** from "What is needed" (or concrete phrasings). Prefer **element_type** (e.g. `"method"`, `"class"`, `"function"`) so results are symbol-level; add **language** when the project is single-language.
-- Use multiple calls with different element_type or query phrasings (e.g. "where X is used", "method that does Y", "class that defines Z") to get richer results. Optional: **max_results** if more or fewer hits are needed.
+- Emit one or more **codebase_search** tool calls. Use **multiple words** in each query; single method/symbol names rarely match. Matching is fuzzy—skip minor synonyms; try a **mix of longer sentences and short 3–4 word phrases** (e.g. "where skill definition is loaded from file" and "load skill from file"). Formulate queries as how the relevant code would be described. Prefer **element_type** (e.g. `"method"`, `"class"`, `"function"`) so results are symbol-level; add **language** when the project is single-language.
+- Use multiple calls with different element_type or query phrasings. Optional: **max_results** if more or fewer hits are needed.
 
 #### Execution (what to do with the results)
 

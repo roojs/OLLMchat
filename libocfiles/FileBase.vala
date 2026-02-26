@@ -189,6 +189,12 @@ namespace OLLMfiles
 		public string language { get; set; default = ""; }
 		
 		/**
+		 * Returns one or more lines for the project summary list.
+		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
+		 */
+		public abstract string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+		
+		/**
 		 * Last cursor line number (stored in database, default: 0).
 		 */
 		public int cursor_line { get; set; default = 0; }

@@ -190,6 +190,11 @@ namespace OLLMvector.Indexing
 				folder_description = "";
 			}
 
+			var existing = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id = " + folder.id.to_string()
+				+ " AND element_type = 'folder' ORDER BY id DESC",
+				existing);
 			var folder_metadata = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "folder",
 				element_name = GLib.Path.get_basename(folder.path),
@@ -200,6 +205,9 @@ namespace OLLMvector.Indexing
 				vector_id = 0,
 				ast_path = ""
 			};
+			if (existing.size > 0) {
+				folder_metadata.id = existing.get(0).id;
+			}
 			folder_metadata.saveToDB(this.sql_db, false);
 			this.sql_db.backupDB();
 			GLib.debug("Complete for %s: description length %d", folder.path, folder_description.length);

@@ -284,7 +284,7 @@ public class Details : OLLMchat.Agent.Base
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(),
-			"skill_details", definition.full_content);
+			"skill_details", definition.body);
 		return tpl;
 	}
 
@@ -390,8 +390,8 @@ public class Details : OLLMchat.Agent.Base
 			}
 			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
 		}
-		// Include ## Tool Calls for REFINEMENT (retry) and EXECUTION. Omit section when no tools.
-		if (phase != MarkdownPhase.REFINEMENT && phase != MarkdownPhase.EXECUTION && this.tools.size == 0) {
+		// Include ## Tool Calls only when there are tools (omit empty section in prompt).
+		if (this.tools.size == 0) {
 			return ret;
 		}
 		ret += "\n## Tool Calls\n\n";
@@ -453,17 +453,25 @@ public class Details : OLLMchat.Agent.Base
 	 * Resolved reference block for this task: loop reference_targets; for each,
 	 * get content. File paths (absolute): from project manager, or File.new_fake
 	 * if not in project; then create_buffer and get_contents. #anchor from runner.
+	 * We always omit #project-description here; it is injected separately as ## Project Description.
+	 * When there are no references, returns "" (header trick: omit section). When there are references,
+	 * returns "## Reference Contents\n\n" plus each "### Reference contents for [title]" and its content.
 	 */
 	private string reference_contents()
 	{
 		var parts = "";
 		foreach (var link in this.reference_targets) {
 			if (!GLib.Path.is_absolute(link.href)) {
+				var anchor = link.href.has_prefix("#") ? link.href.substring(1) : link.href;
+				if (anchor == "project-description") {
+					continue;
+				}
 				var content = this.runner.reference_content(link.href);
 				if (content != "") {
-					parts += this.header_raw(
-						"Reference information for " + link.title + "\n\nThe contents of " + link.href,
-						content);
+					parts += this.header_fenced(
+						"### Reference contents for " + link.title,
+						content,
+						"markdown");
 				}
 				continue;
 			}
@@ -473,10 +481,13 @@ public class Details : OLLMchat.Agent.Base
 			}
 			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
 			parts += this.header_file(
-				"Reference information for " + link.title + "\n\nThe contents of " + link.href,
+				"### Reference contents for " + link.title,
 				found);
 		}
-		return parts;
+		if (parts == "") {
+			return "";
+		}
+		return "## Reference Contents\n\n" + parts;
 	}
 
 	/**
@@ -509,7 +520,9 @@ public class Details : OLLMchat.Agent.Base
 		tpl.system_fill();
 		tpl.fill(
 			"what_is_needed", this.task_data.get("What is needed").to_markdown(),
-			"skill_definition", definition.full_content,
+			"skill_definition", definition.body,
+			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
+				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"precursor", this.executor_precursor());
 		return tpl;
 	}

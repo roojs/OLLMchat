@@ -97,6 +97,15 @@ namespace OLLMvector.Indexing
 				GLib.warning("ProjectAnalysis: analyze_dependencies LLM failed: %s", e.message);
 				return;
 			}
+			if (raw_response.strip() == "") {
+				GLib.warning("ProjectAnalysis: no dependencies result from LLM, skipping update");
+				return;
+			}
+			var existing = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id = " + this.root_folder.id.to_string()
+				+ " AND element_type = 'dependencies' ORDER BY id DESC",
+				existing);
 			var deps_meta = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "dependencies",
 				element_name = "dependencies",
@@ -107,6 +116,9 @@ namespace OLLMvector.Indexing
 				vector_id = 0,
 				ast_path = ""
 			};
+			if (existing.size > 0) {
+				deps_meta.id = existing.get(0).id;
+			}
 			deps_meta.saveToDB(this.sql_db, false);
 			this.sql_db.backupDB();
 		}
@@ -153,35 +165,7 @@ namespace OLLMvector.Indexing
 					ast_path = ""
 				};
 			}
-			string[] folder_lines = {};
-			foreach (var folder in this.root_folder.project_files.folder_map.values) {
-				var name = GLib.Path.get_basename(folder.path);
-				if (!keymap.has_key((int)folder.id)) {
-					folder_lines += "  - (folder) " + name;
-					continue;
-				}
-				var vm = keymap.get((int)folder.id);
-				if (vm.description == "") {
-					folder_lines += "  - (folder) " + name;
-					continue;
-				}
-				folder_lines += "  - (folder) " + name + ": " + vm.description;
-			}
-			string[] file_lines = {};
-			foreach (var pf in this.root_folder.project_files) {
-				var name = GLib.Path.get_basename(pf.file.path);
-				if (!keymap.has_key((int)pf.file.id)) {
-					file_lines += "  - (file) " + name;
-					continue;
-				}
-				var vm = keymap.get((int)pf.file.id);
-				if (vm.description == "") {
-					file_lines += "  - (file) " + name;
-					continue;
-				}
-				file_lines += "  - (file) " + name + ": " + vm.description;
-			}
-			string folders_and_files_list = string.joinv("\n", folder_lines) + "\n" + string.joinv("\n", file_lines);
+			var folders_and_files_list = this.root_folder.to_summary(keymap, "");
 			var user_message = project_template.fill(
 				"project_path", this.root_folder.path != "" ? this.root_folder.path : "unknown",
 				"folders_and_files_list", folders_and_files_list.strip()
@@ -209,6 +193,34 @@ namespace OLLMvector.Indexing
 					ast_path = ""
 				};
 			}
+			// Do not overwrite project description when we got no result (empty or failed)
+			if (raw_response.strip() == "") {
+				GLib.warning("ProjectAnalysis: no description from LLM, leaving existing project description unchanged");
+				var existing = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+				OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+					"WHERE file_id = " + this.root_folder.id.to_string()
+					+ " AND element_type = 'project' ORDER BY id DESC",
+					existing);
+				if (existing.size > 0) {
+					return existing.get(0);
+				}
+				return new OLLMfiles.SQT.VectorMetadata() {
+					element_type = "project",
+					element_name = GLib.Path.get_basename(this.root_folder.path),
+					start_line = 0,
+					end_line = 0,
+					description = "",
+					file_id = this.root_folder.id,
+					vector_id = 0,
+					ast_path = ""
+				};
+			}
+			// Reuse existing project row so we update instead of inserting every time
+			var existing = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id = " + this.root_folder.id.to_string()
+				+ " AND element_type = 'project' ORDER BY id DESC",
+				existing);
 			var project_meta = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "project",
 				element_name = GLib.Path.get_basename(this.root_folder.path),
@@ -219,6 +231,9 @@ namespace OLLMvector.Indexing
 				vector_id = 0,
 				ast_path = ""
 			};
+			if (existing.size > 0) {
+				project_meta.id = existing.get(0).id;
+			}
 			project_meta.saveToDB(this.sql_db, false);
 			this.sql_db.backupDB();
 			return project_meta;

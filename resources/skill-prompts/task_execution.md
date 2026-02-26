@@ -56,6 +56,10 @@ A fenced code block with filename in the info string, e.g. ```findings.md … ``
 
 {skill_definition}
 
+## Project Description
+
+{project_description}
+
 ## Precursor
 
 {precursor}
