@@ -430,6 +430,7 @@ Examples:
 			}
 		}
 		this.runner = (OLLMcoder.Skill.Runner) factory.create_agent(session);
+		this.runner.sr_factory.skill_manager.scan();
 		var chat = this.runner.chat();
 		GLib.debug("oc-test-skill-agent: chat stream=%s think=%s", chat.stream.to_string(), chat.think.to_string());
 		var last_was_thinking = false;

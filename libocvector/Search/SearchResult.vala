@@ -116,6 +116,36 @@ namespace OLLMvector.Search
 		}
 		
 		/**
+		 * Format this result as markdown for CLI or tool output.
+		 * Heading (## Result (distance: X)), then - *key* value bullet points (File, Element, Lines, Description, ast-path, Reference link), then fenced code block and optional truncation note. Uses code_snippet() internally.
+		 *
+		 * @param max_snippet_lines Max lines used for snippet (-1 = no limit, no truncation note)
+		 * @return Formatted markdown string for this result
+		 */
+		public string to_markdown(int max_snippet_lines = -1)
+		{
+			var file = this.file();
+			var snippet = this.code_snippet(max_snippet_lines);
+			var line_count = this.metadata.end_line - this.metadata.start_line + 1;
+			var more_lines = (max_snippet_lines != -1 && line_count > max_snippet_lines)
+				? "... (" + (line_count - max_snippet_lines).to_string() + " more lines)\n"
+				: "";
+			return "### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
+				+ "- **File** " + file.path + "\n"
+				+ "- **Element** " + this.metadata.element_name + " (" + this.metadata.element_type + ")\n"
+				+ "- **Lines** " + this.metadata.start_line.to_string() + "-" + this.metadata.end_line.to_string() + "\n"
+				+ "- **Description** " + this.metadata.description + "\n"
+				+ (this.metadata.ast_path != "" ? "- **ast-path** " + this.metadata.ast_path + "\n" : "")
+				+ "- **Reference Link** [" + this.metadata.element_name + "]("
+					+ (file.path + (this.metadata.ast_path != "" ? "#" + this.metadata.ast_path : ""))
+					+ ")\n"
+				+ "\n"
+				+ "```" + file.language + "\n" + snippet + "\n```\n"
+				+ more_lines
+				+ "\n";
+		}
+		
+		/**
 		 * Custom property serialization to exclude internal dependencies.
 		 */
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)

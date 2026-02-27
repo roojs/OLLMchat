@@ -356,7 +356,8 @@ namespace Markdown
 					|| matched_block == FormatType.UNORDERED_LIST
 					|| matched_block == FormatType.TASK_LIST
 					|| matched_block == FormatType.TASK_LIST_DONE);
-			if (in_list && !this.parser.at_list_start && (block_match == 0 || (block_match > 0 && !next_line_is_list))) {
+			if (in_list && !this.parser.at_list_start && (block_match == 0 
+				|| (block_match > 0 && !next_line_is_list))) {
 				this.parser.renderer.on_li(false);
 				this.parser.do_block(false, FormatType.LIST_BLOCK);
 				this.parser.last_line_block = this.parser.current_block;

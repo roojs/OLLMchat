@@ -307,7 +307,7 @@ namespace OLLMvector.Tool
 			);
 			
 			// Step 5: Format results for LLM consumption
-			var formatted = yield this.format_results(results, this.query);
+			var formatted = this.format_results(results, this.query);
 			
 			 
 			// Send output as second message via message_created (same as commands)
@@ -357,82 +357,26 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
-		 * Format search results for LLM consumption.
-		 * 
+		 * Format search results for LLM consumption using SearchResult.to_markdown().
+		 *
 		 * @param results Search results to format
-		 * @param query Original search query
-		 * @return Formatted string with code citations
+		 * @param query Original search query (unused; no-results message is fixed)
+		 * @return Formatted string matching CLI output_text()
 		 */
-		private async string format_results(
+		private string format_results(
 			Gee.ArrayList<OLLMvector.Search.SearchResult> results,
 			string query
 		)
 		{
 			if (results.size == 0) {
-				return "No results found for \"" + query + "\"";
+				return "No results found.";
 			}
-			
+			const int max_snippet_lines = 50;
 			var output = new StringBuilder();
-			output.append_printf("Found %d result(s) for \"%s\":\n\n",
-				 results.size, query);
-			
-			for (int i = 0; i < results.size; i++) {
-				var result = results[i];
-				var file = result.file();
-				var metadata = result.metadata;
-				
-				// Format result header
-				output.append_printf(
-					"%d. %s (%s) - %s:%d-%d\n",
-					i + 1,
-					metadata.element_name,
-					metadata.element_type,
-					file.path,
-					metadata.start_line,
-					metadata.end_line
-				);
-				
-				if (metadata.description != "") {
-					output.append_printf("Description: %s\n", metadata.description);
-				}
-				
-				if (metadata.ast_path != "") {
-					output.append_printf("ast-path: %s\n", metadata.ast_path);
-				}
-				
-				// Code citation block (citation format: startLine:endLine:filepath in language tag position)
-				// Use buffer system to get code snippet
-				var snippet = yield this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
-				
-				// Debug: Log snippet details
-				GLib.debug("codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
-					i + 1,
-					metadata.element_name,
-					metadata.element_type,
-					metadata.start_line,
-					metadata.end_line,
-					snippet.length,
-					snippet
-				);
-				
-				output.append_printf(
-					"```%d:%d:%s\n%s\n```\n",
-					metadata.start_line,
-					metadata.end_line,
-					file.path,
-					snippet
-				);
-				
-				// Check if snippet was truncated
-				var original_line_count = metadata.end_line - metadata.start_line + 1;
-				if (original_line_count > 50) {
-					output.append_printf("... (%d more lines)\n", 
-						original_line_count - 50);
-				}
-				
-				output.append("\n");
+			output.append_printf("Found %d result(s):\n\n", results.size);
+			foreach (var result in results) {
+				output.append(result.to_markdown(max_snippet_lines));
 			}
-			
 			return output.str;
 		}
 	}

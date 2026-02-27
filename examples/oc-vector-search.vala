@@ -437,43 +437,8 @@ Examples:
 	private void output_text(Gee.ArrayList<OLLMvector.Search.SearchResult> results)
 	{
 		stdout.printf("Found %d result(s):\n\n", results.size);
-		
-		for (int i = 0; i < results.size; i++) {
-			var rank = i + 1;
-			
-			// Display distance (lower distance = better match)
-			stdout.printf("--- Result %d (distance: %.4f) ---\n", rank, results[i].distance);
-			stdout.printf("File: %s\n", results[i].file().path);
-			stdout.printf("Element: %s (%s)\n", results[i].metadata.element_name, results[i].metadata.element_type);
-			stdout.printf("Lines: %d-%d\n", results[i].metadata.start_line, results[i].metadata.end_line);	
-			stdout.printf("Description: %s\n", results[i].metadata.description);
-			
-			if (results[i].metadata.ast_path != "") {
-				stdout.printf("ast-path: %s\n", results[i].metadata.ast_path);
-			}
-			
-			var snippet = results[i].code_snippet(opt_max_snippet_lines);
-			
-			// Get language from file object for markdown code block
-			var file = results[i].file();
-			var language = file.language != null && file.language != "" ? file.language : "";
-			
-			if (language != "") {
-				stdout.printf("```%s\n%s\n```\n", language, snippet);
-			} else {
-				stdout.printf("```\n%s\n```\n", snippet);
-			}
-			
-			// Check if snippet was truncated by comparing metadata line range to max_lines
-			if (opt_max_snippet_lines != -1) {
-				var original_line_count = results[i].metadata.end_line - results[i].metadata.start_line + 1;
-				if (original_line_count > opt_max_snippet_lines) {
-					stdout.printf("... (%d more lines)\n", original_line_count - opt_max_snippet_lines);
-				}
-			}
-			
-			
-			stdout.printf("\n");
+		foreach (var result in results) {
+			stdout.printf("%s", result.to_markdown(opt_max_snippet_lines));
 		}
 	}
 	
