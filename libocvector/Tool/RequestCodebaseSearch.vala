@@ -395,60 +395,36 @@ namespace OLLMvector.Tool
 				 results.size, query);
 			
 			for (int i = 0; i < results.size; i++) {
-				var result = results[i];
+				var result = results.get(i);
 				var file = result.file();
-				var metadata = result.metadata;
-				
-				// Format result header
-				output.append_printf(
-					"%d. %s (%s) - %s:%d-%d\n",
-					i + 1,
-					metadata.element_name,
-					metadata.element_type,
-					file.path,
-					metadata.start_line,
-					metadata.end_line
+				var snippet = yield this.get_code_snippet(file, result.metadata.start_line, result.metadata.end_line, 50);
+
+				// Bullet format: - **KEY** value (no result numbering)
+				output.append(
+@" - **Element** $(result.metadata.element_name) ($(result.metadata.element_type))
+ - **Location** $(file.path):$(result.metadata.start_line)-$(result.metadata.end_line)
+ - **Link** [$(result.metadata.element_name)]($(file.path)#$(result.metadata.ast_path))
+ - **Distance** $(result.distance)
+ - **Description** $(result.metadata.description)
+ - **AST path** $(result.metadata.ast_path)
+
+");
+				GLib.debug(
+					"codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
+					i + 1, result.metadata.element_name, result.metadata.element_type,
+					result.metadata.start_line, result.metadata.end_line, snippet.length, snippet
 				);
-				
-				if (metadata.description != "") {
-					output.append_printf("Description: %s\n", metadata.description);
-				}
-				
-				if (metadata.ast_path != "") {
-					output.append_printf("ast-path: %s\n", metadata.ast_path);
-				}
-				
-				// Code citation block (citation format: startLine:endLine:filepath in language tag position)
-				// Use buffer system to get code snippet
-				var snippet = yield this.get_code_snippet(file, metadata.start_line, metadata.end_line, 50);
-				
-				// Debug: Log snippet details
-				GLib.debug("codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
-					i + 1,
-					metadata.element_name,
-					metadata.element_type,
-					metadata.start_line,
-					metadata.end_line,
-					snippet.length,
-					snippet
-				);
-				
-				output.append_printf(
-					"```%d:%d:%s\n%s\n```\n",
-					metadata.start_line,
-					metadata.end_line,
-					file.path,
-					snippet
-				);
-				
-				// Check if snippet was truncated
-				var original_line_count = metadata.end_line - metadata.start_line + 1;
-				if (original_line_count > 50) {
-					output.append_printf("... (%d more lines)\n", 
-						original_line_count - 50);
-				}
-				
-				output.append("\n");
+
+				// Use alternative fence if snippet contains ```; opening line = fence + language (empty string is fine)
+				var fence = snippet.contains("```") ? "````" : "```";
+				var open_line = fence + file.language;
+				var original_line_count = result.metadata.end_line - result.metadata.start_line + 1;
+				var code_suffix = original_line_count > 50 ? "\n// content truncated - original code was %d lines".printf(original_line_count) : "";
+				output.append(@"$(open_line)
+$(snippet)$(code_suffix)
+$(fence)
+
+");
 			}
 			
 			return output.str;
