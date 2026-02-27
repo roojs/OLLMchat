@@ -324,8 +324,8 @@ namespace OLLMvector.Tool
 				this.query
 			);
 			
-			// Step 5: Format results for LLM consumption
-			var formatted = yield this.format_results(results, this.query);
+			// Step 5: Format results for LLM consumption (SearchResult.to_markdown)
+			var formatted = this.format_results(results, this.query);
 			
 			 
 			// Send output as second message via message_created (same as commands)
@@ -336,97 +336,26 @@ namespace OLLMvector.Tool
 		}
 		
 		/**
-		 * Get code snippet from file using buffer system.
-		 * 
-		 * @param file The file to get snippet from
-		 * @param start_line Starting line number (1-based, inclusive)
-		 * @param end_line Ending line number (1-based, inclusive)
-		 * @param max_lines Maximum number of lines to return (-1 for no limit)
-		 * @return Code snippet as string
-		 */
-		private async string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
-		{
-			try {
-				// Ensure buffer exists
-				if (file.buffer == null) {
-					file.manager.buffer_provider.create_buffer(file);
-				}
-				
-				// Ensure buffer is loaded
-				if (!file.buffer.is_loaded) {
-					yield file.buffer.read_async();
-				}
-				
-				// Convert from 1-based (metadata) to 0-based (buffer API)
-				var start_idx = start_line - 1;
-				var end_idx = end_line - 1;
-				
-				// Apply max_lines truncation if specified
-				if (max_lines != -1 && (end_idx - start_idx + 1) > max_lines) {
-					end_idx = start_idx + max_lines - 1;
-				}
-				
-				// Get text from buffer (0-based, inclusive)
-				return file.buffer.get_text(start_idx, end_idx);
-			} catch (GLib.Error e) {
-				GLib.debug("codebase_search.get_code_snippet: Failed to read file %s: %s", file.path, e.message);
-				return "";
-			}
-		}
-		
-		/**
-		 * Format search results for LLM consumption.
-		 * 
+		 * Format search results for LLM consumption using SearchResult.to_markdown().
+		 *
 		 * @param results Search results to format
-		 * @param query Original search query
-		 * @return Formatted string with code citations
+		 * @param query Original search query (unused; no-results message is fixed)
+		 * @return Formatted string matching CLI output
 		 */
-		private async string format_results(
+		private string format_results(
 			Gee.ArrayList<OLLMvector.Search.SearchResult> results,
 			string query
 		)
 		{
 			if (results.size == 0) {
-				return "No results found for \"" + query + "\"";
+				return "No results found.";
 			}
-			
+			const int max_snippet_lines = 50;
 			var output = new StringBuilder();
-			output.append_printf("Found %d result(s) for \"%s\":\n\n",
-				 results.size, query);
-			
-			for (int i = 0; i < results.size; i++) {
-				var result = results.get(i);
-				var file = result.file();
-				var snippet = yield this.get_code_snippet(file, result.metadata.start_line, result.metadata.end_line, 50);
-
-				// Bullet format: - **KEY** value (no result numbering)
-				output.append(
-@" - **Element** $(result.metadata.element_name) ($(result.metadata.element_type))
- - **Location** $(file.path):$(result.metadata.start_line)-$(result.metadata.end_line)
- - **Link** [$(result.metadata.element_name)]($(file.path)#$(result.metadata.ast_path))
- - **Distance** $(result.distance)
- - **Description** $(result.metadata.description)
- - **AST path** $(result.metadata.ast_path)
-
-");
-				GLib.debug(
-					"codebase_search result %d: element='%s' type='%s' lines=%d-%d snippet_length=%d snippet_preview='%.100s'",
-					i + 1, result.metadata.element_name, result.metadata.element_type,
-					result.metadata.start_line, result.metadata.end_line, snippet.length, snippet
-				);
-
-				// Use alternative fence if snippet contains ```; opening line = fence + language (empty string is fine)
-				var fence = snippet.contains("```") ? "````" : "```";
-				var open_line = fence + file.language;
-				var original_line_count = result.metadata.end_line - result.metadata.start_line + 1;
-				var code_suffix = original_line_count > 50 ? "\n// content truncated - original code was %d lines".printf(original_line_count) : "";
-				output.append(@"$(open_line)
-$(snippet)$(code_suffix)
-$(fence)
-
-");
+			output.append_printf("Found %d result(s):\n\n", results.size);
+			foreach (var result in results) {
+				output.append(result.to_markdown(max_snippet_lines));
 			}
-			
 			return output.str;
 		}
 	}
