@@ -110,18 +110,21 @@ namespace OLLMcoder.Skill
  
 
 		/** Entry point. Sends user request only; when finished calls handle_task_list. Current file and open files come from this.project_manager. */
-		public async void send_async(string user_prompt, GLib.Cancellable? cancellable = null) throws GLib.Error
+		public override async void send_async(OLLMchat.Message in_message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
+			this.session.messages.add(in_message);
+			this.session.is_running = true;
 			var previous_proposal = "";
 			var previous_proposal_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
 				var tpl = this.task_creation_prompt(
-					user_prompt, 
+					in_message.content, 
 					previous_proposal,
 					previous_proposal_issues,
 					this.sr_factory.skill_manager, 
 					this.sr_factory.project_manager);
 				this.user_request = tpl.user_to_document();
+				this.fill_tools();
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -148,17 +151,22 @@ namespace OLLMcoder.Skill
 		{
 			this.writer_approval = false;
 			var hit_max_rounds = true;
+			// Keep session is_running true so ChatWidget accepts refinement/iteration streams
+			// (finalize_streaming sets it false after the first response)
+			this.session.is_running = true;
 			for (var i = 0; i < 5; i++) {
 				if (!this.task_list.has_pending_exec()) {
 					hit_max_rounds = false;
 					break;
 				}
+				this.add_message(new OLLMchat.Message("ui", "Refining tasks…"));
 				yield this.task_list.refine();
 				yield this.task_list.run_until_user_approval();
 				if (this.task_list.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
 						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
+						this.session.is_running = false;
 						return;
 					}
 					this.writer_approval = true;
@@ -169,6 +177,7 @@ namespace OLLMcoder.Skill
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
+			this.session.is_running = false;
 		}
 
 		/** Stub: request user approval before running writer tasks. Plan: implement UI. */
@@ -207,6 +216,8 @@ namespace OLLMcoder.Skill
 			for (var try_count = 0; try_count < 5; try_count++) {
 				var saved_list = this.task_list;
 				var tpl = this.iteration_prompt(previous_proposal_issues);
+				this.fill_tools();
+				this.add_message(new OLLMchat.Message("ui", "Refining task list…"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));

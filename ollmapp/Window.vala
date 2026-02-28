@@ -357,6 +357,14 @@ namespace OLLMapp
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			this.project_manager.git_provider = new OLLMcoder.GitProvider();
 			
+			// Run migration if database file doesn't exist (e.g. first run or new data dir)
+			if (this.project_manager.db != null) {
+				var db_file = GLib.File.new_for_path(this.project_manager.db.filename);
+				if (!db_file.query_exists()) {
+					var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
+					yield migrator.migrate_all();
+				}
+			}
 			// Cleanup old backup files and database records on startup
 			if (this.project_manager.db != null) {
 				var max_days = config.files_max_deleted_days > 0 ? config.files_max_deleted_days : 30;

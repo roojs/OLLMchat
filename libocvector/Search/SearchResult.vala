@@ -130,7 +130,7 @@ namespace OLLMvector.Search
 			var more_lines = (max_snippet_lines != -1 && line_count > max_snippet_lines)
 				? "... (" + (line_count - max_snippet_lines).to_string() + " more lines)\n"
 				: "";
-			return "### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
+			return "#### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
 				+ "- **File** " + file.path + "\n"
 				+ "- **Element** " + this.metadata.element_name + " (" + this.metadata.element_type + ")\n"
 				+ "- **Lines** " + this.metadata.start_line.to_string() + "-" + this.metadata.end_line.to_string() + "\n"

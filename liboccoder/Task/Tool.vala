@@ -118,7 +118,7 @@ namespace OLLMcoder.Task
 		public async void execute() throws GLib.Error
 		{
 			var tool_impl = this.task.chat().tools.get(this.tool_call.function.name);
-			var result = yield tool_impl.execute(this.task.chat(), this.tool_call);
+			var result = yield tool_impl.execute(this.task.chat(), this.tool_call, true);
 			this.task.tool_outputs.set(this.tool_call.id, result);
 			this.task.tool_calls.set(this.tool_call.id, this.tool_call);
 		}

@@ -27,7 +27,10 @@ namespace OLLMcoder.Skill
 		public Manager skill_manager { get; private set; }
 		public string skill_name { get; private set; }
 
-		public Factory(OLLMfiles.ProjectManager project_manager, Gee.ArrayList<string> skills_directories, string skill_name = "")
+		private OLLMcoder.SourceView? widget = null;
+
+		public Factory(OLLMfiles.ProjectManager project_manager,
+			 Gee.ArrayList<string> skills_directories, string skill_name = "")
 		{
 			this.name = "skill-runner";
 			this.title = "Skills Agent";
@@ -50,6 +53,36 @@ namespace OLLMcoder.Skill
 		public override OLLMchat.Agent.Base create_agent(OLLMchat.History.SessionBase session)
 		{
 			return new Runner(this, session);
+		}
+
+		/**
+		 * Gets the UI widget for this agent (same editor as Coding Assistant).
+		 *
+		 * Returns a SourceView so the Skills Agent shows the project/file editor pane
+		 * like the Coding Assistant.
+		 */
+		public override async Object? get_widget()
+		{
+			if (this.widget != null) {
+				return this.widget as Object;
+			}
+			if (this.project_manager.db == null) {
+				return null;
+			}
+			this.widget = new OLLMcoder.SourceView(this.project_manager);
+			yield this.initialize_widget();
+			return this.widget as Object;
+		}
+
+		private async void initialize_widget()
+		{
+			try {
+				this.widget.manager.load_projects_from_db();
+				yield this.widget.manager.restore_active_state();
+				yield this.widget.apply_manager_state();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
+			}
 		}
 	}
 }

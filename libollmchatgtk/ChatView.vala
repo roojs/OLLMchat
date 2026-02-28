@@ -1049,12 +1049,11 @@ namespace OLLMchatGtk
 				buffer.delete(ref start_iter, ref end_iter);
 			}
 
-			// Create PangoRender instance and convert to Pango markup
-			var renderer = new Markdown.PangoRender();
+			// Insert fixed Pango markup directly (do not run through toPango; the parser
+			// can misparse the span and drop the leading "w", showing "<aiting for...").
 			buffer.insert_markup(
 				ref start_iter,
-				renderer.toPango(
-					"<span color=\"green\">waiting for a reply" + dots + "</span>"),
+				"<span color=\"green\">waiting for a reply" + dots + "</span>",
 				-1
 			);
 

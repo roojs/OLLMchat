@@ -156,15 +156,22 @@ public class List : Object
 	}
 
 	/**
-	 * Start refinement for all tasks (non-blocking). Launch each task's
-	 * refine via .begin. Does not wait for any refinement to complete;
-	 * run_child waits for that task's refinement when it runs.
+	 * Run refinement for all tasks sequentially (one after another).
+	 * Original design: background all via .begin and let run_child wait_refined when it runs.
+	 * Disabled so refinement streams appear in order and UI shows progress.
 	 */
 	public async void refine() throws GLib.Error
 	{
+		// Original concurrent: start all refinements in background
+		// foreach (var step in this.steps) {
+		// 	foreach (var t in step.children) {
+		// 		t.refine.begin();
+		// 	}
+		// }
+		// Sequential: yield each so stream/output appears in order
 		foreach (var step in this.steps) {
 			foreach (var t in step.children) {
-				t.refine.begin();
+				yield t.refine();
 			}
 		}
 	}

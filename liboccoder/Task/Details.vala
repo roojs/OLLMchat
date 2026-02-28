@@ -300,6 +300,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
+		var task_name = this.task_data.get("Name").to_markdown().strip();
+		this.add_message(new OLLMchat.Message("ui", "Refining: " + task_name + "…"));
 		yield this.fill_model();
 		for (var i = 0; i < 5; i++) {
 			var tpl = this.refinement_prompt();
@@ -324,6 +326,7 @@ public class Details : OLLMchat.Agent.Base
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			if (this.result_parser.issues == "") {
+				this.add_message(new OLLMchat.Message("ui", "Got result for: " + task_name));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
 					this.resume_refined();
@@ -503,7 +506,7 @@ public class Details : OLLMchat.Agent.Base
 				parts += this.header_fenced("### Tool call " + e.key, json, "json");
 			}
 			if (e.value != "") {
-				parts += this.header_fenced("### Tool call " + e.key + " Output", e.value, "text");
+				parts += this.header_raw("Tool call " + e.key + " Result", e.value);
 			}
 		}
 		return parts;
