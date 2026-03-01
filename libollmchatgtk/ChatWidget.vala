@@ -120,7 +120,17 @@ namespace OLLMchatGtk
 			this.manager.message_added.connect(this.on_message_created);
 			
 			// Connect to session_activated signal to set correct streaming state after restoration
-			this.manager.session_activated.connect(this.on_session_activated);
+			this.manager.session_activated.connect((session) => {
+				GLib.Idle.add(() => {
+					this.chat_input.set_streaming(session.is_running);
+					return false;
+				});
+			});
+
+			// When agent sets is_running, update send/stop button from current session
+			this.manager.agent_status_change.connect(() => {
+				this.chat_input.set_streaming(this.manager.session.is_running);
+			});
 
 			// Create a box for the bottom pane containing permission widget and input
 			var bottom_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
@@ -249,6 +259,10 @@ namespace OLLMchatGtk
 					case "ui":
 						this.chat_view.append_tool_message(msg);
 						break;
+					case "ui-warning":
+						var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + msg.content, msg.thinking);
+						this.chat_view.append_complete_assistant_message(warning_msg, session);
+						break;
 					case "think-stream":
 						// For think-stream, content is the thinking text
 						var stream_msg = new OLLMchat.Message("assistant", "", msg.content);
@@ -271,15 +285,7 @@ namespace OLLMchatGtk
 			// Don't re-enable scrolling here - keep it disabled after loading history
 			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
 		}
-		
-		private void on_session_activated(OLLMchat.History.SessionBase session)
-		{
-			GLib.Idle.add(() => {
-				this.chat_input.set_streaming(session.is_running);
-				return false;
-			});
-		}
-		
+
 		/**
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
@@ -305,10 +311,13 @@ namespace OLLMchatGtk
 			switch (m.role) {
 				case "user-sent":
 					this.chat_view.append_user_message(m.content, session);
-					this.chat_view.show_waiting_indicator();
+					// Waiting indicator is shown when ui-waiting message is received (sent by session/agent)
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
 					this.chat_input.set_streaming(true);
+					break;
+				case "ui-waiting":
+					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
 					break;
 				case "ui":
 					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
@@ -405,7 +414,7 @@ namespace OLLMchatGtk
 			// Check if streaming is still active (might have been stopped)
 			if (!this.manager.session.is_running) {
 				return;
-			}	
+			}
 
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {

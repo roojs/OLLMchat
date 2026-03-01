@@ -127,7 +127,14 @@ Add targeted debug (or breakpoints) and run the Skill Runner until refinement ru
 5. **When we pass the check, does the view get the chunk?**  
    In the same handler after the `is_running` check, log before `append_assistant_chunk`. If we reach here for refinement but still see nothing on screen, the bug is in ChatView / renderer (e.g. not starting a new message or drawing to a hidden buffer).
 
-Run once with these in place; the first step that fails or shows an unexpected value is where the chain breaks. Update this plan with the result so the fix targets the real cause (e.g. ensure session stays active, or fix the handler’s `is_running` check, or fix the view for multiple streams).
+### Debug result (confirmed)
+
+With the minimal debug in place, refinement stream logs show:
+
+- **Session.handle_stream_chunk:** `is_active=true`, `current_stream_null=false` — session is active and we relay every chunk.
+- **ChatWidget.on_stream_chunk_handler:** `is_running=false` on every refinement chunk — handler runs but returns immediately and never draws.
+
+So the chain breaks in the ChatWidget: refinement chunks are relayed from the session, but `manager.session.is_running` is false when the handler runs, so every chunk is dropped. Either (1) the session we set `is_running = true` on in the Runner is not the same object as `manager.session` when the handler runs, or (2) something sets `is_running` back to false after we set it true and before refinement chunks arrive. The proposed fix (pass session in the signal, show when `session == manager.session`) avoids relying on `is_running` and will show refinement regardless.
 
 ---
 

@@ -481,11 +481,11 @@ namespace OLLMchat.Call
 			GLib.debug("Chat.send: Sending %d message(s):", this.messages.size);
 			for (int i = 0; i < this.messages.size; i++) {
 				var msg = this.messages[i];
-				GLib.debug("  Message %d: role='%s', content='%s'%s", 
-					i + 1, 
-					msg.role, 
-					msg.content,
-					msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
+				//GLib.debug("  Message %d: role='%s', content='%s'%s", 
+				//	i + 1, 
+				//	msg.role, 
+				//	msg.content,
+				//	msg.thinking != "" ? @", thinking='$(msg.thinking)'" : "");
 			}
 			
 			// Execute with streaming or non-streaming
@@ -548,7 +548,7 @@ namespace OLLMchat.Call
 			var message = this.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.debug("Request URL: %s", url);
-			GLib.debug("Request Body: %s", request_body);
+			//GLib.debug("Request Body: %s", request_body);
 
 			try {
 				yield this.handle_streaming_response(message, (chunk) => {

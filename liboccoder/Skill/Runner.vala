@@ -114,59 +114,80 @@ namespace OLLMcoder.Skill
 		{
 			this.session.messages.add(in_message);
 			this.session.is_running = true;
-			var previous_proposal = "";
-			var previous_proposal_issues = "";
-			for (var try_count = 0; try_count < 5; try_count++) {
-				var tpl = this.task_creation_prompt(
-					in_message.content, 
-					previous_proposal,
-					previous_proposal_issues,
-					this.sr_factory.skill_manager, 
-					this.sr_factory.project_manager);
-				this.user_request = tpl.user_to_document();
-				this.fill_tools();
-				var messages = new Gee.ArrayList<OLLMchat.Message>();
-				messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				var response_obj = yield this.chat_call.send(messages, cancellable);
-				var response = response_obj != null ? response_obj.message.content : "";
-				var parser = new OLLMcoder.Task.ResultParser(this, response);
-				parser.parse_task_list();
-				if (parser.issues == "") {
-					var skill_issues = this.task_list.validate_skills();
-					if (skill_issues == "") {
-						yield this.handle_task_list();
-						return;
+			this.session.manager.agent_status_change();
+			try {
+				var previous_proposal = "";
+				var previous_proposal_issues = "";
+				for (var try_count = 0; try_count < 5; try_count++) {
+					var tpl = this.task_creation_prompt(
+						in_message.content,
+						previous_proposal,
+						previous_proposal_issues,
+						this.sr_factory.skill_manager,
+						this.sr_factory.project_manager);
+					this.user_request = tpl.user_to_document();
+					this.fill_tools();
+					var messages = new Gee.ArrayList<OLLMchat.Message>();
+					messages.add(new OLLMchat.Message("system", tpl.filled_system));
+					messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					var response_obj = yield this.chat_call.send(messages, cancellable);
+					var response = response_obj != null ? response_obj.message.content : "";
+					var parser = new OLLMcoder.Task.ResultParser(this, response);
+					parser.parse_task_list();
+					if (parser.issues == "") {
+						var skill_issues = this.task_list.validate_skills();
+						if (skill_issues == "") {
+							yield this.handle_task_list(cancellable);
+							return;
+						}
+						parser.issues = skill_issues;
 					}
-					parser.issues = skill_issues;
+					previous_proposal = parser.proposal;
+					previous_proposal_issues = parser.issues;
+					if (try_count < 4) {
+						this.add_message(new OLLMchat.Message("ui-warning",
+							"Task list had issues (retrying):\n\n" + previous_proposal_issues.strip()));
+					}
 				}
-				previous_proposal = parser.proposal;
-				previous_proposal_issues = parser.issues;
+				var fail_msg = "Could not build valid task list after 5 tries.";
+				if (previous_proposal_issues != "") {
+					fail_msg += "\n\nIssues:\n" + previous_proposal_issues.strip();
+				}
+				this.add_message(new OLLMchat.Message("ui-warning", fail_msg));
+			} finally {
+				this.session.is_running = false;
+				this.session.manager.agent_status_change();
+				GLib.debug("Runner.send_async: is_running=false session %s", this.session.fid);
 			}
-			this.add_message(new OLLMchat.Message("ui", "Could not build valid task list after 5 tries."));
 		}
 
 		/** Deals with the task list only. Called by send_async when it has a valid task_list. */
-		private async void handle_task_list() throws GLib.Error
+		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.writer_approval = false;
 			var hit_max_rounds = true;
-			// Keep session is_running true so ChatWidget accepts refinement/iteration streams
-			// (finalize_streaming sets it false after the first response)
-			this.session.is_running = true;
 			for (var i = 0; i < 5; i++) {
+				if (cancellable != null && cancellable.is_cancelled()) {
+					this.add_message(new OLLMchat.Message("ui", "User cancelled request"));
+					this.session.is_running = false;
+					this.session.manager.agent_status_change();
+					return;
+				}
 				if (!this.task_list.has_pending_exec()) {
 					hit_max_rounds = false;
 					break;
 				}
-				this.add_message(new OLLMchat.Message("ui", "Refining tasks…"));
-				yield this.task_list.refine();
+				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				this.add_message(new OLLMchat.Message("ui-waiting", "Refining tasks" + model_part));
+				yield this.task_list.refine(cancellable);
 				yield this.task_list.run_until_user_approval();
 				if (this.task_list.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
 						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
 						this.session.is_running = false;
+						this.session.manager.agent_status_change();
 						return;
 					}
 					this.writer_approval = true;
@@ -177,7 +198,6 @@ namespace OLLMcoder.Skill
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
-			this.session.is_running = false;
 		}
 
 		/** Stub: request user approval before running writer tasks. Plan: implement UI. */
@@ -217,7 +237,9 @@ namespace OLLMcoder.Skill
 				var saved_list = this.task_list;
 				var tpl = this.iteration_prompt(previous_proposal_issues);
 				this.fill_tools();
-				this.add_message(new OLLMchat.Message("ui", "Refining task list…"));
+				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				this.add_message(new OLLMchat.Message("ui-waiting", "Refining task list" + model_part));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -228,6 +250,10 @@ namespace OLLMcoder.Skill
 				if (parser.issues != "") {
 					previous_proposal_issues = parser.issues;
 					this.task_list = saved_list;
+					if (try_count < 4) {
+						this.add_message(new OLLMchat.Message("ui-warning",
+							"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
+					}
 					continue;
 				}
 				var skill_issues = this.task_list.validate_skills();
@@ -235,9 +261,16 @@ namespace OLLMcoder.Skill
 					return;
 				}
 				previous_proposal_issues = skill_issues;
+				if (try_count < 4) {
+					this.add_message(new OLLMchat.Message("ui-warning",
+						"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
+				}
 			}
-			this.add_message(new OLLMchat.Message("ui", 
-				"Task list iteration: could not get valid task list after 5 tries."));
+			var iter_fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
+			if (previous_proposal_issues != "") {
+				iter_fail_msg += "\n\nIssues:\n" + previous_proposal_issues.strip();
+			}
+			this.add_message(new OLLMchat.Message("ui-warning", iter_fail_msg));
 		}
 	}
 }

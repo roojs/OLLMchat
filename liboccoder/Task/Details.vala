@@ -296,14 +296,19 @@ public class Details : OLLMchat.Agent.Base
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
 	 */
-	public async void refine() throws GLib.Error
+	public async void refine(GLib.Cancellable? cancellable = null) throws GLib.Error
 	{
 		this.refined_done = false;
 		this.refine_error = null;
 		var task_name = this.task_data.get("Name").to_markdown().strip();
-		this.add_message(new OLLMchat.Message("ui", "Refining: " + task_name + "…"));
+		var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+		var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+		this.add_message(new OLLMchat.Message("ui-waiting", "Refining: " + task_name + model_part));
 		yield this.fill_model();
 		for (var i = 0; i < 5; i++) {
+			if (cancellable != null && cancellable.is_cancelled()) {
+				return;
+			}
 			var tpl = this.refinement_prompt();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -312,7 +317,7 @@ public class Details : OLLMchat.Agent.Base
 			string response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
-					var response = yield this.chat_call.send(messages, null);
+					var response = yield this.chat_call.send(messages, cancellable);
 					response_text = response != null ? response.message.content : "";
 					break;
 				} catch (GLib.Error e) {
@@ -322,6 +327,9 @@ public class Details : OLLMchat.Agent.Base
 					this.refine_error = new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + e.message);
 					throw this.refine_error;
 				}
+			}
+			if (cancellable != null && cancellable.is_cancelled()) {
+				return;
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
@@ -333,7 +341,15 @@ public class Details : OLLMchat.Agent.Base
 				}
 				return;
 			}
+			if (i < 4) {
+				this.add_message(new OLLMchat.Message("ui-warning",
+					"Refinement for \"" + task_name + "\" had issues (retrying):\n\n" +
+					this.result_parser.issues.strip()));
+			}
 		}
+		this.add_message(new OLLMchat.Message("ui-warning",
+			"Refinement for \"" + task_name + "\" failed after 5 tries.\n\nIssues:\n" +
+			this.result_parser.issues.strip()));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
 
