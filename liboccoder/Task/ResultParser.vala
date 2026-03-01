@@ -120,8 +120,14 @@ public class ResultParser : Object
 		this.runner.task_list.goals_summary_md = 
 			this.document.headings.get("goals-summary").to_markdown_with_content();
 		this.runner.task_list.fill_names();
-		foreach (var step in this.runner.task_list.steps) {
+		var steps = this.runner.task_list.steps;
+		for (var i = 0; i < steps.size; i++) {
+			var step = steps.get(i);
 			foreach (var t in step.children) {
+				t.step_index = i;
+				if (t.slug() != "") {
+					this.runner.task_list.slugs.set(t.slug(), t);
+				}
 				t.validate_references();
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;

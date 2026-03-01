@@ -23,7 +23,7 @@ Do **not** treat modifying code or documents as a task unless the user's prompt 
 
 ## When adding new tasks - RAPIR and ordering
 
-When you add new tasks, follow the same discipline as in task creation. Order them in **RAPIR** order: Research → Analysis → Planning → Implementation → Review. Put independent tasks in the same **task section** (they may run in parallel); put tasks that depend on prior outputs in a later section. Sections run **sequentially**; within a section, tasks may run **in parallel**.
+When you add new tasks, follow the same discipline as in task creation. Order them in **RAPIR** order: Research → Analysis → Planning → Implementation → Review. Put independent tasks in the same **task section** (they may run in parallel); put tasks that depend on prior outputs in a later section. If a new task references another task's output (`#slug-results`), it must be in a **later** section than that task; do not put the consumer and producer in the same section. Sections run **sequentially**; within a section, tasks may run **in parallel**.
 
 ## Tasks that require user approval
 
@@ -64,7 +64,7 @@ Produce your response in the following structure. Use markdown **headings** for 
 - **Project description:** `[Project description](#project-description)` - when the task needs the project description.
 - **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title; use the **absolute path** for the path. Do **not** use relative paths.
 - **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use absolute path plus `#anchor` (e.g. section name or symbol).
-- **Task output:** When a task's output is referenced by a later task, give that task a **Name** (e.g. "Research 1"). Refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`).
+- **Task output:** When a task's output is referenced by a later task, give that task a **Name** (e.g. "Research 1"). Refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`). A task that references another task's output must be in a **later** task section than the producer; they cannot be in the same section.
 - **URL:** `[Title](https://…)` - when the task needs external content.
 
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.

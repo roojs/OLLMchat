@@ -60,6 +60,13 @@ public class Details : OLLMchat.Agent.Base
 	public string issues { get; set; default = ""; }
 
 	/**
+	 * Step index (0-based) of the section this task belongs to, or -1 if not set.
+	 * Set when the task list is built (e.g. in ResultParser.parse_task_list) so we don't
+	 * re-derive section from position later.
+	 */
+	public int step_index { get; set; default = -1; }
+
+	/**
 	 * Executor output summary (Result summary section).
 	 */
 	public string result { get; set; default = ""; }
@@ -174,9 +181,17 @@ public class Details : OLLMchat.Agent.Base
 				var anchor = href.substring(1);
 				if (anchor.has_suffix("-results")) {
 					var name_slug = anchor.substring(0, anchor.length - "-results".length);
-					if (!this.runner.task_list.has_slug(name_slug)) {
+					if (name_slug == "" || !this.runner.task_list.slugs.has_key(name_slug)) {
 						this.issues += "\n" + "Invalid reference target \"" +
 							 href + "\": no task for \"" + name_slug + "\".";
+						continue;
+					}
+					var ref_task = this.runner.task_list.slugs.get(name_slug);
+					if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
+						this.issues += "\n" + "Reference target \"" + href +
+							"\" refers to a task in the same or a later section. " +
+							"A task may only reference the Output of a task from an earlier section. " +
+							"Move this task to a later section or remove this reference.";
 					}
 					continue;
 				}

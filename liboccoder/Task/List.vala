@@ -37,6 +37,12 @@ public class List : Object
 	public string goals_summary_md { get; set; default = ""; }
 
 	/**
+	 * Slug → task (Details). Populated when the list is built; callers use
+	 * .set(), .has_key(), .get() directly.
+	 */
+	public Gee.HashMap<string,Details> slugs { get; private set; default = new Gee.HashMap<string,Details>(); }
+
+	/**
 	 * Number of run_child (execution) callbacks still running for the current
 	 * step. Caller sets = children.size before .begin(); each callback does
 	 * num_exec_running-- and resumes ''resume_when_exec_done'' when it runs.
@@ -83,24 +89,6 @@ public class List : Object
 				t.fill_name(++index);
 			}
 		}
-	}
-
-	/**
-	 * True if any task's slug() equals name_slug. name_slug = anchor with "-results" stripped, e.g. "research-1".
-	 */
-	public bool has_slug(string name_slug)
-	{
-		if (name_slug == "") {
-			return false;
-		}
-		foreach (var step in this.steps) {
-			foreach (var t in step.children) {
-				if (t.slug() == name_slug) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	/**
