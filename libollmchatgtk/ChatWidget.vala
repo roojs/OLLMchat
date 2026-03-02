@@ -158,7 +158,25 @@ namespace OLLMchatGtk
 				this.chat_view.append_tool_message(message);
 			});
 			this.manager.message_added.connect(this.on_message_created);
-			this.manager.session_activated.connect(this.on_session_activated);
+			
+			// Connect to session_activated signal to set correct streaming state after restoration
+			this.manager.session_activated.connect((session) => {
+				this.restoring_session = false;
+				GLib.Idle.add(() => {
+					this.chat_input.set_streaming(session.is_running);
+					// When restoring a session that is still running, turn autoscroll on and scroll to end so live output is visible
+					if (session.is_running) {
+						this.chat_view.scroll_enabled = true;
+						this.chat_view.scroll_to_bottom();
+					}
+					return false;
+				});
+			});
+
+			// When agent sets is_running, update send/stop button from current session
+			this.manager.agent_status_change.connect(() => {
+				this.chat_input.set_streaming(this.manager.session.is_running);
+			});
 
 			this.append(main_box);
 
@@ -299,6 +317,10 @@ namespace OLLMchatGtk
 					case "ui":
 						this.chat_view.append_tool_message(msg);
 						break;
+					case "ui-warning":
+						var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + msg.content, msg.thinking);
+						this.chat_view.append_complete_assistant_message(warning_msg, session);
+						break;
 					case "think-stream":
 						// For think-stream, content is the thinking text
 						var stream_msg = new OLLMchat.Message("assistant", "", msg.content);
@@ -321,21 +343,7 @@ namespace OLLMchatGtk
 			// Don't re-enable scrolling here - keep it disabled after loading history
 			// Scrolling will be re-enabled when new messages arrive (in on_message_created)
 		}
-		
-		private void on_session_activated(OLLMchat.History.SessionBase session)
-		{
-			this.restoring_session = false;
-			GLib.Idle.add(() => {
-				this.streaming_state(session.is_running);
-				// When restoring a session that is still running, turn autoscroll on and scroll to end so live output is visible
-				if (session.is_running) {
-					this.chat_view.scroll_enabled = true;
-					this.chat_view.scroll_to_bottom();
-				}
-				return false;
-			});
-		}
-		
+
 		/**
 		 * Handler for message_created signal from manager.
 		 * Displays messages in the UI based on their role and is_ui_visible property.
@@ -362,16 +370,21 @@ namespace OLLMchatGtk
 			switch (m.role) {
 				case "user-sent":
 					this.chat_view.append_user_message(m.content, session);
-					this.chat_view.show_waiting_indicator();
+					// Waiting indicator is shown when ui-waiting message is received (sent by session/agent)
 					// Activate streaming so we can receive and display the response
 					// This handles both normal user messages and tool continuation replies
 					this.streaming_state(true);
 					break;
+				case "ui-waiting":
+					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
+					break;
 				case "ui":
-					// Render UI messages using the general renderer (same as assistant messages)
-					// This ensures code blocks are properly rendered as SourceView widgets
 					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
 					this.chat_view.append_complete_assistant_message(ui_msg, session);
+					break;
+				case "ui-warning":
+					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(warning_msg, session);
 					break;
 				case "think-stream":
 					// For think-stream, content is the thinking text
@@ -462,7 +475,7 @@ namespace OLLMchatGtk
 			// Session.finalize_streaming() sets is_running=false before relaying, so we must not return on the final chunk.
 			if (!this.manager.session.is_running && !response.done) {
 				return;
-			}	
+			}
 
 			// Process chunk (even if done, there might be final text to process)
 			if (new_text.length > 0) {
@@ -499,8 +512,10 @@ namespace OLLMchatGtk
 				return;
 			}
 
-			// No tool calls - this is the final response
-			this.streaming_state(false);
+			// No tool calls - this is the final response. Do not set_streaming(false) here:
+			// the send/stop button is driven by session.is_running via agent_status_change.
+			// For skill runner, the first response (task list) is not the end — handle_task_list
+			// continues; only when agent send_async returns does is_running become false.
 			
 			// Clear last_sent_text on successful response
 			this.last_sent_text = null;

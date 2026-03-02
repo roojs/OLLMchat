@@ -1,0 +1,40 @@
+## Task
+- **What is needed:** Locate the implementation files, command definitions, or entry points for the test agent tool within the project repository.
+- **Skill:** analyze_codebase
+- **References:** [Project description](#project-description)
+- **Expected output:** A collection of file paths and code excerpts that define or register the test agent commands.
+
+## Tool Calls
+```json
+{
+  "name": "codebase_search",
+  "arguments": {
+    "query": "test agent tool implementation",
+    "element_type": "class",
+    "language": "vala",
+    "max_results": 20
+  }
+}
+```
+```json
+{
+  "name": "codebase_search",
+  "arguments": {
+    "query": "test agent command registration",
+    "element_type": "method",
+    "language": "vala",
+    "max_results": 20
+  }
+}
+```
+```json
+{
+  "name": "codebase_search",
+  "arguments": {
+    "query": "test agent entry point",
+    "element_type": "function",
+    "language": "vala",
+    "max_results": 20
+  }
+}
+```

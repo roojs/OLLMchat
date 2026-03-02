@@ -1,0 +1,45 @@
+## Original prompt
+
+see what commands are available for the test agent tool
+
+## Goals / summary
+
+Identify and list all commands provided by the test agent tool in the OLLMchat project by researching the codebase and any associated documentation, then synthesize the findings into a concise summary.
+
+## Tasks
+
+### Task section 1
+
+- **Name** Codebase Search
+- **What is needed** Locate the implementation files, command definitions, or entry points for the test agent tool within the project repository.
+- **Skill** analyze_codebase
+- **References** [Project description](#project-description)
+- **Expected output** A collection of file paths and code excerpts that define or register the test agent commands.
+
+- **Name** Docs Search
+- **What is needed** Find any documentation (README, markdown files, docs folders) that describe the test agent tool and list its available commands.
+- **Skill** analyze_docsbase
+- **References** [Project description](#project-description)
+- **Expected output** References to documentation sections or files that mention the test agent tool and its commands.
+
+### Task section 2
+
+- **Name** Code Analysis
+- **What is needed** Extract and summarize the concrete command names, arguments, and usage patterns for the test agent tool from the code excerpts found in the previous task.
+- **Skill** analyze_code
+- **References** [Codebase Search Results](#codebase-search-results)
+- **Expected output** A structured list of commands with brief descriptions derived from the source code.
+
+- **Name** Docs Analysis
+- **What is needed** Synthesize the command information found in the documentation into a clear list, noting any differences or additional details compared to the code analysis.
+- **Skill** analyze_docs
+- **References** [Docs Search Results](#docs-search-results)
+- **Expected output** A concise summary of commands as described in the project's documentation.
+
+### Task section 3
+
+- **Name** Summary Plan
+- **What is needed** Produce a combined summary that lists all available commands for the test agent tool, merging insights from both code and documentation analyses, and format it for easy reading.
+- **Skill** plan_create
+- **References** [Code Analysis Results](#code-analysis-results), [Docs Analysis Results](#docs-analysis-results)
+- **Expected output** A plan document (or markdown section) enumerating each test agent command with its purpose and usage.

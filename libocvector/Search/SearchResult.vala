@@ -38,7 +38,7 @@ namespace OLLMvector.Search
 		/**
 		 * Code location metadata.
 		 */
-		public OLLMvector.VectorMetadata metadata { get; set; }
+		public OLLMfiles.SQT.VectorMetadata metadata { get; set; }
 		
 		/**
 		 * Get file object (computed from metadata.file_id).
@@ -74,7 +74,7 @@ namespace OLLMvector.Search
 			OLLMfiles.Folder folder,
 			int64 vector_id,
 			float distance,
-			OLLMvector.VectorMetadata metadata
+			OLLMfiles.SQT.VectorMetadata metadata
 		)
 		{
 			this.sql_db = sql_db;
@@ -117,7 +117,7 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Format this result as markdown for CLI or tool output.
-		 * Heading (### Result (distance: X)), then - **key** value bullet points (File, Element, Lines, Description, ast-path, Reference link), then fenced code block and optional truncation note. Uses code_snippet() internally.
+		 * Heading (#### Result (distance: X)), then - **key** value bullet points (File, Element, Lines, Description, ast-path, Reference link), then fenced code block and optional truncation note. Uses code_snippet() internally.
 		 *
 		 * @param max_snippet_lines Max lines used for snippet (-1 = no limit, no truncation note)
 		 * @return Formatted markdown string for this result
@@ -130,8 +130,7 @@ namespace OLLMvector.Search
 			var more_lines = (max_snippet_lines != -1 && line_count > max_snippet_lines)
 				? "... (" + (line_count - max_snippet_lines).to_string() + " more lines)\n"
 				: "";
-			var lang = file.language ?? "";
-			return "### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
+			return "#### Result (distance: " + "%.4f".printf(this.distance) + ")\n\n"
 				+ "- **File** " + file.path + "\n"
 				+ "- **Element** " + this.metadata.element_name + " (" + this.metadata.element_type + ")\n"
 				+ "- **Lines** " + this.metadata.start_line.to_string() + "-" + this.metadata.end_line.to_string() + "\n"
@@ -141,7 +140,7 @@ namespace OLLMvector.Search
 					+ (file.path + (this.metadata.ast_path != "" ? "#" + this.metadata.ast_path : ""))
 					+ ")\n"
 				+ "\n"
-				+ "```" + lang + "\n" + snippet + "\n```\n"
+				+ "```" + file.language + "\n" + snippet + "\n```\n"
 				+ more_lines
 				+ "\n";
 		}

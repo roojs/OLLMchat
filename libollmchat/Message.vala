@@ -27,7 +27,9 @@ namespace OLLMchat
 	 * * "content-stream" / "content-non-stream": Visible assistant content
 	 * * "think-stream": Thinking output (for models that support it)
 	 * * "tool": Tool execution results
-	 * * "ui": UI messages displayed via tool_message
+	 * * "ui": UI messages displayed in chat
+	 * * "ui-warning": User-friendly warning in chat (e.g. "we couldn't use that model, using default")
+	 * * "ui-waiting": Transient placeholder shown while waiting for response (e.g. "waiting for a reply", "Refining..."); content is the label; animated dots; cleared when content arrives
 	 * * "system": System prompts
 	 * * "end-stream": Stream end marker (not displayed)
 	 * * "done": Completion marker (not displayed)
@@ -105,6 +107,14 @@ namespace OLLMchat
 					case "ui":
 						is_hidden = true;
 						is_ui_visible = true;  // Display via tool_message
+						break;
+					case "ui-warning":
+						is_hidden = true;
+						is_ui_visible = true;  // User-friendly warning in chat (e.g. model fallback)
+						break;
+					case "ui-waiting":
+						is_hidden = true;
+						is_ui_visible = true;  // Transient waiting/placeholder; content = label; not persisted
 						break;
 					case "done":
 						is_done = true;

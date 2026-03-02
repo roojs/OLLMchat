@@ -153,10 +153,16 @@ namespace OLLMchat.History
 			}
 			
 			for (int i = 0; i < this.messages.size - 1; i++) {
+				if (this.messages[i].role == "ui-waiting") {
+					continue;  // Transient; do not restore
+				}
 				this.manager.message_added(this.messages[i], this);
 			}
 			
 			var last_msg = this.messages[this.messages.size - 1];
+			if (last_msg.role == "ui-waiting") {
+				return;  // Transient; do not restore
+			}
 			
 			if (!this.is_running || 
 				(last_msg.role != "content-stream" && last_msg.role != "think-stream")) {
@@ -191,6 +197,10 @@ namespace OLLMchat.History
 		 */
 		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
+			// Debug: refinement stream (see docs/plans/skill-runner-refinement-stream-to-ui.md) — log only new stream start
+			if (this.current_stream_message == null && (new_text.length > 0 || response.done)) {
+				GLib.debug("Session.handle_stream_chunk: new stream is_active=%s", this.is_active.to_string());
+			}
 			// If session is inactive, increment unread count
 			// This prevents inactive sessions from updating the UI with streaming output
 			if (!this.is_active) {
@@ -267,10 +277,6 @@ namespace OLLMchat.History
 			this.messages.add(metrics_msg);
 			// Relay to Manager for UI (metrics should be displayed)
 			this.manager.message_added(metrics_msg, this);
-			
-			// Set running state to false when response is done
-			this.is_running = false;
-			GLib.debug("Stopping running");
 			
 			this.save_async.begin();
 			this.notify_property("display_info");  // Reply count changes when message is added
@@ -452,6 +458,9 @@ namespace OLLMchat.History
 					// Set flag on messages for extra info and set timestamps
 					var messages_array = new Json.Array();
 					foreach (var msg in this.messages) {
+						if (msg.role == "ui-waiting") {
+							continue;  // Transient placeholder; do not persist
+						}
 						msg.include_history_info = true;
 						// Set timestamp if not already set
 						if (msg.timestamp == "") {
@@ -500,6 +509,7 @@ namespace OLLMchat.History
 			}
 			// Set running state to false when stopping
 			this.is_running = false;
+			this.manager.agent_status_change();
 			GLib.debug("Stopping running");
 		}
 		
@@ -642,6 +652,10 @@ namespace OLLMchat.History
 			
 			// Emit message_added signal for "user-sent" so UI displays it immediately
 			this.manager.message_added(user_sent_msg, this);
+			// Emit ui-waiting so UI shows animated "waiting for (pretty model) to reply..." (not added to messages; transient)
+			var model_label = this.model_usage.model != "" ? this.model_usage.display_name_with_size() : "";
+			var wait_label = model_label != "" ? "waiting for (%s) to reply".printf(model_label) : "waiting for a reply";
+			this.manager.message_added(new Message("ui-waiting", wait_label), this);
 			// Note: display_info notification not needed here - user-sent messages don't affect reply count
 			
 			// Continue to agent processing below (user message is passed to agent, not added here)
@@ -651,9 +665,6 @@ namespace OLLMchat.History
 			
 			// Session has reference to AgentHandler
 			if (this.agent != null) {
-				// Set running state to true as soon as we send the message
-				this.is_running = true;
-				GLib.debug("Starting running");
 				yield this.agent.send_async(message, cancellable);
 			} else {
 				throw new OllmError.INVALID_ARGUMENT("No agent available for session");

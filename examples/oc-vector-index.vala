@@ -21,6 +21,7 @@ class VectorIndexerApp : VectorAppBase
 	protected static bool opt_recurse = true;
 	protected static bool opt_reset_database = false;
 	protected static bool opt_create_project = false;
+	protected static bool opt_project_summary = false;
 	protected static string? opt_embed_model = null;
 	protected static string? opt_analyze_model = null;
 	protected static string? opt_data_dir = null;
@@ -39,6 +40,7 @@ Examples:
   {ARG} libocvector/
   {ARG} --recurse libocvector/
   {ARG} --create-project libocvector/
+  {ARG} --project-summary libocvector/
   {ARG} --data-dir=/custom/path libocvector/
   {ARG} --reset-database
 """; }
@@ -47,6 +49,7 @@ Examples:
 		{ "recurse", 'r', 0, OptionArg.NONE, ref opt_recurse, "Recurse into subfolders (default: true)", null },
 		{ "reset-database", 0, 0, OptionArg.NONE, ref opt_reset_database, "Reset the vector database (delete vectors, metadata, and reset scan dates)", null },
 		{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Create the folder as a project if it's not already one", null },
+		{ "project-summary", 0, 0, OptionArg.NONE, ref opt_project_summary, "Only generate project summary from existing metadata (file scan runs; indexer does not)", null },
 		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
@@ -87,6 +90,7 @@ Examples:
 		opt_recurse = true;
 		opt_reset_database = false;
 		opt_create_project = false;
+		opt_project_summary = false;
 		opt_embed_model = null;
 		opt_analyze_model = null;
 		opt_data_dir = null;
@@ -128,7 +132,7 @@ Examples:
 		if (opt_reset_database) {
 			GLib.debug("opt_reset_database is true - resetting database");
 			var sql_db = new SQ.Database(this.db_path, false);
-			OLLMvector.VectorMetadata.reset_database(sql_db, this.vector_db_path);
+			OLLMfiles.SQT.VectorMetadata.reset_database(sql_db, this.vector_db_path);
 			stdout.printf("✓ Database reset complete\n");
 			return;
 		}
@@ -220,51 +224,6 @@ Examples:
 		              "Embed Model: %s\n\n",
 		              tool_config.analysis.model, tool_config.embed.model);
 		
-		// Get dimension first, then create database
-		var temp_db = new OLLMvector.Database(this.config, 
-			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
-		var dimension = yield temp_db.embed_dimension();
-		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
-		
-		GLib.debug("Using vector database: %s", this.vector_db_path);
-		
-		var indexer = new OLLMvector.Indexing.Indexer(
-			this.config,
-			vector_db,
-			sql_db,
-			manager
-		);
-		
-		string? current_file_path = null;
-		int current_file_num = 0;
-		int total_files = 0;
-		
-		indexer.progress.connect((current, total, file_path, success) => {
-			if (success) {
-				sql_db.backupDB();
-				return;
-			}
-			int percentage = (int)((current * 100.0) / total);
-			// Trim any trailing whitespace from file_path in case of database corruption
-			var clean_path = file_path.strip();
-			current_file_path = clean_path;
-			current_file_num = current;
-			total_files = total;
-			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, clean_path);
-			stdout.flush();
-		});
-		
-		indexer.element_scanned.connect((element_name, element_number, total_elements) => {
-			if (current_file_path != null) {
-				int percentage = (int)((current_file_num * 100.0) / total_files);
-				stdout.printf("\r%d/%d files %d%% done - %s - %s (%d/%d)", 
-					current_file_num, total_files, percentage, current_file_path, element_name, element_number, total_elements);
-				stdout.flush();
-			}
-		});
-		
-		stdout.printf("=== Indexing ===\n");
-		
 		// Look up FileBase object from database
 		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
 		var query = OLLMfiles.FileBase.query(sql_db, manager);
@@ -344,6 +303,54 @@ Examples:
 		// This filters ignored/non-text files and handles removals
 		stdout.printf("Updating project files list...\n");
 		folder_obj.project_files.update_from(folder_obj);
+		
+		// --project-summary: only run project summary LLM from existing metadata; skip indexer
+		if (opt_project_summary) {
+			stdout.printf("Generating project summary (indexer disabled)...\n\n");
+			var project_analysis = new OLLMvector.Indexing.ProjectAnalysis(this.config, sql_db, folder_obj);
+			var project_meta = yield project_analysis.analyze();
+			stdout.printf("\n✓ Project summary saved to database (file_id=%lld)\n", project_meta.file_id);
+			stdout.printf("=== Project summary complete ===\n");
+			return;
+		}
+		
+		stdout.printf("=== Indexing ===\n");
+		// Get dimension first, then create database
+		var temp_db = new OLLMvector.Database(this.config, 
+			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+		var dimension = yield temp_db.embed_dimension();
+		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
+		GLib.debug("Using vector database: %s", this.vector_db_path);
+		var indexer = new OLLMvector.Indexing.Indexer(
+			this.config,
+			vector_db,
+			sql_db,
+			manager
+		);
+		string? current_file_path = null;
+		int current_file_num = 0;
+		int total_files = 0;
+		indexer.progress.connect((current, total, file_path, success) => {
+			if (success) {
+				sql_db.backupDB();
+				return;
+			}
+			int percentage = (int)((current * 100.0) / total);
+			var clean_path = file_path.strip();
+			current_file_path = clean_path;
+			current_file_num = current;
+			total_files = total;
+			stdout.printf("\r%d/%d files %d%% done - %s", current, total, percentage, clean_path);
+			stdout.flush();
+		});
+		indexer.element_scanned.connect((element_name, element_number, total_elements) => {
+			if (current_file_path != null) {
+				int percentage = (int)((current_file_num * 100.0) / total_files);
+				stdout.printf("\r%d/%d files %d%% done - %s - %s (%d/%d)", 
+					current_file_num, total_files, percentage, current_file_path, element_name, element_number, total_elements);
+				stdout.flush();
+			}
+		});
 		
 		try {
 			stdout.printf("Calling indexer.index_filebase...\n");

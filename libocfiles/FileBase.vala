@@ -189,6 +189,12 @@ namespace OLLMfiles
 		public string language { get; set; default = ""; }
 		
 		/**
+		 * Returns one or more lines for the project summary list.
+		 * @param indent Leading indent for this line; Folder passes indent + "  " to children.
+		 */
+		public abstract string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent);
+		
+		/**
 		 * Last cursor line number (stored in database, default: 0).
 		 */
 		public int cursor_line { get; set; default = 0; }
@@ -498,9 +504,8 @@ namespace OLLMfiles
 				if (new_values != null) {
 					var updated = sq.updateOld(this, new_values);
 					if (updated) {
-						GLib.debug("UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
+						GLib.debug("FileBase.saveToDB: UPDATE (changed fields only) id=%d path='%s'", (int)this.id, this.path);
 					}
-					GLib.debug("FileBase.saveToDB: after updateOld id=%d", (int)this.id);
 				} else {
 					GLib.debug("UPDATE (all fields) id=%d path='%s'", (int)this.id, this.path);
 					sq.updateById(this);

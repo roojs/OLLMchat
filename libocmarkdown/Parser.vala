@@ -106,9 +106,33 @@ namespace Markdown
 		BLOCK,
 		LIST,
 		FORMAT
+		;
+		/** True if this type is a block (Block node) for document create(); otherwise Format. */
+		public bool is_block()
+		{
+			switch (this) {
+				case FormatType.PARAGRAPH:
+				case FormatType.HEADING_1:
+				case FormatType.HEADING_2:
+				case FormatType.HEADING_3:
+				case FormatType.HEADING_4:
+				case FormatType.HEADING_5:
+				case FormatType.HEADING_6:
+				case FormatType.BLOCKQUOTE:
+				case FormatType.HORIZONTAL_RULE:
+				case FormatType.FENCED_CODE_QUOTE:
+				case FormatType.FENCED_CODE_TILD:
+				case FormatType.TABLE:
+				case FormatType.TABLE_ROW:
+				case FormatType.TABLE_HCELL:
+				case FormatType.TABLE_CELL:
+					return true;
+				default:
+					return false;
+			}
+		}
     }
-	
-	
+
 	/**
 	 * Parser for markdown text that calls specific callbacks on Render.
 	 * 
@@ -132,7 +156,9 @@ namespace Markdown
 		public FormatType last_line_block { get; set; default = FormatType.NONE; }
 		public FormatType current_block { get; set; default = FormatType.NONE; }
 		public bool at_line_start { get; set; default = true; }
-		
+		/** True when at the first character of list item content (after marker); avoid ending list on block_match == 0 (plan 1.8.1). */
+		public bool at_list_start { get; set; default = false; }
+
 		/**
 		 * Creates a new Parser instance.
 		 * 
@@ -169,6 +195,7 @@ namespace Markdown
 			this.last_line_block = FormatType.NONE;
 			this.current_block = FormatType.NONE;
 			this.at_line_start = true;
+			this.at_list_start = false;
 		}
 
 		/**
@@ -218,7 +245,7 @@ namespace Markdown
 			// never contains newlines.
 			var str = "";
 			//GLib.debug("  [str] INIT: str='%s' (empty)", str);
-			
+
 			while (chunk_pos < chunk.length) {
 				saved_chunk_pos = chunk_pos;
 				var c = chunk.get_char(chunk_pos);
@@ -341,6 +368,11 @@ namespace Markdown
 					// else fall through to process current char as inline
 					if (chunk_pos != saved_chunk_pos) {
 						continue;
+					}
+					// At list item content start, no block consumed → clear so next line can end list (plan 1.8.1)
+					if (this.current_block == FormatType.ORDERED_LIST || 
+						this.current_block == FormatType.UNORDERED_LIST) {
+						this.at_list_start = false;
 					}
 				}
 
@@ -471,7 +503,7 @@ namespace Markdown
 			//GLib.debug("  [str] FINAL FLUSH: str='%s'", str);
 			this.renderer.on_node(FormatType.TEXT, false, str);
 			// Only at end of chunks (no more data will ever come) do we close the open block.
-			// At end of chunk only, more add() may follow — we must not close or we break the next chunk.
+			// At end of chunk only, more add() may follow - we must not close or we break the next chunk.
 			if (is_end_of_chunks && this.current_block != FormatType.NONE) {
 				// We only track "in a list (either kind)"; renderer was opened with LIST_BLOCK. Close it that way.
 				if (this.current_block == FormatType.ORDERED_LIST
@@ -626,6 +658,7 @@ namespace Markdown
 			}
 			// Reset inline formatting so next block starts clean (CommonMark: inline scoped per block)
 			if (str != "") {
+				//GLib.debug("  [str] FLUSH on newline: str='%s'", str);
 				this.renderer.on_node(FormatType.TEXT, false, str);
 				str = "";
 			}

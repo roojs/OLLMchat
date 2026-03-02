@@ -43,7 +43,7 @@ namespace OLLMcoder
 		 * 
 		 * For CodeAssistant, this regenerates the system prompt on each call
 		 * to include current context. Overrides base implementation to build
-		 * complex system prompt with current context.
+		 * complex system prompt with current context.o
 		 * 
 		 * @param message The message object to send (the user message that was just added to session)
 		 * @param cancellable Optional cancellable for canceling the request
@@ -51,57 +51,36 @@ namespace OLLMcoder
 		 */
 		public override async void send_async(OLLMchat.Message message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			// Build full message history from this.session
-			var messages = new Gee.ArrayList<OLLMchat.Message>();
-			
-			// Build system prompt at this point in time with current context
-			// AgentFactory regenerates system prompt on each call to include current context
-			// Use factory.system_message() to get system prompt with current context
-			// This regenerates the system prompt with current context (open files, workspace, etc.)
-			// Pass this agent so factory can access session, client, etc.
-			string system_content = this.factory.system_message(this);
-			if (system_content != "") {
-				var system_msg = new OLLMchat.Message("system", system_content);
-				// Add system message to session.messages for logging/persistence
-				this.session.messages.add(system_msg);
-				// Add to API messages array
-				messages.add(system_msg);
-			}
-			
-			// Add the current "user" message to session.messages with expanded context.
-			// factory.generate_user_prompt() adds <additional_data> (current_file, attached_files,
-			// manually_added_selection) and <user_query> so the model sees open file details.
-			var user_content = this.factory.generate_user_prompt(message.content);
-			this.session.messages.add(new OLLMchat.Message("user", user_content));
-			
-			// Filter and add messages from this.session.messages (full conversation history)
-			// Filter to get API-compatible messages (system, user, assistant, tool)
-			// Exclude non-API message types (user-sent, ui, etc.)
-			foreach (var msg in this.session.messages) {
-				// Filter: only include API-compatible message roles
-				if (msg.role == "user" 
-					|| msg.role == "assistant" || msg.role == "tool") {
-					messages.add(msg);
+			this.session.is_running = true;
+			this.session.manager.agent_status_change();
+			try {
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+
+				string system_content = this.factory.system_message(this);
+				if (system_content != "") {
+					var system_msg = new OLLMchat.Message("system", system_content);
+					this.session.messages.add(system_msg);
+					messages.add(system_msg);
 				}
-				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
-				// (these are for UI/persistence only)
+
+				var user_content = this.factory.generate_user_prompt(message.content);
+				this.session.messages.add(new OLLMchat.Message("user", user_content));
+
+				foreach (var msg in this.session.messages) {
+					if (msg.role == "user"
+						|| msg.role == "assistant" || msg.role == "tool") {
+						messages.add(msg);
+					}
+				}
+
+				yield this.fill_model();
+
+				var response = yield this.chat_call.send(messages, cancellable);
+			} finally {
+				this.session.is_running = false;
+				this.session.manager.agent_status_change();
+				GLib.debug("OLLMcoder.Agent.send_async: is_running=false session %s", this.session.fid);
 			}
-			
-			// Model and options should not be set here - this is too late in the flow and breaks the chain.
-			// They should be set when the chat is created in the constructor or when session properties change,
-			// not at the last step before sending a message. See 1.2.7 cleanup plan for decision on where
-			// model/options get set properly.
-			
-			// Update cancellable for this request
-			this.chat_call.cancellable = cancellable;
-			
-			// Send full message array using new send() method
-			var response = yield this.chat_call.send(messages, cancellable);
-			
-			// Process response and add assistant messages to session via session.send()
-			// This is handled via streaming callbacks/handlers - the response will be processed
-			// through the client's stream_chunk signal which is connected to handle_stream_chunk()
-			// The final assistant message will be added to session via on_stream_chunk() or similar
 		}
 		
 	}

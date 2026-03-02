@@ -26,9 +26,11 @@
   <gresource prefix="/ocvector">
     <file>analysis-prompt-doc-file.txt</file>
     <file>analysis-prompt-doc-section.txt</file>
+    <file>analysis-prompt-dependencies.txt</file>
     <file>analysis-prompt-file.txt</file>
     <file>analysis-prompt-folder.txt</file>
     <file>analysis-prompt-image.txt</file>
+    <file>analysis-prompt-project.txt</file>
     <file>analysis-prompt.txt</file>
   </gresource>
   <gresource prefix="/wrapped-tools">
@@ -38,6 +40,12 @@
     <file>Read.tool</file>
     <file>WebFetch.tool</file>
     <file>WebSearch.tool</file>
+  </gresource>
+  <gresource prefix="/skill-prompts">
+    <file>task_creation_initial.md</file>
+    <file>task_refinement.md</file>
+    <file>task_list_iteration.md</file>
+    <file>task_execution.md</file>
   </gresource>
 </gresources>
 

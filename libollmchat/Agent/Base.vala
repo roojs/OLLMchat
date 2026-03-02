@@ -270,12 +270,7 @@ namespace OLLMchat.Agent
 					continue; // Continue to next tool call
 				}
 			}
-			
-			// Set is_running = true when tool replies will continue the conversation
-			// This ensures the session appears as "running" when tool replies are sent
-			this.session.is_running = true;
-			GLib.debug("Agent.execute_tools: Setting is_running=true for session %s (tool replies will continue conversation)", this.session.fid);
-			
+
 			return reply_messages;
 		}
 		
@@ -300,6 +295,29 @@ namespace OLLMchat.Agent
 		}
 		
 		/**
+		 * Set chat_call.model from session; customize if model_obj is set. On customize failure,
+		 * add ui-warning message and use default model. Override in subclasses (e.g. Skill Runner).
+		 */
+		protected virtual async void fill_model()
+		{
+			if (this.session.model_usage.model_obj == null) {
+				this.chat_call.model = this.session.model_usage.model;
+				return;
+			}
+			try {
+				var customized_model_name = yield this.session.model_usage.model_obj.customize(
+					this.connection,
+					this.chat_call.options
+				);
+				this.chat_call.model = customized_model_name;
+			} catch (Error e) {
+				this.session.add_message(new Message("ui-warning",
+					"You selected this model, however we were unable to use it. Using the default model instead."));
+				this.chat_call.model = this.session.model_usage.model;
+			}
+		}
+
+		/**
 		* Sends a Message object asynchronously with streaming support.
 		* 
 		* This is the new method for sending messages. Builds full message history from
@@ -311,63 +329,31 @@ namespace OLLMchat.Agent
 		*/
 		public virtual async void send_async(Message message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
-			// Build full message history from this.session
-			var messages = new Gee.ArrayList<Message>();
-			
-			// base donest add systme messages - it's just a generic wrapper
-			// system message are added by real agents.
-			
-			// Add the current "user" message to session.messages (after processing)
-			// This ensures the "user" message is in session.messages for API filtering
-			this.session.messages.add(message);
-			
-			// Filter and add messages from this.session.messages (full conversation history)
-			// Filter to get API-compatible messages (system, user, assistant, tool)
-			// Exclude non-API message types (user-sent, ui, etc.)
-			foreach (var msg in this.session.messages) {
-				// Filter: only include API-compatible message roles
-				if (msg.role == "user" 
-					|| msg.role == "assistant" || msg.role == "tool") {
-					messages.add(msg);
-				}
-				// Skip: "user-sent", "ui", "think-stream", "content-stream", "end-stream", "done", etc.
-				// (these are for UI/persistence only)
-			}
-			
-			// Set is_running = true when sending (for both initial sends and tool continuation replies)
-			// This ensures the session appears as "running" when tool replies continue the conversation
 			this.session.is_running = true;
-			GLib.debug("Agent.send_async: Setting is_running=true for session %s", this.session.fid);
-			
-			// Phase 4: Customize model if num_ctx is set (not auto)
-			// Call model.customize() to get the model name to use (creates temp model if needed)
-			// When model_obj is null (e.g. CLI --url without verification), use model name as-is
-			if (this.session.model_usage.model_obj != null) {
-				try {
-					var customized_model_name = yield this.session.model_usage.model_obj.customize(
-						this.connection,
-						this.chat_call.options
-					);
-					this.chat_call.model = customized_model_name;
-				} catch (Error e) {
-					GLib.warning("Agent.send_async: Failed to customize model '%s': %s. Using base model.",
-						this.session.model_usage.model_obj.name, e.message);
+			this.session.manager.agent_status_change();
+			try {
+				// Build full message history from this.session
+				var messages = new Gee.ArrayList<Message>();
+
+				// Add the current "user" message to session.messages (after processing)
+				this.session.messages.add(message);
+
+				// Filter and add messages from this.session.messages (full conversation history)
+				foreach (var msg in this.session.messages) {
+					if (msg.role == "user"
+						|| msg.role == "assistant" || msg.role == "tool") {
+						messages.add(msg);
+					}
 				}
-			} else {
-				this.chat_call.model = this.session.model_usage.model;
+
+				yield this.fill_model();
+
+				var response = yield this.chat_call.send(messages, cancellable);
+				// Response processed via streaming callbacks / session.handle_stream_chunk
+			} finally {
+				this.session.is_running = false;
+				this.session.manager.agent_status_change();
 			}
-			
-			
-			// Update cancellable for this request
-			this.chat_call.cancellable = cancellable;
-			
-			// Send full message array using new send() method
-			var response = yield this.chat_call.send(messages, cancellable);
-			
-			// Process response and add assistant messages to session via session.send()
-			// This is handled via streaming callbacks/handlers - the response will be processed
-			// through Chat's direct method calls to agent.handle_stream_chunk() which relays to
-			// session.handle_stream_chunk() for persistence and UI updates
 		}
 		
 		// Implement Agent.Interface

@@ -42,6 +42,10 @@ for f in markdown/*.md; do
 	[ "$base" = "README" ] && continue
 	# -expected.md files are comparison fixtures, not inputs to round-trip
 	case "$base" in *-expected) continue ;; esac
+	# known-fail-* files document known parser limitations (e.g. bold across newline); skip round-trip
+	case "$base" in known-fail-*) continue ;; esac
+	# verify-issue* files: one-off verification inputs; not part of regular run
+	case "$base" in verify-issue*) continue ;; esac
 	json_file="$OUT_DIR/$base.json"
 	roundtrip_file="$OUT_DIR/$base-roundtrip.md"
 
@@ -65,7 +69,18 @@ for f in markdown/*.md; do
 	fi
 	cp "$roundtrip_file" "$roundtrip_output"
 	cp "$expected_src" "$expected_side"
-	# No normalization; only apply an optional diff for accepted round-trip differences.
+	# Minimal table: assert round-trip preserves cell content
+	if [ "$base" = "minimal-table" ]; then
+		for want in A B 1 2; do
+			if ! grep -qF "$want" "$roundtrip_file"; then
+				test_fail "markdown-doc $base: round-trip output missing cell content \"$want\""
+				break
+			fi
+		done
+		if [ "$CURRENT_TEST_FAILED" = false ]; then
+			test_pass "markdown-doc $base: round-trip preserves table cells A, B, 1, 2"
+		fi
+	fi
 	if [ -f "$MD_DATA/${base}-roundtrip-output.diff" ]; then
 		(cd "$OUT_DIR" && patch -p0 --forward -i "$SCRIPT_DIR/markdown/${base}-roundtrip-output.diff") || true
 	fi

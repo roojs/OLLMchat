@@ -430,19 +430,9 @@ namespace OLLMcoder
 				return this.widget as Object;
 			}
 			
-			// Database is required for migration check
+			// Database is required (migration is run by the main window at startup)
 			if (this.project_manager.db == null) {
 				return null;
-			}
-			
-			// Run migration if database file doesn't exist
-			var db_file = GLib.File.new_for_path(this.project_manager.db.filename);
-			if (!db_file.query_exists()) {
-				// Database file doesn't exist - run migration
-				var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
-				// Start migration (async, but we don't wait - migration will save to DB when done)
-				migrator.migrate_all.begin();
-				// Note: migrate_all() will call backupDB() when it completes
 			}
 			
 			// Create SourceView with ProjectManager

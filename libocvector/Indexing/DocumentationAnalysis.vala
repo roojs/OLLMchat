@@ -86,7 +86,9 @@ namespace OLLMvector.Indexing
 		/**
 		 * Level A: Analyzes entire document and generates summary and category.
 		 */
-		private async void analyze_document(VectorMetadata root_element, DocumentationTree tree) throws GLib.Error
+		private async void analyze_document(
+			OLLMfiles.SQT.VectorMetadata root_element, 
+			DocumentationTree tree) throws GLib.Error
 		{
 			// Skip if already has description
 			if (root_element.description != "") {
@@ -162,7 +164,7 @@ namespace OLLMvector.Indexing
 		private async void analyze_sections(DocumentationTree tree) throws GLib.Error
 		{
 			// Top-down traversal: process parent sections before children
-			var sections_to_process = new Gee.ArrayList<VectorMetadata>();
+			var sections_to_process = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			
 			// Collect all sections (excluding root)
 			foreach (var element in tree.elements) {

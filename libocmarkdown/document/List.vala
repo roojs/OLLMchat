@@ -20,6 +20,27 @@ namespace Markdown.Document
 		public bool ordered { get; set; }
 		public uint indentation { get; set; }
 
+		/**
+		 * Build a map from this list: children are ListItems. Iterate and call key_value on each; key = return value, value = caller-created block.
+		 */
+		public Gee.Map<string, Block> to_key_map()
+		{
+			var result = new Gee.HashMap<string, Block>();
+			foreach (var node in this.children) {
+				var item = node as ListItem;
+				if (item == null) {
+					continue;
+				}
+				var v = new Block(FormatType.PARAGRAPH);
+				var k = item.key_value(v);
+				if (k == "") {
+					continue;
+				}
+				result.set(k, v);
+			}
+			return result;
+		}
+
 		public override string to_markdown()
 		{
 			string line_prefix = string.nfill((int)this.indentation, ' ');

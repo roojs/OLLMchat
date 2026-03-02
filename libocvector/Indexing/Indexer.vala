@@ -478,7 +478,7 @@ namespace OLLMvector.Indexing
 		public async void reset_database(string vector_db_path) throws GLib.Error
 		{
 			// Use the static VectorMetadata.reset_database method to do the actual reset
-			OLLMvector.VectorMetadata.reset_database(this.sql_db, vector_db_path);
+			OLLMfiles.SQT.VectorMetadata.reset_database(this.sql_db, vector_db_path);
 			
 		// Get dimension first, then create database
 			var temp_db = new OLLMvector.Database(this.config, vector_db_path,

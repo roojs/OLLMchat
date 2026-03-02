@@ -260,7 +260,7 @@ namespace OLLMvector.Tool
 				throw new GLib.IOError.FAILED("Database not available");
 			}
 			
-			var vector_query = OLLMvector.VectorMetadata.query(sql_db);
+			var vector_query = OLLMfiles.SQT.VectorMetadata.query(sql_db);
 			var vector_stmt = vector_query.selectPrepare(sql);
 			
 			if (this.element_type != "" && !search_both_function_and_method) {
@@ -333,6 +333,45 @@ namespace OLLMvector.Tool
 			this.send_ui("txt", result_title, formatted);
 			
 			return formatted;
+		}
+		
+		/**
+		 * Get code snippet from file using buffer system.
+		 * 
+		 * @param file The file to get snippet from
+		 * @param start_line Starting line number (1-based, inclusive)
+		 * @param end_line Ending line number (1-based, inclusive)
+		 * @param max_lines Maximum number of lines to return (-1 for no limit)
+		 * @return Code snippet as string
+		 */
+		private async string get_code_snippet(OLLMfiles.File file, int start_line, int end_line, int max_lines = -1)
+		{
+			try {
+				// Ensure buffer exists
+				if (file.buffer == null) {
+					file.manager.buffer_provider.create_buffer(file);
+				}
+				
+				// Ensure buffer is loaded
+				if (!file.buffer.is_loaded) {
+					yield file.buffer.read_async();
+				}
+				
+				// Convert from 1-based (metadata) to 0-based (buffer API)
+				var start_idx = start_line - 1;
+				var end_idx = end_line - 1;
+				
+				// Apply max_lines truncation if specified
+				if (max_lines != -1 && (end_idx - start_idx + 1) > max_lines) {
+					end_idx = start_idx + max_lines - 1;
+				}
+				
+				// Get text from buffer (0-based, inclusive)
+				return file.buffer.get_text(start_idx, end_idx);
+			} catch (GLib.Error e) {
+				GLib.debug("codebase_search.get_code_snippet: Failed to read file %s: %s", file.path, e.message);
+				return "";
+			}
 		}
 		
 		/**

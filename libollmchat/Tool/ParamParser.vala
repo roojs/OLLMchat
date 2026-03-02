@@ -57,6 +57,11 @@ namespace OLLMchat.Tool
 		public string command_template { get; private set; default = ""; }
 		
 		/**
+		 * Example call from @example annotation (e.g. one-line JSON for Tool Calls).
+		 */
+		public string example { get; private set; default = ""; }
+		
+		/**
 		 * Raw parameter description string (all @param declarations).
 		 */
 		public string parameter_description { get; private set; default = ""; }
@@ -194,6 +199,12 @@ namespace OLLMchat.Tool
 				case "@command":
 					if (tokens.length > 1) {
 						this.command_template = string.joinv(" ", tokens[1:tokens.length]);
+					}
+					break;
+					
+				case "@example":
+					if (tokens.length > 1) {
+						this.example = string.joinv(" ", tokens[1:tokens.length]);
 					}
 					break;
 					

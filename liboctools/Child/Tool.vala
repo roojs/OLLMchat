@@ -53,6 +53,12 @@ namespace OLLMtools.Child
 		public string agent_instructions { get; set; }
 		
 		/**
+		 * Example call JSON (from agent frontmatter ''example:'').
+		 * When set, ''example_call'' returns this; otherwise a default with ''agent_name'' is used.
+		 */
+		public string agent_example { get; set; default = ""; }
+		
+		/**
 		 * Tool name (returns agent_name).
 		 */
 		public override string name { get { return this.agent_name; } }
@@ -64,6 +70,8 @@ namespace OLLMtools.Child
 			return this.agent_description;
 		} }
 		
+		public override string title { get { return this.agent_name; } }
+		public override string example_call { get { return this.agent_example; } }
 		/**
 		 * Parameter description for the tool.
 		 */

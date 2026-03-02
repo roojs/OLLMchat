@@ -178,7 +178,11 @@ namespace Markdown
 			indent_level++;
 		}
 
-		public override void on_li(bool is_start, int list_number = 0, uint space_skip = 0, int task_checked = -1)
+		public override void on_li(
+			bool is_start, 
+			int list_number = 0, 
+			uint space_skip = 0, 
+			int task_checked = -1)
 		{
 			if (!is_start) {
 				indent_level--;

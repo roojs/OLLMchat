@@ -42,6 +42,7 @@ ocfiles_src = files([
   'Diff/Patch.vala',
   'Diff/PatchApplier.vala',
   'Diff/Differ.vala',
+  'SQT/VectorMetadata.vala',  # Vector metadata (SQL) - OLLMfiles.SQT namespace
 ])
 
 # Build rpath for libraries to find each other in build directory

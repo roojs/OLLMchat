@@ -357,6 +357,14 @@ namespace OLLMapp
 			this.project_manager.buffer_provider = new OLLMcoder.BufferProvider();
 			this.project_manager.git_provider = new OLLMcoder.GitProvider();
 			
+			// Run migration if database file doesn't exist (e.g. first run or new data dir)
+			if (this.project_manager.db != null) {
+				var db_file = GLib.File.new_for_path(this.project_manager.db.filename);
+				if (!db_file.query_exists()) {
+					var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
+					yield migrator.migrate_all();
+				}
+			}
 			// Cleanup old backup files and database records on startup
 			if (this.project_manager.db != null) {
 				var max_days = config.files_max_deleted_days > 0 ? config.files_max_deleted_days : 30;
@@ -404,6 +412,16 @@ namespace OLLMapp
 			// Register CodeAssistant agent
 			var code_assistant = new OLLMcoder.AgentFactory(this.project_manager);
 			this.history_manager.agent_factories.set(code_assistant.name, code_assistant);
+
+			// Register SkillRunner (Conductor) agent: factory creates SkillManager from directories
+			// big FIXME - we will need t change this.
+			var skills_dirs = new Gee.ArrayList<string>();
+			skills_dirs.add(
+				GLib.Path.build_filename(
+					GLib.Environment.get_home_dir(), "gitlive", "OLLMchat", "resources", "skills"));
+					
+			var skill_runner = new OLLMcoder.Skill.Factory(this.project_manager, skills_dirs, "");
+			this.history_manager.agent_factories.set(skill_runner.name, skill_runner);
 			
 			// TODO: Clipboard feature needs proper design - see TODO.md
 			// Register clipboard metadata for file reference paste support

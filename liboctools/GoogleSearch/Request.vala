@@ -58,9 +58,14 @@ namespace OLLMtools.GoogleSearch
 			return default_deserialize_property(property_name, out value, pspec, property_node);
 		}
 
-		public string to_markdown()
+		public string to_markdown(int index = 0)
 		{
-			return "### [" + this.title + "](" + this.link + ")\n" + this.snippet + "\n";
+			var head = (index > 0) ?
+				"#### Result (" + index.to_string() + ")\n\n"
+				: "#### " + this.title + "\n\n";
+			return head
+				+ "- **Link** [" + this.title + "](" + this.link + ")\n\n"
+				+ "- **Description**\n\n```markdown\n" + this.snippet + "\n```\n";
 		}
 	}
 
@@ -130,8 +135,8 @@ namespace OLLMtools.GoogleSearch
 		public string to_markdown()
 		{
 			var result = "**Total results:** " + this.total_results.to_string() + "\n\n";
-			foreach (var item in this.items) {
-				result += item.to_markdown();
+			for (var i = 0; i < this.items.size; i++) {
+				result += this.items.get(i).to_markdown(i + 1);
 			}
 			return result;
 		}

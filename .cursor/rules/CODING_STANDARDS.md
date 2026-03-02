@@ -15,8 +15,13 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
 - **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
 - **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
-- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead?
+- **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead? When initializing string arrays, use **`string[] name = {}`** only — do not use `var x = new string[0]` or similar.
+- **Loops and nesting**: In loops, use **`continue`** to skip cases and keep the rest of the loop body at top level; avoid **`else`** and nested `if` inside loops.
 - **Character looping**: Does the plan avoid looping through characters unless absolutely 100% no other way? Does it prefer string methods (`index_of`, `contains`, `substring`, etc.) and regex (`GLib.Regex`) instead?
+- **File info try/catch**: Does the plan use try/catch around file metadata (e.g. `query_info()`) only when file existence is unknown — not when we have just read the file or otherwise established it exists?
+- **Try/catch scope**: Does the plan keep try/catch focused on the minimal code that can throw — not blanketing large areas? Wrap only the specific call(s) that may throw; keep setup and non-throwing code outside the try block.
+- **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
+- **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -199,6 +204,26 @@ namespace MyNamespace
 }
 ```
 
+## Underscore prefix on variables and fields
+
+**CRITICAL - FORBIDDEN:** Do NOT use a leading underscore (`_`) on variable names, field names, or property names. Use plain names and access with `this.` where needed.
+
+**Bad:**
+```vala
+private Gee.HashMap<string, Skill> _by_path = new Gee.HashMap<string, Skill>();
+private Gee.HashMap<string, Skill> _by_name = new Gee.HashMap<string, Skill>();
+private string _cached_system_message = "";
+this._by_path.clear();
+```
+
+**Good:**
+```vala
+private Gee.HashMap<string, Skill> by_path = new Gee.HashMap<string, Skill>();
+private Gee.HashMap<string, Skill> by_name = new Gee.HashMap<string, Skill>();
+private string cached_system_message = "";
+this.by_path.clear();
+```
+
 ## This Prefix
 
 **IMPORTANT:** Always use `this.` prefix when accessing properties or calling methods on the current instance.
@@ -236,6 +261,10 @@ class MyClass
 ## Reducing Nesting
 
 **IMPORTANT:** Avoid nested code by using early returns, break/continue statements, and avoiding else clauses when possible. This improves readability and reduces cognitive complexity.
+
+**STRICT — Loops:** In `foreach`/`for`/`while` loops, use **`continue`** to handle each case and keep the loop body flat. Do **not** use `else` or chain `else if` inside the loop; denest by handling one case, then `continue`, then the next case. The remainder of the iteration (the “default” path) stays at top level without being inside an `else`.
+
+**STRICT — Else:** Prefer to avoid `else`. Use early return or `continue` so the main path is not inside an `else` block. If you have `if (a) { ... } else if (b) { ... } else { ... }`, restructure so each branch returns or continues and the flow is linear.
 
 **IMPORTANT:** Put shorter code in if statements and return/continue if feasible, rather than having large nested code blocks. Extract complex logic into separate methods when the main flow becomes hard to follow.
 
@@ -357,6 +386,127 @@ var home = Environment.get_home_dir();
 var path = GLib.Path.build_filename("/home", "user");
 var file = GLib.File.new_for_path(path);
 var home = GLib.Environment.get_home_dir();
+```
+
+## File info and try/catch
+
+**IMPORTANT:** Use try/catch around file metadata operations (e.g. `GLib.File.query_info()`, modification time) **only when we do not know if the file exists**. If we have already successfully read the file (or otherwise established that it exists), do not wrap the subsequent `query_info()` (or similar) call in try/catch or check `query_exists()` — just call it. Let failures propagate.
+
+**Bad (redundant when file was just read):**
+```vala
+// ... we just read this.path into body ...
+var file = GLib.File.new_for_path(this.path);
+if (file.query_exists()) {
+    try {
+        var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        this.mtime = info.get_modification_time().to_unix();
+    } catch (GLib.Error e) {
+        this.mtime = 0;
+    }
+}
+```
+
+**Good (file known to exist):**
+```vala
+// ... we just read this.path into body ...
+var file = GLib.File.new_for_path(this.path);
+var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+this.mtime = info.get_modification_time().to_unix();
+```
+
+**Good (file may not exist — try/catch appropriate):**
+```vala
+var file = GLib.File.new_for_path(path);
+try {
+    var info = file.query_info(GLib.FileAttribute.TIME_MODIFIED, GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+    return info.get_modification_time().to_unix();
+} catch (GLib.Error e) {
+    return 0;
+}
+```
+
+## Try/Catch Scope
+
+**IMPORTANT:** Keep try/catch focused on the **minimal code that can throw**. Do not blanket large areas of code. Wrap only the specific call(s) that may throw; keep setup, building arguments, and non-throwing code outside the try block.
+
+**Bad (blanketing a large area):**
+```vala
+try {
+    var definition = this.runner.task_definition.get(this);
+    var tpl = PromptTemplate.template("task_refinement");
+    var user_content = tpl.fill(...);
+    var system_content = tpl.system_fill();
+    var messages = new Gee.ArrayList<...>();
+    messages.add(...);
+    messages.add(...);
+    var response = yield this.chat_call.send(messages, null);
+    var response_text = response != null ? (response.content ?? "") : "";
+    var parsed = Parser.parse(response_text);
+    if (parsed.issues != "") {
+        this.refine_error = new GLib.IOError.INVAL(parsed.issues);
+    } else {
+        this.tool_calls.clear();
+        foreach (var call in parsed.tool_calls) {
+            this.tool_calls.add(call);
+        }
+    }
+} catch (GLib.Error e) {
+    this.refine_error = e;
+}
+```
+
+**Good (try only around the call that can throw):**
+```vala
+var definition = this.runner.task_definition.get(this);
+var tpl = PromptTemplate.template("task_refinement");
+var user_content = tpl.fill(...);
+var system_content = tpl.system_fill();
+var messages = new Gee.ArrayList<...>();
+messages.add(...);
+messages.add(...);
+string response_text;
+try {
+    var response = yield this.chat_call.send(messages, null);
+    response_text = response != null ? (response.content ?? "") : "";
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+RefinementOutputParserResult parsed;
+try {
+    parsed = RefinementOutputParser.parse(response_text);
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+if (parsed.issues != "") {
+    this.refine_error = new GLib.IOError.INVAL(parsed.issues);
+} else {
+    this.tool_calls.clear();
+    foreach (var call in parsed.tool_calls) {
+        this.tool_calls.add(call);
+    }
+}
+this.refined_done = true;
+```
+
+Alternatively, a single try can wrap only the send + parse if both are the only operations that throw:
+```vala
+// ... setup outside try ...
+string response_text;
+RefinementOutputParserResult parsed;
+try {
+    var response = yield this.chat_call.send(messages, null);
+    response_text = response != null ? (response.content ?? "") : "";
+    parsed = RefinementOutputParser.parse(response_text);
+} catch (GLib.Error e) {
+    this.refine_error = e;
+    this.refined_done = true;
+    return;
+}
+// ... handle parsed outside try ...
 ```
 
 ## Using Statements
@@ -662,7 +812,9 @@ this.some_method(
 );
 ```
 
-## Debug Statements
+## Debug and Warning Statements
+
+**IMPORTANT:** When using `GLib.debug()` or `GLib.warning()`, do NOT include class names, method names, or location information in the message. The runtime logs file and line automatically, so including them is redundant.
 
 **IMPORTANT:** When adding debug output using `GLib.debug()`, do NOT prefix the message with function names, class names, or location information. The debug output system already includes the filename and line number automatically, making such prefixes redundant.
 
@@ -671,6 +823,7 @@ this.some_method(
 **Bad:**
 ```vala
 GLib.debug("[Client.models] Starting models() call");
+GLib.warning("SkillRunner.fill_model: Failed to customize model");
 GLib.debug("[BaseCall.parse_models_array] Called for %s", call_type);
 GLib.debug("[ChatInput.update_models] Got %d models", count);
 ```
@@ -700,6 +853,8 @@ GLib.debug("Model '%s' not found in available_models (current: '%s', available: 
 ```
 
 The debug output will automatically show the file and line number, so you don't need to include that information in the message itself.
+
+**Same rule for GLib.warning():** Never include class or method names (e.g. `"MyClass.method_name:"`). Use a short, user- or operator-friendly phrase; file and line are in the log.
 
 
 ## Gee.HashMap Access
@@ -976,6 +1131,19 @@ var result = builder.str;
 
 **IMPORTANT:** Never use `Gee.ArrayList<string>` when building an array of strings just to join it. 
 
+**STRICT — String array initialization:** When you declare a string array that you will grow with `+=`, initialize it **only** as `string[] name = {}`. Do **not** use `var name = new string[0]` or any other form. The empty array literal `{}` is the required form.
+
+**Bad (string array init):**
+```vala
+var parts = new string[0];
+string[] parts = new string[0];
+```
+
+**Good (string array init):**
+```vala
+string[] parts = {};
+```
+
 **IMPORTANT:** If you're building an array of strings **only** to join it, use plain string concatenation instead. Do NOT build an array just to join it - use string concatenation directly.
 
 **IMPORTANT:** Only use `string[]` arrays when:
@@ -1039,7 +1207,7 @@ var result = string.joinv("\n", lines);
 
 ## Property Getters vs Get Methods
 
-**IMPORTANT:** Avoid `get_*()` methods for simple property access. Use property getters with `get; private set;` or `get; set;` instead. Only use `get_*()` methods when the operation is complex, involves computation, or requires parameters.
+**IMPORTANT:** Generally avoid `get_*()` method names. They conflict with Vala/GLib conventions (e.g. property getters expose `get_*` in C), are redundant when a verb-less or action name works (e.g. `system_message()` instead of `get_system_message()`), and encourage wasteful wrappers. Prefer: (1) **properties** with `get; private set;` or `get; set;` for simple or computed values; (2) **verb-less or action method names** for methods that build or compute something (e.g. `system_message()`, `user_prompt()`, `project_manager` property). Only use a `get_*()` name when the operation clearly requires parameters and “get” is the natural verb (e.g. `get_file_by_path(string path)`).
 
 **Bad:**
 ```vala

@@ -310,6 +310,50 @@ test_bubble = executable('oc-test-bubble',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
+# Build oc-test-skill-agent executable (testable skills agent flow; plan 1.23.19)
+# Extends TestAppBase for standard --debug, --model, and log handling.
+# Needs ocvector for OLLMvector.Registry (codebase_search tool for execute/refine).
+oc_test_skill_agent = executable('oc-test-skill-agent',
+  dependencies: [
+    test_window_deps,
+    ocsqlite_vapi_dep,
+    ocfiles_vapi_dep,
+    ollmchat_vapi_dep,
+    ocmarkdown_vapi_dep,
+    ocvector_vapi_dep
+  ],
+  sources: ['TestAppBase.vala', 'oc-test-skill-agent.vala'],
+  link_with: [ollmchat_base_lib, occoder_base_lib],
+  include_directories: [
+    include_directories('../libocfiles'),
+    include_directories('../libollmchat'),
+    include_directories('../liboccoder'),
+    include_directories('../libocvector')
+  ],
+  build_rpath: build_rpath,
+  vala_args: [
+    '--pkg=sqlite3',
+    '--pkg=ocsqlite',
+    '--pkg=gmodule-2.0',
+    '--pkg=tree-sitter',
+    '--pkg=ocfiles',
+    '--pkg=ollmchat',
+    '--pkg=ocmarkdown',
+    '--pkg=ocvector',
+    '--pkg=fiass',
+    # Don't use --pkg=occoder when linking with occoder_base_lib
+    '--vapidir', meson.current_build_dir() / '..' / 'libocsqlite',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocfiles',
+    '--vapidir', meson.current_build_dir() / '..' / 'libollmchat',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocmarkdown',
+    '--vapidir', meson.current_build_dir() / '..' / 'liboccoder',
+    '--vapidir', meson.current_build_dir() / '..' / 'libocvector',
+    '--vapidir', meson.current_source_dir() / '../vapi'
+  ],
+  install: true,
+  install_dir: get_option('datadir') / 'doc' / 'ollmchat'
+)
+
 # Build oc-diff executable (unified diff output)
 # Only depends on libocfiles (no GTK or vector search dependencies)
 # Diff classes moved from liboccoder to libocfiles
@@ -374,11 +418,13 @@ ocvector_resources = gnome.compile_resources(
   'ocvector-resources',
   '../resources/gresources.xml',
   source_dir: [
-	'../resources/agents', 
-	'../resources/ollmchat-agents/code-assistant', 
+	'../resources/agents',
+	'../resources/ollmchat-agents/code-assistant',
 	'../resources',
-	 '../resources/wrapped-tools', 
-	 '../resources/ocvector'],
+	'../resources/wrapped-tools',
+	'../resources/ocvector',
+	'../resources/skill-prompts'
+	],
   c_name: 'ocvector_resources'
 )
 

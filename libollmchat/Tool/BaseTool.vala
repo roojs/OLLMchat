@@ -115,7 +115,8 @@ namespace OLLMchat.Tool
 	// Abstract properties that subclasses must implement
 		public abstract string name { get; }
 		public abstract string description { get; }
-		public string title { get; set; default = ""; }
+		public abstract string title { get; }
+		public abstract string example_call { get; }
 		public abstract string  parameter_description { get; default = ""; }
 		
 		// Abstract method that subclasses must implement
@@ -235,9 +236,13 @@ namespace OLLMchat.Tool
 		 *
 		 * @param chat_call The chat call context for this tool execution
 		 * @param tool_call The tool call object containing id, function name, and arguments
+		 * @param is_markdown When true, called from skills agent path; output is shown with header_raw. No reformatting of request output.
 		 * @return String result or error message (prefixed with "ERROR: " for errors)
 		 */
-		public virtual async string execute(Call.Chat chat_call, Response.ToolCall tool_call)
+		public virtual async string execute(
+			Call.Chat chat_call, 
+			Response.ToolCall tool_call, 
+			bool is_markdown = false)
 		{
 			// Convert parameters Json.Object to Json.Node for deserialization
 			var parameters_node = new Json.Node(Json.NodeType.OBJECT);

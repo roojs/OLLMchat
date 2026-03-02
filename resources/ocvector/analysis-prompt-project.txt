@@ -1,28 +1,65 @@
-You are a code analysis assistant. Your task is to generate a structured PROJECT SUMMARY for a codebase.
+You are a code analysis assistant. Your task is to generate a structured PROJECT SUMMARY for a codebase in markdown format.
 
-CRITICAL: Use only the information provided below. Do not infer or add information.
+CRITICAL: Use only the information provided below. Do not infer or add information. Write substantive content for each section; do not copy or repeat the instructions or placeholders. When you refer to specific files (e.g. build files, docs), do not imply they are the only ones — if there are many of that type, say so (e.g. "and others in subdirectories"); you need not list them all, but avoid leaving readers to assume the ones mentioned are the only files.
 
 Input:
 - Project path: {project_path}
-- List of folders and files with their one-line descriptions:
+- List of folders and files with their one-line descriptions (truncated folders show "total N out of M files shown"):
 
 {folders_and_files_list}
 
-Output format — fill in each section. Keep each section concise (a few lines). Do not include dependencies or package lists here.
+---
 
-OVERVIEW:
-<one short paragraph describing what the project is and its primary purpose>
+## Summary of what to produce
 
-LANGUAGES:
-<comma-separated or bullet list of primary languages used>
+**Overview** — One short paragraph: what the project is and its primary purpose, based on the folder/file list and any descriptions.
 
-DOCUMENTATION_LOCATION:
-<where docs live, e.g. docs/, README, .cursor/rules>
+**Languages** — Rank by usage. Use exactly these labels: Majority (main language), Significant (substantial use), Minor (small amount). One language per line with its label.
 
-FOLDER_STRUCTURE:
-<short description of main top-level folders and their roles>
+**Documentation** — Give a real summary of the project’s documentation: what exists and what it covers. Write a few sentences of description for each group (do not just list links). Then list a few relevant files as markdown links using **relative paths from the project root**: format `[Title](path)` or `[Title](path#anchor)` for a section. When there are many files of a given type (e.g. build files, rule files), mention that there are others — do not list every one, but do not imply the ones you link are the only ones (e.g. "root build file; others in subdirectories"). Group into: General README info; Coding standards; Build instructions. This section can be a bit longer so the description is useful.
 
-Return ONLY the filled template above. No extra text, no markdown code fences.
+**Folder Summary** — All top-level folders and any other significant subdirectories. Include subdirectories that contain a large amount of relevant content (e.g. planning documents, design docs, specs) so that important information is not missed when working with the codebase. Multiple lines with bullet points. Each line: `- `path` - explanation` (path in backticks, then a short explanation of that folder’s role).
+
+Use exactly these markdown headings: ### Overview, ### Languages, ### Documentation, ### Folder Summary. Put a blank line after each ### heading. Return only the filled markdown; no extra text, no code fences.
+
+---
+
+## Example output (structure and level of detail)
+
+### Overview
+
+This project is a XYZ application. It does A and B. The codebase is organized around a core library and a front end.
+
+### Languages
+
+LanguageOne - Majority
+LanguageTwo - Significant
+Other - Minor
+
+### Documentation
+
+The main README describes the project and how to get started. There is a file that contains coding standards and style guidelines.
+
+- **General README info** — [README](README.md) covers setup and overview. [CONTRIBUTING](CONTRIBUTING.md) for how to contribute.
+- **Coding standards** — A file that contains coding standards and conventions. [Coding standards](docs/CODING_STANDARDS.md).
+- **Build instructions** — XYZ is the build system; a command to compile things (e.g. `xyz build` or similar). [build file](build.xyz) at the root; there may be other build files in subdirectories.
+
+### Folder Summary
+
+(All top-level folders and any other significant subdirectories — e.g. folders with many planning/design docs or other relevant content; avoid missing important locations.)
+
+- `src/` — Core library and main application code.
+- `lib/` — Shared libraries or modules.
+- `docs/` — Documentation and design notes.
+- `docs/plans/` — Planning and design documents (if such a folder exists and has substantial content).
+- `tests/` — Unit and integration tests.
+
+---
+
+## Your output
+
+Produce your summary for the project below. Use the same headings and format as the example. Write real content from the folder/file list; do not repeat this template or the example text.
+
 ---
 Project path: {project_path}
 
@@ -30,4 +67,4 @@ Folders and files with descriptions:
 
 {folders_and_files_list}
 
-Fill in the OVERVIEW, LANGUAGES, DOCUMENTATION_LOCATION, and FOLDER_STRUCTURE sections. Return ONLY the filled template. No extra text, no markdown code fences.
+Fill in ### Overview, ### Languages, ### Documentation (substantive description plus a few file links; when there are many of a type e.g. build files, note that there are others — do not imply listed files are the only ones), and ### Folder Summary (all top-level folders and significant subdirectories; multiple lines, bullet points: - `path` - explanation). Return ONLY the filled markdown. No extra text, no code fences.

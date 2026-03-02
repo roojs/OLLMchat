@@ -69,6 +69,7 @@ valadoc_docs = custom_target('valadoc',
     '../libocfiles/Diff/Patch.vala',
     '../libocfiles/Diff/PatchApplier.vala',
     '../libocfiles/Diff/Differ.vala',
+    '../libocfiles/SQT/VectorMetadata.vala',  # OLLMfiles.SQT namespace
     # libocmarkdown sources (must come before libocmarkdowngtk)
     '../libocmarkdown/Parser.vala',
     '../libocmarkdown/TableState.vala',
@@ -154,6 +155,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/ChatPermission/Provider.vala',
     '../libollmchat/ChatPermission/Dummy.vala',
     '../libollmchat/Prompt/namespace.vala',  # Prompt namespace documentation
+    '../libollmchat/Prompt/Template.vala',  # Must come before libocvector PromptTemplate (extends this)
     '../libollmchat/Agent/namespace.vala',  # Agent namespace documentation
     '../libollmchat/Agent/Factory.vala',  # Must come before History/Manager.vala (Manager uses Agent.Factory)
     '../libollmchat/Agent/Interface.vala',  # Must come before Base (Base implements Interface)
@@ -184,6 +186,8 @@ valadoc_docs = custom_target('valadoc',
     '../liboctools/EditMode/Tool.vala',
     '../liboctools/EditMode/Request.vala',
     '../liboctools/EditMode/Stream.vala',
+    '../liboctools/WriteFile/Tool.vala',
+    '../liboctools/WriteFile/Request.vala',
     '../liboctools/RunCommand/Tool.vala',
     '../liboctools/RunCommand/Bubble.vala',  # Must come before Request.vala (Request uses Bubble)
     '../liboctools/RunCommand/Scan.vala',  # Post-completion overlay scanner (must come before Overlay)
@@ -213,13 +217,20 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/SourceView.vala',
     '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
     '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
+    '../liboccoder/Skill/PromptTemplate.vala',
+    '../liboccoder/Skill/Definition.vala',
+    '../liboccoder/Skill/Manager.vala',
+    '../liboccoder/Skill/Factory.vala',
+    '../liboccoder/Skill/Runner.vala',
+    '../liboccoder/Task/Step.vala',     # Task: Step → Details
+    '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
+    '../liboccoder/Task/Tool.vala',     # Task: Tool → Details
+    '../liboccoder/Task/List.vala',     # Task: List → Step, Details
+    '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)
     '../liboccoder/Approvals.vala',
-    '../liboccoder/AgentFactory.vala',  # Must come after SourceView (AgentFactory uses SourceView)
-    '../liboccoder/Agent.vala',  # Must come after AgentFactory (Agent uses AgentFactory)
     # libocvector sources (depends on libocsqlite, libollmchat, libocfiles)
     '../libocvector/namespace.vala',  # Namespace documentation
-    '../libocvector/VectorMetadata.vala',
     '../libocvector/Index.vala',
     '../libocvector/Database.vala',
     '../libocvector/VectorBase.vala',  # Base class for vector operations

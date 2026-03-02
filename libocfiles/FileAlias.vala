@@ -122,6 +122,14 @@ namespace OLLMfiles
 			}
 		}
 		
+		public override string to_summary(Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, string indent)
+		{
+			if (this.points_to != null) {
+				return this.points_to.to_summary(keymap, indent);
+			}
+			return indent + "- (alias) " + GLib.Path.get_basename(this.path);
+		}
+		
 		/**
 		 * Programming language - delegates to target file for tree display.
 		 */

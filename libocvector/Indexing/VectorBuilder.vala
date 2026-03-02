@@ -34,7 +34,7 @@ namespace OLLMvector.Indexing
 	/**
 	 * Vector building layer for code file processing.
 	 * 
-	 * Takes Tree from Analysis layer and converts each VectorMetadata
+	 * Takes Tree from Analysis layer and converts each OLLMfiles.SQT.VectorMetadata
 	 * into vector embeddings, storing them in FAISS and metadata in SQL.
 	 */
 	public class VectorBuilder : Object
@@ -57,7 +57,7 @@ namespace OLLMvector.Indexing
 			this.sql_db = sql_db;
 			
 			// Initialize SQL schema if needed
-			VectorMetadata.initDB(sql_db);
+			OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
 		}
 		
 		/**
@@ -76,8 +76,8 @@ namespace OLLMvector.Indexing
 			}
 			
 			// Separate elements into unchanged (reuse vector) and changed/new (create new vector)
-			var unchanged_elements = new Gee.ArrayList<VectorMetadata>();
-			var changed_elements = new Gee.ArrayList<VectorMetadata>();
+			var unchanged_elements = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			var changed_elements = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
 			var elements_to_delete = new Gee.HashSet<int>();
 			
 			// Build set of current element keys (ast_path or fallback) for deletion detection
@@ -151,7 +151,7 @@ namespace OLLMvector.Indexing
 
 			// Delete old metadata entries
 			foreach (var id in elements_to_delete) {
-				VectorMetadata.query(this.sql_db).deleteId((int64)id);
+				OLLMfiles.SQT.VectorMetadata.query(this.sql_db).deleteId((int64)id);
 			}
 			
 			GLib.debug("VectorBuilder.process_file: %d unchanged (reuse vector), %d changed/new (create vector), %d deleted", 
@@ -269,7 +269,7 @@ namespace OLLMvector.Indexing
 		}
 		
 		/**
-		 * Embed a single description and store one VectorMetadata (e.g. for image files).
+		 * Embed a single description and store one OLLMfiles.SQT.VectorMetadata (e.g. for image files).
 		 * Get or create the single row for file_id + element_type; fill fields; embed; set vector_id; save.
 		 */
 		public async void add_single(
@@ -278,13 +278,13 @@ namespace OLLMvector.Indexing
 			string element_name,
 			string description) throws GLib.Error
 		{
-			var existing = new Gee.ArrayList<VectorMetadata>();
-			VectorMetadata.query(this.sql_db).select(
+			var existing = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
 				"WHERE file_id = %lld AND element_type = '%s'".printf(file.id, element_type),
 				existing
 			);
 
-			var meta = existing.size > 0 ? existing.get(0) : new VectorMetadata() {
+			var meta = existing.size > 0 ? existing.get(0) : new OLLMfiles.SQT.VectorMetadata() {
 				file_id = file.id,
 				element_type = element_type,
 				element_name = element_name,
@@ -312,16 +312,16 @@ namespace OLLMvector.Indexing
 		}
 
 		/**
-		 * Formats a VectorMetadata into a document string for vectorization.
+		 * Formats a OLLMfiles.SQT.VectorMetadata into a document string for vectorization.
 		 * 
 		 * Format follows the specification in the plan document:
 		 * - type, name, file, lines, description, signature, code snippet
 		 * 
-		 * @param element The VectorMetadata to format
+		 * @param element The OLLMfiles.SQT.VectorMetadata to format
 		 * @param tree The Tree object containing the element and file information
 		 * @return Formatted document string
 		 */
-		private string format_element_document(VectorMetadata element, Tree tree)
+		private string format_element_document(OLLMfiles.SQT.VectorMetadata element, Tree tree)
 		{
 			var doc = new GLib.StringBuilder();
 			

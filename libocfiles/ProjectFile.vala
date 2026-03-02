@@ -89,6 +89,13 @@ namespace OLLMfiles
 			}
 		}
 		
+		public override string to_summary(
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap,
+			string indent)
+		{
+			return this.file.to_summary(keymap, indent);
+		}
+		
 		/**
 		 * Relative path from project root when file is accessed through a symlink.
 		 * If empty (default), the file is not inside a symlink and display_relpath

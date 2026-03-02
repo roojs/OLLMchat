@@ -80,6 +80,9 @@ namespace OLLMchat.History
 		// Signal emitted when an agent is activated (for UI updates)
 		public signal void agent_activated(Agent.Factory agent);
 		
+		/** Emitted when session.is_running changes; UI connects and updates send/stop button from manager.session.is_running. */
+		public signal void agent_status_change();
+
 		// Signals that relay client signals to UI (from active session)
 		public signal void chat_send(Call.Chat chat);
 		public signal void stream_chunk(string new_text, bool is_thinking, Response.Chat response);

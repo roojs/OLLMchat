@@ -21,6 +21,52 @@ namespace Markdown.Document
 		/** Next uid to assign; increment when creating a new node so each node has a unique uid. */
 		public int uid_count { get; set; default = 1; }
 
+		/** Heading text (stripped) → Block; populated when blocks are adopted (Render) or after deserializing children. Not serialized. */
+		public Gee.HashMap<string, Block> headings {
+			get; private set; default = new Gee.HashMap<string, Block>(); }
+
+		/** Call when a top-level heading block is adopted; keeps headings in sync. Key is GFM-style anchor (lowercase, non-alphanumeric → hyphen, trimmed). Only stores the first occurrence of each key. */
+		internal void register_heading(Block b)
+		{
+			var raw = b.text_content().strip();
+			if (raw == "") {
+				return;
+			}
+			var key = new GLib.Regex("[^a-z0-9]+").replace(raw.down(), -1, 0, "-", 0);
+			key = new GLib.Regex("^-+|-+$").replace(key, -1, 0, "", 0);
+			if (key == "" || this.headings.has_key(key)) {
+				return;
+			}
+			this.headings.set(key, b);
+		}
+
+		/** Create a new node (Block or Format) with uid from this document; caller may adopt it. */
+		public Node create(FormatType type, string text = "")
+		{
+			if (type == FormatType.TEXT) {
+				var node = new Format.from_text(text);
+				node.uid = this.uid_count++;
+				return node;
+			}
+			if (type.is_block()) {
+				var node = new Block(type);
+				node.uid = this.uid_count++;
+				if (text == "") {
+					return node;
+				}
+				var format = new Format.from_text(text);
+				format.uid = this.uid_count++;
+				node.adopt(format);
+				return node;
+			}
+			var node = new Format(type);
+			node.uid = this.uid_count++;
+			if (text != "") {
+				node.text = text;
+			}
+			return node;
+		}
+
 		public override string to_markdown()
 		{
 			if (this.children.size == 0) {

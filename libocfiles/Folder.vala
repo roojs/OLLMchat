@@ -85,6 +85,22 @@ namespace OLLMfiles
 		
 			
 		/**
+		 * Project-level description from vector_metadata (ProjectAnalysis). Uses this.manager.db. Caller guarantees manager.db and id are set.
+		 * When multiple project rows exist (e.g. from repeated --project-summary runs), returns the most recent (highest id).
+		 */
+		public string project_description()
+		{
+			var results = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.manager.db).select(
+				"WHERE file_id = " + this.id.to_string() + " AND element_type = 'project' ORDER BY id DESC",
+				results);
+			if (results.size == 0) {
+				return "";
+			}
+			return results.get(0).description;
+		}
+
+		/**
 		 * ListStore of all files in project (used by dropdowns).
 		 */
 		public ProjectFiles project_files { get; set; default = new ProjectFiles(); }
@@ -99,7 +115,27 @@ namespace OLLMfiles
 		 * Implements ListModel interface with add/remove methods.
 		 */
 		public FolderFiles children { get; set; default = new FolderFiles(); }
-			
+		
+		public override string to_summary(
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> keymap, 
+			string indent)
+		{
+			var description = "";
+			if (keymap.has_key((int)this.id)) {
+				var vm = keymap.get((int)this.id);
+				description = vm.description != "" ? ": " + vm.description : "";
+			}
+			var line = indent + "- (folder) " + GLib.Path.get_basename(this.path) + description;
+			var child_indent = indent + "  ";
+			for (var i = 0; i < int.min(20, this.children.items.size); i++) {
+				line += "\n" + this.children.items.get(i).to_summary(keymap, child_indent);
+			}
+			if (this.children.items.size > 20) {
+				line += "\n" + child_indent + "(truncated) ... total 20 out of %d files shown".printf(
+					 this.children.items.size);
+			}
+			return line;
+		}
 	
 		/**
 		 * Last check time for this folder (prevents re-checking during recursive scans).

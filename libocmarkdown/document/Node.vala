@@ -37,6 +37,56 @@ namespace Markdown.Document
 			child.parent = this;
 		}
 
+		/** Root document; null if this node is not in a document tree. */
+		public Document? document()
+		{
+			Node? n = this;
+			while (n != null) {
+				if (n is Document) {
+					return (Document) n;
+				}
+				n = n.parent;
+			}
+			return null;
+		}
+
+		/** Next sibling in parent's children list; null if last or no parent. */
+		public Node? next()
+		{
+			if (this.parent == null) {
+				return null;
+			}
+			int i = this.parent.children.index_of(this);
+			if (i < 0 || i + 1 >= this.parent.children.size) {
+				return null;
+			}
+			return this.parent.children.get(i + 1);
+		}
+
+		/** Flattened text of this node (e.g. for ListItem: first paragraph/inline subtree as single line). */
+		public virtual string text_content()
+		{
+			string[] parts = {};
+			foreach (var child in this.children) {
+				if (child is Format) {
+					var f = (Format) child;
+					parts += f.text != "" ? f.text : child.text_content();
+					continue;
+				}
+				if (child is Block) {
+					var b = (Block) child;
+					if (b.kind == FormatType.PARAGRAPH
+						|| (b.kind >= FormatType.HEADING_1 && b.kind <= FormatType.HEADING_6)) {
+						parts += b.text_content();
+						break;
+					}
+					continue;
+				}
+				parts += child.text_content();
+			}
+			return string.joinv("", parts).strip();
+		}
+
 		/** Convert this node (and children) back to markdown text. Override in subclasses. */
 		public virtual string to_markdown()
 		{
@@ -50,6 +100,8 @@ namespace Markdown.Document
 		public override Json.Node serialize_property(string property_name, GLib.Value value, GLib.ParamSpec pspec)
 		{
 			switch (property_name) {
+				case "headings":
+					return null;
 				case "parent":
 					return null;
 				case "node_type":
@@ -93,6 +145,8 @@ namespace Markdown.Document
 		public override bool deserialize_property(string property_name, out GLib.Value value, GLib.ParamSpec pspec, Json.Node property_node)
 		{
 			switch (property_name) {
+				case "headings":
+					return false;
 				case "parent":
 					return false;
 				case "node_type":

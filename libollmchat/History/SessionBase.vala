@@ -355,12 +355,6 @@ namespace OLLMchat.History
 		
 			this.messages.add(message);
 			
-			// Set running state to false when done message is received
-			if (message.role == "done") {
-				this.is_running = false;
-				GLib.debug("Stopping running");
-			}
-			
 			// Notify display_info when message count changes (affects reply count in UI)
 			this.notify_property("display_info");
 			

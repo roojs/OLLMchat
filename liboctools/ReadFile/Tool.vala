@@ -31,6 +31,10 @@ namespace OLLMtools.ReadFile
 	
 	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 			
+		public override string title { get { return "Read File Tool"; } }
+		public override string example_call {
+			get { return "{\"name\": \"read_file\", \"arguments\": {\"file_path\": \"src/main.vala\", \"start_line\": 1, \"end_line\": 30}}"; }
+		}
 		public override string description { get {
 			return """
 Read the contents of a file (and the outline).
@@ -72,7 +76,6 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 	{
 		base();
 		this.project_manager = project_manager;
-		this.title = "Read File Tool";
 	}
 		
 		public OLLMchat.Tool.BaseTool? clone()

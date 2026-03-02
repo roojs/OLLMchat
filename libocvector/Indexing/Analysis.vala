@@ -67,10 +67,10 @@ namespace OLLMvector.Indexing
 		/**
 		 * Determines if an element should skip LLM analysis.
 		 * 
-		 * @param element The VectorMetadata element to check
+		 * @param element The OLLMfiles.SQT.VectorMetadata element to check
 		 * @return true if LLM analysis should be skipped
 		 */
-		private bool should_skip_llm(VectorMetadata element)
+		private bool should_skip_llm(OLLMfiles.SQT.VectorMetadata element)
 		{
 			// Always skip enum values (they're just identifiers)
 			if (element.element_type == "enum") {
@@ -119,7 +119,7 @@ namespace OLLMvector.Indexing
 		 * Iterates over Tree.elements and:
 		 * - Skips LLM for simple elements (enum types without docs, simple properties, etc.)
 		 * - Calls LLM for complex elements (classes, methods, properties with docs, etc.)
-		 * - Stores descriptions in VectorMetadata.description property
+		 * - Stores descriptions in OLLMfiles.SQT.VectorMetadata.description property
 		 * 
 		 * @param tree The Tree object from Tree layer
 		 * @return The same Tree object with descriptions populated
@@ -189,7 +189,7 @@ namespace OLLMvector.Indexing
 		/**
 		 * Analyzes a file and generates a file-level summary.
 		 * 
-		 * Creates a VectorMetadata object for the file with element_type='file',
+		 * Creates a OLLMfiles.SQT.VectorMetadata object for the file with element_type='file',
 		 * adds it to tree.elements so it gets processed like other elements.
 		 * 
 		 * @param tree The Tree object with analyzed elements
@@ -264,8 +264,8 @@ namespace OLLMvector.Indexing
 				}
 			}
 			
-			// Create VectorMetadata object for the file
-			var file_metadata = new VectorMetadata() {
+			// Create OLLMfiles.SQT.VectorMetadata object for the file
+			var file_metadata = new OLLMfiles.SQT.VectorMetadata() {
 				element_type = "file",
 				element_name = file_basename,
 				start_line = 1,
@@ -290,10 +290,10 @@ namespace OLLMvector.Indexing
 		 * Sets element.description directly. Retries up to 2 times if LLM call fails.
 		 * Leaves description empty if all attempts fail.
 		 * 
-		 * @param element The VectorMetadata element to analyze (description will be updated)
+		 * @param element The OLLMfiles.SQT.VectorMetadata element to analyze (description will be updated)
 		 * @param tree The Tree object (for accessing lines)
 		 */
-		private async void analyze_element(VectorMetadata element, Tree tree) throws GLib.Error
+		private async void analyze_element(OLLMfiles.SQT.VectorMetadata element, Tree tree) throws GLib.Error
 		{
 			// Build user message from template with context
 			// Get file basename for context
@@ -309,7 +309,7 @@ namespace OLLMvector.Indexing
 			var parent_class_context = "";
 			if (element.parent_class != null && element.parent_class != "") {
 				// Try to find the parent class element to get its documentation
-				VectorMetadata? parent_class_element = null;
+				OLLMfiles.SQT.VectorMetadata? parent_class_element = null;
 				foreach (var e in tree.elements) {
 					if (e.element_type == "class" && e.element_name == element.parent_class) {
 						parent_class_element = e;

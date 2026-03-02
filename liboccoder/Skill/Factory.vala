@@ -1,0 +1,88 @@
+/*
+ * Copyright (C) 2026 Alan Knowles <alan@roojs.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+namespace OLLMcoder.Skill
+{
+	/**
+	 * Lightweight factory: creates Manager and Runner only. Message building lives in Runner.
+	 */
+	public class Factory : OLLMchat.Agent.Factory
+	{
+		public OLLMfiles.ProjectManager project_manager { get; private set; }
+		public Manager skill_manager { get; private set; }
+		public string skill_name { get; private set; }
+
+		private OLLMcoder.SourceView? widget = null;
+
+		public Factory(OLLMfiles.ProjectManager project_manager,
+			 Gee.ArrayList<string> skills_directories, string skill_name = "")
+		{
+			this.name = "skill-runner";
+			this.title = "Skills Agent";
+			this.project_manager = project_manager;
+			this.skill_manager = new Manager(skills_directories);
+			this.skill_name = skill_name != "" ? skill_name : "task_creator";
+		}
+
+		/** Returns active file; ensures buffer exists so caller can call get_contents(). */
+		public OLLMfiles.File? current_file()
+		{
+			var file = this.project_manager.active_file;
+			if (file == null) {
+				return null;
+			}
+			this.project_manager.buffer_provider.create_buffer(file);
+			return file;
+		}
+
+		public override OLLMchat.Agent.Base create_agent(OLLMchat.History.SessionBase session)
+		{
+			return new Runner(this, session);
+		}
+
+		/**
+		 * Gets the UI widget for this agent (same editor as Coding Assistant).
+		 *
+		 * Returns a SourceView so the Skills Agent shows the project/file editor pane
+		 * like the Coding Assistant.
+		 */
+		public override async Object? get_widget()
+		{
+			if (this.widget != null) {
+				return this.widget as Object;
+			}
+			if (this.project_manager.db == null) {
+				return null;
+			}
+			this.widget = new OLLMcoder.SourceView(this.project_manager);
+			yield this.initialize_widget();
+			return this.widget as Object;
+		}
+
+		private async void initialize_widget()
+		{
+			try {
+				this.widget.manager.load_projects_from_db();
+				yield this.widget.manager.restore_active_state();
+				yield this.widget.apply_manager_state();
+			} catch (GLib.Error e) {
+				GLib.warning("Failed to initialize Skills Agent widget: %s", e.message);
+			}
+		}
+	}
+}

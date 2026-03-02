@@ -51,6 +51,6 @@ namespace OLLMchat.Tool
 		 *
 		 * @return A new tool instance with the same project_manager
 		 */
-		public abstract BaseTool clone();
+		public abstract owned BaseTool clone();
 	}
 }

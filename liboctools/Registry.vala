@@ -21,7 +21,7 @@ namespace OLLMtools
 	/**
 	 * Registry for all tools in liboctools.
 	 * 
-	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, GoogleSearch,
+	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
 	 * wrapped tools (via ToolBuilder), and agent tools (via Child.Parser).
 	 */
 	public class Registry : Object
@@ -33,6 +33,7 @@ namespace OLLMtools
 			typeof(RunCommand.Tool).ensure();
 			typeof(WebFetch.Tool).ensure();
 			typeof(EditMode.Tool).ensure();
+			typeof(WriteFile.Tool).ensure();
 			typeof(GoogleSearch.Tool).ensure();
 			
 			// Register all liboctools tool config types with Config2
@@ -41,6 +42,7 @@ namespace OLLMtools
 			OLLMchat.Tool.BaseTool.register_config(typeof(RunCommand.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(WebFetch.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(EditMode.Tool));
+			OLLMchat.Tool.BaseTool.register_config(typeof(WriteFile.Tool));
 			OLLMchat.Tool.BaseTool.register_config(typeof(GoogleSearch.Tool));
 			
 			GLib.debug("OLLMtools.Registry.init_config: Registered liboctools tool config types");
@@ -56,6 +58,7 @@ namespace OLLMtools
 			(new RunCommand.Tool(null)).setup_tool_config_default(config);
 			(new WebFetch.Tool(null)).setup_tool_config_default(config);
 			(new EditMode.Tool(null)).setup_tool_config_default(config);
+			(new WriteFile.Tool(null)).setup_tool_config_default(config);
 			(new GoogleSearch.Tool(null)).setup_tool_config_default(config);
 			GLib.debug("OLLMtools.Registry.setup_config_defaults: Set up liboctools tool configs");
 		}
@@ -70,6 +73,7 @@ namespace OLLMtools
 			manager.register_tool(new RunCommand.Tool(project_manager));
 			manager.register_tool(new WebFetch.Tool(project_manager));
 			manager.register_tool(new EditMode.Tool(project_manager));
+			manager.register_tool(new WriteFile.Tool(project_manager));
 			manager.register_tool(new GoogleSearch.Tool(project_manager));
 			
 			GLib.debug("OLLMtools.Registry.fill_tools: Registered %d liboctools standard tools", 

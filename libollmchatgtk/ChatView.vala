@@ -57,6 +57,7 @@ namespace OLLMchatGtk
 		private Gtk.TextMark? waiting_mark = null;
 		private uint waiting_timer = 0;
 		private int waiting_dots = 0;
+		private string waiting_label = "waiting for a reply";
 		private Gee.ArrayList<Gtk.Widget> message_widgets = new Gee.ArrayList<Gtk.Widget>();
 		private bool has_displayed_user_message = false;
 		private double last_scroll_pos = 0.0;
@@ -939,15 +940,19 @@ namespace OLLMchatGtk
 
 		/**
 		 * Shows an animated "waiting..." indicator.
-		 * 
+		 * The label is shown with cycling dots (e.g. "waiting for a reply..."); it is cleared when
+		 * the first content chunk arrives or clear_waiting_indicator() is called.
+		 *
+		 * @param label Text to show before the dots (default: "waiting for a reply"); use e.g. "Refining" for refinement flows
 		 * @since 1.0
 		 */
-		public void show_waiting_indicator()
+		public void show_waiting_indicator(string label = "waiting for a reply")
 		{
 			// Clear any existing indicator BEFORE setting is_waiting=true
 			// (otherwise clear_waiting_indicator will see is_waiting=true and clear it)
 			this.clear_waiting_indicator();
 
+			this.waiting_label = label;
 			// Set waiting state AFTER clearing
 			this.is_waiting = true;
 
@@ -1076,12 +1081,12 @@ namespace OLLMchatGtk
 				buffer.delete(ref start_iter, ref end_iter);
 			}
 
-			// Create PangoRender instance and convert to Pango markup
-			var renderer = new Markdown.PangoRender();
+			// Insert fixed Pango markup directly (do not run through toPango; the parser
+			// can misparse the span and drop the leading "w", showing "<aiting for...").
+			string escaped_label = GLib.Markup.escape_text(this.waiting_label, -1);
 			buffer.insert_markup(
 				ref start_iter,
-				renderer.toPango(
-					"<span color=\"green\">waiting for a reply" + dots + "</span>"),
+				"<span color=\"green\">" + escaped_label + dots + "</span>",
 				-1
 			);
 

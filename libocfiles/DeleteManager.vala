@@ -35,7 +35,7 @@ namespace OLLMfiles
 		/**
 		 * Signal emitted when cleanup is performed (after files are deleted).
 		 * 
-		 * VectorMetadata (in libocvector) can listen to this signal to clean up
+		 * OLLMfiles.SQT.VectorMetadata (in libocfiles) can listen to this signal to clean up
 		 * vector metadata entries for deleted files using a bulk DELETE query.
 		 * 
 		 * Emitted by cleanup() after cleanup is complete.

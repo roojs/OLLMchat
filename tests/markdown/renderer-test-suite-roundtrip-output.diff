@@ -1,4 +1,4 @@
---- renderer-test-suite-roundtrip-output.md
+--- renderer-test-suite-roundtrip-output.md	2026-02-26 08:21:00.976655316 +0800
 +++ renderer-test-suite-roundtrip-output.md
 @@ -1,7 +1,6 @@
  # Markdown Renderer Test Suite
@@ -36,17 +36,7 @@
  ~~Strikethrough~~
  
  ---
-@@ -113,9 +104,7 @@
- ```
- 
- - [x] Completed task
--
- - [ ] Incomplete task
--
- - [ ] Another pending task
- 
- ---
-@@ -130,9 +119,9 @@
+@@ -128,9 +119,9 @@
  ```
  
  | Header 1 | Header 2 | Header 3 |
@@ -59,7 +49,7 @@
  
  ---
  
-@@ -203,10 +192,6 @@
+@@ -201,10 +192,6 @@
  </div>
  ```
  
@@ -70,7 +60,7 @@
  <div style="border:2px solid #4CAF50; padding:10px;">
      <strong>Raw HTML block</strong> – will be rendered as HTML if the renderer allows it.
  </div>
-@@ -238,11 +223,9 @@
+@@ -236,11 +223,9 @@
  ```
  
  Term 1
@@ -82,7 +72,7 @@
  : Definition of term 2, which can be **bold** or *italic*.
  
  ---
-@@ -274,9 +257,7 @@
+@@ -272,9 +257,7 @@
  Display math:
  
  $$

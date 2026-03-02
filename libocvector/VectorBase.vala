@@ -95,6 +95,7 @@ namespace OLLMvector
 
 		/**
 		 * Sends the given messages to the analysis LLM and returns the stripped assistant content.
+		 * Uses streaming and writes chunks to stderr so progress is visible (e.g. when running from CLI).
 		 * Retries up to 2 times on null/empty response or error. Returns "" on failure.
 		 * Call sites should log or warn on empty result as needed.
 		 *
@@ -112,8 +113,28 @@ namespace OLLMvector
 			const int MAX_RETRIES = 2;
 			for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 				try {
-					var chat = new OLLMchat.Call.Chat(conn, usage.model) { stream = false, options = usage.options };
+					var chat = new OLLMchat.Call.Chat(conn, usage.model) { 
+						stream = true, 
+						options = usage.options 
+					};
+					// Only stream analysis output to stderr when on main thread (e.g. CLI); skip when in background thread
+					var main_ctx = GLib.MainContext.default();
+					var current_ctx = GLib.MainContext.get_thread_default();
+					bool on_main_thread = (main_ctx == current_ctx);
+					ulong handler_id = 0;
+					if (on_main_thread) {
+						handler_id = chat.stream_chunk.connect((new_text, is_thinking, _response) => {
+							if (new_text.length > 0 && !is_thinking) {
+								GLib.stderr.printf("%s", new_text);
+								GLib.stderr.flush();
+							}
+						});
+					}
 					OLLMchat.Response.Chat? response = yield chat.send(messages, null);
+					if (handler_id != 0) {
+						chat.disconnect(handler_id);
+					}
+					
 					if (response == null || response.message == null) { if (attempt < MAX_RETRIES) continue; return ""; }
 					result = response.message.content.strip();
 					if (result != "") return result;
