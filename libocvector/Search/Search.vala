@@ -176,6 +176,10 @@ namespace OLLMvector.Search
 			// Log backend being used (CPU-only for now)
 			GLib.debug("Using CPU backend for FAISS search");
 			
+			if (this.filtered_vector_ids.size == 0) {
+				return new Gee.ArrayList<SearchResult>();
+			}
+			
 			// Step 1: Query preprocessing (basic normalization)
 			var normalized_query = this.normalize_query(this.query);
 			if (normalized_query == "") {

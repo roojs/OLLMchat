@@ -185,6 +185,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public void start_pull(string model_name, OLLMchat.Settings.Connection connection, int initial_retry_count)
 		{
+			GLib.debug("PullManagerThread.start_pull: model_name=%s", model_name.strip() == "" ? "(empty)" : model_name);
 			// ⚠️ THREAD SAFETY: Connection object is passed from main thread to background thread
 			// This may be a cause of failure if Connection is modified concurrently.
 			// Consider: var connection_copy = connection.clone(); and use connection_copy instead

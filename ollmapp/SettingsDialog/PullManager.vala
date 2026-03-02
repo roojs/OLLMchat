@@ -131,7 +131,7 @@ namespace OLLMapp.SettingsDialog
 			
 			foreach (var entry in this.models.entries) {
 				var status = entry.value;
-				
+
 				// Skip if not in progress or pending retry
 				if (status.status != "pulling" && status.status != "pending-retry") {
 					continue;
@@ -158,6 +158,7 @@ namespace OLLMapp.SettingsDialog
 				// Resume the pull
 				status.active = true;
 				this.pull_thread.ensure_thread();
+				GLib.debug("restart: starting pull model_name=%s", status.model_name.strip() == "" ? "(empty)" : status.model_name);
 				this.pull_thread.start_pull(status.model_name, connection, status.retry_count);
 			}
 		}
@@ -173,6 +174,7 @@ namespace OLLMapp.SettingsDialog
 		 */
 		public bool start_pull(string model_name, OLLMchat.Settings.Connection connection)
 		{
+			GLib.debug("start_pull: model_name=%s", model_name.strip() == "" ? "(empty)" : model_name);
 			// Check if already pulling
 			var existing_status = this.get_or_create_status(model_name);
 			if (existing_status.active) {
@@ -432,6 +434,7 @@ namespace OLLMapp.SettingsDialog
 					// Consider cloning: var connection_copy = check_status.connection.clone();
 					// Retry the pull (pass only primitive data)
 					check_status.active = true;
+					GLib.debug("schedule_retry: starting pull model_name=%s", model_name.strip() == "" ? "(empty)" : model_name);
 					this.pull_thread.start_pull(model_name, check_status.connection, check_status.retry_count);
 					return false; // Don't repeat
 				});
@@ -520,7 +523,13 @@ namespace OLLMapp.SettingsDialog
 						// Set last_update_time to past so first update after restore will always emit
 						status_obj.last_update_time = now - UPDATE_RATE_LIMIT_SECONDS;
 					}
-					
+
+					// Skip entries without a model name (corrupted or legacy data)
+					if (status_obj.model_name.strip() == "") {
+						GLib.debug("load_from_file: skipping entry with empty model_name (status=%s)", status_obj.status);
+						continue;
+					}
+					GLib.debug("load_from_file: adding model_name=%s status=%s", status_obj.model_name, status_obj.status);
 					this.models.set(status_obj.model_name, status_obj);
 				}
 				// Emit signal once after loading all items

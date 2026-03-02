@@ -40,7 +40,7 @@ namespace OLLMvector.Tool
 		 */
 		[Description(nick = "Embedding Model", blurb = "Model used for converting code text into vector embeddings for semantic search")]
 		public OLLMchat.Settings.ModelUsage embed { get; set; default = new OLLMchat.Settings.ModelUsage(); }
-		
+
 		/**
 		 * Analysis model configuration (connection, model, options).
 		 *
@@ -66,7 +66,7 @@ namespace OLLMvector.Tool
 		public CodebaseSearchToolConfig()
 		{
 		}
-		
+
 		/**
 		 * Returns list of required models (embed and analysis models are required for app startup).
 		 * 

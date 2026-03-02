@@ -117,7 +117,7 @@ namespace OLLMvector.Search
 		
 		/**
 		 * Format this result as markdown for CLI or tool output.
-		 * Heading (## Result (distance: X)), then - *key* value bullet points (File, Element, Lines, Description, ast-path, Reference link), then fenced code block and optional truncation note. Uses code_snippet() internally.
+		 * Heading (#### Result (distance: X)), then - **key** value bullet points (File, Element, Lines, Description, ast-path, Reference link), then fenced code block and optional truncation note. Uses code_snippet() internally.
 		 *
 		 * @param max_snippet_lines Max lines used for snippet (-1 = no limit, no truncation note)
 		 * @return Formatted markdown string for this result

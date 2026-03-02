@@ -37,6 +37,12 @@ namespace OLLMtools.Child
 		public string description { get; private set; default = ""; }
 		
 		/**
+		 * Short display name from frontmatter (optional). Used for UI (e.g. tool list label).
+		 * If empty, agent name is used as the title.
+		 */
+		public string title { get; private set; default = ""; }
+		
+		/**
 		 * List of tool names the agent can use (from tools: field, comma-separated).
 		 */
 		public Gee.ArrayList<string> tools { 
@@ -148,6 +154,9 @@ namespace OLLMtools.Child
 						break;
 					case "description":
 						this.description = value;
+						break;
+					case "title":
+						this.title = value;
 						break;
 					case "tools":
 						// Parse comma-separated list
@@ -344,8 +353,10 @@ namespace OLLMtools.Child
 					agent_tools = parser.tools,
 					agent_model = parser.model,
 					agent_instructions = parser.instructions,
-					agent_example = parser.example
+					agent_example = parser.example,
+					title = (parser.title != "" ? parser.title : parser.name) + " (Agent)"
 				};
+			 
 				manager.tools.set(parser.name, agent_tool);
 			}
 		}

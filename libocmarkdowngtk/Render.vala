@@ -262,7 +262,7 @@ namespace MarkdownGtk
 			// End the current block first (safe to call even if already null)
 			this.end_block();
 			
-			// Clear list stack and indent levels (must stay in sync)
+			// Clear list stack and indent levels (keep in sync)
 			this.indent_levels.clear();
 			this.list_stack.clear();
 			this.current_list_indentation = 0;

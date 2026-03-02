@@ -1,5 +1,6 @@
 ---
 name: workflow-manager
+title: Workflow Manager
 description: Receives the initial user query and redirects it to the correct workflow. Studies available context, fixes grammar, and decides which available workflow tool should be used to respond. Does NOT answer the question—only invokes the appropriate workflow tool with the corrected query and required parameters.
 tools: workflow tools (filtered; see commands)
 model: nemotron-3-nano
