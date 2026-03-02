@@ -163,8 +163,8 @@ namespace OLLMchatGtk
 			this.manager.session_activated.connect((session) => {
 				this.restoring_session = false;
 				GLib.Idle.add(() => {
-					this.chat_input.set_streaming(session.is_running);
-					// When restoring a session that is still running, turn autoscroll on and scroll to end so live output is visible
+					// Use streaming_state() so paned, input, and button all match session.is_running
+					this.streaming_state(session.is_running);
 					if (session.is_running) {
 						this.chat_view.scroll_enabled = true;
 						this.chat_view.scroll_to_bottom();
@@ -173,9 +173,9 @@ namespace OLLMchatGtk
 				});
 			});
 
-			// When agent sets is_running, update send/stop button from current session
+			// When agent sets is_running, sync full streaming state (paned, input, button)
 			this.manager.agent_status_change.connect(() => {
-				this.chat_input.set_streaming(this.manager.session.is_running);
+				this.streaming_state(this.manager.session.is_running);
 			});
 
 			this.append(main_box);

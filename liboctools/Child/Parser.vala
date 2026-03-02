@@ -354,7 +354,7 @@ namespace OLLMtools.Child
 					agent_model = parser.model,
 					agent_instructions = parser.instructions,
 					agent_example = parser.example,
-					title = (parser.title != "" ? parser.title : parser.name) + " (Agent)"
+					agent_title = (parser.title != "" ? parser.title : parser.name) + " (Agent)"
 				};
 			 
 				manager.tools.set(parser.name, agent_tool);

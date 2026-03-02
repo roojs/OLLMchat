@@ -110,6 +110,22 @@ namespace OLLMchatGtk
 			this.text_view.sensitive = sensitive;
 		}
 
+		/**
+		 * Sets the streaming state, updating input state (editable/sensitive).
+		 * Original also set action_button.label to "Stop"/"Send"; caller must call
+		 * ChatBar.update_action_button_state(streaming) to update the button label.
+		 */
+		public void set_streaming(bool streaming)
+		{
+			if (streaming) {
+				this.text_view.editable = false;
+				this.text_view.sensitive = false;
+			} else {
+				this.text_view.editable = true;
+				this.text_view.sensitive = true;
+			}
+		}
+
 		private bool on_key_pressed(uint keyval, uint keycode, Gdk.ModifierType state)
 		{
 			if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter) {

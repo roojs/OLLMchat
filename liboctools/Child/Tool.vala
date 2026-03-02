@@ -59,6 +59,12 @@ namespace OLLMtools.Child
 		public string agent_example { get; set; default = ""; }
 		
 		/**
+		 * Display title for the agent tool (e.g. from frontmatter title or name + " (Agent)").
+		 * When empty, ''title'' falls back to agent_name.
+		 */
+		public string agent_title { get; set; default = ""; }
+		
+		/**
 		 * Tool name (returns agent_name).
 		 */
 		public override string name { get { return this.agent_name; } }
@@ -70,7 +76,7 @@ namespace OLLMtools.Child
 			return this.agent_description;
 		} }
 		
-		public override string title { get { return this.agent_name; } }
+		public override string title { get { return this.agent_title != "" ? this.agent_title : this.agent_name; } }
 		public override string example_call { get { return this.agent_example; } }
 		/**
 		 * Parameter description for the tool.
