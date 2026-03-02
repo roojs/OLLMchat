@@ -333,15 +333,17 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		var task_name = this.task_data.get("Name").to_markdown().strip();
-		var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
-		var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-		this.add_message(new OLLMchat.Message("ui-waiting", "Refining: " + task_name + model_part));
+		this.add_message(new OLLMchat.Message("ui", "Refining: " + this.task_data.get("Name").to_markdown().strip() +
+			 " with (" + this.session.model_usage.display_name_with_size() + ")"));
+		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.COARSE)));
 		yield this.fill_model();
+		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
+		this.chat_call.tools.clear();
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
 			}
+			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -367,7 +369,7 @@ public class Details : OLLMchat.Agent.Base
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			if (this.result_parser.issues == "") {
-				this.add_message(new OLLMchat.Message("ui", "Got result for: " + task_name));
+				this.add_message(new OLLMchat.Message("ui", "Got result for: " + this.task_data.get("Name").to_markdown().strip()));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
 					this.resume_refined();
@@ -376,12 +378,12 @@ public class Details : OLLMchat.Agent.Base
 			}
 			if (i < 4) {
 				this.add_message(new OLLMchat.Message("ui-warning",
-					"Refinement for \"" + task_name + "\" had issues (retrying):\n\n" +
+					"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying):\n\n" +
 					this.result_parser.issues.strip()));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui-warning",
-			"Refinement for \"" + task_name + "\" failed after 5 tries.\n\nIssues:\n" +
+			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries.\n\nIssues:\n" +
 			this.result_parser.issues.strip()));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -618,8 +620,13 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void post_evaluate() throws GLib.Error
 	{
+		this.add_message(new OLLMchat.Message("ui", "Executing: " + this.task_data.get("Name").to_markdown().strip() + " with (" + this.session.model_usage.display_name_with_size() + ")"));
+		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.REFINEMENT)));
+		// Executor must not have tools; it receives tool outputs in precursor and outputs text only.
+		this.chat_call.tools.clear();
 		var tpl = this.executor_prompt();
 		for (var i = 0; i < 5; i++) {
+			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
