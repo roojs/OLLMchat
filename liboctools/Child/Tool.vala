@@ -76,7 +76,7 @@ namespace OLLMtools.Child
 			return this.agent_description;
 		} }
 		
-		public override string title { get { return this.agent_title != "" ? this.agent_title : this.agent_name; } }
+		public override string title { get { return  this.agent_title; } }
 		public override string example_call { get { return this.agent_example; } }
 		/**
 		 * Parameter description for the tool.
