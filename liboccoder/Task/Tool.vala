@@ -13,20 +13,57 @@
 
 namespace OLLMcoder.Task
 {
+	/**
+	 * One tool call parsed from a ## Tool Calls fenced block during refinement.
+	 * Holds name, arguments, and the ToolCall for execution. Validation and
+	 * execution use the manager's tool registry; the task agent never attaches
+	 * tools to chat_call.
+	 *
+	 * @see Details
+	 * @see ResultParser
+	 */
 	public class Tool : Object
 	{
+		/**
+		 * The task that owns this tool call.
+		 */
 		public weak Details task { get; construct; }
+		/**
+		 * Tool name from the parsed JSON (e.g. "write_file").
+		 */
 		public string name { get; set; default = ""; }
+		/**
+		 * Parsed "arguments" object, or null if absent.
+		 */
 		public Json.Object? arguments { get; private set; default = null; }
+		/**
+		 * Validation or parse error messages; appended by parse() and validate().
+		 */
 		public string issues { get; set; default = ""; }
+		/**
+		 * ToolCall built from name and arguments; set by parse(), used by execute().
+		 */
 		public OLLMchat.Response.ToolCall? tool_call { get; private set; default = null; }
 
+		/**
+		 * Creates a tool call for the given task. Call parse() to fill name,
+		 * arguments, and tool_call from a fenced block.
+		 *
+		 * @param task The task this tool call belongs to
+		 */
 		public Tool(Details task)
 		{
 			Object(task: task);
 		}
 
-		/** Parse block: JSON → name, arguments (uid is assigned by caller via assign_id). Set this.issues on parse failures. */
+		/**
+		 * Parses a fenced block: expects JSON with "name" and optional "arguments".
+		 * Sets this.name, this.arguments, and this.tool_call (uid is assigned by
+		 * caller via assign_id). Appends to this.issues on parse failures.
+		 *
+		 * @param block The code block containing the tool call JSON
+		 * @return true if parsing succeeded
+		 */
 		public bool parse(Markdown.Document.Block block)
 		{
 			this.issues = "";
@@ -52,13 +89,19 @@ namespace OLLMcoder.Task
 			if (obj.has_member("arguments") && obj.get_member("arguments").get_node_type() == Json.NodeType.OBJECT) {
 				this.arguments = obj.get_object_member("arguments");
 			}
-			var func = new OLLMchat.Response.CallFunction.with_values(this.name, 
-				this.arguments  == null ?  new Json.Object() : this.arguments);
+			var func = new OLLMchat.Response.CallFunction.with_values(this.name,
+				this.arguments == null ? new Json.Object() : this.arguments);
 			this.tool_call = new OLLMchat.Response.ToolCall.with_values("", func);
 			return true;
 		}
 
-		/** Validate: tool_call set, tool registered, required arguments. Append to this.issues for refine feedback. */
+		/**
+		 * Validates that tool_call is set, the tool is registered on the manager,
+		 * and required arguments are present. Appends to this.issues for refine
+		 * feedback.
+		 *
+		 * @return false if validation failed
+		 */
 		public bool validate()
 		{
 			this.issues = "";
@@ -92,7 +135,13 @@ namespace OLLMcoder.Task
 			return true;
 		}
 
-		/** Instructions for refine stage: name, description, parameters (uses this.name). Call after new Tool(task) { name = tool_name }. */
+		/**
+		 * Returns instructions for the refine stage: tool name, description, and
+		 * parameters. Uses this.name to look up the tool from the manager. Call
+		 * after constructing the Tool with name set.
+		 *
+		 * @return JSON schema string for the tool (name, description, parameters)
+		 */
 		public string to_instructions()
 		{
 			var original = this.task.runner.session.manager.tools.get(this.name);
@@ -114,10 +163,14 @@ namespace OLLMcoder.Task
 			return ret;
 		}
 
-		/** Execute: look up the tool by name, run it with this call's arguments, store the result on the task. */
+		/**
+		 * Executes the tool call: looks up the tool from the manager (the agent
+		 * never uses chat_call.tools), runs it with this call's arguments, and
+		 * stores the result on the task.
+		 */
 		public async void execute() throws GLib.Error
 		{
-			var tool_impl = this.task.chat().tools.get(this.tool_call.function.name);
+			var tool_impl = this.task.runner.session.manager.tools.get(this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
 			var result = yield tool_impl.execute(this.task.chat(), this.tool_call, true);
 			this.task.tool_outputs.set(this.tool_call.id, result);
 			this.task.tool_calls.set(this.tool_call.id, this.tool_call);

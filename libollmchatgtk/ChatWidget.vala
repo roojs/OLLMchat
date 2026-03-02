@@ -451,8 +451,10 @@ namespace OLLMchatGtk
 				return;
 			}
 
-			// No tool calls - this is the final response
-			this.chat_input.set_streaming(false);
+			// No tool calls - this is the final response. Do not set_streaming(false) here:
+			// the send/stop button is driven by session.is_running via agent_status_change.
+			// For skill runner, the first response (task list) is not the end — handle_task_list
+			// continues; only when agent send_async returns does is_running become false.
 			
 			// Clear last_sent_text on successful response
 			this.last_sent_text = null;

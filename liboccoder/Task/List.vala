@@ -20,9 +20,9 @@ namespace OLLMcoder.Task
  *
  * Holds {@link steps} (each {@link Step} has {@link Details} children).
  * Created by {@link ResultParser.parse_task_list}; the Runner then calls
- * {@link refine}, then {@link run_until_user_approval} or {@link run_all_tasks}
- * to run tasks step-by-step. Refinement is started for all tasks up front;
- * execution waits for each task's refinement only when that task runs.
+ * {@link run_until_user_approval} or {@link run_all_tasks} to run tasks step-by-step.
+ * Each step is refined (all its tasks) immediately before that step runs, so refinement
+ * and execution are interleaved per step in order.
  *
  * @see Step
  * @see Details

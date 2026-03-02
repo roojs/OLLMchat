@@ -21,6 +21,10 @@ namespace Markdown.Document
 		public string href { get; set; default = ""; }
 		public string title { get; set; default = ""; }
 		public bool is_reference { get; set; }
+		public string scheme { get; set; default = "file"; }
+		public string path { get; set; default = ""; }
+		public string hash { get; set; default = ""; }
+		public bool is_relative { get; set; default = false; }
 		public string src { get; set; default = ""; }
 		public string tag { get; set; default = ""; }
 		public string tag_attributes { get; set; default = ""; }
@@ -36,6 +40,22 @@ namespace Markdown.Document
 		{
 			this.kind = FormatType.TEXT;
 			this.text = s;
+		}
+
+		/**
+		 * Absolute path for this link when it is a file reference (scheme "file").
+		 * Returns path if already absolute, otherwise resolves path relative to to_path.
+		 * When scheme is not "file" or path is empty, returns this.path as-is.
+		 */
+		public string abspath(string to_path)
+		{
+			if (this.scheme != "file" || this.path == "" || GLib.Path.is_absolute(this.path)) {
+				return this.path;
+			}
+			var base_file = GLib.File.new_for_path(to_path);
+			var resolved = base_file.resolve_relative_path(this.path);
+			var result = resolved.get_path();
+			return result != null ? result : "";
 		}
 
 		public override string to_markdown()

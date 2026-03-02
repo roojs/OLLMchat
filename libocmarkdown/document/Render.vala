@@ -372,8 +372,32 @@ namespace Markdown.Document
 		/** Only two callbacks remain public and are called directly by the parser. */
 		public override void on_a(bool is_start, string href, string title, bool is_reference)
 		{
-			this.on_inline(is_start ? new Format(FormatType.LINK) { 
-				href = href, title = title, is_reference = is_reference } : null);
+			if (!is_start) {
+				this.on_inline(null);
+				return;
+			}
+			var link_fmt = new Format(FormatType.LINK) {
+				href = href,
+				title = title,
+				is_reference = is_reference
+			};
+			if (href.has_prefix("#")) {
+				link_fmt.scheme = "file";
+				link_fmt.path = "";
+				link_fmt.hash = href.substring(1);
+				link_fmt.is_relative = false;
+				this.on_inline(link_fmt);
+				return;
+			}
+			var hash_idx = href.index_of_char('#');
+			var path_part = hash_idx >= 0 ? href.substring(0, hash_idx) : href;
+			link_fmt.hash = hash_idx >= 0 ? href.substring(hash_idx + 1) : "";
+			path_part = path_part.strip();
+			var scheme = GLib.Uri.parse_scheme(path_part);
+			link_fmt.scheme = scheme != null ? scheme : "file";
+			link_fmt.path = path_part;
+			link_fmt.is_relative = (link_fmt.scheme == "file") && !GLib.Path.is_absolute(path_part);
+			this.on_inline(link_fmt);
 		}
 
 		public override void on_code(bool is_start, string lang, char fence_char)

@@ -177,13 +177,12 @@ public class Details : OLLMchat.Agent.Base
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
-			if (href.has_prefix("#")) {
-				var anchor = href.substring(1);
+			if (link.path == "") {
+				var anchor = link.hash;
 				if (anchor.has_suffix("-results")) {
 					var name_slug = anchor.substring(0, anchor.length - "-results".length);
 					if (name_slug == "" || !this.runner.task_list.slugs.has_key(name_slug)) {
-						this.issues += "\n" + "Invalid reference target \"" +
-							 href + "\": no task for \"" + name_slug + "\".";
+						this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + name_slug + "\".";
 						continue;
 					}
 					var ref_task = this.runner.task_list.slugs.get(name_slug);
@@ -198,22 +197,41 @@ public class Details : OLLMchat.Agent.Base
 				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
 					continue;
 				}
-				// No original prompt (e.g. test loading task list from file): fallback to project summary
 				if (anchor == "project-description" && this.runner.sr_factory.project_manager.active_project != null &&
 				    this.runner.sr_factory.project_manager.active_project.project_description() != "") {
 					continue;
 				}
-				this.issues += "\n" + "Invalid reference target \"" +
-					 href + "\": unknown anchor \"" + anchor + "\".";
+				this.issues += "\n" + "Invalid reference target \"" + href + "\": unknown anchor \"" + anchor + "\".";
 				continue;
 			}
-			if (href.has_prefix("http://") || href.has_prefix("https://")) {
-				// TODO: http(s) validation deferred to 1.23.20 (post-testing-changes)
+			if (link.scheme == "http" || link.scheme == "https") {
 				continue;
 			}
-			if (GLib.Path.is_absolute(href)) {
-				if (!GLib.File.new_for_path(href).query_exists()) {
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist.";
+			if (link.path != "" && link.scheme == "file") {
+				var project = this.runner.sr_factory.project_manager.active_project;
+				string resolved_path;
+				if (link.is_relative) {
+					if (project == null) {
+						this.issues += "\n" + "Invalid reference target \"" + href + "\": relative file path requires an active project.";
+						continue;
+					}
+					resolved_path = link.abspath(project.path);
+				} else {
+					resolved_path = link.path;
+				}
+				if (resolved_path == "") {
+					continue;
+				}
+				var resolved_file = GLib.File.new_for_path(resolved_path);
+				if (link.is_relative && project != null) {
+					var base_file = GLib.File.new_for_path(project.path);
+					if (!resolved_file.has_prefix(base_file) && !resolved_file.equal(base_file)) {
+						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is outside project folder.";
+						continue;
+					}
+				}
+				if (!resolved_file.query_exists()) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist (resolved from project folder).";
 				}
 				continue;
 			}
@@ -495,9 +513,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var parts = "";
 		foreach (var link in this.reference_targets) {
-			if (!GLib.Path.is_absolute(link.href)) {
-				var anchor = link.href.has_prefix("#") ? link.href.substring(1) : link.href;
-				if (anchor == "project-description") {
+			if (link.path == "") {
+				if (link.hash == "project-description") {
 					continue;
 				}
 				var content = this.runner.reference_content(link.href);
@@ -509,9 +526,35 @@ public class Details : OLLMchat.Agent.Base
 				}
 				continue;
 			}
-			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(link.href);
+			if (link.scheme == "http" || link.scheme == "https") {
+				var content = this.runner.reference_content(link.href);
+				if (content != "") {
+					parts += this.header_fenced(
+						"### Reference contents for " + link.title,
+						content,
+						"markdown");
+				}
+				continue;
+			}
+			if (link.scheme != "file") {
+				continue;
+			}
+			var project = this.runner.sr_factory.project_manager.active_project;
+			string resolved_path;
+			if (link.is_relative) {
+				if (project == null) {
+					continue;
+				}
+				resolved_path = link.abspath(project.path);
+			} else {
+				resolved_path = link.path;
+			}
+			if (resolved_path == "") {
+				continue;
+			}
+			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(resolved_path);
 			if (found == null) {
-				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, link.href);
+				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
 			}
 			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
 			parts += this.header_file(
