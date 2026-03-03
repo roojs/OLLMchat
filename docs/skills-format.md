@@ -131,17 +131,31 @@ Some skills are used in pairs: the first produces raw findings; the second consu
 
 ## Skill file format
 
+Each skill file is split by the **double-dash separator** (`---`) into **three parts**. Use a separator between each part:
+
+1. **Front matter** (YAML header) — then `---`
+2. **Refinement** — body section under `## Refinement` — then `---`
+3. **Execution** — body section under `## Execution`
+
+The runner uses the Refinement section when refining the task and the Execution section when running the skill.
+
+### Writing rules (stage-focused content)
+
+**Refinement section:** Write only what the **refiner** needs to do its job. Include: which tool(s) to call, what arguments to pass, and what to expect back from the tools. Do **not** describe how the execution stage works, what execution will do with the output, or how downstream tasks use results. Do not describe the system; give instructions.
+
+**Execution section:** Write only what the **executor** needs to do its job. Include: what to do with Precursor (tool outputs and references), what output sections to produce (e.g. Result summary, skill-specific sections), and optionally an example. Do **not** describe the refinement stage, the runner, or downstream tasks (e.g. "plan_review will add these to References"). Do not describe the system; give instructions.
+
 ### Location and naming
 
 - Path: `resources/skills/`.
 - Filename: **lowercase with underscores** (e.g. `research_topic.md`, `plan_create.md`). No UpperCamel or kebab-case in filenames.
 
-### Frontmatter (YAML header)
+### Part 1: Front matter (YAML header)
 
 Required keys:
 
 - **name** — Skill name, lowercase with underscores (e.g. `research_topic`). Must match the runner’s catalog.
-- **description** — **When to use** this skill (one line, shown in the task list and skill catalog). Include what it does and when the planner should choose it. Also include **hints about when not to use** (e.g. do not use before research is done; do not jump in and assume; ensure prerequisites such as prior research or analysis tasks have been run).
+- **description** — **When to use** this skill — that is its only job. One line, shown in the task list and skill catalog; the task creator uses it to choose the right skill per task. Include when the planner should choose it and hints about when not to use it (e.g. do not use before research is done; ensure prerequisites have been run). Do not describe what the skill outputs or how it works; that belongs in the Refinement and Execution sections.
 
 Optional:
 
@@ -149,21 +163,15 @@ Optional:
 
 **Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. produce revised content (plan_iterate) vs write the file (plan_apply_changes); do not combine read-then-write in one skill.
 
-### Do not duplicate the execution template
+**Separator:** Use exactly `---` (double dash) on its own line after the front matter and again between the Refinement and Execution sections. So the file reads: front matter, `---`, `## Refinement` and its content, `---`, `## Execution` and its content. Do not duplicate the execution system template (task_execution.md); it already defines standard inputs and the Result summary / Detail shape. Skills add only what is **specific** to this skill. Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
 
-The **execution system template** (task_execution.md) already defines what the executor receives (What is needed, Skill definition, Precursor) and the executor output format (Result summary, optional Output References, Skill output). **Skill documents must not duplicate that information.** The LLM runs with that template plus the skill definition; repeating the same input/output structure in the skill adds noise and can get out of sync. Skills add only what is **specific** to this skill: how it interprets the input, what output it specifies beyond the standard (e.g. Detail with links), and how to do it.
+### Part 2: Refinement
 
-Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
+Under **## Refinement**, write only what the refiner needs: which tool calls to emit and with what arguments (or "No tool calls" and what to put in References); what information to **put in** (e.g. query phrasing, element_type, paths); what to **expect out** of the tools so the refiner can judge whether more calls are needed. If the skill uses multiple tool calls, state whether execution runs once on all outputs (combined) or once per tool result. Do not describe execution behaviour or downstream use of the output.
 
-### Body
+### Part 3: Execution (heading in skill file: `## Execution`)
 
-- After the closing `---`, use a main heading (e.g. `## Research topic skill`) and then only skill-specific content:
-  - **Input (this skill)** — How this skill interprets What is needed and Precursor, and what arguments (if any) the refinement step passes to tools. Do not re-state what the executor receives; that is in the execution template.
-  - **Output (this skill)** — Only what this skill specifies beyond the standard (e.g. "Result summary and Detail; Detail may contain markdown links; end with Enough/More research needed."). Do not re-state the full Result summary / Detail structure; that is in the execution template.
-  - **Instructions** — Break into **Refinement** (what the refiner should do: which tool calls to emit, what arguments; or "No tool calls" and what to put in References) and **Execution** (what to do with the results: how to build Result summary, Detail, or other output from Precursor and tool outputs).
-  - **Example** — Example input and output in the required format.
-
-Use heading + body or heading + sections with links consistently. Keep the body focused on what is unique to this skill.
+Under **## Execution**, write only what the executor needs: how to build Result summary, Detail, and any skill-specific sections from Precursor; what output sections this skill produces (beyond the standard); optionally an example. Do not describe refinement, the runner, or how other tasks use the output. Use heading + body or heading + sections with links consistently.
 
 ---
 
