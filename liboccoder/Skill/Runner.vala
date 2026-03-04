@@ -19,8 +19,9 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * Agent that runs a single skill. Builds system message (template + available skills + current skill)
-	 * and user message (template or pass-through); injects them and sends.
+	 * Agent that runs a single skill. Builds system message (template + available
+	 * skills + current skill) and user message (template or pass-through);
+	 * injects them and sends.
 	 */
 	public class Runner : OLLMchat.Agent.Base
 	{
@@ -29,11 +30,17 @@ namespace OLLMcoder.Skill
 			get { return (Factory) this.factory; }
 		}
 
-		/** True once user has approved running writer (modify) tasks this run. */
+		/**
+		 * True once user has approved running writer (modify) tasks this run.
+		 */
 		public bool writer_approval { get; set; default = false; }
-		/** Used by task list flow (send_async(string)); set from template user_to_document(). */
+		/**
+		 * Used by task list flow (send_async(string)); set from template user_to_document().
+		 */
 		public Markdown.Document.Document? user_request { get; set; default = null; }
-		/** Parsed task list; set by send_async when parse and validate_skills succeed. */
+		/**
+		 * Parsed task list; set by send_async when parse and validate_skills succeed.
+		 */
 		public OLLMcoder.Task.List? task_list { get; set; default = null; }
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
@@ -41,7 +48,9 @@ namespace OLLMcoder.Skill
 			base(factory, session);
 		}
 
-		/** Used only in send_async when filling task_creation_initial (before user_request exists). */
+		/**
+		 * Used only in send_async when filling task_creation_initial (before user_request exists).
+		 */
 		public string env()
 		{
 			var ret = "- **Date** - `" + new GLib.DateTime.now_local().format("%Y-%m-%d") + "`";
@@ -58,9 +67,32 @@ namespace OLLMcoder.Skill
 			return ret;
 		}
 
-		/** Resolve non-file reference content for task refs. #anchor → user_request section or task output; http(s) deferred. */
+		/**
+		 * Resolve non-file reference content for task refs (task URI, #anchor, http deferred).
+		 */
 		public string reference_content(string href)
 		{
+			if (href.has_prefix("task://")) {
+				var rest = href.substring("task://".length);
+				var idx = rest.index_of_char('#');
+				var path = (idx >= 0) ? rest.substring(0, idx) : rest;
+				var fragment = (idx >= 0) ? rest.substring(idx + 1) : "";
+				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+				if (this.task_list == null || !this.task_list.slugs.has_key(slug)) {
+					return "";
+				}
+				var task = this.task_list.slugs.get(slug);
+				if (task.result_document == null) {
+					return "";
+				}
+				if (fragment == "") {
+					return task.result_document.to_markdown();
+				}
+				if (task.result_document.headings.has_key(fragment)) {
+					return task.result_document.headings.get(fragment).to_markdown_with_content();
+				}
+				return task.result_document.to_markdown();
+			}
 			var anchor = href.has_prefix("#") ? href.substring(1) : "";
 			if (anchor == "") {
 				return "";
@@ -105,7 +137,10 @@ namespace OLLMcoder.Skill
 		}
  
 
-		/** Entry point. Sends user request only; when finished calls handle_task_list. Current file and open files come from this.project_manager. */
+		/**
+		 * Entry point. Sends user request only; when finished calls handle_task_list.
+		 * Current file and open files come from this.project_manager.
+		 */
 		public override async void send_async(OLLMchat.Message in_message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.session.messages.add(in_message);
@@ -157,11 +192,14 @@ namespace OLLMcoder.Skill
 			}
 		}
 
-		/** Deals with the task list only. Called by send_async when it has a valid task_list. */
+		/**
+		 * Deals with the task list only. Called by send_async when it has a valid task_list.
+		 */
 		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.writer_approval = false;
 			var hit_max_rounds = true;
+			this.task_list.write();
 			for (var i = 0; i < 5; i++) {
 				if (cancellable != null && cancellable.is_cancelled()) {
 					this.add_message(new OLLMchat.Message("ui", "User cancelled request"));
@@ -189,6 +227,7 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				yield this.task_list.run_all_tasks();
+				this.task_list.write();
 				yield this.run_task_list_iteration();
 			}
 			if (hit_max_rounds && this.task_list.has_pending_exec()) {
@@ -196,15 +235,18 @@ namespace OLLMcoder.Skill
 			}
 		}
 
-		/** Stub: request user approval before running writer tasks. Plan: implement UI. */
+		/**
+		 * Stub: request user approval before running writer tasks. Plan: implement UI.
+		 */
 		private async bool request_writer_approval()
 		{
 			return true;
 		}
 
 		/**
-		 * Build the task list iteration prompt (task_list_iteration.md) from this.task_list.
-		 * Current task list = this.task_list.to_markdown(). Used by run_task_list_iteration() and by the test CLI.
+		 * Build the task list iteration prompt (task_list_iteration.md) from
+		 * this.task_list. Current task list = this.task_list.to_markdown().
+		 * Used by run_task_list_iteration() and by the test CLI.
 		 */
 		public PromptTemplate iteration_prompt(string previous_proposal_issues = "") throws GLib.Error
 		{
@@ -222,7 +264,12 @@ namespace OLLMcoder.Skill
 			return tpl;
 		}
 
-		/** Task list iteration: send current list to LLM, parse response; this.task_list is replaced by parse_task_list() on success. Up to 5 retries with previous_proposal_issues. On parse failure parser sets this.task_list = null; restore from saved ref so next iteration_prompt() has a list. */
+		/**
+		 * Task list iteration: send current list to LLM, parse response; this.task_list
+		 * is replaced by parse_task_list() on success. Up to 5 retries with
+		 * previous_proposal_issues. On parse failure parser sets this.task_list = null;
+		 * restore from saved ref so next iteration_prompt() has a list.
+		 */
 		public async void run_task_list_iteration() throws GLib.Error
 		{
 			if (this.task_list == null) {

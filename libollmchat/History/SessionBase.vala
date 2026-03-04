@@ -378,6 +378,13 @@ namespace OLLMchat.History
 			var parts = this.fid.split("-");
 			return parts[0] + "/" + parts[1] + "/" + parts[2] + "/" + parts[3] + "-" + parts[4] + "-" + parts[5];
 		}
+
+		/**
+		 * Directory for task output files (e.g. task-list.md, per-task .md).
+		 * Same path as session JSON but as a directory: history_dir / to_path().
+		 * @return Path to task dir, or "" if this session has no task dir (e.g. EmptySession).
+		 */
+		public abstract string task_dir();
 		
 		
 		/**

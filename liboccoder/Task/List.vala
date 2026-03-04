@@ -60,6 +60,17 @@ public class List : Object
 		this.runner = runner;
 	}
 
+	/** Write this task list to session task dir (task-list.md). */
+	public void write()
+	{
+		var path = GLib.Path.build_filename(this.runner.session.task_dir(), "task-list.md");
+		try {
+			GLib.FileUtils.set_contents(path, this.to_markdown());
+		} catch (GLib.FileError e) {
+			GLib.critical("Task.List.write: failed to write task-list.md: %s", e.message);
+		}
+	}
+
 	/**
 	 * Returns only ## Tasks and task sections. Runner assembles lead content
 	 * (original prompt, goals_summary_md) when building current_task_list.
@@ -222,6 +233,7 @@ public class List : Object
 		yield t.wait_refined();
 		yield t.run_tools();
 		yield t.post_evaluate();
+		t.write();
 	}
 
 	public bool has_tasks_requiring_approval()

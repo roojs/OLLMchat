@@ -50,6 +50,11 @@ namespace OLLMchat.History
 			// Manager will be set via Object.new_with_properties as a construct property
 		}
 
+		public override string task_dir()
+		{
+			return GLib.Path.build_filename(this.manager.history_dir, this.to_path());
+		}
+
 		/**
 		 * Returns the session JSON file (caller can use query_exists() on it).
 		 */

@@ -157,6 +157,21 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Write this task's result to session task dir. Filename = this.slug() + suffix + ".md".
+	 * Phase 1: call with default "" (task output only). Later: suffix e.g. "-tool-call-1" for tool/ref results.
+	 */
+	public void write(string suffix = "")
+	{
+		var path = GLib.Path.build_filename(this.runner.session.task_dir(), 
+			this.slug() + suffix + ".md");
+		try {
+			GLib.FileUtils.set_contents(path, this.result_document.to_markdown());
+		} catch (GLib.FileError e) {
+			GLib.critical("Details.write: failed to write %s: %s", path, e.message);
+		}
+	}
+
+	/**
 	 * Apply refined task map: set each key from refined_map into this.task_data, then re-run fill.
 	 */
 	public void update_props(Gee.Map<string, Markdown.Document.Block> refined_map)
@@ -231,8 +246,30 @@ public class Details : OLLMchat.Agent.Base
 				}
 				continue;
 			}
+			if (link.scheme == "task") {
+				if (!href.has_prefix("task://")) {
+					continue;
+				}
+				var rest = href.substring("task://".length);
+				var idx = rest.index_of_char('#');
+				var path = (idx >= 0) ? rest.substring(0, idx) : rest;
+				if (path.contains("/")) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path must not contain '/'.";
+					continue;
+				}
+				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+				if (!this.runner.task_list.slugs.has_key(slug)) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
+					continue;
+				}
+				var ref_task = this.runner.task_list.slugs.get(slug);
+				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
+					this.issues += "\n" + "Reference target \"" + href + "\" refers to a task in the same or later section.";
+				}
+				continue;
+			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (e.g. #task-name-results), http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (e.g. #task-name-results), task://slug.md, http(s) URL, or absolute file path (must exist).";
 		}
 	}
 
@@ -526,6 +563,16 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
+				var content = this.runner.reference_content(link.href);
+				if (content != "") {
+					parts += this.header_fenced(
+						"### Reference contents for " + link.title,
+						content,
+						"markdown");
+				}
+				continue;
+			}
+			if (link.scheme == "task") {
 				var content = this.runner.reference_content(link.href);
 				if (content != "") {
 					parts += this.header_fenced(
