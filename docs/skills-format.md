@@ -58,7 +58,7 @@ When a previous refinement attempt had issues (e.g. invalid tool, malformed outp
 
 ### What the refiner produces
 
-1. **Refined task** — The same task fields (What is needed, Skill, References, Expected output) plus **Skill call**: the skill name and **all required and optional arguments with concrete values**. Those values come from "What is needed" and the task reference contents. This is what ties the coarse instruction to the actual inputs the skill will see (e.g. `topic = "async main loop Vala"` for research_topic).
+1. **Refined task** — The same task fields (What is needed, Skill, References, Expected output) plus **Skill call**: the skill name and **all required and optional arguments with concrete values**. Those values come from "What is needed" and the task reference contents. This is what ties the coarse instruction to the actual inputs the skill will see (e.g. `topic = "async main loop Vala"` for research_online_search).
 2. **Tool Calls** — Zero or more fenced blocks; each block is one JSON object with **name** (required) and **arguments** (optional object). One block per tool call. The runner executes each call, collects outputs, and passes them into the **Precursor** for the executor. Prefer **multiple** tool calls when that is more effective (e.g. several searches or codebase queries rather than one).
 
 So: the **task creator** chooses *which* skill and *what* is needed at a high level; the **refiner** decides *exactly* what to pass to the skill and *which tools* to run first; the **executor** then receives What is needed, Skill definition, and Precursor (references + tool outputs) and produces Result summary + Detail. Refinement is what makes the design work — without it, the executor would get only coarse "What is needed" and references, with no concrete skill arguments or tool runs.
@@ -98,23 +98,25 @@ Every skill must produce output in this shape so the runner can parse it and sho
 
 - **## Result summary** (required) — The content of this section is what appears in the task list as the task’s **Output**.
 - It must be a **summary of what the task did** to address the goal and **whether that answered it** (one or two sentences). Use outcome-focused language (e.g. "Searched the codebase for X; found Y — enough for a follow-up."). Do not use a literal "Goal:" line or describe system mechanics.
+- **Always list sections of the output as links** when describing what the task did (e.g. [Sources and findings](#sources-and-findings), [Issues that need rectifying](#issues-that-need-rectifying)). Use markdown links to each section heading — this is **very important**: it is the only visible information that later tasks can use to enhance their information; without section links, downstream tasks cannot discover what is in your output.
 - If nothing relevant was found, say that clearly (e.g. "Nothing relevant found.").
 - No long prose here; the detail goes in the next section.
 
-### Detail (injected into the next task)
+### Body sections (descriptive titles only)
 
-- **## Detail** — The full breakdown. This is injected into the **Precursor** of any later task that references this task’s output.
-- Structure: **heading + body** or **heading + sections with links**.
-- **Detail can contain markdown links** and **short summaries about the references and why they are useful** (e.g. “The [Vala async docs](url) cover async/yield and main loop; [Runner.vala](path#OLLMcoder.Skill-Runner-task_creation_prompt) is where the prompt is built.”). Links can be URLs, file paths, or **AST references** for code — use the project AST path format (e.g. `#Namespace-Class-methodName`); see "Reference link types" below. Do not use plain symbol names like `#task_creation_prompt`. Downstream tasks receive the Detail and can have the refiner add those links to References so their content is injected too.
+- **Never use generic section titles** (e.g. "Detail"). Use a **descriptive title** that states what the section contains (e.g. "Sources and findings", "Vala async: yield, main loop, and example of calling async methods", "Review findings: issues and proposed changes"). Be specific to the content — avoid generic titles like "Synthesis and sample code".
+- The full breakdown is injected into the **Precursor** of any later task that references this task’s output.
+- Structure: **heading + body** or **heading + subsections with links**.
+- **Body sections can contain markdown links** and **short summaries about the references and why they are useful** (e.g. “The [Vala async docs](url) cover async/yield and main loop; [Runner.vala](path#OLLMcoder.Skill-Runner-task_creation_prompt) is where the prompt is built.”). Links can be URLs, file paths, or **AST references** for code — use the project AST path format (e.g. `#Namespace-Class-methodName`); see "Reference link types" below. Do not use plain symbol names like `#task_creation_prompt`. Downstream tasks receive the body and can have the refiner add those links to References so their content is injected too.
 - End with a clear conclusion: e.g. "Enough information to proceed." or "More research needed: [what to search next]."
 
-Optional sections (e.g. Output References, Skill output in fenced blocks) may be specified by the skill; the runner still requires a **Result summary** section and uses **Detail** when resolving references.
+Optional sections (e.g. Output References, Skill output in fenced blocks) may be specified by the skill; the runner still requires a **Result summary** section and uses the body sections when resolving references.
 
 ### Two-step flows and secondary sections
 
 Some skills are used in pairs: the first produces raw findings; the second consumes that output and produces a synthesized result.
 
-- **research_topic** → **research_pages**: research_topic does web searches and outputs Result summary + Detail; research_pages receives that as Precursor and produces a concise summary (and optionally sample usage).
+- **research_online_search** → **research_web_page**: research_online_search does web searches and outputs Result summary + Detail; research_web_page receives that as Precursor and produces a concise summary (and optionally sample usage).
 - **analyze_codebase** → **analyze_code**: analyze_codebase searches the codebase (codebase_search with code element_type) and outputs **Result summary** plus **## Analyze codebase results** — code locations with AST/file links. analyze_code receives that as Precursor and produces **Result summary + Detail** with how to use the code and example usage (code snippets).
 - **analyze_docsbase** → **analyze_docs**: analyze_docsbase searches **documentation** (codebase_search with element_type "document" or "section", optionally category). Outputs **Result summary** plus **## Analyze docsbase results** — doc/section locations with file and GFM heading links. analyze_docs receives that as Precursor and produces **Result summary + Detail** that synthesizes the docs: key points, how to apply them, and example procedures from the documentation.
 
@@ -148,13 +150,13 @@ The runner uses the Refinement section when refining the task and the Execution 
 ### Location and naming
 
 - Path: `resources/skills/`.
-- Filename: **lowercase with underscores** (e.g. `research_topic.md`, `plan_create.md`). No UpperCamel or kebab-case in filenames.
+- Filename: **lowercase with underscores** (e.g. `research_online_search.md`, `plan_create.md`). No UpperCamel or kebab-case in filenames.
 
 ### Part 1: Front matter (YAML header)
 
 Required keys:
 
-- **name** — Skill name, lowercase with underscores (e.g. `research_topic`). Must match the runner’s catalog.
+- **name** — Skill name, lowercase with underscores (e.g. `research_online_search`). Must match the runner’s catalog.
 - **description** — **When to use** this skill — that is its only job. One line, shown in the task list and skill catalog; the task creator uses it to choose the right skill per task. Include when the planner should choose it and hints about when not to use it (e.g. do not use before research is done; ensure prerequisites have been run). Do not describe what the skill outputs or how it works; that belongs in the Refinement and Execution sections.
 
 Optional:

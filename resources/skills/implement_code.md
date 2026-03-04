@@ -6,11 +6,11 @@ tools: write_file, write_chunk
 
 ## Refinement
 
-Prepare the change blocks. Emit tool calls with concrete arguments from **What is needed** and **Precursor** (plan, code references, standards).
+Use the **reference information** (normally a plan, plus code references or standards in Precursor) and apply those changes — i.e. prepare the change blocks from the plan. Emit tool calls with concrete **file_path**, **code_content**, or **ast_reference** and **new_content** as specified or implied by the plan and What is needed.
 
-**New file:** Emit one **write_file** call with **file_path** and **code_content** (path and content concrete from Precursor).
+**New file:** Emit one **write_file** call with **file_path** and **code_content** (path and content from the plan / Precursor).
 
-**Modification:** Emit one **write_chunk** call with **file_path**, **reference_type**: "ast", **reference** (e.g. "method:env"), **new_content**. Resolve file path and AST reference from References/Precursor.
+**Modification:** Emit one **write_chunk** call with **file_path**, **reference_type**: "ast", **reference** (e.g. "method:env"), **new_content**. Resolve file path and AST reference from the plan and References/Precursor.
 
 ---
 
