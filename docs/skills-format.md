@@ -183,7 +183,6 @@ When skill output refers to other content, use only these link forms so the runn
 
 **AST path format (for code):** The anchor for code symbols is **not** a plain name like `#task_creation_prompt`. It is the project’s AST path: **hyphen-separated**, with namespace parts using `.`. Example: `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. So a link to a method is `[Title](/absolute/path/to/file.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`. See the codebase (e.g. docs/plans/done/2.1.2, or codebase search AST path output) for the exact format your project uses.
 
-- **Project description:** `[Project description](#project-description)`
 - **File:** `[Title](/absolute/path/to/file)` — base name for title, absolute path.
 - **File section / AST reference:** `[Title](/absolute/path/to/file#anchor)` — anchor can be a **GFM heading** (e.g. `#section-name`) or an **AST path** for code. **AST paths do not use plain symbol names**; they use the project’s AST path format: hyphen-separated, with namespace parts optionally using `.`. Example: `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. So for code use e.g. `[task_creation_prompt](/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`, not `#task_creation_prompt`. The runner resolves the AST path to inject that symbol.
 - **Task output:** `[Task Name Results](#task-name-results)` — anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`.

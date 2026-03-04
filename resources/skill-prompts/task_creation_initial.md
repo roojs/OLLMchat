@@ -76,7 +76,7 @@ Produce your response in the following structure. Use markdown **headings** for 
    - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis 2"). Use skill + number when another task will refer to this task's output (later tasks use e.g. `#research-1-results`). If omitted, the Runner assigns one (skill + number) so tasks can be referred to in issue messages.
    - **What is needed** (required) — What we need from this task (or from this skill when one is used), in natural language.
    - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
-   - **References** (optional) — Reference links can be project description, file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: `#project-description`, file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output anchors (e.g. `#research-1-results`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
+   - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output anchors (e.g. `#research-1-results`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
    - **Expected output** — What we expect from this task (e.g. "Findings document", "Plan section", "Updated file").
    - **Requires user approval** (optional) — Include this bullet (use the exact label **Requires user approval**) when the task modifies code or files or otherwise needs user confirmation before it runs. The Runner will pause and ask for approval before executing such tasks. Omit for read-only tasks.
 
@@ -91,7 +91,6 @@ The output is parsed by a machine. You **must** follow this format exactly or th
 
 ## Reference link types (use only these)
 
-- **Project description:** `[Project description](#project-description)` — when the task needs the project description. Resolved content may have sections; use standard markdown section links to refer to them.
 - **File:** `[Title](/path/to/file)` — use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
 - **File section:** `[Title](/path/to/file#anchor)` — when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats are supported: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code (e.g. reference a **method** or **class** by name so the Runner injects just that symbol). Use the section name or symbol name as the title (e.g. "Installation", "API overview", "parse_task_list", "Details"). Path: absolute path plus `#anchor`. Do **not** use relative paths.
 - **Task output:** When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`, e.g. `#research-1-results`). Omit Name when no later task references this output. A task that references another task's output (e.g. `#research-1-results`) must be in a **later** task section; the producer and consumer cannot be in the same section.
@@ -118,13 +117,13 @@ The following illustrates the **exact format** the parser expects. **Every line 
 - **Name** Research 1
 - **What is needed** *(e.g. find where X is implemented and how Y works.)*
 - **Skill** *(Name of skill to use from catalog.)*
-- **References** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
+- **References** [Settings.jsx](/abs/path/to/Settings.jsx)
 - **Expected output** *(e.g. findings document.)*
 
 - **Name** Research 2
 - **What is needed** *(e.g. find where Z is defined — can run in parallel with task 1.)*
 - **Skill** *(name of skill to use from catalog.)*
-- **References** [Project description](#project-description)
+- **References** *(none or file/task links as needed.)*
 - **Expected output** *(e.g. findings document.)*
 
 ### Task section 2

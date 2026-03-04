@@ -5,7 +5,9 @@ description: Use when you need to extract information from code. Input is a set 
 
 ## Refinement
 
-No tool calls. Input is the task's **References** (links to code) and **What is needed**.
+**Purpose of this skill:** Extract information from code; the executor needs links to code (in References) and What is needed. Refinement fills in **References** so the executor can deliver what is needed.
+
+You receive **what is needed** for this task and a **summary of the task list so far executed** (including output summaries from previous tasks). Use the available information to fill in **References** so the executor can deliver what is needed — e.g. code file or section links from prior task outputs (e.g. analyze_codebase, analyze_code_standards). **Avoid whole files** — add **code sections** or **references to parts of a task output** (e.g. file + section/method/snippet) rather than full file contents.
 
 ---
 

@@ -58,7 +58,7 @@ namespace OLLMcoder.Skill
 			return ret;
 		}
 
-		/** Resolve non-file reference content for task refs. #anchor → user_request section or task output; http(s) deferred. When user_request is null (e.g. test), fallback to project description for #project-description. */
+		/** Resolve non-file reference content for task refs. #anchor → user_request section or task output; http(s) deferred. */
 		public string reference_content(string href)
 		{
 			var anchor = href.has_prefix("#") ? href.substring(1) : "";
@@ -67,10 +67,6 @@ namespace OLLMcoder.Skill
 			}
 			if (this.user_request != null && this.user_request.headings.has_key(anchor)) {
 				return this.user_request.headings.get(anchor).to_markdown_with_content();
-			}
-			// No original prompt: fallback to project summary for #project-description
-			if (anchor == "project-description" && this.sr_factory.project_manager.active_project != null) {
-				return this.sr_factory.project_manager.active_project.project_description();
 			}
 			return "";
 		}

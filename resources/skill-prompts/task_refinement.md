@@ -54,7 +54,7 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 - **What is needed:** *(e.g. find where X is implemented and what it returns.)*
 - **Skill:** *(skill name from the coarse task)*
-- **References:** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
+- **References:** [Settings.jsx](/abs/path/to/Settings.jsx)
 - **Expected output:** *(e.g. findings document with locations and behaviour.)*
 
 ## Tool Calls
@@ -72,7 +72,6 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 ## Reference link types (use only these)
 
-- **Project description:** `[Project description](#project-description)` - when the task needs the project description. Resolved content may have sections; use standard markdown section links to refer to them.
 - **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
 - **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code — use the **AST path** format: hyphen-separated, e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Namespace parts use `.`; class and method parts use `-`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`. Do **not** use plain symbol names like `#task_creation_prompt`; the runner expects the full AST path. Output and References can use this form so the runner injects that symbol. Path: absolute path plus `#anchor`. Do **not** use relative paths.
 - **Task output:** When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`, e.g. `#research-1-results`). Omit Name when no later task references this output.

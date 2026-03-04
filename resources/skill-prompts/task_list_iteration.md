@@ -61,7 +61,6 @@ Produce your response in the following structure. Use markdown **headings** for 
 
 ## Reference link types (use only these)
 
-- **Project description:** `[Project description](#project-description)` - when the task needs the project description.
 - **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title; use the **absolute path** for the path. Do **not** use relative paths.
 - **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use absolute path plus `#anchor` (e.g. section name or symbol).
 - **Task output:** When a task's output is referenced by a later task, give that task a **Name** (e.g. "Research 1"). Refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`). A task that references another task's output must be in a **later** task section than the producer; they cannot be in the same section.
@@ -97,14 +96,14 @@ The following illustrates the **exact format** the parser expects. **Every line 
 - **Name** Research 1
 - **What is needed** *(e.g. find where X is implemented.)*
 - **Skill** *(name from catalog.)*
-- **References** [Project description](#project-description), [Settings.jsx](/abs/path/to/Settings.jsx)
+- **References** [Settings.jsx](/abs/path/to/Settings.jsx)
 - **Expected output** *(e.g. findings document.)*
 - **Output** *(e.g. summary line or link to completed output.)*
 
 - **Name** Research 2
 - **What is needed** *(e.g. find where Z is defined.)*
 - **Skill** *(name from catalog.)*
-- **References** [Project description](#project-description)
+- **References** *(none or file/task links as needed.)*
 - **Expected output** *(e.g. findings document.)*
 - **Output** *(e.g. summary line or link to completed output.)*
 

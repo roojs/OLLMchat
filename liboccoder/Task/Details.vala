@@ -27,7 +27,7 @@ public enum MarkdownPhase
  *
  * Task list (input): each list item under a task section heading has a nested list
  * with labels ''What is needed'', ''Skill'', ''References'', ''Expected output''.
- * Links in References: project_description, current_file, paths, plan:...
+ * Links in References: current_file, paths, plan:...
  * Keys are exactly these labels (no other format accepted):
  * "What is needed", "Skill", "References", "Expected output", "Requires user approval".
  *
@@ -93,7 +93,7 @@ public class Details : OLLMchat.Agent.Base
 	public Markdown.Document.Document? result_document { get; set; default = null; }
 
 	/**
-	 * Markdown links from references block (project_description, paths, plan:...);
+	 * Markdown links from references block (current_file, paths, plan:...);
 	 * Runner resolves for prompt fill. Filled in fill_task_data().
 	 */
 	public Gee.ArrayList<Markdown.Document.Format> reference_targets { 
@@ -197,10 +197,6 @@ public class Details : OLLMchat.Agent.Base
 				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
 					continue;
 				}
-				if (anchor == "project-description" && this.runner.sr_factory.project_manager.active_project != null &&
-				    this.runner.sr_factory.project_manager.active_project.project_description() != "") {
-					continue;
-				}
 				this.issues += "\n" + "Invalid reference target \"" + href + "\": unknown anchor \"" + anchor + "\".";
 				continue;
 			}
@@ -236,7 +232,7 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (e.g. #project-description, #task-name-results), http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (e.g. #task-name-results), http(s) URL, or absolute file path (must exist).";
 		}
 	}
 
@@ -333,7 +329,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		this.add_message(new OLLMchat.Message("ui", "Refining: " + this.task_data.get("Name").to_markdown().strip() +
+		this.add_message(new OLLMchat.Message("ui", "Refining: " +
+			 this.task_data.get("Name").to_markdown().strip() +
 			 " with (" + this.session.model_usage.display_name_with_size() + ")"));
 		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.COARSE)));
 		yield this.fill_model();
@@ -369,7 +366,8 @@ public class Details : OLLMchat.Agent.Base
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			if (this.result_parser.issues == "") {
-				this.add_message(new OLLMchat.Message("ui", "Got result for: " + this.task_data.get("Name").to_markdown().strip()));
+				this.add_message(new OLLMchat.Message("ui", "Got result for: " + 
+					this.task_data.get("Name").to_markdown().strip()));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
 					this.resume_refined();
@@ -378,12 +376,15 @@ public class Details : OLLMchat.Agent.Base
 			}
 			if (i < 4) {
 				this.add_message(new OLLMchat.Message("ui-warning",
-					"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying):\n\n" +
+					"Refinement for \"" + 
+						this.task_data.get("Name").to_markdown().strip() +
+						 "\" had issues (retrying):\n\n" +
 					this.result_parser.issues.strip()));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui-warning",
-			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries.\n\nIssues:\n" +
+			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip()
+			 + "\" failed after 5 tries.\n\nIssues:\n" +
 			this.result_parser.issues.strip()));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -507,7 +508,6 @@ public class Details : OLLMchat.Agent.Base
 	 * Resolved reference block for this task: loop reference_targets; for each,
 	 * get content. File paths (absolute): from project manager, or File.new_fake
 	 * if not in project; then create_buffer and get_contents. #anchor from runner.
-	 * We always omit #project-description here; it is injected separately as ## Project Description.
 	 * When there are no references, returns "" (header trick: omit section). When there are references,
 	 * returns "## Reference Contents\n\n" plus each "### Reference contents for [title]" and its content.
 	 */
@@ -516,9 +516,6 @@ public class Details : OLLMchat.Agent.Base
 		var parts = "";
 		foreach (var link in this.reference_targets) {
 			if (link.path == "") {
-				if (link.hash == "project-description") {
-					continue;
-				}
 				var content = this.runner.reference_content(link.href);
 				if (content != "") {
 					parts += this.header_fenced(
@@ -620,8 +617,11 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void post_evaluate() throws GLib.Error
 	{
-		this.add_message(new OLLMchat.Message("ui", "Executing: " + this.task_data.get("Name").to_markdown().strip() + " with (" + this.session.model_usage.display_name_with_size() + ")"));
-		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.REFINEMENT)));
+		this.add_message(new OLLMchat.Message("ui", "Executing: " +
+			 this.task_data.get("Name").to_markdown().strip() +
+			  " with (" + this.session.model_usage.display_name_with_size() + ")"));
+		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + 
+			this.to_markdown(MarkdownPhase.REFINEMENT)));
 		// Executor must not have tools; it receives tool outputs in precursor and outputs text only.
 		this.chat_call.tools.clear();
 		var tpl = this.executor_prompt();
