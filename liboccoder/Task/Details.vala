@@ -187,7 +187,7 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Validate reference_targets hrefs; append to issues on invalid.
 	 * Call from parsing process after fill_names (pass list so task-output anchors can be validated).
-	 * Accepts: #anchor (document section or task output e.g. #slug-N-results), http(s) URL (TODO: validate later, see 1.23.20), absolute file path (must exist).
+	 * Accepts: #anchor (document section in user_request only), task://taskname.md#section, http(s) URL, absolute file path. Task output refs use task:// only, not #task-name-results. (taskname.{tool}.md later when TaskResult + execution output map exist.)
 	 */
 	public void validate_references()
 	{
@@ -195,21 +195,6 @@ public class Details : OLLMchat.Agent.Base
 			var href = link.href;
 			if (link.path == "") {
 				var anchor = link.hash;
-				if (anchor.has_suffix("-results")) {
-					var name_slug = anchor.substring(0, anchor.length - "-results".length);
-					if (name_slug == "" || !this.runner.task_list.slugs.has_key(name_slug)) {
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + name_slug + "\".";
-						continue;
-					}
-					var ref_task = this.runner.task_list.slugs.get(name_slug);
-					if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
-						this.issues += "\n" + "Reference target \"" + href +
-							"\" refers to a task in the same or a later section. " +
-							"A task may only reference the Output of a task from an earlier section. " +
-							"Move this task to a later section or remove this reference.";
-					}
-					continue;
-				}
 				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
 					continue;
 				}
@@ -270,7 +255,7 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (e.g. #task-name-results), task://slug.md, http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (document sections), task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
 		}
 	}
 
@@ -353,7 +338,8 @@ public class Details : OLLMchat.Agent.Base
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(),
 			"skill_details", definition.body,
-			"completed_task_list", (completed_md == "" ? "" : "## Completed tasks (so far)\n\n" + completed_md));
+			"completed_task_list", (completed_md == "" ? "" : 
+				"## Completed tasks (so far)\n\n" + completed_md));
 		return tpl;
 	}
 

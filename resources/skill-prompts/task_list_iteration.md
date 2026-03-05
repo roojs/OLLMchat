@@ -23,7 +23,7 @@ Do **not** treat modifying code or documents as a task unless the user's prompt 
 
 ## When adding new tasks - RAPIR and ordering
 
-When you add new tasks, follow the same discipline as in task creation. Order them in **RAPIR** order: Research → Analysis → Planning → Implementation → Review. Put independent tasks in the same **task section** (they may run in parallel); put tasks that depend on prior outputs in a later section. If a new task references another task's output (`#slug-results`), it must be in a **later** section than that task; do not put the consumer and producer in the same section. Sections run **sequentially**; within a section, tasks may run **in parallel**.
+When you add new tasks, follow the same discipline as in task creation. Order them in **RAPIR** order: Research → Analysis → Planning → Implementation → Review. Put independent tasks in the same **task section** (they may run in parallel); put tasks that depend on prior outputs in a later section. If a new task references another task's output (`task://slug.md`), it must be in a **later** section than that task; do not put the consumer and producer in the same section. Sections run **sequentially**; within a section, tasks may run **in parallel**.
 
 ## Tasks that require user approval
 
@@ -51,7 +51,7 @@ Produce your response in the following structure. Use markdown **headings** for 
 2. **Goals / summary** - One short paragraph: what we are trying to achieve with this task list (unchanged from the plan).
 3. **Issues with the tasks (what I changed)** - When you received previous proposal issues and are producing a revised task list, you may include this section. List each issue and what you changed to address it (e.g. invalid skill replaced with one from the catalog, malformed task corrected, invalid reference fixed). Omit when not listing changes.
 4. **Tasks** - Split into **task sections** as in the current list. **Sections run sequentially**; **within a section** you can have multiple tasks (they may run in parallel). Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. For each task provide:
-   - **Name** (optional) Short stable name (e.g. "Research 1", skill + number) when another task will refer to this task's output; later tasks use e.g. `[Research 1 Results](#research-1-results)`. If omitted, the Runner assigns one so tasks can be referred to in issue messages.
+   - **Name** (optional) Short stable name (e.g. "Research 1", skill + number) when another task will refer to this task's output; later tasks use e.g. `[Research 1 Results](task://research-1.md)`. If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) What we need from this task (or from this skill when one is used), in natural language. For new tasks you add, use information from the completed tasks' outputs to define this.
    - **Skill** (required) Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
    - **References** (optional) Markdown links only (zero or more). For new tasks, include links to the relevant completed-task outputs and to files or project description as needed. Format each as `[Title](target)`. Do **not** paste file contents or long text.
@@ -63,7 +63,7 @@ Produce your response in the following structure. Use markdown **headings** for 
 
 - **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title; use the **absolute path** for the path. Do **not** use relative paths.
 - **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use absolute path plus `#anchor` (e.g. section name or symbol).
-- **Task output:** When a task's output is referenced by a later task, give that task a **Name** (e.g. "Research 1"). Refer to its results with `[Research 1 Results](#research-1-results)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`). A task that references another task's output must be in a **later** task section than the producer; they cannot be in the same section.
+- **Task output:** When a task's output is referenced by a later task, give that task a **Name** (e.g. "Research 1"). Refer to its results with `[Research 1 Results](task://research-1.md)` (anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`). A task that references another task's output must be in a **later** task section than the producer; they cannot be in the same section.
 - **URL:** `[Title](https://…)` - when the task needs external content.
 
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.
@@ -112,14 +112,14 @@ The following illustrates the **exact format** the parser expects. **Every line 
 - **Name** Analysis 1
 - **What is needed** *(e.g. produce a plan from the research.)*
 - **Skill** *(name from catalog.)*
-- **References** [Research 1 Results](#research-1-results), [Research 2 Results](#research-2-results)
+- **References** [Research 1 Results](task://research-1.md), [Research 2 Results](task://research-2.md)
 - **Expected output** *(e.g. plan section.)*
 - **Output** *(e.g. summary line or link to completed output.)*
 
 - **Name** Implement 1
 - **What is needed** *(e.g. apply the agreed changes - new task you are adding.)*
 - **Skill** *(name from catalog)*
-- **References** [Analysis 1 Results](#analysis-1-results)
+- **References** [Analysis 1 Results](task://analysis-1.md)
 - **Expected output** *(e.g. updated file.)*
 - **Requires user approval**
 
