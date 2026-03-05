@@ -65,7 +65,7 @@ public class List : Object
 	{
 		var path = GLib.Path.build_filename(this.runner.session.task_dir(), "task-list.md");
 		try {
-			GLib.FileUtils.set_contents(path, this.to_markdown());
+			GLib.FileUtils.set_contents(path, this.to_markdown(MarkdownPhase.LIST));
 		} catch (GLib.FileError e) {
 			GLib.critical("Task.List.write: failed to write task-list.md: %s", e.message);
 		}
@@ -74,19 +74,19 @@ public class List : Object
 	/**
 	 * Returns only ## Tasks and task sections. Runner assembles lead content
 	 * (original prompt, goals_summary_md) when building current_task_list.
+	 * LIST: all tasks with Output when exec_done. REFINE_COMPLETED: only completed
+	 * tasks (exec_done and result non-empty), Name + Output (Result summary); no References, no Tool Calls.
 	 */
-	public string to_markdown()
+	public string to_markdown(MarkdownPhase phase)
 	{
-		var out = "## Tasks\n\n";
+		var ret = "## Tasks\n\n";
 		var section = 0;
 		foreach (var step in this.steps) {
 			section++;
-			out += "### Task section " + section.to_string() + "\n\n";
-			foreach (var t in step.children) {
-				out += t.to_markdown(MarkdownPhase.LIST) + "\n\n";
-			}
+			var step_out = step.to_markdown(phase);
+			ret += (step_out == "" ? "" : "### Task section " + section.to_string() + "\n\n" + step_out);
 		}
-		return out;
+		return ret;
 	}
 
 	/**

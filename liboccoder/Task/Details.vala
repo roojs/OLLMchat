@@ -19,6 +19,7 @@ public enum MarkdownPhase
 	COARSE,
 	REFINEMENT,
 	LIST,
+	REFINE_COMPLETED,
 	EXECUTION
 }
 
@@ -343,6 +344,7 @@ public class Details : OLLMchat.Agent.Base
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		tpl.system_fill();
+		var completed_md = this.runner.task_list.to_markdown(MarkdownPhase.REFINE_COMPLETED);
 		tpl.fill(
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
@@ -350,7 +352,8 @@ public class Details : OLLMchat.Agent.Base
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(),
-			"skill_details", definition.body);
+			"skill_details", definition.body,
+			"completed_task_list", (completed_md == "" ? "" : "## Completed tasks (so far)\n\n" + completed_md));
 		return tpl;
 	}
 
@@ -468,19 +471,27 @@ public class Details : OLLMchat.Agent.Base
 		for (var i = 0; i < order.length; i++) {
 			var key = order[i];
 			switch (key) {
+				case "References":
+					if (phase == MarkdownPhase.REFINE_COMPLETED) {
+						continue;
+					}
+					break;
 				case "Output":
-					if (phase != MarkdownPhase.LIST || !this.exec_done || this.result == "") {
+					if ((phase != MarkdownPhase.LIST && phase != MarkdownPhase.REFINE_COMPLETED) || !this.exec_done || this.result == "") {
 						continue;
 					}
 					ret += "- **Output** " + this.result.replace("\n", " ") + "\n";
 					continue;
 				default:
-					if (!this.task_data.has_key(key)) {
-						continue;
-					}
 					break;
 			}
+			if (!this.task_data.has_key(key)) {
+				continue;
+			}
 			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
+		}
+		if (phase == MarkdownPhase.REFINE_COMPLETED) {
+			return ret;
 		}
 		// Include ## Tool Calls only when there are tools (omit empty section in prompt).
 		if (this.tools.size == 0) {

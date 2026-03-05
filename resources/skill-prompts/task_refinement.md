@@ -16,6 +16,7 @@ From "What is needed", the skill's **Refinement** instructions, and the task ref
 - **Tools definition:** You receive the tools definition (tool names, descriptions, parameters). This tells you **how to run** the tools - the format the Runner expects (e.g. one fenced JSON block per call with **name** and **arguments**). Use it to build the ## Tool Calls section.
 {toolcall2/end}
 - **Task reference contents:** Resolved content for *this task's* References only - what the task creator listed for this task (environment, project description, current file, file contents, task outputs, URLs). Use it to fill in exact values for references and, when the skill uses tools, for tool call arguments.
+- **Completed tasks (so far):** When present below, a list of tasks that have already been executed (task name + Result summary). Reference links live inside each summary. Use this to fill in References **only when relevant** — do not add irrelevant information to References. For tool calls in particular, include prior task/output in References only when **very relevant**; tool call results may already be large, and adding noise will not help.
 - **Issues with the current output / Current task data:** When this section is present, the previous attempt had problems. Below are the **issues** and the **current task data** (Task section and Tool Calls). Rectify and produce corrected output.
 
 ## References from prior task output (Detail links)
@@ -80,6 +81,8 @@ The following illustrates the **shape** of the output. Use the same headings and
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.
 
 ---
+
+{completed_task_list}
 
 {issues}
 

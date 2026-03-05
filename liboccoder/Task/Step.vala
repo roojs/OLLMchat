@@ -49,6 +49,24 @@ public class Step : Object
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }
 
 	/**
+	 * Markdown for this step's tasks only (no section header). LIST: all children
+	 * with Output when exec_done. REFINE_COMPLETED: only children that are
+	 * exec_done with non-empty result; skips others. Returns "" when no tasks
+	 * contribute (e.g. REFINE_COMPLETED and none done).
+	 */
+	public string to_markdown(MarkdownPhase phase)
+	{
+		var step_out = "";
+		foreach (var t in this.children) {
+			if (phase == MarkdownPhase.REFINE_COMPLETED && (!t.exec_done || t.result == "")) {
+				continue;
+			}
+			step_out += t.to_markdown(phase) + "\n\n";
+		}
+		return step_out;
+	}
+
+	/**
 	 * Whether any child task requires user approval before execution continues.
 	 *
 	 * @return ''true'' if at least one child has ''requires_user_approval''

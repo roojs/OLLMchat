@@ -255,7 +255,7 @@ namespace OLLMcoder.Skill
 			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
 
 			tpl.fill(
-				"current_task_list", this.task_list.to_markdown(),
+				"current_task_list", this.task_list.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
 				"environment", tpl.header_raw("Environment", this.env()),
 				"project_description", this.sr_factory.project_manager.active_project == null ? "" :
 					this.sr_factory.project_manager.active_project.project_description(),
