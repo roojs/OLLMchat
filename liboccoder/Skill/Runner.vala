@@ -69,36 +69,57 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Resolve non-file reference content for task refs (task URI, #anchor, http deferred).
+		 * Uses link.scheme, link.path, link.href only where needed for lookup; does not re-parse href.
+		 * Task scheme: content from task.exec_runs (combined documents). Path empty: #anchor from user_request.
+		 *
+		 * @param link the reference link (scheme, path, href, hash already parsed)
+		 * @return resolved content for the link, or "" if not found / not applicable
 		 */
-		public string reference_content(string href)
+		public string reference_content(Markdown.Document.Format link)
 		{
-			if (href.has_prefix("task://")) {
-				var rest = href.substring("task://".length);
-				var idx = rest.index_of_char('#');
-				var path = (idx >= 0) ? rest.substring(0, idx) : rest;
-				var fragment = (idx >= 0) ? rest.substring(idx + 1) : "";
-				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+			if (link.scheme == "task") {
+				var slug = link.path.has_suffix(".md") ? link.path.substring(0, link.path.length - 3) : link.path;
+				if (slug == "" && link.href.has_prefix("task://")) {
+					var rest = link.href.substring("task://".length);
+					var idx = rest.index_of_char('#');
+					var path = (idx >= 0) ? rest.substring(0, idx) : rest;
+					slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+				}
 				if (this.task_list == null || !this.task_list.slugs.has_key(slug)) {
 					return "";
 				}
 				var task = this.task_list.slugs.get(slug);
-				if (task.result_document == null) {
+				if (task.exec_runs.size == 0) {
 					return "";
 				}
-				if (fragment == "") {
-					return task.result_document.to_markdown();
+				string[] parts = {};
+				foreach (var ex in task.exec_runs) {
+					if (ex.document != null) {
+						parts += ex.document.to_markdown();
+					}
 				}
-				if (task.result_document.headings.has_key(fragment)) {
-					return task.result_document.headings.get(fragment).to_markdown_with_content();
+				var combined = string.joinv("\n\n", parts);
+				if (link.hash == "") {
+					return combined;
 				}
-				return task.result_document.to_markdown();
+				if (task.exec_runs.size >= 1 && task.exec_runs.get(0).document != null &&
+					task.exec_runs.get(0).document.headings.has_key(link.hash)) {
+					return task.exec_runs.get(0).document.headings.get(link.hash).to_markdown_with_content();
+				}
+				return combined;
 			}
-			var anchor = href.has_prefix("#") ? href.substring(1) : "";
-			if (anchor == "") {
+			if (link.path == "") {
+				var anchor = link.hash;
+				if (anchor == "") {
+					return "";
+				}
+				if (this.user_request != null && this.user_request.headings.has_key(anchor)) {
+					return this.user_request.headings.get(anchor).to_markdown_with_content();
+				}
 				return "";
 			}
-			if (this.user_request != null && this.user_request.headings.has_key(anchor)) {
-				return this.user_request.headings.get(anchor).to_markdown_with_content();
+			if (link.scheme == "http" || link.scheme == "https") {
+				return "";
 			}
 			return "";
 		}

@@ -22,7 +22,7 @@ namespace OLLMcoder.Task
  * failures are accumulated in {@link issues} so the caller can retry or report.
  *
  * Constructor builds a ''Markdown.Document''; {@link parse_task_list},
- * {@link extract_refinement}, and {@link extract_exec} each expect specific
+ * {@link extract_refinement}, {@link extract_exec}, and {@link exec_extract} each expect specific
  * sections and populate task_list / task / issues accordingly.
  *
  * How it fits in the task flow:
@@ -32,13 +32,15 @@ namespace OLLMcoder.Task
  *  * Refinement: Details.refine() receives the refinement response → new
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
- *  * Execution: Details.post_evaluate() receives the executor response → new
- *    ResultParser, ''extract_exec(this)''; ''task.result'' and
- *    ''task.result_document'' are set; on success Details sets ''exec_done''.
+ *  * Execution: Tool.run() receives the executor response → new ResultParser,
+ *    ''exec_extract(ex)''; ex.summary and ex.document are set. Details.run_exec() builds
+ *    ''task.result'' from exec_runs summaries; on success Details sets ''exec_done''.
+ *    ''extract_exec(Details)'' remains for legacy/test use (sets task.result only).
  *
  * @see List
  * @see Step
  * @see Details
+ * @see Tool
  */
 public class ResultParser : Object
 {
@@ -68,7 +70,7 @@ public class ResultParser : Object
 
 	/**
 	 * Builds document from response (''Markdown.Document.Render''). Call
-	 * ''parse_task_list'', ''extract_refinement'', or ''extract_exec'' next.
+	 * ''parse_task_list'', ''extract_refinement'', ''extract_exec'', or ''exec_extract'' next.
 	 *
 	 * @param runner skill runner; used by ''parse_task_list()'' to build Details and List
 	 * @param response raw LLM markdown response (planning, refinement, or executor)
@@ -266,6 +268,7 @@ public class ResultParser : Object
 		if (!this.document.headings.has_key("tool-calls")) {
 			this.document.headings.set("tool-calls", new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH));
 		}
+		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
 		var tool_index = 0;
 		foreach (var node in this.document.headings.get("tool-calls").contents()) {
 			if (!(node is Markdown.Document.Block)) {
@@ -276,7 +279,7 @@ public class ResultParser : Object
 				&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
 				continue;
 			}
-			var tool = new Tool(task);
+			var tool = new Tool(factory, this.runner.session, task, "");
 			if (!tool.parse(block)) {
 				this.issues += "\n" + tool.issues + 
 					" Raw block:\n\n```json\n" + block.code_text + "\n```\n\n";
@@ -291,27 +294,53 @@ public class ResultParser : Object
 			}
 			task.tools.add(tool);
 		}
+		// Require at least one of References or Tool calls so execution has precursor content.
+		if (task.reference_targets.size == 0 && task.tools.size == 0) {
+			this.issues += "\n" + "Refinement must provide at least one of References or Tool calls. " +
+				"This task has neither; add markdown links in References and/or fenced JSON blocks in " +
+				" ## Tool Calls so execution has precursor content.";
+		}
 	}
 
 	/**
-	 * Fills in the result summary on the task and sets ''task.result_document''.
+	 * Parse executor response into the given Tool (exec run). Called by Tool.run().
+	 * On success sets ex.summary and ex.document; on failure appends to issues.
 	 *
-	 * Single pass: find section "Result summary" → ''task.result'' = section
-	 * content; ''task.result_document'' = this document. If no "Result summary"
-	 * section, appends to {@link issues}. No parsing of filename or other details.
+	 * @param ex the Tool (exec run) to fill with result summary and document
+	 * @return true on success; false on missing Result summary (issues appended)
+	 */
+	public bool exec_extract(Tool ex)
+	{
+		if (!this.document.headings.has_key("result-summary")) {
+			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce a result summary (what was found or produced; whether complete or more work needed).";
+			return false;
+		}
+		var summary = this.document.headings.get("result-summary").to_markdown_with_content().strip();
+		ex.summary = summary;
+		ex.document = this.document;
+		return true;
+	}
+
+	/**
+	 * Fills in the result summary on the task from executor response.
 	 *
-	 * Content we expect (task_execution.md / 1.23.6):
+	 * Single pass: find section "Result summary" → ''task.result'' = section content.
+	 * If no "Result summary" section, appends to {@link issues}. No parsing of filename or other details.
+	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and task.result from exec_runs.
+	 *
+	 * Content we expect (task_execution.md):
 	 * {{{
 	 * ## Result summary
 	 * We have the information we need; it is complete.
 	 * }}}
 	 *
-	 * @param task the task to set ''result'' and ''result_document'' on
+	 * @param task the task to set ''result'' on
 	 */
 	public void extract_exec(Details task)
 	{
 		task.result = "";
-		task.result_document = this.document;
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +

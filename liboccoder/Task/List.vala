@@ -231,8 +231,8 @@ public class List : Object
 	private async void run_child(Details t) throws GLib.Error
 	{
 		yield t.wait_refined();
-		yield t.run_tools();
-		yield t.post_evaluate();
+		t.build_exec_runs();
+		yield t.run_exec();
 		t.write();
 	}
 

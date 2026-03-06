@@ -336,27 +336,10 @@ Examples:
 				}
 				var detail = step.children.get(opt_task_num);
 				this.load_refinement(opt_input_refine, detail);
-				yield detail.run_tools();
-				var tpl = detail.executor_prompt();
-				if (opt_run == "execute-prompt") {
-					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
-					return;
-				}
-				var messages = new Gee.ArrayList<OLLMchat.Message>();
-				messages.add(new OLLMchat.Message("system", tpl.filled_system));
-				messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				var response_obj = yield this.runner.chat().send(messages, null);
-				var response_text = response_obj != null && response_obj.message != null ?
-					 response_obj.message.content : "";
-				var result_parser = new OLLMcoder.Task.ResultParser(this.runner, response_text);
-				result_parser.extract_exec(detail);
-				if (result_parser.issues != "") {
-					this.cl.printerr("Executor parse issues: %s\n", result_parser.issues);
-				}
+				detail.build_exec_runs();
+				yield detail.run_exec();
 				if (detail.result != "") {
 					stdout.printf("%s", detail.result);
-				} else {
-					stdout.printf("%s", response_text);
 				}
 				return;
 			}

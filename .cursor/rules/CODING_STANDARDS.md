@@ -12,7 +12,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **`this.` prefix**: Does the plan assume/describe using `this.` for instance members in new/modified Vala code?
 - **GLib prefix & using statements**: Does the plan require fully-qualified `GLib.*` and avoid `using` imports for new code?
 - **Property initialization**: Are new properties initialized with defaults (`get; set; default =` or field defaults) instead of constructors?
-- **Line length & breaking**: Does the plan call out breaking long lines (method calls, concatenations) for readability where relevant?
+- **Line length & breaking**: Does the plan avoid long lines (method calls, concatenations, docblocks, comments) and call out breaking them for readability where relevant?
 - **StringBuilder usage**: Does the plan avoid `GLib.StringBuilder` unless building strings in loops with hundreds of iterations? Does it use `string.joinv()` for joining arrays and `+` for simple concatenation?
 - **String building in loops**: Does the plan **never** build strings in a loop (e.g. `prefix += "> "` in a for-loop)? Use built-in fill/join methods (`string.nfill()`, `replace()`, `string.joinv()`) instead.
 - **ArrayList for strings**: Does the plan avoid `Gee.ArrayList<string>` when building arrays of strings just to join them? Does it use `string[]` arrays instead? When initializing string arrays, use **`string[] name = {}`** only — do not use `var x = new string[0]` or similar.
@@ -22,8 +22,48 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Try/catch scope**: Does the plan keep try/catch focused on the minimal code that can throw — not blanketing large areas? Wrap only the specific call(s) that may throw; keep setup and non-throwing code outside the try block.
 - **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
 - **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
+- **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
+
+## Docblocks / code documentation
+
+**IMPORTANT:** Docblocks (documentation comments for classes, methods, properties, and parameters) must follow the coding documentation standards and use **multiline** form. Do **not** use short one-line docblocks when documenting behaviour, parameters, or return values.
+
+- Use full `/** ... */` blocks with a summary line, optional body (behaviour, context), and standard tags: `@param` for each parameter, `@return` for return value where relevant.
+- For classes: include purpose, main roles or usage, and `@see` when referring to related types.
+- For methods: include what the method does, when to use it, and document all parameters and return value.
+- For properties: include what the property holds and when it is set or used.
+
+**Bad (one-liner):**
+```vala
+/** Add all reference_targets to the given Tool. */
+private void add_all_references_to(Tool ex)
+```
+
+**Good (multiline with @param):**
+```vala
+/**
+ * Add all reference_targets to the given Tool. Used by add_exec_runs_for_tools() and by the combined branch in build_exec_runs().
+ *
+ * @param ex the Tool (exec run) to add references to
+ */
+private void add_all_references_to(Tool ex)
+```
+
+**Also Good (property with context):**
+```vala
+/**
+ * Execution run id (e.g. "tool-0", "ref-1", "exec"). Empty for refinement-only.
+ */
+public string id { get; set; default = ""; }
+```
+
+Reserve single-line `/** ... */` only for trivial, self-explanatory cases where no parameters or behaviour need describing.
+
+**Line length in docblocks:** Avoid long lines in docblocks. Break the summary or body into multiple lines (e.g. one sentence or clause per line) so that lines stay within a reasonable length; the same line-length and breaking rules apply to comments and documentation as to code.
+
+**Literal syntax in docblocks:** Follow `docs/code-documentation.md` (Valadoc markup). Use triple braces `{{{ }}}` for code or literal snippets (e.g. URIs, ref syntax). Do not use backticks for URIs or refs — in Valadoc backticks mean block quote and can trigger parse errors. Avoid literal `{` in running text (it starts inline taglets like `{@link}`); use `{{{ }}}` or rephrase.
 
 ## String Interpolation
 
@@ -772,10 +812,12 @@ public void process_item(Item? item)
 
 ## Line Length and Breaking
 
-**IMPORTANT:** Avoid creating long lines. Break lines for readability:
-- **Always break on `(`** when function calls or method invocations are long
-- **Break on `+`** when string concatenation creates long lines
-- **If arguments are broken**, put each argument on its own line
+**IMPORTANT:** Avoid long lines in code, docblocks, and comments. Break lines for readability.
+
+**Maximum line length:** In docblocks and comments, no line may extend past **72 characters** (including leading spaces/tab). Break after a word so the next line continues the sentence; a good rule of thumb is “break after a comma or before the next phrase” so that the first line does not go beyond roughly “… add all references,” in length.
+
+- **Code:** Break on `(` when function calls or method invocations are long; break on `+` when string concatenation creates long lines; if arguments are broken, put each argument on its own line.
+- **Docblocks and comments:** Break so that no line exceeds 72 characters; prefer breaking after commas or natural phrase boundaries.
 
 **Bad:**
 ```vala

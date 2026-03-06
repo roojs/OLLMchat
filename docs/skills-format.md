@@ -75,7 +75,8 @@ After refinement, the runner runs the tool calls and then runs the executor for 
 - **Name** (optional) — The task name, if set. Downstream tasks can refer to this task's output via `task://taskname.md` or `task://taskname.md#section` (slug = task name lowercased, non-alphanumeric → hyphen).
 - **What is needed** — From the task list, in natural language. This is the main instruction for the task.
 - **Skill definition** — The full content of this skill's markdown file. The executor uses it to guide interpretation and output.
-- **Precursor** — Resolved content from the task's **References** (files, project description, prior task outputs, URLs), plus each **tool call** (name + arguments) and its **output** from the tools that already ran for this task. The executor sees all of this in one block.
+- **Tool Output and/or Reference information** — Reference content (resolved References) and/or tool output (tool call(s) + result(s)). When the task had tool calls: tool output plus reference content. When the task has no tool calls, this section is from References only (once per reference or one combined run per skill header `execute-combined`). Each execution run is stored as a **Tool** (id, summary, document); the completed-task list uses Tool summary.
+- Executor output: **Result summary** (required) and body sections with descriptive titles; list sections as links. No separate Output References section.
 
 ### Where What is needed and Expected output come from
 
