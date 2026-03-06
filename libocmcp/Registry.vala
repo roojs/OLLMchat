@@ -31,13 +31,13 @@ namespace OLLMmcp
 		public void init_config()
 		{
 			// No MCP tool config types in Config2 yet
-			GLib.debug("OLLMmcp.Registry.init_config: (no tool config types to register)");
+			GLib.debug("No MCP tool config types to register");
 		}
 
 		public void setup_config_defaults(OLLMchat.Settings.Config2 config)
 		{
 			// No defaults to inject for MCP in main config yet
-			GLib.debug("OLLMmcp.Registry.setup_config_defaults: (no MCP section in config)");
+			GLib.debug("No MCP section in config");
 		}
 
 		/**
@@ -52,11 +52,11 @@ namespace OLLMmcp
 		{
 			var configs = OLLMmcp.Config.load();
 			if (configs.size == 0) {
-				GLib.debug("OLLMmcp.Registry.fill_tools: no MCP servers in config");
+				GLib.debug("No MCP servers in config");
 				return;
 			}
 			// Stub: no factories yet, so we do not create clients or register tools
-			GLib.debug("OLLMmcp.Registry.fill_tools: loaded %u server(s), no transport factories yet (stub)", configs.size);
+			GLib.debug("Loaded %u MCP server(s), no transport factories yet (stub)", configs.size);
 		}
 	}
 }

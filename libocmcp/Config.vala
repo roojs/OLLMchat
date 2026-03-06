@@ -148,7 +148,7 @@ namespace OLLMmcp
 				GLib.Environment.get_home_dir(), ".config", "ollmchat", "mcp.json"
 			);
 			if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
-				GLib.debug("OLLMmcp.Config.load: file does not exist: %s", path);
+				GLib.debug("mcp.json does not exist: %s", path);
 				return list;
 			}
 			try {
@@ -158,7 +158,7 @@ namespace OLLMmcp
 				parser.load_from_data(contents, -1);
 				var root = parser.get_root();
 				if (root == null || root.get_node_type() != Json.NodeType.ARRAY) {
-					GLib.warning("OLLMmcp.Config.load: root is not a JSON array");
+					GLib.warning("mcp.json root is not a JSON array");
 					return list;
 				}
 				var arr = root.get_array();
@@ -169,9 +169,9 @@ namespace OLLMmcp
 						list.add(cfg);
 					}
 				}
-				GLib.debug("OLLMmcp.Config.load: loaded %u server(s) from %s", list.size, path);
+				GLib.debug("Loaded %u MCP server(s) from %s", list.size, path);
 			} catch (GLib.Error e) {
-				GLib.warning("OLLMmcp.Config.load: %s", e.message);
+				GLib.warning("Loading mcp.json: %s", e.message);
 			}
 			return list;
 		}
