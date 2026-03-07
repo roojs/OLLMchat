@@ -82,6 +82,10 @@ public class Step : Object
 			}
 			parser.validate_task(t);
 			t.validate_references();
+			var s = t.slug();
+			if (s != "") {
+				this.list.slugs.set(s, t);
+			}
 			if (t.issues != "") {
 				parser.issues += "\n" + "Task (References): " + t.issues;
 			}

@@ -45,7 +45,7 @@ namespace OLLMcoder.Skill
 		/**
 		 * Tasks to be run (initial plan or new/revised from iteration). Only this list is ever run.
 		 */
-		public OLLMcoder.Task.List pending { get; private set; }
+		public OLLMcoder.Task.List pending { get; set; }
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
 		{
@@ -162,7 +162,7 @@ namespace OLLMcoder.Skill
 						this.sr_factory.skill_manager,
 						this.sr_factory.project_manager);
 					this.user_request = tpl.user_to_document();
-					this.fill_tools();
+					this.fill_tools(); // (clears tools)
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -294,7 +294,7 @@ namespace OLLMcoder.Skill
 
 			for (var try_count = 0; try_count < 5; try_count++) {
 				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
-				this.fill_tools();
+				this.fill_tools(); // (clears tools)
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
 				this.add_message(new OLLMchat.Message("ui-waiting", "Refining task list" + model_part));
