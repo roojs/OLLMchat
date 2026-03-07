@@ -173,6 +173,7 @@ namespace OLLMcoder.Skill
 					if (parser.issues == "") {
 						var skill_issues = this.pending.validate_skills();
 						if (skill_issues == "") {
+							this.pending.write("task_list.md", response);
 							yield this.handle_task_list(cancellable);
 							return;
 						}
@@ -316,6 +317,9 @@ namespace OLLMcoder.Skill
 				var skill_issues = this.pending.validate_skills();
 				if (skill_issues == "") {
 					this.pending.goals_summary_md = existing_proposed.goals_summary_md;
+					this.pending.write("task_list_latest.md", response);
+					this.pending.write("task_list_completed.md",
+						this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
 					return;
 				}
 				parser.issues = skill_issues;
