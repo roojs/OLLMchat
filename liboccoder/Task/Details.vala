@@ -285,11 +285,14 @@ public class Details : OLLMchat.Agent.Base
 					continue;
 				}
 				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
-				if (!this.runner.task_list.slugs.has_key(slug)) {
+				var ref_task = this.runner.completed.slugs.get(slug);
+				if (ref_task == null) {
+					ref_task = this.runner.pending.slugs.get(slug);
+				}
+				if (ref_task == null) {
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
 					continue;
 				}
-				var ref_task = this.runner.task_list.slugs.get(slug);
 				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
 					this.issues += "\n" + "Reference target \"" + href + "\" refers to a task in the same or later section.";
 				}
@@ -376,7 +379,7 @@ public class Details : OLLMchat.Agent.Base
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		tpl.system_fill();
-		var completed_md = this.runner.task_list.to_markdown(MarkdownPhase.REFINE_COMPLETED);
+		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
 		tpl.fill(
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),

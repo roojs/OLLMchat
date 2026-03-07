@@ -43,10 +43,50 @@ namespace OLLMcoder.Task
  */
 public class Step : Object
 {
+	public List list { get; private set; }
+
+	public Step(List list)
+	{
+		this.list = list;
+	}
+
 	/**
 	 * Tasks in this step. Size 1 = single task; size > 1 = concurrent group.
 	 */
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }
+
+	/**
+	 * Registers each child task's name on this list (if no collision) and runs validation.
+	 * Step uses this.list.runner and this.list.names. Slugs for link resolution are
+	 * populated when tasks complete (on completed list).
+	 *
+	 * @param step_index index of this step in the list (set on each child)
+	 * @param parser for validate_task and appending issues
+	 */
+	public void register_slugs(int step_index, ResultParser parser)
+	{
+		var completed_list = this.list.runner.completed;
+		foreach (var t in this.children) {
+			t.step_index = step_index;
+			var name = t.task_data.get("Name").to_markdown().strip();
+			if (name != "") {
+				if (completed_list.names.has_key(name)) {
+					parser.issues += "\n" + "Task \"" + name + "\" has name already used in the " +
+						"completed list; use a different name for new tasks.";
+				} else if (this.list.names.has_key(name)) {
+					parser.issues += "\n" + "Task \"" + name + "\" has name already used in the " +
+						"proposed task list; use a different name.";
+				} else {
+					this.list.names.set(name, t);
+				}
+			}
+			parser.validate_task(t);
+			t.validate_references();
+			if (t.issues != "") {
+				parser.issues += "\n" + "Task (References): " + t.issues;
+			}
+		}
+	}
 
 	/**
 	 * Markdown for this step's tasks only (no section header). LIST: all children

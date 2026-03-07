@@ -39,13 +39,19 @@ namespace OLLMcoder.Skill
 		 */
 		public Markdown.Document.Document? user_request { get; set; default = null; }
 		/**
-		 * Parsed task list; set by send_async when parse and validate_skills succeed.
+		 * Tasks that have gone through execution (unchanged reference data).
 		 */
-		public OLLMcoder.Task.List? task_list { get; set; default = null; }
+		public OLLMcoder.Task.List completed { get; private set; }
+		/**
+		 * Tasks to be run (initial plan or new/revised from iteration). Only this list is ever run.
+		 */
+		public OLLMcoder.Task.List pending { get; private set; }
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
 		{
 			base(factory, session);
+			this.completed = new OLLMcoder.Task.List(this);
+			this.pending = new OLLMcoder.Task.List(this);
 		}
 
 		/**
@@ -68,45 +74,23 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Resolve non-file reference content for task refs (task URI, #anchor, http deferred).
-		 * Uses link.scheme, link.path, link.href only where needed for lookup; does not re-parse href.
-		 * Task scheme: content from task.exec_runs (combined documents). Path empty: #anchor from user_request.
+		 * Resolve non-file reference content for task refs, document anchor, or http (deferred).
+		 * Task scheme: lookup slug in completed then pending; resolve only by fragment
+		 * ({{{ task://slug.md#section }}}). Whole-document ref with no hash returns "".
+		 * Path empty: use link hash as anchor in user_request.
 		 *
 		 * @param link the reference link (scheme, path, href, hash already parsed)
-		 * @return resolved content for the link, or "" if not found / not applicable
+		 * @return resolved content for the link, or "" if not found or not applicable
 		 */
 		public string reference_content(Markdown.Document.Format link)
 		{
 			if (link.scheme == "task") {
-				var slug = link.path.has_suffix(".md") ? link.path.substring(0, link.path.length - 3) : link.path;
-				if (slug == "" && link.href.has_prefix("task://")) {
-					var rest = link.href.substring("task://".length);
-					var idx = rest.index_of_char('#');
-					var path = (idx >= 0) ? rest.substring(0, idx) : rest;
-					slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
-				}
-				if (this.task_list == null || !this.task_list.slugs.has_key(slug)) {
-					return "";
-				}
-				var task = this.task_list.slugs.get(slug);
-				if (task.exec_runs.size == 0) {
-					return "";
-				}
-				string[] parts = {};
-				foreach (var ex in task.exec_runs) {
-					if (ex.document != null) {
-						parts += ex.document.to_markdown();
-					}
-				}
-				var combined = string.joinv("\n\n", parts);
-				if (link.hash == "") {
-					return combined;
-				}
-				if (task.exec_runs.size >= 1 && task.exec_runs.get(0).document != null &&
-					task.exec_runs.get(0).document.headings.has_key(link.hash)) {
-					return task.exec_runs.get(0).document.headings.get(link.hash).to_markdown_with_content();
-				}
-				return combined;
+				var slug = link.path.has_suffix(".md") ? 
+					link.path.substring(0, link.path.length - 3) : link.path;
+				var task = this.completed.slugs.has_key(slug) ? 
+					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
+				var run = task.exec_runs.get(0);
+				return run.document.headings.get(link.hash).to_markdown_with_content();
 			}
 			if (link.path == "") {
 				var anchor = link.hash;
@@ -187,7 +171,7 @@ namespace OLLMcoder.Skill
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
 					if (parser.issues == "") {
-						var skill_issues = this.task_list.validate_skills();
+						var skill_issues = this.pending.validate_skills();
 						if (skill_issues == "") {
 							yield this.handle_task_list(cancellable);
 							return;
@@ -214,30 +198,33 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Deals with the task list only. Called by send_async when it has a valid task_list.
+		 * Deals with the task list only. Called by send_async when it has a valid pending list.
 		 */
 		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.writer_approval = false;
 			var hit_max_rounds = true;
-			this.task_list.write();
-			for (var i = 0; i < 5; i++) {
+			for (var i = 0; i < 20; i++) {
 				if (cancellable != null && cancellable.is_cancelled()) {
 					this.add_message(new OLLMchat.Message("ui", "User cancelled request"));
 					this.session.is_running = false;
 					this.session.manager.agent_status_change();
 					return;
 				}
-				if (!this.task_list.has_pending_exec()) {
+				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
 					break;
 				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
 				this.add_message(new OLLMchat.Message("ui-waiting", "Refining tasks" + model_part));
-				yield this.task_list.refine(cancellable);
-				yield this.task_list.run_until_user_approval();
-				if (this.task_list.has_tasks_requiring_approval() && !this.writer_approval) {
+				yield this.pending.refine(cancellable);
+				yield this.pending.run_step_until_approval();
+				if (this.pending.steps.size == 0) {
+					hit_max_rounds = false;
+					break;
+				}
+				if (this.pending.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
 						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
@@ -247,11 +234,13 @@ namespace OLLMcoder.Skill
 					}
 					this.writer_approval = true;
 				}
-				yield this.task_list.run_all_tasks();
-				this.task_list.write();
-				yield this.run_task_list_iteration();
+				yield this.pending.run_step();
+				if (this.pending.steps.size == 0) {
+					hit_max_rounds = false;
+					break;
+				}
 			}
-			if (hit_max_rounds && this.task_list.has_pending_exec()) {
+			if (hit_max_rounds && this.pending.steps.size > 0) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
 		}
@@ -265,18 +254,25 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Build the task list iteration prompt (task_list_iteration.md) from
-		 * this.task_list. Current task list = this.task_list.to_markdown().
-		 * Used by run_task_list_iteration() and by the test CLI.
+		 * Build the task list iteration prompt (task_list_iteration.md).
+		 * Uses completed and existing_proposed (outstanding) and optional previous_proposed_md when retrying.
+		 *
+		 * @param previous_proposal_issues issues from last iteration parse/validation (empty when not retrying)
+		 * @param existing_proposed the current outstanding task list (pending before this iteration)
+		 * @param previous_proposed_md raw LLM response from last iteration when retrying; empty string when not
 		 */
-		public PromptTemplate iteration_prompt(string previous_proposal_issues = "") throws GLib.Error
+		public PromptTemplate iteration_prompt(string previous_proposal_issues,
+			OLLMcoder.Task.List existing_proposed,
+			string previous_proposed_md) throws GLib.Error
 		{
 			this.sr_factory.skill_manager.scan();
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
-
 			tpl.fill(
-				"current_task_list", this.task_list.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
+				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED),
+				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
+				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
+					tpl.header_raw("Proposed (your last response — had issues)", previous_proposed_md),
 				"environment", tpl.header_raw("Environment", this.env()),
 				"project_description", this.sr_factory.project_manager.active_project == null ? "" :
 					this.sr_factory.project_manager.active_project.project_description(),
@@ -286,20 +282,18 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Task list iteration: send current list to LLM, parse response; this.task_list
-		 * is replaced by parse_task_list() on success. Up to 5 retries with
-		 * previous_proposal_issues. On parse failure parser sets this.task_list = null;
-		 * restore from saved ref so next iteration_prompt() has a list.
+		 * Task list iteration: send current list to LLM, parse response into this.pending.
+		 * On parse/validation failure restores this.pending = existing_proposed; uses raw
+		 * LLM response as previous_proposed_md on retry.
 		 */
 		public async void run_task_list_iteration() throws GLib.Error
 		{
-			if (this.task_list == null) {
-				return;
-			}
-			var previous_proposal_issues = "";
+			var existing_proposed = this.pending;
+			var response = "";
+			var parser = new OLLMcoder.Task.ResultParser(this, "");
+
 			for (var try_count = 0; try_count < 5; try_count++) {
-				var saved_list = this.task_list;
-				var tpl = this.iteration_prompt(previous_proposal_issues);
+				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools();
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
@@ -308,33 +302,33 @@ namespace OLLMcoder.Skill
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var response_obj = yield this.chat_call.send(messages, null);
-				var response = response_obj != null ? response_obj.message.content : "";
-				var parser = new OLLMcoder.Task.ResultParser(this, response);
-				parser.parse_task_list();
+				response = response_obj != null ? response_obj.message.content : "";
+
+				parser = new OLLMcoder.Task.ResultParser(this, response);
+				parser.parse_task_list_iteration();
+
 				if (parser.issues != "") {
-					previous_proposal_issues = parser.issues;
-					this.task_list = saved_list;
-					if (try_count < 4) {
-						this.add_message(new OLLMchat.Message("ui-warning",
-							"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
-					}
+					this.pending = existing_proposed;
+					this.add_message(new OLLMchat.Message("ui-warning",
+						"Task list iteration had issues:\n\n" + parser.issues.strip()));
 					continue;
 				}
-				var skill_issues = this.task_list.validate_skills();
+				var skill_issues = this.pending.validate_skills();
 				if (skill_issues == "") {
+					this.pending.goals_summary_md = existing_proposed.goals_summary_md;
 					return;
 				}
-				previous_proposal_issues = skill_issues;
-				if (try_count < 4) {
-					this.add_message(new OLLMchat.Message("ui-warning",
-						"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
-				}
+				parser.issues = skill_issues;
+				this.pending = existing_proposed;
+				this.add_message(new OLLMchat.Message("ui-warning",
+					"Task list iteration had issues:\n\n" + skill_issues.strip()));
+				continue;
 			}
-			var iter_fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
-			if (previous_proposal_issues != "") {
-				iter_fail_msg += "\n\nIssues:\n" + previous_proposal_issues.strip();
+			var fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
+			if (parser.issues != "") {
+				fail_msg += "\n\nIssues:\n" + parser.issues.strip();
 			}
-			this.add_message(new OLLMchat.Message("ui-warning", iter_fail_msg));
+			this.add_message(new OLLMchat.Message("ui-warning", fail_msg));
 		}
 	}
 }

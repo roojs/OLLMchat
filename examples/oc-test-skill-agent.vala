@@ -152,7 +152,7 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_test_output);
-				var list = this.runner.task_list;
+				var list = this.runner.pending;
 				stdout.printf("Steps: %d\n", (int) list.steps.size);
 				int task_index = 0;
 				foreach (var step in list.steps) {
@@ -176,7 +176,7 @@ Examples:
 				yield this.build_runner();
 				this.load_task_list(opt_input);
 				this.runner.sr_factory.skill_manager.scan();
-				var list = this.runner.task_list;
+				var list = this.runner.pending;
 				var skill_issues = list.validate_skills();
 				if (skill_issues != "") {
 					this.cl.printerr("%s", skill_issues);
@@ -213,7 +213,7 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_input);
-				var tpl = this.runner.iteration_prompt("");
+				var tpl = this.runner.iteration_prompt("", this.runner.pending, "");
 				if (opt_run == "iteration-prompt") {
 					stdout.printf("=== system ===\n%s\n=== user ===\n%s\n", tpl.filled_system, tpl.filled_user);
 					return;
@@ -225,12 +225,12 @@ Examples:
 				var response_text = response_obj != null && response_obj.message != null ?
 					 response_obj.message.content : "";
 				var result_parser = new OLLMcoder.Task.ResultParser(this.runner, response_text);
-				result_parser.parse_task_list();
+				result_parser.parse_task_list_iteration();
 				if (result_parser.issues != "") {
 					this.cl.printerr("Iteration parse issues: %s\n", result_parser.issues);
 					return;
 				}
-				var new_list = this.runner.task_list;
+				var new_list = this.runner.pending;
 				stdout.printf("Steps: %d\n", (int) new_list.steps.size);
 				int task_count = 0;
 				foreach (var step in new_list.steps) {
@@ -256,7 +256,7 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_task_list);
-				var list = this.runner.task_list;
+				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
 					throw new GLib.IOError.NOT_FOUND("Step out of range");
@@ -291,7 +291,7 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_task_list);
-				var list = this.runner.task_list;
+				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
 					throw new GLib.IOError.NOT_FOUND("Step out of range");
@@ -324,7 +324,7 @@ Examples:
 				}
 				yield this.build_runner();
 				this.load_task_list(opt_input);
-				var list = this.runner.task_list;
+				var list = this.runner.pending;
 				if (opt_step < 0 || opt_step >= (int) list.steps.size) {
 					this.cl.printerr("Step %d out of range (0..%d).\n", opt_step, (int) list.steps.size - 1);
 					throw new GLib.IOError.NOT_FOUND("Step out of range");

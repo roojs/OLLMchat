@@ -28,7 +28,7 @@ namespace OLLMcoder.Task
  * How it fits in the task flow:
  *
  *  * Planning: Runner receives the planning response → ''new ResultParser(this, response)'',
- *    ''parse_task_list()''; caller uses ''runner.task_list'' and ''parser.issues''.
+ *    ''parse_task_list()''; caller uses ''runner.pending'' and ''parser.issues''.
  *  * Refinement: Details.refine() receives the refinement response → new
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
@@ -86,14 +86,15 @@ public class ResultParser : Object
 
 	/**
 	 * Parses task list from document; uses ''runner'' from constructor to build {@link Details}.
+	 * Builds into {@link runner}.pending only; does not touch completed.
 	 *
 	 * Appends to {@link issues} on each failure. Caller checks ''parser.issues == ""''
-	 * for success. Populates {@link runner}.task_list on success.
+	 * for success. On failure sets runner.pending = new List(runner).
 	 */
 	public void parse_task_list()
 	{
 		this.issues = "";
-		this.runner.task_list = null;
+		this.runner.pending = new List(this.runner);
 
 		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
 			if (!this.document.headings.has_key(key)) {
@@ -103,8 +104,6 @@ public class ResultParser : Object
 			}
 		}
 
-		this.runner.task_list = new List(this.runner);
-		// Require task sections (### Task section 1, …) as per task_creation_initial.md and task_list_iteration.md; do not change.
 		foreach (var key in this.document.headings.keys) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
@@ -113,31 +112,153 @@ public class ResultParser : Object
 			if (step == null) {
 				continue;
 			}
-			this.runner.task_list.steps.add(step);
+			this.runner.pending.steps.add(step);
 		}
 		if (!this.document.headings.has_key("goals-summary")) {
-			this.runner.task_list = null;
+			this.runner.pending = new List(this.runner);
 			return;
 		}
-		this.runner.task_list.goals_summary_md = 
+		this.runner.pending.goals_summary_md =
 			this.document.headings.get("goals-summary").to_markdown_with_content();
-		this.runner.task_list.fill_names();
-		var steps = this.runner.task_list.steps;
+		this.runner.pending.fill_names();
+		var steps = this.runner.pending.steps;
 		for (var i = 0; i < steps.size; i++) {
 			var step = steps.get(i);
-			foreach (var t in step.children) {
-				t.step_index = i;
-				if (t.slug() != "") {
-					this.runner.task_list.slugs.set(t.slug(), t);
-				}
-				t.validate_references();
-				if (t.issues != "") {
-					this.issues += "\n" + "Task (References): " + t.issues;
-				}
-			}
+			step.register_slugs(i, this);
 		}
 		if (this.issues != "") {
-			this.runner.task_list = null;
+			this.runner.pending = new List(this.runner);
+		}
+	}
+
+	/**
+	 * Parses task list from document when the response is tasks-only (iteration output).
+	 * Requires only ## Tasks and task sections; does not require or set Original prompt
+	 * or Goals / summary. Caller must preserve goals_summary_md from the existing list.
+	 *
+	 * Creates a new List, assigns to {@link runner}.pending at start, then builds into it.
+	 * Step uses this.runner.pending (this.list) during register_slugs. On validation/parse
+	 * failure do NOT clear runner.pending — leave the parsed list so Runner can capture
+	 * the failed proposal and restore this.pending = existing_proposed.
+	 *
+	 * Appends to {@link issues} on each failure. Used by Runner after task list iteration.
+	 */
+	public void parse_task_list_iteration()
+	{
+		this.issues = "";
+
+		if (!this.document.headings.has_key("tasks")) {
+			this.issues += "\n" + "Task list iteration response must contain ## Tasks. Missing or misnamed.";
+			return;
+		}
+
+		this.runner.pending = new List(this.runner);
+		foreach (var key in this.document.headings.keys) {
+			if (!key.has_prefix("task-section-")) {
+				continue;
+			}
+			var step = this.parse_step(this.document.headings.get(key));
+			if (step == null) {
+				continue;
+			}
+			this.runner.pending.steps.add(step);
+		}
+		this.runner.pending.fill_names();
+		var steps = this.runner.pending.steps;
+		for (var i = 0; i < steps.size; i++) {
+			var step = steps.get(i);
+			step.register_slugs(i, this);
+		}
+	}
+
+	private static Gee.ArrayList<string>? valid_key_cache = null;
+	private static Gee.ArrayList<string>? required_key_cache = null;
+
+	/**
+	 * Returns the list of valid (allowed) task field names for task list parsing.
+	 * Cached in ''valid_key_cache''. Use ''valid_keys().contains(key)'' to reject
+	 * disallowed keys.
+	 *
+	 * @return cached list: Name, What is needed, Skill, References, Expected output, Requires user approval
+	 */
+	private static Gee.ArrayList<string> valid_keys()
+	{
+		if (valid_key_cache != null) {
+			return valid_key_cache;
+		}
+		string[] valid_keys_array = {
+			"Name",
+			"What is needed",
+			"Skill",
+			"References",
+			"Expected output",
+			"Requires user approval"
+		};
+		valid_key_cache = new Gee.ArrayList<string>();
+		foreach (string s in valid_keys_array) {
+			valid_key_cache.add(s);
+		}
+		return valid_key_cache;
+	}
+
+	/**
+	 * Returns the list of required task field names for task list parsing.
+	 * Cached in ''required_key_cache''. Use to validate that required keys are present.
+	 *
+	 * @return cached list: What is needed, Skill, Expected output
+	 */
+	private static Gee.ArrayList<string> required_keys()
+	{
+		if (required_key_cache != null) {
+			return required_key_cache;
+		}
+		string[] required_keys_array = {
+			"What is needed",
+			"Skill",
+			"Expected output"
+		};
+		required_key_cache = new Gee.ArrayList<string>();
+		foreach (string s in required_keys_array) {
+			required_key_cache.add(s);
+		}
+		return required_key_cache;
+	}
+
+	/**
+	 * Validates one task from a task list (initial or iteration): must not contain
+	 * Output; only allowed field names; required keys must be present.
+	 * Appends to {@link issues} when invalid. Call only after {@link List.fill_names}
+	 * has been run (during parsing, before this); this method only reads the task
+	 * name for issue messages and does not inject or set names.
+	 *
+	 * Used by {@link parse_task_list} and {@link parse_task_list_iteration} so
+	 * both paths share the same rules.
+	 *
+	 * @param t the task to validate (its task_data keys are checked)
+	 */
+	public void validate_task(Details t)
+	{
+		var label = t.task_data.get("Name").to_markdown().strip();
+		if (t.task_data.has_key("Output")) {
+			this.issues += "\n" + "Task \"" + label + "\" must not contain Output " +
+				"(tasks in the list have no results yet).";
+		}
+		foreach (var req in required_keys()) {
+			if (!t.task_data.has_key(req)) {
+				this.issues += "\n" + "Task \"" + label + "\" is missing required field: \"" + req + "\". " +
+					"Add the missing field to that task (every task must include: " +
+					string.joinv(", ", required_keys().to_array()) + ") and resubmit the task list.";
+			}
+		}
+		foreach (var k in t.task_data.keys) {
+			if (valid_keys().contains(k)) {
+				continue;
+			}
+			this.issues += "\n" + "Task \"" + label + "\" has disallowed field: \"" + k + "\". " +
+				"Use only these valid fields: " + string.joinv(", ", valid_keys().to_array()) + ". " +
+				"Consider whether the field is wrongly named (fix the name to match a valid field) or " +
+				"whether its content belongs in one of the valid fields; then resubmit the task list " +
+				"with only the valid fields for each task.";
 		}
 	}
 
@@ -173,7 +294,7 @@ public class ResultParser : Object
 	 */
 	private Step? parse_step(Markdown.Document.Block section_heading)
 	{
-		var step = new Step();
+		var step = new Step(this.runner.pending);
 		Details? last_task = null;
 		var found_any_list = false;
 		foreach (var node in section_heading.contents()) {

@@ -20,7 +20,7 @@ namespace OLLMcoder.Task
  *
  * Holds {@link steps} (each {@link Step} has {@link Details} children).
  * Created by {@link ResultParser.parse_task_list}; the Runner then calls
- * {@link run_until_user_approval} or {@link run_all_tasks} to run tasks step-by-step.
+ * {@link run_step_until_approval} or {@link run_step} to run tasks step-by-step.
  * Each step is refined (all its tasks) immediately before that step runs, so refinement
  * and execution are interleaved per step in order.
  *
@@ -30,15 +30,20 @@ namespace OLLMcoder.Task
  */
 public class List : Object
 {
-	private OLLMcoder.Skill.Runner runner;
+	public OLLMcoder.Skill.Runner runner { get; private set; }
 
 	public Gee.ArrayList<Step> steps { get; set; default = new Gee.ArrayList<Step>(); }
 
 	public string goals_summary_md { get; set; default = ""; }
 
 	/**
+	 * Name → task (Details). For uniqueness checks when registering tasks.
+	 */
+	public Gee.HashMap<string,Details> names { get; private set; default = new Gee.HashMap<string,Details>(); }
+
+	/**
 	 * Slug → task (Details). Populated when the list is built; callers use
-	 * .set(), .has_key(), .get() directly.
+	 * .set(), .has_key(), .get() directly. Used for link resolution (task URI slug).
 	 */
 	public Gee.HashMap<string,Details> slugs { get; private set; default = new Gee.HashMap<string,Details>(); }
 
@@ -60,14 +65,22 @@ public class List : Object
 		this.runner = runner;
 	}
 
-	/** Write this task list to session task dir (task-list.md). */
-	public void write()
+	/**
+	 * Write content to session task dir under filename. Content is typically
+	 * from the LLM (initial or iteration). Use for task_list.md,
+	 * task_list_latest.md, task_list_completed.md.
+	 *
+	 * @param filename e.g. "task_list.md", "task_list_latest.md", "task_list_completed.md"
+	 * @param content full body to write
+	 */
+	public void write(string filename, string content)
 	{
-		var path = GLib.Path.build_filename(this.runner.session.task_dir(), "task-list.md");
+		var path = GLib.Path.build_filename(this.runner.session.task_dir(), filename);
 		try {
-			GLib.FileUtils.set_contents(path, this.to_markdown(MarkdownPhase.LIST));
+			GLib.FileUtils.set_contents(path, content);
 		} catch (GLib.FileError e) {
-			GLib.critical("Task.List.write: failed to write task-list.md: %s", e.message);
+			GLib.warning("Failed to write %s: %s", filename, e.message);
+			throw e;
 		}
 	}
 
@@ -100,22 +113,6 @@ public class List : Object
 				t.fill_name(++index);
 			}
 		}
-	}
-
-	/**
-	 * True if any task has no execution result (output) yet; returns as soon
-	 * as one is found.
-	 */
-	public bool has_pending_exec()
-	{
-		foreach (var step in this.steps) {
-			foreach (var t in step.children) {
-				if (!t.exec_done) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	/**
@@ -172,23 +169,27 @@ public class List : Object
 	}
 
 	/**
-	 * For each Step: if size == 1 yield run_child(…); else num_exec_running =
-	 * children.size, run_child.begin per child, yield wait_exec_done().
-	 * Stops at first step that has a task requiring user approval.
+	 * Run the first step only. Stops if that step has a task requiring user approval.
+	 * When the step completes (all children exec_done), move it to runner.completed,
+	 * remove from this list, yield run_task_list_iteration() (which replaces
+	 * runner.pending), then return so the caller re-invokes on the new pending.
+	 * When the step does not complete, report to UI and return.
 	 */
-	public async void run_until_user_approval() throws GLib.Error
+	public async void run_step_until_approval() throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			if (step.has_task_requiring_approval()) {
-				break;
+		if (this.steps.size == 0) {
+			return;
+		}
+		var step = this.steps.get(0);
+		if (step.has_task_requiring_approval()) {
+			return;
+		}
+		if (step.children.size == 1) {
+			var single = step.children.get(0);
+			if (!single.exec_done) {
+				yield this.run_child(single);
 			}
-			if (step.children.size == 1) {
-				var single = step.children.get(0);
-				if (!single.exec_done) {
-					yield this.run_child(single);
-				}
-				continue;
-			}
+		} else {
 			this.num_exec_running = 0;
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
@@ -200,6 +201,20 @@ public class List : Object
 			}
 			yield this.wait_exec_done();
 		}
+		var all_done = true;
+		foreach (var t in step.children) {
+			if (!t.exec_done) {
+				all_done = false;
+				break;
+			}
+		}
+		if (!all_done) {
+			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
+			return;
+		}
+		this.runner.completed.steps.add(step);
+		this.steps.remove_at(0);
+		yield this.runner.run_task_list_iteration();
 	}
 
 	/**
@@ -247,19 +262,23 @@ public class List : Object
 	}
 
 	/**
-	 * For each Step: if size == 1 yield run_child(…); else num_exec_running =
-	 * children.size, run_child.begin per child, yield wait_exec_done().
+	 * Run the first step only. When it completes (all children exec_done), move
+	 * to runner.completed, remove from this list, yield run_task_list_iteration()
+	 * (which replaces runner.pending), then return so the caller re-invokes on
+	 * the new pending. When the step does not complete, report to UI and return.
 	 */
-	public async void run_all_tasks() throws GLib.Error
+	public async void run_step() throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			if (step.children.size == 1) {
-				var single = step.children.get(0);
-				if (!single.exec_done) {
-					yield this.run_child(single);
-				}
-				continue;
+		if (this.steps.size == 0) {
+			return;
+		}
+		var step = this.steps.get(0);
+		if (step.children.size == 1) {
+			var single = step.children.get(0);
+			if (!single.exec_done) {
+				yield this.run_child(single);
 			}
+		} else {
 			this.num_exec_running = 0;
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
@@ -271,6 +290,20 @@ public class List : Object
 			}
 			yield this.wait_exec_done();
 		}
+		var all_done = true;
+		foreach (var t in step.children) {
+			if (!t.exec_done) {
+				all_done = false;
+				break;
+			}
+		}
+		if (!all_done) {
+			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
+			return;
+		}
+		this.runner.completed.steps.add(step);
+		this.steps.remove_at(0);
+		yield this.runner.run_task_list_iteration();
 	}
 }
 
