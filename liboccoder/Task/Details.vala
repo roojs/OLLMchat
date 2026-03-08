@@ -224,7 +224,7 @@ public class Details : OLLMchat.Agent.Base
 	 * Accepts:
 	 * {{{
 	 *   #anchor (document section in user_request only)
-	 *   task://taskname.md#section
+	 *   task://taskname.md (whole task output) or task://taskname.md#section
 	 *   http or https URL, absolute file path
 	 * }}}
 	 * Task output refs use task URI only, not #task-name-results.
@@ -274,17 +274,17 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			if (link.scheme == "task") {
-				if (!href.has_prefix("task://")) {
-					continue;
-				}
-				var rest = href.substring("task://".length);
-				var idx = rest.index_of_char('#');
-				var path = (idx >= 0) ? rest.substring(0, idx) : rest;
+				var path = link.path.strip();
 				if (path.contains("/")) {
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path must not contain '/'.";
 					continue;
 				}
 				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+				slug = slug.strip();
+				if (slug == "") {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path is empty.";
+					continue;
+				}
 				var ref_task = this.runner.completed.slugs.get(slug);
 				if (ref_task == null) {
 					ref_task = this.runner.pending.slugs.get(slug);
@@ -299,7 +299,7 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (document sections), task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (document sections), task://taskname.md or task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
 		}
 	}
 

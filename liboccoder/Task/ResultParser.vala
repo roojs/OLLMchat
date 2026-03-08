@@ -124,7 +124,14 @@ public class ResultParser : Object
 		var steps = this.runner.pending.steps;
 		for (var i = 0; i < steps.size; i++) {
 			var step = steps.get(i);
-			step.register_slugs(i, this);
+			step.register_slugs(i);
+			foreach (var t in step.children) {
+				this.validate_task(t);
+				t.validate_references();
+				if (t.issues != "") {
+					this.issues += "\n" + "Task (References): " + t.issues;
+				}
+			}
 		}
 		if (this.issues != "") {
 			this.runner.pending = new List(this.runner);
@@ -167,7 +174,14 @@ public class ResultParser : Object
 		var steps = this.runner.pending.steps;
 		for (var i = 0; i < steps.size; i++) {
 			var step = steps.get(i);
-			step.register_slugs(i, this);
+			step.register_slugs(i);
+			foreach (var t in step.children) {
+				this.validate_task(t);
+				t.validate_references();
+				if (t.issues != "") {
+					this.issues += "\n" + "Task (References): " + t.issues;
+				}
+			}
 		}
 	}
 

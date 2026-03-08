@@ -43,7 +43,7 @@ namespace OLLMcoder.Task
  */
 public class Step : Object
 {
-	public List list { get; private set; }
+	public List list { get; set; }
 
 	public Step(List list)
 	{
@@ -56,55 +56,47 @@ public class Step : Object
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }
 
 	/**
-	 * Registers each child task's name on this list (if no collision) and runs validation.
-	 * Step uses this.list.runner and this.list.names. Slugs for link resolution are
-	 * populated when tasks complete (on completed list).
+	 * Register this step's tasks in list.slugs (and set step_index).
+	 * If slug non-empty and not in completed/pending, set and continue.
+	 * Empty or clash: set name in task_data, then slugs.set(t.slug(), t).
 	 *
 	 * @param step_index index of this step in the list (set on each child)
-	 * @param parser for validate_task and appending issues
 	 */
-	public void register_slugs(int step_index, ResultParser parser)
+	public void register_slugs(int step_index)
 	{
-		var completed_list = this.list.runner.completed;
+		var completed = this.list.runner.completed;
+		var pending = this.list.runner.pending;
+		var uid = completed.slugs.size + pending.slugs.size;
 		foreach (var t in this.children) {
 			t.step_index = step_index;
-			var name = t.task_data.get("Name").to_markdown().strip();
-			if (name != "") {
-				if (completed_list.names.has_key(name)) {
-					parser.issues += "\n" + "Task \"" + name + "\" has name already used in the " +
-						"completed list; use a different name for new tasks.";
-				} else if (this.list.names.has_key(name)) {
-					parser.issues += "\n" + "Task \"" + name + "\" has name already used in the " +
-						"proposed task list; use a different name.";
-				} else {
-					this.list.names.set(name, t);
-				}
-			}
-			parser.validate_task(t);
-			t.validate_references();
 			var s = t.slug();
-			if (s != "") {
+			if (s != "" && !completed.slugs.has_key(s) && !pending.slugs.has_key(s)) {
 				this.list.slugs.set(s, t);
+				continue;
 			}
-			if (t.issues != "") {
-				parser.issues += "\n" + "Task (References): " + t.issues;
+			uid++;
+			if (s == "") {
+				var skill = t.task_data.has_key("Skill") ?
+					t.task_data.get("Skill").to_markdown().strip() : "";
+				s = (skill != "" ? skill : "Task") + " " + uid.to_string();
+			} else {
+				s = s + "-" + uid.to_string();
 			}
+			var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+			b.adopt(new Markdown.Document.Format.from_text(s));
+			t.task_data.set("Name", b);
+			this.list.slugs.set(t.slug(), t);
 		}
 	}
 
 	/**
-	 * Markdown for this step's tasks only (no section header). LIST: all children
-	 * with Output when exec_done. REFINE_COMPLETED: only children that are
-	 * exec_done with non-empty result; skips others. Returns "" when no tasks
-	 * contribute (e.g. REFINE_COMPLETED and none done).
+	 * Markdown for this step's tasks only (no section header). Caller uses
+	 * completed or pending list; no filtering (list identity implies context).
 	 */
 	public string to_markdown(MarkdownPhase phase)
 	{
 		var step_out = "";
 		foreach (var t in this.children) {
-			if (phase == MarkdownPhase.REFINE_COMPLETED && (!t.exec_done || t.result == "")) {
-				continue;
-			}
 			step_out += t.to_markdown(phase) + "\n\n";
 		}
 		return step_out;

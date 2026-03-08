@@ -37,11 +37,6 @@ public class List : Object
 	public string goals_summary_md { get; set; default = ""; }
 
 	/**
-	 * Name → task (Details). For uniqueness checks when registering tasks.
-	 */
-	public Gee.HashMap<string,Details> names { get; private set; default = new Gee.HashMap<string,Details>(); }
-
-	/**
 	 * Slug → task (Details). Populated when the list is built; callers use
 	 * .set(), .has_key(), .get() directly. Used for link resolution (task URI slug).
 	 */
@@ -215,6 +210,10 @@ public class List : Object
 			return;
 		}
 		this.runner.completed.steps.add(step);
+		step.list = this.runner.completed;
+		foreach (var t in step.children) {
+			this.runner.completed.slugs.set(t.slug(), t);
+		}
 		this.steps.remove_at(0);
 		yield this.runner.run_task_list_iteration();
 	}
@@ -304,6 +303,10 @@ public class List : Object
 			return;
 		}
 		this.runner.completed.steps.add(step);
+		step.list = this.runner.completed;
+		foreach (var t in step.children) {
+			this.runner.completed.slugs.set(t.slug(), t);
+		}
 		this.steps.remove_at(0);
 		yield this.runner.run_task_list_iteration();
 	}

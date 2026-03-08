@@ -75,12 +75,11 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Resolve non-file reference content for task refs, document anchor, or http (deferred).
-		 * Task scheme: lookup slug in completed then pending; resolve only by fragment
-		 * ({{{ task://slug.md#section }}}). Whole-document ref with no hash returns "".
-		 * Path empty: use link hash as anchor in user_request.
+		 * Do not add validation here; validation is done in Details.validate_references().
+		 * Call only for links that validation has accepted; never return "".
 		 *
 		 * @param link the reference link (scheme, path, href, hash already parsed)
-		 * @return resolved content for the link, or "" if not found or not applicable
+		 * @return resolved content for the link
 		 */
 		public string reference_content(Markdown.Document.Format link)
 		{
@@ -94,18 +93,12 @@ namespace OLLMcoder.Skill
 			}
 			if (link.path == "") {
 				var anchor = link.hash;
-				if (anchor == "") {
-					return "";
-				}
-				if (this.user_request != null && this.user_request.headings.has_key(anchor)) {
-					return this.user_request.headings.get(anchor).to_markdown_with_content();
-				}
-				return "";
+				return this.user_request.headings.get(anchor).to_markdown_with_content();
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
-				return "";
+				GLib.error("reference_content: http(s) links are not resolved");
 			}
-			return "";
+			GLib.error("reference_content: unsupported link scheme or path (href=%s)", link.href);
 		}
 
 		public PromptTemplate task_creation_prompt(

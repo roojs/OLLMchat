@@ -113,6 +113,10 @@ namespace MarkdownGtk
 				var stripped = language_label_text.substring(3).strip();
 				language_label_text = (stripped != "") ? stripped : "txt";
 			}
+			if (language_label_text == null || language_label_text.strip() == "") {
+				GLib.critical("RenderSourceView: code block info string is empty (language_id='%s'); title will show as 'code'", this.code_language);
+				language_label_text = "code";
+			}
 			var title_label = new Gtk.Label(language_label_text) {
 				hexpand = true,
 				halign = Gtk.Align.START,

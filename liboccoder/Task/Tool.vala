@@ -117,6 +117,9 @@ namespace OLLMcoder.Task
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				this.add_message(new OLLMchat.Message("ui-waiting", "Interpreting result" + model_part));
 				var response_text = "";
 				try {
 					var response = yield this.chat_call.send(messages, null);
@@ -170,7 +173,8 @@ namespace OLLMcoder.Task
 		 * @param executor_input combined tool output + reference content for the template
 		 * @param previous_issues parse/send issues from last attempt for retry; empty on first attempt
 		 */
-		private OLLMcoder.Skill.PromptTemplate executor_prompt(string executor_input, string previous_issues = "") throws GLib.Error
+		private OLLMcoder.Skill.PromptTemplate executor_prompt(
+			string executor_input, string previous_issues = "") throws GLib.Error
 		{
 			var definition = this.parent.skill_manager.fetch(this.parent);
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
