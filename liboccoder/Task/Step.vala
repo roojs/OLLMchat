@@ -72,6 +72,7 @@ public class Step : Object
 			var s = t.slug();
 			if (s != "" && !completed.slugs.has_key(s) && !pending.slugs.has_key(s)) {
 				this.list.slugs.set(s, t);
+				this.list.runner.add_message(new OLLMchat.Message("ui", "Registered task slug: %s".printf(s)));
 				continue;
 			}
 			uid++;
@@ -85,7 +86,9 @@ public class Step : Object
 			var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
 			b.adopt(new Markdown.Document.Format.from_text(s));
 			t.task_data.set("Name", b);
-			this.list.slugs.set(t.slug(), t);
+			var final_slug = t.slug();
+			this.list.slugs.set(final_slug, t);
+			this.list.runner.add_message(new OLLMchat.Message("ui", "Registered task slug: %s".printf(final_slug)));
 		}
 	}
 
