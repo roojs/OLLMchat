@@ -70,7 +70,7 @@ When the work involves **preparing or making code changes**, the task list **mus
 
 Produce your response in the following structure. Use markdown **headings** for the three main sections (e.g. `## Original prompt`, `## Goals / summary`, `## Tasks`), not bold. Put shared context in task **References** where needed; do not use a separate "General information for all tasks" section.
 
-1. **Original prompt** — Reproduce the user's request as stated (so the task list carries it).
+1. **Original prompt** — Reproduce the user's request as stated (so the task list carries it). Fix any typos and misspellings in the reproduced text.
 2. **Goals / summary** — One short paragraph: what we are trying to achieve with this task list (your reading of the request and what the tasks will accomplish).
 3. **Tasks** — Split into **task sections** when some tasks can run in parallel and others must run after. **Sections run sequentially** (section 2 starts only after all tasks in section 1 are done). **Within a section** you can have multiple tasks (they may run in parallel). If a task needs the **Output** of another task (e.g. references `task://research-1.md`), put the **consumer** task in a **later** task section than the one that produces that output. Do **not** put both tasks in the same section — the output is not available until the producer's section has completed. Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. If everything is sequential, use a single section. For each task provide:
    - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis 2"). Use skill + number when another task will refer to this task's output (later tasks use e.g. `task://research-1.md`). If omitted, the Runner assigns one (skill + number) so tasks can be referred to in issue messages.
@@ -104,7 +104,7 @@ The following illustrates the **exact format** the parser expects. **Every line 
 
 ## Original prompt
 
-*(Reproduce the user's request exactly as received.)*
+*(Reproduce the user's request; fix any typos and misspellings.)*
 
 ## Goals / summary
 

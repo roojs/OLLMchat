@@ -163,7 +163,7 @@ Required keys:
 
 Optional:
 
-- **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `write_file, write_chunk`). Omit if the skill uses no tools.
+- **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `read_file`, `grep` — use the exact name from the wrapped-tool @name). Omit if the skill uses no tools.
 
 **Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. produce revised content (plan_iterate) vs write the file (plan_apply_changes); do not combine read-then-write in one skill.
 

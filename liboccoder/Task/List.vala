@@ -152,19 +152,21 @@ public class List : Object
 	}
 
 	/**
-	 * Run refinement for all tasks sequentially (one after another).
-	 * Original design: background all via .begin and let run_child wait_refined when it runs.
-	 * Disabled so refinement streams appear in order and UI shows progress.
+	 * Run refinement for the first step's tasks only (one after another).
+	 * Refinement and execution are interleaved per step: refine first step →
+	 * execute first step → (iteration) → refine next step → execute next step.
 	 */
 	public async void refine(GLib.Cancellable? cancellable = null) throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			foreach (var t in step.children) {
-				if (cancellable != null && cancellable.is_cancelled()) {
-					return;
-				}
-				yield t.refine(cancellable);
+		if (this.steps.size == 0) {
+			return;
+		}
+		var step = this.steps.get(0);
+		foreach (var t in step.children) {
+			if (cancellable != null && cancellable.is_cancelled()) {
+				return;
 			}
+			yield t.refine(cancellable);
 		}
 	}
 
