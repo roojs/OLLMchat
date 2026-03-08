@@ -158,15 +158,10 @@ namespace OLLMchat.Tool
 		 */
 		public void send_ui(string type, string title, string body)
 		{
-			// Escape code blocks in body to prevent breaking the outer codeblock
-			// Add message via agent interface
-			this.agent.add_message(
-				new OLLMchat.Message(
-					"ui",
-					"```" + type + " " + title + "\n" +
-						body.replace("\n```", "\n\\`\\`\\`") + "\n```"
-				)
-			);
+			// Convention: ### title then ```type so UI shows heading + framed code block
+			string content = "### " + title + "\n```" + type + "\n" +
+				body.replace("\n```", "\n\\`\\`\\`") + "\n```";
+			this.agent.add_message(new OLLMchat.Message("ui", content));
 		}
 		
 		/**

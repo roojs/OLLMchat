@@ -128,6 +128,12 @@ public class List : Object
 					"\", which is not in the available skills list.\n";
 			}
 		}
+		if (issues != "") {
+			var names = new Gee.ArrayList<string>();
+			names.add_all(this.runner.sr_factory.skill_manager.by_name.keys);
+			names.sort();
+			issues += "\nAvailable skills: " + string.joinv(", ", names.to_array());
+		}
 		return issues;
 	}
 
@@ -167,19 +173,19 @@ public class List : Object
 
 	/**
 	 * Run the first step only. Stops if that step has a task requiring user approval.
-	 * When the step completes (all children exec_done), move it to runner.completed,
-	 * remove from this list, yield run_task_list_iteration() (which replaces
-	 * runner.pending), then return so the caller re-invokes on the new pending.
-	 * When the step does not complete, report to UI and return.
+	 * When the step completes (all children exec_done), move it to runner.completed
+	 * and remove from this list. Caller (Runner) should call run_task_list_iteration() when true.
+	 *
+	 * @return true if step was run and completed (caller must run iteration)
 	 */
-	public async void run_step_until_approval() throws GLib.Error
+	public async bool run_step_until_approval() throws GLib.Error
 	{
 		if (this.steps.size == 0) {
-			return;
+			return false;
 		}
 		var step = this.steps.get(0);
 		if (step.has_task_requiring_approval()) {
-			return;
+			return false;
 		}
 		if (step.children.size == 1) {
 			var single = step.children.get(0);
@@ -207,7 +213,7 @@ public class List : Object
 		}
 		if (!all_done) {
 			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
-			return;
+			return false;
 		}
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
@@ -215,7 +221,7 @@ public class List : Object
 			this.runner.completed.slugs.set(t.slug(), t);
 		}
 		this.steps.remove_at(0);
-		yield this.runner.run_task_list_iteration();
+		return true;
 	}
 
 	/**
@@ -264,14 +270,15 @@ public class List : Object
 
 	/**
 	 * Run the first step only. When it completes (all children exec_done), move
-	 * to runner.completed, remove from this list, yield run_task_list_iteration()
-	 * (which replaces runner.pending), then return so the caller re-invokes on
-	 * the new pending. When the step does not complete, report to UI and return.
+	 * to runner.completed and remove from this list. Caller (Runner) should call
+	 * run_task_list_iteration() when true.
+	 *
+	 * @return true if step was run and completed (caller must run iteration)
 	 */
-	public async void run_step() throws GLib.Error
+	public async bool run_step() throws GLib.Error
 	{
 		if (this.steps.size == 0) {
-			return;
+			return false;
 		}
 		var step = this.steps.get(0);
 		if (step.children.size == 1) {
@@ -300,7 +307,7 @@ public class List : Object
 		}
 		if (!all_done) {
 			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
-			return;
+			return false;
 		}
 		this.runner.completed.steps.add(step);
 		step.list = this.runner.completed;
@@ -308,7 +315,7 @@ public class List : Object
 			this.runner.completed.slugs.set(t.slug(), t);
 		}
 		this.steps.remove_at(0);
-		yield this.runner.run_task_list_iteration();
+		return true;
 	}
 }
 

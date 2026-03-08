@@ -50,7 +50,7 @@ namespace MarkdownGtk
 		 * Creates a new RenderSourceView instance and starts a code block.
 		 * 
 		 * @param renderer The Render instance (provides access to box and code_block_ended signal)
-		 * @param language_id The language identifier for syntax highlighting
+		 * @param language_id The language identifier for syntax highlighting (and frame header when no preceding ###)
 		 */
 		public RenderSourceView(Render renderer, string language_id)
 		{
@@ -104,20 +104,13 @@ namespace MarkdownGtk
 			};
 			header_box.add_css_class("oc-frame-header");
 			
-			// Add title label on the left (language name)
-			// Hide "txt\s+" from the beginning if present
-			string language_label_text = (this.code_language != null && this.code_language != "") ? this.code_language : "code";
-			// Check if language starts with "txt" followed by whitespace
-			if (language_label_text.has_prefix("txt") && language_label_text.length > 3 && language_label_text[3].isspace()) {
-				// Remove "txt" and following whitespace(s)
-				var stripped = language_label_text.substring(3).strip();
-				language_label_text = (stripped != "") ? stripped : "txt";
-			}
-			if (language_label_text == null || language_label_text.strip() == "") {
+			// Frame header: language_id as-is (e.g. "txt", "markdown"); title comes from ### above in markdown
+			string header_text = (this.code_language != null && this.code_language != "") ? this.code_language : "code";
+			if (header_text.strip() == "") {
 				GLib.critical("RenderSourceView: code block info string is empty (language_id='%s'); title will show as 'code'", this.code_language);
-				language_label_text = "code";
+				header_text = "code";
 			}
-			var title_label = new Gtk.Label(language_label_text) {
+			var title_label = new Gtk.Label(header_text) {
 				hexpand = true,
 				halign = Gtk.Align.START,
 				valign = Gtk.Align.CENTER,

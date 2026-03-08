@@ -14,10 +14,11 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ## Execution
 
-You receive a **single output** (the combined search results from the refinement tool calls). Output **only** a **## Result summary** — no other sections.
+**At execution you do not run searches.** You only interpret. You receive a **single output** (the combined search results from the refinement tool calls). Output **only** a **## Result summary** — no other sections.
 
 - Prefer authoritative sources (official docs, GNOME/Vala docs, reputable blogs).
-- **Result summary**: Say what you searched for and what you found. **Highlight specific pages and what each tells you** — not just the page title. For each relevant result: link + short description of what it contains (e.g. "[Documentation for GLib.MainLoop](url) — describes scheduling callbacks and main-loop integration; [Vala async](url) — async/yield and main loop."). Recommend pages worth fetching with **research_web_page** for full context. If enough to proceed, say so; if more research needed, say what to search next.
+- **Be strict about relevance.** Only list a result if it is **clearly relevant** to the search and **likely to help** achieve the task aims. Do **not** assume; if a result is tangential, off-topic, or unlikely to help, **do not mention it** in the list — including weak results will confuse downstream tasks and waste time. Be **explicit** when a result is **not** relevant: either omit it or state briefly that you are excluding it (e.g. "X was not relevant to [aim]").
+- **Result summary**: Say what you searched for and what you found. **Highlight specific pages and what each tells you** — not just the page title. For each **relevant** result only: link + short description of what it contains (e.g. "[Documentation for GLib.MainLoop](url) — describes scheduling callbacks and main-loop integration; [Vala async](url) — async/yield and main loop."). Recommend pages worth fetching with **research_web_page** for full context. If enough to proceed, say so; if more research needed, say what to search next.
 - **If nothing relevant was found:** Say so clearly: "We searched for [topic] but did not find anything relevant." Do not add a body section or suggest alternative queries in that case unless useful.
 
 ### Example output (found relevant results)

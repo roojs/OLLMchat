@@ -60,7 +60,7 @@ namespace OLLMcoder.Task
 			this.id = run_id;
 		}
 
-		/** Reference contents for this run (from this.references). Can be empty. */
+		/** Reference contents for this run (from this.references). Can be empty. Http(s) refs ignored. */
 		private string reference_contents()
 		{
 			if (this.references.size == 0) {
@@ -68,7 +68,12 @@ namespace OLLMcoder.Task
 			}
 			string[] parts = {};
 			foreach (var link in this.references) {
-				var block = this.parent.link_content(link);
+				string block = "";
+				if (link.scheme == "http" || link.scheme == "https") {
+					block = "";
+				} else {
+					block = this.parent.link_content(link);
+				}
 				if (block != "") {
 					parts += block;
 				}
@@ -119,7 +124,8 @@ namespace OLLMcoder.Task
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui-waiting", "Interpreting result" + model_part));
+				this.add_message(new OLLMchat.Message("ui", "Interpreting result" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var response_text = "";
 				try {
 					var response = yield this.chat_call.send(messages, null);
@@ -183,7 +189,7 @@ namespace OLLMcoder.Task
 			tpl.system_fill();
 			tpl.fill(
 				"what_is_needed", this.parent.task_data.get("What is needed").to_markdown(),
-				"skill_definition", definition.body,
+				"skill_definition", definition.execute,
 				"project_description", project_description,
 				"executor_input", executor_input,
 				"executor_retry_issues", previous_issues);

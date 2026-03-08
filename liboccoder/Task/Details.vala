@@ -221,16 +221,10 @@ public class Details : OLLMchat.Agent.Base
 	 * Call from parsing process after fill_names (pass list so task-output
 	 * anchors can be validated).
 	 *
-	 * Accepts:
-	 * {{{
-	 *   #anchor (document section in user_request only)
-	 *   task://taskname.md (whole task output) or task://taskname.md#section
-	 *   http or https URL, absolute file path
-	 * }}}
-	 * Task output refs use task URI only, not #task-name-results.
-	 * Future: taskname plus tool id plus .md when TaskResult map exists.
+	 * @param allow_http_refs true for task list (creation/iteration), false for refinement output. If true, http(s) URLs accepted; if false rejected (use tool calls in ## Tool Calls instead).
+	 * Task output refs use task URI only. Future: taskname plus tool id plus .md when TaskResult map exists.
 	 */
-	public void validate_references()
+	public void validate_references(bool allow_http_refs = false)
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
@@ -243,6 +237,10 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
+				if (allow_http_refs) {
+					continue;
+				}
+				this.issues += "\n" + "References must not contain http(s) URLs. Do not put URLs in References — create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
 				continue;
 			}
 			if (link.path != "" && link.scheme == "file") {
@@ -286,9 +284,10 @@ public class Details : OLLMchat.Agent.Base
 					continue;
 				}
 				var ref_task = this.runner.completed.slugs.get(slug);
-				if (ref_task == null) {
-					ref_task = this.runner.pending.slugs.get(slug);
+				if (ref_task != null) {
+					continue;
 				}
+				ref_task = this.runner.pending.slugs.get(slug);
 				if (ref_task == null) {
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
 					continue;
@@ -387,7 +386,7 @@ public class Details : OLLMchat.Agent.Base
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(),
-			"skill_details", definition.body,
+			"skill_details", definition.refine,
 			"completed_task_list", (completed_md == "" ? "" : 
 				"## Completed tasks (so far)\n\n" + completed_md));
 		return tpl;
@@ -650,13 +649,6 @@ public class Details : OLLMchat.Agent.Base
 			return "";
 		}
 		if (link.scheme == "http" || link.scheme == "https") {
-			var content = this.runner.reference_content(link);
-			if (content != "") {
-				return this.header_fenced(
-					"### Reference contents for " + link.title,
-					content,
-					"markdown");
-			}
 			return "";
 		}
 		if (link.scheme == "task") {

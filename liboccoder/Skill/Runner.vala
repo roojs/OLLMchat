@@ -207,17 +207,26 @@ namespace OLLMcoder.Skill
 				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
+				this.add_message(new OLLMchat.Message("ui",
+					"Continuing with task list (%d steps). Refining and executing next step.".printf(this.pending.steps.size)));
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui-waiting", "Refining tasks" + model_part));
+				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				yield this.pending.refine(cancellable);
-				yield this.pending.run_step_until_approval();
+				var step_done = yield this.pending.run_step_until_approval();
+				if (step_done) {
+					yield this.run_task_list_iteration();
+				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
+				this.add_message(new OLLMchat.Message("ui", "[dbg] After approval path, pending.steps=%d.".printf(this.pending.steps.size)));
 				if (this.pending.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
@@ -228,11 +237,22 @@ namespace OLLMcoder.Skill
 					}
 					this.writer_approval = true;
 				}
-				yield this.pending.run_step();
+				// Refine the (new) first step before run_step; after run_task_list_iteration the list was replaced and the new first step was not refined yet.
+				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				yield this.pending.refine(cancellable);
+				step_done = yield this.pending.run_step();
+				this.add_message(new OLLMchat.Message("ui", "[dbg] run_step returned step_done=%s.".printf(step_done.to_string())));
+				if (step_done) {
+					yield this.run_task_list_iteration();
+					this.add_message(new OLLMchat.Message("ui", "[dbg] Back in handle_task_list after run_task_list_iteration (run_step path), pending.steps=%d.".printf(this.pending.steps.size)));
+				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
+				/* Next iteration: refine and run this.pending (the new list)'s first step. */
 			}
 			if (hit_max_rounds && this.pending.steps.size > 0) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
@@ -278,7 +298,7 @@ namespace OLLMcoder.Skill
 		/**
 		 * Task list iteration: send current list to LLM, parse response into this.pending.
 		 * On parse/validation failure restores this.pending = existing_proposed; uses raw
-		 * LLM response as previous_proposed_md on retry.
+		 * LLM response as previous_pry.
 		 */
 		public async void run_task_list_iteration() throws GLib.Error
 		{
@@ -289,7 +309,11 @@ namespace OLLMcoder.Skill
 			for (var try_count = 0; try_count < 5; try_count++) {
 				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools(); // (clears tools)
-				// Show completed tasks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
+				if (try_count > 0) {
+					this.add_message(new OLLMchat.Message("ui",
+						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
+				}
+				// Show completed tasaks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
 				if (try_count == 0) {
 					var completed_md = this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED);
 					if (completed_md != "")
@@ -297,7 +321,9 @@ namespace OLLMcoder.Skill
 				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui-waiting", "Refining task list" + model_part));
+				var action_text = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Refining task list" + model_part;
+				this.add_message(new OLLMchat.Message("ui", action_text));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
