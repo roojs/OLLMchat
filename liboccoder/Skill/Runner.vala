@@ -296,6 +296,12 @@ namespace OLLMcoder.Skill
 			for (var try_count = 0; try_count < 5; try_count++) {
 				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
 				this.fill_tools(); // (clears tools)
+				// Show completed tasks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
+				if (try_count == 0) {
+					var completed_md = this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED);
+					if (completed_md != "")
+						this.add_message(new OLLMchat.Message("ui", "## Completed tasks\n\n" + completed_md));
+				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
 				this.add_message(new OLLMchat.Message("ui-waiting", "Refining task list" + model_part));
