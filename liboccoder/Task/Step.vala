@@ -66,13 +66,16 @@ public class Step : Object
 	{
 		var completed = this.list.runner.completed;
 		var pending = this.list.runner.pending;
+		if (this.list != pending) {
+			this.list.runner.add_message(new OLLMchat.Message("ui",
+				"[dbg] register_slugs step %d: this.list != runner.pending (writing to step's list, validation reads pending)".printf(step_index)));
+		}
 		var uid = completed.slugs.size + pending.slugs.size;
 		foreach (var t in this.children) {
 			t.step_index = step_index;
 			var s = t.slug();
 			if (s != "" && !completed.slugs.has_key(s) && !pending.slugs.has_key(s)) {
 				this.list.slugs.set(s, t);
-				this.list.runner.add_message(new OLLMchat.Message("ui", "Registered task slug: %s".printf(s)));
 				continue;
 			}
 			uid++;
@@ -85,10 +88,7 @@ public class Step : Object
 			}
 			var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
 			b.adopt(new Markdown.Document.Format.from_text(s));
-			t.task_data.set("Name", b);
-			var final_slug = t.slug();
-			this.list.slugs.set(final_slug, t);
-			this.list.runner.add_message(new OLLMchat.Message("ui", "Registered task slug: %s".printf(final_slug)));
+			this.list.slugs.set(t.slug(), t);
 		}
 	}
 

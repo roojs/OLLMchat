@@ -240,7 +240,9 @@ public class Details : OLLMchat.Agent.Base
 				if (allow_http_refs) {
 					continue;
 				}
-				this.issues += "\n" + "References must not contain http(s) URLs. Do not put URLs in References — create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
+				this.issues += "\n" +
+					 "References must not contain http(s) URLs. Do not put URLs in References " + 
+					 	"- create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
 				continue;
 			}
 			if (link.path != "" && link.scheme == "file") {
@@ -289,6 +291,15 @@ public class Details : OLLMchat.Agent.Base
 				}
 				ref_task = this.runner.pending.slugs.get(slug);
 				if (ref_task == null) {
+					var pending_keys = new Gee.ArrayList<string>();
+					pending_keys.add_all(this.runner.pending.slugs.keys);
+					var completed_keys = new Gee.ArrayList<string>();
+					completed_keys.add_all(this.runner.completed.slugs.keys);
+					this.runner.add_message(new OLLMchat.Message("ui",
+						"[dbg] task ref lookup failed: href=\"%s\" slug=\"%s\" (len=%d) | pending.slugs=[%s] | completed.slugs=[%s]".printf(
+							href, slug, slug.length,
+							string.joinv(", ", pending_keys.to_array()),
+							string.joinv(", ", completed_keys.to_array()))));
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
 					continue;
 				}

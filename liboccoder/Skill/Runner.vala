@@ -84,7 +84,7 @@ namespace OLLMcoder.Skill
 		public string reference_content(Markdown.Document.Format link)
 		{
 			if (link.scheme == "task") {
-				var slug = link.path.has_suffix(".md") ? 
+				var slug = link.path.has_suffix(".md") ?
 					link.path.substring(0, link.path.length - 3) : link.path;
 				var task = this.completed.slugs.has_key(slug) ? 
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
@@ -316,8 +316,9 @@ namespace OLLMcoder.Skill
 				// Show completed tasaks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
 				if (try_count == 0) {
 					var completed_md = this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED);
-					if (completed_md != "")
+					if (completed_md != "") { 
 						this.add_message(new OLLMchat.Message("ui", "## Completed tasks\n\n" + completed_md));
+					}
 				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
