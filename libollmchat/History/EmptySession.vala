@@ -36,6 +36,11 @@ namespace OLLMchat.History
 		public override string display_info {
 			owned get { return "New Chat"; }
 		}
+
+		public override string task_dir()
+		{
+			return "";
+		}
 		
 		public override async void save_async(bool update_timestamp = true) { }  // No-op: EmptySession is never saved
 		

@@ -199,8 +199,8 @@ namespace OLLMtools.GoogleSearch
 				this.start
 			);
 			
-			// Send request message to UI
-			this.send_ui("txt", "Google Search request for " + this.query, "");
+			// Send request message to UI: title "Google Search request for", query in code block
+			this.send_ui("txt", "Google Search request for", this.query);
 			
 			// Fetch search results
 			GLib.Bytes content;

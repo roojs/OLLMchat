@@ -315,7 +315,9 @@ namespace OLLMchatGtk
 						this.chat_view.append_user_message(msg.content, session);
 						break;
 					case "ui":
-						this.chat_view.append_tool_message(msg);
+						// Use same path as live so code blocks get frames with titles
+						var ui_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
+						this.chat_view.append_complete_assistant_message(ui_msg, session);
 						break;
 					case "ui-warning":
 						var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + msg.content, msg.thinking);

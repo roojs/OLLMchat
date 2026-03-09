@@ -53,12 +53,13 @@ Between task creation and execution, **each task is refined**. The refiner turns
 - **The skill document** — The full content of the assigned skill. The refiner uses it to see what the skill needs (inputs, tools) and what information to gather via tool calls before the skill runs.
 - **Tools definition** — Tool names, descriptions, and parameters. This defines how to invoke each tool (e.g. one fenced JSON block per call with **name** and **arguments**). The refiner builds the Tool Calls section in this format.
 - **Task reference contents** — The **resolved** content of this task's References only (environment, project description, current file, file contents, prior task outputs, URLs). The refiner uses this to fill in concrete values for the Skill call and to decide what to request via tool calls (e.g. avoid requesting a whole file if it's already in References; use a tool for a specific line range if needed).
+- **Completed tasks (so far)** — When present, a list of tasks that have already been executed. The runner injects this via the **`{completed_task_list}`** placeholder. Format: **task name** (from the task’s Name field) plus **Result summary** (the task’s Output / Result summary text). Reference links (file paths, task output anchors, URLs) live **inside** the summary content, not as a separate section. The refiner uses this to fill in References only when relevant; for tool calls, include prior task/output in References only when very relevant.
 
 When a previous refinement attempt had issues (e.g. invalid tool, malformed output), the refiner also receives **Issues with the current call** and the **current task data** so it can correct and re-output.
 
 ### What the refiner produces
 
-1. **Refined task** — The same task fields (What is needed, Skill, References, Expected output) plus **Skill call**: the skill name and **all required and optional arguments with concrete values**. Those values come from "What is needed" and the task reference contents. This is what ties the coarse instruction to the actual inputs the skill will see (e.g. `topic = "async main loop Vala"` for research_topic).
+1. **Refined task** — The same task fields (What is needed, Skill, References, Expected output) plus **Skill call**: the skill name and **all required and optional arguments with concrete values**. Those values come from "What is needed" and the task reference contents. This is what ties the coarse instruction to the actual inputs the skill will see (e.g. `topic = "async main loop Vala"` for research_online_search).
 2. **Tool Calls** — Zero or more fenced blocks; each block is one JSON object with **name** (required) and **arguments** (optional object). One block per tool call. The runner executes each call, collects outputs, and passes them into the **Precursor** for the executor. Prefer **multiple** tool calls when that is more effective (e.g. several searches or codebase queries rather than one).
 
 So: the **task creator** chooses *which* skill and *what* is needed at a high level; the **refiner** decides *exactly* what to pass to the skill and *which tools* to run first; the **executor** then receives What is needed, Skill definition, and Precursor (references + tool outputs) and produces Result summary + Detail. Refinement is what makes the design work — without it, the executor would get only coarse "What is needed" and references, with no concrete skill arguments or tool runs.
@@ -71,10 +72,11 @@ After refinement, the runner runs the tool calls and then runs the executor for 
 
 ### What the executor receives
 
-- **Name** (optional) — The task name, if set. Downstream tasks can refer to this task's output via `#task-name-results` (task name lowercased, non-alphanumeric → hyphen, plus `-results`).
+- **Name** (optional) — The task name, if set. Downstream tasks can refer to this task's output via `task://taskname.md` or `task://taskname.md#section` (slug = task name lowercased, non-alphanumeric → hyphen).
 - **What is needed** — From the task list, in natural language. This is the main instruction for the task.
 - **Skill definition** — The full content of this skill's markdown file. The executor uses it to guide interpretation and output.
-- **Precursor** — Resolved content from the task's **References** (files, project description, prior task outputs, URLs), plus each **tool call** (name + arguments) and its **output** from the tools that already ran for this task. The executor sees all of this in one block.
+- **Tool Output and/or Reference information** — Reference content (resolved References) and/or tool output (tool call(s) + result(s)). When the task had tool calls: tool output plus reference content. When the task has no tool calls, this section is from References only (once per reference or one combined run per skill header `execute-combined`). Each execution run is stored as a **Tool** (id, summary, document); the completed-task list uses Tool summary.
+- Executor output: **Result summary** (required) and body sections with descriptive titles; list sections as links. No separate Output References section.
 
 ### Where What is needed and Expected output come from
 
@@ -98,23 +100,25 @@ Every skill must produce output in this shape so the runner can parse it and sho
 
 - **## Result summary** (required) — The content of this section is what appears in the task list as the task’s **Output**.
 - It must be a **summary of what the task did** to address the goal and **whether that answered it** (one or two sentences). Use outcome-focused language (e.g. "Searched the codebase for X; found Y — enough for a follow-up."). Do not use a literal "Goal:" line or describe system mechanics.
+- **Always list sections of the output as links** when describing what the task did (e.g. [Sources and findings](#sources-and-findings), [Issues that need rectifying](#issues-that-need-rectifying)). Use markdown links to each section heading — this is **very important**: it is the only visible information that later tasks can use to enhance their information; without section links, downstream tasks cannot discover what is in your output.
 - If nothing relevant was found, say that clearly (e.g. "Nothing relevant found.").
 - No long prose here; the detail goes in the next section.
 
-### Detail (injected into the next task)
+### Body sections (descriptive titles only)
 
-- **## Detail** — The full breakdown. This is injected into the **Precursor** of any later task that references this task’s output.
-- Structure: **heading + body** or **heading + sections with links**.
-- **Detail can contain markdown links** and **short summaries about the references and why they are useful** (e.g. “The [Vala async docs](url) cover async/yield and main loop; [Runner.vala](path#OLLMcoder.Skill-Runner-task_creation_prompt) is where the prompt is built.”). Links can be URLs, file paths, or **AST references** for code — use the project AST path format (e.g. `#Namespace-Class-methodName`); see "Reference link types" below. Do not use plain symbol names like `#task_creation_prompt`. Downstream tasks receive the Detail and can have the refiner add those links to References so their content is injected too.
+- **Never use generic section titles** (e.g. "Detail"). Use a **descriptive title** that states what the section contains (e.g. "Sources and findings", "Vala async: yield, main loop, and example of calling async methods", "Review findings: issues and proposed changes"). Be specific to the content — avoid generic titles like "Synthesis and sample code".
+- The full breakdown is injected into the **Precursor** of any later task that references this task’s output.
+- Structure: **heading + body** or **heading + subsections with links**.
+- **Body sections can contain markdown links** and **short summaries about the references and why they are useful** (e.g. “The [Vala async docs](url) cover async/yield and main loop; [Runner.vala](path#OLLMcoder.Skill-Runner-task_creation_prompt) is where the prompt is built.”). Links can be URLs, file paths, or **AST references** for code — use the project AST path format (e.g. `#Namespace-Class-methodName`); see "Reference link types" below. Do not use plain symbol names like `#task_creation_prompt`. Downstream tasks receive the body and can have the refiner add those links to References so their content is injected too.
 - End with a clear conclusion: e.g. "Enough information to proceed." or "More research needed: [what to search next]."
 
-Optional sections (e.g. Output References, Skill output in fenced blocks) may be specified by the skill; the runner still requires a **Result summary** section and uses **Detail** when resolving references.
+Optional sections (e.g. Output References, Skill output in fenced blocks) may be specified by the skill; the runner still requires a **Result summary** section and uses the body sections when resolving references.
 
 ### Two-step flows and secondary sections
 
 Some skills are used in pairs: the first produces raw findings; the second consumes that output and produces a synthesized result.
 
-- **research_topic** → **research_pages**: research_topic does web searches and outputs Result summary + Detail; research_pages receives that as Precursor and produces a concise summary (and optionally sample usage).
+- **research_online_search** → **research_web_page**: research_online_search does web searches and outputs Result summary + Detail; research_web_page receives that as Precursor and produces a concise summary (and optionally sample usage).
 - **analyze_codebase** → **analyze_code**: analyze_codebase searches the codebase (codebase_search with code element_type) and outputs **Result summary** plus **## Analyze codebase results** — code locations with AST/file links. analyze_code receives that as Precursor and produces **Result summary + Detail** with how to use the code and example usage (code snippets).
 - **analyze_docsbase** → **analyze_docs**: analyze_docsbase searches **documentation** (codebase_search with element_type "document" or "section", optionally category). Outputs **Result summary** plus **## Analyze docsbase results** — doc/section locations with file and GFM heading links. analyze_docs receives that as Precursor and produces **Result summary + Detail** that synthesizes the docs: key points, how to apply them, and example procedures from the documentation.
 
@@ -131,39 +135,47 @@ Some skills are used in pairs: the first produces raw findings; the second consu
 
 ## Skill file format
 
+Each skill file is split by the **double-dash separator** (`---`) into **three parts**. Use a separator between each part:
+
+1. **Front matter** (YAML header) — then `---`
+2. **Refinement** — body section under `## Refinement` — then `---`
+3. **Execution** — body section under `## Execution`
+
+The runner uses the Refinement section when refining the task and the Execution section when running the skill.
+
+### Writing rules (stage-focused content)
+
+**Refinement section:** Write only what the **refiner** needs to do its job. Include: which tool(s) to call, what arguments to pass, and what to expect back from the tools. Do **not** describe how the execution stage works, what execution will do with the output, or how downstream tasks use results. Do not describe the system; give instructions.
+
+**Execution section:** Write only what the **executor** needs to do its job. Include: what to do with Precursor (tool outputs and references), what output sections to produce (e.g. Result summary, skill-specific sections), and optionally an example. Do **not** describe the refinement stage, the runner, or downstream tasks (e.g. "plan_review will add these to References"). Do not describe the system; give instructions.
+
 ### Location and naming
 
 - Path: `resources/skills/`.
-- Filename: **lowercase with underscores** (e.g. `research_topic.md`, `plan_create.md`). No UpperCamel or kebab-case in filenames.
+- Filename: **lowercase with underscores** (e.g. `research_online_search.md`, `plan_create.md`). No UpperCamel or kebab-case in filenames.
 
-### Frontmatter (YAML header)
+### Part 1: Front matter (YAML header)
 
 Required keys:
 
-- **name** — Skill name, lowercase with underscores (e.g. `research_topic`). Must match the runner’s catalog.
-- **description** — **When to use** this skill (one line, shown in the task list and skill catalog). Include what it does and when the planner should choose it. Also include **hints about when not to use** (e.g. do not use before research is done; do not jump in and assume; ensure prerequisites such as prior research or analysis tasks have been run).
+- **name** — Skill name, lowercase with underscores (e.g. `research_online_search`). Must match the runner’s catalog.
+- **description** — **When to use** this skill — that is its only job. One line, shown in the task list and skill catalog; the task creator uses it to choose the right skill per task. Include when the planner should choose it and hints about when not to use it (e.g. do not use before research is done; ensure prerequisites have been run). Do not describe what the skill outputs or how it works; that belongs in the Refinement and Execution sections.
 
 Optional:
 
-- **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `write_file, write_chunk`). Omit if the skill uses no tools.
+- **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `read_file`, `grep` — use the exact name from the wrapped-tool @name). Omit if the skill uses no tools.
 
 **Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. produce revised content (plan_iterate) vs write the file (plan_apply_changes); do not combine read-then-write in one skill.
 
-### Do not duplicate the execution template
+**Separator:** Use exactly `---` (double dash) on its own line after the front matter and again between the Refinement and Execution sections. So the file reads: front matter, `---`, `## Refinement` and its content, `---`, `## Execution` and its content. Do not duplicate the execution system template (task_execution.md); it already defines standard inputs and the Result summary / Detail shape. Skills add only what is **specific** to this skill. Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
 
-The **execution system template** (task_execution.md) already defines what the executor receives (What is needed, Skill definition, Precursor) and the executor output format (Result summary, optional Output References, Skill output). **Skill documents must not duplicate that information.** The LLM runs with that template plus the skill definition; repeating the same input/output structure in the skill adds noise and can get out of sync. Skills add only what is **specific** to this skill: how it interprets the input, what output it specifies beyond the standard (e.g. Detail with links), and how to do it.
+### Part 2: Refinement
 
-Do **not** reference docs/skills-format.md or any other doc path in skill files; the LLM does not have access to them.
+Under **## Refinement**, write only what the refiner needs: which tool calls to emit and with what arguments (or "No tool calls" and what to put in References); what information to **put in** (e.g. query phrasing, element_type, paths); what to **expect out** of the tools so the refiner can judge whether more calls are needed. If the skill uses multiple tool calls, state whether execution runs once on all outputs (combined) or once per tool result. Do not describe execution behaviour or downstream use of the output.
 
-### Body
+### Part 3: Execution (heading in skill file: `## Execution`)
 
-- After the closing `---`, use a main heading (e.g. `## Research topic skill`) and then only skill-specific content:
-  - **Input (this skill)** — How this skill interprets What is needed and Precursor, and what arguments (if any) the refinement step passes to tools. Do not re-state what the executor receives; that is in the execution template.
-  - **Output (this skill)** — Only what this skill specifies beyond the standard (e.g. "Result summary and Detail; Detail may contain markdown links; end with Enough/More research needed."). Do not re-state the full Result summary / Detail structure; that is in the execution template.
-  - **Instructions** — Break into **Refinement** (what the refiner should do: which tool calls to emit, what arguments; or "No tool calls" and what to put in References) and **Execution** (what to do with the results: how to build Result summary, Detail, or other output from Precursor and tool outputs).
-  - **Example** — Example input and output in the required format.
-
-Use heading + body or heading + sections with links consistently. Keep the body focused on what is unique to this skill.
+Under **## Execution**, write only what the executor needs: how to build Result summary, Detail, and any skill-specific sections from Precursor; what output sections this skill produces (beyond the standard); optionally an example. Do not describe refinement, the runner, or how other tasks use the output. Use heading + body or heading + sections with links consistently.
 
 ---
 
@@ -173,10 +185,9 @@ When skill output refers to other content, use only these link forms so the runn
 
 **AST path format (for code):** The anchor for code symbols is **not** a plain name like `#task_creation_prompt`. It is the project’s AST path: **hyphen-separated**, with namespace parts using `.`. Example: `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. So a link to a method is `[Title](/absolute/path/to/file.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`. See the codebase (e.g. docs/plans/done/2.1.2, or codebase search AST path output) for the exact format your project uses.
 
-- **Project description:** `[Project description](#project-description)`
 - **File:** `[Title](/absolute/path/to/file)` — base name for title, absolute path.
 - **File section / AST reference:** `[Title](/absolute/path/to/file#anchor)` — anchor can be a **GFM heading** (e.g. `#section-name`) or an **AST path** for code. **AST paths do not use plain symbol names**; they use the project’s AST path format: hyphen-separated, with namespace parts optionally using `.`. Example: `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. So for code use e.g. `[task_creation_prompt](/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`, not `#task_creation_prompt`. The runner resolves the AST path to inject that symbol.
-- **Task output:** `[Task Name Results](#task-name-results)` — anchor = task name lowercased, non-alphanumeric → hyphen, plus `-results`.
+- **Task output:** `[Task Name Results](task://taskname.md)` or `[Task Name Results](task://taskname.md#section)` — slug = task name lowercased, non-alphanumeric → hyphen.
 - **URL:** `[Title](https://…)`
 
 Do not paste long file or precursor content into the task list or into output; use links. The runner injects resolved content when a task runs.

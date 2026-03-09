@@ -43,10 +43,67 @@ namespace OLLMcoder.Task
  */
 public class Step : Object
 {
+	public List list { get; set; }
+
+	public Step(List list)
+	{
+		this.list = list;
+	}
+
 	/**
 	 * Tasks in this step. Size 1 = single task; size > 1 = concurrent group.
 	 */
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }
+
+	/**
+	 * Register this step's tasks in list.slugs (and set step_index).
+	 * If slug non-empty and not in completed/pending, set and continue.
+	 * Empty or clash: set name in task_data, then slugs.set(t.slug(), t).
+	 *
+	 * @param step_index index of this step in the list (set on each child)
+	 */
+	public void register_slugs(int step_index)
+	{
+		var completed = this.list.runner.completed;
+		var pending = this.list.runner.pending;
+		if (this.list != pending) {
+			this.list.runner.add_message(new OLLMchat.Message("ui",
+				"[dbg] register_slugs step %d: this.list != runner.pending (writing to step's list, validation reads pending)".printf(step_index)));
+		}
+		var uid = completed.slugs.size + pending.slugs.size;
+		foreach (var t in this.children) {
+			t.step_index = step_index;
+			var s = t.slug();
+			if (s != "" && !completed.slugs.has_key(s) && !pending.slugs.has_key(s)) {
+				this.list.slugs.set(s, t);
+				continue;
+			}
+			uid++;
+			if (s == "") {
+				var skill = t.task_data.has_key("Skill") ?
+					t.task_data.get("Skill").to_markdown().strip() : "";
+				s = (skill != "" ? skill : "Task") + " " + uid.to_string();
+			} else {
+				s = s + "-" + uid.to_string();
+			}
+			var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+			b.adopt(new Markdown.Document.Format.from_text(s));
+			this.list.slugs.set(t.slug(), t);
+		}
+	}
+
+	/**
+	 * Markdown for this step's tasks only (no section header). Caller uses
+	 * completed or pending list; no filtering (list identity implies context).
+	 */
+	public string to_markdown(MarkdownPhase phase)
+	{
+		var step_out = "";
+		foreach (var t in this.children) {
+			step_out += t.to_markdown(phase) + "\n\n";
+		}
+		return step_out;
+	}
 
 	/**
 	 * Whether any child task requires user approval before execution continues.

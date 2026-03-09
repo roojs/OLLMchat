@@ -22,23 +22,25 @@ namespace OLLMcoder.Task
  * failures are accumulated in {@link issues} so the caller can retry or report.
  *
  * Constructor builds a ''Markdown.Document''; {@link parse_task_list},
- * {@link extract_refinement}, and {@link extract_exec} each expect specific
+ * {@link extract_refinement}, {@link extract_exec}, and {@link exec_extract} each expect specific
  * sections and populate task_list / task / issues accordingly.
  *
  * How it fits in the task flow:
  *
  *  * Planning: Runner receives the planning response → ''new ResultParser(this, response)'',
- *    ''parse_task_list()''; caller uses ''runner.task_list'' and ''parser.issues''.
+ *    ''parse_task_list()''; caller uses ''runner.pending'' and ''parser.issues''.
  *  * Refinement: Details.refine() receives the refinement response → new
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
- *  * Execution: Details.post_evaluate() receives the executor response → new
- *    ResultParser, ''extract_exec(this)''; ''task.result'' and
- *    ''task.result_document'' are set; on success Details sets ''exec_done''.
+ *  * Execution: Tool.run() receives the executor response → new ResultParser,
+ *    ''exec_extract(ex)''; ex.summary and ex.document are set. Details.run_exec() builds
+ *    ''task.result'' from exec_runs summaries; on success Details sets ''exec_done''.
+ *    ''extract_exec(Details)'' remains for legacy/test use (sets task.result only).
  *
  * @see List
  * @see Step
  * @see Details
+ * @see Tool
  */
 public class ResultParser : Object
 {
@@ -68,7 +70,7 @@ public class ResultParser : Object
 
 	/**
 	 * Builds document from response (''Markdown.Document.Render''). Call
-	 * ''parse_task_list'', ''extract_refinement'', or ''extract_exec'' next.
+	 * ''parse_task_list'', ''extract_refinement'', ''extract_exec'', or ''exec_extract'' next.
 	 *
 	 * @param runner skill runner; used by ''parse_task_list()'' to build Details and List
 	 * @param response raw LLM markdown response (planning, refinement, or executor)
@@ -84,14 +86,15 @@ public class ResultParser : Object
 
 	/**
 	 * Parses task list from document; uses ''runner'' from constructor to build {@link Details}.
+	 * Builds into {@link runner}.pending only; does not touch completed.
 	 *
 	 * Appends to {@link issues} on each failure. Caller checks ''parser.issues == ""''
-	 * for success. Populates {@link runner}.task_list on success.
+	 * for success. On failure sets runner.pending = new List(runner).
 	 */
 	public void parse_task_list()
 	{
 		this.issues = "";
-		this.runner.task_list = null;
+		this.runner.pending = new List(this.runner);
 
 		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
 			if (!this.document.headings.has_key(key)) {
@@ -101,8 +104,6 @@ public class ResultParser : Object
 			}
 		}
 
-		this.runner.task_list = new List(this.runner);
-		// Require task sections (### Task section 1, …) as per task_creation_initial.md and task_list_iteration.md; do not change.
 		foreach (var key in this.document.headings.keys) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
@@ -111,31 +112,167 @@ public class ResultParser : Object
 			if (step == null) {
 				continue;
 			}
-			this.runner.task_list.steps.add(step);
+			this.runner.pending.steps.add(step);
 		}
 		if (!this.document.headings.has_key("goals-summary")) {
-			this.runner.task_list = null;
+			this.runner.pending = new List(this.runner);
 			return;
 		}
-		this.runner.task_list.goals_summary_md = 
+		this.runner.pending.goals_summary_md =
 			this.document.headings.get("goals-summary").to_markdown_with_content();
-		this.runner.task_list.fill_names();
-		var steps = this.runner.task_list.steps;
+		this.runner.pending.fill_names();
+		var steps = this.runner.pending.steps;
 		for (var i = 0; i < steps.size; i++) {
 			var step = steps.get(i);
+			step.register_slugs(i);
 			foreach (var t in step.children) {
-				t.step_index = i;
-				if (t.slug() != "") {
-					this.runner.task_list.slugs.set(t.slug(), t);
-				}
-				t.validate_references();
+				this.validate_task(t);
+				t.validate_references(true);
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;
 				}
 			}
 		}
 		if (this.issues != "") {
-			this.runner.task_list = null;
+			this.runner.pending = new List(this.runner);
+		}
+	}
+
+	/**
+	 * Parses task list from document when the response is tasks-only (iteration output).
+	 * Requires only ## Tasks and task sections; does not require or set Original prompt
+	 * or Goals / summary. Caller must preserve goals_summary_md from the existing list.
+	 *
+	 * Creates a new List, assigns to {@link runner}.pending at start, then builds into it.
+	 * Step uses this.runner.pending (this.list) during register_slugs. On validation/parse
+	 * failure do NOT clear runner.pending — leave the parsed list so Runner can capture
+	 * the failed proposal and restore this.pending = existing_proposed.
+	 *
+	 * Appends to {@link issues} on each failure. Used by Runner after task list iteration.
+	 */
+	public void parse_task_list_iteration()
+	{
+		this.issues = "";
+
+		if (!this.document.headings.has_key("tasks")) {
+			this.issues += "\n" + "Task list iteration response must contain ## Tasks. Missing or misnamed.";
+			return;
+		}
+
+		this.runner.pending = new List(this.runner);
+		foreach (var key in this.document.headings.keys) {
+			if (!key.has_prefix("task-section-")) {
+				continue;
+			}
+			var step = this.parse_step(this.document.headings.get(key));
+			if (step == null) {
+				continue;
+			}
+			this.runner.pending.steps.add(step);
+		}
+		this.runner.pending.fill_names();
+		var steps = this.runner.pending.steps;
+		for (var i = 0; i < steps.size; i++) {
+			var step = steps.get(i);
+			step.register_slugs(i);
+			foreach (var t in step.children) {
+				this.validate_task(t);
+				t.validate_references(true);
+				if (t.issues != "") {
+					this.issues += "\n" + "Task (References): " + t.issues;
+				}
+			}
+		}
+	}
+
+	private static Gee.ArrayList<string>? valid_key_cache = null;
+	private static Gee.ArrayList<string>? required_key_cache = null;
+
+	/**
+	 * Returns the list of valid (allowed) task field names for task list parsing.
+	 * Cached in ''valid_key_cache''. Use ''valid_keys().contains(key)'' to reject
+	 * disallowed keys.
+	 *
+	 * @return cached list: Name, What is needed, Skill, References, Expected output, Requires user approval
+	 */
+	private static Gee.ArrayList<string> valid_keys()
+	{
+		if (valid_key_cache != null) {
+			return valid_key_cache;
+		}
+		string[] valid_keys_array = {
+			"Name",
+			"What is needed",
+			"Skill",
+			"References",
+			"Expected output",
+			"Requires user approval"
+		};
+		valid_key_cache = new Gee.ArrayList<string>();
+		foreach (string s in valid_keys_array) {
+			valid_key_cache.add(s);
+		}
+		return valid_key_cache;
+	}
+
+	/**
+	 * Returns the list of required task field names for task list parsing.
+	 * Cached in ''required_key_cache''. Use to validate that required keys are present.
+	 *
+	 * @return cached list: What is needed, Skill, Expected output
+	 */
+	private static Gee.ArrayList<string> required_keys()
+	{
+		if (required_key_cache != null) {
+			return required_key_cache;
+		}
+		string[] required_keys_array = {
+			"What is needed",
+			"Skill",
+			"Expected output"
+		};
+		required_key_cache = new Gee.ArrayList<string>();
+		foreach (string s in required_keys_array) {
+			required_key_cache.add(s);
+		}
+		return required_key_cache;
+	}
+
+	/**
+	 * Validates one task from a task list (initial or iteration): must not contain
+	 * Output; only allowed field names; required keys must be present.
+	 * Appends to {@link issues} when invalid. Call only after {@link List.fill_names}
+	 * has been run (during parsing, before this); this method only reads the task
+	 * name for issue messages and does not inject or set names.
+	 *
+	 * Used by {@link parse_task_list} and {@link parse_task_list_iteration} so
+	 * both paths share the same rules.
+	 *
+	 * @param t the task to validate (its task_data keys are checked)
+	 */
+	public void validate_task(Details t)
+	{
+		var label = t.task_data.get("Name").to_markdown().strip();
+		if (t.task_data.has_key("Output")) {
+			this.issues += "\n" + "Task \"" + label + "\" must not contain Output " +
+				"(tasks in the list have no results yet).";
+		}
+		foreach (var req in required_keys()) {
+			if (!t.task_data.has_key(req)) {
+				this.issues += "\n" + "Task \"" + label + "\" is missing required field: \"" + req + "\". " +
+					"Add the missing field to that task (every task must include: " +
+					string.joinv(", ", required_keys().to_array()) + ") and resubmit the task list.";
+			}
+		}
+		foreach (var k in t.task_data.keys) {
+			if (valid_keys().contains(k)) {
+				continue;
+			}
+			this.issues += "\n" + "Task \"" + label + "\" has disallowed field: \"" + k + "\". " +
+				"Use only these valid fields: " + string.joinv(", ", valid_keys().to_array()) + ". " +
+				"Consider whether the field is wrongly named (fix the name to match a valid field) or " +
+				"whether its content belongs in one of the valid fields; then resubmit the task list " +
+				"with only the valid fields for each task.";
 		}
 	}
 
@@ -171,7 +308,7 @@ public class ResultParser : Object
 	 */
 	private Step? parse_step(Markdown.Document.Block section_heading)
 	{
-		var step = new Step();
+		var step = new Step(this.runner.pending);
 		Details? last_task = null;
 		var found_any_list = false;
 		foreach (var node in section_heading.contents()) {
@@ -252,6 +389,7 @@ public class ResultParser : Object
 				return;
 			}
 			task.update_props(list_block.to_key_map());
+			task.validate_references(false);
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}
@@ -266,6 +404,7 @@ public class ResultParser : Object
 		if (!this.document.headings.has_key("tool-calls")) {
 			this.document.headings.set("tool-calls", new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH));
 		}
+		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
 		var tool_index = 0;
 		foreach (var node in this.document.headings.get("tool-calls").contents()) {
 			if (!(node is Markdown.Document.Block)) {
@@ -276,7 +415,7 @@ public class ResultParser : Object
 				&& block.kind != Markdown.FormatType.FENCED_CODE_TILD) {
 				continue;
 			}
-			var tool = new Tool(task);
+			var tool = new Tool(factory, this.runner.session, task, "");
 			if (!tool.parse(block)) {
 				this.issues += "\n" + tool.issues + 
 					" Raw block:\n\n```json\n" + block.code_text + "\n```\n\n";
@@ -291,27 +430,53 @@ public class ResultParser : Object
 			}
 			task.tools.add(tool);
 		}
+		// Require at least one of References or Tool calls so execution has precursor content.
+		if (task.reference_targets.size == 0 && task.tools.size == 0) {
+			this.issues += "\n" + "Refinement must provide at least one of References or Tool calls. " +
+				"This task has neither; add markdown links in References and/or fenced JSON blocks in " +
+				" ## Tool Calls so execution has precursor content.";
+		}
 	}
 
 	/**
-	 * Fills in the result summary on the task and sets ''task.result_document''.
+	 * Parse executor response into the given Tool (exec run). Called by Tool.run().
+	 * On success sets ex.summary and ex.document; on failure appends to issues.
 	 *
-	 * Single pass: find section "Result summary" → ''task.result'' = section
-	 * content; ''task.result_document'' = this document. If no "Result summary"
-	 * section, appends to {@link issues}. No parsing of filename or other details.
+	 * @param ex the Tool (exec run) to fill with result summary and document
+	 * @return true on success; false on missing Result summary (issues appended)
+	 */
+	public bool exec_extract(Tool ex)
+	{
+		if (!this.document.headings.has_key("result-summary")) {
+			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce a result summary (what was found or produced; whether complete or more work needed).";
+			return false;
+		}
+		var summary = this.document.headings.get("result-summary").to_markdown_with_content().strip();
+		ex.summary = summary;
+		ex.document = this.document;
+		return true;
+	}
+
+	/**
+	 * Fills in the result summary on the task from executor response.
 	 *
-	 * Content we expect (task_execution.md / 1.23.6):
+	 * Single pass: find section "Result summary" → ''task.result'' = section content.
+	 * If no "Result summary" section, appends to {@link issues}. No parsing of filename or other details.
+	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and task.result from exec_runs.
+	 *
+	 * Content we expect (task_execution.md):
 	 * {{{
 	 * ## Result summary
 	 * We have the information we need; it is complete.
 	 * }}}
 	 *
-	 * @param task the task to set ''result'' and ''result_document'' on
+	 * @param task the task to set ''result'' on
 	 */
 	public void extract_exec(Details task)
 	{
 		task.result = "";
-		task.result_document = this.document;
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +

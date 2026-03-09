@@ -19,8 +19,9 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * Agent that runs a single skill. Builds system message (template + available skills + current skill)
-	 * and user message (template or pass-through); injects them and sends.
+	 * Agent that runs a single skill. Builds system message (template + available
+	 * skills + current skill) and user message (template or pass-through);
+	 * injects them and sends.
 	 */
 	public class Runner : OLLMchat.Agent.Base
 	{
@@ -29,19 +30,33 @@ namespace OLLMcoder.Skill
 			get { return (Factory) this.factory; }
 		}
 
-		/** True once user has approved running writer (modify) tasks this run. */
+		/**
+		 * True once user has approved running writer (modify) tasks this run.
+		 */
 		public bool writer_approval { get; set; default = false; }
-		/** Used by task list flow (send_async(string)); set from template user_to_document(). */
+		/**
+		 * Used by task list flow (send_async(string)); set from template user_to_document().
+		 */
 		public Markdown.Document.Document? user_request { get; set; default = null; }
-		/** Parsed task list; set by send_async when parse and validate_skills succeed. */
-		public OLLMcoder.Task.List? task_list { get; set; default = null; }
+		/**
+		 * Tasks that have gone through execution (unchanged reference data).
+		 */
+		public OLLMcoder.Task.List completed { get; private set; }
+		/**
+		 * Tasks to be run (initial plan or new/revised from iteration). Only this list is ever run.
+		 */
+		public OLLMcoder.Task.List pending { get; set; }
 
 		public Runner(Factory factory, OLLMchat.History.SessionBase session)
 		{
 			base(factory, session);
+			this.completed = new OLLMcoder.Task.List(this);
+			this.pending = new OLLMcoder.Task.List(this);
 		}
 
-		/** Used only in send_async when filling task_creation_initial (before user_request exists). */
+		/**
+		 * Used only in send_async when filling task_creation_initial (before user_request exists).
+		 */
 		public string env()
 		{
 			var ret = "- **Date** - `" + new GLib.DateTime.now_local().format("%Y-%m-%d") + "`";
@@ -58,21 +73,32 @@ namespace OLLMcoder.Skill
 			return ret;
 		}
 
-		/** Resolve non-file reference content for task refs. #anchor → user_request section or task output; http(s) deferred. When user_request is null (e.g. test), fallback to project description for #project-description. */
-		public string reference_content(string href)
+		/**
+		 * Resolve non-file reference content for task refs, document anchor, or http (deferred).
+		 * Do not add validation here; validation is done in Details.validate_references().
+		 * Call only for links that validation has accepted; never return "".
+		 *
+		 * @param link the reference link (scheme, path, href, hash already parsed)
+		 * @return resolved content for the link
+		 */
+		public string reference_content(Markdown.Document.Format link)
 		{
-			var anchor = href.has_prefix("#") ? href.substring(1) : "";
-			if (anchor == "") {
-				return "";
+			if (link.scheme == "task") {
+				var slug = link.path.has_suffix(".md") ?
+					link.path.substring(0, link.path.length - 3) : link.path;
+				var task = this.completed.slugs.has_key(slug) ? 
+					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
+				var run = task.exec_runs.get(0);
+				return run.document.headings.get(link.hash).to_markdown_with_content();
 			}
-			if (this.user_request != null && this.user_request.headings.has_key(anchor)) {
+			if (link.path == "") {
+				var anchor = link.hash;
 				return this.user_request.headings.get(anchor).to_markdown_with_content();
 			}
-			// No original prompt: fallback to project summary for #project-description
-			if (anchor == "project-description" && this.sr_factory.project_manager.active_project != null) {
-				return this.sr_factory.project_manager.active_project.project_description();
+			if (link.scheme == "http" || link.scheme == "https") {
+				GLib.error("reference_content: http(s) links are not resolved");
 			}
-			return "";
+			GLib.error("reference_content: unsupported link scheme or path (href=%s)", link.href);
 		}
 
 		public PromptTemplate task_creation_prompt(
@@ -109,7 +135,10 @@ namespace OLLMcoder.Skill
 		}
  
 
-		/** Entry point. Sends user request only; when finished calls handle_task_list. Current file and open files come from this.project_manager. */
+		/**
+		 * Entry point. Sends user request only; when finished calls handle_task_list.
+		 * Current file and open files come from this.project_manager.
+		 */
 		public override async void send_async(OLLMchat.Message in_message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.session.messages.add(in_message);
@@ -126,7 +155,7 @@ namespace OLLMcoder.Skill
 						this.sr_factory.skill_manager,
 						this.sr_factory.project_manager);
 					this.user_request = tpl.user_to_document();
-					this.fill_tools();
+					this.fill_tools(); // (clears tools)
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -135,8 +164,9 @@ namespace OLLMcoder.Skill
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
 					if (parser.issues == "") {
-						var skill_issues = this.task_list.validate_skills();
+						var skill_issues = this.pending.validate_skills();
 						if (skill_issues == "") {
+							this.pending.write("task_list.md", response);
 							yield this.handle_task_list(cancellable);
 							return;
 						}
@@ -161,28 +191,43 @@ namespace OLLMcoder.Skill
 			}
 		}
 
-		/** Deals with the task list only. Called by send_async when it has a valid task_list. */
+		/**
+		 * Deals with the task list only. Called by send_async when it has a valid pending list.
+		 */
 		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			this.writer_approval = false;
 			var hit_max_rounds = true;
-			for (var i = 0; i < 5; i++) {
+			for (var i = 0; i < 20; i++) {
 				if (cancellable != null && cancellable.is_cancelled()) {
 					this.add_message(new OLLMchat.Message("ui", "User cancelled request"));
 					this.session.is_running = false;
 					this.session.manager.agent_status_change();
 					return;
 				}
-				if (!this.task_list.has_pending_exec()) {
+				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
+				this.add_message(new OLLMchat.Message("ui",
+					"Continuing with task list (%d steps). Refining and executing next step.".printf(this.pending.steps.size)));
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui-waiting", "Refining tasks" + model_part));
-				yield this.task_list.refine(cancellable);
-				yield this.task_list.run_until_user_approval();
-				if (this.task_list.has_tasks_requiring_approval() && !this.writer_approval) {
+				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				yield this.pending.refine(cancellable);
+				var step_done = yield this.pending.run_step_until_approval();
+				if (step_done) {
+					yield this.run_task_list_iteration();
+				}
+				if (this.pending.steps.size == 0) {
+					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
+					break;
+				}
+				this.add_message(new OLLMchat.Message("ui", "[dbg] After approval path, pending.steps=%d.".printf(this.pending.steps.size)));
+				if (this.pending.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
 						this.add_message(new OLLMchat.Message("ui", "User declined writer approval."));
@@ -192,32 +237,56 @@ namespace OLLMcoder.Skill
 					}
 					this.writer_approval = true;
 				}
-				yield this.task_list.run_all_tasks();
-				yield this.run_task_list_iteration();
+				// Refine the (new) first step before run_step; after run_task_list_iteration the list was replaced and the new first step was not refined yet.
+				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				yield this.pending.refine(cancellable);
+				step_done = yield this.pending.run_step();
+				this.add_message(new OLLMchat.Message("ui", "[dbg] run_step returned step_done=%s.".printf(step_done.to_string())));
+				if (step_done) {
+					yield this.run_task_list_iteration();
+					this.add_message(new OLLMchat.Message("ui", "[dbg] Back in handle_task_list after run_task_list_iteration (run_step path), pending.steps=%d.".printf(this.pending.steps.size)));
+				}
+				if (this.pending.steps.size == 0) {
+					hit_max_rounds = false;
+					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
+					break;
+				}
+				/* Next iteration: refine and run this.pending (the new list)'s first step. */
 			}
-			if (hit_max_rounds && this.task_list.has_pending_exec()) {
+			if (hit_max_rounds && this.pending.steps.size > 0) {
 				this.add_message(new OLLMchat.Message("ui", "Max rounds reached."));
 			}
 		}
 
-		/** Stub: request user approval before running writer tasks. Plan: implement UI. */
+		/**
+		 * Stub: request user approval before running writer tasks. Plan: implement UI.
+		 */
 		private async bool request_writer_approval()
 		{
 			return true;
 		}
 
 		/**
-		 * Build the task list iteration prompt (task_list_iteration.md) from this.task_list.
-		 * Current task list = this.task_list.to_markdown(). Used by run_task_list_iteration() and by the test CLI.
+		 * Build the task list iteration prompt (task_list_iteration.md).
+		 * Uses completed and existing_proposed (outstanding) and optional previous_proposed_md when retrying.
+		 *
+		 * @param previous_proposal_issues issues from last iteration parse/validation (empty when not retrying)
+		 * @param existing_proposed the current outstanding task list (pending before this iteration)
+		 * @param previous_proposed_md raw LLM response from last iteration when retrying; empty string when not
 		 */
-		public PromptTemplate iteration_prompt(string previous_proposal_issues = "") throws GLib.Error
+		public PromptTemplate iteration_prompt(string previous_proposal_issues,
+			OLLMcoder.Task.List existing_proposed,
+			string previous_proposed_md) throws GLib.Error
 		{
 			this.sr_factory.skill_manager.scan();
 			var tpl = PromptTemplate.template("task_list_iteration.md");
 			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
-
 			tpl.fill(
-				"current_task_list", this.task_list.to_markdown(),
+				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED),
+				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
+				"previous_proposed_task_list", previous_proposed_md == "" ? "" :
+					tpl.header_raw("Proposed (your last response — had issues)", previous_proposed_md),
 				"environment", tpl.header_raw("Environment", this.env()),
 				"project_description", this.sr_factory.project_manager.active_project == null ? "" :
 					this.sr_factory.project_manager.active_project.project_description(),
@@ -226,51 +295,70 @@ namespace OLLMcoder.Skill
 			return tpl;
 		}
 
-		/** Task list iteration: send current list to LLM, parse response; this.task_list is replaced by parse_task_list() on success. Up to 5 retries with previous_proposal_issues. On parse failure parser sets this.task_list = null; restore from saved ref so next iteration_prompt() has a list. */
+		/**
+		 * Task list iteration: send current list to LLM, parse response into this.pending.
+		 * On parse/validation failure restores this.pending = existing_proposed; uses raw
+		 * LLM response as previous_pry.
+		 */
 		public async void run_task_list_iteration() throws GLib.Error
 		{
-			if (this.task_list == null) {
-				return;
-			}
-			var previous_proposal_issues = "";
+			var existing_proposed = this.pending;
+			var response = "";
+			var parser = new OLLMcoder.Task.ResultParser(this, "");
+
 			for (var try_count = 0; try_count < 5; try_count++) {
-				var saved_list = this.task_list;
-				var tpl = this.iteration_prompt(previous_proposal_issues);
-				this.fill_tools();
+				var tpl = this.iteration_prompt(parser.issues, existing_proposed, response);
+				this.fill_tools(); // (clears tools)
+				if (try_count > 0) {
+					this.add_message(new OLLMchat.Message("ui",
+						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
+				}
+				// Show completed tasaks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
+				if (try_count == 0) {
+					var completed_md = this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED);
+					if (completed_md != "") { 
+						this.add_message(new OLLMchat.Message("ui", "## Completed tasks\n\n" + completed_md));
+					}
+				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui-waiting", "Refining task list" + model_part));
+				var action_text = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Refining task list" + model_part;
+				this.add_message(new OLLMchat.Message("ui", action_text));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var response_obj = yield this.chat_call.send(messages, null);
-				var response = response_obj != null ? response_obj.message.content : "";
-				var parser = new OLLMcoder.Task.ResultParser(this, response);
-				parser.parse_task_list();
+				response = response_obj != null ? response_obj.message.content : "";
+
+				parser = new OLLMcoder.Task.ResultParser(this, response);
+				parser.parse_task_list_iteration();
+
 				if (parser.issues != "") {
-					previous_proposal_issues = parser.issues;
-					this.task_list = saved_list;
-					if (try_count < 4) {
-						this.add_message(new OLLMchat.Message("ui-warning",
-							"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
-					}
+					this.pending = existing_proposed;
+					this.add_message(new OLLMchat.Message("ui-warning",
+						"Task list iteration had issues:\n\n" + parser.issues.strip()));
 					continue;
 				}
-				var skill_issues = this.task_list.validate_skills();
+				var skill_issues = this.pending.validate_skills();
 				if (skill_issues == "") {
+					this.pending.goals_summary_md = existing_proposed.goals_summary_md;
+					this.pending.write("task_list_latest.md", response);
+					this.pending.write("task_list_completed.md",
+						this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
 					return;
 				}
-				previous_proposal_issues = skill_issues;
-				if (try_count < 4) {
-					this.add_message(new OLLMchat.Message("ui-warning",
-						"Task list iteration had issues (retrying):\n\n" + previous_proposal_issues.strip()));
-				}
+				parser.issues = skill_issues;
+				this.pending = existing_proposed;
+				this.add_message(new OLLMchat.Message("ui-warning",
+					"Task list iteration had issues:\n\n" + skill_issues.strip()));
+				continue;
 			}
-			var iter_fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
-			if (previous_proposal_issues != "") {
-				iter_fail_msg += "\n\nIssues:\n" + previous_proposal_issues.strip();
+			var fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
+			if (parser.issues != "") {
+				fail_msg += "\n\nIssues:\n" + parser.issues.strip();
 			}
-			this.add_message(new OLLMchat.Message("ui-warning", iter_fail_msg));
+			this.add_message(new OLLMchat.Message("ui-warning", fail_msg));
 		}
 	}
 }

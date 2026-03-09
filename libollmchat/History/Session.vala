@@ -283,6 +283,20 @@ namespace OLLMchat.History
 			// Note: title notification removed - title only changes in async save_async() if empty
 		}
 			
+		public override string task_dir()
+		{
+			var dir = GLib.Path.build_filename(this.manager.history_dir, this.to_path());
+			var d = GLib.File.new_for_path(dir);
+			if (!d.query_exists()) {
+				try {
+					d.make_directory_with_parents(null);
+				} catch (GLib.Error e) {
+					GLib.critical("Session.task_dir: failed to create %s: %s", dir, e.message);
+				}
+			}
+			return dir;
+		}
+
 		/**
 		 * Initialize database table for sessions.
 		 */

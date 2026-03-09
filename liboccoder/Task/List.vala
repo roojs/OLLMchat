@@ -20,7 +20,7 @@ namespace OLLMcoder.Task
  *
  * Holds {@link steps} (each {@link Step} has {@link Details} children).
  * Created by {@link ResultParser.parse_task_list}; the Runner then calls
- * {@link run_until_user_approval} or {@link run_all_tasks} to run tasks step-by-step.
+ * {@link run_step_until_approval} or {@link run_step} to run tasks step-by-step.
  * Each step is refined (all its tasks) immediately before that step runs, so refinement
  * and execution are interleaved per step in order.
  *
@@ -30,7 +30,7 @@ namespace OLLMcoder.Task
  */
 public class List : Object
 {
-	private OLLMcoder.Skill.Runner runner;
+	public OLLMcoder.Skill.Runner runner { get; private set; }
 
 	public Gee.ArrayList<Step> steps { get; set; default = new Gee.ArrayList<Step>(); }
 
@@ -38,7 +38,7 @@ public class List : Object
 
 	/**
 	 * Slug → task (Details). Populated when the list is built; callers use
-	 * .set(), .has_key(), .get() directly.
+	 * .set(), .has_key(), .get() directly. Used for link resolution (task URI slug).
 	 */
 	public Gee.HashMap<string,Details> slugs { get; private set; default = new Gee.HashMap<string,Details>(); }
 
@@ -61,21 +61,40 @@ public class List : Object
 	}
 
 	/**
+	 * Write content to session task dir under filename. Content is typically
+	 * from the LLM (initial or iteration). Use for task_list.md,
+	 * task_list_latest.md, task_list_completed.md.
+	 *
+	 * @param filename e.g. "task_list.md", "task_list_latest.md", "task_list_completed.md"
+	 * @param content full body to write
+	 */
+	public void write(string filename, string content)
+	{
+		var path = GLib.Path.build_filename(this.runner.session.task_dir(), filename);
+		try {
+			GLib.FileUtils.set_contents(path, content);
+		} catch (GLib.FileError e) {
+			GLib.warning("Failed to write %s: %s", filename, e.message);
+			throw e;
+		}
+	}
+
+	/**
 	 * Returns only ## Tasks and task sections. Runner assembles lead content
 	 * (original prompt, goals_summary_md) when building current_task_list.
+	 * LIST: all tasks with Output when exec_done. REFINE_COMPLETED: only completed
+	 * tasks (exec_done and result non-empty), Name + Output (Result summary); no References, no Tool Calls.
 	 */
-	public string to_markdown()
+	public string to_markdown(MarkdownPhase phase)
 	{
-		var out = "## Tasks\n\n";
+		var ret = "## Tasks\n\n";
 		var section = 0;
 		foreach (var step in this.steps) {
 			section++;
-			out += "### Task section " + section.to_string() + "\n\n";
-			foreach (var t in step.children) {
-				out += t.to_markdown(MarkdownPhase.LIST) + "\n\n";
-			}
+			var step_out = step.to_markdown(phase);
+			ret += (step_out == "" ? "" : "### Task section " + section.to_string() + "\n\n" + step_out);
 		}
-		return out;
+		return ret;
 	}
 
 	/**
@@ -89,22 +108,6 @@ public class List : Object
 				t.fill_name(++index);
 			}
 		}
-	}
-
-	/**
-	 * True if any task has no execution result (output) yet; returns as soon
-	 * as one is found.
-	 */
-	public bool has_pending_exec()
-	{
-		foreach (var step in this.steps) {
-			foreach (var t in step.children) {
-				if (!t.exec_done) {
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	/**
@@ -125,6 +128,12 @@ public class List : Object
 					"\", which is not in the available skills list.\n";
 			}
 		}
+		if (issues != "") {
+			var names = new Gee.ArrayList<string>();
+			names.add_all(this.runner.sr_factory.skill_manager.by_name.keys);
+			names.sort();
+			issues += "\nAvailable skills: " + string.joinv(", ", names.to_array());
+		}
 		return issues;
 	}
 
@@ -144,40 +153,46 @@ public class List : Object
 	}
 
 	/**
-	 * Run refinement for all tasks sequentially (one after another).
-	 * Original design: background all via .begin and let run_child wait_refined when it runs.
-	 * Disabled so refinement streams appear in order and UI shows progress.
+	 * Run refinement for the first step's tasks only (one after another).
+	 * Refinement and execution are interleaved per step: refine first step →
+	 * execute first step → (iteration) → refine next step → execute next step.
 	 */
 	public async void refine(GLib.Cancellable? cancellable = null) throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			foreach (var t in step.children) {
-				if (cancellable != null && cancellable.is_cancelled()) {
-					return;
-				}
-				yield t.refine(cancellable);
+		if (this.steps.size == 0) {
+			return;
+		}
+		var step = this.steps.get(0);
+		foreach (var t in step.children) {
+			if (cancellable != null && cancellable.is_cancelled()) {
+				return;
 			}
+			yield t.refine(cancellable);
 		}
 	}
 
 	/**
-	 * For each Step: if size == 1 yield run_child(…); else num_exec_running =
-	 * children.size, run_child.begin per child, yield wait_exec_done().
-	 * Stops at first step that has a task requiring user approval.
+	 * Run the first step only. Stops if that step has a task requiring user approval.
+	 * When the step completes (all children exec_done), move it to runner.completed
+	 * and remove from this list. Caller (Runner) should call run_task_list_iteration() when true.
+	 *
+	 * @return true if step was run and completed (caller must run iteration)
 	 */
-	public async void run_until_user_approval() throws GLib.Error
+	public async bool run_step_until_approval() throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			if (step.has_task_requiring_approval()) {
-				break;
+		if (this.steps.size == 0) {
+			return false;
+		}
+		var step = this.steps.get(0);
+		if (step.has_task_requiring_approval()) {
+			return false;
+		}
+		if (step.children.size == 1) {
+			var single = step.children.get(0);
+			if (!single.exec_done) {
+				yield this.run_child(single);
 			}
-			if (step.children.size == 1) {
-				var single = step.children.get(0);
-				if (!single.exec_done) {
-					yield this.run_child(single);
-				}
-				continue;
-			}
+		} else {
 			this.num_exec_running = 0;
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
@@ -189,6 +204,24 @@ public class List : Object
 			}
 			yield this.wait_exec_done();
 		}
+		var all_done = true;
+		foreach (var t in step.children) {
+			if (!t.exec_done) {
+				all_done = false;
+				break;
+			}
+		}
+		if (!all_done) {
+			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
+			return false;
+		}
+		this.runner.completed.steps.add(step);
+		step.list = this.runner.completed;
+		foreach (var t in step.children) {
+			this.runner.completed.slugs.set(t.slug(), t);
+		}
+		this.steps.remove_at(0);
+		return true;
 	}
 
 	/**
@@ -220,8 +253,9 @@ public class List : Object
 	private async void run_child(Details t) throws GLib.Error
 	{
 		yield t.wait_refined();
-		yield t.run_tools();
-		yield t.post_evaluate();
+		t.build_exec_runs();
+		yield t.run_exec();
+		t.write();
 	}
 
 	public bool has_tasks_requiring_approval()
@@ -235,19 +269,24 @@ public class List : Object
 	}
 
 	/**
-	 * For each Step: if size == 1 yield run_child(…); else num_exec_running =
-	 * children.size, run_child.begin per child, yield wait_exec_done().
+	 * Run the first step only. When it completes (all children exec_done), move
+	 * to runner.completed and remove from this list. Caller (Runner) should call
+	 * run_task_list_iteration() when true.
+	 *
+	 * @return true if step was run and completed (caller must run iteration)
 	 */
-	public async void run_all_tasks() throws GLib.Error
+	public async bool run_step() throws GLib.Error
 	{
-		foreach (var step in this.steps) {
-			if (step.children.size == 1) {
-				var single = step.children.get(0);
-				if (!single.exec_done) {
-					yield this.run_child(single);
-				}
-				continue;
+		if (this.steps.size == 0) {
+			return false;
+		}
+		var step = this.steps.get(0);
+		if (step.children.size == 1) {
+			var single = step.children.get(0);
+			if (!single.exec_done) {
+				yield this.run_child(single);
 			}
+		} else {
 			this.num_exec_running = 0;
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
@@ -259,6 +298,24 @@ public class List : Object
 			}
 			yield this.wait_exec_done();
 		}
+		var all_done = true;
+		foreach (var t in step.children) {
+			if (!t.exec_done) {
+				all_done = false;
+				break;
+			}
+		}
+		if (!all_done) {
+			this.runner.add_message(new OLLMchat.Message("ui-warning", "Step did not complete; stopping."));
+			return false;
+		}
+		this.runner.completed.steps.add(step);
+		step.list = this.runner.completed;
+		foreach (var t in step.children) {
+			this.runner.completed.slugs.set(t.slug(), t);
+		}
+		this.steps.remove_at(0);
+		return true;
 	}
 }
 

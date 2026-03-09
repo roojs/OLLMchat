@@ -19,20 +19,23 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * One skill file: YAML header (key-value map) and markdown body.
+	 * One skill file: YAML header, then Refinement and Execution sections separated by "---".
 	 * Constructor only stores path; call load() to read and parse.
 	 * Header is stored in a hash map; "name" etc. are read from the map after load.
 	 */
 	public class Definition : Object
 	{
 		public string path { get; private set; default = ""; }
-		public string body { get; private set; default = ""; }
+		/** Refinement section (second part of file). */
+		public string refine { get; private set; default = ""; }
+		/** Execution section (third part of file). */
+		public string execute { get; private set; default = ""; }
 		public string full_content { get; private set; default = ""; }
 		public Gee.HashMap<string, string> header { 
 			get; private set; default = new Gee.HashMap<string, string>(); }
 		/** File modification time; set in load(). */
 		public int64 mtime { get; private set; default = 0; }
-		/** Parsed body as a markdown document (libocmarkdown). */
+		/** Parsed refine section as a markdown document (libocmarkdown). */
 		public Markdown.Document.Document document { get; private set; }
 
 		public Definition(string path)
@@ -47,20 +50,27 @@ namespace OLLMcoder.Skill
 		{
 			string contents = "";
 			if (!GLib.FileUtils.get_contents(this.path, out contents)) {
-				throw new GLib.FileError.FAILED("Skill: could not read %s".printf(this.path));
+				var msg = "Skill: could not read %s".printf(this.path);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.FAILED(msg);
 			}
 
 			this.full_content = contents;
 
 			if (!contents.has_prefix("---")) {
-				throw new GLib.FileError.INVAL("Skill: %s does not start with YAML header (---)".printf(this.path));
+				var msg = "Skill: %s does not start with YAML header (---)".printf(this.path);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.INVAL(msg);
 			}
-			var parts = contents.split("\n---", 2);
-			if (parts.length < 2) {
-				throw new GLib.FileError.INVAL("Skill: %s has no closing header delimiter (---)".printf(this.path));
+			var parts = contents.split("\n---", 3);
+			if (parts.length != 3 || parts[0].strip() == "" || parts[1].strip() == "" || parts[2].strip() == "") {
+				var msg = "Skill: %s must have exactly three parts separated by ---: YAML header, Refinement, Execution. Found %d part(s).".printf(this.path, parts.length);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.INVAL(msg);
 			}
 			string header_text = parts[0].substring(3).strip();
-			this.body = parts[1].strip();
+			this.refine = parts[1].strip();
+			this.execute = parts[2].strip();
 
 			this.header.clear();
 			foreach (var line in header_text.split("\n")) {
@@ -76,10 +86,14 @@ namespace OLLMcoder.Skill
 			}
 
 			if (!this.header.has_key("name") || this.header.get("name") == "") {
-				throw new GLib.FileError.INVAL("Skill: %s has no valid 'name' in header".printf(this.path));
+				var msg = "Skill: %s has no valid 'name' in header".printf(this.path);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.INVAL(msg);
 			}
 			if (!this.header.has_key("description") || this.header.get("description") == "") {
-				throw new GLib.FileError.INVAL("Skill: %s has no valid 'description' in header".printf(this.path));
+				var msg = "Skill: %s has no valid 'description' in header".printf(this.path);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.INVAL(msg);
 			}
 
 			this.mtime = (int64) GLib.File.new_for_path(this.path).query_info(
@@ -89,7 +103,7 @@ namespace OLLMcoder.Skill
 			).get_modification_time().tv_sec;
 
 			var doc_render = new Markdown.Document.Render();
-			doc_render.parse(this.body);
+			doc_render.parse(this.refine);
 			this.document = doc_render.document;
 		}
 
@@ -118,14 +132,14 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * First re-parses the document from this.body; then finds the list
+		 * First re-parses the document from this.refine; then finds the list
 		 * under "Available skills" and appends a nested list item with "***When to use*** " + description
 		 * for each list item. Original item label unchanged.
 		 */
 		public void apply_skills(Gee.HashMap<string, Definition> available)
 		{
 			var doc_render = new Markdown.Document.Render();
-			doc_render.parse(this.body);
+			doc_render.parse(this.refine);
 			this.document = doc_render.document;
 			var target_list = this.skills_list();
 			if (target_list == null) {

@@ -395,8 +395,15 @@ namespace Markdown.Document
 			path_part = path_part.strip();
 			var scheme = GLib.Uri.parse_scheme(path_part);
 			link_fmt.scheme = scheme != null ? scheme : "file";
+			if (scheme != null) {
+				path_part = path_part.substring(scheme.length);
+				if (path_part.has_prefix("://")) {
+					path_part = path_part.substring(3);
+				}
+			}
 			link_fmt.path = path_part;
-			link_fmt.is_relative = (link_fmt.scheme == "file") && !GLib.Path.is_absolute(path_part);
+			link_fmt.is_relative = (link_fmt.scheme == "file") &&
+				 !GLib.Path.is_absolute(link_fmt.path);
 			this.on_inline(link_fmt);
 		}
 

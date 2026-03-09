@@ -1,3 +1,3 @@
-@name WebSearch
+@name web_search
 @wrapped google_search
-@example {"name": "WebSearch", "arguments": {"query": "Vala programming"}}
+@example {"name": "web_search", "arguments": {"query": "Vala programming"}}

@@ -83,7 +83,8 @@ namespace OLLMapp
 			this.header_bar = new Adw.HeaderBar();
 			this.history_toggle_button = new Gtk.ToggleButton() {
 				icon_name = "sidebar-show-symbolic",
-				tooltip_text = "Toggle History"
+				tooltip_text = "Toggle History",
+				visible = false
 			};
 			this.header_bar.pack_start(this.history_toggle_button);
 			
@@ -436,6 +437,7 @@ namespace OLLMapp
 			// Create history browser and add to split view sidebar
 			this.history_browser = new OLLMchatGtk.HistoryBrowser(this.history_manager);
 			this.split_view.sidebar = this.history_browser;
+			this.history_toggle_button.visible = true;
 			
 			// Hide sidebar when mouse leaves the history panel (e.g. after selecting a history item to restore).
 			// Ignore leave during the 1s after expanding (history_leave_ignore_timeout_id != 0).

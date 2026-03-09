@@ -1,57 +1,36 @@
 ---
 name: analyze_code
-description: Use after analyze_codebase to turn its findings into a how-to and example usage document. Receives the output from an analyze_codebase task and explains how to use the referenced code to meet the goals.
+description: Use when you need to extract information from code. Input is a set of links in the task's References (to code) and What is needed.
 ---
 
-## Analyze code skill
+## Refinement
 
-Receives the output from an **analyze_codebase** task (Result summary + Analyze codebase results) and produces a Detail document that answers the goals: how to use the relevant code, methods to call, and example usage.
+**Purpose of this skill:** Extract information from code; the executor needs links to code (in References) and What is needed. Refinement fills in **References** so the executor can deliver what is needed.
 
-### Input (this skill)
+You receive **what is needed** for this task and a **summary of the task list so far executed** (including output summaries from previous tasks). Use the available information to fill in **References** so the executor can deliver what is needed — e.g. code file or section links from prior task outputs (e.g. analyze_codebase, analyze_code_standards). **Avoid whole files** — add **code sections** or **references to parts of a task output** (e.g. file + section/method/snippet) rather than full file contents.
 
-From the standard input, **Precursor** contains the output from the **analyze_codebase** task (Result summary and Analyze codebase results with AST/file links). **What is needed** is the original goal (e.g. "how to load a skill", "where to add a new step"). This skill has no tool calls; it uses the precursor and any resolved reference content to write the how-to.
+---
 
-### Output (this skill)
+## Execution
 
-Result summary and Detail. In Result summary: **summary of what this task did** to address the goal and **whether that answered it** (e.g. "Turned the codebase findings into a how-to: Definition and load() after setting the path; Detail below gives usage — enough to implement." or "The analysis had nothing relevant."). Do not describe system mechanics or use a literal "Goal:" line. In Detail: explain **how to use** the code identified in the codebase analysis — which methods to call, in what order, and **example usage** (code snippets) that show how to achieve the goal. Keep markdown links (AST path format for code) so downstream tasks can use the referenced content. End with a clear conclusion (enough to implement or what is still missing).
+You are given one piece of code (from Precursor — the resolved content of the task's References) and **What is needed**. Reply to What is needed. If the code is not relevant, say so.
 
-### Instructions
-
-#### Refinement
-
-- No tool calls. Ensure the task's **References** include the prior **analyze_codebase** task output (refiner adds a link to that task's results so Precursor contains Result summary + Analyze codebase results and any resolved reference content).
-
-#### Execution (what to do with the results)
-
-- Read the analyze_codebase output in Precursor (Result summary and **Analyze codebase results**). Use the referenced code (links and any resolved reference content in Precursor) to answer the goal in "What is needed".
-- **Result summary**: one or two sentences — **what this task did** to address "What is needed" and **whether that answered it** (enough to implement / what was produced, or that the analysis was insufficient). Summarise the work and outcome; do not start with "Goal:" or refer to system behaviour.
-- **Detail**: write a short **how-to** that explains how to use the relevant code to meet the goal. Include:
-  - Which types/methods to use and when.
-  - **Example usage**: minimal code snippets that show the intended usage (e.g. instantiate, call method, handle result). Base these on the codebase references from the precursor.
-  - Keep markdown links to the code (AST or file) so later tasks can use the referenced content.
-- Do not repeat long chunks from the precursor; synthesize and add concrete usage. End with enough to implement or what is still missing.
+Answer with a **summary** that includes the link to the code and may include a short code example. You can put a code example in a section with a **descriptive** heading (e.g. ## Loading a skill from a path — the heading should describe what the example shows) and link to it; or include the response inline in the summary.
 
 ### Example
 
-**Input:** Precursor = analyze_codebase output for "where skill definition is loaded from file"; What is needed = "how to load a skill from a path".
+**Input:** One piece of code in Precursor (e.g. Definition and load() from Definition.vala); What is needed = "how to load a skill from a path".
 
 **Output:**
 
 ## Result summary
 
-Turned the codebase findings into a how-to: use `Definition` and `load()` after setting the path; the Detail below explains usage — enough to implement.
+[Definition.load](/path/to/liboccoder/Skill/Definition.vala#OLLMcoder.Skill-Definition-load) and [Definition](/path/to/liboccoder/Skill/Definition.vala) are relevant: set `def.path` then call `load()`. See [Loading a skill from a path](#loading-a-skill-from-a-path) below. Enough to implement.
 
-## Detail
-
-To load a skill definition from a file, use [Definition](/path/to/liboccoder/Skill/Definition.vala) and its [load](/path/to/Definition.vala#OLLMcoder.Skill-Definition-load) method. The class holds the file path and parsed header; `load()` reads the file and validates that the header has a valid `"name"`.
-
-**Example usage:**
+## Loading a skill from a path
 
 ```vala
 var def = new OLLMcoder.Skill.Definition();
 def.path = "/path/to/resources/skills/my_skill.md";
 def.load();  // throws on invalid header
-// then use def.header and file content as needed
 ```
-
-Enough to implement skill loading from a path; see Definition.vala for full validation and error handling.

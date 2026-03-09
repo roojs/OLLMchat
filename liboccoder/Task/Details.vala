@@ -19,43 +19,56 @@ public enum MarkdownPhase
 	COARSE,
 	REFINEMENT,
 	LIST,
+	REFINE_COMPLETED,
 	EXECUTION
 }
 
 /**
- * One task in the plan. Built from task list output; updated from refinement output.
+ * One task in the plan. Built from task list output; updated from
+ * refinement output.
  *
  * Task list (input): each list item under a task section heading has a nested list
  * with labels ''What is needed'', ''Skill'', ''References'', ''Expected output''.
- * Links in References: project_description, current_file, paths, plan:...
+ * Links in References: current_file, paths, plan:...
  * Keys are exactly these labels (no other format accepted):
- * "What is needed", "Skill", "References", "Expected output", "Requires user approval".
+ * "What is needed", "Skill", "References", "Expected output",
+ * "Requires user approval".
  *
  * Refined task (refinement output): section "Refined task" with same list plus
- * ''Skill call'' and an optional fenced code block. Parser uses ListItem.to_key_map()
- * for both; update_props(refined_map); code added directly to code_blocks.
+ * ''Skill call'' and an optional fenced code block. Parser uses
+ * ListItem.to_key_map() for both; update_props(refined_map); code added
+ * directly to code_blocks.
+ *
+ * Execution: after refinement, the runner calls build_exec_runs() then run_exec().
+ * exec_runs holds one Tool per run; each Tool.run() runs the tool (if any)
+ * then the LLM.
+ * result is built from exec_runs summaries; documents live on each Tool
+ * (ex.document).
  */
 public class Details : OLLMchat.Agent.Base
 {
 	// - stored task content (exact keys only, see class doc)
 	/**
-	 * Map from ListItem.to_key_map(); keys are exact labels only. All task content is read from here.
+	 * Map from ListItem.to_key_map(); keys are exact labels only.
+	 * All task content is read from here.
 	 */
 	public Gee.Map<string, Markdown.Document.Block> task_data {
 		get; set; default = new Gee.HashMap<string, Markdown.Document.Block>(); }
 
 	/**
-	 * True when this task should gate execution (e.g. modifies files); from task list format.
+	 * True when this task should gate execution (e.g. modifies files);
+	 * from task list format.
 	 */
 	public bool requires_user_approval { get; set; default = false; }
 
 	/**
-	 * True after post_evaluate success; result and result_document then valid.
+	 * True after run_exec success; result then valid (from exec_runs summaries).
 	 */
 	public bool exec_done { get; set; default = false; }
 
 	/**
-	 * Validation errors; append with this.issues += "\n" + msg. Parser checks and appends with section context.
+	 * Validation errors; append with this.issues += "\n" + msg.
+	 * Parser checks and appends with section context.
 	 */
 	public string issues { get; set; default = ""; }
 
@@ -76,54 +89,53 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public weak OLLMcoder.Skill.Runner runner { get; set; }
 
-	/** Alias to runner.sr_factory.skill_manager (no setter). */
+	/**
+	 * Alias to runner.sr_factory.skill_manager (no setter).
+	 */
 	public OLLMcoder.Skill.Manager skill_manager {
 		get { return this.runner.sr_factory.skill_manager; }
 	}
 
 	/**
-	 * Parser for last refine or executor response; result/result_document valid after exec_done.
-	 * Initialized in ctor so issues is always available.
+	 * Parser for last refine or executor response; result valid after exec_done
+	 * (from exec_runs). Initialized in ctor so issues is always available.
 	 */
 	public ResultParser result_parser { get; set; }
 
 	/**
-	 * Executor output document.
-	 */
-	public Markdown.Document.Document? result_document { get; set; default = null; }
-
-	/**
-	 * Markdown links from references block (project_description, paths, plan:...);
+	 * Markdown links from references block (current_file, paths, plan:...);
 	 * Runner resolves for prompt fill. Filled in fill_task_data().
 	 */
 	public Gee.ArrayList<Markdown.Document.Format> reference_targets { 
 		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
 
 	/**
-	 * Tool calls to run (key = tool name); filled by parsing code_blocks in run_tools.
-	 */
-	public Gee.HashMap<string, OLLMchat.Response.ToolCall> tool_calls { 
-		get; set; default = new Gee.HashMap<string, OLLMchat.Response.ToolCall>(); }
-
-	/**
-	 * Tool outputs by name; used in executor precursor.
-	 */
-	public Gee.HashMap<string, string> tool_outputs {
-		 get; set; default = new Gee.HashMap<string, string>(); }
-
-	/**
-	 * Code blocks from refinement (parser); add directly. Details parses into tool_calls.
+	 * Code blocks from refinement (parser); add directly.
 	 */
 	public Gee.ArrayList<Markdown.Document.Block> code_blocks { 
 		get; set; default = new Gee.ArrayList<Markdown.Document.Block>(); }
 
 	/**
-	 * Tool instances from ## Tool Calls section (ResultParser); run_tools() yields tool.execute() for each.
+	 * Tool instances from `## Tool Calls` section (ResultParser);
+	 * build_exec_runs() uses them for scenario 1.
 	 */
 	public Gee.ArrayList<Tool> tools { get; set; default = new Gee.ArrayList<Tool>(); }
 
 	/**
-	 * Initial task_data from ListItem.to_key_map() for one task list item (keys: exact labels only, see class doc).
+	 * Tool instances per execution run. Populated by build_* methods;
+	 * run_exec() runs each (tool if needed, then LLM).
+	 * REFINE_COMPLETED and task.result use their summaries.
+	 */
+	public Gee.ArrayList<Tool> exec_runs { get; set; default = new Gee.ArrayList<Tool>(); }
+
+	/**
+	 * Initial task_data from ListItem.to_key_map() for one task list item
+	 * (keys: exact labels only, see class doc).
+	 *
+	 * @param runner skill runner for this task
+	 * @param factory agent factory
+	 * @param session session for this task
+	 * @param task_data initial map from list item (exact keys only)
 	 */
 	public Details(
 		OLLMcoder.Skill.Runner runner,
@@ -157,7 +169,43 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Apply refined task map: set each key from refined_map into this.task_data, then re-run fill.
+	 * Write this task's result to session task dir.
+	 * When exec_runs.size > 1, writes slug + "-" + ex.id + ".md" per Tool
+	 * (document content).
+	 * Single run writes slug + suffix + ".md" with that run's document or result.
+	 *
+	 * @param suffix filename suffix for single-run output (default "")
+	 */
+	public void write(string suffix = "")
+	{
+		var base_dir = this.runner.session.task_dir();
+		if (this.exec_runs.size > 1) {
+			foreach (var ex in this.exec_runs) {
+				var path = GLib.Path.build_filename(base_dir, this.slug() + "-" + ex.id + ".md");
+				try {
+					GLib.FileUtils.set_contents(path, ex.document != null ? ex.document.to_markdown() : "");
+				} catch (GLib.FileError e) {
+					GLib.critical("Details.write: failed to write %s: %s", path, e.message);
+				}
+			}
+			return;
+		}
+		var path = GLib.Path.build_filename(base_dir, this.slug() + suffix + ".md");
+		var content = (this.exec_runs.size == 1 && this.exec_runs.get(0).document != null)
+			? this.exec_runs.get(0).document.to_markdown()
+			: this.result;
+		try {
+			GLib.FileUtils.set_contents(path, content);
+		} catch (GLib.FileError e) {
+			GLib.critical("Details.write: failed to write %s: %s", path, e.message);
+		}
+	}
+
+	/**
+	 * Apply refined task map: set each key from refined_map into this.task_data,
+	 * then re-run fill.
+	 *
+	 * @param refined_map map from refined task list item (same key set as task_data)
 	 */
 	public void update_props(Gee.Map<string, Markdown.Document.Block> refined_map)
 	{
@@ -170,41 +218,31 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Validate reference_targets hrefs; append to issues on invalid.
-	 * Call from parsing process after fill_names (pass list so task-output anchors can be validated).
-	 * Accepts: #anchor (document section or task output e.g. #slug-N-results), http(s) URL (TODO: validate later, see 1.23.20), absolute file path (must exist).
+	 * Call from parsing process after fill_names (pass list so task-output
+	 * anchors can be validated).
+	 *
+	 * @param allow_http_refs true for task list (creation/iteration), false for refinement output. If true, http(s) URLs accepted; if false rejected (use tool calls in ## Tool Calls instead).
+	 * Task output refs use task URI only. Future: taskname plus tool id plus .md when TaskResult map exists.
 	 */
-	public void validate_references()
+	public void validate_references(bool allow_http_refs = false)
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
 			if (link.path == "") {
 				var anchor = link.hash;
-				if (anchor.has_suffix("-results")) {
-					var name_slug = anchor.substring(0, anchor.length - "-results".length);
-					if (name_slug == "" || !this.runner.task_list.slugs.has_key(name_slug)) {
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + name_slug + "\".";
-						continue;
-					}
-					var ref_task = this.runner.task_list.slugs.get(name_slug);
-					if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
-						this.issues += "\n" + "Reference target \"" + href +
-							"\" refers to a task in the same or a later section. " +
-							"A task may only reference the Output of a task from an earlier section. " +
-							"Move this task to a later section or remove this reference.";
-					}
-					continue;
-				}
 				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
-					continue;
-				}
-				if (anchor == "project-description" && this.runner.sr_factory.project_manager.active_project != null &&
-				    this.runner.sr_factory.project_manager.active_project.project_description() != "") {
 					continue;
 				}
 				this.issues += "\n" + "Invalid reference target \"" + href + "\": unknown anchor \"" + anchor + "\".";
 				continue;
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
+				if (allow_http_refs) {
+					continue;
+				}
+				this.issues += "\n" +
+					 "References must not contain http(s) URLs. Do not put URLs in References " + 
+					 	"- create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
 				continue;
 			}
 			if (link.path != "" && link.scheme == "file") {
@@ -235,13 +273,51 @@ public class Details : OLLMchat.Agent.Base
 				}
 				continue;
 			}
+			if (link.scheme == "task") {
+				var path = link.path.strip();
+				if (path.contains("/")) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path must not contain '/'.";
+					continue;
+				}
+				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
+				slug = slug.strip();
+				if (slug == "") {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path is empty.";
+					continue;
+				}
+				var ref_task = this.runner.completed.slugs.get(slug);
+				if (ref_task != null) {
+					continue;
+				}
+				ref_task = this.runner.pending.slugs.get(slug);
+				if (ref_task == null) {
+					var pending_keys = new Gee.ArrayList<string>();
+					pending_keys.add_all(this.runner.pending.slugs.keys);
+					var completed_keys = new Gee.ArrayList<string>();
+					completed_keys.add_all(this.runner.completed.slugs.keys);
+					this.runner.add_message(new OLLMchat.Message("ui",
+						"[dbg] task ref lookup failed: href=\"%s\" slug=\"%s\" (len=%d) | pending.slugs=[%s] | completed.slugs=[%s]".printf(
+							href, slug, slug.length,
+							string.joinv(", ", pending_keys.to_array()),
+							string.joinv(", ", completed_keys.to_array()))));
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
+					continue;
+				}
+				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
+					this.issues += "\n" + "Reference target \"" + href + "\" refers to a task in the same or later section.";
+				}
+				continue;
+			}
 			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (e.g. #project-description, #task-name-results), http(s) URL, or absolute file path (must exist).";
+				+ "Use only: #anchor (document sections), task://taskname.md or task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
 		}
 	}
 
 	/**
-	 * If task_data has no "Name" or empty, set Name = (Skill or "Task") + " " + index. Single method.
+	 * If task_data has no "Name" or empty, set Name = (Skill or "Task") + " " + index.
+	 * Single method.
+	 *
+	 * @param i step index (0-based) used for the default name
 	 */
 	public void fill_name(int i)
 	{
@@ -260,7 +336,10 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * This task's name as slug (e.g. "Research 1" → "research-1"). "" if no Name in task_data or empty.
+	 * This task's name as slug (e.g. "Research 1" → "research-1").
+	 * Returns "" if no Name in task_data or empty.
+	 *
+	 * @return slug string for filenames and task refs
 	 */
 	public string slug()
 	{
@@ -302,14 +381,15 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Build refinement prompt template (no current_file; reference_contents includes
-	 * current file when in the task's References).
+	 * Build refinement prompt template (no current_file; reference_contents
+	 * includes current file when in the task's References).
 	 */
 	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
 	{
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
 		tpl.system_fill();
+		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
 		tpl.fill(
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
@@ -317,15 +397,17 @@ public class Details : OLLMchat.Agent.Base
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(),
-			"skill_details", definition.body);
+			"skill_details", definition.refine,
+			"completed_task_list", (completed_md == "" ? "" : 
+				"## Completed tasks (so far)\n\n" + completed_md));
 		return tpl;
 	}
 
 	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
 	 * definition from skill_manager.fetch(this) is non-null. Details builds
-	 * task_reference_contents by looping reference_targets and asking Runner for each item
-	 * (see "Building the task reference block").
+	 * task_reference_contents by looping reference_targets and asking Runner
+	 * for each item (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
 	 */
@@ -333,7 +415,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		this.add_message(new OLLMchat.Message("ui", "Refining: " + this.task_data.get("Name").to_markdown().strip() +
+		this.add_message(new OLLMchat.Message("ui", "Refining: " +
+			 this.task_data.get("Name").to_markdown().strip() +
 			 " with (" + this.session.model_usage.display_name_with_size() + ")"));
 		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.COARSE)));
 		yield this.fill_model();
@@ -369,7 +452,8 @@ public class Details : OLLMchat.Agent.Base
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			if (this.result_parser.issues == "") {
-				this.add_message(new OLLMchat.Message("ui", "Got result for: " + this.task_data.get("Name").to_markdown().strip()));
+				this.add_message(new OLLMchat.Message("ui", "Got result for: " + 
+					this.task_data.get("Name").to_markdown().strip()));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
 					this.resume_refined();
@@ -378,12 +462,15 @@ public class Details : OLLMchat.Agent.Base
 			}
 			if (i < 4) {
 				this.add_message(new OLLMchat.Message("ui-warning",
-					"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying):\n\n" +
+					"Refinement for \"" + 
+						this.task_data.get("Name").to_markdown().strip() +
+						 "\" had issues (retrying):\n\n" +
 					this.result_parser.issues.strip()));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui-warning",
-			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries.\n\nIssues:\n" +
+			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip()
+			 + "\" failed after 5 tries.\n\nIssues:\n" +
 			this.result_parser.issues.strip()));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -413,8 +500,15 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Task as markdown for a given phase. Does not add section headings (e.g. ## Task); caller adds header.
-	 * COARSE: creation keys. REFINEMENT: task list + ## Tool Calls when tools exist. LIST: task list + Output when exec_done. EXECUTION: same as REFINEMENT for Tool Calls.
+	 * Task as markdown for a given phase. Does not add section headings
+	 * (e.g. `## Task`); caller adds header.
+	 * COARSE: creation keys. REFINEMENT: task list + `## Tool Calls` when tools exist.
+	 * LIST: task list + Output when exec_done.
+	 * EXECUTION: same as REFINEMENT for Tool Calls.
+	 *
+	 * @param phase which phase (COARSE, REFINEMENT, LIST, REFINE_COMPLETED,
+	 * EXECUTION)
+	 * @return markdown string for this phase
 	 */
 	public string to_markdown(MarkdownPhase phase)
 	{
@@ -430,19 +524,37 @@ public class Details : OLLMchat.Agent.Base
 		for (var i = 0; i < order.length; i++) {
 			var key = order[i];
 			switch (key) {
-				case "Output":
-					if (phase != MarkdownPhase.LIST || !this.exec_done || this.result == "") {
-						continue;
-					}
-					ret += "- **Output** " + this.result.replace("\n", " ") + "\n";
-					continue;
-				default:
-					if (!this.task_data.has_key(key)) {
+				case "References":
+					if (phase == MarkdownPhase.REFINE_COMPLETED) {
 						continue;
 					}
 					break;
+				case "Output":
+					if ((phase != MarkdownPhase.LIST && phase != MarkdownPhase.REFINE_COMPLETED) || !this.exec_done || this.result == "") {
+						continue;
+					}
+					// REFINE_COMPLETED: prefer exec_runs summary when present
+					var out_text = "";
+					if (this.exec_runs.size > 0) {
+						foreach (var ex in this.exec_runs) {
+							out_text += ex.summary + ";  ";
+						}
+						out_text = out_text.replace("\n", " ").strip();
+					} else {
+						out_text = this.result.replace("\n", " ");
+					}
+					ret += "- **Output** " + out_text + "\n";
+					continue;
+				default:
+					break;
+			}
+			if (!this.task_data.has_key(key)) {
+				continue;
 			}
 			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
+		}
+		if (phase == MarkdownPhase.REFINE_COMPLETED) {
+			return ret;
 		}
 		// Include ## Tool Calls only when there are tools (omit empty section in prompt).
 		if (this.tools.size == 0) {
@@ -468,8 +580,14 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 
-	/** Line + unfenced body. Use for reference #anchor. */
-	private string header_raw(string line, string body)
+	/**
+	 * Line + unfenced body. Use for reference `#anchor`.
+	 *
+	 * @param line heading or label line
+	 * @param body unfenced body content
+	 * @return line + body, or "" if body empty
+	 */
+	internal string header_raw(string line, string body)
 	{
 		if (body == "") {
 			return "";
@@ -477,8 +595,16 @@ public class Details : OLLMchat.Agent.Base
 		return line + "\n\n" + body + "\n\n";
 	}
 
-	/** Line + fenced body; content and language from file. Use for reference file path. Exception: we do output the header (and empty block if needed) when content is empty. */
-	private string header_file(string line, OLLMfiles.File file)
+	/**
+	 * Line + fenced body; content and language from file.
+	 * Use for reference file path. Exception: we do output the header
+	 * (and empty block if needed) when content is empty.
+	 *
+	 * @param line heading or label line
+	 * @param file file to read content and language from
+	 * @return fenced block with line + content
+	 */
+	internal string header_file(string line, OLLMfiles.File file)
 	{
 		var content = file.get_contents(0);
 		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
@@ -489,8 +615,16 @@ public class Details : OLLMchat.Agent.Base
 			+ fence + "\n\n";
 	}
 
-	/** Line + fenced body with type (e.g. "json", "text"). Use for tool call/output. */
-	private string header_fenced(string line, string body, string type = "")
+	/**
+	 * Line + fenced body with type (e.g. "json", "text").
+	 * Use for tool call/output.
+	 *
+	 * @param line heading or label line
+	 * @param body body content to fence
+	 * @param type optional language/info string (e.g. "json", "text")
+	 * @return fenced block, or "" if body empty
+	 */
+	internal string header_fenced(string line, string body, string type = "")
 	{
 		if (body == "") {
 			return "";
@@ -504,153 +638,169 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Resolved content for a single reference link. Uses link.scheme (file, task,
+	 * http(s), or path == "" for `#anchor`). File: project manager or
+	 * File.new_fake, create_buffer, header_file. Other schemes:
+	 * runner.reference_content(link).
+	 *
+	 * @param link the reference link (scheme, path, href, title
+	 * already parsed)
+	 * @return fenced or file block for prompt, or "" if unresolved/empty
+	 */
+	internal string link_content(Markdown.Document.Format link)
+	{
+		if (link.path == "") {
+			var content = this.runner.reference_content(link);
+			if (content != "") {
+				return this.header_fenced(
+					"### Reference contents for " + link.title,
+					content,
+					"markdown");
+			}
+			return "";
+		}
+		if (link.scheme == "http" || link.scheme == "https") {
+			return "";
+		}
+		if (link.scheme == "task") {
+			var content = this.runner.reference_content(link);
+			if (content != "") {
+				return this.header_fenced(
+					"### Reference contents for " + link.title,
+					content,
+					"markdown");
+			}
+			return "";
+		}
+		if (link.scheme != "file") {
+			return "";
+		}
+		var project = this.runner.sr_factory.project_manager.active_project;
+		var resolved_path = link.is_relative
+			? (project == null ? "" : link.abspath(project.path))
+			: link.path;
+		if (resolved_path == "") {
+			return "";
+		}
+		var found = this.runner.sr_factory.project_manager.get_file_from_active_project(resolved_path);
+		if (found == null) {
+			found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
+		}
+		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
+		return this.header_file(
+			"### Reference contents for " + link.title,
+			found);
+	}
+
+	/**
 	 * Resolved reference block for this task: loop reference_targets; for each,
-	 * get content. File paths (absolute): from project manager, or File.new_fake
-	 * if not in project; then create_buffer and get_contents. #anchor from runner.
-	 * We always omit #project-description here; it is injected separately as ## Project Description.
-	 * When there are no references, returns "" (header trick: omit section). When there are references,
-	 * returns "## Reference Contents\n\n" plus each "### Reference contents for [title]" and its content.
+	 * get content via link_content(). When there are no references, returns "".
+	 * When there are references, returns "## Reference Contents" plus each block.
 	 */
 	private string reference_contents()
 	{
-		var parts = "";
+		string[] parts = {};
 		foreach (var link in this.reference_targets) {
-			if (link.path == "") {
-				if (link.hash == "project-description") {
-					continue;
-				}
-				var content = this.runner.reference_content(link.href);
-				if (content != "") {
-					parts += this.header_fenced(
-						"### Reference contents for " + link.title,
-						content,
-						"markdown");
-				}
-				continue;
+			var block = this.link_content(link);
+			if (block != "") {
+				parts += block;
 			}
-			if (link.scheme == "http" || link.scheme == "https") {
-				var content = this.runner.reference_content(link.href);
-				if (content != "") {
-					parts += this.header_fenced(
-						"### Reference contents for " + link.title,
-						content,
-						"markdown");
-				}
-				continue;
-			}
-			if (link.scheme != "file") {
-				continue;
-			}
-			var project = this.runner.sr_factory.project_manager.active_project;
-			string resolved_path;
-			if (link.is_relative) {
-				if (project == null) {
-					continue;
-				}
-				resolved_path = link.abspath(project.path);
-			} else {
-				resolved_path = link.path;
-			}
-			if (resolved_path == "") {
-				continue;
-			}
-			var found = this.runner.sr_factory.project_manager.get_file_from_active_project(resolved_path);
-			if (found == null) {
-				found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
-			}
-			this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-			parts += this.header_file(
-				"### Reference contents for " + link.title,
-				found);
 		}
-		if (parts == "") {
+		if (parts.length == 0) {
 			return "";
 		}
-		return "## Reference Contents\n\n" + parts;
+		return "## Reference Contents\n\n" + string.joinv("", parts);
 	}
 
 	/**
-	 * Executor precursor: reference_contents() (same refs as refine) then
-	 * each tool call (name + JSON) and its output as headed blocks.
+	 * Add all reference_targets to the given Tool.
+	 * Used by add_exec_runs_for_tools() and by the combined branch in
+	 * build_exec_runs().
+	 *
+	 * @param ex the Tool (exec run) to add references to
 	 */
-	private string executor_precursor()
+	private void add_all_references_to(Tool ex)
 	{
-		var parts = this.reference_contents();
-		foreach (var e in this.tool_outputs.entries) {
-			var json = Json.gobject_to_data(this.tool_calls.get(e.key), null);
-			if (json != "") {
-				parts += this.header_fenced("### Tool call " + e.key, json, "json");
-			}
-			if (e.value != "") {
-				parts += this.header_raw("Tool call " + e.key + " Result", e.value);
-			}
+		foreach (var link in this.reference_targets) {
+			ex.references.add(link);
 		}
-		return parts;
 	}
 
 	/**
-	 * Build the executor prompt (task_execution.md) for this task.
-	 * Call after run_tools() so tool_outputs are populated. Used by post_evaluate() and by the test CLI.
+	 * Scenario 1: one Tool per tool; reuse each from this.tools, set id, add all references,
+	 * add to exec_runs.
 	 */
-	public OLLMcoder.Skill.PromptTemplate executor_prompt() throws GLib.Error
+	private void add_exec_runs_for_tools()
 	{
+		var idx = 0;
+		foreach (var ex in this.tools) {
+			ex.id = "tool-%d".printf(idx++);
+			this.add_all_references_to(ex);
+			this.exec_runs.add(ex);
+		}
+	}
+
+	/**
+	 * Scenario 2: one Tool per reference; each with references =
+	 * single-element list.
+	 * If no refs, one Tool with id "exec".
+	 */
+	private void add_exec_runs_for_references()
+	{
+		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
+		var idx = 0;
+		foreach (var link in this.reference_targets) {
+			var ex = new Tool(factory, this.session, this, "ref-%d".printf(idx++));
+			ex.references.add(link);
+			this.exec_runs.add(ex);
+		}
+		if (this.exec_runs.size == 0) {
+			var ex = new Tool(factory, this.session, this, "exec");
+			this.exec_runs.add(ex);
+		}
+	}
+
+	/**
+	 * Populate exec_runs. Three scenarios only: (1) tools when run →
+	 * one Tool per tool; (2) refs without tools → one per ref;
+	 * (3) combined → one run with all refs.
+	 * Does not run them. Return early per branch.
+	 */
+	public void build_exec_runs()
+	{
+		this.exec_runs.clear();
 		var definition = this.skill_manager.fetch(this);
-		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
-		tpl.system_fill();
-		tpl.fill(
-			"what_is_needed", this.task_data.get("What is needed").to_markdown(),
-			"skill_definition", definition.body,
-			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
-				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
-			"precursor", this.executor_precursor());
-		return tpl;
-	}
-
-	/** Run each tool in sequence. TODO: concurrent execution to be added later. */
-	public async void run_tools() throws GLib.Error
-	{
-		foreach (var tool in this.tools) {
-			yield tool.execute();
+		var execute_combined = definition.header.has_key("execute-combined") &&
+			definition.header.get("execute-combined").strip() != "";
+		if (this.tools.size > 0) {
+			this.add_exec_runs_for_tools();
+			return;
 		}
+		if (execute_combined) {
+			var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
+			var ex = new Tool(factory, this.session, this, "exec");
+			this.add_all_references_to(ex);
+			this.exec_runs.add(ex);
+			return;
+		}
+		this.add_exec_runs_for_references();
 	}
 
 	/**
-	 * Executor: build prompt via executor_prompt(), send to model, parse result.
-	 * Up to 5 attempts; up to 3 communication retries per attempt (same as refine).
+	 * Run all Tool exec runs (tool if needed, then LLM). Sets result from
+	 * exec_runs summaries.
+	 * Documents stay on each Tool (ex.document).
 	 */
-	public async void post_evaluate() throws GLib.Error
+	public async void run_exec() throws GLib.Error
 	{
-		this.add_message(new OLLMchat.Message("ui", "Executing: " + this.task_data.get("Name").to_markdown().strip() + " with (" + this.session.model_usage.display_name_with_size() + ")"));
-		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.REFINEMENT)));
-		// Executor must not have tools; it receives tool outputs in precursor and outputs text only.
-		this.chat_call.tools.clear();
-		var tpl = this.executor_prompt();
-		for (var i = 0; i < 5; i++) {
-			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
-			var messages = new Gee.ArrayList<OLLMchat.Message>();
-			messages.add(new OLLMchat.Message("system", tpl.filled_system));
-			messages.add(new OLLMchat.Message("user", tpl.filled_user));
-			string response_text = "";
-			for (var attempt = 0; attempt < 3; attempt++) {
-				try {
-					var response = yield this.chat_call.send(messages, null);
-					response_text = response != null ? response.message.content : "";
-					break;
-				} catch (GLib.Error e) {
-					if (attempt != 2) {
-						continue;
-					}
-					throw e;
-				}
-			}
-			this.result_parser = new ResultParser(this.runner, response_text);
-			this.result_parser.extract_exec(this);
-			if (this.result_parser.issues == "") {
-				this.exec_done = true;
-				return;
-			}
+		foreach (var ex in this.exec_runs) {
+			yield ex.run();
 		}
-		throw new GLib.IOError.INVALID_ARGUMENT("Task executor: " + this.result_parser.issues);
+		this.result = "";
+		foreach (var ex in this.exec_runs) {
+			this.result += ex.summary + "\n\n";
+		}
+		this.exec_done = true;
 	}
 }
 

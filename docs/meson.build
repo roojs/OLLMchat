@@ -338,6 +338,7 @@ valadoc_docs = custom_target('valadoc',
     # - valadoc processes source files directly, so it doesn't need VAPI files.
     # Using --pkg would cause duplicate definition errors since the VAPI contains the same definitions.
     '--doclet=html',
+    '--wiki=@0@'.format(meson.current_source_dir() / 'valadoc-wiki'),
     '--directory=' + valadoc_dir,
     '@INPUT@'
   ],

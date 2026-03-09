@@ -14,46 +14,186 @@
 namespace OLLMcoder.Task
 {
 	/**
-	 * One tool call parsed from a ## Tool Calls fenced block during refinement.
-	 * Holds name, arguments, and the ToolCall for execution. Validation and
-	 * execution use the manager's tool registry; the task agent never attaches
-	 * tools to chat_call.
+	 * Parsed tool call (refinement) and/or one execution run.
+	 *
+	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate(), to_instructions().
+	 * Execution run: run_id set; references and optionally tool_call. run() runs the tool (if any)
+	 * then the LLM executor; result in summary and document.
 	 *
 	 * @see Details
-	 * @see ResultParser
 	 */
-	public class Tool : Object
+	public class Tool : OLLMchat.Agent.Base
 	{
-		/**
-		 * The task that owns this tool call.
-		 */
-		public weak Details task { get; construct; }
-		/**
-		 * Tool name from the parsed JSON (e.g. "write_file").
-		 */
+		/** The task (Details) this tool belongs to. */
+		public weak Details parent { get; set; }
+		/** Execution run id (e.g. "tool-0", "ref-1", "exec"). Empty for refinement-only. */
+		public string id { get; set; default = ""; }
+		/** Result summary from executor (Result summary section). Set by ResultParser.exec_extract(). */
+		public string summary { get; set; default = ""; }
+		/** Executor output document. Set by ResultParser.exec_extract() on success. */
+		public Markdown.Document.Document? document { get; set; default = null; }
+		/** References for this run (one or more). Used by reference_contents() to build executor input. */
+		public Gee.ArrayList<Markdown.Document.Format> references { get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+		/** Tool execution result from this run. Set in run() when this run has a tool_call. */
+		public string tool_run_result { get; set; default = ""; }
+		/** Tool name from parsed JSON (e.g. "write_file"). */
 		public string name { get; set; default = ""; }
-		/**
-		 * Parsed "arguments" object, or null if absent.
-		 */
-		public Json.Object? arguments { get; private set; default = null; }
-		/**
-		 * Validation or parse error messages; appended by parse() and validate().
-		 */
+		/** Parsed "arguments" object, or null if absent. Set by parse(). */
+		public Json.Object? arguments { get; set; default = null; }
+		/** Validation or parse error messages; appended by parse() and validate(). */
 		public string issues { get; set; default = ""; }
-		/**
-		 * ToolCall built from name and arguments; set by parse(), used by execute().
-		 */
-		public OLLMchat.Response.ToolCall? tool_call { get; private set; default = null; }
+		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
+		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
 
 		/**
-		 * Creates a tool call for the given task. Call parse() to fill name,
-		 * arguments, and tool_call from a fenced block.
+		 * Creates a tool for refinement (run_id == "") or an execution run (run_id set).
 		 *
-		 * @param task The task this tool call belongs to
+		 * @param factory agent factory for this run
+		 * @param session session for this run
+		 * @param parent the task (Details) this tool belongs to
+		 * @param run_id execution run id, or "" for refinement-only
 		 */
-		public Tool(Details task)
+		public Tool(OLLMchat.Agent.Factory factory, OLLMchat.History.SessionBase session, Details parent, string run_id = "")
 		{
-			Object(task: task);
+			base(factory, session);
+			this.parent = parent;
+			this.id = run_id;
+		}
+
+		/** Reference contents for this run (from this.references). Can be empty. Http(s) refs ignored. */
+		private string reference_contents()
+		{
+			if (this.references.size == 0) {
+				return "";
+			}
+			string[] parts = {};
+			foreach (var link in this.references) {
+				string block = "";
+				if (link.scheme == "http" || link.scheme == "https") {
+					block = "";
+				} else {
+					block = this.parent.link_content(link);
+				}
+				if (block != "") {
+					parts += block;
+				}
+			}
+			if (parts.length == 0) {
+				return "";
+			}
+			return "## Reference Contents\n\n" + string.joinv("", parts);
+		}
+
+		/** Tool call details for this run: tool call + result. Uses this.tool_run_result; build with parent.header_fenced/header_raw. Empty when no tool_call. */
+		private string tool_call_details()
+		{
+			if (this.tool_call == null) {
+				return "";
+			}
+			var json = Json.gobject_to_data(this.tool_call, null);
+			var block = (json != "") ? this.parent.header_fenced("### Tool call " + this.name, json, "json") : "";
+			if (this.tool_run_result != "") {
+				block += this.parent.header_raw("Tool call " + this.name + " Result", this.tool_run_result);
+			}
+			return block;
+		}
+
+		/**
+		 * Run the tool (if any), build reference content + tool output, combine for executor input,
+		 * send executor prompt, parse into summary and document. Up to 5 attempts; on failure
+		 * appends to parent.issues and throws.
+		 */
+		public async void run() throws GLib.Error
+		{
+			this.chat_call.tools.clear();
+			var tool_output = "";
+			if (this.tool_call != null) {
+				var tool_impl = this.parent.runner.session.manager.tools.get(
+						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
+				this.tool_run_result = yield tool_impl.execute(this.parent.chat(), this.tool_call, true);
+				tool_output = this.tool_call_details();
+			}
+			var reference_content = this.reference_contents();
+			var executor_input = tool_output + reference_content;
+
+			var last_issues = "";
+			for (var try_count = 0; try_count < 5; try_count++) {
+				var tpl = this.executor_prompt(executor_input, last_issues);
+				var messages = new Gee.ArrayList<OLLMchat.Message>();
+				messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				this.add_message(new OLLMchat.Message("ui", "Interpreting result" + model_part));
+				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
+				var response_text = "";
+				try {
+					var response = yield this.chat_call.send(messages, null);
+					response_text = (response != null) ? response.message.content : "";
+				} catch (GLib.Error e) {
+					last_issues = e.message;
+					if (try_count < 4) {
+						this.add_message(new OLLMchat.Message("ui-warning",
+							"Executor try %d failed: %s".printf(try_count + 1, last_issues)));
+						continue;
+					}
+					this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
+					throw e;
+				}
+				var parser = new ResultParser(this.parent.runner, response_text);
+				if (parser.exec_extract(this)) {
+					return;
+				}
+				last_issues = parser.issues.strip();
+				if (try_count < 4) {
+					this.add_message(new OLLMchat.Message("ui-warning", "Executor try %d: %s".printf(try_count + 1, last_issues)));
+				}
+			}
+			this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
+			throw new GLib.IOError.INVALID_ARGUMENT("Task executor: " + last_issues);
+		}
+
+		/**
+		 * Build executor prompt from task_execution.md.
+		 *
+		 * What the prompt gets (template placeholders and what we fill):
+		 *
+		 *   ## What is needed
+		 *   {what_is_needed}     <- task_data "What is needed"
+		 *
+		 *   ## Skill definition
+		 *   {skill_definition}   <- this task's skill body
+		 *
+		 *   ## Project Description
+		 *   {project_description} <- active project description (can be empty)
+		 *
+		 *   ## Tool Output and/or Reference information
+		 *   {executor_input}     <- tool_output + reference_content
+		 *                            (tool output: this run's or task's; reference content: resolved refs for this run; either can be empty)
+		 *
+		 *   ## Retry feedback (please address if non-empty)
+		 *   {executor_retry_issues} <- previous parse/send issues on retry; empty on first attempt
+		 *
+		 * The executor interprets the Tool Output and/or Reference information (and other sections) and produces Result summary + body sections.
+		 *
+		 * @param executor_input combined tool output + reference content for the template
+		 * @param previous_issues parse/send issues from last attempt for retry; empty on first attempt
+		 */
+		private OLLMcoder.Skill.PromptTemplate executor_prompt(
+			string executor_input, string previous_issues = "") throws GLib.Error
+		{
+			var definition = this.parent.skill_manager.fetch(this.parent);
+			var project = this.parent.runner.sr_factory.project_manager.active_project;
+			var project_description = (project == null) ? "" : project.project_description();
+			var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
+			tpl.system_fill();
+			tpl.fill(
+				"what_is_needed", this.parent.task_data.get("What is needed").to_markdown(),
+				"skill_definition", definition.execute,
+				"project_description", project_description,
+				"executor_input", executor_input,
+				"executor_retry_issues", previous_issues);
+			return tpl;
 		}
 
 		/**
@@ -109,11 +249,11 @@ namespace OLLMcoder.Task
 				this.issues += "\n" + "Tool Calls: block did not parse as a valid tool call (invalid JSON or missing name).";
 				return false;
 			}
-			if (!this.task.runner.session.manager.tools.has_key(this.name)) {
+			if (!this.parent.runner.session.manager.tools.has_key(this.name)) {
 				this.issues += "\n" + "Tool Calls: unknown tool \"" + this.name + "\".";
 				return false;
 			}
-			var original = this.task.runner.session.manager.tools.get(this.name);
+			var original = this.parent.runner.session.manager.tools.get(this.name);
 			if (!(original is OLLMchat.Tool.BaseTool)) {
 				return true;
 			}
@@ -144,7 +284,7 @@ namespace OLLMcoder.Task
 		 */
 		public string to_instructions()
 		{
-			var original = this.task.runner.session.manager.tools.get(this.name);
+			var original = this.parent.runner.session.manager.tools.get(this.name);
 			var base_tool = (OLLMchat.Tool.BaseTool) original;
 			var schema = new Json.Object();
 			schema.set_string_member("name", base_tool.function.name);
@@ -161,19 +301,6 @@ namespace OLLMcoder.Task
 				ret += "\nExample: " + base_tool.example_call;
 			}
 			return ret;
-		}
-
-		/**
-		 * Executes the tool call: looks up the tool from the manager (the agent
-		 * never uses chat_call.tools), runs it with this call's arguments, and
-		 * stores the result on the task.
-		 */
-		public async void execute() throws GLib.Error
-		{
-			var tool_impl = this.task.runner.session.manager.tools.get(this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
-			var result = yield tool_impl.execute(this.task.chat(), this.tool_call, true);
-			this.task.tool_outputs.set(this.tool_call.id, result);
-			this.task.tool_calls.set(this.tool_call.id, this.tool_call);
 		}
 	}
 }
