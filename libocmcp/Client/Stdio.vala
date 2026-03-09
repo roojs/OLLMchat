@@ -57,7 +57,7 @@ namespace OLLMmcp.Client
 			this.stdout_reader = new DataInputStream(stdout_pipe);
 			this.stdin_writer = new DataOutputStream(stdin_pipe);
 
-			yield this.send_initialize();
+			yield this.init();
 		}
 
 		public override void disconnect()
@@ -88,16 +88,20 @@ namespace OLLMmcp.Client
 				return new Gee.ArrayList<OLLMmcp.Factory>();
 			}
 			var factories = new Gee.ArrayList<OLLMmcp.Factory>();
-			foreach (var d in list_result.tools) {
-				factories.add(OLLMmcp.Factory.from_descriptor(d));
+			foreach (var f in list_result.tools) {
+				factories.add(f);
 			}
 			return factories;
 		}
 
 		public override async string call(string name, Json.Object arguments) throws Error
 		{
-			var call_params = OLLMmcp.CallToolParams.with_arguments(name, arguments);
-			var response = yield this.jrequest("tools/call", call_params.to_params_json());
+			var call_params = new OLLMmcp.CallToolParams() {
+				name = name,
+				arguments = arguments
+			};
+			string params_str = Json.to_string(Json.gobject_serialize(call_params), false);
+			var response = yield this.jrequest("tools/call", params_str);
 			Json.Node? result_node = null;
 			if (response != null) {
 				var root = response.get_object();
@@ -175,29 +179,51 @@ namespace OLLMmcp.Client
 			return args;
 		}
 
-		private async void send_initialize() throws Error
+		private async void init() throws Error
 		{
-			var init_params = new OLLMmcp.InitializeParams.with_client("ollmchat", "1.0");
-			string body = OLLMmcp.McpJson.build_request_body(this.next_id++, "initialize", init_params.to_params_json());
-			yield this.write_line(body);
+			var init_params = new OLLMmcp.InitializeParams();
+			var req = new OLLMmcp.JsonRpcRequest() {
+				id = (int) this.next_id++,
+				method = "initialize",
+				params = init_params
+			};
+			yield this.write(Json.to_string(Json.gobject_serialize(req), false));
 
-			var response = yield this.read_json_rpc_response();
-			this.check_json_rpc_error(response);
+			var response = yield this.read_jresponse();
+			this.check_jerr(response);
 
-			yield this.write_line(OLLMmcp.McpJson.initialized_notification_body());
+			var notif = new OLLMmcp.InitializedNotification();
+			yield this.write(Json.to_string(Json.gobject_serialize(notif), false));
 		}
 
 		private async Json.Node? jrequest(string method, string? params_json = null) throws Error
 		{
-			string body = OLLMmcp.McpJson.build_request_body(this.next_id++, method, params_json);
-			yield this.write_line(body);
+			Json.Object? params_obj = null;
+			if (params_json != null && params_json != "") {
+				var p = new Json.Parser();
+				try {
+					p.load_from_data(params_json, -1);
+					var params_node = p.get_root();
+					if (params_node != null && params_node.get_node_type() == Json.NodeType.OBJECT) {
+						params_obj = params_node.get_object();
+					}
+				} catch (GLib.Error e) {
+					params_obj = null;
+				}
+			}
+			var req = new OLLMmcp.JsonRpcRequest() {
+				id = (int) this.next_id++,
+				method = method,
+				params = params_obj
+			};
+			yield this.write(Json.to_string(Json.gobject_serialize(req), false));
 
-			var response = yield this.read_json_rpc_response();
-			this.check_json_rpc_error(response);
+			var response = yield this.read_jresponse();
+			this.check_jerr(response);
 			return response;
 		}
 
-		private async Json.Node? read_json_rpc_response() throws Error
+		private async Json.Node? read_jresponse() throws Error
 		{
 			string? line = yield this.stdout_reader.read_line_async(GLib.Priority.DEFAULT, null);
 			if (line == null || line.strip() == "") {
@@ -218,7 +244,7 @@ namespace OLLMmcp.Client
 			return root;
 		}
 
-		private void check_json_rpc_error(Json.Node? response) throws Error
+		private void check_jerr(Json.Node? response) throws Error
 		{
 			Json.Object? obj = response != null ? response.get_object() : null;
 			if (obj == null || !obj.has_member("error")) {
@@ -230,7 +256,7 @@ namespace OLLMmcp.Client
 			throw new GLib.IOError.FAILED("MCP error: " + msg);
 		}
 
-		private async void write_line(string body) throws Error
+		private async void write(string body) throws Error
 		{
 			string line = body + "\n";
 			uint8[] buf = (uint8[]) line.to_utf8();

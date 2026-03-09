@@ -26,9 +26,9 @@
  *       ├── next_id        uint (JSON-RPC request id)
  *       ├── connect()      → initialize + initialized; uses InitializeParams
  *       ├── disconnect()   → clears session
- *       ├── tools()   → jrequest("tools/list") → ToolsListResult → Factory.from_descriptor → Gee.ArrayList<Factory>
+ *       ├── tools()   → jrequest("tools/list") → ToolsListResult.tools (Gee.ArrayList<Factory>)
  *       ├── call()    → jrequest("tools/call") → CallToolResult.text_content()
- *       └── jrequest(method, params_json?)  → build_request_body, POST, parse; on error uses McpJsonRpcError
+ *       └── jrequest(method, params_json?)  → JSON-RPC envelope (Json.Object) + Json.to_string, POST, parse; on error uses McpJsonRpcError
  */
 
 namespace OLLMmcp.Client
@@ -54,10 +54,12 @@ namespace OLLMmcp.Client
 		{
 			this.session = new Soup.Session();
 
-			var init_params = new OLLMmcp.InitializeParams.with_client("ollmchat", "1.0");
-			yield this.jrequest("initialize", init_params.to_params_json());
+			var init_params = new OLLMmcp.InitializeParams();
+			string params_str = Json.to_string(Json.gobject_serialize(init_params), false);
+			yield this.jrequest("initialize", params_str);
 
-			string body = OLLMmcp.McpJson.initialized_notification_body();
+			var notif = new OLLMmcp.InitializedNotification();
+			string body = Json.to_string(Json.gobject_serialize(notif), false);
 			var msg = new Soup.Message("POST", this.base_url);
 			msg.set_request_body_from_bytes("application/json", new GLib.Bytes((uint8[]) body.to_utf8()));
 			try {
@@ -90,16 +92,20 @@ namespace OLLMmcp.Client
 				return new Gee.ArrayList<OLLMmcp.Factory>();
 			}
 			var factories = new Gee.ArrayList<OLLMmcp.Factory>();
-			foreach (var d in list_result.tools) {
-				factories.add(OLLMmcp.Factory.from_descriptor(d));
+			foreach (var f in list_result.tools) {
+				factories.add(f);
 			}
 			return factories;
 		}
 
 		public override async string call(string name, Json.Object arguments) throws Error
 		{
-			var call_params = OLLMmcp.CallToolParams.with_arguments(name, arguments);
-			var response = yield this.jrequest("tools/call", call_params.to_params_json());
+			var call_params = new OLLMmcp.CallToolParams() {
+				name = name,
+				arguments = arguments
+			};
+			string params_str = Json.to_string(Json.gobject_serialize(call_params), false);
+			var response = yield this.jrequest("tools/call", params_str);
 			Json.Node? result_node = null;
 			if (response != null) {
 				var root = response.get_object();
@@ -123,7 +129,25 @@ namespace OLLMmcp.Client
 				throw new GLib.IOError.FAILED("MCP HTTP client not connected");
 			}
 
-			string body = OLLMmcp.McpJson.build_request_body(this.next_id++, method, params_json);
+			Json.Object? params_obj = null;
+			if (params_json != null && params_json != "") {
+				var p = new Json.Parser();
+				try {
+					p.load_from_data(params_json, -1);
+					var params_node = p.get_root();
+					if (params_node != null && params_node.get_node_type() == Json.NodeType.OBJECT) {
+						params_obj = params_node.get_object();
+					}
+				} catch (GLib.Error e) {
+					params_obj = null;
+				}
+			}
+			var req = new OLLMmcp.JsonRpcRequest() {
+				id = (int) this.next_id++,
+				method = method,
+				params = params_obj
+			};
+			string body = Json.to_string(Json.gobject_serialize(req), false);
 			var message = new Soup.Message("POST", this.base_url);
 			message.set_request_body_from_bytes("application/json", new GLib.Bytes((uint8[]) body.to_utf8()));
 

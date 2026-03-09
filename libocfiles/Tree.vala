@@ -94,9 +94,9 @@ namespace OLLMfiles
 			this.ast_comment_start.clear();
 			
 			// Check if this is a non-code file that we should skip
-			if (this.is_unsupported_language(this.file.language ?? "")) {
+			if (this.is_unsupported_language(this.file.language)) {
 				GLib.debug("Tree.parse: Skipping non-code file: %s (language: %s)", 
-					this.file.path, this.file.language ?? "empty");
+					this.file.path, this.file.language != "" ? this.file.language : "empty");
 				this.last_parsed = file_mtime;
 				return;
 			}

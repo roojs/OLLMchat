@@ -61,9 +61,9 @@ namespace OLLMvector.Indexing
 			
 			// Check if this is a non-code file that we should skip (including empty language)
 			// This check must come before the empty language warning
-			if (this.is_unsupported_language(this.file.language ?? "")) {
-				GLib.debug("SKIP - not a code file: %s (language: %s)", 
-					this.file.path, this.file.language ?? "empty");
+			if (this.is_unsupported_language(this.file.language)) {
+				GLib.debug("SKIP - not a code file: %s (language: %s)",
+					this.file.path, this.file.language != "" ? this.file.language : "empty");
 				return;
 			}
 			

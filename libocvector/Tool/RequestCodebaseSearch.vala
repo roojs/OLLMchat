@@ -214,12 +214,18 @@ namespace OLLMvector.Tool
 			var file_ids = active_project.project_files.get_ids(this.language);
 			
 			if (file_ids.size == 0) {
+				string ui_reason;
+				string llm_message;
 				if (this.language != "") {
-					throw new GLib.IOError.FAILED(
-						"No files found in folder matching language filter: " + this.language
-					);
+					ui_reason = "No results — no files in the project match the language filter \"%s\". Try the same query without the language parameter, or use a different language.".printf(this.language);
+					llm_message = "No files in the project match the language filter \"" + this.language + "\". "
+						+ "Try the same query without the language parameter to search all languages, or use a different language.";
+				} else {
+					ui_reason = "No results — no files found in the project folder.";
+					llm_message = "No files found in the project folder. Check that the project is open and has indexed files.";
 				}
-				throw new GLib.IOError.FAILED("No files found in folder");
+				this.send_ui("txt", "Code Search Results", ui_reason);
+				return llm_message;
 			}
 			
 			// Step 3: Build filtered vector IDs using SQL query (exactly as oc-vector-search.vala does)
@@ -283,16 +289,18 @@ namespace OLLMvector.Tool
 			);
 			
 			if (filtered_vector_ids.size == 0) {
-				
-				this.send_ui("txt", "Code Search", 
-					"No document matches the criteria that was selected - have asked LLM to try again");
-				
+				string ui_reason;
 				if (this.category != "") {
+					ui_reason = "No results — no indexed documents match the category filter \"%s\". Try without the category filter or use a different category. Valid: %s.".printf(
+						this.category, string.joinv(", ", VALID_CATEGORIES));
+					this.send_ui("txt", "Code Search", ui_reason);
 					return "No document matches the criteria (category=\"" + this.category + "\"). "
 						+ "Try the same query without the category filter to search all docs, "
 						+ "or use a different category. Valid categories: "
 						+ string.joinv(", ", VALID_CATEGORIES) + ".";
 				}
+				ui_reason = "No results — no indexed code or documents match the current filters (element type, language, or category). Try the same query with fewer or different filters (e.g. omit element_type or language), or broaden the query.";
+				this.send_ui("txt", "Code Search", ui_reason);
 				return "No document matches the criteria (current filters returned no indexed content). "
 					+ "Try the same query with fewer or different filters (e.g. omit element_type), "
 					+ "or broaden the query.";

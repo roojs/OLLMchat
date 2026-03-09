@@ -70,16 +70,16 @@ namespace OLLMtools.ReadFile
 			var code_content = yield this.load_file_content();
 			
 			// Check if this is a non-code file that we should skip
-			if (this.is_unsupported_language(this.file.language ?? "")) {
+			if (this.is_unsupported_language(this.file.language)) {
 				return "# File Summary\n\n* text file (not a code file)\n";
 			}
 			
 			// Initialize parser using base class method
-			// GLib.debug("ReadFileSummarize: Initializing parser for language: %s", this.file.language ?? "null");
+			// GLib.debug("ReadFileSummarize: Initializing parser for language: %s", this.file.language);
 			yield this.init_parser();
 			if (this.language == null) {
 				// GLib.debug("ReadFileSummarize: Language is null after init_parser");
-				return "# File Summary\n\n* unsupported language: " + (this.file.language ?? "unknown") + "\n";
+				return "# File Summary\n\n* unsupported language: " + (this.file.language != "" ? this.file.language : "unknown") + "\n";
 			}
 			// GLib.debug("ReadFileSummarize: Language loaded successfully");
 			

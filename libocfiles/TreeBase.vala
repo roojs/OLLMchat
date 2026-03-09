@@ -111,7 +111,7 @@ namespace OLLMfiles
 		protected async void init_parser() throws GLib.Error
 		{
 			// Check if this is a non-code file that we should skip
-			if (this.is_unsupported_language(this.file.language ?? "")) {
+			if (this.is_unsupported_language(this.file.language)) {
 				return;
 			}
 			

@@ -481,8 +481,11 @@ namespace OLLMfiles
 			
 			// Detect language from filename using buffer provider
 			var detected_language = this.buffer_provider.detect_language(real_file);
-			if (detected_language != null && detected_language != "") {
+			if (detected_language != "") {
 				real_file.language = detected_language;
+			}
+			if (!real_file.is_text && real_file.language != "") {
+				real_file.is_text = true;
 			}
 			
 			// Add file to parent folder's children

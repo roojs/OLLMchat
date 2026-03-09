@@ -133,8 +133,8 @@ namespace OLLMfiles
 		/**
 		 * Programming language - delegates to target file for tree display.
 		 */
-		public new string? language {
-			get { 
+		public new string language {
+			get {
 				if (this.points_to is File) {
 					return ((File)this.points_to).language;
 				}

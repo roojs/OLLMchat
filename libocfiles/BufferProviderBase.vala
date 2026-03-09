@@ -186,14 +186,14 @@ namespace OLLMfiles
 		
 		/**
 		 * Detect programming language from file extension.
-		 * 
+		 *
 		 * @param file The file to detect language for
-		 * @return Language identifier (e.g., "vala", "python"), or null if not detected
+		 * @return Language identifier (e.g., "vala", "python"), or "" if not detected
 		 */
-		public virtual string? detect_language(File file) 
-		{ 
+		public virtual string detect_language(File file)
+		{
 			if (file.path == null || file.path == "") {
-				return null;
+				return "";
 			}
 			
 			init_extension_map();
@@ -202,11 +202,12 @@ namespace OLLMfiles
 			var path = file.path;
 			var last_dot = path.last_index_of_char('.');
 			if (last_dot < 0 || last_dot >= path.length - 1) {
-				return null;
+				return "";
 			}
 			
 			var extension = path.substring(last_dot + 1).down();
-			return extension_map.get(extension);
+			var lang = extension_map.get(extension);
+			return lang != null ? lang : "";
 		}
 		
 		/**

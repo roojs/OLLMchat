@@ -91,8 +91,12 @@ namespace OLLMfiles
  			this.is_text = content_type != null && content_type != "" &&  content_type.has_prefix("text/");
 			
 			// Detect language from filename if not already set
-			if (this.language == null || this.language == "") {
+			if (this.language == "") {
 				this.detect_language();
+			}
+			// Treat as text if we have a code language (e.g. .php → application/x-php, not text/*)
+			if (!this.is_text && this.language != "") {
+				this.is_text = true;
 			}
 		}
 		
@@ -127,7 +131,9 @@ namespace OLLMfiles
 					);
 					var content_type = file_info.get_content_type();
 					this.is_text = content_type != null && content_type != "" && content_type.has_prefix("text/");
-					
+					if (!this.is_text && this.language != "") {
+						this.is_text = true;
+					}
 					// Set last_modified from FileInfo
 					var mod_time = file_info.get_modification_date_time();
 					if (mod_time != null) {
@@ -151,7 +157,7 @@ namespace OLLMfiles
 			}
 			
 			var detected = this.manager.buffer_provider.detect_language(this);
-			if (detected != null && detected != "") {
+			if (detected != "") {
 				this.language = detected;
 				//GLib.debug("File.detect_language: Detected language '%s' for file '%s'", 
 				//	this.language, this.path);

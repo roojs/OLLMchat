@@ -17,11 +17,11 @@
 
 namespace OLLMmcp
 {
-	/** Client identity for MCP initialize (name + version). */
+	/** Client identity for MCP initialize (name + version). Defaults: ollmchat 1.0. */
 	public class ClientInfo : Object, Json.Serializable
 	{
-		public string name { get; set; default = ""; }
-		public string version { get; set; default = ""; }
+		public string name { get; set; default = "ollmchat"; }
+		public string version { get; set; default = "1.0"; }
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -64,34 +64,67 @@ namespace OLLMmcp
 
 	/**
 	 * MCP initialize request params (client → server).
-	 * Build with with_client(name, version); send in JSON-RPC via to_params_json().
+	 * Property names match MCP spec (camelCase). All values have defaults; use as-is.
 	 */
 	public class InitializeParams : Object, Json.Serializable
 	{
-		public string protocol_version { get; set; default = "2024-11-05"; }
+		public string protocolVersion { get; set; default = "2024-11-05"; }
 		public OLLMmcp.Capabilities capabilities { get; set; default = new OLLMmcp.Capabilities(); }
-		public OLLMmcp.ClientInfo client_info { get; set; }
+		public OLLMmcp.ClientInfo clientInfo { get; set; default = new OLLMmcp.ClientInfo(); }
 
-		/** Build params for the initialize request; client_info is set to name and version. */
-		public InitializeParams.with_client(string name, string version)
+		public unowned ParamSpec? find_property(string name)
 		{
-			this.client_info = new OLLMmcp.ClientInfo() {
-				name = name,
-				version = version
-			};
+			return this.get_class().find_property(name);
 		}
 
-		/** Serialize params to JSON string using gobject_serialize for nested objects. */
-		public string to_params_json()
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
 		{
-			var root = new Json.Object();
-			root.set_string_member("protocolVersion", this.protocol_version);
-			root.set_member("clientInfo", Json.gobject_serialize(this.client_info));
-			root.set_member("capabilities", Json.gobject_serialize(this.capabilities));
-			var node = new Json.Node(Json.NodeType.OBJECT);
-			node.set_object(root);
-			return Json.to_string(node, false);
+			base.set_property(pspec.get_name(), value);
 		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+	}
+
+	/** Initialized notification (no id). Serialize with Json.gobject_serialize. */
+	public class InitializedNotification : Object, Json.Serializable
+	{
+		public string jsonrpc { get; set; default = "2.0"; }
+		public string method { get; set; default = "initialized"; }
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+	}
+
+	/** JSON-RPC 2.0 request envelope. Set id, method, params; serialize with Json.gobject_serialize. */
+	public class JsonRpcRequest : Object, Json.Serializable
+	{
+		public string jsonrpc { get; set; default = "2.0"; }
+		public int id { get; set; }
+		public string method { get; set; default = ""; }
+		/**
+		 * Request params: any Json.Serializable (e.g. InitializeParams, CallToolParams) or Json.Object for raw.
+		 * Serialization maps to/from the "params" JSON key.
+		 */
+		public Object? params { get; set; default = null; }
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -112,163 +145,80 @@ namespace OLLMmcp
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			switch (property_name) {
-				case "protocolVersion":
-					return default_serialize_property("protocol_version", value, pspec);
-				case "capabilities":
-					return default_serialize_property("capabilities", value, pspec);
-				case "clientInfo":
-					return default_serialize_property("client_info", value, pspec);
-				default:
-					return default_serialize_property(property_name, value, pspec);
-			}
-		}
-
-		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
-		{
-			switch (property_name) {
-				case "protocolVersion":
-					return default_deserialize_property("protocol_version", out value, pspec, property_node);
-				case "capabilities":
-					return default_deserialize_property("capabilities", out value, pspec, property_node);
-				case "clientInfo":
-					return default_deserialize_property("client_info", out value, pspec, property_node);
-				default:
-					return default_deserialize_property(property_name, out value, pspec, property_node);
-			}
-		}
-	}
-
-	/** JSON-RPC helpers: work with strings and GLib.Objects; avoid Json.Object in client code. */
-	public static class McpJson
-	{
-		/** Serialize a Json.Object to JSON string (boundary only; prefer GObject + to_params_json). */
-		public static string object_to_string(Json.Object obj)
-		{
-			var node = new Json.Node(Json.NodeType.OBJECT);
-			node.set_object(obj);
-			return Json.to_string(node, false);
-		}
-
-		/** Build full JSON-RPC request body string from method and params JSON string. */
-		public static string build_request_body(uint id, string method, string? params_json)
-		{
-			var envelope = new Json.Object();
-			envelope.set_string_member("jsonrpc", "2.0");
-			envelope.set_int_member("id", (int) id);
-			envelope.set_string_member("method", method);
-			string p = params_json ?? "{}";
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(p, -1);
-				envelope.set_member("params", parser.get_root());
-			} catch (GLib.Error e) {
-				var empty = new Json.Node(Json.NodeType.OBJECT);
-				empty.set_object(new Json.Object());
-				envelope.set_member("params", empty);
-			}
-			var node = new Json.Node(Json.NodeType.OBJECT);
-			node.set_object(envelope);
-			return Json.to_string(node, false);
-		}
-
-		/** Body for the initialized notification (no id, no response). */
-		public static string initialized_notification_body()
-		{
-			var obj = new Json.Object();
-			obj.set_string_member("jsonrpc", "2.0");
-			obj.set_string_member("method", "initialized");
-			var node = new Json.Node(Json.NodeType.OBJECT);
-			node.set_object(obj);
-			return Json.to_string(node, false);
-		}
-	}
-
-	/** Params for tools/call: name + arguments. Use with_arguments() at boundary (Json.Object → string). */
-	public class CallToolParams : Object
-	{
-		public string name { get; private set; default = ""; }
-		public string arguments_json { get; private set; default = "{}"; }
-
-		public static CallToolParams with_arguments(string name, Json.Object arguments)
-		{
-			var p = new CallToolParams();
-			p.name = name;
-			p.arguments_json = McpJson.object_to_string(arguments);
-			return p;
-		}
-
-		/** Serialize to JSON string for the RPC params. */
-		public string to_params_json()
-		{
-			var parser = new Json.Parser();
-			try {
-				parser.load_from_data(this.arguments_json, -1);
-			} catch (GLib.Error e) {
-				var empty = new Json.Node(Json.NodeType.OBJECT);
-				empty.set_object(new Json.Object());
-				var obj = new Json.Object();
-				obj.set_string_member("name", this.name);
-				obj.set_member("arguments", empty);
-				var node = new Json.Node(Json.NodeType.OBJECT);
-				node.set_object(obj);
-				return Json.to_string(node, false);
-			}
-			var obj = new Json.Object();
-			obj.set_string_member("name", this.name);
-			obj.set_member("arguments", parser.get_root());
-			var node = new Json.Node(Json.NodeType.OBJECT);
-			node.set_object(obj);
-			return Json.to_string(node, false);
-		}
-	}
-
-	/**
-	 * MCP tool descriptor from tools/list (wire format).
-	 * Serialization only; use Factory to represent the tool and create BaseTool instances.
-	 */
-	public class McpToolDescriptor : Object, Json.Serializable
-	{
-		public string name { get; set; default = ""; }
-		public string description { get; set; default = ""; }
-		public Json.Node? input_schema { get; set; default = null; }
-
-		public unowned ParamSpec? find_property(string name)
-		{
-			return this.get_class().find_property(name);
-		}
-
-		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-		{
-			base.set_property(pspec.get_name(), value);
-		}
-
-		public new Value Json.Serializable.get_property(ParamSpec pspec)
-		{
-			Value val = Value(pspec.value_type);
-			base.get_property(pspec.get_name(), ref val);
-			return val;
-		}
-
-		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
-		{
-			if (property_name == "input_schema") {
-				if (this.input_schema != null) {
-					return this.input_schema;
+			if (property_name == "params") {
+				if (this.params == null) {
+					var empty = new Json.Node(Json.NodeType.OBJECT);
+					empty.set_object(new Json.Object());
+					return empty;
 				}
-				var empty = new Json.Node(Json.NodeType.OBJECT);
-				empty.set_object(new Json.Object());
-				return empty;
+				if (this.params is Json.Object) {
+					var node = new Json.Node(Json.NodeType.OBJECT);
+					node.set_object((Json.Object) this.params);
+					return node;
+				}
+				return Json.gobject_serialize(this.params);
 			}
 			return default_serialize_property(property_name, value, pspec);
 		}
 
 		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			if (property_name == "inputSchema") {
-				this.input_schema = property_node;
-				value = Value(typeof(Json.Node));
-				value.set_object(property_node);
+			if (property_name == "params") {
+				this.params = (property_node.get_node_type() == Json.NodeType.OBJECT)
+					? property_node.get_object()
+				: new Json.Object();
+				value = Value(typeof(Object));
+				value.set_object(this.params);
+				return true;
+			}
+			return default_deserialize_property(property_name, out value, pspec, property_node);
+		}
+	}
+
+	/** Params for tools/call: name + arguments. Serialize with Json.gobject_serialize. */
+	public class CallToolParams : Object, Json.Serializable
+	{
+		public string name { get; set; default = ""; }
+		/** Tool call arguments as JSON object; serialization maps this to/from the "arguments" JSON key. */
+		public Json.Object? arguments { get; set; }
+
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
+		}
+
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
+
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
+
+		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			if (property_name == "arguments") {
+				var node = new Json.Node(Json.NodeType.OBJECT);
+				node.set_object(this.arguments != null ? this.arguments : new Json.Object());
+				return node;
+			}
+			return default_serialize_property(property_name, value, pspec);
+		}
+
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			if (property_name == "arguments") {
+				if (property_node.get_node_type() == Json.NodeType.OBJECT) {
+					this.arguments = property_node.get_object();
+				} else {
+					this.arguments = new Json.Object();
+				}
+				value = Value(typeof(Json.Object));
+				value.set_object(this.arguments);
 				return true;
 			}
 			return default_deserialize_property(property_name, out value, pspec, property_node);
@@ -276,11 +226,11 @@ namespace OLLMmcp
 	}
 
 	/**
-	 * MCP tools/list result: "result" object with "tools" array of McpToolDescriptor.
+	 * MCP tools/list result: "result" object with "tools" array of Factory.
 	 */
 	public class ToolsListResult : Object, Json.Serializable
 	{
-		public Gee.ArrayList<McpToolDescriptor> tools { get; set; default = new Gee.ArrayList<McpToolDescriptor>(); }
+		public Gee.ArrayList<Factory> tools { get; set; default = new Gee.ArrayList<Factory>(); }
 
 		public unowned ParamSpec? find_property(string name)
 		{
@@ -309,14 +259,13 @@ namespace OLLMmcp
 			if (property_name != "tools") {
 				return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
-			this.tools.clear();
 			if (property_node.get_node_type() == Json.NodeType.ARRAY) {
 				var arr = property_node.get_array();
 				for (uint i = 0; i < arr.get_length(); i++) {
 					var elem = arr.get_element(i);
-					var d = Json.gobject_deserialize(typeof(McpToolDescriptor), elem) as McpToolDescriptor;
-					if (d != null) {
-						this.tools.add(d);
+					var f = Json.gobject_deserialize(typeof(Factory), elem) as Factory;
+					if (f != null) {
+						this.tools.add(f);
 					}
 				}
 			}
@@ -386,7 +335,6 @@ namespace OLLMmcp
 			if (property_name != "content") {
 				return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
-			this.content.clear();
 			if (property_node.get_node_type() == Json.NodeType.ARRAY) {
 				var arr = property_node.get_array();
 				for (uint i = 0; i < arr.get_length(); i++) {
