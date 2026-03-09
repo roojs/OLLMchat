@@ -1,0 +1,37 @@
+== OLLMchat API - Package Overview ==
+
+This documentation covers the OLLMchat application and its libraries. The codebase is split into several namespaces; below are the main ones with short descriptions and links.
+
+== Core libraries (no GTK) ==
+
+* ''{@link OLLMfiles}'' — File and project management: buffers, files, folders, project list, tree-sitter AST paths, diff/patch. Use when you need file access, project roots, or code structure without GUI.
+
+* ''{@link OLLMchat}'' — LLM chat client: Ollama/OpenAI-compatible API, ''{@link OLLMchat.Call}'' and ''{@link OLLMchat.Response}'' operations, ''{@link OLLMchat.Tool}'' (function calling), ''{@link OLLMchat.History}'', ''{@link OLLMchat.Settings}'', ''{@link OLLMchat.Agent}''. Use for all chat, tools, and agent logic outside the UI.
+
+* ''{@link OLLMvector}'' — Vector search and codebase indexing: embeddings, FAISS, ''{@link OLLMvector.Indexing}'' pipeline (tree-sitter, analysis, vector build), ''{@link OLLMvector.Search}''. Use for semantic code/search and documentation indexing.
+
+* ''{@link OLLMcoder}'' — Code-editor and task/skill layer: ''{@link OLLMcoder.Skill}'' (Runner, Manager, templates), ''{@link OLLMcoder.Task}'' (List, Details, Tool, Step). Use for skill-based task creation, refinement, and execution in the coding agent.
+
+* ''OLLMtools'' (liboctools) — Built-in tools: ReadFile, WriteFile, RunCommand, WebFetch, GoogleSearch, Child agent. Registered via ''{@link OLLMchat.Tool}'' and used by the chat/agent stack.
+
+== GTK / UI ==
+
+* ''libocmarkdown'' — Markdown parsing and document model (no namespace in docs; see Parser, document/*, RenderBase). Used by skills and chat rendering.
+
+* ''libocmarkdowngtk'' — GTK markdown rendering for the chat UI.
+
+* ''libollmchatgtk'' — Chat widget, history browser, tool permission UI, model usage list. Application-facing GTK pieces.
+
+* ''{@link OLLMapp}'' — Main application (Application, Window, settings dialogs). Entry point and window management.
+
+== Low-level ==
+
+* ''libocsqlite'' — SQLite wrapper (Database, Query, Schema). Used by libocfiles and libocvector.
+
+== Quick links ==
+
+  * ''{@link OLLMchat.Agent}'' — Agent interface and implementations (Base, JustAsk, Factory).
+  * ''{@link OLLMcoder.Skill.Runner}'' — Runs the skill pipeline (task creation, refinement, execution).
+  * ''{@link OLLMcoder.Task.List}'' — Task list and iteration.
+  * ''{@link OLLMvector.Indexing.Indexer}'' — Code and documentation indexing entry point.
+  * ''{@link OLLMvector.Search.Search}'' — Semantic codebase search.
