@@ -91,9 +91,11 @@ namespace OLLMcoder.Task
 				return "";
 			}
 			var json = Json.gobject_to_data(this.tool_call, null);
-			var block = (json != "") ? this.parent.header_fenced("### Tool call " + this.name, json, "json") : "";
+			var block = (json != "") ? this.parent.header_fenced(
+				"### Tool call " + this.name, json, "json") : "";
 			if (this.tool_run_result != "") {
-				block += this.parent.header_raw("Tool call " + this.name + " Result", this.tool_run_result);
+				block += this.parent.header_raw("Tool call " + this.name +
+					 " Result", this.tool_run_result);
 			}
 			return block;
 		}
@@ -116,25 +118,24 @@ namespace OLLMcoder.Task
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
 
-			var last_analysis = "";
+			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
-				var tpl = this.executor_prompt(executor_input, last_analysis, last_issues);
+				var tpl = this.executor_prompt(executor_input, response_text, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
+				var model_label = this.session.model_usage.model != "" ? 
+					this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit)
 				this.add_message(new OLLMchat.Message("ui", "**Execution prompt** (user message sent to LLM)\n\n" + tpl.filled_user));
 				this.add_message(new OLLMchat.Message("ui", "Interpreting result" + model_part));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
-				var response_text = "";
 				try {
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
 				} catch (GLib.Error e) {
-					last_analysis = "";
 					last_issues = e.message;
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui-warning",
@@ -148,7 +149,6 @@ namespace OLLMcoder.Task
 				if (parser.exec_extract(this)) {
 					return;
 				}
-				last_analysis = response_text;
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
 					this.add_message(new OLLMchat.Message("ui-warning", "Executor try %d: %s".printf(try_count + 1, last_issues)));
@@ -194,8 +194,8 @@ namespace OLLMcoder.Task
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
 			var project_description = (project == null) ? "" : project.project_description();
 			var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
-			tpl.system_fill();
-			tpl.fill(
+			tpl.system_fill(0);
+			tpl.fill(6,
 				"what_is_needed", this.parent.task_data.get("What is needed").to_markdown(),
 				"skill_definition", definition.execute,
 				"project_description", project_description,

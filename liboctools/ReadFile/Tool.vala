@@ -87,6 +87,23 @@ Reading the entire file is not allowed in most cases. You are only allowed to re
 		{
 			return Json.gobject_deserialize(typeof(Request), parameters_node) as OLLMchat.Tool.RequestBase;
 		}
+
+		/**
+		 * When is_markdown is true (skills agent path), return result as a fenced code block
+		 * so the LLM receives it in markdown reply format. Otherwise return raw content.
+		 */
+		public override async string execute(
+			OLLMchat.Call.Chat chat_call,
+			OLLMchat.Response.ToolCall tool_call,
+			bool is_markdown = false)
+		{
+			var result = yield base.execute(chat_call, tool_call, is_markdown);
+			if (!is_markdown || result == "" || result.has_prefix("ERROR:")) {
+				return result;
+			}
+			var fence = (result.index_of("\n```") >= 0 || result.has_prefix("```")) ? "~~~~" : "```";
+			return fence + "text\n" + result + "\n" + fence;
+		}
 	}
 }
 

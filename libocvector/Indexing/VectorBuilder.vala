@@ -217,13 +217,17 @@ namespace OLLMvector.Indexing
 				throw new GLib.IOError.FAILED("Codebase search tool is disabled");
 			}
 			
-			if (tool_config.embed.model == "" || tool_config.embed.connection == "" || 
+			if (tool_config.embed.model == "" || tool_config.embed.connection == "" ||
 			    !this.config.connections.has_key(tool_config.embed.connection)) {
 				throw new GLib.IOError.FAILED("Invalid embed_model configuration");
 			}
 			
+			if (!(yield tool_config.embed.verify_model(this.config))) {
+				throw new GLib.IOError.FAILED("Embed model not available");
+			}
 			var embed_conn = this.config.connections.get(tool_config.embed.connection);
-			var model_name = yield tool_config.embed.model_obj.customize(embed_conn, tool_config.embed.options);
+			var model_name = yield tool_config.embed.model_obj.customize(
+				embed_conn, tool_config.embed.options);
 			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
 				model_name,
 				documents,
@@ -296,8 +300,12 @@ namespace OLLMvector.Indexing
 			var documents = new Gee.ArrayList<string>();
 			documents.add(description);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			if (!(yield tool_config.embed.verify_model(this.config))) {
+				return;
+			}
 			var embed_conn = this.config.connections.get(tool_config.embed.connection);
-			var model_name = yield tool_config.embed.model_obj.customize(embed_conn, tool_config.embed.options);
+			var model_name = yield tool_config.embed.model_obj.customize(
+				embed_conn, tool_config.embed.options);
 			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
 				model_name, documents, -1, false, tool_config.embed.options
 			);

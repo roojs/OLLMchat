@@ -168,10 +168,13 @@ namespace Markdown
 			mp["~"] = FormatType.INVALID;
 			mp["~~"] = FormatType.STRIKETHROUGH;
 
-			// Task list checkboxes: [ ], [x], [X] (GFM). Link lead: "[?" → eat() -1; "[??" → LINK
+			// Task list checkboxes: [ ], [x], [X] (GFM). Link lead: "[?" → eat() -1; "[??" → LINK.
+			// Allow backtick as second char so [`text`](url) is recognized (e.g. [`parse_task_list`](path#anchor)).
 			mp.set("[", FormatType.INVALID);
 			mp.set("[?", FormatType.INVALID);
 			mp.set("[??", FormatType.LINK);
+			mp.set("[`", FormatType.INVALID);
+			mp.set("[`?", FormatType.LINK);
 			mp.set("[ ]", FormatType.TASK_LIST);
 			mp.set("[x]", FormatType.TASK_LIST_DONE);
 			mp.set("[X]", FormatType.TASK_LIST_DONE);

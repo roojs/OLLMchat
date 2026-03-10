@@ -185,8 +185,12 @@ namespace OLLMvector.Indexing
 			}
 			
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			if (!(yield tool_config.embed.verify_model(this.config))) {
+				throw new GLib.IOError.FAILED("Embed model not available");
+			}
 			var embed_conn = this.config.connections.get(tool_config.embed.connection);
-			var model_name = yield tool_config.embed.model_obj.customize(embed_conn, tool_config.embed.options);
+			var model_name = yield tool_config.embed.model_obj.customize(
+				embed_conn, tool_config.embed.options);
 			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
 				model_name,
 				documents,

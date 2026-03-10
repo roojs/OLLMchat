@@ -131,48 +131,57 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Fills the user template with varargs key-value pairs.
-		 * Call with alternating key and value strings, e.g. fill("key1", value1, "key2", value2).
-		 * The caller does not need to pass null at the end; Vala terminates varargs with null automatically.
+		 * First argument is the number of pairs. Call e.g. fill(6, "key1", value1, "key2", value2, …).
+		 * Vala appends null after the last argument; we critical if we get null too early or extra args.
 		 *
-		 * For each key/value pair in order:
-		 * * If the template contains simple {key}, replace every occurrence with value and continue.
-		 * * If value is the literal string "DEFAULT", remove the markers {key/start} and {key/end} from the result (content between them is kept); then continue.
-		 * * Otherwise, if the template contains {key/start} and {key/end}, replace the whole span (markers and content) with value.
-		 * * If none of the above apply, do nothing for this pair.
+		 * For each key/value pair: if template has {key}, replace with value; or handle DEFAULT / {key/start}..{key/end}.
 		 *
+		 * @param n_pairs number of key-value pairs
 		 * @return the filled template string
 		 */
-		public new string fill(...)
+		public new string fill(int n_pairs, ...)
 		{
 			var result = this.user_template;
-			var args = va_list();
-			while (true) {
-				unowned string? key = args.arg<string?>();
+			var l = va_list();
+			var n_args = n_pairs * 2;
+			var count = 0;
+			while (count < n_args) {
+				string? key = l.arg<string?>();
 				if (key == null) {
+					GLib.critical("fill: null too early, expected %d pairs, got null at position %d", n_pairs, count + 1);
 					break;
 				}
-				unowned string? value = args.arg<string?>();
+				count++;
+				if (count >= n_args) {
+					GLib.critical("fill: expected %d pairs, got key '%s' without value", n_pairs, key);
+					break;
+				}
+				string? value = l.arg<string?>();
 				if (value == null) {
-					break;
+					GLib.critical("fill: null value for key '%s' (argument %d)", key, count + 1);
+					count++;
+					continue;
 				}
+				count++;
 
 				if (result.index_of("{" + key + "}") >= 0) {
 					result = result.replace("{" + key + "}", value);
 					continue;
 				}
-
 				if (value == "DEFAULT") {
 					result = result.replace("{" + key + "/start}", "").replace("{" + key + "/end}", "");
 					continue;
 				}
-
 				var idx = result.index_of("{" + key + "/start}");
 				var end_idx = (idx >= 0) ? result.index_of("{" + key + "/end}", idx) : -1;
-				if (idx < 0 || end_idx < 0) {
-					continue;
+				if (idx >= 0 && end_idx >= 0) {
+					var section_end = end_idx + ("{" + key + "/end}").length;
+					result = result.substring(0, idx) + value + result.substring(section_end);
 				}
-				var section_end = end_idx + ("{" + key + "/end}").length;
-				result = result.substring(0, idx) + value + result.substring(section_end);
+			}
+			string? extra = l.arg<string?>();
+			if (extra != null) {
+				GLib.critical("fill: expected %d pairs, got extra (key '%s')", n_pairs, extra);
 			}
 			this.filled_user = result;
 			return result;
@@ -180,40 +189,54 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Same as {@link fill} but operates on the system message and stores the result in {@link filled_system}.
+		 * First argument is the number of key-value pairs.
 		 *
+		 * @param n_pairs number of key-value pairs
 		 * @return the filled system message string
 		 */
-		public new string system_fill(...)
+		public new string system_fill(int n_pairs, ...)
 		{
 			var result = this.system_message;
-			var args = va_list();
-			while (true) {
-				unowned string? key = args.arg<string?>();
+			var l = va_list();
+			var n_args = n_pairs * 2;
+			var count = 0;
+			while (count < n_args) {
+				string? key = l.arg<string?>();
 				if (key == null) {
+					GLib.critical("system_fill: null too early, expected %d pairs, got null at position %d", n_pairs, count + 1);
 					break;
 				}
-				unowned string? value = args.arg<string?>();
+				count++;
+				if (count >= n_args) {
+					GLib.critical("system_fill: expected %d pairs, got key '%s' without value", n_pairs, key);
+					break;
+				}
+				string? value = l.arg<string?>();
 				if (value == null) {
-					break;
+					GLib.critical("system_fill: null value for key '%s' (argument %d)", key, count + 1);
+					count++;
+					continue;
 				}
+				count++;
 
 				if (result.index_of("{" + key + "}") >= 0) {
 					result = result.replace("{" + key + "}", value);
 					continue;
 				}
-
 				if (value == "DEFAULT") {
 					result = result.replace("{" + key + "/start}", "").replace("{" + key + "/end}", "");
 					continue;
 				}
-
 				var idx = result.index_of("{" + key + "/start}");
 				var end_idx = (idx >= 0) ? result.index_of("{" + key + "/end}", idx) : -1;
-				if (idx < 0 || end_idx < 0) {
-					continue;
+				if (idx >= 0 && end_idx >= 0) {
+					var section_end = end_idx + ("{" + key + "/end}").length;
+					result = result.substring(0, idx) + value + result.substring(section_end);
 				}
-				var section_end = end_idx + ("{" + key + "/end}").length;
-				result = result.substring(0, idx) + value + result.substring(section_end);
+			}
+			string? extra = l.arg<string?>();
+			if (extra != null) {
+				GLib.critical("system_fill: expected %d pairs, got extra (key '%s')", n_pairs, extra);
 			}
 			this.filled_system = result;
 			return result;

@@ -388,9 +388,9 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
-		tpl.system_fill();
+		tpl.system_fill(0);
 		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
-		tpl.fill(
+		tpl.fill(7,
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
 			"environment", this.runner.env(),

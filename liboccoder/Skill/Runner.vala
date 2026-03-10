@@ -114,7 +114,7 @@ namespace OLLMcoder.Skill
 				project_manager.buffer_provider.create_buffer(file);
 			}
 			var tpl = PromptTemplate.template("task_creation_initial.md");
-			tpl.fill(
+			tpl.fill(7,
 				"user_prompt", tpl.header_fenced("User Prompt", user_prompt, "text"),
 				"environment", tpl.header_raw("Environment", this.env()),
 				"project_description", (project_manager.active_project == null ?
@@ -125,7 +125,7 @@ namespace OLLMcoder.Skill
 				"previous_proposal_issues", previous_proposal_issues == "" ? "" :
 					tpl.header_raw("Previous Proposal Issues", previous_proposal_issues),
 				"skill_catalog", skill_catalog.to_markdown());
-			tpl.system_fill("skill_catalog", skill_catalog.to_markdown());
+			tpl.system_fill(1, "skill_catalog", skill_catalog.to_markdown());
 			return tpl;
 		}
 
@@ -281,8 +281,8 @@ namespace OLLMcoder.Skill
 		{
 			this.sr_factory.skill_manager.scan();
 			var tpl = PromptTemplate.template("task_list_iteration.md");
-			tpl.system_fill("skill_catalog", this.sr_factory.skill_manager.to_markdown());
-			tpl.fill(
+			tpl.system_fill(1, "skill_catalog", this.sr_factory.skill_manager.to_markdown());
+			tpl.fill(6,
 				"completed_task_list", this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED),
 				"outstanding_task_list", existing_proposed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST),
 				"previous_proposed_task_list", previous_proposed_md == "" ? "" :

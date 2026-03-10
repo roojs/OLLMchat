@@ -95,7 +95,7 @@ namespace OLLMtools.ReadFile
 		
 		/**
 		 * Format content with line numbers.
-		 * 
+		 *
 		 * @param content The content string
 		 * @param start_line_number The starting line number (1-based)
 		 * @return Content with line numbers prefixed
