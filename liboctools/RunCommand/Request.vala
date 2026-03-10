@@ -27,6 +27,8 @@ namespace OLLMtools.RunCommand
 		public string command { get; set; default = ""; }
 		public string working_dir { get; set; default = ""; }
 		public bool network { get; set; default = false; }
+		/** "no" | "yes" | "project" | "all". Default "project". Empty/unset normalizes to "project". */
+		public string allow_write { get; set; default = "project"; }
 		
 		// Flag to track if this is a complex command (needs to bypass cache)
 		private bool is_complex_command = false;
@@ -193,10 +195,11 @@ namespace OLLMtools.RunCommand
 			// Invalid: cannot be checked
 			 
 			
-			// Skip permission when using bubblewrap with active project (sandboxed - allow everything).
-			// Same pattern as EditMode for project files: clear permission_question and return false to skip.
-			// Note: Network requests are handled above and always require permission.
-			if (Bubble.can_wrap() && ((Tool) this.tool).project_manager != null && ((Tool) this.tool).project_manager.active_project != null) {
+			// Skip permission when using bubblewrap with active project and no write-access prompt requested.
+			// allow_write "all" requires a prompt even with project; "project"/"yes" do not.
+			var tool = (Tool) this.tool;
+			if (Bubble.can_wrap() && tool.project_manager != null && tool.project_manager.active_project != null
+				 && this.allow_write.strip().down() != "all") {
 				this.permission_question = "";
 				return false;
 			}
@@ -306,32 +309,24 @@ namespace OLLMtools.RunCommand
 				throw new GLib.IOError.INVALID_ARGUMENT("Command cannot be empty");
 			}
 			
-			// Normalize working_dir (already validated in execute())
 			var normalized_working_dir = this.normalize_working_dir();
-				
-			// Check if bubblewrap can be used (checks for Flatpak and bwrap availability)
-			// Note: Using unqualified name since both classes are in the same namespace
+
 			if (!Bubble.can_wrap()) {
-				// Running in Flatpak or bwrap not available - use old permission system and existing Subprocess code
-				// Skip bubblewrap entirely, use existing execute_with_subprocess() implementation
 				return yield this.execute_with_subprocess();
 			}
-			
-			// Not in Flatpak and bwrap available - use bubblewrap with overlay
-			// Get project folder from ProjectManager via tool
+
 			var run_command_tool = (Tool) this.tool;
 			var project_manager = run_command_tool.project_manager;
-			if (project_manager == null || project_manager.active_project == null) {
-				throw new GLib.IOError.FAILED("No active project available for bubblewrap execution");
-			}
-			var project = project_manager.active_project;  // OLLMfiles.Folder
-			
-			// Create Bubble instance (creates overlay, mounts in exec())
+			var project = (project_manager != null && project_manager.active_project != null)
+				? project_manager.active_project
+				: (OLLMfiles.Folder?) null;
+			// project: all = rw root (everywhere), yes/no = project only (ro root). non-project: all/yes = rw root (everywhere), no = ro root
+			var aw = this.allow_write.strip().down();
+			var allow_write = (project != null && aw == "all") || (project == null && (aw == "yes" || aw == "all"));
+
 			Bubble? bubble = null;
 			try {
-				// Pass network permission to Bubble (permission was already checked in execute())
-				// If network is true, permission was requested and granted before reaching here
-				bubble = new Bubble(project, this.network);
+				bubble = new Bubble(project, this.network, allow_write);
 				
 				// Execute command in bwrap sandbox (writes go to overlay upper directory)
 				// exec() handles overlay creation, mounting, file copying, and cleanup internally

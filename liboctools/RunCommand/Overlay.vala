@@ -24,9 +24,9 @@ namespace OLLMtools.RunCommand
 	public class Overlay : GLib.Object
 	{
 		/**
-		 * Project folder object (is_project = true) - the main project directory.
+		 * Project folder object (is_project = true), or null for no-project (create/cleanup no-op).
 		 */
-		public OLLMfiles.Folder project { get; set; }
+		public OLLMfiles.Folder? project { get; set; }
 
 		/**
 		 * Map of path -> Folder objects for project roots that need write access.
@@ -73,19 +73,19 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Constructor.
 		 * 
-		 * Initializes an Overlay instance with the specified project folder.
-		 * The overlay structure will be created in ~/.cache/ollmchat/{overlay-datetime}/
+		 * When project is null, overlay_map stays empty and create()/cleanup() do nothing.
 		 * 
 		 * @param project Project folder object (is_project = true) - the main project directory
 		 * @throws Error if project is invalid, build_roots() fails, or paths are not absolute
 		 */
-		public Overlay(OLLMfiles.Folder project) throws Error
+		public Overlay(OLLMfiles.Folder? project) throws Error
 		{
 			this.project = project;
 			
-			// Build roots HashMap from project.build_roots()
-			foreach (var folder in this.project.build_roots()) {
-				this.roots.set(folder.path, this.project);
+			if (project != null) {
+				foreach (var folder in project.build_roots()) {
+					this.roots.set(folder.path, project);
+				}
 			}
 			
 			// Generate unique timestamp-based directory name: overlay-{YYYYMMDD}-{HHMMSS}
@@ -101,7 +101,7 @@ namespace OLLMtools.RunCommand
 			);
 			this.overlay_dir = GLib.Path.build_filename(cache_dir, "overlay-" + timestamp);
 			
-			// Create Scan instance (will be run in copy_files())
+			// Create Scan instance (when project is null, scan.run() returns early)
 			this.scan = new Scan(
 				this.project,
 				GLib.Path.build_filename(this.overlay_dir, "upper"),
@@ -132,6 +132,9 @@ namespace OLLMtools.RunCommand
 		 */
 		public void create() throws Error
 		{
+			if (this.project == null) {
+				return;
+			}
 			try {
 				// Create overlay_dir directory (with parents if needed)
 				GLib.File.new_for_path(this.overlay_dir).make_directory_with_parents(null);
@@ -187,7 +190,9 @@ namespace OLLMtools.RunCommand
 		 */
 		public void cleanup() throws Error
 		{
-			// Recursively delete upper directory (contains all overlay changes)
+			if (this.project == null || this.overlay_map.size == 0) {
+				return;
+			}
 			GLib.debug("cleanup");
 			try {
 				this.scan.recursive_delete(GLib.Path.build_filename(this.overlay_dir, "upper"));

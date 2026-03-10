@@ -74,27 +74,25 @@ namespace OLLMtools.RunCommand
 		}
 		
 		/**
-		 * Project folder object (is_project = true) - the main project directory.
+		 * Project folder object (is_project = true), or null when no project (read-only or writable home only).
 		 */
-		private OLLMfiles.Folder project;
+		private OLLMfiles.Folder? project;
 		
 		/**
-		 * Overlay instance for write isolation.
-		 * 
-		 * The overlay filesystem is used for write isolation.
-		 * The overlay mount point is bind-mounted into the sandbox instead of
-		 * directly binding project roots. All project root binds are replaced with
-		 * a single overlay mount point bind.
+		 * Overlay instance (create()/scan/cleanup no-op when project is null).
 		 */
 		private Overlay overlay;
 		
 		/**
 		 * Network access flag (default: false).
-		 * 
-		 * When false, network access is blocked using --unshare-net. When true, network
-		 * access is allowed (Phase 7 feature).
 		 */
 		private bool allow_network;
+		
+		/**
+		 * When true (tool allow_write "yes" with project): root is --bind / / (read-write); overlay still used for project dirs.
+		 * When false: root is --ro-bind / / (read-only), only project overlay is writable.
+		 */
+		private bool allow_write;
 		
 		/** True if we created $HOME/playground on the host as a mount point for bwrap; we remove it in the exec() finally block when bwrap ends. */
 		private bool home_playground_created = false;
@@ -112,22 +110,18 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Constructor.
 		 * 
-		 * Initializes a Bubble instance with the specified project folder and network
-		 * access setting. Creates an Overlay instance for write isolation (but doesn't
-		 * create/mount it yet - that happens in exec()).
+		 * With project: overlay for project dirs; allow_write true = root is rw (--bind / /), false = ro (--ro-bind / /).
+		 * Without project: root is always read-only; cwd defaults to home.
 		 * 
-		 * @param project Project folder object (is_project = true) - the main project directory
-		 * @param allow_network Whether to allow network access (default: false, Phase 7 feature)
-		 * @throws Error if project is invalid or overlay creation fails
+		 * @param project Project folder, or null for no-project mode
+		 * @param allow_network Whether to allow network access
+		 * @param allow_write When true, use --bind / / for root (tool allow_write "yes"); overlay still captures project dirs
 		 */
-		public Bubble(OLLMfiles.Folder project, bool allow_network = false) throws Error
+		public Bubble(OLLMfiles.Folder? project, bool allow_network = false, bool allow_write = false) throws Error
 		{
-			// Store parameters as instance variables
 			this.project = project;
 			this.allow_network = allow_network;
-			
-			// Create overlay instance for write isolation (but don't create/mount yet)
-			// Overlay constructor already calls project.build_roots() internally and builds overlay_map
+			this.allow_write = allow_write;
 			this.overlay = new Overlay(project);
 		}
 		
@@ -150,20 +144,14 @@ namespace OLLMtools.RunCommand
 		 */
 		public async string exec(string command, string working_dir = "") throws Error
 		{
-			// Create overlay directory structure (lazy initialization)
 			this.overlay.create();
 			
-			// Ensure $HOME/playground exists on the host so bwrap can bind to it (creates if missing; we remove in finally if we created it)
-			 
 			try {
-				// Build bubblewrap command arguments using build_bubble_args(command, working_dir)
 				var args = this.build_bubble_args(command, working_dir);
 				
-				// Debug: Output the exact command being run
 				var cmd_str = string.joinv(" ", args);
 				GLib.debug("Bubble.exec() running command: %s", cmd_str);
 				
-				// Create GLib.Subprocess with bubblewrap as executable
 				GLib.Subprocess subprocess;
 				try {
 					subprocess = new GLib.Subprocess.newv(
@@ -176,17 +164,13 @@ namespace OLLMtools.RunCommand
 					throw new GLib.IOError.FAILED("Failed to create bubblewrap subprocess: " + e.message);
 				}
 				
-				// Read output using read_subprocess_output()
 				var output = yield this.read_subprocess_output(subprocess);
 				
-				// Copy files from overlay to live system (scans overlay and copies files)
 				yield this.overlay.scan.run();
 				
-				// Return formatted string
 				return output;
 				
 			} finally {
-				// Always cleanup overlay (removes directories)
 				try {
 					this.overlay.cleanup();
 				} catch (Error cleanup_error) {
@@ -263,69 +247,68 @@ namespace OLLMtools.RunCommand
 			// Start with: ["bwrap"]
 			args += bwrap_path;
 			
-			// Add user namespace (required for overlay support without root)
 			args += "--unshare-user";
 
-			// Mount playground at $HOME/playground *before* --ro-bind / / so bwrap can create the dir (read-only root would prevent --dir)
-			args += "--dir";
-			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
-			args += "--bind";
-			args += this.playground_path();
-			args += GLib.Path.build_filename(GLib.Environment.get_home_dir(), "playground");
+			var home = GLib.Environment.get_home_dir();
 
-			// Read-only bind root and tmpfs (playground already set up above)
-			args += "--ro-bind";
-			args += "/";
-			args += "/";
+			if (this.project != null) {
+				// Project mode: mount playground before ro-bind
+				args += "--dir";
+				args += GLib.Path.build_filename(home, "playground");
+				args += "--bind";
+				args += this.playground_path();
+				args += GLib.Path.build_filename(home, "playground");
+			}
+
+			if (this.allow_write) {
+				args += "--bind";
+				args += "/";
+				args += "/";
+			} else {
+				args += "--ro-bind";
+				args += "/";
+				args += "/";
+			}
 			args += "--tmpfs";
 			args += "/tmp";
 
-			// Mount /dev read-only (like the rest of the system)
-			// This makes the sandbox appear as a regular system, but prevents writes
 			args += "--ro-bind";
 			args += "/dev";
 			args += "/dev";
-			
-			// Override /dev/null to be writable for output redirection
-			// Later mounts take precedence, so this overrides the read-only /dev/null
 			args += "--dev-bind";
 			args += "/dev/null";
 			args += "/dev/null";
-			
-			// Use bubblewrap's --overlay for each project root
-			// For each project root: --overlay-src (lower layer) and --overlay (RWSRC, WORKDIR, DEST)
-			var upper_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "upper");
-			var work_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "work");
-			
-			var entries_array = this.overlay.overlay_map.entries.to_array();
-			for (int i = 0; i < entries_array.length; i++) {
-				var entry = entries_array[i];
-				var overlay_name = "overlay" + (i + 1).to_string();
-				var work_name = "work" + (i + 1).to_string();
-				
-				// Create destination directory in sandbox (overlay will mount on it)
-				args += "--dir";
-				args += entry.value;  // Project root path
-				
-				// Lower layer (read-only source)
-				args += "--overlay-src";
-				args += entry.value;  // Project root path
-				
-				// Overlay mount: RWSRC (upper/overlayN), WORKDIR (work/workN), DEST (project root in sandbox)
-				args += "--overlay";
-				args += GLib.Path.build_filename(upper_dir, overlay_name);  // RWSRC
-				args += GLib.Path.build_filename(work_dir, work_name);       // WORKDIR
-				args += entry.value;  // DEST (project root path in sandbox)
+
+			if (this.overlay.overlay_map.size > 0) {
+				var upper_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "upper");
+				var work_dir = GLib.Path.build_filename(this.overlay.overlay_dir, "work");
+				var entries_array = this.overlay.overlay_map.entries.to_array();
+				for (int i = 0; i < entries_array.length; i++) {
+					var entry = entries_array[i];
+					var overlay_name = "overlay" + (i + 1).to_string();
+					var work_name = "work" + (i + 1).to_string();
+					args += "--dir";
+					args += entry.value;
+					args += "--overlay-src";
+					args += entry.value;
+					args += "--overlay";
+					args += GLib.Path.build_filename(upper_dir, overlay_name);
+					args += GLib.Path.build_filename(work_dir, work_name);
+					args += entry.value;
+				}
 			}
-			
-			// Set working directory
-			// If working_dir is provided, use it; otherwise default to first project root
+
 			if (working_dir != "") {
 				args += "--chdir";
 				args += working_dir;
-			} else if (entries_array.length > 0) {
+			} else if (this.overlay.overlay_map.size > 0) {
+				var entries = this.overlay.overlay_map.entries.to_array();
+				var first = entries[0].value;
 				args += "--chdir";
-				args += entries_array[0].value;  // First project root path
+				args += first;
+			} else {
+				args += "--chdir";
+				args += home;
 			}
 			
 			// Add network args: If allow_network == false, add "--unshare-net"

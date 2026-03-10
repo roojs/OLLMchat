@@ -34,9 +34,9 @@ namespace OLLMtools.RunCommand
 	public class Scan : Object
 	{
 		/**
-		 * Project folder object (is_project = true) - provides access to project_files.
+		 * Project folder (is_project = true), or null; when null, run() returns immediately.
 		 */
-		private OLLMfiles.Folder project_folder;
+		private OLLMfiles.Folder? project_folder;
 		
 		/**
 		 * Base path of overlay upper directory.
@@ -61,12 +61,12 @@ namespace OLLMtools.RunCommand
 		/**
 		 * Constructor.
 		 * 
-		 * @param project_folder Project folder (provides access to project_files property)
+		 * @param project_folder Project folder, or null (run() will return immediately)
 		 * @param base_path Base path of overlay upper directory
 		 * @param overlay_map Maps overlay subdirectory names to real project paths
 		 */
 		public Scan(
-				OLLMfiles.Folder project_folder, 
+				OLLMfiles.Folder? project_folder,
 				string base_path, Gee.HashMap<string, string> overlay_map)
 		{
 			this.project_folder = project_folder;
@@ -82,6 +82,9 @@ namespace OLLMtools.RunCommand
 		*/
 		public async void run()
 		{
+			if (this.project_folder == null) {
+				return;
+			}
 			// Debug: Dump in-memory data structures before scanning
 			GLib.debug("Scan.run: Dumping in-memory data structures before scanning");
 			GLib.debug("Scan.run: all_files has %d entries", this.project_folder.project_files.all_files.size);

@@ -27,10 +27,9 @@ namespace OLLMtools.RunCommand
 	 */
 	public class Tool : OLLMchat.Tool.BaseTool, OLLMchat.Tool.WrapInterface
 	{
-		
-		// Base description (without directory note)
-	 
-		
+		private string desc_backing = "";
+		private string param_desc_backing = "";
+
 		// Base directory for command execution (project directory if available, otherwise home directory)
 		public string base_directory {
 			get {
@@ -40,24 +39,29 @@ namespace OLLMtools.RunCommand
 				return GLib.Environment.get_home_dir();
 			}
 		}
+			
+		public override string name { get { return "run_command"; } }
 		
-	public override string name { get { return "run_command"; } }
-	
-	public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
+		public override Type config_class() { return typeof(OLLMchat.Settings.BaseToolConfig); }
 		public override string title { get { return "Run Shell Commands Tool"; } }
 		public override string example_call {
 			get { return "{\"name\": \"run_command\", \"arguments\": {\"command\": \"ls -la\"}}"; }
 		}
 		public override string description { 
 			get {
-				return """
-Run a terminal command in the project's root directory (or specified working directory) and return the output.
-
+				var intro = "Run a terminal command in the home directory (or specified working directory) and return the output.";
+				var fs_perms = """
 File System Permissions:
-- The Run command tool normally works in the project directory and has read-write access to:
-  - The project directory - this is the main location that the user will want you to look at and update
-  - $HOME/playground (playground directory for cloning repos or creating scratch files) unless the users explitly says look in the playground - assume the user is talking about the project directory
-- Everything else is read-only
+- Default working directory is home. Use allow_write "yes" or "all" to allow writes; "no" (or default) gives a read-only filesystem.""";
+				if (this.project_manager != null && this.project_manager.active_project != null) {
+					intro = "Run a terminal command in the project's root directory (or specified working directory) and return the output.";
+					fs_perms = """
+File System Permissions:
+- You have read-write access to the project directory (main location to look at and update) and $HOME/playground. Use allow_write "all" to request write access outside the project (user will be prompted). Otherwise writes are limited to the project.""";
+				}
+				this.desc_backing = intro + """
+
+""" + fs_perms + """
 
 Network Access:
 - By default, this tool does not have access to the network.
@@ -66,14 +70,23 @@ Network Access:
 
 If the command fails, you should handle the error gracefully and provide a helpful error message to the user.
 """;
+				return this.desc_backing;
 			}
 		}
 		
 		public override string parameter_description { get {
-			return """
+			var	working_dir_default = "Defaults to home.";
+			var	allow_write_line = "@param allow_write {string} [optional] \"project\" (default), \"yes\", \"no\", or \"all\". \"all\" or \"yes\" = allow write everywhere. \"no\" = read-only filesystem.";
+			if (this.project_manager != null && this.project_manager.active_project != null) {
+				working_dir_default = "Defaults to the project directory.";
+				allow_write_line = "@param allow_write {string} [optional] \"project\" (default), \"yes\", \"no\", or \"all\". \"all\" = allow write everywhere (user is prompted). \"yes\" and \"no\" = allow write in project directory only.";
+			}
+			this.param_desc_backing = """
 @param command {string} [required] The terminal command to run.
-@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. Defaults to the project directory.
-@param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.""";
+@param working_dir {string} [optional] The working directory where the command will be executed. Should be an absolute path. """ + working_dir_default + """
+@param network {boolean} [optional] Whether to allow network access. Defaults to false. For fetching websites or web content, use the `web_fetch` tool instead.
+""" + allow_write_line;
+			return this.param_desc_backing;
 		} }
 		
 		/**
@@ -82,11 +95,11 @@ If the command fails, you should handle the error gracefully and provide a helpf
 		 */
 		public OLLMfiles.ProjectManager? project_manager { get; set; default = null; }
 		
-	public Tool(OLLMfiles.ProjectManager? project_manager = null)
-	{
-		base();
-		this.project_manager = project_manager;
-	}
+		public Tool(OLLMfiles.ProjectManager? project_manager = null)
+		{
+			base();
+			this.project_manager = project_manager;
+		}
 		
 		public OLLMchat.Tool.BaseTool clone()
 		{
