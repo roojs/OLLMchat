@@ -16,8 +16,6 @@ Use the **reference information** (plan_iterate or plan_create output in Precurs
 
 ---
 
-## Execution
-
 Report what was written and whether it was successful. **Always use link references** when referring to the file (and, for write_chunk, the updated location).
 
 **write_file:** Report e.g. "Successfully wrote plan to [plan-name.md](/path/to/docs/plans/plan-name.md)" or that the write failed.

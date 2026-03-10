@@ -12,8 +12,6 @@ Emit one or more **codebase_search** tool calls to find coding standards, style 
 
 ---
 
-## Execution
-
 From Precursor (codebase_search results), write **Result summary** only: what you searched for, whether you found relevant references, and **links to all key relevant information** inline. Use markdown links to specific docs and sections (e.g. `[avoid temporary variables](/path/to/CODING_STANDARDS.md#avoid-temp-variables)`). No separate references section; the summary carries the links so consumers know which parts of the output to use. **If the search does not return enough information**, say so in the summary and recommend considering the **analyze_docs** skill to read a specific file and extract that information.
 
 **Example (found):**

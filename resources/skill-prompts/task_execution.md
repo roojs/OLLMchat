@@ -67,6 +67,5 @@ A fenced code block with filename in the info string, e.g. ```findings.md … ``
 
 {executor_input}
 
-## Retry feedback (please address if non-empty)
-
+{executor_previous_analysis}
 {executor_retry_issues}

@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 You receive a **single output** (the fetched web page content, or combined contents from multiple fetches). Report results based on your analysis of that content.
 
 - **Result summary**: What this task did (synthesized the fetched pages) and whether that answered the goal (enough to proceed / nothing relevant). **List sections of your output as links** — very important, so later tasks can see what is available. **Never use generic titles** like "Detail" or "Synthesis and sample code"; use a **specific** title that states what the section is telling the reader (e.g. "Vala async: yield, main loop, and example of calling async methods", "Example: fetching and parsing API response"). Do not use a literal "Goal:" line.

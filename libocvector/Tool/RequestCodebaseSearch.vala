@@ -332,8 +332,8 @@ namespace OLLMvector.Tool
 				this.query
 			);
 			
-			// Step 5: Format results for LLM consumption (SearchResult.to_markdown)
-			var formatted = this.format_results(results, this.query);
+			// Step 5: Format results for LLM consumption (load buffers so code_snippet has content)
+			var formatted = yield this.format_results(results, this.query);
 			
 			 
 			// Send output as second message via message_created (same as commands)
@@ -384,12 +384,13 @@ namespace OLLMvector.Tool
 		
 		/**
 		 * Format search results for LLM consumption using SearchResult.to_markdown().
+		 * Loads each result's file buffer so code snippets are populated.
 		 *
 		 * @param results Search results to format
 		 * @param query Original search query (unused; no-results message is fixed)
 		 * @return Formatted string matching CLI output
 		 */
-		private string format_results(
+		private async string format_results(
 			Gee.ArrayList<OLLMvector.Search.SearchResult> results,
 			string query
 		)
@@ -398,6 +399,19 @@ namespace OLLMvector.Tool
 				return "No results found.";
 			}
 			const int max_snippet_lines = 50;
+			// Load each result's file buffer so code_snippet() returns content
+			foreach (var result in results) {
+				var file = result.file();
+				file.manager.buffer_provider.create_buffer(file);
+				if (file.buffer.is_loaded) {
+					continue;
+				}
+				try {
+					yield file.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.debug("codebase_search format: Failed to load %s: %s", file.path, e.message);
+				}
+			}
 			var output = new StringBuilder();
 			output.append_printf("Found %d result(s):\n\n", results.size);
 			foreach (var result in results) {

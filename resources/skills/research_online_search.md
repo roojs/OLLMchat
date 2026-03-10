@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 **At execution you do not run searches.** You only interpret. You receive a **single output** (the combined search results from the refinement tool calls). Output **only** a **## Result summary** — no other sections.
 
 - Prefer authoritative sources (official docs, GNOME/Vala docs, reputable blogs).

@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 Take the **input, goals, and reference documents** and write a plan to solve the issues needed. Output the plan as your response (Result summary + plan body). Do **not** code initially: break down the task into **sections and files that need changing** and **describe the changes**. If the work involves complexity, use **phases**.
 
 **Summary — outstanding items:** It is **very important** that the summary contains any items that are **outstanding** and need to be looked at. If we have everything we need, say that the **initial plan is complete** and the next step can be the plan code writing skill (implement_code). If there are gaps, list them clearly so more research or refinement can be done.

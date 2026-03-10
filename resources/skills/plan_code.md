@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 Take the **plan content** and **any other references** (in Precursor) and output a **list of changes** — where they should occur (which files, before/after, AST location) and **fenced code blocks** for each replacement. You do **not** actually apply the changes; you only list them. Follow the plan you receive.
 
 For each change, state whether it is **add**, **replace**, or **delete**. Give: **what** (brief description), **where** (file path, and if relevant AST reference or “before X” / “after Y”), then a fenced code block with the **actual code** (the new code for add/replace, or indicate deletion). **Always use link references** when referring to files (e.g. [filename](/path/to/file) or [symbol](/path/to/file#AST-path)).

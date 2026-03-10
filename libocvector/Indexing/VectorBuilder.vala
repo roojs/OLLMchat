@@ -222,11 +222,10 @@ namespace OLLMvector.Indexing
 				throw new GLib.IOError.FAILED("Invalid embed_model configuration");
 			}
 			
-			// Create client from connection
-			var embed_response = yield new OLLMchat.Client(
-				this.config.connections.get(tool_config.embed.connection)
-			).embed_array(
-				tool_config.embed.model, 
+			var embed_conn = this.config.connections.get(tool_config.embed.connection);
+			var model_name = yield tool_config.embed.model_obj.customize(embed_conn, tool_config.embed.options);
+			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
+				model_name,
 				documents,
 				-1,
 				false,
@@ -298,8 +297,9 @@ namespace OLLMvector.Indexing
 			documents.add(description);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var embed_conn = this.config.connections.get(tool_config.embed.connection);
+			var model_name = yield tool_config.embed.model_obj.customize(embed_conn, tool_config.embed.options);
 			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
-				tool_config.embed.model, documents, -1, false, tool_config.embed.options
+				model_name, documents, -1, false, tool_config.embed.options
 			);
 			if (embed_response.embeddings.size == 0) {
 				return;

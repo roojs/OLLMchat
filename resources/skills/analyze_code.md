@@ -11,8 +11,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 You are given one piece of code (from Precursor — the resolved content of the task's References) and **What is needed**. Reply to What is needed. If the code is not relevant, say so.
 
 Answer with a **summary** that includes the link to the code and may include a short code example. You can put a code example in a section with a **descriptive** heading (e.g. ## Loading a skill from a path — the heading should describe what the example shows) and link to it; or include the response inline in the summary.

@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 You receive a **plan with existing code** (from a previous plan_code or plan_code_iterate run) and often **clarifications** about existing problems (in What is needed or Precursor). Produce a **revised list of changes** that **replaces** the previous proposals. You do **not** apply changes; you only output the revised list.
 
 **Existing code:** If a section or change does **not** need changing, output the existing code as-is (same ## {section}, ### Changes proposed, what/where, and fenced code). That keeps it in the plan.

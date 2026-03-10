@@ -305,7 +305,6 @@ namespace OLLMchat.Call
 					if (!this.options.has_values()) {
 						return null;
 					}
-					// Serialize options and convert hyphen keys to underscores for Ollama API
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
 					// Create a new object with renamed keys (hyphens to underscores)

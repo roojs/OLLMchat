@@ -89,7 +89,7 @@ namespace OLLMvector.Tool
 		 * Sets up default values for embed and analysis model configurations.
 		 * 
 		 * Sets default model names, options, and connection:
-		 * - Embed: model "bge-m3:latest", temperature 0.0, num_ctx 2048
+		 * - Embed: model "bge-m3:latest", temperature 0.0, num_ctx 131072 (128k for long chunks)
 		 * - Analysis: model "qwen3:1.7b", temperature 0.0 (smaller, faster default)
 		 * - Both use the provided connection URL
 		 * 
@@ -101,9 +101,10 @@ namespace OLLMvector.Tool
 				connection = connection_url,
 				model = "bge-m3:latest"
 			};
+			// 128k context for embeddings so long code/document chunks fit (Ollama needs temp model via num_ctx)
 			this.embed.options = new OLLMchat.Call.Options() {
 				temperature = 0.0,
-				num_ctx = 2048
+				num_ctx = 131072
 			};
 			
 			this.analysis = new OLLMchat.Settings.ModelUsage() {

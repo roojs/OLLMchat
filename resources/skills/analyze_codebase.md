@@ -27,8 +27,6 @@ tools: codebase_search
 
 ---
 
-## Execution
-
 Summarize the result in a **short paragraph** that lists all relevant information found, with links (whole file or part of file) and why each is relevant. If you did not find anything, say so clearly. If a search did not produce useful results, say that (e.g. searching for X was not a good idea as it did not produce any results).
 
 Use markdown links: whole file (path only) or part of file (path#anchor — use AST path format for code symbols, e.g. `#Namespace-Class-methodName`, not plain symbol names). Prefer symbol-level links (methods, classes) when a specific part is relevant; link to the whole file when the file as a whole is the unit of interest. Do not paste long code.

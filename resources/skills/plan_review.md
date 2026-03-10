@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 Read the **plan** and any **coding standards** (and referenced code) from Precursor. Compare the plan's implementation steps and described code to:
 
 - **Coding standards** — Note any violations; link to the relevant standard (e.g. from analyze_code_standards).

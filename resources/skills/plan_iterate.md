@@ -12,8 +12,6 @@ You receive **what is needed** for this task and a **summary of the task list so
 
 ---
 
-## Execution
-
 Input: the **previous plan** (in References — refiner ensures the plan file or plan content is in Precursor) and **What is needed** (what to change, e.g. "Add step for error handling", "Incorporate review feedback"). Take the input, goals, and the previous plan and produce **revised plan content**. Output the revised plan as your response (Result summary + plan body). Apply the requested changes while keeping the plan structure (Status, Purpose, Problem Summary, numbered sections, etc.). Do **not** code initially; describe changes. If the work involves complexity, use **phases**.
 
 **Summary — outstanding items:** It is **very important** that the summary contains any items that are **outstanding** and need to be looked at. If the revised plan is complete, say so and that the next step can be **implement_code** or **plan_apply_changes** as appropriate. If there are gaps, list them clearly.

@@ -89,6 +89,7 @@ namespace OLLMvector.Search
 		 * 
 		 * Uses metadata.file_id to lookup File via folder.project_files,
 		 * then uses buffer_provider to get code snippet using metadata.start_line and metadata.end_line.
+		 * Caller must ensure the file buffer is loaded (e.g. via read_async) before calling this.
 		 * 
 		 * @param max_lines Maximum number of lines to return (-1 for no limit)
 		 * @return Code snippet as string, truncated to max_lines if specified

@@ -116,14 +116,17 @@ namespace OLLMcoder.Task
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
 
+			var last_analysis = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
-				var tpl = this.executor_prompt(executor_input, last_issues);
+				var tpl = this.executor_prompt(executor_input, last_analysis, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				// Show user message sent to LLM so user can see what's going on (system is fixed, omit)
+				this.add_message(new OLLMchat.Message("ui", "**Execution prompt** (user message sent to LLM)\n\n" + tpl.filled_user));
 				this.add_message(new OLLMchat.Message("ui", "Interpreting result" + model_part));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var response_text = "";
@@ -131,6 +134,7 @@ namespace OLLMcoder.Task
 					var response = yield this.chat_call.send(messages, null);
 					response_text = (response != null) ? response.message.content : "";
 				} catch (GLib.Error e) {
+					last_analysis = "";
 					last_issues = e.message;
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui-warning",
@@ -144,6 +148,7 @@ namespace OLLMcoder.Task
 				if (parser.exec_extract(this)) {
 					return;
 				}
+				last_analysis = response_text;
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
 					this.add_message(new OLLMchat.Message("ui-warning", "Executor try %d: %s".printf(try_count + 1, last_issues)));
@@ -171,16 +176,19 @@ namespace OLLMcoder.Task
 		 *   {executor_input}     <- tool_output + reference_content
 		 *                            (tool output: this run's or task's; reference content: resolved refs for this run; either can be empty)
 		 *
-		 *   ## Retry feedback (please address if non-empty)
-		 *   {executor_retry_issues} <- previous parse/send issues on retry; empty on first attempt
+		 *   {executor_previous_analysis} <- when non-empty: header "Previous analysis" + last attempt's response (header added by code)
+		 *   {executor_retry_issues}     <- when non-empty: header "Issues with it" + parse/send issues (header added by code)
 		 *
 		 * The executor interprets the Tool Output and/or Reference information (and other sections) and produces Result summary + body sections.
 		 *
 		 * @param executor_input combined tool output + reference content for the template
-		 * @param previous_issues parse/send issues from last attempt for retry; empty on first attempt
+		 * @param previous_analysis last attempt's executor response (for retry); empty on first attempt
+		 * @param previous_issues parse/send issues from last attempt; empty on first attempt
 		 */
 		private OLLMcoder.Skill.PromptTemplate executor_prompt(
-			string executor_input, string previous_issues = "") throws GLib.Error
+			string executor_input,
+			string previous_analysis = "",
+			string previous_issues = "") throws GLib.Error
 		{
 			var definition = this.parent.skill_manager.fetch(this.parent);
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
@@ -192,7 +200,10 @@ namespace OLLMcoder.Task
 				"skill_definition", definition.execute,
 				"project_description", project_description,
 				"executor_input", executor_input,
-				"executor_retry_issues", previous_issues);
+				"executor_previous_analysis", previous_analysis.strip() == "" ? "" :
+					 tpl.header_raw("Previous analysis", previous_analysis),
+				"executor_retry_issues", previous_issues.strip() == "" ? "" : 
+					tpl.header_raw("Issues with it", previous_issues));
 			return tpl;
 		}
 

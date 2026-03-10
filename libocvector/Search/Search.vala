@@ -189,14 +189,15 @@ namespace OLLMvector.Search
 			// Step 2: Query vectorization (convert text to embeddings)
 			GLib.debug("Vectorizing query: %s", normalized_query);
 			
-			// Get embedding connection using base class method
-			var connection = yield this.connection("embed");
-			
-			// Get model from tool config (already validated above)
+			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
-			
+			var model_name = yield tool_config.embed.model_obj.customize(
+				connection, tool_config.embed.options);
+
 			var client = new OLLMchat.Client(connection);
-			var embed_response = yield client.embed(tool_config.embed.model, normalized_query);
+			var embed_response = yield client.embed(
+				model_name, normalized_query, -1, false, tool_config.embed.options);
+
 			if (embed_response == null || embed_response.embeddings.size == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embedding");
 			}

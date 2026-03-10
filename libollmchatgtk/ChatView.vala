@@ -713,17 +713,9 @@ namespace OLLMchatGtk
 				return;
 			}
 
-			// End current block if we're in one
+			// End current block if we're in one (already adds trailing newline via renderer flush)
 			if (this.content_state != ContentState.NONE) {
 				this.end_block_direct(this.is_thinking);
-			}
-
-			// Add final newline
-			var buffer = this.get_current_buffer();
-			if (buffer != null) {
-				Gtk.TextIter end_iter;
-				buffer.get_end_iter(out end_iter);
-				buffer.insert(ref end_iter, "\n", -1);
 			}
 
 			// Reset state
@@ -758,13 +750,7 @@ namespace OLLMchatGtk
 			// Note: Performance metrics are now stored as "ui" messages in Session.finalize_streaming()
 			// and displayed via the message_created signal flow (ChatWidget.on_message_created()),
 			// so we don't need to display them here anymore.
-			// Add final newline
-			var buffer = this.get_current_buffer();
-			if (buffer != null) {
-				Gtk.TextIter end_iter;
-				buffer.get_end_iter(out end_iter);
-				buffer.insert(ref end_iter, "\n", -1);
-			}
+			// (Trailing newline already added by end_block_direct when content_state was set)
 
 			// Reset state
 			this.is_assistant_message = false;

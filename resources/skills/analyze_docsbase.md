@@ -21,8 +21,6 @@ tools: codebase_search
 
 ---
 
-## Execution
-
 Summarize the result in a **short paragraph** that lists all relevant information found, with links (whole file or part of file) and why each is relevant. If you did not find anything, say so clearly. If a search did not produce useful results, say that (e.g. searching for X was not a good idea as it did not produce any results).
 
 Use markdown links: whole file (path only) or part of file (path#heading — use GFM heading anchor for doc sections, e.g. `#skill-file-format`). Prefer section-level links when a section is the relevant unit; link to the whole file when the entire doc is relevant. Do not paste long doc text.

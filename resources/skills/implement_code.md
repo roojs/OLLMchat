@@ -14,8 +14,6 @@ Use the **reference information** (normally a plan, plus code references or stan
 
 ---
 
-## Execution
-
 Report what was changed and whether it was successful. **Always use link references** when referring to files and changes (e.g. [filename](/path/to/file) for the file; [symbol](/path/to/file#AST-path) for the changed location).
 
 **New file:** Report e.g. "Successfully wrote to [filename](/path/to/file)" or that the write failed.

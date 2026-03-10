@@ -114,9 +114,10 @@ namespace OLLMvector
 		{
 			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model
+				model_name
 			) {
 				input = "test",
 				options = tool_config.embed.options
@@ -185,11 +186,12 @@ namespace OLLMvector
 				return;
 			}
 			
-			var connection = yield this.connection("embed");
+			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model
+				model_name
 			) {
 				input = texts[0],
 				options = tool_config.embed.options
@@ -221,7 +223,7 @@ namespace OLLMvector
 			for (int i = 1; i < texts.length; i++) {
 				embed_call = new OLLMchat.Call.Embed(
 					connection,
-					tool_config.embed.model
+					model_name
 				) {
 					input = texts[i],
 					options = tool_config.embed.options
@@ -245,11 +247,12 @@ namespace OLLMvector
 		{
 			GLib.debug("Sending search query to embedder: %s", query);
 			
-			var connection = yield this.connection("embed");
+			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
+			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
 			var embed_call = new OLLMchat.Call.Embed(
 				connection,
-				tool_config.embed.model
+				model_name
 			) {
 				input = query,
 				options = tool_config.embed.options
