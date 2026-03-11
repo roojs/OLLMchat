@@ -55,8 +55,7 @@ namespace OLLMchat.Response
 		public string created_at { get; set; default = ""; }
 		public string thinking { get; set; default = ""; }
 		public bool is_thinking { get; set; default = false; }
-		public bool done { get; set; default = false; }
-		public string? done_reason { get; set; }
+		public string done_reason { get; set; default = ""; }
 		public int64 total_duration { get; set; default = 0; }
 		public int64 load_duration { get; set; default = 0; }
 		public int prompt_eval_count { get; set; default = 0; }

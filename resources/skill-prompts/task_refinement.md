@@ -75,11 +75,15 @@ The following illustrates the **shape** of the output. Use the same headings and
 *(Omit the ## Tool Calls section entirely if no tool calls are needed; otherwise one fenced block per call.)*
 {toolcall4/end}
 
+## Task reference naming (critical)
+
+When a task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens. Link format: `task://{slug}.md` or `task://{slug}.md#section`. Example: "Analysis Current Structure" → `task://analysis-current-structure.md`. Use the slug in the link; the link label can be any readable text.
+
 ## Reference link types (use only these)
 
 - **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
 - **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code — use the **AST path** format: hyphen-separated, e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Namespace parts use `.`; class and method parts use `-`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`. Do **not** use plain symbol names like `#task_creation_prompt`; the runner expects the full AST path. Output and References can use this form so the runner injects that symbol. Path: absolute path plus `#anchor`. Do **not** use relative paths.
-- **Task output:** Only **completed** tasks have output. When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer with `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)` (slug = task name lowercased, non-alphanumeric → hyphen). Omit Name when no later task references this task's output.
+- **Task output:** Only **completed** tasks have output. When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer using the **slug** in the link (see **Task reference naming** above): e.g. `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)`. Omit Name when no later task references this task's output.
 - **URL:** `[Title](https://…)` - when the task needs external content and the skill has a tool that can fetch web pages (e.g. web_fetch). Use http or https URLs. If the skill does not have a web-fetch tool, do not include URL references; remove any URLs that appear in references you received (e.g. from prior task Detail).
 
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.

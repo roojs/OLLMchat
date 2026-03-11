@@ -25,6 +25,9 @@ namespace Markdown.Document
 		public Gee.HashMap<string, Block> headings {
 			get; private set; default = new Gee.HashMap<string, Block>(); }
 
+		/** Heading keys in document order; appended when a heading is registered. Use for step parsing so order is stable. */
+		public Gee.ArrayList<string> header_list { get; private set; default = new Gee.ArrayList<string>(); }
+
 		/** Call when a top-level heading block is adopted; keeps headings in sync. Key is GFM-style anchor (lowercase, non-alphanumeric → hyphen, trimmed). Only stores the first occurrence of each key. */
 		internal void register_heading(Block b)
 		{
@@ -38,6 +41,7 @@ namespace Markdown.Document
 				return;
 			}
 			this.headings.set(key, b);
+			this.header_list.add(key);
 		}
 
 		/** Create a new node (Block or Format) with uid from this document; caller may adopt it. */

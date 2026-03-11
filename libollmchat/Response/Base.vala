@@ -27,9 +27,24 @@ namespace OLLMchat.Response
 	 */
 	public abstract class Base : Object, Json.Serializable
 	{
+		/**
+		 * Connection settings for the API endpoint.
+		 * Internal reference only; not serialized to/from JSON.
+		 */
 		public Settings.Connection? connection { get; set; }
+		/**
+		 * Internal response identifier from the API.
+		 */
 		protected string id = "";
+		/**
+		 * Assistant message content.
+		 * Set when streaming completes or when the request is cancelled.
+		 */
 		public Message? message { get; set; default = null; }
+		/**
+		 * True when the response is complete or the request was cancelled.
+		 */
+		public bool done { get; set; default = false; }
 
 		protected Base(Settings.Connection? connection = null)
 		{

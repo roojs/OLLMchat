@@ -305,7 +305,8 @@ Don't forget to close it.
 			
 			// Check if response is actually done
 			if (!response.done) {
-				GLib.debug("Request.on_message_completed: Response is not done, skipping (response.done=%s)", response.done.to_string());
+				GLib.debug("Request.on_message_completed: Response is not done, skipping (response.done=%s)",
+				 response.done.to_string());
 				return;
 			}
 		

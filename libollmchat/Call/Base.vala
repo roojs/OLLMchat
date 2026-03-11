@@ -228,11 +228,12 @@ namespace OLLMchat.Call
 				input_stream = yield this.connection.soup.send_async(
 						message, GLib.Priority.DEFAULT, this.cancellable);
 			} catch (GLib.IOError e) {
-				if (e.code == GLib.IOError.CANCELLED) {
-					// User cancelled - this is expected, don't throw
-					return;
-				}
-				throw e;
+				if (this.cancellable == null || !this.cancellable.is_cancelled())
+					throw e;
+				// User cancelled - set done message so callers never see null
+				this.streaming_response.message = new Message("assistant", "");
+				this.streaming_response.done = true;
+				return;
 			}
 			
 			if (message.status_code != 200) {
@@ -262,11 +263,12 @@ namespace OLLMchat.Call
 			try {
 				yield this.process_json_streaming(input_stream, on_chunk);
 			} catch (GLib.IOError e) {
-				if (e.code == GLib.IOError.CANCELLED) {
-					// User cancelled during streaming - this is expected, don't throw
-					return;
-				}
-				throw e;
+				if (this.cancellable == null || !this.cancellable.is_cancelled())
+					throw e;
+				// User cancelled - set done message so callers never see null
+				this.streaming_response.message = new Message("assistant", "");
+				this.streaming_response.done = true;
+				return;
 			}
 		}
 

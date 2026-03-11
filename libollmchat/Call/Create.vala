@@ -138,6 +138,7 @@ namespace OLLMchat.Call
 			GLib.debug("Create request URL: %s", url);
 			GLib.debug("Create request Body: %s", request_body);
 
+			this.streaming_response = new Response.Create(this.connection);
 			try {
 				yield this.handle_streaming_response(message, (chunk) => {
 					// Convert Json.Object to Response.Create

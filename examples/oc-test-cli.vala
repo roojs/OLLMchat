@@ -322,7 +322,7 @@ Examples:
 		}
 		stdout.printf("Content: %s\n", response.message.content);
 		stdout.printf("Done: %s\n", response.done.to_string());
-		if (response.done_reason != null) {
+		if (response.done_reason != "") {
 			stdout.printf("Done Reason: %s\n", response.done_reason);
 		}
 		

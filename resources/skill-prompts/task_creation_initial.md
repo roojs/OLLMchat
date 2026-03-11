@@ -75,7 +75,7 @@ Produce your response in the following structure. Use markdown **headings** for 
 1. **Original prompt** — Reproduce the user's request as stated (so the task list carries it). Fix any typos, misspellings, and grammar in the reproduced text.
 2. **Goals / summary** — One short paragraph: what we are trying to achieve with this task list (your reading of the request and what the tasks will accomplish).
 3. **Tasks** — Split into **task sections** when some tasks can run in parallel and others must run after. **Sections run sequentially** (section 2 starts only after all tasks in section 1 are done). **Within a section** tasks run **concurrently** (in parallel) — so **no task in a section may reference another task in the same section**; such references will not work. If a task needs the **Output** of another task (e.g. references `task://research-1.md`), put the **consumer** task in a **later** task section than the one that produces that output. Do **not** put both tasks in the same section. Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. If everything is sequential, use a single section. For each task provide:
-   - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis 2"). Use skill + number when another task will refer to this task's output (later tasks use e.g. `task://research-1.md`). If omitted, the Runner assigns one (skill + number) so tasks can be referred to in issue messages.
+   - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis Current Structure"). Use when another task will refer to this task's output. **Reference links use a slug:** lowercase the Name, replace spaces and non-alphanumeric with hyphens (e.g. "Analysis Current Structure" → `task://analysis-current-structure.md`). If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) — What we need from this task (or from this skill when one is used), in natural language.
    - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
    - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output (e.g. `task://research-1.md`, `task://research-1.md#result-summary`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
@@ -91,11 +91,28 @@ The output is parsed by a machine. You **must** follow this format exactly or th
 - **One line per field, no blank lines** — Each field is one line. Use exactly these labels **with no colon after the label**: **Name**, **What is needed**, **Skill**, **References**, **Expected output**, and optionally **Requires user approval**. Order: Name, What is needed, Skill, References, Expected output, then Requires user approval if needed. Every line starts with `-`.
 - **No variations** — Do not rename sections (e.g. "Task section 1" not "Research tasks"). Do not use different bold labels (e.g. "Skill" not "Assigned skill"). Use standard ASCII where possible (e.g. use `—` or "-" not `?` for dashes).
 
+## Task reference naming (critical)
+
+When one task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name:
+
+- **Rule:** From the task's **Name**, form the slug by: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens.
+- **Link format:** `task://{slug}.md` or `task://{slug}.md#section` for a specific part of the output.
+
+**Examples:**
+
+| Task Name (display)        | Reference link                    |
+|---------------------------|-----------------------------------|
+| Research 1                | `task://research-1.md`            |
+| Analysis Current Structure| `task://analysis-current-structure.md` |
+| Plan 2                    | `task://plan-2.md`                |
+
+So if you name a task **"Analysis Current Structure"**, later tasks must refer to it as `task://analysis-current-structure.md` — **not** `task://Analysis Current Structure.md` or `task://analysis current structure.md`. Use the slug in the link; the link label (e.g. `[Analysis Current Structure Results]`) can be any readable text.
+
 ## Reference link types (use only these)
 
 - **File:** `[Title](/path/to/file)` — use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
 - **File section:** `[Title](/path/to/file#anchor)` — when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats are supported: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code (e.g. reference a **method** or **class** by name so the Runner injects just that symbol). Use the section name or symbol name as the title (e.g. "Installation", "API overview", "parse_task_list", "Details"). Path: absolute path plus `#anchor`. Do **not** use relative paths.
-- **Task output:** When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer with `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)` (slug = task name lowercased, non-alphanumeric → hyphen). Omit Name when no later task references this output. A task that references another task's output (e.g. `task://research-1.md`) must be in a **later** task section; the producer and consumer cannot be in the same section.
+- **Task output:** When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer with the **slug** in the link: e.g. `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)`. The slug is the Name lowercased with spaces and non-alphanumeric replaced by hyphens (see **Task reference naming** above). Omit Name when no later task references this output. A task that references another task's output (e.g. `task://research-1.md`) must be in a **later** task section; the producer and consumer cannot be in the same section.
 - **URL:** `[Title](https://…)` — when the task needs external content. Use http or https URLs.
 
 Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.

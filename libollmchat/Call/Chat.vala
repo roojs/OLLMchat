@@ -99,9 +99,9 @@ namespace OLLMchat.Call
 		 * Current streaming response object (internal use).
 		 *
 		 * Used internally to track the streaming state during chat operations.
-		 * Also accessed by OLLMchatGtk for UI updates. Set to null when not streaming.
+		 * Also accessed by OLLMchatGtk for UI updates. Never null.
 		 */
-		public Response.Chat? streaming_response { get; set; default = null; }
+		public Response.Chat streaming_response { get; set; }
 		
 		/**
 		 * Reference to the agent handler that created this chat.
@@ -215,7 +215,7 @@ namespace OLLMchat.Call
 			this.http_method = "POST";
 			this.model = model;
 			// FID is owned by Session, not Chat (Chat is created per request by AgentHandler)
-			
+			this.streaming_response = new Response.Chat(connection, this);
 			// Always initialize with empty options - callers should set options after construction
 			this.options = new Call.Options();
 		}
@@ -474,7 +474,7 @@ namespace OLLMchat.Call
 			}
 			
 			// Reset state
-			this.streaming_response = null;
+			this.streaming_response = new Response.Chat(this.connection, this);
 			this.cancellable = cancellable;
 			
 			// Store provided messages in this.messages (for serialization/access)
@@ -537,15 +537,8 @@ namespace OLLMchat.Call
 		{
 			// chat_send signal emission removed - callers handle state directly after calling send()
 			
-			// Initialize streaming_response before starting stream to ensure it's never null
-			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.connection, this);
-			}
-			var response = (Response.Chat?)this.streaming_response;
-			if (response == null) {
-				throw new OllmError.FAILED("Streaming response is null after initialization");
-			}
- 
+			var response = this.streaming_response;
+
 			var url = this.build_url();
 			var request_body = this.get_request_body();
 			var message = this.connection.soup_message(this.http_method, url, request_body);
@@ -594,11 +587,7 @@ namespace OLLMchat.Call
 
 		private void process_streaming_chunk(Json.Object chunk)
 		{
-			// Ensure streaming_response exists (should be initialized in execute_streaming, but double-check)
-			if (this.streaming_response == null) {
-				this.streaming_response = new Response.Chat(this.connection, this);
-			}
-			var response = (Response.Chat?)this.streaming_response;
+			var response = this.streaming_response;
 
 			// Check if this is the first chunk (message is null before first chunk is processed)
 			bool is_first_chunk = (response.message == null);

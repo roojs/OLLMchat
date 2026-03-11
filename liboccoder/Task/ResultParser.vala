@@ -104,7 +104,7 @@ public class ResultParser : Object
 			}
 		}
 
-		foreach (var key in this.document.headings.keys) {
+		foreach (var key in this.document.header_list) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
 			}
@@ -160,7 +160,7 @@ public class ResultParser : Object
 		}
 
 		this.runner.pending = new List(this.runner);
-		foreach (var key in this.document.headings.keys) {
+		foreach (var key in this.document.header_list) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
 			}
@@ -273,6 +273,10 @@ public class ResultParser : Object
 				"Consider whether the field is wrongly named (fix the name to match a valid field) or " +
 				"whether its content belongs in one of the valid fields; then resubmit the task list " +
 				"with only the valid fields for each task.";
+		}
+		if (!t.skill_manager.validate(t)) {
+			var skill_name = t.task_data.get("Skill").to_markdown().strip();
+			this.issues += "\n" + "Task \"" + label + "\" references skill \"" + skill_name + "\", which is not in the available skills list.";
 		}
 	}
 

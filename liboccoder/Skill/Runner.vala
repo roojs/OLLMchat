@@ -164,13 +164,9 @@ namespace OLLMcoder.Skill
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
 					if (parser.issues == "") {
-						var skill_issues = this.pending.validate_skills();
-						if (skill_issues == "") {
-							this.pending.write("task_list.md", response);
-							yield this.handle_task_list(cancellable);
-							return;
-						}
-						parser.issues = skill_issues;
+						this.pending.write("task_list.md", response);
+						yield this.handle_task_list(cancellable);
+						return;
 					}
 					previous_proposal = parser.proposal;
 					previous_proposal_issues = parser.issues;
@@ -340,19 +336,11 @@ namespace OLLMcoder.Skill
 						"Task list iteration had issues:\n\n" + parser.issues.strip()));
 					continue;
 				}
-				var skill_issues = this.pending.validate_skills();
-				if (skill_issues == "") {
-					this.pending.goals_summary_md = existing_proposed.goals_summary_md;
-					this.pending.write("task_list_latest.md", response);
-					this.pending.write("task_list_completed.md",
-						this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
-					return;
-				}
-				parser.issues = skill_issues;
-				this.pending = existing_proposed;
-				this.add_message(new OLLMchat.Message("ui-warning",
-					"Task list iteration had issues:\n\n" + skill_issues.strip()));
-				continue;
+				this.pending.goals_summary_md = existing_proposed.goals_summary_md;
+				this.pending.write("task_list_latest.md", response);
+				this.pending.write("task_list_completed.md",
+					this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
+				return;
 			}
 			var fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
 			if (parser.issues != "") {
