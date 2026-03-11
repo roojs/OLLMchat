@@ -19,43 +19,33 @@
 namespace OLLMchat.Response
 {
 	/**
-	 * Message in an OpenAI chat completion choice.
-	 * role, content, and optional tool_calls (array of ToolCall).
-	 * finish_reason is set when this message is returned from streaming
-	 * (in the API it lives on the choice; we carry it on the message for convenience).
+	 * Delta object in an SSE chunk choice.
+	 * Optional content, role, and tool_calls (incremental).
 	 */
-	public class ChatCompletionMessage : Object, Json.Serializable
+	public class ChatCompletionDelta : Object, Json.Serializable
 	{
-		public string role { get; set; default = ""; }
 		public string content { get; set; default = ""; }
-		public Gee.ArrayList<Response.ToolCall> tool_calls { get; set;
-			default = new Gee.ArrayList<Response.ToolCall>(); }
-		/** Set by exec_stream() with the stream's finish_reason; not part of API message JSON. */
-		public string finish_reason { get; set; default = ""; }
+		public string role { get; set; default = ""; }
+		public Gee.ArrayList<Response.ToolCallDelta> tool_calls { get; set; 	default = new Gee.ArrayList<Response.ToolCallDelta>(); }
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
-			switch (property_name) {
-				case "finish_reason":
-					return null;
-				case "tool_calls":
-					if (this.tool_calls.size == 0) {
-						return null;
-					}
-					var arr = new Json.Array();
-					foreach (var tc in this.tool_calls) {
-						arr.add_element(Json.gobject_serialize(tc));
-					}
-					var node = new Json.Node(Json.NodeType.ARRAY);
-					node.init_array(arr);
-					return node;
-				default:
-					return default_serialize_property(property_name, value, pspec);
+			if (property_name != "tool_calls") {
+				return default_serialize_property(property_name, value, pspec);
 			}
+			if (this.tool_calls.size == 0) {
+				return null;
+			}
+			var arr = new Json.Array();
+			foreach (var tc in this.tool_calls) {
+				arr.add_element(Json.gobject_serialize(tc));
+			}
+			var node = new Json.Node(Json.NodeType.ARRAY);
+			node.init_array(arr);
+			return node;
 		}
 
-		public override bool deserialize_property(
-			string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		public override bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			if (property_name != "tool_calls") {
 				return default_deserialize_property(property_name, out value, pspec, property_node);
@@ -63,8 +53,7 @@ namespace OLLMchat.Response
 			this.tool_calls.clear();
 			var array = property_node.get_array();
 			for (int i = 0; i < array.get_length(); i++) {
-				var el = Json.gobject_deserialize(
-					typeof(Response.ToolCall), array.get_element(i)) as Response.ToolCall;
+				var el = Json.gobject_deserialize( typeof(Response.ToolCallDelta), array.get_element(i)) as Response.ToolCallDelta;
 				if (el != null) {
 					this.tool_calls.add(el);
 				}

@@ -133,13 +133,153 @@ namespace OLLMchat.Call
 
 		/**
 		 * Execute streaming request; consumes SSE, accumulates deltas into
-		 * a single ChatCompletionMessage and returns it with finish_reason.
-		 * Outstanding: wire SSE read loop and delta accumulation (see plan).
+		 * a single ChatCompletionMessage and returns it.
+		 * The stream's finish_reason is set on the returned message.
+		 *
+		 * @return accumulated message (role, content, tool_calls, finish_reason)
 		 */
 		public async Response.ChatCompletionMessage exec_stream() throws Error
 		{
 			var message = new Response.ChatCompletionMessage();
-			// TODO: wire SSE read loop and delta accumulation (see plan §1.4).
+			message.role = "assistant";
+
+			if (this.connection == null) {
+				throw new OllmError.INVALID_ARGUMENT("Connection is null");
+			}
+
+			var url = this.build_url();
+			var stream_orig = this.stream;
+			this.stream = true;
+			var request_body = this.get_request_body();
+			this.stream = stream_orig;
+			var soup_msg = this.connection.soup_message( this.http_method, url, request_body);
+
+			GLib.InputStream? input_stream = null;
+			try {
+				input_stream = yield this.connection.soup.send_async(
+					soup_msg, GLib.Priority.DEFAULT, this.cancellable);
+			} catch (GLib.IOError e) {
+				if (this.cancellable == null || !this.cancellable.is_cancelled()) {
+					throw e;
+				}
+				return message;
+			}
+
+			if (soup_msg.status_code != 200) {
+				if (input_stream != null && soup_msg.status_code == 400) {
+					var data_stream = new GLib.DataInputStream(input_stream);
+					string? line = null;
+					try {
+						line = yield data_stream.read_line_async(GLib.Priority.DEFAULT, this.cancellable);
+					} catch (GLib.IOError ignored) {
+					}
+					if (line != null && line.strip() != "") {
+						this.parse_error_from_json(line.strip(), "Stream error: ");
+					}
+				}
+				this.handle_message_error(soup_msg);
+			}
+
+			if (input_stream == null) {
+				throw new OllmError.FAILED("Failed to get response input stream");
+			}
+
+			var args_buffer = new Gee.ArrayList<string>();
+			var data_input = new GLib.DataInputStream(input_stream);
+
+			while (true) {
+				string? line = null;
+				try {
+					line = yield data_input.read_line_async(
+						GLib.Priority.DEFAULT, this.cancellable);
+				} catch (GLib.IOError e) {
+					if (e.code == GLib.IOError.CANCELLED) {
+						break;
+					}
+					throw e;
+				}
+
+				if (line == null) {
+					break;
+				}
+
+				var trimmed = line.strip();
+				if (trimmed.length == 0) {
+					continue;
+				}
+				if (!trimmed.has_prefix("data: ")) {
+					continue;
+				}
+				var payload = trimmed.substring(6).strip();
+				if (payload == "[DONE]") {
+					break;
+				}
+				if (!payload.has_suffix("}")) {
+					continue;
+				}
+
+				Response.ChatCompletionChunk? chunk = null;
+				try {
+					chunk = Json.gobject_from_data(typeof(Response.ChatCompletionChunk), payload, -1) as Response.ChatCompletionChunk;
+				} catch (Error e) {
+					continue;
+				}
+				if (chunk == null || chunk.choices.size == 0) {
+					continue;
+				}
+				var choice = chunk.choices.get(0);
+
+				if (choice.finish_reason != "") {
+					message.finish_reason = choice.finish_reason;
+					break;
+				}
+
+				var delta = choice.delta;
+				if (delta.content != "") {
+					message.content += delta.content;
+				}
+				if (delta.role != "") {
+					message.role = delta.role;
+				}
+				if (delta.tool_calls.size == 0) {
+					continue;
+				}
+				foreach (var tc in delta.tool_calls) {
+					int index = tc.index;
+					while (message.tool_calls.size <= index) {
+						message.tool_calls.add(new Response.ToolCall());
+						args_buffer.add("");
+					}
+					var tool_call = message.tool_calls.get(index);
+					if (tc.id != "") {
+						tool_call.id = tc.id;
+					}
+					if (tc.function.name != "") {
+						tool_call.function.name = tc.function.name;
+					}
+					if (tc.function.arguments != "") {
+						args_buffer.set(index, args_buffer.get(index) + tc.function.arguments);
+					}
+				}
+			}
+
+			for (int i = 0; i < args_buffer.size; i++) {
+				var arg_str = args_buffer.get(i).strip();
+				if (arg_str == "") {
+					continue;
+				}
+				try {
+					var parser = new Json.Parser();
+					parser.load_from_data(arg_str, -1);
+					var node = parser.get_root();
+					if (node != null && node.get_node_type() == Json.NodeType.OBJECT) {
+						message.tool_calls.get(i).function.arguments = node.get_object();
+					}
+				} catch (Error e) {
+					// leave arguments as empty Json.Object
+				}
+			}
+
 			return message;
 		}
 	}
