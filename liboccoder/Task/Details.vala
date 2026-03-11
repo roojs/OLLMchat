@@ -422,6 +422,8 @@ public class Details : OLLMchat.Agent.Base
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
+		// Load file reference buffers so reference_contents() can get content (same as code search tool)
+		yield this.runner.load_files(this.reference_targets);
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;

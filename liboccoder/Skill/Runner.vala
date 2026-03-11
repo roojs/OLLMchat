@@ -74,6 +74,34 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
+		 * Load file buffers for reference links so that get_contents / link_content
+		 * can read content from the buffer (same pattern as code search tool).
+		 * Links are assumed validated; for each file link, creates buffer and loads.
+		 *
+		 * @param links reference links (e.g. reference_targets or Tool.references)
+		 */
+		public async void load_files(Gee.Collection<Markdown.Document.Format> links)
+		{
+			var project = this.sr_factory.project_manager.active_project;
+			foreach (var link in links) {
+				if (link.scheme != "file") {
+					continue;
+				}
+				var resolved_path = link.is_relative ? link.abspath(project.path) : link.path;
+				var found = this.sr_factory.project_manager.get_file_from_active_project(resolved_path);
+				if (found == null) {
+					found = new OLLMfiles.File.new_fake(this.sr_factory.project_manager, resolved_path);
+				}
+				this.sr_factory.project_manager.buffer_provider.create_buffer(found);
+				try {
+					yield found.buffer.read_async();
+				} catch (GLib.Error e) {
+					GLib.debug("Runner.load_files: %s: %s", found.path, e.message);
+				}
+			}
+		}
+
+		/**
 		 * Resolve non-file reference content for task refs, document anchor, or http (deferred).
 		 * Do not add validation here; validation is done in Details.validate_references().
 		 * Call only for links that validation has accepted; never return "".

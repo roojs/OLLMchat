@@ -115,6 +115,8 @@ namespace OLLMcoder.Task
 				this.tool_run_result = yield tool_impl.execute(this.parent.chat(), this.tool_call, true);
 				tool_output = this.tool_call_details();
 			}
+			// Load file reference buffers so reference_contents() can get content (same as code search tool)
+			yield this.parent.runner.load_files(this.references);
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
 
