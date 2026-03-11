@@ -47,7 +47,11 @@ namespace OLLMcoder.Skill
 		public Definition fetch(OLLMcoder.Task.Details task)
 		{
 			var skill_name = task.task_data.get("Skill").to_markdown().strip();
-			return this.by_name.get(skill_name);
+			var definition = this.by_name.get(skill_name);
+			if (definition == null) {
+				GLib.critical("skill_manager.fetch: no definition for skill_name='%s' (by_name has %u skills)", skill_name, this.by_name.size);
+			}
+			return definition;
 		}
 
 		/**

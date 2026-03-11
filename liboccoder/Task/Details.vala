@@ -651,11 +651,12 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	internal string link_content(Markdown.Document.Format link)
 	{
+		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
 		if (link.path == "") {
 			var content = this.runner.reference_content(link);
 			if (content != "") {
 				return this.header_fenced(
-					"### Reference contents for " + link.title,
+					"### Reference contents for " + name,
 					content,
 					"markdown");
 			}
@@ -668,7 +669,7 @@ public class Details : OLLMchat.Agent.Base
 			var content = this.runner.reference_content(link);
 			if (content != "") {
 				return this.header_fenced(
-					"### Reference contents for " + link.title,
+					"### Reference contents for " + name,
 					content,
 					"markdown");
 			}
@@ -690,7 +691,7 @@ public class Details : OLLMchat.Agent.Base
 		}
 		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
 		return this.header_file(
-			"### Reference contents for " + link.title,
+			"### Reference contents for " + name,
 			found);
 	}
 
