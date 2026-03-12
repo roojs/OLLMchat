@@ -665,7 +665,7 @@ public class Details : OLLMchat.Agent.Base
 	 * @return fenced or file block for prompt, or "" if unresolved/empty
 	 */
 	internal string link_content(Markdown.Document.Format link)
-	{Reference contents for 
+	{
 		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
 		if (link.path == "") {
 			var content = this.runner.reference_content(link);

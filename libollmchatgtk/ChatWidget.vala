@@ -29,9 +29,7 @@ namespace OLLMchatGtk
 	 */
 	public class ChatWidget : Gtk.Box
 	{
-		[CCode (type = "OLLMchatUIChatView*", transfer = "none")]
 		public ChatView chat_view { get; private set; }
-		[CCode (type = "OLLMchatUIChatPermission*", transfer = "none")]
 		public ChatPermission permission_widget { get; private set; }
 		private ChatInput chat_input;
 		private ChatBar chat_bar;
@@ -43,7 +41,9 @@ namespace OLLMchatGtk
 		
 		private string? last_sent_text = null;
 		private int min_bottom_size = 115;
-		private bool _streaming = false;
+		/** Extra pixels for input area (margins, scrollbar). */
+		private const int INPUT_AREA_PADDING = 24;
+		private bool streaming = false;
 		/** True while restoring a session from history; used to keep autoscroll disabled until restoration is done. */
 		private bool restoring_session = false;
 		/** When true, ignore position changes (we are setting position programmatically). */
@@ -112,6 +112,8 @@ namespace OLLMchatGtk
 			this.chat_bar = new ChatBar(this.manager);
 
 			this.chat_input.send_clicked.connect(this.on_send_clicked);
+			this.chat_input.text_length_changed.connect(
+				this.on_input_text_length_changed);
 			this.chat_bar.send_requested.connect(() => {
 				string text = this.chat_input.get_text_to_send();
 				if (text.length > 0) {
@@ -182,7 +184,7 @@ namespace OLLMchatGtk
 
 			// When streaming, prevent user from dragging the paned separator (revert to full height)
 			this.paned.notify["position"].connect(() => {
-				if (this.locking_paned_position || !this._streaming) {
+				if (this.locking_paned_position || !this.streaming) {
 					return;
 				}
 				this.locking_paned_position = true;
@@ -209,7 +211,7 @@ namespace OLLMchatGtk
 		/** Updates streaming state: when running, hide text area (paned position = full); when stopped, restore position. */
 		private void streaming_state(bool streaming)
 		{
-			this._streaming = streaming;
+			this.streaming = streaming;
 			this.chat_input.set_input_editable(!streaming);
 			this.chat_input.set_input_sensitive(!streaming);
 			this.chat_bar.update_action_button_state(streaming);
@@ -235,13 +237,43 @@ namespace OLLMchatGtk
 			this.paned.set_cursor(null);
 			GLib.Idle.add(() => {
 				int h = this.paned.get_allocated_height();
-				int want = this.saved_bottom_height > 0 ? this.saved_bottom_height : this.min_bottom_size;
+				int want_40 = (int)(h * 0.4);
+				int want_60 = (int)(h * 0.6);
+				int want = this.saved_bottom_height > 0 ? this.saved_bottom_height : want_40;
+				if (want < this.min_bottom_size) {
+					want = this.min_bottom_size;
+				}
+				if (want < want_40) {
+					want = want_40;
+				}
+				if (want > want_60) {
+					want = want_60;
+				}
 				if (h > want) {
 					this.paned.set_position(h - want);
 				}
 				this.chat_view.scroll_to_bottom();
 				return false;
 			});
+		}
+
+		private void on_input_text_length_changed(int char_count)
+		{
+			if (this.streaming || this.locking_paned_position) {
+				return;
+			}
+			var h = this.paned.get_allocated_height();
+			if (h <= 0) {
+				return;
+			}
+			var min_input = (int)(h * 0.4);
+			var max_input = (int)(h * 0.6);
+			var content_h = this.chat_input.content_height_pixels() + INPUT_AREA_PADDING;
+			var want = content_h < min_input ? min_input : (content_h > max_input ? max_input : content_h);
+			var target_position = h - want;
+			this.locking_paned_position = true;
+			this.paned.set_position(target_position);
+			this.locking_paned_position = false;
 		}
 		
 		/**

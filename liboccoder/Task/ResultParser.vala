@@ -126,7 +126,7 @@ public class ResultParser : Object
 			var step = steps.get(i);
 			step.register_slugs(i);
 			foreach (var t in step.children) {
-				this.validate_task(t);
+				this.validate_task(t, MarkdownPhase.LIST);
 				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;
@@ -176,7 +176,7 @@ public class ResultParser : Object
 			var step = steps.get(i);
 			step.register_slugs(i);
 			foreach (var t in step.children) {
-				this.validate_task(t);
+				this.validate_task(t, MarkdownPhase.LIST);
 				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;
@@ -245,19 +245,28 @@ public class ResultParser : Object
 	 * has been run (during parsing, before this); this method only reads the task
 	 * name for issue messages and does not inject or set names.
 	 *
+	 * When ''phase'' is REFINEMENT, Name is not required (overlay keeps the existing
+	 * task name). Label for messages uses "(unnamed)" if Name is missing.
+	 *
 	 * Used by {@link parse_task_list} and {@link parse_task_list_iteration} so
 	 * both paths share the same rules.
 	 *
 	 * @param t the task to validate (its task_data keys are checked)
+	 * @param phase markdown phase; REFINEMENT skips Name requirement
 	 */
-	public void validate_task(Details t)
+	public void validate_task(Details t, MarkdownPhase phase)
 	{
-		var label = t.task_data.get("Name").to_markdown().strip();
+		var name_block = t.task_data.get("Name");
+		var label = (name_block != null) ? 
+			name_block.to_markdown().strip() : "(unnamed)";
 		if (t.task_data.has_key("Output")) {
 			this.issues += "\n" + "Task \"" + label + "\" must not contain Output " +
 				"(tasks in the list have no results yet).";
 		}
 		foreach (var req in required_keys()) {
+			if (phase == MarkdownPhase.REFINEMENT && req == "Name") {
+				continue;
+			}
 			if (!t.task_data.has_key(req)) {
 				this.issues += "\n" + "Task \"" + label + "\" is missing required field: \"" + req + "\". " +
 					"Add the missing field to that task (every task must include: " +
@@ -275,7 +284,8 @@ public class ResultParser : Object
 				"with only the valid fields for each task.";
 		}
 		if (!t.skill_manager.validate(t)) {
-			var skill_name = t.task_data.get("Skill").to_markdown().strip();
+			var skill_block = t.task_data.get("Skill");
+			var skill_name = (skill_block != null) ? skill_block.to_markdown().strip() : "";
 			this.issues += "\n" + "Task \"" + label + "\" references skill \"" + skill_name + "\", which is not in the available skills list.";
 		}
 	}
@@ -392,7 +402,13 @@ public class ResultParser : Object
 					"**Expected output**, **Skill call**).";
 				return;
 			}
-			task.update_props(list_block.to_key_map());
+			var refined_map = list_block.to_key_map();
+			var refined_task = new Details(task.runner, task.runner.sr_factory, task.runner.session, refined_map);
+			this.validate_task(refined_task, MarkdownPhase.REFINEMENT);
+			if (this.issues != "") {
+				break;
+			}
+			task.update_props(refined_map);
 			task.validate_references(MarkdownPhase.REFINEMENT);
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;

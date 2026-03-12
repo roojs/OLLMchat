@@ -42,11 +42,13 @@ The Runner executes one tool call per fenced code block. Each block must contain
 
 Produce your response with **## Task** (required). When the skill uses tools, also output **## Tool Calls**.
 
+**Task list item format:** Each list line must be exactly **Key** value — bold key name followed by a space and the value. Do **not** put a colon after the key (e.g. use **Skill** analyze_codebase not **Skill:** analyze_codebase). The value is the exact string to use (e.g. the skill name, the description, the links).
+
 1. **## Task** A single list with one item. That item is a nested list with:
-   - **What is needed**
-   - **Skill**
+   - **What is needed** *(description)*
+   - **Skill** *(exact skill name from the coarse task, no colon after "Skill")*
    - **References** Markdown links per the reference link types below (project description, files, file sections, task outputs, or URLs). When this task references a prior task's output, include in References any links extracted from that output's Detail section (see "References from prior task output" above).
-   - **Expected output**
+   - **Expected output** *(description)*
 
 {toolcall4/start}
 2. **## Tool Calls** Zero or more fenced code blocks. One block per tool call. Each block body is a single JSON object with **name** (required) and optional **arguments** (object). Example: { "name": "read_file", "arguments": {"file_path": "/path/to/file", "start_line": 1, "end_line": 50} }. Do not include an id; the Runner assigns ids.
@@ -57,10 +59,10 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 ## Task
 
-- **What is needed:** *(e.g. find where X is implemented and what it returns.)*
-- **Skill:** *(skill name from the coarse task)*
-- **References:** [Settings.jsx](/abs/path/to/Settings.jsx)
-- **Expected output:** *(e.g. findings document with locations and behaviour.)*
+- **What is needed** *(e.g. find where X is implemented and what it returns.)*
+- **Skill** *(exact skill name from the coarse task — no colon after "Skill")*
+- **References** [Settings.jsx](/abs/path/to/Settings.jsx)
+- **Expected output** *(e.g. findings document with locations and behaviour.)*
 
 ## Tool Calls
 

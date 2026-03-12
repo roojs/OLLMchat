@@ -33,6 +33,9 @@ namespace OLLMchatGtk
 		/** Emitted when the user submits (Ctrl+Enter) with the message text. */
 		public signal void send_clicked(string text);
 
+		/** Emitted when the text content changes (keyup, paste, set_default_text). Parameter is current character count. */
+		public signal void text_length_changed(int char_count);
+
 		public ChatInput()
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
@@ -49,6 +52,11 @@ namespace OLLMchatGtk
 			this.scrolled.set_size_request(-1, 60);
 
 			this.buffer = new Gtk.TextBuffer(null);
+			this.buffer.changed.connect(() => {
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
+				this.text_length_changed(end_iter.get_offset());
+			});
 			this.text_view = new Gtk.TextView.with_buffer(this.buffer) {
 				wrap_mode = Gtk.WrapMode.WORD,
 				margin_start = 10,
@@ -64,6 +72,11 @@ namespace OLLMchatGtk
 
 			var controller = new Gtk.EventControllerKey();
 			controller.key_pressed.connect(this.on_key_pressed);
+			controller.key_released.connect((keyval, keycode, state) => {
+				Gtk.TextIter end_iter;
+				this.buffer.get_end_iter(out end_iter);
+				this.text_length_changed(end_iter.get_offset());
+			});
 			this.text_view.add_controller(controller);
 		}
 
@@ -71,6 +84,20 @@ namespace OLLMchatGtk
 		{
 			get { return ""; }
 			set { this.buffer.set_text(value, -1); }
+		}
+
+		/** Returns the pixel height needed to show all buffer content, or 0 if not yet allocated. */
+		public int content_height_pixels()
+		{
+			if (this.text_view.get_allocated_height() <= 0) {
+				return 0;
+			}
+			Gtk.TextIter end_iter;
+			this.buffer.get_end_iter(out end_iter);
+			int y = 0;
+			int height = 0;
+			this.text_view.get_line_yrange(end_iter, out y, out height);
+			return y + height;
 		}
 
 		/** Returns current buffer content, stripped; empty if nothing to send. */
