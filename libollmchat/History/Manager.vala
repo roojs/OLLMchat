@@ -236,8 +236,9 @@ namespace OLLMchat.History
 			this.session = loaded_session;
 			loaded_session.activate();
 			
-			// Emit signal for UI updates
 			this.session_activated(loaded_session);
+			// So UI has a single signal for unhide+button: agent_status_change
+			this.agent_status_change();
 		}
 		
 		 

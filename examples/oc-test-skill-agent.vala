@@ -309,8 +309,8 @@ Examples:
 				if (parser.issues != "") {
 					this.cl.printerr("Executor parse issues: %s\n", parser.issues);
 				}
-				if (detail.result != "") {
-					stdout.printf("%s", detail.result);
+				foreach (var ex in detail.exec_runs) {
+					stdout.printf("%s", ex.summary.to_markdown_with_content());
 				}
 				return;
 			}
@@ -338,8 +338,9 @@ Examples:
 				this.load_refinement(opt_input_refine, detail);
 				detail.build_exec_runs();
 				yield detail.run_exec();
-				if (detail.result != "") {
-					stdout.printf("%s", detail.result);
+				foreach (var ex in detail.exec_runs) {
+					stdout.printf("%s", ex.summary.to_markdown_with_content());
+					
 				}
 				return;
 			}

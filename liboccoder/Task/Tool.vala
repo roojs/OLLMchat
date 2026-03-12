@@ -28,8 +28,8 @@ namespace OLLMcoder.Task
 		public weak Details parent { get; set; }
 		/** Execution run id (e.g. "tool-0", "ref-1", "exec"). Empty for refinement-only. */
 		public string id { get; set; default = ""; }
-		/** Result summary from executor (Result summary section). Set by ResultParser.exec_extract(). */
-		public string summary { get; set; default = ""; }
+		/** Result summary heading block from executor (Result summary section). Set by ResultParser.exec_extract(). Never store as text — always the Block. */
+		public Markdown.Document.Block? summary { get; set; default = null; }
 		/** Executor output document. Set by ResultParser.exec_extract() on success. */
 		public Markdown.Document.Document? document { get; set; default = null; }
 		/** References for this run (one or more). Used by reference_contents() to build executor input. */

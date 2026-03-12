@@ -161,12 +161,10 @@ namespace OLLMchatGtk
 			});
 			this.manager.message_added.connect(this.on_message_created);
 			
-			// Connect to session_activated signal to set correct streaming state after restoration
+			// session_activated: only clear restoring_session and adjust scroll; do not set streaming state here
 			this.manager.session_activated.connect((session) => {
 				this.restoring_session = false;
 				GLib.Idle.add(() => {
-					// Use streaming_state() so paned, input, and button all match session.is_running
-					this.streaming_state(session.is_running);
 					if (session.is_running) {
 						this.chat_view.scroll_enabled = true;
 						this.chat_view.scroll_to_bottom();
@@ -175,7 +173,7 @@ namespace OLLMchatGtk
 				});
 			});
 
-			// When agent sets is_running, sync full streaming state (paned, input, button)
+			// Single source for unhide footer + Stop→Send: agent_status_change (chat start/end, session switch)
 			this.manager.agent_status_change.connect(() => {
 				this.streaming_state(this.manager.session.is_running);
 			});
@@ -678,15 +676,9 @@ namespace OLLMchatGtk
 
 		private void on_stop_clicked()
 		{
-		// Cancel the current request via session
 			this.manager.session.cancel_current_request();
-
-			// Finalize current message
 			this.chat_view.finalize_assistant_message();
-			this.streaming_state(false);
-			
-			// Conversation history is preserved in session
-			// The user can continue the conversation after stopping
+			// Unhide + Send button are driven only by agent_status_change (cancel_current_request emits it)
 		}
 
 		/**

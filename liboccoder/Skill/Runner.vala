@@ -19,9 +19,11 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * Agent that runs a single skill. Builds system message (template + available
-	 * skills + current skill) and user message (template or pass-through);
-	 * injects them and sends.
+	 * Agent that runs a single skill. Builds system message (template +
+	 * available skills + current skill) and user message (template or
+	 * pass-through); injects them and sends.
+	 *
+	 * @see OLLMchat.Agent.Base
 	 */
 	public class Runner : OLLMchat.Agent.Base
 	{
@@ -35,7 +37,8 @@ namespace OLLMcoder.Skill
 		 */
 		public bool writer_approval { get; set; default = false; }
 		/**
-		 * Used by task list flow (send_async(string)); set from template user_to_document().
+		 * Used by task list flow (send_async); set from template
+		 * user_to_document().
 		 */
 		public Markdown.Document.Document? user_request { get; set; default = null; }
 		/**
@@ -43,7 +46,8 @@ namespace OLLMcoder.Skill
 		 */
 		public OLLMcoder.Task.List completed { get; private set; }
 		/**
-		 * Tasks to be run (initial plan or new/revised from iteration). Only this list is ever run.
+		 * Tasks to be run (initial plan or new/revised from iteration).
+		 * Only this list is ever run.
 		 */
 		public OLLMcoder.Task.List pending { get; set; }
 
@@ -55,7 +59,10 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Used only in send_async when filling task_creation_initial (before user_request exists).
+		 * Used only in send_async when filling task_creation_initial
+		 * (before user_request exists).
+		 *
+		 * @return environment section text (date, OS, shell, workspace)
 		 */
 		public string env()
 		{
@@ -74,11 +81,13 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Load file buffers for reference links so that get_contents / link_content
-		 * can read content from the buffer (same pattern as code search tool).
-		 * Links are assumed validated; for each file link, creates buffer and loads.
+		 * Load file buffers for reference links so that get_contents /
+		 * link_content can read content from the buffer (same pattern as
+		 * code search tool). Links are assumed validated; for each file
+		 * link, creates buffer and loads.
 		 *
-		 * @param links reference links (e.g. reference_targets or Tool.references)
+		 * @param links reference links (e.g. reference_targets or
+		 *        Tool.references)
 		 */
 		public async void load_files(Gee.Collection<Markdown.Document.Format> links)
 		{
@@ -102,26 +111,36 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Resolve non-file reference content for task refs, document anchor, or http (deferred).
-		 * Do not add validation here; validation is done in Details.validate_references().
-		 * Call only for links that validation has accepted; never return "".
+		 * Resolve non-file reference content for task refs, document
+		 * anchor, or http (deferred). Do not add validation here;
+		 * validation is done in Details.validate_references(). Call only
+		 * for links that validation has accepted; never return "".
 		 *
-		 * @param link the reference link (scheme, path, href, hash already parsed)
+		 * @param link the reference link (scheme, path, href, hash
+		 *        already parsed)
 		 * @return resolved content for the link
 		 */
 		public string reference_content(Markdown.Document.Format link)
 		{
+			GLib.debug("reference_content: link scheme=%s path=%s href=%s hash=%s",
+				 link.scheme, link.path, link.href, link.hash);
 			if (link.scheme == "task") {
 				var slug = link.path.has_suffix(".md") ?
 					link.path.substring(0, link.path.length - 3) : link.path;
 				var task = this.completed.slugs.has_key(slug) ? 
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
 				var run = task.exec_runs.get(0);
-				return run.document.headings.get(link.hash).to_markdown_with_content();
+				var block = run.document.headings.get(link.hash);
+				GLib.debug("reference_content: task slug=%s run.document=%p headings.has_key(%s)=%s block=%p", 
+					slug, run.document, link.hash, run.document.headings.has_key(link.hash).to_string(), block);
+				return block.to_markdown_with_content();
 			}
 			if (link.path == "") {
 				var anchor = link.hash;
-				return this.user_request.headings.get(anchor).to_markdown_with_content();
+				var block = this.user_request.headings.get(anchor);
+				GLib.debug("reference_content: anchor href=%s user_request=%p headings.has_key(%s)=%s block=%p", 
+					link.href, this.user_request, anchor, this.user_request != null ? this.user_request.headings.has_key(anchor).to_string() : "n/a", block);
+				return block.to_markdown_with_content();
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
 				GLib.error("reference_content: http(s) links are not resolved");
@@ -129,6 +148,19 @@ namespace OLLMcoder.Skill
 			GLib.error("reference_content: unsupported link scheme or path (href=%s)", link.href);
 		}
 
+		/**
+		 * Build the task creation prompt (task_creation_initial.md).
+		 * Used by send_async before user_request exists.
+		 *
+		 * @param user_prompt raw user message content
+		 * @param previous_proposal previous LLM output when retrying
+		 * @param previous_proposal_issues parse/validation issues when
+		 *        retrying
+		 * @param skill_catalog manager for skill list
+		 * @param project_manager for env, project description, current
+		 *        file
+		 * @return filled template
+		 */
 		public PromptTemplate task_creation_prompt(
 			string user_prompt,
 			string previous_proposal,
@@ -157,6 +189,10 @@ namespace OLLMcoder.Skill
 			return tpl;
 		}
 
+		/**
+		 * Clear chat_call.tools so task creation and iteration requests
+		 * are sent as plain chat (no tool definitions).
+		 */
 		private void fill_tools()
 		{
 			this.chat_call.tools.clear();
@@ -164,8 +200,12 @@ namespace OLLMcoder.Skill
  
 
 		/**
-		 * Entry point. Sends user request only; when finished calls handle_task_list.
-		 * Current file and open files come from this.project_manager.
+		 * Entry point. Sends user request only; when finished calls
+		 * handle_task_list. Current file and open files come from
+		 * this.project_manager.
+		 *
+		 * @param in_message user message to send
+		 * @param cancellable optional cancellable
 		 */
 		public override async void send_async(OLLMchat.Message in_message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
@@ -216,7 +256,10 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Deals with the task list only. Called by send_async when it has a valid pending list.
+		 * Deals with the task list only. Called by send_async when it has
+		 * a valid pending list.
+		 *
+		 * @param cancellable optional cancellable
 		 */
 		private async void handle_task_list(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
@@ -284,7 +327,10 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Stub: request user approval before running writer tasks. Plan: implement UI.
+		 * Stub: request user approval before running writer tasks.
+		 * Plan: implement UI.
+		 *
+		 * @return true if approved (currently always true)
 		 */
 		private async bool request_writer_approval()
 		{
@@ -293,11 +339,16 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Build the task list iteration prompt (task_list_iteration.md).
-		 * Uses completed and existing_proposed (outstanding) and optional previous_proposed_md when retrying.
+		 * Uses completed and existing_proposed (outstanding) and optional
+		 * previous_proposed_md when retrying.
 		 *
-		 * @param previous_proposal_issues issues from last iteration parse/validation (empty when not retrying)
-		 * @param existing_proposed the current outstanding task list (pending before this iteration)
-		 * @param previous_proposed_md raw LLM response from last iteration when retrying; empty string when not
+		 * @param previous_proposal_issues issues from last iteration
+		 *        parse/validation (empty when not retrying)
+		 * @param existing_proposed the current outstanding task list
+		 *        (pending before this iteration)
+		 * @param previous_proposed_md raw LLM response from last
+		 *        iteration when retrying; empty string when not
+		 * @return filled template
 		 */
 		public PromptTemplate iteration_prompt(string previous_proposal_issues,
 			OLLMcoder.Task.List existing_proposed,
@@ -320,9 +371,10 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Task list iteration: send current list to LLM, parse response into this.pending.
-		 * On parse/validation failure restores this.pending = existing_proposed; uses raw
-		 * LLM response as previous_pry.
+		 * Task list iteration: send current list to LLM, parse response
+		 * into this.pending. On parse/validation failure restores
+		 * this.pending = existing_proposed; uses raw LLM response as
+		 * previous_proposed for next retry.
 		 */
 		public async void run_task_list_iteration() throws GLib.Error
 		{

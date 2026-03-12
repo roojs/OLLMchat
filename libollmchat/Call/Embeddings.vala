@@ -75,23 +75,32 @@ namespace OLLMchat.Call
 
 		public async Response.Embed exec_embedding() throws Error
 		{
-			var bytes = yield this.send_request(true);
-			var root = this.parse_response(bytes);
-			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllmError.FAILED("Invalid JSON response");
+			for (var attempt = 0; attempt < 3; attempt++) {
+				try {
+					var bytes = yield this.send_request(true);
+					var root = this.parse_response(bytes);
+					if (root.get_node_type() != Json.NodeType.OBJECT) {
+						throw new OllmError.FAILED("Invalid JSON response");
+					}
+					var generator = new Json.Generator();
+					generator.set_root(root);
+					var json_str = generator.to_data(null);
+					var embed = Json.gobject_from_data(
+						typeof(Response.Embed), json_str, -1) as Response.Embed;
+					if (embed == null) {
+						throw new OllmError.FAILED("Failed to deserialize embeddings response");
+					}
+					var obj = root.get_object();
+					embed.read_data(obj);
+					embed.read_usage(obj);
+					return embed;
+				} catch (Error e) {
+					if (attempt == 2) {
+						throw e;
+					}
+				}
 			}
-			var generator = new Json.Generator();
-			generator.set_root(root);
-			var json_str = generator.to_data(null);
-			var embed = Json.gobject_from_data(
-				typeof(Response.Embed), json_str, -1) as Response.Embed;
-			if (embed == null) {
-				throw new OllmError.FAILED("Failed to deserialize embeddings response");
-			}
-			var obj = root.get_object();
-			embed.read_data(obj);
-			embed.read_usage(obj);
-			return embed;
+			GLib.assert_not_reached();
 		}
 	}
 }

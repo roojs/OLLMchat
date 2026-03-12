@@ -82,8 +82,8 @@ public class List : Object
 	/**
 	 * Returns only ## Tasks and task sections. Runner assembles lead content
 	 * (original prompt, goals_summary_md) when building current_task_list.
-	 * LIST: all tasks with Output when exec_done. REFINE_COMPLETED: only completed
-	 * tasks (exec_done and result non-empty), Name + Output (Result summary); no References, no Tool Calls.
+	 * LIST: all tasks with ##### Result summary when exec_done. REFINE_COMPLETED: only completed
+	 * tasks (exec_done and exec_runs non-empty), Name + ##### Result summary (raw); no References, no Tool Calls.
 	 */
 	public string to_markdown(MarkdownPhase phase)
 	{

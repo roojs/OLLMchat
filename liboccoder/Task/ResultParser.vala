@@ -33,9 +33,9 @@ namespace OLLMcoder.Task
  *    ResultParser, ''extract_refinement(this)''; task is updated and
  *    ''result_parser.issues'' checked.
  *  * Execution: Tool.run() receives the executor response → new ResultParser,
- *    ''exec_extract(ex)''; ex.summary and ex.document are set. Details.run_exec() builds
- *    ''task.result'' from exec_runs summaries; on success Details sets ''exec_done''.
- *    ''extract_exec(Details)'' remains for legacy/test use (sets task.result only).
+ *    ''exec_extract(ex)''; ex.summary (heading block) and ex.document are set. Details.run_exec() builds
+ *    summaries on each Tool in exec_runs; on success Details sets ''exec_done''.
+ *    ''extract_exec(Details)'' remains for legacy/test use (adds one synthetic exec run).
  *
  * @see List
  * @see Step
@@ -285,7 +285,8 @@ public class ResultParser : Object
 		}
 		if (!t.skill_manager.validate(t)) {
 			var skill_block = t.task_data.get("Skill");
-			var skill_name = (skill_block != null) ? skill_block.to_markdown().strip() : "";
+			var skill_name = (skill_block != null) ? 
+				skill_block.to_markdown().strip() : "";
 			this.issues += "\n" + "Task \"" + label + "\" references skill \"" + skill_name + "\", which is not in the available skills list.";
 		}
 	}
@@ -460,7 +461,7 @@ public class ResultParser : Object
 
 	/**
 	 * Parse executor response into the given Tool (exec run). Called by Tool.run().
-	 * On success sets ex.summary and ex.document; on failure appends to issues.
+	 * On success sets ex.summary (heading Block) and ex.document; on failure appends to issues.
 	 *
 	 * @param ex the Tool (exec run) to fill with result summary and document
 	 * @return true on success; false on missing Result summary (issues appended)
@@ -473,8 +474,7 @@ public class ResultParser : Object
 				"Produce a result summary (what was found or produced; whether complete or more work needed).";
 			return false;
 		}
-		var summary = this.document.headings.get("result-summary").to_markdown_with_content().strip();
-		ex.summary = summary;
+		ex.summary = this.document.headings.get("result-summary");
 		ex.document = this.document;
 		return true;
 	}
@@ -482,9 +482,9 @@ public class ResultParser : Object
 	/**
 	 * Fills in the result summary on the task from executor response.
 	 *
-	 * Single pass: find section "Result summary" → ''task.result'' = section content.
+	 * Single pass: find section "Result summary" → add one synthetic exec run with that content.
 	 * If no "Result summary" section, appends to {@link issues}. No parsing of filename or other details.
-	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and task.result from exec_runs.
+	 * Used by legacy/test paths; normal execution uses exec_extract(Tool) and exec_runs.
 	 *
 	 * Content we expect (task_execution.md):
 	 * {{{
@@ -492,24 +492,23 @@ public class ResultParser : Object
 	 * We have the information we need; it is complete.
 	 * }}}
 	 *
-	 * @param task the task to set ''result'' on
+	 * @param task the task to add the synthetic run to
 	 */
 	public void extract_exec(Details task)
 	{
-		task.result = "";
+		task.exec_runs.clear();
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
 				"Produce a result summary (what was found or produced; whether complete or more work needed).";
 			return;
 		}
-		string[] parts = {};
-		foreach (var node in this.document.headings.get("result-summary").contents()) {
-			if (node is Markdown.Document.Block) {
-				parts += ((Markdown.Document.Block) node).to_markdown();
-			}
-		}
-		task.result = string.joinv("\n\n", parts).strip();
+		var factory = (OLLMchat.Agent.Factory) task.runner.sr_factory;
+		var ex = new Tool(factory, task.runner.session, task, "exec");
+		ex.summary = this.document.headings.get("result-summary");
+		ex.document = this.document;
+		task.exec_runs.add(ex);
+		task.exec_done = true;
 	}
 }
 

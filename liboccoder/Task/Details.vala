@@ -42,7 +42,7 @@ public enum MarkdownPhase
  * Execution: after refinement, the runner calls build_exec_runs() then run_exec().
  * exec_runs holds one Tool per run; each Tool.run() runs the tool (if any)
  * then the LLM.
- * result is built from exec_runs summaries; documents live on each Tool
+ * Summaries and documents live on each Tool in exec_runs.
  * (ex.document).
  */
 public class Details : OLLMchat.Agent.Base
@@ -62,7 +62,7 @@ public class Details : OLLMchat.Agent.Base
 	public bool requires_user_approval { get; set; default = false; }
 
 	/**
-	 * True after run_exec success; result then valid (from exec_runs summaries).
+	 * True after run_exec success; exec_runs then hold summaries and documents.
 	 */
 	public bool exec_done { get; set; default = false; }
 
@@ -82,8 +82,6 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Executor output summary (Result summary section).
 	 */
-	public string result { get; set; default = ""; }
-
 	/**
 	 * Runner; used for env, content_for_reference when filling prompts.
 	 */
@@ -97,7 +95,7 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Parser for last refine or executor response; result valid after exec_done
+	 * Parser for last refine or executor response; exec_runs valid after exec_done
 	 * (from exec_runs). Initialized in ctor so issues is always available.
 	 */
 	public ResultParser result_parser { get; set; }
@@ -124,7 +122,7 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Tool instances per execution run. Populated by build_* methods;
 	 * run_exec() runs each (tool if needed, then LLM).
-	 * REFINE_COMPLETED and task.result use their summaries.
+	 * REFINE_COMPLETED uses their summaries.
 	 */
 	public Gee.ArrayList<Tool> exec_runs { get; set; default = new Gee.ArrayList<Tool>(); }
 
@@ -193,7 +191,8 @@ public class Details : OLLMchat.Agent.Base
 		var path = GLib.Path.build_filename(base_dir, this.slug() + suffix + ".md");
 		var content = (this.exec_runs.size == 1 && this.exec_runs.get(0).document != null)
 			? this.exec_runs.get(0).document.to_markdown()
-			: this.result;
+			: (this.exec_runs.size == 1 && this.exec_runs.get(0).summary != null
+				? this.exec_runs.get(0).summary.to_markdown_with_content() : "");
 		try {
 			GLib.FileUtils.set_contents(path, content);
 		} catch (GLib.FileError e) {
@@ -231,6 +230,8 @@ public class Details : OLLMchat.Agent.Base
 			if (link.path == "") {
 				var anchor = link.hash;
 				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
+					GLib.debug("validate_references: anchor href=%s accepted (user_request=%p has_key(%s)=true)",
+						 href, this.runner.user_request, anchor);
 					continue;
 				}
 				this.issues += "\n" + "Invalid reference target \"" + href + "\": unknown anchor \"" + anchor + "\".";
@@ -260,16 +261,55 @@ public class Details : OLLMchat.Agent.Base
 				if (resolved_path == "") {
 					continue;
 				}
-				var resolved_file = GLib.File.new_for_path(resolved_path);
-				if (link.is_relative && project != null) {
-					var base_file = GLib.File.new_for_path(project.path);
-					if (!resolved_file.has_prefix(base_file) && !resolved_file.equal(base_file)) {
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is outside project folder.";
+
+				// When we have an active project, validate using project index first (no filesystem).
+				if (project != null) {
+					// Path is a known file in the project → valid.
+					if (project.project_files.child_map.has_key(resolved_path)) {
 						continue;
 					}
+					// Path is a known directory. At REFINEMENT stage reject; at LIST (task) stage allow.
+					if (project.project_files.folder_map.has_key(resolved_path)) {
+						if (stage == MarkdownPhase.REFINEMENT) {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is a directory; use a file path, not a folder.";
+							continue;
+						}
+						continue;
+					}
+					// Path not in project index. Check whether path is under project root (prefix).
+					var under_project = GLib.File.new_for_path(resolved_path);
+					var project_root = GLib.File.new_for_path(project.path);
+					var is_under_project = under_project.has_prefix(project_root) || under_project.equal(project_root);
+					// Relative: reject if outside project; if under project then not in index → error.
+					if (link.is_relative) {
+						if (!is_under_project) {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is outside project folder.";
+							continue;
+						}
+						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is not in project (use a file that exists in the project).";
+						continue;
+					}
+					// Absolute path not in index. If under project root → not in project (error). Outside → allow fallback.
+					if (is_under_project) {
+						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is not in project (use a file that exists in the project).";
+						continue;
+					}
+					// Outside project root → allow fall through to filesystem checks.
 				}
+
+				// Fallback: path not in project index (or no project). Check filesystem.
+				var resolved_file = GLib.File.new_for_path(resolved_path);
 				if (!resolved_file.query_exists()) {
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist (resolved from project folder).";
+					continue;
+				}
+				// Not a directory → valid file reference.
+				if (resolved_file.query_file_type(GLib.FileQueryInfoFlags.NONE) != GLib.FileType.DIRECTORY) {
+					continue;
+				}
+				if (stage == MarkdownPhase.REFINEMENT) {
+					this.issues += "\n" + "Invalid reference target \"" + href + "\": path is a directory; use a file path, not a folder.";
+					continue;
 				}
 				continue;
 			}
@@ -304,6 +344,11 @@ public class Details : OLLMchat.Agent.Base
 								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug + "\" has no section \"" + link.hash + "\".";
 								continue;
 							}
+							GLib.debug("validate_references: task href=%s slug=%s hash=%s accepted (exec_runs.size=%u headings.has_key=true)", 
+								href, slug, link.hash, ref_task.exec_runs.size);
+						} else {
+							GLib.debug("validate_references: task href=%s slug=%s accepted with exec_runs.size=0 (no section check)", 
+								href, slug);
 						}
 						break;
 					case MarkdownPhase.LIST:
@@ -520,7 +565,7 @@ public class Details : OLLMchat.Agent.Base
 	 * Task as markdown for a given phase. Does not add section headings
 	 * (e.g. `## Task`); caller adds header.
 	 * COARSE: creation keys. REFINEMENT: task list + `## Tool Calls` when tools exist.
-	 * LIST: task list + Output when exec_done.
+	 * LIST: task list + ##### Result summary (raw) when exec_done.
 	 * EXECUTION: same as REFINEMENT for Tool Calls.
 	 *
 	 * @param phase which phase (COARSE, REFINEMENT, LIST, REFINE_COMPLETED,
@@ -547,20 +592,32 @@ public class Details : OLLMchat.Agent.Base
 					}
 					break;
 				case "Output":
-					if ((phase != MarkdownPhase.LIST && phase != MarkdownPhase.REFINE_COMPLETED) || !this.exec_done || this.result == "") {
+					if ((phase != MarkdownPhase.LIST && phase != MarkdownPhase.REFINE_COMPLETED)
+						 || !this.exec_done || this.exec_runs.size == 0) {
 						continue;
 					}
-					// REFINE_COMPLETED: prefer exec_runs summary when present
-					var out_text = "";
+					// Output raw result summaries: numbered headings + pretext with task links
 					if (this.exec_runs.size > 0) {
-						foreach (var ex in this.exec_runs) {
-							out_text += ex.summary + ";  ";
+						var task_ref = "task://" + this.slug() + ".md";
+						ret += "#### Task Result Output summaries\n\n";
+						ret += this.exec_runs.size.to_string()
+							 + " subtool(s) were run — these are the outputs. ";
+						ret += "You can refer to them as ";
+						var ref_parts = new string[this.exec_runs.size];
+						for (var ri = 0; ri < this.exec_runs.size; ri++) {
+							var n = (ri + 1).to_string();
+							ref_parts[ri] = "[Result summary " + n + "](" 
+								+ task_ref + "#result-summary-" + n + ")";
 						}
-						out_text = out_text.replace("\n", " ").strip();
-					} else {
-						out_text = this.result.replace("\n", " ");
+						ret += string.joinv(", ", ref_parts) + ".\n\n";
+						var idx = 0;
+						foreach (var ex in this.exec_runs) {
+							idx++;
+							var title = "Result summary " + idx.to_string();
+							ex.summary.update_header(5, title);
+							ret += ex.summary.to_markdown_with_content().strip() + "\n\n";
+						}
 					}
-					ret += "- **Output** " + out_text + "\n";
 					continue;
 				default:
 					break;
@@ -719,6 +776,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		string[] parts = {};
 		foreach (var link in this.reference_targets) {
+			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s", 
+				link.scheme, link.path, link.href, link.hash);
 			var block = this.link_content(link);
 			if (block != "") {
 				parts += block;
@@ -805,18 +864,13 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Run all Tool exec runs (tool if needed, then LLM). Sets result from
-	 * exec_runs summaries.
+	 * Run all Tool exec runs (tool if needed, then LLM). Summaries stay on each Tool.
 	 * Documents stay on each Tool (ex.document).
 	 */
 	public async void run_exec() throws GLib.Error
 	{
 		foreach (var ex in this.exec_runs) {
 			yield ex.run();
-		}
-		this.result = "";
-		foreach (var ex in this.exec_runs) {
-			this.result += ex.summary + "\n\n";
 		}
 		this.exec_done = true;
 	}

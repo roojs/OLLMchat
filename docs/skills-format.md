@@ -33,11 +33,11 @@ So the summary drives both the initial plan and the decision to add more work. E
 
 ### Task list iteration
 
-After a round of task execution, the runner may send the **current task list** (with each completed task’s **Output** filled from its **Result summary**) to an **intermediary analyst**. The analyst:
+After a round of task execution, the runner may send the **current task list** (with each completed task’s **##### Result summary** block with raw summary text) to an **intermediary analyst**. The analyst:
 
 - Compares completed outputs to the **Goals / summary**.
 - If the goals are satisfied, returns the same list (no new tasks).
-- If not, returns the full list **plus new tasks** in the same format, in RAPIR order, using only skills from the catalog. New tasks do not have an Output line yet.
+- If not, returns the full list **plus new tasks** in the same format, in RAPIR order, using only skills from the catalog. New tasks do not have a result summary block yet.
 
 So the task list can grow over time; the summary stays the same and is the yardstick for “are we done?”.
 
@@ -53,7 +53,7 @@ Between task creation and execution, **each task is refined**. The refiner turns
 - **The skill document** — The full content of the assigned skill. The refiner uses it to see what the skill needs (inputs, tools) and what information to gather via tool calls before the skill runs.
 - **Tools definition** — Tool names, descriptions, and parameters. This defines how to invoke each tool (e.g. one fenced JSON block per call with **name** and **arguments**). The refiner builds the Tool Calls section in this format.
 - **Task reference contents** — The **resolved** content of this task's References only (environment, project description, current file, file contents, prior task outputs, URLs). The refiner uses this to fill in concrete values for the Skill call and to decide what to request via tool calls (e.g. avoid requesting a whole file if it's already in References; use a tool for a specific line range if needed).
-- **Completed tasks (so far)** — When present, a list of tasks that have already been executed. The runner injects this via the **`{completed_task_list}`** placeholder. Format: **task name** (from the task’s Name field) plus **Result summary** (the task’s Output / Result summary text). Reference links (file paths, task output anchors, URLs) live **inside** the summary content, not as a separate section. The refiner uses this to fill in References only when relevant; for tool calls, include prior task/output in References only when very relevant.
+- **Completed tasks (so far)** — When present, a list of tasks that have already been executed. The runner injects this via the **`{completed_task_list}`** placeholder. Format: **task name** (from the task’s Name field) plus **Result summary** (the task’s raw summary text; no **Output** line). Reference links (file paths, task output anchors, URLs) live **inside** the summary content, not as a separate section. The refiner uses this to fill in References only when relevant; for tool calls, include prior task/output in References only when very relevant.
 
 When a previous refinement attempt had issues (e.g. invalid tool, malformed output), the refiner also receives **Issues with the current call** and the **current task data** so it can correct and re-output.
 
@@ -98,7 +98,7 @@ Every skill must produce output in this shape so the runner can parse it and sho
 
 ### Required: Result summary
 
-- **## Result summary** (required) — The content of this section is what appears in the task list as the task’s **Output**.
+- **## Result summary** (required) — The content of this section is what appears in the task list under **##### Result summary** (raw; no **Output** line) as the task’s **Output**.
 - It must be a **summary of what the task did** to address the goal and **whether that answered it** (one or two sentences). Use outcome-focused language (e.g. "Searched the codebase for X; found Y — enough for a follow-up."). Do not use a literal "Goal:" line or describe system mechanics.
 - **Always list sections of the output as links** when describing what the task did (e.g. [Sources and findings](#sources-and-findings), [Issues that need rectifying](#issues-that-need-rectifying)). Use markdown links to each section heading — this is **very important**: it is the only visible information that later tasks can use to enhance their information; without section links, downstream tasks cannot discover what is in your output.
 - If nothing relevant was found, say that clearly (e.g. "Nothing relevant found.").

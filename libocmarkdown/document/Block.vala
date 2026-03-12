@@ -22,7 +22,10 @@ namespace Markdown.Document
 		public int align { get; set; }
 		public bool task_checked { get; set; }
 		public string code_text { get; set; default = ""; }
-		/** Leading indent for fenced code blocks (e.g. "   " when inside list item). Preserved for round-trip. */
+		/**
+		 * Leading indent for fenced code blocks (e.g. "   " when inside
+		 * list item). Preserved for round-trip.
+		 */
 		public string fence_indent { get; set; default = ""; }
 
 		public Block(FormatType k)
@@ -30,7 +33,13 @@ namespace Markdown.Document
 			this.kind = k;
 		}
 
-		/** Heading line plus section body as markdown. Used by Runner for template placeholders (e.g. project-description, current-file). */
+		/**
+		 * Heading line plus section body as markdown. Used by Runner for
+		 * template placeholders (e.g. project-description, current-file).
+		 *
+		 * @return this block as markdown including content nodes up to
+		 *         the next same-or-higher-level heading
+		 */
 		public string to_markdown_with_content()
 		{
 			var ret = this.to_markdown();
@@ -40,7 +49,36 @@ namespace Markdown.Document
 			return ret;
 		}
 
-		/** Content nodes from after this heading until the next heading. Default (with_sub_headings = false): stop at any heading; do not include sub-headings. with_sub_headings = true: stop at next heading with level <= this.level (include sub-headings). */
+		/**
+		 * Replace this heading’s title with new_title. Only for heading 
+		 * blocks (HEADING_1..6). depth is number of '#' (1–6).
+		 * and title. Note: only level and children are updated; kind is
+		 * unchanged, so kind can be inconsistent with level (e.g. kind
+		 * remains HEADING_2 while level is 5).
+		 *
+		 * @param depth number of '#' (1–6)
+		 * @param new_title heading line text
+		 */
+		public void update_header(uint depth, string new_title)
+		{
+			if (this.kind < FormatType.HEADING_1 || this.kind > FormatType.HEADING_6) {
+				return;
+			}
+			this.level = depth >= 1 && depth <= 6 ? depth : 2;
+			this.children.clear();
+			this.adopt(new Format.from_text(new_title));
+		}
+
+		/**
+		 * Content nodes from after this heading until the next heading.
+		 * Default (with_sub_headings = false): stop at any heading; do
+		 * not include sub-headings. with_sub_headings = true: stop at
+		 * next heading with level <= this.level (include sub-headings).
+		 *
+		 * @param with_sub_headings if true, include deeper headings until
+		 *        next same-or-higher level
+		 * @return list of nodes (blocks, lists, etc.) in document order
+		 */
 		public Gee.ArrayList<Node> contents(bool with_sub_headings = false)
 		{
 			var ret = new Gee.ArrayList<Node>();
@@ -68,7 +106,12 @@ namespace Markdown.Document
 			return ret;
 		}
 
-		/** Link nodes (Format with kind LINK) among this block's direct children. Each has .href and .title. */
+		/**
+		 * Link nodes (Format with kind LINK) among this block's direct
+		 * children. Each has .href and .title.
+		 *
+		 * @return list of Format nodes that are links
+		 */
 		public Gee.ArrayList<Format> links()
 		{
 			var ret = new Gee.ArrayList<Format>();
