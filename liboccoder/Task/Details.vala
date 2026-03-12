@@ -221,10 +221,10 @@ public class Details : OLLMchat.Agent.Base
 	 * Call from parsing process after fill_names (pass list so task-output
 	 * anchors can be validated).
 	 *
-	 * @param allow_http_refs true for task list (creation/iteration), false for refinement output. If true, http(s) URLs accepted; if false rejected (use tool calls in ## Tool Calls instead).
+	 * @param stage LIST = task creation/iteration (may reference pending tasks, http(s) URLs accepted); REFINEMENT = refinement output (completed tasks only, task ref must have section anchor that exists).
 	 * Task output refs use task URI only. Future: taskname plus tool id plus .md when TaskResult map exists.
 	 */
-	public void validate_references(bool allow_http_refs = false)
+	public void validate_references(MarkdownPhase stage = MarkdownPhase.REFINEMENT)
 	{
 		foreach (var link in this.reference_targets) {
 			var href = link.href;
@@ -237,7 +237,7 @@ public class Details : OLLMchat.Agent.Base
 				continue;
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
-				if (allow_http_refs) {
+				if (stage == MarkdownPhase.LIST) {
 					continue;
 				}
 				this.issues += "\n" +
@@ -273,6 +273,7 @@ public class Details : OLLMchat.Agent.Base
 				}
 				continue;
 			}
+			// task://slug.md or task://slug.md#section — stage LIST = task list/iteration (may reference pending); REFINEMENT = completed only, section must exist
 			if (link.scheme == "task") {
 				var path = link.path.strip();
 				if (path.contains("/")) {
@@ -285,23 +286,37 @@ public class Details : OLLMchat.Agent.Base
 					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path is empty.";
 					continue;
 				}
-				var ref_task = this.runner.completed.slugs.get(slug);
-				if (ref_task != null) {
-					continue;
-				}
-				ref_task = this.runner.pending.slugs.get(slug);
-				if (ref_task == null) {
-					var pending_keys = new Gee.ArrayList<string>();
-					pending_keys.add_all(this.runner.pending.slugs.keys);
-					var completed_keys = new Gee.ArrayList<string>();
-					completed_keys.add_all(this.runner.completed.slugs.keys);
-					this.runner.add_message(new OLLMchat.Message("ui",
-						"[dbg] task ref lookup failed: href=\"%s\" slug=\"%s\" (len=%d) | pending.slugs=[%s] | completed.slugs=[%s]".printf(
-							href, slug, slug.length,
-							string.joinv(", ", pending_keys.to_array()),
-							string.joinv(", ", completed_keys.to_array()))));
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
-					continue;
+				Details? ref_task = null;
+				switch (stage) {
+					case MarkdownPhase.REFINEMENT:
+						ref_task = this.runner.completed.slugs.get(slug);
+						if (ref_task == null) {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": no completed task for \"" + slug + "\" (references must be to completed tasks only).";
+							continue;
+						}
+						if (link.hash == "") {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": task reference must include a section anchor (e.g. task://" + slug + ".md#section-name).";
+							continue;
+						}
+						if (ref_task.exec_runs.size > 0) {
+							var run = ref_task.exec_runs.get(0);
+							if (!run.document.headings.has_key(link.hash)) {
+								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug + "\" has no section \"" + link.hash + "\".";
+								continue;
+							}
+						}
+						break;
+					case MarkdownPhase.LIST:
+					default:
+						ref_task = this.runner.completed.slugs.get(slug);
+						if (ref_task == null) {
+							ref_task = this.runner.pending.slugs.get(slug);
+						}
+						if (ref_task == null) {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
+							continue;
+						}
+						break;
 				}
 				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
 					this.issues += "\n" + "Reference target \"" + href + "\" refers to a task in the same or later section.";
@@ -650,7 +665,7 @@ public class Details : OLLMchat.Agent.Base
 	 * @return fenced or file block for prompt, or "" if unresolved/empty
 	 */
 	internal string link_content(Markdown.Document.Format link)
-	{
+	{Reference contents for 
 		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
 		if (link.path == "") {
 			var content = this.runner.reference_content(link);

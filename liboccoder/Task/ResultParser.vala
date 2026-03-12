@@ -127,7 +127,7 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t);
-				t.validate_references(true);
+				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;
 				}
@@ -177,7 +177,7 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t);
-				t.validate_references(true);
+				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
 					this.issues += "\n" + "Task (References): " + t.issues;
 				}
@@ -393,7 +393,7 @@ public class ResultParser : Object
 				return;
 			}
 			task.update_props(list_block.to_key_map());
-			task.validate_references(false);
+			task.validate_references(MarkdownPhase.REFINEMENT);
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}
