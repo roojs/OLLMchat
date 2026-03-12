@@ -75,6 +75,20 @@ namespace OLLMchat.Call
 
 		public async Response.Embed exec_embedding() throws Error
 		{
+			if (this.input.length == 0) {
+				GLib.critical("v1/embeddings: input array is empty; request would have no input (Ollama will override and may misbehave)");
+			} else {
+				bool all_empty = true;
+				foreach (var s in this.input) {
+					if (s != null && s.length > 0) {
+						all_empty = false;
+						break;
+					}
+				}
+				if (all_empty) {
+					GLib.critical("v1/embeddings: input array has only empty strings; request has no effective input");
+				}
+			}
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var bytes = yield this.send_request(true);

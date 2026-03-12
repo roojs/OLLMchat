@@ -98,7 +98,19 @@ namespace OLLMchat.Call
 					if (!this.options.has_values()) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
+					var options_node = Json.gobject_serialize(this.options);
+					var obj = options_node.get_object();
+					var new_obj = new Json.Object();
+					obj.foreach_member((o, key, node) => {
+						if (key == "num_ctx" || key == "num-ctx") {
+							return;
+						}
+						var new_key = key.contains("-") ? key.replace("-", "_") : key;
+						new_obj.set_member(new_key, node);
+					});
+					var new_node = new Json.Node(Json.NodeType.OBJECT);
+					new_node.set_object(new_obj);
+					return new_node;
 				
 				default:
 					return default_serialize_property(property_name, value, pspec);

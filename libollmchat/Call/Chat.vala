@@ -307,9 +307,12 @@ namespace OLLMchat.Call
 					}
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
-					// Create a new object with renamed keys (hyphens to underscores)
+					// Build request options: rename hyphens to underscores, exclude num_ctx (runner option, not valid in chat request)
 					var new_obj = new Json.Object();
 					obj.foreach_member((o, key, node) => {
+						if (key == "num_ctx" || key == "num-ctx") {
+							return;
+						}
 						var new_key = key.contains("-") ? key.replace("-", "_") : key;
 						new_obj.set_member(new_key, node);
 					});
