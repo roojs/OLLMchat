@@ -23,92 +23,6 @@ namespace OLLMvector
 	}
 	
 	/**
-	 * Container for batch vector operations.
-	 * 
-	 * Stores multiple vectors in a flat array for efficient batch
-	 * operations with FAISS. All vectors must have the same width
-	 * (dimension).
-	 */
-	public struct FloatArray
-	{
-		/**
-		 * Flat array containing all vector data (row-major order).
-		 */
-		public float[] data;
-		/**
-		 * Vector dimension (width of each vector).
-		 */
-		public int width;
-		/**
-		 * Number of vectors stored.
-		 */
-		public int rows;
-		
-		/**
-		 * Constructor.
-		 * 
-		 * @param width The dimension of each vector
-		 */
-		public FloatArray(int width)
-		{
-			this.data = {};
-			this.width = width;
-			this.rows = 0;
-		}
-		
-		/**
-		 * Adds a vector to the batch.
-		 * 
-		 * @param vector The vector to add (must match width)
-		 * @throws Error if vector dimension doesn't match width
-		 */
-		public void add(float[] vector) throws Error
-		{
-			if (vector.length != this.width) {
-				throw new GLib.IOError.FAILED(
-					"Vector width mismatch: expected " +
-					this.width.to_string() +
-					", got " +
-					vector.length.to_string()
-				);
-			}
-				
-			// Resize array to accommodate new vector
-			int current_size = this.data.length;
-			this.data.resize(current_size + this.width);
-			
-			// Copy vector data to the end of the flat array
-			for (int i = 0; i < this.width; i++) {
-				this.data[current_size + i] = vector[i];
-			}	
-			
-			this.rows++;
-		}
-		
-		/**
-		 * Retrieves a vector by index.
-		 * 
-		 * @param index The vector index (0-based)
-		 * @return The vector as a float array
-		 * @throws Error if index is out of range
-		 */
-		public float[] get_vector(int index) throws Error
-		{
-			if (index < 0 || index >= this.rows) {
-				throw new GLib.IOError.FAILED("Vector index out of range");
-			}
-			
-			var vector = new float[this.width];
-			int offset = index * (int)this.width;
-			for (int i = 0; i < this.width; i++) {
-				vector[i] = this.data[offset + i];
-			}
-			return vector;
-		}
-		
-	}
-
-	/**
 	 * FAISS index wrapper for vector storage and similarity search.
 	 * 
 	 * Provides thread-safe access to FAISS operations (FAISS itself is not
@@ -126,7 +40,7 @@ namespace OLLMvector
 	 * var index = new OLLMvector.Index("/path/to/index.faiss", 1024);
 	 * 
 	 * // Add vectors
-	 * var vectors = new OLLMvector.FloatArray(1024);
+	 * var vectors = new OLLMchat.Response.FloatArray(1024);
 	 * vectors.add(vector1);
 	 * vectors.add(vector2);
 	 * index.add_vectors(vectors);
@@ -229,7 +143,7 @@ namespace OLLMvector
 		 * @param vectors The FloatArray containing vectors to add
 		 * @throws Error if vector dimension doesn't match index dimension, or if FAISS operation fails
 		 */
-		public void add_vectors(FloatArray vectors) throws Error
+		public void add_vectors(OLLMchat.Response.FloatArray vectors) throws Error
 		{
 			if (vectors.rows == 0) {
 				return;

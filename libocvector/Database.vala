@@ -115,20 +115,15 @@ namespace OLLMvector
 			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
-			var embed_call = new OLLMchat.Call.Embed(
-				connection,
-				model_name
-			) {
-				input = "test",
-				options = tool_config.embed.options
+			var call = new OLLMchat.Call.Embeddings(connection, model_name) {
+				input = { "test" },
+				dimensions = -1
 			};
-			
-			var test_response = yield embed_call.exec_embed();
-			if (test_response.embeddings.size == 0) {
+			var test_response = yield call.exec_embedding();
+			if (test_response.embeddings.rows == 0) {
 				throw new GLib.IOError.FAILED("Failed to get test embedding to determine dimension");
 			}
-			
-			return (int)test_response.embeddings[0].size;
+			return test_response.embeddings.width;
 		}
 		
 		/**
@@ -151,7 +146,7 @@ namespace OLLMvector
 		 * 
 		 * @param vectors The FloatArray containing vectors to add
 		 */
-		public void add_vectors_batch(FloatArray vectors) throws GLib.Error
+		public void add_vectors_batch(OLLMchat.Response.FloatArray vectors) throws GLib.Error
 		{
 			// Check dimension matches
 			if (this.index.dimension != vectors.width) {
@@ -166,22 +161,8 @@ namespace OLLMvector
 			this.index.add_vectors(vectors);
 		}
 		
-		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws Error
-		{
-			var float_array = new float[embed.size];
-			for (int i = 0; i < embed.size; i++) {
-				var val = embed.get(i);
-				if (val == null) {
-					throw new GLib.IOError.FAILED("Null value in embed vector");
-				}
-				float_array[i] = (float)val;
-			}
-			return float_array;
-		}
-
 		public async void add_documents(string[] texts) throws Error
 		{
-			// Init index from first embed to get dimension
 			if (texts.length == 0) {
 				return;
 			}
@@ -189,57 +170,26 @@ namespace OLLMvector
 			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
-			var embed_call = new OLLMchat.Call.Embed(
-				connection,
-				model_name
-			) {
-				input = texts[0],
-				options = tool_config.embed.options
+			var call = new OLLMchat.Call.Embeddings(connection, model_name) {
+				input = texts,
+				dimensions = -1
 			};
-				
-			var first_response = yield embed_call.exec_embed();
-			if (first_response.embeddings.size == 0) {
+			var response = yield call.exec_embedding();
+			if (response.embeddings.rows == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embed for first document");
 			}
-			
-			// Check dimension matches
-			if (this.index.dimension != (int)first_response.embeddings[0].size) {
+			if (response.embeddings.rows != texts.length) {
+				throw new GLib.IOError.FAILED("Embedding count mismatch");
+			}
+			if (this.index.dimension != response.embeddings.width) {
 				throw new GLib.IOError.FAILED(
 					"Dimension mismatch: index has %d, requested %d".printf(
 						this.index.dimension,
-						(int)first_response.embeddings[0].size
+						response.embeddings.width
 					)
 				);
 			}
-			
-			// Build FloatArray with known width (all vectors have fixed width)
-			var vector_batch = FloatArray(this.dimension);
-			
-			// Add first vector
-			vector_batch.add(this.embed_to_floats(first_response.embeddings[0]));
-			// TODO: store metadata (file_path, line_range, element_info) for vector_id = 0
-			
-			// Add remaining vectors
-			for (int i = 1; i < texts.length; i++) {
-				embed_call = new OLLMchat.Call.Embed(
-					connection,
-					model_name
-				) {
-					input = texts[i],
-					options = tool_config.embed.options
-				};
-				var response = yield embed_call.exec_embed();
-				if (response.embeddings.size == 0) {
-					throw new GLib.IOError.FAILED(
-						"Failed to get embed for document " + i.to_string()
-					);
-				}
-				
-				vector_batch.add(this.embed_to_floats(response.embeddings[0]));
-				// TODO: store metadata (file_path, line_range, element_info) for vector_id = i
-			}
-			
-			this.index.add_vectors(vector_batch);
+			this.index.add_vectors(response.embeddings);
 			print("Added " + texts.length.to_string() + " documents to vector database\n");
 		}
 		
@@ -250,32 +200,24 @@ namespace OLLMvector
 			var connection = yield this.connection("embed", true);
 			var tool_config = this.config.tools.get("codebase_search") as OLLMvector.Tool.CodebaseSearchToolConfig;
 			var model_name = yield tool_config.embed.model_obj.customize(connection, tool_config.embed.options);
-			var embed_call = new OLLMchat.Call.Embed(
-				connection,
-				model_name
-			) {
-				input = query,
-				options = tool_config.embed.options
+			var call = new OLLMchat.Call.Embeddings(connection, model_name) {
+				input = { query },
+				dimensions = -1
 			};
-			
-			var response = yield embed_call.exec_embed();
-			if (response.embeddings.size == 0) {
+			var response = yield call.exec_embedding();
+			if (response.embeddings.rows == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embed");
 			}
-			
-			// Check dimension matches
-			if (this.index.dimension != (int)response.embeddings[0].size) {
+			if (this.index.dimension != response.embeddings.width) {
 				throw new GLib.IOError.FAILED(
 					"Dimension mismatch: index has %d, requested %d".printf(
 						this.index.dimension,
-						(int)response.embeddings[0].size
+						response.embeddings.width
 					)
 				);
 			}
-			
-			// Extract the first embed vector and convert to float[]
 			var results = this.index.search(
-				this.embed_to_floats(response.embeddings[0]),
+				response.embeddings.get_vector(0),
 				k
 			);
 			var enhanced_results = new SearchResultWithDocument[results.length];

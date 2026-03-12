@@ -104,41 +104,6 @@ namespace OLLMchat.Call
 			}
 		}
 
-		/**
-		 * Normalizes a single embedding vector to unit length (L2 normalization).
-		 *
-		 * @param embedding The embedding vector to normalize
-		 */
-		private void normalize_embedding(Gee.ArrayList<double?> embedding)
-		{
-			if (embedding.size == 0) {
-				return;
-			}
-			
-			// Calculate L2 norm
-			double norm_squared = 0.0;
-			foreach (var val in embedding) {
-				if (val != null) {
-					norm_squared += val * val;
-				}
-			}
-			
-			double norm = Math.sqrt(norm_squared);
-			
-			// Skip normalization if norm is zero or very small (avoid division by zero)
-			if (norm < 1e-10) {
-				return;
-			}
-			
-			// Normalize each component
-			for (int i = 0; i < embedding.size; i++) {
-				var val = embedding.get(i);
-				if (val != null) {
-					embedding.set(i, val / norm);
-				}
-			}
-		}
-
 		public async Response.Embed exec_embed() throws Error
 		{
 			var bytes = yield this.send_request(true);
@@ -162,10 +127,9 @@ namespace OLLMchat.Call
 			// Note: client no longer set on response objects
 			
 			// Normalize all embeddings before returning
-			foreach (var embedding in embed_obj.embeddings) {
-				this.normalize_embedding(embedding);
+			for (int i = 0; i < embed_obj.embeddings.rows; i++) {
+				embed_obj.embeddings.normalize_vector_at(i);
 			}
-			
 			return embed_obj;
 		}
 	}

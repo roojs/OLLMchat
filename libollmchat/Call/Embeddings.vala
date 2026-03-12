@@ -21,15 +21,12 @@ namespace OLLMchat.Call
 	/**
 	 * OpenAI-compatible embeddings API call.
 	 * Uses v1/embeddings; same URL pattern as Call.Models.
-	 * Request: model, input (string or array), optional dimensions,
-	 * optional encoding_format. Returns Response.EmbeddingList.
+	 * Request: model, input (string array). Returns Response.Embed (v1 response parsed into Embed).
 	 */
 	public class Embeddings : Base
 	{
 		public string model { get; set; }
-		public string input { get; set; default = ""; }
-		public Gee.ArrayList<string> input_array { get; set;
-			default = new Gee.ArrayList<string>(); }
+		public string[] input { get; set; default = new string[0]; }
 		public int dimensions { get; set; default = -1; }
 		public string encoding_format { get; set; default = ""; }
 
@@ -49,37 +46,34 @@ namespace OLLMchat.Call
 		{
 			switch (property_name) {
 				case "input":
-					if (this.input_array.size > 0) {
-						var arr = new Json.Array();
-						foreach (var s in this.input_array) {
-							arr.add_string_element(s);
-						}
-						var node = new Json.Node(Json.NodeType.ARRAY);
-						node.init_array(arr);
-						return node;
-					}
-					if (this.input == "") {
+					if (this.input.length == 0) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
-				case "input_array":
-					return null;
+					var arr = new Json.Array();
+					foreach (var s in this.input) {
+						arr.add_string_element(s);
+					}
+					var node = new Json.Node(Json.NodeType.ARRAY);
+					node.init_array(arr);
+					return node;
 				case "dimensions":
 					if (this.dimensions < 0) {
 						return null;
 					}
 					return default_serialize_property(property_name, value, pspec);
 				case "encoding_format":
+				case "encoding-format":
 					if (this.encoding_format == "") {
 						return null;
 					}
 					return default_serialize_property(property_name, value, pspec);
 				default:
-					return default_serialize_property(property_name, value, pspec);
+					// Delegate to Base so connection, chat-content, cancellable, streaming-response are excluded
+					return base.serialize_property(property_name, value, pspec);
 			}
 		}
 
-		public async Response.EmbeddingList exec_embeddings() throws Error
+		public async Response.Embed exec_embedding() throws Error
 		{
 			var bytes = yield this.send_request(true);
 			var root = this.parse_response(bytes);
@@ -89,12 +83,15 @@ namespace OLLMchat.Call
 			var generator = new Json.Generator();
 			generator.set_root(root);
 			var json_str = generator.to_data(null);
-			var obj = Json.gobject_from_data(
-				typeof(Response.EmbeddingList), json_str, -1) as Response.EmbeddingList;
-			if (obj == null) {
+			var embed = Json.gobject_from_data(
+				typeof(Response.Embed), json_str, -1) as Response.Embed;
+			if (embed == null) {
 				throw new OllmError.FAILED("Failed to deserialize embeddings response");
 			}
-			return obj;
+			var obj = root.get_object();
+			embed.read_data(obj);
+			embed.read_usage(obj);
+			return embed;
 		}
 	}
 }

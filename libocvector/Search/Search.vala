@@ -148,25 +148,6 @@ namespace OLLMvector.Search
 		}
 		
 		/**
-		 * Convert embedding response to float array.
-		 * 
-		 * @param embed Embedding response
-		 * @return Float array representation
-		 */
-		private float[] embed_to_floats(Gee.ArrayList<double?> embed) throws GLib.Error
-		{
-			var float_array = new float[embed.size];
-			for (int i = 0; i < embed.size; i++) {
-				var val = embed[i];
-				if (val == null) {
-					throw new GLib.IOError.FAILED("Null value in embed vector");
-				}
-				float_array[i] = (float)val;
-			}
-			return float_array;
-		}
-		
-		/**
 		 * Execute the search operation.
 		 * 
 		 * @return ArrayList of SearchResult objects
@@ -194,15 +175,16 @@ namespace OLLMvector.Search
 			var model_name = yield tool_config.embed.model_obj.customize(
 				connection, tool_config.embed.options);
 
-			var client = new OLLMchat.Client(connection);
-			var embed_response = yield client.embed(
-				model_name, normalized_query, -1, false, tool_config.embed.options);
+			var call = new OLLMchat.Call.Embeddings(connection, model_name) {
+				input = { normalized_query },
+				dimensions = -1
+			};
+			var embed_response = yield call.exec_embedding();
 
-			if (embed_response == null || embed_response.embeddings.size == 0) {
+			if (embed_response.embeddings.rows == 0) {
 				throw new GLib.IOError.FAILED("Failed to get query embedding");
 			}
-			
-			var query_vector = this.embed_to_floats(embed_response.embeddings[0]);
+			var query_vector = embed_response.embeddings.get_vector(0);
 			
 			// Step 3: Create IDSelector for filtering
 			var id_array = new int64[this.filtered_vector_ids.size];

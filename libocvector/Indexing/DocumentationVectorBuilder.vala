@@ -191,38 +191,24 @@ namespace OLLMvector.Indexing
 			var embed_conn = this.config.connections.get(tool_config.embed.connection);
 			var model_name = yield tool_config.embed.model_obj.customize(
 				embed_conn, tool_config.embed.options);
-			var embed_response = yield new OLLMchat.Client(embed_conn).embed_array(
-				model_name,
-				documents,
-				-1,
-				false,
-				tool_config.embed.options
-			);
+			var call = new OLLMchat.Call.Embeddings(embed_conn, model_name) {
+				input = documents.to_array(),
+				dimensions = -1
+			};
+			var embed_response = yield call.exec_embedding();
 			
-			if (embed_response.embeddings.size == 0) {
+			if (embed_response.embeddings.rows == 0) {
 				throw new GLib.IOError.FAILED("Failed to get embeddings for documentation file");
 			}
-			
-			if (embed_response.embeddings.size != documents.size) {
+			if (embed_response.embeddings.rows != documents.size) {
 				throw new GLib.IOError.FAILED(
 					"Embedding count mismatch: expected " +
 					documents.size.to_string() +
 					", got " +
-					embed_response.embeddings.size.to_string());
+					embed_response.embeddings.rows.to_string());
 			}
-			
-			// Convert embeddings to float arrays and store in FAISS
-			var vector_batch = OLLMvector.FloatArray(this.database.dimension);
-			
-			// Get current vector count to determine starting vector_id
 			int64 start_vector_id = (int64)this.database.vector_count;
-			
-			foreach (var embedding in embed_response.embeddings) {
-				vector_batch.add(this.embed_to_floats(embedding));
-			}
-			
-			// Add vectors to FAISS index
-			this.database.add_vectors_batch(vector_batch);
+			this.database.add_vectors_batch(embed_response.embeddings);
 			
 			// Store metadata in SQL database for changed elements
 			for (int j = 0; j < chunk_metadata.size; j++) {

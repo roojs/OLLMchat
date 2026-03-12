@@ -53,9 +53,6 @@ namespace OLLMchat.Call
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
-				case "connection":
-				case "cancellable":
-					return null;
 				case "messages":
 					var arr = new Json.Array();
 					foreach (var m in this.messages) {
@@ -106,7 +103,8 @@ namespace OLLMchat.Call
 					tools_node.init_array(tools_arr);
 					return tools_node;
 				default:
-					return default_serialize_property(property_name, value, pspec);
+					// Delegate to Base so connection, chat-content, cancellable, streaming-response are excluded
+					return base.serialize_property(property_name, value, pspec);
 			}
 		}
 
