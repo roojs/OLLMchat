@@ -247,8 +247,8 @@ namespace Markdown
 				if (fence_end_pos >= newline_pos) {
 					return newline_pos - chunk_pos + 1;
 				}
-				var unstripped_lang = chunk.substring(fence_end_pos, newline_pos - fence_end_pos);
-				lang_out = unstripped_lang.strip();
+				// Pass unstripped so consumer can detect leading space (" description" vs "language description")
+				lang_out = chunk.substring(fence_end_pos, newline_pos - fence_end_pos);
 				return newline_pos - chunk_pos + 1;
 			}
 

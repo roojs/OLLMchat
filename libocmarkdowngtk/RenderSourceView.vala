@@ -38,6 +38,14 @@ namespace MarkdownGtk
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Button expand_button;
 		
+		// Phase 2: nested markdown (stack + view-source toggle)
+		private Gtk.Stack stack;
+		private Gtk.Box rendered_box;
+		private Gtk.Button view_source_toggle;
+		private bool showing_source = false;
+		private Gtk.ScrolledWindow source_scrolled;  // inner scrolled for source page; used for scroll-to-bottom
+		private MarkdownGtk.Render? nested_markdown_render = null;  // streamed nested renderer for ```markdown blocks
+		
 		private enum ResizeMode
 		{
 			INITIAL,    // Initial sizing: min(natural, max_height), hide button if fits
@@ -48,31 +56,35 @@ namespace MarkdownGtk
 		
 		/**
 		 * Creates a new RenderSourceView instance and starts a code block.
-		 * 
-		 * @param renderer The Render instance (provides access to box and code_block_ended signal)
-		 * @param language_id The language identifier for syntax highlighting (and frame header when no preceding ###)
+		 *
+		 * @param renderer The Render instance (provides access to box and
+		 *        code_block_ended signal)
+		 * @param language_id Info string after the fence (use "" for none).
+		 *        Used for syntax highlighting and frame header.
 		 */
 		public RenderSourceView(Render renderer, string language_id)
 		{
 			this.renderer = renderer;
-			this.code_language = language_id;
 			this.code_content = new StringBuilder();
 			
-			// Consumer split: info string = "language" or "language description"
-			string info = (language_id != null && language_id != "") ? language_id.strip() : "";
-			string language = "";
-			string description = "";
-			if (info != "") {
-				int first_space = info.index_of_char(' ');
-				if (first_space >= 0) {
-					language = info.substring(0, first_space);
-					description = info.substring(first_space + 1).strip();
-				} else {
-					language = info;
+			var info = language_id.strip();
+			var language = info;
+			var description = "";
+			var leading = language_id.has_prefix(" ") || language_id.has_prefix("\t");
+			if (info != "" && leading) {
+				language = "";
+				description = info;
+			}
+			if (info != "" && !leading) {
+				int p = info.index_of_char(' ');
+				if (p >= 0) {
+					language = info.substring(0, p);
+					description = info.substring(p + 1).strip();
 				}
 			}
-			// Frame header: description if present, else language (Plan 1.8.3)
-			string header_text = (description != "") ? description : ((language != "") ? language : "code");
+			this.code_language =language.down();
+			var header_text = (description != "") ? description :
+				 ((language != "") ? language : "code");
 			
 			// Create buffer with language (first token only) for syntax highlighting
 			GtkSource.Buffer source_buffer;
@@ -93,7 +105,7 @@ namespace MarkdownGtk
 			this.source_view = new GtkSource.View() {
 				editable = false,
 				cursor_visible = false,
-				show_line_numbers = false,
+				show_line_numbers = false,  // true to debug extra lines / scrollbar
 				wrap_mode = Gtk.WrapMode.WORD,
 				hexpand = true,
 				vexpand = false,
@@ -103,6 +115,9 @@ namespace MarkdownGtk
 			};
 			this.source_view.set_buffer(source_buffer);
 			this.source_buffer = source_buffer;
+			this.source_buffer.implicit_trailing_newline = false;
+			this.source_view.pixels_below_lines = 0;
+			// GtkSource.Gutter in gtksourceview-5 has no set_padding; was removed from API
 
 			// Set monospace font for code display using CSS
 			this.source_view.add_css_class("code-editor");
@@ -146,7 +161,6 @@ namespace MarkdownGtk
 			};
 			
 			// Create Copy to Clipboard button with icon
-			var source_buffer_for_button = this.source_buffer;
 			var copy_button = new Gtk.Button() {
 				icon_name = "edit-copy-symbolic",
 				tooltip_text = "Copy to Clipboard",
@@ -158,10 +172,8 @@ namespace MarkdownGtk
 				can_focus = false,
 				focus_on_click = false
 			};
-			
-			// Connect button click handler
 			copy_button.clicked.connect(() => {
-				this.copy_source_view_to_clipboard(source_buffer_for_button);
+				this.copy_source_view_to_clipboard(this.source_buffer);
 			});
 			
 			// Track expanded state for this code block
@@ -190,6 +202,41 @@ namespace MarkdownGtk
 			};
 			this.scrolled_window.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
 			
+			// Phase 2: always create stack (rendered + source pages) and view-source toggle
+			this.rendered_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
+				hexpand = true,
+				vexpand = false
+			};
+			this.rendered_box.add_css_class("oc-nested-markdown-content");
+			this.stack = new Gtk.Stack() { hexpand = true, vexpand = false };
+			this.stack.add_named(this.rendered_box, "rendered");
+			this.source_scrolled = new Gtk.ScrolledWindow() {
+				hexpand = true,
+				vexpand = true,
+				margin_start = 2
+			};
+			this.source_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+			this.source_scrolled.set_child(this.source_view);
+			this.stack.add_named(this.source_scrolled, "source");
+			
+			this.view_source_toggle = new Gtk.Button() {
+				icon_name = "object-flip-horizontal-symbolic",
+				tooltip_text = "View source",
+				can_focus = false,
+				focus_on_click = false
+			};
+			this.view_source_toggle.clicked.connect(() => {
+				this.showing_source = !this.showing_source;
+				this.stack.visible_child_name = this.showing_source ? "source" : "rendered";
+				this.view_source_toggle.tooltip_text = this.showing_source ? "View rendered" : "View source";
+				this.view_source_toggle.icon_name = this.showing_source ? "x-office-document-symbolic" : "object-flip-horizontal-symbolic";
+				// Resize frame after a short delay so layout has settled (especially when closing render view)
+				var widget_to_measure = this.showing_source ? (Gtk.Widget) this.source_view : (Gtk.Widget) this.rendered_box;
+				GLib.Idle.add(() => {
+					return this.resize_widget_callback(widget_to_measure, ResizeMode.INITIAL);
+				});
+			});
+			
 			// Store expand button reference
 			this.expand_button = expand_button;
 			
@@ -211,8 +258,9 @@ namespace MarkdownGtk
 				}
 			});
 			
-			// Add buttons to button box
+			// Add buttons to button box (copy, view-source toggle, expand)
 			button_box.append(copy_button);
+			button_box.append(this.view_source_toggle);
 			button_box.append(expand_button);
 			
 			// Add button box to header
@@ -231,8 +279,19 @@ namespace MarkdownGtk
 			this.source_view.hexpand = true;
 			this.source_view.vexpand = false;
 			
-			// Add SourceView to ScrolledWindow
-			this.scrolled_window.set_child(this.source_view);
+			// Add stack to ScrolledWindow (stack has "rendered" and "source" pages)
+			this.scrolled_window.set_child(this.stack);
+			
+			// Show view-source toggle and default to rendered view only for markdown blocks
+			if (this.code_language == "markdown") {
+				this.view_source_toggle.visible = true;
+				this.stack.visible_child_name = "rendered";
+				this.nested_markdown_render = new MarkdownGtk.Render(this.rendered_box);
+				this.nested_markdown_render.start();
+			} else {
+				this.view_source_toggle.visible = false;
+				this.stack.visible_child_name = "source";
+			}
 			
 			// Add ScrolledWindow to container
 			container_box.append(this.scrolled_window);
@@ -310,16 +369,23 @@ namespace MarkdownGtk
 		 */
 		private bool resize_widget_callback(Gtk.Widget widget, ResizeMode mode)
 		{
-			// Check if widget is realized
+			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
-				return true; // Try again next time
+				// GLib.debug("widget not realized");
+				return false; // Do not retry; resize will run again when visible (e.g. view-source toggle)
 			}
-			
-			// Get preferred height of the widget
+			// Width needed for height-for-width (e.g. SourceView with word wrap); retry if not allocated yet
+			int for_width = this.scrolled_window.get_width();
+			if (for_width <= 0) {
+				// GLib.debug("for_width=%d, retry", for_width);
+				return true;
+			}
+			// Get preferred height of the widget for the actual width so wrap-based height is correct
 			int min_natural = 0;
 			int nat_natural = 0;
-			widget.measure(Gtk.Orientation.VERTICAL, -1, out min_natural, out nat_natural, null, null);
+			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
+			// GLib.debug("for_width=%d nat=%d", for_width, natural_height);
 			
 			switch (mode) {
 				case ResizeMode.EXPAND:
@@ -333,9 +399,8 @@ namespace MarkdownGtk
 				case ResizeMode.FINAL:
 					// Get max height (50% of window)
 					int max_height = this.get_max_collapsed_height();
-					
-					// Use the smaller of max_height (50% window) or natural height for collapsed state
 					int target_height = (natural_height > 0 && natural_height < max_height) ? natural_height : max_height;
+					// GLib.debug("nat=%d max=%d target=%d", natural_height, max_height, target_height);
 					this.scrolled_window.set_size_request(-1, target_height);
 					this.scrolled_window.vexpand = false; // Prevent expansion in collapsed state
 					
@@ -371,6 +436,11 @@ namespace MarkdownGtk
 				this.source_buffer.insert(ref end_iter, text, -1);
 			}
 			
+			// Stream to nested markdown renderer when this is a ```markdown block
+			if (this.nested_markdown_render != null) {
+				this.nested_markdown_render.add(text);
+			}
+			
 			// Scroll sourceview to bottom after content is added
 			// Use Idle to ensure layout is updated first
 			GLib.Idle.add(() => {
@@ -395,11 +465,37 @@ namespace MarkdownGtk
 		 */
 		public void end_code_block()
 		{
-			// Disconnect signal handler if it exists
-			
 			// Notify renderer with content and language
 			var content = this.code_content.str;
 			this.renderer.code_block_ended(content, this.code_language);
+
+			// Remove trailing newline(s) from SourceView in place (no full buffer rewrite) to avoid extra blank line / scrollbar
+			Gtk.TextIter end_iter;
+			this.source_buffer.get_end_iter(out end_iter);
+			var start_iter = end_iter;
+			start_iter.backward_char();
+			while (start_iter.get_char() == '\n' && !start_iter.is_start()) {
+				start_iter.backward_char();
+			}
+			var del_start = start_iter;
+			if (del_start.get_char() != '\n') {
+				del_start.forward_char();
+			}
+			if (!del_start.equal(end_iter)) {
+				this.source_buffer.delete(ref del_start, ref end_iter);
+			}
+
+			// Phase 2: when markdown block, flush the streamed nested renderer then resize frame to content (capped at max)
+			if (this.nested_markdown_render != null) {
+				this.nested_markdown_render.flush();
+				this.nested_markdown_render = null;
+				// GLib.debug("nested flush, 200ms resize, child=%s", this.rendered_box.get_first_child() != null ? "y" : "n");
+				// Resize frame to min(rendered content height, max_height); delay so layout has settled
+				GLib.Timeout.add(200, () => {
+					this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
+					return false;
+				});
+			}
 			
 			// Finalize the sourceview - resize based on content rules
 			if (this.source_view != null) {
@@ -429,11 +525,8 @@ namespace MarkdownGtk
 		 */
 		private void scroll_sourceview_to_bottom()
 		{
-			if (this.scrolled_window == null) {
-				return;
-			}
-			
-			var vadjustment = this.scrolled_window.vadjustment;
+			// Scroll the inner source page (stack always has source_scrolled)
+			var vadjustment = this.source_scrolled.vadjustment;
 			if (vadjustment == null) {
 				return;
 			}

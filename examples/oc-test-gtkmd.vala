@@ -197,8 +197,8 @@ Examples:
 		} else {
 			renderer.add(markdown_content);
 			renderer.flush();
-			// Force re-layout so content box gets correct size (avoids white space above frame until resize)
-			GLib.Idle.add(() => {
+			// Delay re-layout so first paint/layout can complete (avoids white space above frame)
+			GLib.Timeout.add(200, () => {
 				text_view_box.queue_resize();
 				scrolled.queue_resize();
 				return false;
@@ -218,8 +218,8 @@ Examples:
 		GLib.Timeout.add(interval_ms, () => {
 			if (pos[0] >= markdown_content.length) {
 				renderer.flush();
-				// Force re-layout so content box gets correct size (avoids white space above frame until resize)
-				GLib.Idle.add(() => {
+				// Delay re-layout so nested content (e.g. ```markdown blocks) can finish and resize correctly
+				GLib.Timeout.add(200, () => {
 					renderer.box.queue_resize();
 					scrolled.queue_resize();
 					return false;

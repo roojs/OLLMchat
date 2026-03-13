@@ -113,9 +113,17 @@
   transform-origin: center;
 }
 
+/* Nested markdown (```markdown block) content: padding inside the scroll area */
+.oc-nested-markdown-content {
+  padding: 4px;
+  background-color: white;
+}
+
 /* Code editor styling */
 .code-editor {
   font-family: monospace;
+  padding: 4px;
+  background-color: white;
 }
 
 /* SourceView editor styling - monospace font */

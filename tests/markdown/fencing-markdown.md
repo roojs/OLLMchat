@@ -1,6 +1,19 @@
 # Fencing markdown test (Plan 1.8.3)
 
-This file exercises fenced code blocks with **language only** and **language + description** for the GTK viewer. Frame header should show language when no description, and description when present.
+This file exercises fenced code blocks with **empty language**, **space then description**, **language only**, and **language + description** for the GTK viewer. Frame header should show "code" when empty; when the info string is space(s) then text, that text is shown; language when no description; description when present.
+
+## Block with empty language (no info string)
+
+```
+plain code block
+no language or description
+```
+
+## Block with space then description
+
+```  snippet with description
+content after leading space and single-word description
+```
 
 ## Block with language only
 
