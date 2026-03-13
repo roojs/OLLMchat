@@ -58,14 +58,30 @@ namespace MarkdownGtk
 			this.code_language = language_id;
 			this.code_content = new StringBuilder();
 			
-			// Create buffer with language if specified
+			// Consumer split: info string = "language" or "language description"
+			string info = (language_id != null && language_id != "") ? language_id.strip() : "";
+			string language = "";
+			string description = "";
+			if (info != "") {
+				int first_space = info.index_of_char(' ');
+				if (first_space >= 0) {
+					language = info.substring(0, first_space);
+					description = info.substring(first_space + 1).strip();
+				} else {
+					language = info;
+				}
+			}
+			// Frame header: description if present, else language (Plan 1.8.3)
+			string header_text = (description != "") ? description : ((language != "") ? language : "code");
+			
+			// Create buffer with language (first token only) for syntax highlighting
 			GtkSource.Buffer source_buffer;
-			if (language_id != null && language_id != "") {
-				var mapped_id = this.map_language_id(language_id);
+			if (language != "") {
+				var mapped_id = this.map_language_id(language);
 				var lang_manager = GtkSource.LanguageManager.get_default();
-				var language = lang_manager.get_language(mapped_id);
-				if (language != null) {
-					source_buffer = new GtkSource.Buffer.with_language(language);
+				var gtk_lang = lang_manager.get_language(mapped_id);
+				if (gtk_lang != null) {
+					source_buffer = new GtkSource.Buffer.with_language(gtk_lang);
 				} else {
 					source_buffer = new GtkSource.Buffer(null);
 				}
@@ -104,21 +120,19 @@ namespace MarkdownGtk
 			};
 			header_box.add_css_class("oc-frame-header");
 			
-			// Frame header: language_id as-is (e.g. "txt", "markdown"); title comes from ### above in markdown
-			string header_text = (this.code_language != null && this.code_language != "") ? this.code_language : "code";
-			if (header_text.strip() == "") {
-				GLib.critical("RenderSourceView: code block info string is empty (language_id='%s'); title will show as 'code'", this.code_language);
-				header_text = "code";
-			}
-			var title_label = new Gtk.Label(header_text) {
+			var title_label = new Gtk.Label("<b>%s</b>".printf(GLib.Markup.escape_text(header_text, -1))) {
 				hexpand = true,
 				halign = Gtk.Align.START,
-				valign = Gtk.Align.CENTER,
-				margin_start = 5,
-				ellipsize = Pango.EllipsizeMode.END
-		    	};
+				valign = Gtk.Align.START,
+				margin_start = 9,
+				margin_top = 4,
+				ellipsize = Pango.EllipsizeMode.END,
+				tooltip_text = header_text,
+				use_markup = true
+			};
 			title_label.add_css_class("oc-code-frame-title");
 			title_label.max_width_chars = 30;
+			header_box.append(title_label);
 			
 			// Add spacer to push buttons to the right
 			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {

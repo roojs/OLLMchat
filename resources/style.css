@@ -102,9 +102,9 @@
   background-color: #fffacd;
 }
 
-/* Code block frame title label - smaller font */
+/* Code block frame title label - readable size */
 .oc-code-frame-title {
-  font-size: 0.9em;
+  font-size: 1.2em;
 }
 
 /* Code block buttons - 30% smaller */

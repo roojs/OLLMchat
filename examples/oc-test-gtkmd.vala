@@ -197,6 +197,12 @@ Examples:
 		} else {
 			renderer.add(markdown_content);
 			renderer.flush();
+			// Force re-layout so content box gets correct size (avoids white space above frame until resize)
+			GLib.Idle.add(() => {
+				text_view_box.queue_resize();
+				scrolled.queue_resize();
+				return false;
+			});
 		}
 
 		window.set_child(scrolled);
@@ -212,6 +218,12 @@ Examples:
 		GLib.Timeout.add(interval_ms, () => {
 			if (pos[0] >= markdown_content.length) {
 				renderer.flush();
+				// Force re-layout so content box gets correct size (avoids white space above frame until resize)
+				GLib.Idle.add(() => {
+					renderer.box.queue_resize();
+					scrolled.queue_resize();
+					return false;
+				});
 				return false;
 			}
 			int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);  // 2–8 characters
