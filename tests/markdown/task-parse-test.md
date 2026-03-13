@@ -1,10 +1,11 @@
-<!--
-  Task list parse test: real LLM output shape (## Original prompt, ## Goals / summary, ## Tasks).
-  To see why ResultParser validation might fail, run the document renderer with --debug to print
-  header_list and headings keys (slugs) to stderr:
-    ./build/oc-markdown-doc-test --debug tests/markdown/task-parse-test.md 2>&1 | head -30
+### fenced in literal
+
+Task list parse test: real LLM output shape (## Original prompt, ## Goals / summary, ## Tasks).
+To see why ResultParser validation might fail, run the document renderer with --debug to print
+header_list and headings keys (slugs) to stderr:
+  ./build/oc-markdown-doc-test --debug tests/markdown/task-parse-test.md 2>&1 | head -30
   Expected slugs: original-prompt, goals-summary, tasks, task-section-1, ...
--->
+
 
 ## Original prompt
 

@@ -101,7 +101,8 @@ namespace Markdown.Document
 		{
 			switch (property_name) {
 				case "headings":
-					return null;
+				case "header_list":
+				case "header-list":
 				case "parent":
 					return null;
 				case "node_type":
@@ -146,9 +147,11 @@ namespace Markdown.Document
 		{
 			switch (property_name) {
 				case "headings":
-					return false;
+				case "header_list":
+				case "header-list":
 				case "parent":
 					return false;
+					
 				case "node_type":
 				case "node-type":
 					value = GLib.Value(typeof(FormatType));

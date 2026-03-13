@@ -312,16 +312,25 @@ namespace Markdown
 				}
 
 				if (this.is_literal != "") {
-					var result = this.formatmap.peek_literal(chunk, chunk_pos, is_end_of_chunks, this.is_literal);
+					int flush_chars = 0;
+					var result = this.formatmap.peek_literal(chunk, chunk_pos, is_end_of_chunks, this.is_literal, out flush_chars);
 					if (result == -1) {
 						this.leftover_chunk = str + chunk.substring(chunk_pos, chunk.length - chunk_pos);
 						str = "";
 						return;
 					}
+					if (result == 0 && flush_chars > 0) {
+						// Backticks only (ASCII, 1 byte each)
+						str += chunk.substring(chunk_pos, flush_chars);
+						chunk_pos += flush_chars;
+						this.at_line_start = false;
+						continue;
+					}
+				 
 					if (result == 0) {
 						str += c.to_string();
 						chunk_pos += c.to_string().length;
-						this.at_line_start = false;
+						this.at_line_start = (c == '\n');
 						continue;
 					}
 					this.renderer.on_node(FormatType.TEXT, false, str);
@@ -717,9 +726,17 @@ namespace Markdown
 				var c = text.get_char(pos);
 
 				if (this.is_literal != "") {
-					var result = this.formatmap.peek_literal(text, pos, true, this.is_literal);
+					int flush_chars = 0;
+					var result = this.formatmap.peek_literal(text, pos, true, this.is_literal, out flush_chars);
 					if (result == -1) {
 						result = 0;
+					}
+					if (result == 0 && flush_chars > 0) {
+						// Backticks only (ASCII, 1 byte each)
+						str += text.substring(pos, flush_chars);
+						pos += flush_chars;
+						this.at_line_start = false;
+						continue;
 					}
 					if (result == 0) {
 						str += c.to_string();

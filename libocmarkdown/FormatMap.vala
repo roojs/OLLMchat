@@ -191,10 +191,18 @@ namespace Markdown
 
 		/**
 		 * Peek for closing backtick delimiter when inside a code span (is_literal != "").
-		 * @return 0 no match (treat char as literal), -1 need more data, N match length in bytes
+		 * Handles both single-backtick and double-backtick spans: is_literal length 1 = LITERAL
+		 * span, length 2 = CODE span. Only closes on an exact run of the opener length; longer
+		 * runs are treated as content (e.g. two or three backticks inside a one-backtick span).
+		 * When in a single-backtick span and `` or ``` is seen (with no more chars or next not `),
+		 * sets flush_chars to 2 or 3 so the caller can flush that many characters as content.
+		 *
+		 * @param flush_chars set to 2 or 3 when ``/``` should be flushed as content; 0 otherwise
+		 * @return 0 no match (treat as content), -1 need more data, N match length in bytes
 		 */
-		public int peek_literal(string chunk, int chunk_pos, bool is_end_of_chunks, string is_literal)
+		public int peek_literal(string chunk, int chunk_pos, bool is_end_of_chunks, string is_literal, out int flush_chars)
 		{
+			flush_chars = 0;
 			if (is_literal == "" || chunk_pos >= chunk.length) {
 				return 0;
 			}
@@ -202,12 +210,34 @@ namespace Markdown
 			if (c0 != '`') {
 				return 0;
 			}
+			// Single-backtick (`) span: only close on exactly one `; `` or ``` here are content (code blocks).
 			if (is_literal.length == 1) {
-				return 1;
+				var have_two = chunk_pos + 1 < chunk.length && chunk.get_char(chunk_pos + 1) == '`';
+				var have_three = have_two && chunk_pos + 2 < chunk.length && chunk.get_char(chunk_pos + 2) == '`';
+				var at_end_three = have_three && chunk_pos + 3 >= chunk.length;
+				var at_end_two = have_two && chunk_pos + 2 >= chunk.length;
+				var at_end_one = !have_two && chunk_pos + 1 >= chunk.length;
+				if (!is_end_of_chunks && (at_end_three || at_end_two || at_end_one)) {
+					return -1;
+				}
+				// Flush `` or ``` as content when run ends; else close on single `.
+				if (have_three && (chunk_pos + 3 >= chunk.length || chunk.get_char(chunk_pos + 3) != '`')) {
+					flush_chars = 3;  // ``` run ends: flush 3 as content
+					return 0;
+				}
+				if (have_two && (chunk_pos + 2 >= chunk.length || chunk.get_char(chunk_pos + 2) != '`')) {
+					flush_chars = 2;  // `` run ends: flush 2 as content
+					return 0;
+				}
+				if (have_two) {
+					return 0;  // `` or more with further ` ahead: one backtick content
+				}
+				return 1;  // single ` at run end: close literal span
 			}
+			// Double-backtick (``) code span: only close on exactly ``; ``` here is content.
 			if (chunk_pos + 1 >= chunk.length) {
 				if (!is_end_of_chunks) {
-					return -1;
+ 					return -1;
 				}
 				return 0;
 			}
@@ -215,7 +245,15 @@ namespace Markdown
 			if (c1 != '`') {
 				return 0;
 			}
-			return 2;
+			// Only close on exactly two backticks; ``` here is content
+			if (chunk_pos + 2 < chunk.length && chunk.get_char(chunk_pos + 2) == '`') {
+				return 0;
+			}
+			// At chunk end we can't tell if next chunk will add ` (making this ``` content)
+			if (chunk_pos + 2 >= chunk.length && !is_end_of_chunks) {
+ 				return -1;
+			}
+ 			return 2;
 		}
 
 		/**
