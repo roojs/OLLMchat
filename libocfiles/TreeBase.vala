@@ -264,10 +264,10 @@ namespace OLLMfiles
 			// Get element name from the node itself
 			var elem_name = this.element_name(node, code_content);
 			if (elem_name == null || elem_name == "") {
-				GLib.debug("ast_path: element_name is null or empty for node type: %s", TreeSitter.node_get_type(node) ?? "null");
+				// GLib.debug("ast_path: element_name is null or empty for node type: %s", TreeSitter.node_get_type(node) ?? "null");
 				return "";
 			}
-			GLib.debug("ast_path: starting with element_name: %s", elem_name);
+			// GLib.debug("ast_path: starting with element_name: %s", elem_name);
 			
 			// Traverse up the AST to collect namespace and class hierarchy
 			// We traverse from inner to outer, so we'll reverse the arrays at the end
@@ -337,8 +337,8 @@ namespace OLLMfiles
 			// Replace '--' with '-' (can occur if namespace or class parts are empty)
 			var regex_double_dash = new GLib.Regex("--+");
 			result = regex_double_dash.replace(result, -1, 0, "-");
-			GLib.debug("ast_path: result = '%s' (namespace_parts.length=%d, class_parts.length=%d, elem_name='%s')", 
-				result, namespace_parts.length, class_parts.length, elem_name);
+			// GLib.debug("ast_path: result = '%s' (namespace_parts.length=%d, class_parts.length=%d, elem_name='%s')", 
+			// 	result, namespace_parts.length, class_parts.length, elem_name);
 			return result;
 		}
 		

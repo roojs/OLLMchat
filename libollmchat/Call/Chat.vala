@@ -95,13 +95,7 @@ namespace OLLMchat.Call
 		
 		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set; default = new Gee.HashMap<string, Tool.BaseTool>(); }
 		
-		/**
-		 * Current streaming response object (internal use).
-		 *
-		 * Used internally to track the streaming state during chat operations.
-		 * Also accessed by OLLMchatGtk for UI updates. Never null.
-		 */
-		public Response.Chat streaming_response { get; set; }
+		 
 		
 		/**
 		 * Reference to the agent handler that created this chat.
@@ -307,12 +301,9 @@ namespace OLLMchat.Call
 					}
 					var options_node = Json.gobject_serialize(this.options);
 					var obj = options_node.get_object();
-					// Build request options: rename hyphens to underscores, exclude num_ctx (runner option, not valid in chat request)
+					// Build request options: rename hyphens to underscores
 					var new_obj = new Json.Object();
 					obj.foreach_member((o, key, node) => {
-						if (key == "num_ctx" || key == "num-ctx") {
-							return;
-						}
 						var new_key = key.contains("-") ? key.replace("-", "_") : key;
 						new_obj.set_member(new_key, node);
 					});
@@ -476,8 +467,8 @@ namespace OLLMchat.Call
 				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
 			}
 			
-			// Reset state
-			this.streaming_response = new Response.Chat(this.connection, this);
+			// Reset response state for this request (streaming_response set once in constructor)
+			this.streaming_response.message = new Message("assistant", "");
 			this.cancellable = cancellable;
 			
 			// Store provided messages in this.messages (for serialization/access)
@@ -540,7 +531,7 @@ namespace OLLMchat.Call
 		{
 			// chat_send signal emission removed - callers handle state directly after calling send()
 			
-			var response = this.streaming_response;
+			var response = (Response.Chat) this.streaming_response;
 
 			var url = this.build_url();
 			var request_body = this.get_request_body();
@@ -555,12 +546,9 @@ namespace OLLMchat.Call
 				});
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
-					// User cancelled - ensure response is marked as done
-					response.done = true;
-					// Return the response even if cancelled (may be partial)
+					// Base already set streaming_response.done = true on cancel
 					return response;
 				}
-				// Re-throw other IO errors
 				throw e;
 			} catch (Error e) {
 				// Mark as done and re-throw
@@ -574,8 +562,7 @@ namespace OLLMchat.Call
 				response.message.tool_calls.size,
 				response.message.content);
 			
-			if (response.done && 
-				response.message.tool_calls.size > 0) {
+			if (response.done && response.message.tool_calls.size > 0) {
 				GLib.debug("Chat.execute_streaming: Calling toolsReply");
 				return yield this.toolsReply(response);
 			}
@@ -590,16 +577,14 @@ namespace OLLMchat.Call
 
 		private void process_streaming_chunk(Json.Object chunk)
 		{
-			var response = this.streaming_response;
-
-			// Check if this is the first chunk (message is null before first chunk is processed)
-			bool is_first_chunk = (response.message == null);
+			var response = (Response.Chat) this.streaming_response;
 
 			// Process chunk
 			response.addChunk(chunk);
 
 			// Emit stream_start signal on first chunk
-			if (is_first_chunk) {
+			if (response.is_first_chunk) {
+				response.is_first_chunk = false;
 				// Always emit signal (for non-agent usage and any other listeners)
 				this.stream_start();
 				

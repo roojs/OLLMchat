@@ -663,6 +663,7 @@ namespace Markdown
 				str = "";
 			}
 			this.state_stack.clear();
+			this.is_literal = "";
 
 			// Double newline (blank line): at_line_start is true, so this newline ends the current line which was blank. End list block so next list starts fresh; return so we don't emit \n again (renderer already added it in on_list(false)).
 			if ((this.current_block == FormatType.ORDERED_LIST 
@@ -682,7 +683,6 @@ namespace Markdown
 				this.do_block(false, this.current_block);
 				this.last_line_block = this.current_block;
 				this.current_block = FormatType.NONE;
-				this.is_literal = "";
 			}
 			// Don't emit newline as TEXT when in a list (list items would get trailing \n and round-trip gets extra blank lines)
 			if (this.current_block != FormatType.ORDERED_LIST 

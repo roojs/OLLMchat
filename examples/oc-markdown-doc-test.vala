@@ -110,6 +110,13 @@ Examples:
 		else
 			doc = doc_from_markdown(input);
 
+		GLib.debug("=== document.header_list (order) ===");
+		foreach (var key in doc.header_list)
+			GLib.debug("  %s", key);
+		GLib.debug("=== document.headings keys ===");
+		foreach (var key in doc.headings.keys)
+			GLib.debug("  %s", key);
+
 		if (output_format == "markdown") {
 			command_line.print(doc.to_markdown());
 		} else {

@@ -45,6 +45,18 @@ namespace OLLMchat.Response
 		 * True when the response is complete or the request was cancelled.
 		 */
 		public bool done { get; set; default = false; }
+		/**
+		 * True until the first streaming chunk is processed (for stream_start).
+		 */
+		public bool is_first_chunk { get; set; default = true; }
+
+		/**
+		 * Process a streaming JSON chunk. No-op in base; subclasses (e.g. Response.Chat) override.
+		 */
+		public virtual string addChunk(Json.Object chunk)
+		{
+			return "";
+		}
 
 		protected Base(Settings.Connection? connection = null)
 		{

@@ -38,6 +38,14 @@ When this task references a **completed** prior task (e.g. `[Research 1 Results]
 The Runner executes one tool call per fenced code block. Each block must contain a single JSON object with **name** (required) and **arguments** (optional object). Output one fenced code block per tool call in the ## Tool Calls section (add as many as needed). The Runner assigns an id to each call and passes results to the skill.
 {toolcall3/end}
 
+## Markdown output
+
+Your output will be read as markdown. If you include content that should **not** be interpreted as markdown (e.g. the user's request, or text that could be mistaken for markdown such as a fenced block start), wrap it in a code block so the parser does not treat it as markdown — for example: 
+
+```text
+  indent... ```some not valid markdown
+```
+
 ## Output format
 
 Produce your response with **## Task** (required). When the skill uses tools, also output **## Tool Calls**.

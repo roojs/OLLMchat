@@ -43,6 +43,7 @@ namespace OLLMchat.Response
 	 */
 	public class Chat : Base, ChatContentInterface
 	{
+		/** Dummy message when no chunk received yet; never null. */
 		public Message message { get; set; }
 		public Call.Chat? call { get; set; default = null; }
 		
@@ -104,10 +105,17 @@ namespace OLLMchat.Response
 			);
 		}
 
+		construct
+		{
+			if (this.message == null)
+				this.message = new Message("assistant", "");
+		}
+
 		public Chat(Settings.Connection? connection, Call.Chat call)
 		{
 			base(connection);
 			this.call = call;
+			this.message = new Message("assistant", "");
 		}
 
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
@@ -127,11 +135,13 @@ namespace OLLMchat.Response
 		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
 			switch (property_name) {
-				case "message":
-					this.message = Json.gobject_deserialize(typeof(Message), property_node) as Message;
+				case "message": {
+					var m = Json.gobject_deserialize(typeof(Message), property_node) as Message;
+					this.message = m == null ? new Message("assistant", "") : m;
 					value = Value(typeof(string));
 					value.set_string("");
 					return true;
+				}
 				
 				case "total_duration_s":
 				case "eval_duration_s":
@@ -145,7 +155,7 @@ namespace OLLMchat.Response
 			}
 		}
 
-		public string addChunk(Json.Object chunk)
+		public override string addChunk(Json.Object chunk)
 		{
 			// Reset new content properties for this chunk
 			this.new_content = "";

@@ -68,6 +68,12 @@ When the work involves **preparing or making code changes**, the task list **mus
 
 ***
 
+## Markdown output
+
+Your output will be read as markdown. If you include content that should **not** be interpreted as markdown (e.g. the user's request, or text that could be mistaken for markdown such as a fenced block start), wrap it in a code block so the parser does not treat it as markdown — for example: \`\`\`text
+  indent... \`\`\`some not valid markdown
+\`\`\`
+
 ## Output format
 
 Produce your response in the following structure. Use markdown **headings** for the three main sections (e.g. `## Original prompt`, `## Goals / summary`, `## Tasks`), not bold. Put shared context in task **References** where needed; do not use a separate "General information for all tasks" section.

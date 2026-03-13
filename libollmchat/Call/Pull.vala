@@ -45,6 +45,7 @@ namespace OLLMchat.Call
 			this.name = model_name;
 			this.url_endpoint = "pull";
 			this.http_method = "POST";
+			this.streaming_response = new Response.Pull(connection);
 		}
 
 		/**
@@ -64,7 +65,7 @@ namespace OLLMchat.Call
 			GLib.debug("Pull request URL: %s", url);
 			GLib.debug("Pull request Body: %s", request_body);
 
-			this.streaming_response = new Response.Pull(this.connection);
+			this.streaming_response.done = false;
 			try {
 				yield this.handle_streaming_response(message, (chunk) => {
 					// Convert Json.Object to Response.Pull

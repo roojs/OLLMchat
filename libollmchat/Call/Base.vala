@@ -35,84 +35,85 @@ namespace OLLMchat.Call
 		/** If true, base URL has /api stripped so the request goes to host/v1/... (OpenAI-compatible). */
 		protected bool is_openai = false;
 		public GLib.Cancellable? cancellable { get; set; default = null; }
-		public Response.Base? streaming_response { get; set; default = null; }
+		/** Set by subclasses before streaming; never null when handle_streaming_response runs. */
+		public Response.Base streaming_response { get; set; }
 
-	protected Base(Settings.Connection? connection = null)
-	{
-		this.connection = connection;
-	}
-
-	public unowned ParamSpec? find_property(string name)
-	{
-		return this.get_class().find_property(name);
-	}
-
-	public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
-	{
-		base.set_property(pspec.get_name(), value);
-	}
-
-	public new Value Json.Serializable.get_property(ParamSpec pspec)
-	{
-		Value val = Value(pspec.value_type);
-		base.get_property(pspec.get_name(), ref val);
-		return val;
-	}
-
-	protected string build_url()
-	{
-		if (this.connection == null) {
-			return "";
-		}
-		var base_url = this.connection.url;
-		if (!base_url.has_suffix("/")) {
-			base_url += "/";
-		}
-		if (this.is_openai && base_url.has_suffix("api/")) {
-			// OpenAI-compatible v1 endpoints live at host/v1/..., not host/api/v1/...
-			base_url = base_url.substring(0, base_url.length - 4);
-		}
-		return base_url + this.url_endpoint;
-	}
-
-	protected async Bytes send_request(bool needs_body) throws Error
-	{
-		if (this.connection == null) {
-			throw new OllmError.INVALID_ARGUMENT("Connection is null");
+		protected Base(Settings.Connection? connection = null)
+		{
+			this.connection = connection;
 		}
 
-		var url = this.build_url();
-		
-		// Soup is initialized when Connection is created, never null
-		// Timeout is already set on soup (via connection.timeout property)
-		
-		var message = this.connection.soup_message(this.http_method, url);
-
-		switch (this.http_method) {
-			case "POST":
-			case "DELETE":
-				if (!needs_body) {
-					break;
-				}
-				this.set_request_body(message);
-				break;
-			default:
-				break;
+		public unowned ParamSpec? find_property(string name)
+		{
+			return this.get_class().find_property(name);
 		}
 
-		GLib.debug("Request URL: %s", url);
+		public new void Json.Serializable.set_property(ParamSpec pspec, Value value)
+		{
+			base.set_property(pspec.get_name(), value);
+		}
 
-		var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
+		public new Value Json.Serializable.get_property(ParamSpec pspec)
+		{
+			Value val = Value(pspec.value_type);
+			base.get_property(pspec.get_name(), ref val);
+			return val;
+		}
 
-		if (message.status_code != 200) {
-			if (message.status_code == 400 && bytes != null && bytes.get_size() > 0) {
-				this.parse_error_from_json((string)bytes.get_data(), "Bad request: ");
+		protected string build_url()
+		{
+			if (this.connection == null) {
+				return "";
 			}
-			this.handle_message_error(message);
+			var base_url = this.connection.url;
+			if (!base_url.has_suffix("/")) {
+				base_url += "/";
+			}
+			if (this.is_openai && base_url.has_suffix("api/")) {
+				// OpenAI-compatible v1 endpoints live at host/v1/..., not host/api/v1/...
+				base_url = base_url.substring(0, base_url.length - 4);
+			}
+			return base_url + this.url_endpoint;
 		}
 
-		return bytes;
-	}
+		protected async Bytes send_request(bool needs_body) throws Error
+		{
+			if (this.connection == null) {
+				throw new OllmError.INVALID_ARGUMENT("Connection is null");
+			}
+
+			var url = this.build_url();
+			
+			// Soup is initialized when Connection is created, never null
+			// Timeout is already set on soup (via connection.timeout property)
+			
+			var message = this.connection.soup_message(this.http_method, url);
+
+			switch (this.http_method) {
+				case "POST":
+				case "DELETE":
+					if (!needs_body) {
+						break;
+					}
+					this.set_request_body(message);
+					break;
+				default:
+					break;
+			}
+
+			GLib.debug("Request URL: %s", url);
+
+			var bytes = yield this.connection.soup.send_and_read_async(message, GLib.Priority.DEFAULT, null);
+
+			if (message.status_code != 200) {
+				if (message.status_code == 400 && bytes != null && bytes.get_size() > 0) {
+					this.parse_error_from_json((string)bytes.get_data(), "Bad request: ");
+				}
+				this.handle_message_error(message);
+			}
+
+			return bytes;
+		}
 
 		protected string get_request_body()
 		{
@@ -122,24 +123,24 @@ namespace OLLMchat.Call
 			return generator.to_data(null);
 		}
 
-	public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
-	{
-		switch (property_name) {
-			case "chat-content":
-			case "connection":
-			case "cancellable":
-			case "streaming-response":
-				// Exclude these properties from serialization
-				return null;
-			default:
-				return default_serialize_property(property_name, value, pspec);
+		public virtual Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
+		{
+			switch (property_name) {
+				case "chat-content":
+				case "connection":
+				case "cancellable":
+				case "streaming-response":
+					// Exclude these properties from serialization
+					return null;
+				default:
+					return default_serialize_property(property_name, value, pspec);
+			}
 		}
-	}
 
-	public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
-	{
-		return default_deserialize_property(property_name, out value, pspec, property_node);
-	}
+		public virtual bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			return default_deserialize_property(property_name, out value, pspec, property_node);
+		}
 
 		private void set_request_body(Soup.Message message)
 		{
@@ -187,12 +188,27 @@ namespace OLLMchat.Call
 			if (!root_obj.has_member("error")) {
 				throw new OllmError.FAILED("Failed to parse error response: no error field found");
 			}
-			
-			var error_message = root_obj.get_string_member("error");
-			if (error_message == "") {
-				throw new OllmError.FAILED("Failed to parse error response: empty error message");
+
+			var error_node = root_obj.get_member("error");
+			if (error_node.get_node_type() == Json.NodeType.OBJECT) {
+				var error_obj = error_node.get_object();
+				if (!error_obj.has_member("message") || error_obj.get_member("message").get_node_type() != Json.NodeType.VALUE) {
+					throw new OllmError.FAILED("Failed to parse error response: empty or missing error message");
+				}
+				var error_message = error_obj.get_string_member("message");
+				if (error_message == null || error_message == "") {
+					throw new OllmError.FAILED("Failed to parse error response: empty or missing error message");
+				}
+				throw new OllmError.FAILED(prefix + error_message);
 			}
-			throw new OllmError.FAILED(prefix + error_message);
+			if (error_node.get_node_type() == Json.NodeType.VALUE) {
+				var error_message = error_node.get_string();
+				if (error_message == null || error_message == "") {
+					throw new OllmError.FAILED("Failed to parse error response: empty or missing error message");
+				}
+				throw new OllmError.FAILED(prefix + error_message);
+			}
+			throw new OllmError.FAILED("Failed to parse error response: empty or missing error message");
 		}
 
 		private void parse_streaming_error(InputStream? input_stream, string prefix) throws OllmError
@@ -234,8 +250,7 @@ namespace OLLMchat.Call
 			} catch (GLib.IOError e) {
 				if (this.cancellable == null || !this.cancellable.is_cancelled())
 					throw e;
-				// User cancelled - set done message so callers never see null
-				this.streaming_response.message = new Message("assistant", "");
+				// User cancelled - mark done
 				this.streaming_response.done = true;
 				return;
 			}
@@ -257,8 +272,7 @@ namespace OLLMchat.Call
 			} catch (GLib.IOError e) {
 				if (this.cancellable == null || !this.cancellable.is_cancelled())
 					throw e;
-				// User cancelled - set done message so callers never see null
-				this.streaming_response.message = new Message("assistant", "");
+				// User cancelled - mark done
 				this.streaming_response.done = true;
 				return;
 			}
@@ -339,9 +353,8 @@ namespace OLLMchat.Call
 					GLib.debug("Skipping non-object JSON chunk: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length));
 					return;
 				}
-				// Only log first chunk if streaming_response exists and message is null
-				// (streaming_response is null for Pull, but set for Chat)
-				if (this.streaming_response != null && this.streaming_response.message == null) {
+				// Only log first chunk when message not yet set
+				if (this.streaming_response.message == null) {
 					GLib.debug("First streaming response: %s", trimmed);
 				}
 				var chunk_obj = chunk_node.get_object();

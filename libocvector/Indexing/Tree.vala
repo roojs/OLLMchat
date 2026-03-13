@@ -235,17 +235,17 @@ namespace OLLMvector.Indexing
 			
 			if (element_name == null || element_name == "") {
 				// Skip elements without names - they're likely internal implementation details
-				GLib.debug("Skipping %s (lines %d-%d): element has no name", element_type, start_line, end_line);
+				// GLib.debug("Skipping %s (lines %d-%d): element has no name", element_type, start_line, end_line);
 				return null;
 			}
 			
 			// Skip if too short or starts with underscore (likely internal)
 			if (element_name.length < 2) {
-				GLib.debug("Skipping %s: %s (lines %d-%d): name too short (< 2 chars)", element_type, element_name, start_line, end_line);
+				// GLib.debug("Skipping %s: %s (lines %d-%d): name too short (< 2 chars)", element_type, element_name, start_line, end_line);
 				return null;
 			}
 			if (element_name.has_prefix("_")) {
-				GLib.debug("Skipping %s: %s (lines %d-%d): name starts with underscore (likely internal)", element_type, element_name, start_line, end_line);
+				// GLib.debug("Skipping %s: %s (lines %d-%d): name starts with underscore (likely internal)", element_type, element_name, start_line, end_line);
 				return null;
 			}
 			
@@ -286,8 +286,8 @@ namespace OLLMvector.Indexing
 			
 			// Build AST path from node by traversing up the AST using base class method
 			metadata.ast_path = this.ast_path(node, code_content);
-			GLib.debug("extract_element_metadata: set ast_path='%s' for %s %s (lines %d-%d)", 
-				metadata.ast_path, element_type, element_name, metadata.start_line, metadata.end_line);
+			// GLib.debug("extract_element_metadata: set ast_path='%s' for %s %s (lines %d-%d)", 
+			// 	metadata.ast_path, element_type, element_name, metadata.start_line, metadata.end_line);
 			
 			// Match with cache and pre-populate description if unchanged
 			this.match_element_with_cache(metadata);

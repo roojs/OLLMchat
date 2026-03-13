@@ -119,6 +119,7 @@ namespace OLLMchat.Call
 			this.model = model_name;
 			this.url_endpoint = "create";
 			this.http_method = "POST";
+			this.streaming_response = new Response.Create(connection);
 		}
 
 		/**
@@ -138,7 +139,7 @@ namespace OLLMchat.Call
 			GLib.debug("Create request URL: %s", url);
 			GLib.debug("Create request Body: %s", request_body);
 
-			this.streaming_response = new Response.Create(this.connection);
+			this.streaming_response.done = false;
 			try {
 				yield this.handle_streaming_response(message, (chunk) => {
 					// Convert Json.Object to Response.Create
@@ -172,6 +173,7 @@ namespace OLLMchat.Call
 				case "model":
 					// Always serialize model (required)
 					return default_serialize_property(property_name, value, pspec);
+
 				case "from":
 				case "template":
 				case "license":
@@ -182,15 +184,27 @@ namespace OLLMchat.Call
 						return null;
 					}
 					return default_serialize_property(property_name, value, pspec);
+
 				case "parameters":
 					// Only serialize parameters if they have valid values
 					if (!this.parameters.has_values()) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
+					var options_node = Json.gobject_serialize(this.parameters);
+					var obj = options_node.get_object();
+					var new_obj = new Json.Object();
+					obj.foreach_member((o, key, node) => {
+						var api_key = key.contains("-") ? key.replace("-", "_") : key;
+						new_obj.set_member(api_key, node);
+					});
+					var new_node = new Json.Node(Json.NodeType.OBJECT);
+					new_node.set_object(new_obj);
+					return new_node;
+
 				case "stream":
 					// Always serialize stream (bool)
 					return default_serialize_property(property_name, value, pspec);
+
 				default:
 					// Exclude all other properties
 					return null;

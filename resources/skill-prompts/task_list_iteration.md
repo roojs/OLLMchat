@@ -48,6 +48,14 @@ When **issues with the tasks** (previous proposal issues) are supplied, produce 
 
 ***
 
+## Markdown output
+
+Your output will be read as markdown. If you include content that should **not** be interpreted as markdown (e.g. the user's request, or text that could be mistaken for markdown such as a fenced block start), wrap it in a code block so the parser does not treat it as markdown — for example: 
+
+```text
+  indent... ```some not valid markdown
+```
+
 ## Output format
 
 Produce your response with **only** the following section:
