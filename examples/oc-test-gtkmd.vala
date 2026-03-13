@@ -197,6 +197,12 @@ Examples:
 		} else {
 			renderer.add(markdown_content);
 			renderer.flush();
+			// Delay re-layout so first paint/layout can complete (avoids white space above frame)
+			GLib.Timeout.add(200, () => {
+				text_view_box.queue_resize();
+				scrolled.queue_resize();
+				return false;
+			});
 		}
 
 		window.set_child(scrolled);
@@ -212,6 +218,12 @@ Examples:
 		GLib.Timeout.add(interval_ms, () => {
 			if (pos[0] >= markdown_content.length) {
 				renderer.flush();
+				// Delay re-layout so nested content (e.g. ```markdown blocks) can finish and resize correctly
+				GLib.Timeout.add(200, () => {
+					renderer.box.queue_resize();
+					scrolled.queue_resize();
+					return false;
+				});
 				return false;
 			}
 			int chunk_chars = (int) (GLib.Random.next_int() % 7 + 2);  // 2–8 characters
