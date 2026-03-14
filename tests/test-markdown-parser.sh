@@ -52,9 +52,10 @@ MARKDOWN_TEST_LABELS=(
 	"4. Links (callback trace)"
 	"5. Indented fenced blocks (callback trace)"
 	"6. Nested lists (callback trace)"
+	"7. oc-frame-info format (callback trace)"
 )
 # Substrings that identify each test in FAILED_TESTS descriptions
-MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback" "Indented fenced" "Nested lists")
+MARKDOWN_TEST_KEYS=("Formatting HTML" "Blocks callback" "Tables HTML" "Links callback" "Indented fenced" "Nested lists" "oc-frame-info format")
 
 # Test 1: Simple formatting (bold, italic, code, etc.) → HTML
 test_formatting() {
@@ -123,6 +124,17 @@ test_nested_lists() {
 	test-match "$testname" "$actual" "$expected" "Nested lists callback trace" || true
 }
 
+# Test 7: oc-frame-info format (type.oc-frame-theme [title]) → callback trace
+test_oc_frame_info_format() {
+	echo "=== Test 7: oc-frame-info format (callback trace) ==="
+	reset_test_state
+	local testname="markdown_oc_frame_info_format"
+	local actual="$TEST_DIR/oc-frame-info-format-actual-trace.txt"
+	local expected="$MD_DATA/oc-frame-info-format-expected-trace.txt"
+	(cd "$SCRIPT_DIR" && "$OC_MARKDOWN_TEST" "markdown/oc-frame-info-format.md" 2>/dev/null) > "$actual"
+	test-match "$testname" "$actual" "$expected" "oc-frame-info format callback trace" || true
+}
+
 # Actual/expected paths for each test (order matches MARKDOWN_TEST_LABELS)
 # Expected files define correct output; test fails if parser output does not match.
 MARKDOWN_ACTUAL_FILES=(
@@ -132,6 +144,7 @@ MARKDOWN_ACTUAL_FILES=(
 	"$TEST_DIR/links-actual-trace.txt"
 	"$TEST_DIR/indented-fenced-blocks-actual-trace.txt"
 	"$TEST_DIR/nested-lists-actual-trace.txt"
+	"$TEST_DIR/oc-frame-info-format-actual-trace.txt"
 )
 MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/formatting-expected.html"
@@ -140,6 +153,7 @@ MARKDOWN_EXPECTED_FILES=(
 	"$MD_DATA/links-expected-trace.txt"
 	"$MD_DATA/indented-fenced-blocks-expected-trace.txt"
 	"$MD_DATA/nested-lists-expected-trace.txt"
+	"$MD_DATA/oc-frame-info-format-expected-trace.txt"
 )
 
 # Print which tests passed/failed and, if any failed, show diffs again at the end
@@ -157,9 +171,9 @@ print_markdown_results() {
 	done
 	echo ""
 	if [ "$TESTS_FAILED" -eq 0 ]; then
-		echo -e "${GREEN}Markdown parser: all 6 tests passed.${NC}"
+		echo -e "${GREEN}Markdown parser: all 7 tests passed.${NC}"
 	else
-		echo -e "${RED}Markdown parser: $TESTS_FAILED of 6 tests failed.${NC}"
+		echo -e "${RED}Markdown parser: $TESTS_FAILED of 7 tests failed.${NC}"
 		echo ""
 		echo "=== FAILURE DETAILS (diffs below) ==="
 		for i in "${!MARKDOWN_TEST_LABELS[@]}"; do
@@ -183,13 +197,14 @@ print_markdown_results() {
 
 # Main
 echo ""
-echo "=== Markdown parser test suite (6 tests) ==="
+echo "=== Markdown parser test suite (7 tests) ==="
 echo "  • Formatting:       oc-md2html on markdown/formatting.md → HTML"
 echo "  • Blocks:           oc-markdown-test on markdown/blocks.md → callback trace"
 echo "  • Tables:           oc-md2html on markdown/tables.md → HTML"
 echo "  • Links:            oc-markdown-test on markdown/links.md → callback trace"
 echo "  • Indented fenced:  oc-markdown-test on markdown/indented-fenced-blocks.md → callback trace"
 echo "  • Nested lists:    oc-markdown-test on markdown/nested-lists.md → callback trace"
+echo "  • oc-frame-info:   oc-markdown-test on markdown/oc-frame-info-format.md → callback trace"
 echo ""
 
 setup_test_env
@@ -199,6 +214,7 @@ test_tables
 test_links
 test_indented_fenced_blocks
 test_nested_lists
+test_oc_frame_info_format
 print_test_summary
 print_markdown_results
 exit $([ "$TESTS_FAILED" -eq 0 ] && echo 0 || echo 1)

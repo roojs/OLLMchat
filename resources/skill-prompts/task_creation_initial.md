@@ -104,6 +104,8 @@ When one task **references another task's output**, the link target is **not** t
 - **Rule:** From the task's **Name**, form the slug by: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens.
 - **Link format:** `task://{slug}.md` or `task://{slug}.md#section` for a specific part of the output.
 
+**Be particularly careful when creating task reference links: they must match the task name exactly.** Double-check your generated link against the task name before outputting — same words, same spelling. A mismatched link will fail validation.
+
 **Examples:**
 
 | Task Name (display)        | Reference link                    |

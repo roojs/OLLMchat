@@ -81,6 +81,8 @@ When a task **references another task's output**, the link target is **not** the
 - **Rule:** From the task's **Name**, form the slug by: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens.
 - **Link format:** `task://{slug}.md` or `task://{slug}.md#section` for a specific part of the output.
 
+**Be particularly careful when creating task reference links: they must match the task name exactly.** Double-check your generated link against the task name before outputting — same words, same spelling. A mismatched link will fail validation.
+
 **Examples:** "Research 1" → `task://research-1.md`; "Analysis Current Structure" → `task://analysis-current-structure.md`. Use the slug in the link; the link label can be any readable text (e.g. `[Analysis Current Structure Results]`).
 
 ## Reference link types (use only these)

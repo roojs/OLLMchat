@@ -238,11 +238,12 @@ namespace OLLMcoder.Skill
 						return;
 					}
 					previous_proposal = parser.proposal;
-					previous_proposal_issues = parser.issues;
+					var try_label = "[try %d] ".printf(try_count + 1);
+					previous_proposal_issues = try_label + parser.issues.strip();
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 							"text.oc-frame-warning Task list had issues (retrying)",
-							previous_proposal_issues.strip())));
+							previous_proposal_issues)));
 					}
 				}
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
@@ -407,6 +408,7 @@ namespace OLLMcoder.Skill
 				var response_obj = yield this.chat_call.send(messages, null);
 				response = response_obj != null ? response_obj.message.content : "";
 
+				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);
 				parser.parse_task_list_iteration();
 

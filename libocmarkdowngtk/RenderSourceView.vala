@@ -68,16 +68,13 @@ namespace MarkdownGtk
 			this.renderer = renderer;
 			this.code_content = new StringBuilder();
 			
-			// Parser passes info with a leading space after the fence, so "leading" is usually true.
-			// Only treat as language-free (whole string = title) when there is no type prefix (no "."); otherwise first token = type/classes, rest = title.
+			// Info string format: "type.oc-frame-theme" or "type.oc-frame-theme title" (e.g. markdown.oc-frame-info, text.oc-frame-primary You said:).
+			// Parse as type + optional title when we have that format (dot or space) or empty; else treat as language-free (single word = title only).
 			var leading = language_id.has_prefix(" ");
 			var info = language_id.strip();
-			string language;
-			string description;
-			if (info != "" && leading && !info.contains(" ")) {
-				language = "";
-				description = info;
-			} else {
+			var language = "";
+			var description = info;
+			if (info.contains(".") || info.contains(" ") || info == "" || !leading) {
 				var tokens = info.split(" ", 2);
 				language = tokens.length > 0 ? tokens[0] : "";
 				description = tokens.length > 1 ? tokens[1].strip() : "";

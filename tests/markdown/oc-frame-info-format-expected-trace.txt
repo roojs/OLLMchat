@@ -1,0 +1,146 @@
+=== PARSING MARKDOWN FILE: markdown/oc-frame-info-format.md ===
+=== FILE CONTENT (first 200 chars) ===
+# oc-frame-info format (type.oc-frame-theme [title])
+
+Fenced code blocks using the info string format `type.oc-frame-theme` or `type.oc-frame-theme title`.
+RenderSourceView must parse these as type + ...
+
+=== CALLBACK TRACE ===
+START: <h1>
+  TEXT: "oc-frame-info"
+  TEXT: " format"
+  TEXT: " (type.oc-frame-theme"
+  TEXT: " "
+  TEXT: "[ti"
+  TEXT: "tle])"
+END: <h1>
+TEXT: "
+"
+TEXT: "
+"
+START: <p>
+  TEXT: "Fenced"
+  TEXT: " code"
+  TEXT: " blocks"
+  TEXT: " using"
+  TEXT: " the"
+  TEXT: " info"
+  TEXT: " string"
+  TEXT: " format"
+  TEXT: " "
+  START: <code>
+    TEXT: "type.oc-frame-theme"
+  END: <code>
+  TEXT: " or"
+  TEXT: " "
+  START: <code>
+    TEXT: "type.oc-frame-theme title"
+  END: <code>
+  TEXT: "."
+END: <p>
+TEXT: "
+"
+START: <p>
+  TEXT: "RenderSourceView"
+  TEXT: " must"
+  TEXT: " parse"
+  TEXT: " these"
+  TEXT: " as"
+  TEXT: " type"
+  TEXT: " +"
+  TEXT: " theme"
+  TEXT: " (e.g."
+  TEXT: " markdown),"
+  TEXT: " not"
+  TEXT: " as"
+  TEXT: " language-free"
+  TEXT: " text."
+END: <p>
+TEXT: "
+"
+TEXT: "
+"
+START: <h2>
+  TEXT: "Block"
+  TEXT: " with"
+  TEXT: " type.oc-frame-theme"
+  TEXT: " and"
+  TEXT: " no"
+  TEXT: " title"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang= markdown.oc-frame-info)
+  CODE_TEXT: "## Nested heading"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "- Item one"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "- Item two"
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: "
+"
+START: <h2>
+  TEXT: "Block"
+  TEXT: " with"
+  TEXT: " type.oc-frame-theme"
+  TEXT: " and"
+  TEXT: " title"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang= markdown.oc-frame-info Interpreting results with (model))
+  CODE_TEXT: "Executor prompt body here."
+  CODE_TEXT: "
+"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "- Section one"
+  CODE_TEXT: "
+"
+  CODE_TEXT: "- Section two"
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: "
+"
+START: <h2>
+  TEXT: "Block"
+  TEXT: " with"
+  TEXT: " text"
+  TEXT: " type"
+  TEXT: " and"
+  TEXT: " title"
+  TEXT: " (sanity"
+  TEXT: " check)"
+END: <h2>
+TEXT: "
+"
+TEXT: "
+"
+START: <code_block> (lang= text.oc-frame-primary You said:)
+  CODE_TEXT: "User message content."
+  CODE_TEXT: "
+"
+END: <code_block> (lang=)
+TEXT: "
+"
+START: <p>
+  TEXT: "End"
+  TEXT: " of"
+  TEXT: " file."
+END: <p>
+TEXT: "
+"
+TEXT: ""
+TEXT: ""
+=== END TRACE ===
