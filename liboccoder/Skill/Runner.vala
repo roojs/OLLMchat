@@ -239,15 +239,14 @@ namespace OLLMcoder.Skill
 					previous_proposal = parser.proposal;
 					previous_proposal_issues = parser.issues;
 					if (try_count < 4) {
-						this.add_message(new OLLMchat.Message("ui-warning",
-							"Task list had issues (retrying):\n\n" + previous_proposal_issues.strip()));
+						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+							"text.oc-frame-warning Task list had issues (retrying)",
+							previous_proposal_issues.strip())));
 					}
 				}
-				var fail_msg = "Could not build valid task list after 5 tries.";
-				if (previous_proposal_issues != "") {
-					fail_msg += "\n\nIssues:\n" + previous_proposal_issues.strip();
-				}
-				this.add_message(new OLLMchat.Message("ui-warning", fail_msg));
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"text.oc-frame-danger Could not build valid task list after 5 tries",
+					previous_proposal_issues != "" ? previous_proposal_issues.strip() : "")));
 			} finally {
 				this.session.is_running = false;
 				this.session.manager.agent_status_change();
@@ -412,8 +411,9 @@ namespace OLLMcoder.Skill
 
 				if (parser.issues != "") {
 					this.pending = existing_proposed;
-					this.add_message(new OLLMchat.Message("ui-warning",
-						"Task list iteration had issues:\n\n" + parser.issues.strip()));
+					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+						"text.oc-frame-warning Task list iteration had issues",
+						parser.issues.strip())));
 					continue;
 				}
 				this.pending.goals_summary_md = existing_proposed.goals_summary_md;
@@ -422,11 +422,9 @@ namespace OLLMcoder.Skill
 					this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
 				return;
 			}
-			var fail_msg = "Task list iteration: could not get valid task list after 5 tries.";
-			if (parser.issues != "") {
-				fail_msg += "\n\nIssues:\n" + parser.issues.strip();
-			}
-			this.add_message(new OLLMchat.Message("ui-warning", fail_msg));
+			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+				"text.oc-frame-danger Task list iteration: could not get valid task list after 5 tries",
+				parser.issues != "" ? parser.issues.strip() : "")));
 		}
 	}
 }

@@ -131,8 +131,9 @@ namespace OLLMcoder.Task
 					this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit)
-				this.add_message(new OLLMchat.Message("ui", "**Execution prompt** (user message sent to LLM)\n\n" + tpl.filled_user));
-				this.add_message(new OLLMchat.Message("ui", "Interpreting result" + model_part));
+				this.add_message(new OLLMchat.Message("ui",
+					OLLMchat.Message.fenced("text.oc-frame-info Interpreting results " + model_part,
+					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				try {
 					var response = yield this.chat_call.send(messages, null);
@@ -140,8 +141,9 @@ namespace OLLMcoder.Task
 				} catch (GLib.Error e) {
 					last_issues = e.message;
 					if (try_count < 4) {
-						this.add_message(new OLLMchat.Message("ui-warning",
-							"Executor try %d failed: %s".printf(try_count + 1, last_issues)));
+						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+							"text.oc-frame-warning Executor try %d failed".printf(try_count + 1),
+							last_issues)));
 						continue;
 					}
 					this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;
@@ -153,7 +155,9 @@ namespace OLLMcoder.Task
 				}
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
-					this.add_message(new OLLMchat.Message("ui-warning", "Executor try %d: %s".printf(try_count + 1, last_issues)));
+					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+						"text.oc-frame-warning Executor try %d".printf(try_count + 1),
+						last_issues)));
 				}
 			}
 			this.parent.issues += "\n" + "Executor failed after 5 tries: " + last_issues;

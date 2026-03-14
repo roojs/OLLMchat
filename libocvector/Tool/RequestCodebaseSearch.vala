@@ -202,7 +202,8 @@ namespace OLLMvector.Tool
 			request_message += "\nMax Results: " + this.max_results.to_string();
 			
 			// Send search query to UI (same format as commands)
-			this.send_ui("txt", "Code Search requested", request_message);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-info Code Search requested", request_message)));
 			
 			// Step 1: Get active project from ProjectManager
 			var active_project = this.project_manager.active_project;
@@ -224,7 +225,7 @@ namespace OLLMvector.Tool
 					ui_reason = "No results — no files found in the project folder.";
 					llm_message = "No files found in the project folder. Check that the project is open and has indexed files.";
 				}
-				this.send_ui("txt", "Code Search Results", ui_reason);
+				this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-danger Code Search Results", ui_reason)));
 				return llm_message;
 			}
 			
@@ -293,14 +294,16 @@ namespace OLLMvector.Tool
 				if (this.category != "") {
 					ui_reason = "No results — no indexed documents match the category filter \"%s\". Try without the category filter or use a different category. Valid: %s.".printf(
 						this.category, string.joinv(", ", VALID_CATEGORIES));
-					this.send_ui("txt", "Code Search", ui_reason);
+					this.agent.add_message(new OLLMchat.Message("ui",
+						 OLLMchat.Message.fenced("text.oc-frame-danger Code Search", ui_reason)));
 					return "No document matches the criteria (category=\"" + this.category + "\"). "
 						+ "Try the same query without the category filter to search all docs, "
 						+ "or use a different category. Valid categories: "
 						+ string.joinv(", ", VALID_CATEGORIES) + ".";
 				}
 				ui_reason = "No results — no indexed code or documents match the current filters (element type, language, or category). Try the same query with fewer or different filters (e.g. omit element_type or language), or broaden the query.";
-				this.send_ui("txt", "Code Search", ui_reason);
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-danger Code Search", ui_reason)));
 				return "No document matches the criteria (current filters returned no indexed content). "
 					+ "Try the same query with fewer or different filters (e.g. omit element_type), "
 					+ "or broaden the query.";
@@ -338,7 +341,7 @@ namespace OLLMvector.Tool
 			 
 			// Send output as second message via message_created (same as commands)
 			var result_title = "Code Search Return %d results".printf(results.size);
-			this.send_ui("txt", result_title, formatted);
+			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("markdown.oc-frame-success " + result_title, formatted)));
 			
 			return formatted;
 		}

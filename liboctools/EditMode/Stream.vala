@@ -631,6 +631,7 @@ namespace OLLMtools.EditMode
 			if (failed_count > 0 && applied_count > 0) {
 				summary = "Some changes were applied.\n\n"  +
 				 	string.joinv("\n", summary_lines) + "\n";
+					
 			} else if (failed_count > 0) {
 				summary = "No changes were applied.\n\n" +
 				 	string.joinv("\n", summary_lines) + "\n";
@@ -808,7 +809,8 @@ namespace OLLMtools.EditMode
 				"Changes applied: " + this.changes.size.to_string() + "\n" +
 				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
 				"Mode: " + mode_text;
-			this.request.send_ui("txt", "Changes Applied", success_message);
+			this.request.agent.add_message(new OLLMchat.Message("ui",
+				 OLLMchat.Message.fenced("text.oc-frame-success Changes Applied", success_message)));
 		}
 		
 		/**

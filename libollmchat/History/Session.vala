@@ -657,15 +657,11 @@ namespace OLLMchat.History
 				return;
 			}
 			
-			// Handle "user" message: create "user-sent" for UI display
-			// Create "user-sent" message for UI (is_ui_visible = true)
-			var user_sent_msg = new Message("user-sent", message.content);
-			
-			// Add "user-sent" to session.messages
-			this.messages.add(user_sent_msg);
-			
-			// Emit message_added signal for "user-sent" so UI displays it immediately
-			this.manager.message_added(user_sent_msg, this);
+			// Handle "user" message: store user-sent in history only (not displayed); display via "ui" fenced block
+			this.messages.add(new Message("user-sent", message.content));
+			var ui_msg = new Message("ui", Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
+			this.messages.add(ui_msg);
+			this.manager.message_added(ui_msg, this);
 			// Emit ui-waiting so UI shows animated "waiting for (pretty model) to reply..." (not added to messages; transient)
 			var model_label = this.model_usage.model != "" ? this.model_usage.display_name_with_size() : "";
 			var wait_label = model_label != "" ? "waiting for (%s) to reply".printf(model_label) : "waiting for a reply";

@@ -283,7 +283,8 @@ public class ResultParser : Object
 				"whether its content belongs in one of the valid fields; then resubmit the task list " +
 				"with only the valid fields for each task.";
 		}
-		if (!t.skill_manager.validate(t)) {
+		// Refinement: do not validate skill name; use original task's skill as-is.
+		if (phase != MarkdownPhase.REFINEMENT && !t.skill_manager.validate(t)) {
 			var skill_block = t.task_data.get("Skill");
 			var skill_name = (skill_block != null) ? 
 				skill_block.to_markdown().strip() : "";

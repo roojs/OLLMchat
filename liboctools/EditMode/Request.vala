@@ -232,7 +232,7 @@ Don't forget to close it.
 			
 			// Create Stream instance for processing streaming content
 			this.stream_handler = new Stream(
-				this,                    // Request reference (Stream calls send_ui() on this)
+				this,                    // Request reference (Stream adds UI messages via this.agent)
 				this.file              // File object (Stream can get path from file.path, project_manager from file.manager)
 			);
 			
@@ -246,7 +246,7 @@ Don't forget to close it.
 				+ "Project file: " + (is_in_project ? "yes (auto-approved)" : "no (permission required)");
 			
 			// Send to UI using standardized format
-			this.send_ui("txt", "Edit Mode Activated", ui_message);
+			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-success Edit Mode Activated", ui_message)));
 			
 			// Build LLM message - tell LLM edit mode is activated and provide instructions
 			string llm_message = "Edit mode activated for file: " + this.normalized_path + "\n\n";

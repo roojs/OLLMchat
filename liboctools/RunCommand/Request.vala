@@ -286,7 +286,8 @@ namespace OLLMtools.RunCommand
 				}
 			}
 			
-			this.send_ui("bash", "", "$ " + this.command);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-info ", "$ " + this.command)));
 			
 			// Execute the tool async
 			try {
@@ -338,7 +339,8 @@ namespace OLLMtools.RunCommand
 				output = this.truncate_output(output, 100);
 				
 				// Send output as second message via message_created
-				this.send_ui("txt", "", output);
+				this.agent.add_message(new OLLMchat.Message("ui",
+					 OLLMchat.Message.fenced("text.oc-frame-success ", output)));
 				
 				// Return output to LLM
 				return output;
@@ -448,8 +450,10 @@ namespace OLLMtools.RunCommand
 			}
 			 
 			
-		// Send output as second message via message_created
-			this.send_ui("txt", "", output_content);
+		// Send output as second message (danger when command failed, success when exit 0)
+			var frame_class = exit_status != 0 ? "text.oc-frame-danger " : "text.oc-frame-success ";
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced(frame_class, output_content)));
 				
 			// FUTURE: Streaming support - clear current message when done
 			// this.current_tool_message = null;

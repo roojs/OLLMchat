@@ -44,7 +44,7 @@ namespace OLLMchatGtk
 			FINAL       // Final sizing: min(natural, max_height), hide button if fits
 		}
 
-		private ChatWidget? chat_widget = null;
+		private ChatWidget chat_widget;
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Box text_view_box;
 		private MarkdownGtk.Render renderer;
@@ -73,13 +73,13 @@ namespace OLLMchatGtk
 		 * @param chat_widget The parent ChatWidget to access current chat state
 		 * @since 1.0
 		 */
-		public ChatView(ChatWidget? chat_widget = null)
+		public ChatView(ChatWidget chat_widget)
 		{
 			Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
 			this.chat_widget = chat_widget;
 
 			// Load CSS from resource files
-			string[] css_files = { "pulldown.css", "style.css" };
+			string[] css_files = { "pulldown.css", "style.css", "frame.css" };
 			foreach (var css_file in css_files) {
 				var css_provider = new Gtk.CssProvider();
 				try {
@@ -126,6 +126,9 @@ namespace OLLMchatGtk
 			this.renderer.code_block_content_updated.connect(() => {
 				this.scroll_to_bottom();
 			});
+			this.renderer.start_new_chat_requested.connect((text) => {
+				this.chat_widget.start_new_chat_with_text.begin(text);
+			});
 
 			this.scrolled_window = new Gtk.ScrolledWindow() {
 				hexpand = true,
@@ -160,208 +163,6 @@ namespace OLLMchatGtk
 				// within a few px of bottom = "at bottom" → resume autoscroll; else pause (small scroll up = pause)
 				this.autoscroll_paused_by_user = (vadj.value < vadj.upper - vadj.page_size - 3.0);
 			});
-		}
-
-		/**
-		 * Appends a message to the chat view.
-		 * 
-		 * @param text The message text to display
-		 * @param session The session that owns this message (provides client and chat)
-		 * @since 1.0
-		 */
-		public void append_user_message(string text, OLLMchat.History.SessionBase session)
-		{
-			// Debug: Print truncated content
-			string content_preview = text.length > 20 ? text.substring(0, 20) + "..." : text;
-			GLib.debug("ChatView.append_user_message: Adding user message (content='%s')", content_preview);
-			
-			// Finalize any ongoing assistant message
-			if (this.is_assistant_message) {
-				this.finalize_assistant_message();
-			}
-
-			// Clear any waiting indicator
-			this.clear_waiting_indicator();
-
-			// Create TextView for user message
-			var user_text_view = new Gtk.TextView() {
-				editable = false,
-				cursor_visible = false,
-				wrap_mode = Gtk.WrapMode.WORD,
-				hexpand = true,
-				vexpand = true
-			};
-			// Set internal padding (space between text and TextView edges)
-			user_text_view.set_left_margin(12);
-			user_text_view.set_right_margin(12);
-			user_text_view.set_top_margin(8);
-			user_text_view.set_bottom_margin(8);
-			// Add CSS class to ensure proper background styling
-			user_text_view.add_css_class("oc-user-message-text");
-			user_text_view.buffer.text = text;
-
-			// Create ScrolledWindow for the TextView with height constraints
-			var user_scrolled = new Gtk.ScrolledWindow() {
-				hexpand = true,
-				vexpand = false
-			};
-			user_scrolled.set_child(user_text_view);
-			user_scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
-
-			// Track expanded state
-			bool is_expanded = false;
-			
-			// Check if this is the first user message we've displayed
-			bool is_first_message = !this.has_displayed_user_message;
-			this.has_displayed_user_message = true;
-			
-			// Create header box with title on left and buttons on right
-			var header_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true,
-				vexpand = false,
-				margin_start = 0,
-				margin_end = 0,
-				margin_top = 0,
-				margin_bottom = 0
-			};
-			header_box.add_css_class("oc-frame-header");
-			
-			// Add title label on the left
-			var title_label = new Gtk.Label("You said:") {
-				hexpand = false,
-				halign = Gtk.Align.START,
-				valign = Gtk.Align.CENTER,
-				margin_start = 5
-			};
-			title_label.add_css_class("oc-user-frame-title");
-			header_box.append(title_label);
-			
-			// Add spacer to push buttons to the right
-			header_box.append(new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = true
-			});
-			
-			// Create horizontal box for buttons at top-right
-			var button_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 0) {
-				hexpand = false,
-				vexpand = false
-			};
-			
-			// Create Copy to Clipboard button with icon
-			var copy_button = new Gtk.Button() {
-				icon_name = "edit-copy-symbolic",
-				tooltip_text = "Copy to Clipboard",
-				hexpand = false,
-				margin_start = 5,
-				margin_end = 0,
-				margin_top = 0,
-				margin_bottom = 0,
-				can_focus = false,
-				focus_on_click = false
-			};
-			
-			// Connect copy button click handler
-			copy_button.clicked.connect(() => {
-				this.copy_text_to_clipboard(text);
-			});
-			
-			// Create Expand/Collapse button with icon
-			var expand_button = new Gtk.Button() {
-				icon_name = "pan-down-symbolic",
-				tooltip_text = "Expand",
-				hexpand = false,
-				margin_start = 5,
-				margin_end = 5,
-				margin_top = 0,
-				margin_bottom = 0,
-				can_focus = false,
-				focus_on_click = false
-			};
-			
-			// Calculate natural height of the text content
-			// Use Idle to wait for layout, then set height based on natural size
-			GLib.Idle.add(() => {
-				return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.INITIAL, expand_button);
-			});
-			
-			// Connect expand/collapse button click handler
-			expand_button.clicked.connect(() => {
-				is_expanded = !is_expanded;
-				if (is_expanded) {
-					expand_button.icon_name = "pan-up-symbolic";
-					expand_button.tooltip_text = "Collapse";
-					// Set height to natural height of content
-					GLib.Idle.add(() => {
-						return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.EXPAND);
-					});
-					return;
-				} 
-				expand_button.icon_name = "pan-down-symbolic";
-				expand_button.tooltip_text = "Expand";
-				// Recalculate natural height and set collapsed height
-				GLib.Idle.add(() => {
-					return this.resize_widget_callback(user_text_view, user_scrolled, ResizeMode.COLLAPSE);
-				});
-			});
-			
-			// Add buttons to button box
-			button_box.append(copy_button);
-			
-			// Add "Start new chat with this" button if this is the first message (before expand button)
-			if (is_first_message && this.chat_widget != null) {
-				var new_chat_button = new Gtk.Button() {
-					icon_name = "list-add-symbolic",
-					tooltip_text = "Start new chat with this",
-					hexpand = false,
-					margin_start = 5,
-					margin_end = 5,
-					can_focus = false,
-					focus_on_click = false
-				};
-				
-				// Connect new chat button click handler
-				new_chat_button.clicked.connect(() => {
-					this.chat_widget.start_new_chat_with_text.begin(text);
-				});
-				
-				button_box.append(new_chat_button);
-			}
-			
-			button_box.append(expand_button);
-			
-			// Add button box to header
-			header_box.append(button_box);
-			
-			// Create vertical container box for header and ScrolledWindow
-			var container_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0) {
-				hexpand = true,
-				vexpand = false
-			};
-			
-			// Add header box to container
-			container_box.append(header_box);
-			
-			// Add ScrolledWindow to container
-			container_box.append(user_scrolled);
-
-			// Wrap in Frame for visibility and styling (like code blocks)
-			var user_frame = new Gtk.Frame(null) {
-				margin_top = 0,
-				margin_bottom = 0,
-				hexpand = true
-			};
-			user_frame.set_child(container_box);
-
-			// Style the frame with white background and rounded corners
-			// CSS is loaded from resource file in constructor
-			// Use CSS class matching the chat role name
-			user_frame.add_css_class("oc-user-sent-frame");
-			
-			user_text_view.set_visible(true);
-			
-			// Add blank line and frame at end
-			this.add_blank_line();
-			this.add_widget_frame(user_frame);
 		}
 
 		/**
@@ -844,13 +645,6 @@ namespace OLLMchatGtk
 		}
 
 		/**
-		 * Displays an error message in the chat view.
-		 * 
-		 * @param error The error message to display
-		 * @since 1.0
-		 */
-
-		/**
 		 * Appends a tool message to the chat view in grey format (same as summary).
 		 * Tool messages are processed as markdown before display.
 		 * 
@@ -891,38 +685,6 @@ namespace OLLMchatGtk
 			
 			this.scroll_to_bottom();
 		}
-
-		public void append_error(string error)
-		{
-			// Clear any waiting indicator first to prevent it from deleting the error later
-			this.clear_waiting_indicator();
-			
-			// Finalize any ongoing assistant message
-			if (this.is_assistant_message) {
-				this.finalize_assistant_message();
-			}
-
-			// Get end position for insertion
-			var buffer = this.get_current_buffer();
-			if (buffer == null) {
-				return;
-			}
-			
-			Gtk.TextIter end_iter;
-			buffer.get_end_iter(out end_iter);
-			
-			// Create PangoRender instance and convert to Pango markup
-			var renderer = new Markdown.PangoRender();
-			buffer.insert_markup(
-				ref end_iter,
-				renderer.toPango("<span color=\"red\"><b>Error:</b> " +
-					 GLib.Markup.escape_text(error, -1) + "</span>\n\n"),
-				-1
-			);
-
-			this.scroll_to_bottom();
-		}
-
 
 		/**
 		 * Shows an animated "waiting..." indicator.

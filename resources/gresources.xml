@@ -21,6 +21,7 @@
   <gresource prefix="/ollmchat">
     <file>style.css</file>
     <file>pulldown.css</file>
+    <file>frame.css</file>
     <file>ollama-models.json</file>
   </gresource>
   <gresource prefix="/ocvector">

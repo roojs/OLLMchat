@@ -210,6 +210,10 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.issues = "";
 		foreach (var e in refined_map.entries) {
+			// Keep original task's Skill; do not overwrite from refinement output.
+			if (e.key == "Skill") {
+				continue;
+			}
 			this.task_data.set(e.key, e.value);
 		}
 		this.fill_task_data();
@@ -475,10 +479,11 @@ public class Details : OLLMchat.Agent.Base
 	{
 		this.refined_done = false;
 		this.refine_error = null;
-		this.add_message(new OLLMchat.Message("ui", "Refining: " +
-			 this.task_data.get("Name").to_markdown().strip() +
-			 " with (" + this.session.model_usage.display_name_with_size() + ")"));
-		this.add_message(new OLLMchat.Message("ui", "Details\n\n" + this.to_markdown(MarkdownPhase.COARSE)));
+		this.add_message(new OLLMchat.Message("ui",
+			OLLMchat.Message.fenced("markdown.oc-frame-info Refining" + 
+				this.task_data.get("Name").to_markdown().strip() + " with (" +
+					 this.session.model_usage.display_name_with_size() + ")",
+					  this.to_markdown(MarkdownPhase.COARSE))));
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
@@ -523,17 +528,14 @@ public class Details : OLLMchat.Agent.Base
 				return;
 			}
 			if (i < 4) {
-				this.add_message(new OLLMchat.Message("ui-warning",
-					"Refinement for \"" + 
-						this.task_data.get("Name").to_markdown().strip() +
-						 "\" had issues (retrying):\n\n" +
-					this.result_parser.issues.strip()));
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"text.oc-frame-warning Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
+					this.result_parser.issues.strip())));
 			}
 		}
-		this.add_message(new OLLMchat.Message("ui-warning",
-			"Refinement for \"" + this.task_data.get("Name").to_markdown().strip()
-			 + "\" failed after 5 tries.\n\nIssues:\n" +
-			this.result_parser.issues.strip()));
+		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+			"text.oc-frame-warning Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
+			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
 
@@ -555,8 +557,9 @@ public class Details : OLLMchat.Agent.Base
 			return;
 		}
 		if (skill_model != "") {
-			this.add_message(new OLLMchat.Message("ui-warning",
-				"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead."));
+			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+				"text.oc-frame-warning Model unavailable",
+				"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead.")));
 		}
 		yield base.fill_model();
 	}

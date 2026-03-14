@@ -200,7 +200,8 @@ namespace OLLMtools.GoogleSearch
 			);
 			
 			// Send request message to UI: title "Google Search request for", query in code block
-			this.send_ui("txt", "Google Search request for", this.query);
+			this.agent.add_message(new OLLMchat.Message("ui",
+				 OLLMchat.Message.fenced("text.oc-frame-info Google Search request for", this.query)));
 			
 			// Fetch search results
 			GLib.Bytes content;
@@ -270,7 +271,8 @@ namespace OLLMtools.GoogleSearch
 			var markdown_result = result.to_markdown();
 			
 			// Send response message to UI
-			this.send_ui("markdown", "Google Search reply", markdown_result);
+			this.agent.add_message(new OLLMchat.Message("ui",
+				OLLMchat.Message.fenced("markdown.oc-frame-success Google Search reply", markdown_result)));
 			
 			return markdown_result;
 		}

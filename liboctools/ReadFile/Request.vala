@@ -267,12 +267,16 @@ namespace OLLMtools.ReadFile
 			if (this.ast_path != "") {
 				if (this.file == null) {
 					var error_msg = "AST path resolution requires file to be in active project: " + this.ast_path;
-					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					this.agent.add_message(new OLLMchat.Message("ui", 
+						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response",
+							 "Error: " + error_msg)));
 					throw new GLib.IOError.NOT_FOUND(error_msg);
 				}
 				if (!yield this.resolve_ast_path()) {
 					var error_msg = "AST path not found: " + this.ast_path;
-					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					this.agent.add_message(new OLLMchat.Message("ui", 
+						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response",
+							 "Error: " + error_msg)));
 					throw new GLib.IOError.NOT_FOUND(error_msg);
 				}
 			}
@@ -316,7 +320,8 @@ namespace OLLMtools.ReadFile
 			}
 			
 			// Send request message to UI in standardized codeblock format
-			this.send_ui("txt", "File Read Requested", request_message);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-info File Read Requested", request_message)));
 			
 			// Validate that file_path was provided
 			if (this.normalized_path == null || this.normalized_path == "") {
@@ -326,14 +331,18 @@ namespace OLLMtools.ReadFile
 				} else {
 					error_msg = "File path parameter is empty after normalization";
 				}
-				this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+				this.agent.add_message(new OLLMchat.Message("ui",
+					 OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
+					 	"Error: " + error_msg)));
 				throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
 			}
 			
 			// Validate that file exists
 			if (!GLib.FileUtils.test(this.normalized_path, GLib.FileTest.IS_REGULAR)) {
 				var error_msg = "File not found or is not a regular file: " + this.normalized_path;
-				this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
+						"Error: " + error_msg)));
 				throw new GLib.IOError.FAILED(error_msg);
 			}
 			
@@ -342,7 +351,9 @@ namespace OLLMtools.ReadFile
 			if (!this.read_entire_file && !this.summarize && (this.find_words == null || this.find_words.strip() == "")) {
 				if (this.start_line < 1) {
 					var error_msg = "Invalid line range: start_line must be >= 1";
-					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					this.agent.add_message(new OLLMchat.Message("ui", 
+						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
+							"Error: " + error_msg)));
 					throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
 				}
 				
@@ -350,7 +361,9 @@ namespace OLLMtools.ReadFile
 				if (this.start_line > 0 && this.end_line > 0 && this.start_line > this.end_line) {
 					var error_msg = "Invalid line range: start_line (" + this.start_line.to_string() + 
 						") must be <= end_line (" + this.end_line.to_string() + ")";
-					this.send_ui("txt", "Read file Response", "Error: " + error_msg);
+					this.agent.add_message(new OLLMchat.Message("ui", 
+						OLLMchat.Message.fenced("text.oc-frame-danger Read file Response", 
+							"Error: " + error_msg)));
 					throw new GLib.IOError.INVALID_ARGUMENT(error_msg);
 				}
 			}
@@ -366,7 +379,8 @@ namespace OLLMtools.ReadFile
 				
 				// Send summary to UI
 				var preview_summary = this.get_first_lines(summary, 20);
-				this.send_ui("txt", "File Summary", preview_summary);
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-success File Summary", preview_summary)));
 				
 				// Return full summary to LLM
 				return summary;
@@ -402,13 +416,15 @@ namespace OLLMtools.ReadFile
 				var matching_lines = this.find_matching_lines(full_content, this.find_words, content_start_line);
 				
 				if (matching_lines == "") {
-					this.send_ui("txt", "Read file Reply", "Result: No lines found");
+					this.agent.add_message(new OLLMchat.Message("ui",
+						OLLMchat.Message.fenced("text.oc-frame-success Read file Reply", "Result: No lines found")));
 					return "No lines found containing: " + this.find_words;
 				}
 				
 				// Send matching lines to UI
 				var preview_matching = this.get_first_lines(matching_lines, 20);
-				this.send_ui("txt", "Read file Reply", preview_matching);
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-success Read file Reply", preview_matching)));
 				
 				return matching_lines;
 			}
@@ -434,7 +450,9 @@ namespace OLLMtools.ReadFile
 				line_range_suffix = " (lines %lld-%lld)".printf(this.start_line, this.end_line);
 			}
 			
-			this.send_ui("txt", "Reading file: " + file_basename + line_range_suffix, preview_content);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-success Reading file: " +
+					 file_basename + line_range_suffix, preview_content)));
 			
 			// Return full content to LLM
 			return full_content;

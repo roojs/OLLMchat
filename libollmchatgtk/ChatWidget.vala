@@ -341,9 +341,6 @@ namespace OLLMchatGtk
 				// Use manager.session for rendering (load_messages is called when switching sessions)
 				var session = this.manager.session;
 				switch (msg.role) {
-					case "user-sent":
-						this.chat_view.append_user_message(msg.content, session);
-						break;
 					case "ui":
 						// Use same path as live so code blocks get frames with titles
 						var ui_msg = new OLLMchat.Message("assistant", msg.content, msg.thinking);
@@ -400,19 +397,14 @@ namespace OLLMchatGtk
 			
 			// Display message based on role (only UI-visible messages reach here)
 			switch (m.role) {
-				case "user-sent":
-					this.chat_view.append_user_message(m.content, session);
-					// Waiting indicator is shown when ui-waiting message is received (sent by session/agent)
-					// Activate streaming so we can receive and display the response
-					// This handles both normal user messages and tool continuation replies
-					this.streaming_state(true);
+				case "ui":
+					// "You said" user block and tool/error/preview all arrive as "ui" with fenced content
+					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
+					this.chat_view.append_complete_assistant_message(ui_msg, session);
 					break;
 				case "ui-waiting":
 					this.chat_view.show_waiting_indicator(m.content != "" ? m.content : "waiting for a reply");
-					break;
-				case "ui":
-					var ui_msg = new OLLMchat.Message("assistant", m.content, m.thinking);
-					this.chat_view.append_complete_assistant_message(ui_msg, session);
+					this.streaming_state(true);
 					break;
 				case "ui-warning":
 					var warning_msg = new OLLMchat.Message("assistant", "⚠️ " + m.content, m.thinking);
@@ -653,7 +645,10 @@ namespace OLLMchatGtk
 			// This ensures we don't show incomplete responses
 			// Note: We keep partial response content as it may have content the user wants to see
 			
-			this.chat_view.append_error(error_msg);
+			var error_ui_msg = new OLLMchat.Message("ui",
+				OLLMchat.Message.fenced("text.oc-frame-danger Error", error_msg));
+			this.manager.session.messages.add(error_ui_msg);
+			this.manager.message_added(error_ui_msg, this.manager.session);
 			this.error_occurred(error_msg);
 			this.cleanup_streaming_state();
 			

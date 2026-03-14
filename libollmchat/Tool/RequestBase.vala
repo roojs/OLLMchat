@@ -150,21 +150,6 @@ namespace OLLMchat.Tool
 		}
 		
 		/**
-		 * Send a UI message in standardized codeblock format.
-		 *
-		 * @param type The codeblock type (e.g., "txt", "markdown")
-		 * @param title The title/header for the message (e.g., "Read file Response")
-		 * @param body The message body content
-		 */
-		public void send_ui(string type, string title, string body)
-		{
-			// Convention: ### title then ```type so UI shows heading + framed code block
-			string content = "### " + title + "\n```" + type + "\n" +
-				body.replace("\n```", "\n\\`\\`\\`") + "\n```";
-			this.agent.add_message(new OLLMchat.Message("ui", content));
-		}
-		
-		/**
 		 * Abstract method for requests to build permission information.
 		 *
 		 * Requests implement this method to build permission information

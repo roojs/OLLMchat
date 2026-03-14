@@ -25,7 +25,10 @@ namespace OLLMtools.WebFetch
 	{
 		// Parameter properties
 		public string url { get; set; default = ""; }
+		/** Requested output: "markdown", "raw", or "base64". */
 		public string format { get; set; default = "markdown"; }
+		/** Actual result type after conversion: "markdown", "html", "json", "text", or "base64". Set by convert_content. */
+		private string result_format = "text";
 		
 		/**
 		 * Default constructor.
@@ -60,7 +63,8 @@ namespace OLLMtools.WebFetch
 			}
 				
 			// Send request message to UI
-			this.send_ui(this.tool.name, "request", this.url);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("text.oc-frame-info request", this.url)));
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -94,9 +98,11 @@ namespace OLLMtools.WebFetch
 				// Convert content based on content type and format (updates this.format to actual format used)
 				var result = this.convert_content(content, content_type);
 				
-				// Send response message to UI
-				var response_title = this.tool.name + " - response (" + this.format + ")";
-				this.send_ui(this.tool.name, response_title, result);
+				// Send response message to UI using result_format (markdown, html, json, text, base64)
+				var response_title = this.tool.name + " - response (" + this.result_format + ")";
+				var type_prefix = this.result_format == "base64" ? "text" : this.result_format;
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced(type_prefix + ".oc-frame-success " + response_title, result)));
 				
 				return result;
 			}
@@ -223,7 +229,7 @@ namespace OLLMtools.WebFetch
 		/**
 		 * Convert content based on Content-Type and format property.
 		 * Uses structured if/else for Content-Type matching (Vala doesn't support string switches).
-		 * Updates this.format to reflect the actual format used.
+		 * Sets this.result_format to the actual result type: markdown, html, json, text, or base64.
 		 * 
 		 * @param content The content bytes
 		 * @param content_type The detected Content-Type
@@ -236,40 +242,38 @@ namespace OLLMtools.WebFetch
 			
 			// Content-Type starts with "image/" → always base64 (regardless of format parameter)
 			if (normalized_type.has_prefix("image/")) {
-				this.format = "base64";
+				this.result_format = "base64";
 				return this.convert_to_base64(content);
 			}
 			
 			// Content-Type is "text/html" → handle based on format parameter
-			// Note: base64 format is not supported for HTML (always convert to markdown or raw)
 			if (normalized_type == "text/html") {
 				switch (this.format) {
 					case "raw":
-						this.format = "raw";
+						this.result_format = "html";
 						return (string)content.get_data();
 					case "base64":
 					case "markdown":
-						 
 					default:
-						this.format = "markdown";
+						this.result_format = "markdown";
 						return this.convert_html_to_markdown(content);
 				}
 			}
 			
 			// Content-Type starts with "text/" (non-HTML) → return raw text
 			if (normalized_type.has_prefix("text/")) {
-				this.format = "raw";
+				this.result_format = "text";
 				return (string)content.get_data();
 			}
 			
 			// Content-Type is "application/json" → return raw JSON
 			if (normalized_type == "application/json") {
-				this.format = "raw";
+				this.result_format = "json";
 				return (string)content.get_data();
 			}
 			
 			// Content-Type is anything else → base64
-			this.format = "base64";
+			this.result_format = "base64";
 			return this.convert_to_base64(content);
 		}
 		

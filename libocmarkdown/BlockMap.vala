@@ -244,7 +244,7 @@ namespace Markdown
 				var newline_char = chunk.get_char(newline_pos);
 				var newline_byte_len = newline_char.to_string().length;
 				byte_length = newline_pos + newline_byte_len - chunk_pos;
-				if (fence_end_pos >= newline_pos) {
+				if (fence_end_pos > newline_pos) {
 					return newline_pos - chunk_pos + 1;
 				}
 				// Pass unstripped so consumer can detect leading space (" description" vs "language description")

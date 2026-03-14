@@ -37,6 +37,7 @@ namespace MarkdownGtk
 		// Widget references for expand/collapse functionality
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Button expand_button;
+		private Gtk.Button new_chat_button;
 		
 		// Phase 2: nested markdown (stack + view-source toggle)
 		private Gtk.Stack stack;
@@ -82,10 +83,19 @@ namespace MarkdownGtk
 					description = info.substring(p + 1).strip();
 				}
 			}
-			this.code_language =language.down();
-			var header_text = (description != "") ? description :
+ 			var header_text = (description != "") ? description :
 				 ((language != "") ? language : "code");
-			
+			// Post-process language: split on ".", first part = language, rest = frame classes
+			var lang_parts = language.split(".");
+			language = lang_parts.length > 0 ? lang_parts[0] : language;
+			this.code_language = language.down();
+			string[] frame_theme_classes = lang_parts.length > 1 ?
+				 lang_parts[1:lang_parts.length] : new string[0];
+			bool is_user_frame = "oc-frame-user" in frame_theme_classes;
+
+
+
+
 			// Create buffer with language (first token only) for syntax highlighting
 			GtkSource.Buffer source_buffer;
 			if (language != "") {
@@ -258,7 +268,25 @@ namespace MarkdownGtk
 				}
 			});
 			
-			// Add buttons to button box (copy, view-source toggle, expand)
+			// Add buttons to button box (Start new chat, then copy, view-source toggle, expand)
+			this.new_chat_button = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				tooltip_text = "Start new chat with this",
+				hexpand = false,
+				margin_start = 5,
+				margin_end = 5,
+				can_focus = false,
+				focus_on_click = false,
+				visible = is_user_frame
+			};
+			this.new_chat_button.clicked.connect(() => {
+				Gtk.TextIter start_iter;
+				Gtk.TextIter end_iter;
+				this.source_buffer.get_bounds(out start_iter, out end_iter);
+				var text = this.source_buffer.get_text(start_iter, end_iter, false);
+				this.renderer.start_new_chat_requested(text);
+			});
+			button_box.append(this.new_chat_button);
 			button_box.append(copy_button);
 			button_box.append(this.view_source_toggle);
 			button_box.append(expand_button);
@@ -305,8 +333,11 @@ namespace MarkdownGtk
 			};
 			frame.set_child(container_box);
 			
-			// Style the frame with blockcode-frame CSS class
-			frame.add_css_class("oc-blockcode-frame");
+			// Style the frame: .oc-frame is the only base; theme classes (when present) override its variables
+			frame.add_css_class("oc-frame");
+			foreach (var c in frame_theme_classes) {
+				frame.add_css_class(c);
+			}
 
 			// Add frame to box
 			this.renderer.box.append(frame);

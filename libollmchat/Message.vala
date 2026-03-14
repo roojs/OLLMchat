@@ -83,13 +83,12 @@ namespace OLLMchat
 						is_ui_visible = true;  // Display as assistant message
 						break;
 					case "user":
+						is_user = true;
+						break;
 					case "user-sent":
 						is_user = true;
-						if (value == "user-sent") {
-							is_hidden = true;
-							is_ui_visible = true;  // Display user-sent messages
-						}
-						// "user" role is not UI visible (use "user-sent" instead)
+						is_hidden = true;
+						is_ui_visible = false;  // History only; display via "ui" message with fenced content
 						break;
 					case "assistant":
 						is_llm = true;
@@ -222,6 +221,35 @@ namespace OLLMchat
 			this.tool_calls = tool_calls;
 		}
 		
+		/**
+		 * Builds a fenced block. Format: fence + " " + header + "\n" + body + "\n" + fence + "\n".
+		 * Picks fence in order: ``` if body has no line closing it; else ~~~; else ````; else escape body and use ```.
+		 *
+		 * @param header Info string (e.g. "text.oc-frame-primary You said:")
+		 * @param body Inner content
+		 * @return Full fenced block string
+		 */
+		public static string fenced(string header, string body) throws GLib.RegexError
+		{
+			var re_3back = new GLib.Regex("(?m)^\\s*```\\s*$");
+			var re_3til = new GLib.Regex("(?m)^\\s*~~~\\s*$");
+			var re_4back = new GLib.Regex("(?m)^\\s*````\\s*$");
+			string fence;
+			string out_body = body;
+			if (!re_3back.match(body)) {
+				fence = "```";
+			} else if (!re_3til.match(body)) {
+				fence = "~~~";
+			} else if (!re_4back.match(body)) {
+				fence = "````";
+			} else {
+				// Indent whole content so no line can be the closing fence
+				out_body = "    " + body.replace("\n", "\n    ");
+				fence = "```";
+			}
+			return fence + " " + header + "\n" + out_body + "\n" + fence + "\n";
+		}
+
 		/**
 		 * Extracts code content from markdown code block syntax in this message's content.
 		 * Handles both ```language and ``` formats.

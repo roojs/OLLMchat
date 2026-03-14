@@ -84,7 +84,9 @@ namespace MarkdownGtk
 		
 		// Signal emitted when code block content is updated (for scrolling)
 		public signal void code_block_content_updated();
-		
+		/** Emitted when user clicks "Start new chat with this" on a user-sent frame. Connect to start a new chat with the given text. */
+		public signal void start_new_chat_requested(string text);
+
 		/**
 		 * Creates a renderer that appends content to the given box.
 		 *
