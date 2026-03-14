@@ -80,12 +80,20 @@ public class Details : OLLMchat.Agent.Base
 	public int step_index { get; set; default = -1; }
 
 	/**
+	 * Step this task belongs to; required so Details looks up the tree (step.list.runner)
+	 * for runner, session, etc.
+	 */
+	public weak Step step { get; set; }
+
+	/**
 	 * Executor output summary (Result summary section).
 	 */
 	/**
-	 * Runner; used for env, content_for_reference when filling prompts.
+	 * Runner; looked up from step.list.runner (tree: runner → list → step → details).
 	 */
-	public weak OLLMcoder.Skill.Runner runner { get; set; }
+	public OLLMcoder.Skill.Runner runner {
+		get { return this.step.list.runner; }
+	}
 
 	/**
 	 * Alias to runner.sr_factory.skill_manager (no setter).
@@ -128,24 +136,18 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Initial task_data from ListItem.to_key_map() for one task list item
-	 * (keys: exact labels only, see class doc).
+	 * (keys: exact labels only, see class doc). Runner and session come from step.list.runner (tree).
 	 *
-	 * @param runner skill runner for this task
-	 * @param factory agent factory
-	 * @param session session for this task
+	 * @param step the step this task belongs to (provides list and runner via tree)
 	 * @param task_data initial map from list item (exact keys only)
 	 */
-	public Details(
-		OLLMcoder.Skill.Runner runner,
-		OLLMchat.Agent.Factory factory,
-		OLLMchat.History.SessionBase session,
-		Gee.Map<string, Markdown.Document.Block> task_data)
+	public Details(Step step, Gee.Map<string, Markdown.Document.Block> task_data)
 	{
-		base(factory, session);
-		this.runner = runner;
+		base(step.list.runner.factory, step.list.runner.session);
+		this.step = step;
 		this.task_data = task_data;
 		this.issues = "";
-		this.result_parser = new ResultParser(this.runner, "");
+		this.result_parser = new ResultParser(step.list.runner, "");
 		this.fill_task_data();
 	}
 
@@ -317,7 +319,7 @@ public class Details : OLLMchat.Agent.Base
 				}
 				continue;
 			}
-			// task://slug.md or task://slug.md#section — stage LIST = task list/iteration (may reference pending); REFINEMENT = completed only, section must exist
+			// task://slug.md#section — At LIST only the first step (step_index==0) gets full validation; later steps validated when they become current in iteration. REFINEMENT: completed only, section required and must exist.
 			if (link.scheme == "task") {
 				var path = link.path.strip();
 				if (path.contains("/")) {
@@ -365,10 +367,27 @@ public class Details : OLLMchat.Agent.Base
 							this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
 							continue;
 						}
+						// First step only: require section anchor and section exist so we never build refinement prompt with invalid refs; later steps validated when current.
+						if (this.step_index != 0) {
+							continue;
+						}
+						if (link.hash == "") {
+							this.issues += "\n" + "Invalid reference target \"" + href + "\": task reference must include a section anchor (e.g. task://" + slug + ".md#section-name).";
+							continue;
+						}
+						if (ref_task.exec_runs.size > 0) {
+							var run = ref_task.exec_runs.get(0);
+							if (!run.document.headings.has_key(link.hash)) {
+								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug + "\" has no section \"" + link.hash + "\".";
+								continue;
+							}
+						}
 						break;
 				}
 				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
-					this.issues += "\n" + "Reference target \"" + href + "\" refers to a task in the same or later section.";
+					this.issues += "\n" + "Reference target \"" + href + 
+						"\" refers to a task in the same or later section. A task may only reference the output of a task from an earlier section. "
+						+ "I suggest you split this task into its own section.";
 				}
 				continue;
 			}
@@ -416,6 +435,27 @@ public class Details : OLLMchat.Agent.Base
 		}
 		var s = new GLib.Regex("[^a-z0-9]+").replace(name.down(), -1, 0, "-");
 		return new GLib.Regex("^-+|-+$").replace(s, -1, 0, "");
+	}
+
+	/**
+	 * Label for this task in issue messages: section number and name or slug
+	 * (e.g. "section 2 \"Research 1\"" or "section 2 (slug: research-1)") so
+	 * the LLM can locate the task in the task list.
+	 */
+	public string issue_label()
+	{
+		var section = (this.step.title != "") ?
+			this.step.title : "section " + (this.step_index >= 0 ? (this.step_index + 1).to_string() : "?");
+		var name = this.task_data.has_key("Name") ? 
+			this.task_data.get("Name").to_markdown().strip() : "";
+		if (name != "") {
+			return section + " \"" + name + "\"";
+		}
+		var s = this.slug();
+		if (s != "") {
+			return section + " (slug: " + s + ")";
+		}
+		return section + " (unnamed)";
 	}
 
 	private bool refined_done = false;
@@ -480,7 +520,7 @@ public class Details : OLLMchat.Agent.Base
 		this.refined_done = false;
 		this.refine_error = null;
 		this.add_message(new OLLMchat.Message("ui",
-			OLLMchat.Message.fenced("markdown.oc-frame-info Refining" + 
+			OLLMchat.Message.fenced("markdown.oc-frame-info Refining " + 
 				this.task_data.get("Name").to_markdown().strip() + " with (" +
 					 this.session.model_usage.display_name_with_size() + ")",
 					  this.to_markdown(MarkdownPhase.COARSE))));
@@ -529,12 +569,14 @@ public class Details : OLLMchat.Agent.Base
 			}
 			if (i < 4) {
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"text.oc-frame-warning Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
+					"text.oc-frame-warning Refinement for \"" + 
+						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
 					this.result_parser.issues.strip())));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-			"text.oc-frame-warning Refinement for \"" + this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
+			"text.oc-frame-warning Refinement for \"" + 
+				this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -559,7 +601,8 @@ public class Details : OLLMchat.Agent.Base
 		if (skill_model != "") {
 			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 				"text.oc-frame-warning Model unavailable",
-				"The skill requested the model \"" + skill_model + "\", but it was not available. Using your selected model instead.")));
+				"The skill requested the model \"" + skill_model +
+					 "\", but it was not available. Using your selected model instead.")));
 		}
 		yield base.fill_model();
 	}

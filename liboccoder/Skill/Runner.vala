@@ -229,6 +229,7 @@ namespace OLLMcoder.Skill
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
+					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
 					if (parser.issues == "") {

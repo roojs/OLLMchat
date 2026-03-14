@@ -140,11 +140,16 @@ namespace OLLMchat.History
 			// Agent selection is handled via agent_name in session
 			
 			// c) Copy messages from SessionJson into Session
-			// First, restore all messages to session.messages (including special types)
-			// Chat is created per request by AgentHandler, not stored on Session
-			// Messages are stored in session.messages and will be used when Chat is created
+			// JSON has "updated-at-timestamp" (Unix seconds). Only migrate user→ui for sessions saved before the fenced-UI change.
+			var  migrate = real_session.updated_at_timestamp > 0
+				 && real_session.updated_at_timestamp <= 1773458325;
 			foreach (var msg in json_session.messages) {
 				real_session.messages.add(msg);
+				if (migrate && (msg.role == "user-sent")) {
+					real_session.messages.add(new Message("ui",
+						Message.fenced("text.oc-frame-primary.oc-frame-user You said:", msg.content)));
+					migrate = false;
+				}
 			}
 			
 			// d) Find the index of this placeholder in manager.sessions

@@ -225,7 +225,8 @@ namespace OLLMvector.Tool
 					ui_reason = "No results — no files found in the project folder.";
 					llm_message = "No files found in the project folder. Check that the project is open and has indexed files.";
 				}
-				this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-danger Code Search Results", ui_reason)));
+				this.agent.add_message(new OLLMchat.Message("ui", 
+					OLLMchat.Message.fenced("text.oc-frame-danger Code Search Results", ui_reason)));
 				return llm_message;
 			}
 			
@@ -340,8 +341,9 @@ namespace OLLMvector.Tool
 			
 			 
 			// Send output as second message via message_created (same as commands)
-			var result_title = "Code Search Return %d results".printf(results.size);
-			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("markdown.oc-frame-success " + result_title, formatted)));
+			var result_title = results.size == 1 ? "Code search returned 1 result" : "Code search returned %d results".printf(results.size);
+			this.agent.add_message(new OLLMchat.Message("ui", 
+				OLLMchat.Message.fenced("markdown.oc-frame-success " + result_title, formatted)));
 			
 			return formatted;
 		}

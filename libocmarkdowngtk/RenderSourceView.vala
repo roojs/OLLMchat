@@ -68,30 +68,30 @@ namespace MarkdownGtk
 			this.renderer = renderer;
 			this.code_content = new StringBuilder();
 			
+			// Parser passes info with a leading space after the fence, so "leading" is usually true.
+			// Only treat as language-free (whole string = title) when there is no type prefix (no "."); otherwise first token = type/classes, rest = title.
+			var leading = language_id.has_prefix(" ");
 			var info = language_id.strip();
-			var language = info;
-			var description = "";
-			var leading = language_id.has_prefix(" ") || language_id.has_prefix("\t");
-			if (info != "" && leading) {
+			string language;
+			string description;
+			if (info != "" && leading && !info.contains(" ")) {
 				language = "";
 				description = info;
+			} else {
+				var tokens = info.split(" ", 2);
+				language = tokens.length > 0 ? tokens[0] : "";
+				description = tokens.length > 1 ? tokens[1].strip() : "";
 			}
-			if (info != "" && !leading) {
-				int p = info.index_of_char(' ');
-				if (p >= 0) {
-					language = info.substring(0, p);
-					description = info.substring(p + 1).strip();
-				}
-			}
- 			var header_text = (description != "") ? description :
-				 ((language != "") ? language : "code");
-			// Post-process language: split on ".", first part = language, rest = frame classes
+			// Post-process language: split on ".", first part = language for highlighting, rest = frame theme classes
 			var lang_parts = language.split(".");
 			language = lang_parts.length > 0 ? lang_parts[0] : language;
 			this.code_language = language.down();
 			string[] frame_theme_classes = lang_parts.length > 1 ?
 				 lang_parts[1:lang_parts.length] : new string[0];
 			bool is_user_frame = "oc-frame-user" in frame_theme_classes;
+			// Title: use description when present; for oc-frame blocks without description use fallback (never show raw "text.oc-frame-...")
+			var header_text = (description != "") ? description :
+				(frame_theme_classes.length > 0 ? "Content" : ((language != "") ? language : "code"));
 
 
 

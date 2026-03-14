@@ -88,13 +88,15 @@ public class ResultParser : Object
 	 * Parses task list from document; uses ''runner'' from constructor to build {@link Details}.
 	 * Builds into {@link runner}.pending only; does not touch completed.
 	 *
-	 * Appends to {@link issues} on each failure. Caller checks ''parser.issues == ""''
-	 * for success. On failure sets runner.pending = new List(runner).
+	 * Caller must set ''runner.pending'' to a fresh {@link List} before calling so we do not
+	 * append to a previous parse. Appends to {@link issues} on each failure. Caller checks
+	 * ''parser.issues == ""'' for success. On failure may set runner.pending = new List so
+	 * we do not leave a half-parsed list.
 	 */
 	public void parse_task_list()
 	{
 		this.issues = "";
-		this.runner.pending = new List(this.runner);
+		// Caller must set runner.pending to a fresh List before calling; we build into it.
 
 		foreach (var key in new string[] { "original-prompt", "goals-summary", "tasks" }) {
 			if (!this.document.headings.has_key(key)) {
@@ -129,7 +131,7 @@ public class ResultParser : Object
 				this.validate_task(t, MarkdownPhase.LIST);
 				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
-					this.issues += "\n" + "Task (References): " + t.issues;
+					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
 			}
 		}
@@ -159,7 +161,7 @@ public class ResultParser : Object
 			return;
 		}
 
-		this.runner.pending = new List(this.runner);
+		// Caller must set runner.pending to a fresh List before calling; we build into it.
 		foreach (var key in this.document.header_list) {
 			if (!key.has_prefix("task-section-")) {
 				continue;
@@ -179,7 +181,7 @@ public class ResultParser : Object
 				this.validate_task(t, MarkdownPhase.LIST);
 				t.validate_references(MarkdownPhase.LIST);
 				if (t.issues != "") {
-					this.issues += "\n" + "Task (References): " + t.issues;
+					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
 			}
 		}
@@ -246,7 +248,7 @@ public class ResultParser : Object
 	 * name for issue messages and does not inject or set names.
 	 *
 	 * When ''phase'' is REFINEMENT, Name is not required (overlay keeps the existing
-	 * task name). Label for messages uses "(unnamed)" if Name is missing.
+	 * task name). Label for messages uses section + name or slug via {@link task_label}.
 	 *
 	 * Used by {@link parse_task_list} and {@link parse_task_list_iteration} so
 	 * both paths share the same rules.
@@ -256,11 +258,8 @@ public class ResultParser : Object
 	 */
 	public void validate_task(Details t, MarkdownPhase phase)
 	{
-		var name_block = t.task_data.get("Name");
-		var label = (name_block != null) ? 
-			name_block.to_markdown().strip() : "(unnamed)";
 		if (t.task_data.has_key("Output")) {
-			this.issues += "\n" + "Task \"" + label + "\" must not contain Output " +
+			this.issues += "\n" + t.issue_label() + " must not contain Output " +
 				"(tasks in the list have no results yet).";
 		}
 		foreach (var req in required_keys()) {
@@ -268,7 +267,7 @@ public class ResultParser : Object
 				continue;
 			}
 			if (!t.task_data.has_key(req)) {
-				this.issues += "\n" + "Task \"" + label + "\" is missing required field: \"" + req + "\". " +
+				this.issues += "\n" + t.issue_label() + " is missing required field: \"" + req + "\". " +
 					"Add the missing field to that task (every task must include: " +
 					string.joinv(", ", required_keys().to_array()) + ") and resubmit the task list.";
 			}
@@ -277,7 +276,7 @@ public class ResultParser : Object
 			if (valid_keys().contains(k)) {
 				continue;
 			}
-			this.issues += "\n" + "Task \"" + label + "\" has disallowed field: \"" + k + "\". " +
+			this.issues += "\n" + t.issue_label() + " has disallowed field: \"" + k + "\". " +
 				"Use only these valid fields: " + string.joinv(", ", valid_keys().to_array()) + ". " +
 				"Consider whether the field is wrongly named (fix the name to match a valid field) or " +
 				"whether its content belongs in one of the valid fields; then resubmit the task list " +
@@ -288,7 +287,7 @@ public class ResultParser : Object
 			var skill_block = t.task_data.get("Skill");
 			var skill_name = (skill_block != null) ? 
 				skill_block.to_markdown().strip() : "";
-			this.issues += "\n" + "Task \"" + label + "\" references skill \"" + skill_name + "\", which is not in the available skills list.";
+			this.issues += "\n" + t.issue_label() + " references skill \"" + skill_name + "\", which is not in the available skills list.";
 		}
 	}
 
@@ -325,6 +324,7 @@ public class ResultParser : Object
 	private Step? parse_step(Markdown.Document.Block section_heading)
 	{
 		var step = new Step(this.runner.pending);
+		step.title = section_heading.text_content().strip();
 		Details? last_task = null;
 		var found_any_list = false;
 		foreach (var node in section_heading.contents()) {
@@ -347,7 +347,7 @@ public class ResultParser : Object
 			found_any_list = true;
 			var list_block = (Markdown.Document.List) node;
 			var task_data = list_block.to_key_map();
-			var task = new Details(this.runner, this.runner.sr_factory, this.runner.session, task_data);
+			var task = new Details(step, task_data);
 			step.children.add(task);
 			last_task = task;
 		}
@@ -405,7 +405,7 @@ public class ResultParser : Object
 				return;
 			}
 			var refined_map = list_block.to_key_map();
-			var refined_task = new Details(task.runner, task.runner.sr_factory, task.runner.session, refined_map);
+			var refined_task = new Details(task.step, refined_map);
 			this.validate_task(refined_task, MarkdownPhase.REFINEMENT);
 			if (this.issues != "") {
 				break;

@@ -51,6 +51,12 @@ public class Step : Object
 	}
 
 	/**
+	 * Section heading text from the document (e.g. "Task section 1" or "Research phase").
+	 * Set when the step is built so issue messages can refer to the section by title.
+	 */
+	public string title { get; set; default = ""; }
+
+	/**
 	 * Tasks in this step. Size 1 = single task; size > 1 = concurrent group.
 	 */
 	public Gee.ArrayList<Details> children { get; set; default = new Gee.ArrayList<Details>(); }

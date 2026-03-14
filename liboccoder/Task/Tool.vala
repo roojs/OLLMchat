@@ -129,10 +129,11 @@ namespace OLLMcoder.Task
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var model_label = this.session.model_usage.model != "" ? 
 					this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				var caption = model_label != "" ? "Interpreting results with (%s) — outputs as text type, not markdown".printf(model_label)
+					: "Interpreting results — outputs as text type, not markdown";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit)
 				this.add_message(new OLLMchat.Message("ui",
-					OLLMchat.Message.fenced("text.oc-frame-info Interpreting results " + model_part,
+					OLLMchat.Message.fenced("text.oc-frame-info " + caption,
 					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				try {
