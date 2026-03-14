@@ -72,10 +72,13 @@ namespace OLLMchat.History
 			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
 				updated_at_timestamp = (new DateTime.now_local()).to_unix(),
-				model_usage = this.model_usage
+				model_usage = this.model_usage,
+				project_path = this.project_path
 			};
-			
-			
+			foreach (var m in this.messages) {
+				real_session.messages.add(m);
+			}
+
 			real_session.title = message.content.strip();
 			
 			// Save title to database immediately

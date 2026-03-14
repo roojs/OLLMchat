@@ -33,10 +33,17 @@ namespace OLLMchat.History
 		public string fid { get; set; default = ""; }
 		public Gee.ArrayList<string> child_chats { get; set; default = new Gee.ArrayList<string>(); }
 		public Gee.ArrayList<Message> messages { get; set; default = new Gee.ArrayList<Message>(); }
+		/** Session project path; from JSON top-level (or DB when loading via placeholder). */
+		public string project_path { get; set; default = ""; }
 		
 		public bool deserialize_property(string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
 		{
-			
+			if (property_name == "project-path") {
+				this.project_path = property_node.get_string() ?? "";
+				value = Value(typeof(string));
+				value.set_string(this.project_path);
+				return true;
+			}
 			if (property_name != "messages") {
 				value = Value(pspec.value_type);
 				return true;
@@ -44,12 +51,20 @@ namespace OLLMchat.History
 			
 			this.messages.clear();
 			var array = property_node.get_array();
+			bool migrate_user_sent = this.updated_at_timestamp > 0 && this.updated_at_timestamp <= 1773458325;
 			for (uint i = 0; i < array.get_length(); i++) {
 				var element_node = array.get_element(i);
 				var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
-				if (msg != null) {
-					this.messages.add(msg);
+				if (msg == null) {
+					continue;
 				}
+				this.messages.add(msg);
+				if (!migrate_user_sent || msg.role != "user-sent") {
+					continue;
+				}
+				this.messages.add(new Message("ui",
+					Message.fenced("text.oc-frame-primary.oc-frame-user You said:", msg.content)));
+				migrate_user_sent = false;
 			}
 			value = Value(typeof(Gee.ArrayList));
 			value.set_object(this.messages);

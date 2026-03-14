@@ -43,6 +43,9 @@ class TestSkillAgentApp : TestAppBase
 	/** Set by build_runner() when a mode needs project + Runner. */
 	private OLLMcoder.Skill.Runner? runner { get; set; default = null; }
 
+	/** Loaded session from JSON; set by load_session() for replay. */
+	private OLLMchat.History.SessionJson? session { get; set; default = null; }
+
 	/** Current command line; set in run_test() for the duration of the run. */
 	private ApplicationCommandLine? cl { get; set; default = null; }
 
@@ -375,8 +378,9 @@ Examples:
 		}
 	}
 
-	private async void build_runner() throws Error
+	private async void build_runner(string project_path_override = "") throws Error
 	{
+		var project_path = project_path_override != "" ? project_path_override : (opt_project ?? "");
 		var db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
 		var db = new SQ.Database(db_path, false);
 		var project_manager = new OLLMfiles.ProjectManager(db);
@@ -386,10 +390,14 @@ Examples:
 		}
 		yield project_manager.load_projects_from_db();
 
-		var project = project_manager.projects.path_map.get(opt_project);
+		if (project_path == "") {
+			this.cl.printerr("Project path required (--project PATH or session with project_path set).\n");
+			throw new GLib.IOError.INVALID_ARGUMENT("Project path required");
+		}
+		var project = project_manager.projects.path_map.get(project_path);
 		if (project == null) {
-			this.cl.printerr("Project not found: %s\n", opt_project);
-			throw new GLib.IOError.NOT_FOUND("Project not found: " + opt_project);
+			this.cl.printerr("Project not found: %s\n", project_path);
+			throw new GLib.IOError.NOT_FOUND("Project not found: " + project_path);
 		}
 		yield project.load_files_from_db();
 		OLLMfiles.Folder.background_recurse = false;
@@ -496,165 +504,64 @@ Examples:
 	}
 
 	/**
-	 * Load session JSON from path and return ordered list of LLM content strings
-	 * (content-stream, content-non-stream, or assistant messages).
+	 * Load session JSON from path and set this.session. Callers use this.session (e.g. project_path, messages) and content_list() for the replay content list.
+	 * On error prints to stderr and exits.
 	 */
-	private Gee.ArrayList<string> load_session_contents(string path) throws GLib.Error
+	private void load_session(string path)
 	{
 		if (!GLib.FileUtils.test(path, GLib.FileTest.EXISTS)) {
 			this.cl.printerr("Session file not found: %s\n", path);
-			throw new GLib.IOError.NOT_FOUND("File not found: " + path);
+			Process.exit(1);
 		}
 		string data;
-		GLib.FileUtils.get_contents(path, out data);
+		try {
+			GLib.FileUtils.get_contents(path, out data);
+		} catch (GLib.FileError e) {
+			this.cl.printerr("Failed to read session file: %s\n", e.message);
+			Process.exit(1);
+		}
 		var parser = new Json.Parser();
 		try {
 			parser.load_from_data(data, -1);
 		} catch (GLib.Error e) {
-			throw new GLib.IOError.FAILED("Failed to parse session JSON: %s".printf(e.message));
+			this.cl.printerr("Failed to parse session JSON: %s\n", e.message);
+			Process.exit(1);
 		}
 		var root = parser.get_root();
 		if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
-			throw new GLib.IOError.INVALID_ARGUMENT("Session JSON root is not an object");
+			this.cl.printerr("Session JSON root is not an object\n");
+			Process.exit(1);
 		}
 		var json_session = Json.gobject_deserialize(typeof(OLLMchat.History.SessionJson), root) as OLLMchat.History.SessionJson;
 		if (json_session == null) {
-			throw new GLib.IOError.INVALID_ARGUMENT("Failed to deserialize session JSON");
+			this.cl.printerr("Failed to deserialize session JSON\n");
+			Process.exit(1);
 		}
-		var list = new Gee.ArrayList<string>();
-		foreach (var msg in json_session.messages) {
-			if ((msg.role == "content-stream" || msg.role == "content-non-stream" || msg.role == "assistant") && msg.content != "") {
-				list.add(msg.content);
-			}
-		}
-		return list;
+		this.session = json_session;
 	}
 
-	private bool replay_wait_next()
+	private async void run_replay()
 	{
-		if (!opt_interactive) {
-			return true;
+		this.load_session(opt_session);
+		this.cl.printerr("Replay from %s (%d messages)\n", opt_session, (int) this.session.messages.size);
+		var project_path = this.session.project_path != "" ? this.session.project_path : opt_project;
+		if (project_path == null || project_path == "") {
+			this.cl.printerr("Replay requires --project PATH or a session with project_path set.\n");
+			Process.exit(1);
 		}
-		this.cl.printerr("[Press Enter for next step] ");
 		try {
-			var line = stdin.read_line();
-			return line != null;
-		} catch (GLib.IOError e) {
-			return false;
+			yield this.build_runner(project_path ?? "");
+		} catch (GLib.Error e) {
+			this.cl.printerr("%s\n", e.message);
+			Process.exit(1);
 		}
-	}
-
-	private async void run_replay() throws GLib.Error
-	{
-		var contents = this.load_session_contents(opt_session);
-		if (contents.size == 0) {
-			this.cl.printerr("No LLM content messages in session.\n");
-			return;
+		try {
+			yield this.runner.run_replay_from_messages(this.session.messages);
+		} catch (GLib.Error e) {
+			this.cl.printerr("Replay failed: %s\n", e.message);
+			Process.exit(1);
 		}
-		this.cl.printerr("Replay: %d content message(s) from %s\n", (int) contents.size, opt_session);
-		yield this.build_runner();
-		int content_index = 0;
-		int parse_count = 0;
-		if (content_index >= contents.size) {
-			return;
-		}
-		var parser = new OLLMcoder.Task.ResultParser(this.runner, contents.get(content_index));
-		parser.parse_task_list();
-		if (parser.issues != "") {
-			this.cl.printerr("Parse (task list) issues: %s\n", parser.issues);
-			return;
-		}
-		content_index++;
-		parse_count++;
-		this.cl.printerr("Parse step %d: task list OK, steps=%d\n", parse_count, (int) this.runner.pending.steps.size);
-		if (!this.replay_wait_next()) {
-			return;
-		}
-		if (opt_auto >= 0 && parse_count >= opt_auto) {
-			this.cl.printerr("Stopping after %d parse steps (--auto %d).\n", parse_count, opt_auto);
-			return;
-		}
-		while (content_index < contents.size && this.runner.pending.steps.size > 0) {
-			var step = this.runner.pending.steps.get(0);
-			// Refinements first (same order as List.refine(): one per task)
-			foreach (var detail in step.children) {
-				if (content_index >= contents.size) {
-					this.cl.printerr("Replay: no content for refinement (step/task).\n");
-					return;
-				}
-				var ref_parser = new OLLMcoder.Task.ResultParser(this.runner, contents.get(content_index));
-				ref_parser.extract_refinement(detail);
-				content_index++;
-				parse_count++;
-				if (ref_parser.issues != "") {
-					this.cl.printerr("Parse step %d (refinement) issues: %s\n", parse_count, ref_parser.issues);
-				} else {
-					this.cl.printerr("Parse step %d: refinement OK\n", parse_count);
-				}
-				if (!this.replay_wait_next()) {
-					return;
-				}
-				if (opt_auto >= 0 && parse_count >= opt_auto) {
-					this.cl.printerr("Stopping after %d parse steps (--auto %d).\n", parse_count, opt_auto);
-					return;
-				}
-			}
-			// Then executor output per task (same order as run_step)
-			foreach (var detail in step.children) {
-				if (content_index >= contents.size) {
-					this.cl.printerr("Replay: no content for executor (step/task).\n");
-					return;
-				}
-				var exec_parser = new OLLMcoder.Task.ResultParser(this.runner, contents.get(content_index));
-				exec_parser.extract_exec(detail);
-				content_index++;
-				parse_count++;
-				if (exec_parser.issues != "") {
-					this.cl.printerr("Parse step %d (executor) issues: %s\n", parse_count, exec_parser.issues);
-				} else {
-					this.cl.printerr("Parse step %d: executor OK\n", parse_count);
-				}
-				if (!this.replay_wait_next()) {
-					return;
-				}
-				if (opt_auto >= 0 && parse_count >= opt_auto) {
-					this.cl.printerr("Stopping after %d parse steps (--auto %d).\n", parse_count, opt_auto);
-					return;
-				}
-			}
-			step.list = this.runner.completed;
-			this.runner.completed.steps.add(step);
-			foreach (var t in step.children) {
-				this.runner.completed.slugs.set(t.slug(), t);
-			}
-			this.runner.pending.steps.remove_at(0);
-			if (content_index >= contents.size) {
-				this.cl.printerr("Replay: no content for iteration.\n");
-				return;
-			}
-			var existing = this.runner.pending;
-			this.runner.pending = new OLLMcoder.Task.List(this.runner);
-			var iter_parser = new OLLMcoder.Task.ResultParser(this.runner, contents.get(content_index));
-			iter_parser.parse_task_list_iteration();
-			content_index++;
-			parse_count++;
-			if (iter_parser.issues != "") {
-				this.cl.printerr("Parse step %d (iteration) issues: %s\n", parse_count, iter_parser.issues);
-				this.runner.pending = existing;
-			} else {
-				this.runner.pending.goals_summary_md = existing.goals_summary_md;
-				this.cl.printerr("Parse step %d: iteration OK, steps=%d\n", parse_count, (int) this.runner.pending.steps.size);
-			}
-			if (!this.replay_wait_next()) {
-				return;
-			}
-			if (opt_auto >= 0 && parse_count >= opt_auto) {
-				this.cl.printerr("Stopping after %d parse steps (--auto %d).\n", parse_count, opt_auto);
-				return;
-			}
-		}
-		this.cl.printerr("Replay done. Parse steps: %d, content consumed: %d/%d.\n",
-			parse_count, content_index, (int) contents.size);
+		this.cl.printerr("Replay done.\n");
 	}
 
 	public static int main(string[] args)

@@ -98,6 +98,9 @@ namespace OLLMapp
 			// Connect new chat button to create new session
 			this.new_chat_button.clicked.connect(() => {
 				var new_session = this.history_manager.create_new_session();
+				if (this.project_manager != null && this.project_manager.active_project != null) {
+					new_session.project_path = this.project_manager.active_project.path;
+				}
 				this.chat_widget.switch_to_session.begin(new_session);
 			});
 			
@@ -768,6 +771,17 @@ namespace OLLMapp
 					this.agent_dropdown.selected = j;
 					break;
 				}
+
+				// Restore active project from session.project_path (set when session was loaded or created)
+				if (session.project_path == "") {
+					return;
+				}
+				var project = this.project_manager.projects.path_map.get(session.project_path);
+				if (project == null) {
+					GLib.warning("Session project_path '%s' not found in project list", session.project_path);
+					return;
+				}
+				this.project_manager.activate_project.begin(project);
 			});
 		}
 		

@@ -31,6 +31,7 @@ namespace OLLMchat
 	 * * "ui-warning": User-friendly warning in chat (e.g. "we couldn't use that model, using default")
 	 * * "ui-waiting": Transient placeholder shown while waiting for response (e.g. "waiting for a reply", "Refining..."); content is the label; animated dots; cleared when content arrives
 	 * * "system": System prompts
+	 * * "project": Active project path (session metadata; not displayed, not sent to LLM)
 	 * * "end-stream": Stream end marker (not displayed)
 	 * * "done": Completion marker (not displayed)
 	 *
@@ -123,6 +124,11 @@ namespace OLLMchat
 					case "system":
 						// System messages are not hidden (they get sent to API)
 						// But not displayed in UI
+						break;
+					case "project":
+						// Session metadata: active project path; not shown in UI, not sent to LLM
+						is_hidden = true;
+						is_ui_visible = false;
 						break;
 				}
 			}

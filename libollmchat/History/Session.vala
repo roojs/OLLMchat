@@ -312,7 +312,8 @@ namespace OLLMchat.History
 				"total_messages INTEGER NOT NULL DEFAULT 0, " +
 				"total_tokens INT64 NOT NULL DEFAULT 0, " +
 				"duration_seconds INT64 NOT NULL DEFAULT 0, " +
-				"fid TEXT NOT NULL" +
+				"fid TEXT NOT NULL, " +
+				"project_path TEXT NOT NULL DEFAULT ''" +
 				");";
 			if (Sqlite.OK != db.db.exec(query, null, out errmsg)) {
 				GLib.warning("Failed to create session table: %s", db.db.errmsg());
@@ -321,6 +322,11 @@ namespace OLLMchat.History
 			// Add agent_name column if it doesn't exist (for existing databases)
 			var alter_query = "ALTER TABLE session ADD COLUMN agent_name TEXT NOT NULL DEFAULT 'just-ask'";
 			db.db.exec(alter_query, null, out errmsg);
+			// Ignore error if column already exists
+
+			// Add project_path column if it doesn't exist (for existing databases)
+			var alter_project = "ALTER TABLE session ADD COLUMN project_path TEXT NOT NULL DEFAULT ''";
+			db.db.exec(alter_project, null, out errmsg);
 			// Ignore error if column already exists
 		}
 		
@@ -466,6 +472,7 @@ namespace OLLMchat.History
 				case "total-messages":
 				case "total-tokens":
 				case "duration-seconds":
+				case "project-path":
 					return default_serialize_property(property_name, value, pspec);
 				
 				case "messages":
@@ -659,7 +666,8 @@ namespace OLLMchat.History
 			
 			// Handle "user" message: store user-sent in history only (not displayed); display via "ui" fenced block
 			this.messages.add(new Message("user-sent", message.content));
-			var ui_msg = new Message("ui", Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
+			var ui_msg = new Message("ui", 
+				Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
 			this.messages.add(ui_msg);
 			this.manager.message_added(ui_msg, this);
 			// Emit ui-waiting so UI shows animated "waiting for (pretty model) to reply..." (not added to messages; transient)

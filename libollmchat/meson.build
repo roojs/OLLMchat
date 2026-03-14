@@ -75,6 +75,7 @@ ollmchat_ollama_src = files([
   'Response/EmbeddingDatum.vala',
   'Response/EmbeddingList.vala',
   'Call/Chat.vala',
+  'Call/ReplayChat.vala',
   'Call/Embed.vala',
   'Call/Models.vala',
   'Call/ChatCompletions.vala',

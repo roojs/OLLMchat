@@ -461,7 +461,7 @@ namespace OLLMchat.Call
 		 * @param cancellable Optional cancellation token
 		 * @return The Response from executing the chat call
 		 */
-		public async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
+		public virtual async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
 		{
 			if (messages.size == 0) {
 				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");

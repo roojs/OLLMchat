@@ -257,6 +257,46 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
+		 * Replay the task-list flow using the session's raw message list.
+		 * ReplayChat skips non-content messages; the first content message is the task list,
+		 * then handle_task_list() uses the rest in order (refinements, exec outputs, iterations).
+		 *
+		 * @param messages session message list (ui, system, project, etc. are skipped by ReplayChat)
+		 */
+		public async void run_replay_from_messages(Gee.ArrayList<OLLMchat.Message> messages) throws GLib.Error
+		{
+			var connection = this.chat_call.connection;
+			var model = this.session.model_usage.model;
+			var replay_chat = new OLLMchat.Call.ReplayChat(connection, model, messages);
+			var dummy = new Gee.ArrayList<OLLMchat.Message>();
+			dummy.add(new OLLMchat.Message("user", ""));
+			OLLMchat.Response.Chat first_response;
+			try {
+				first_response = yield replay_chat.send(dummy);
+			} catch (GLib.Error e) {
+				return;
+			}
+			var first_content = first_response.message.content;
+			this.pending = new OLLMcoder.Task.List(this);
+			var parser = new OLLMcoder.Task.ResultParser(this, first_content);
+			parser.parse_task_list();
+			if (parser.issues != "") {
+				throw new GLib.IOError.INVALID_ARGUMENT("Task list parse: " + parser.issues);
+			}
+			replay_chat.agent = this;
+			replay_chat.tools = this.chat_call.tools;
+			this.replace_chat(replay_chat);
+			this.session.is_running = true;
+			this.session.manager.agent_status_change();
+			try {
+				yield this.handle_task_list(null);
+			} finally {
+				this.session.is_running = false;
+				this.session.manager.agent_status_change();
+			}
+		}
+
+		/**
 		 * Deals with the task list only. Called by send_async when it has
 		 * a valid pending list.
 		 *

@@ -152,6 +152,13 @@ namespace OLLMchat.History
 		// Owned by Session, not Chat
 		public string fid { get; protected set; }
 		
+		/**
+		 * Active project path for this session.
+		 * Set when creating a new session or when loading (from JSON top-level or legacy "project" messages).
+		 * Stored in DB and in session JSON; lets the UI restore the active project.
+		 */
+		public string project_path { get; set; default = ""; }
+		
 		// Agent handler reference - set when session is created or AgentHandler is changed
 		public OLLMchat.Agent.Base? agent { get; set; }
 		

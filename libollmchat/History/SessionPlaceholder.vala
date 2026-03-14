@@ -91,7 +91,8 @@ namespace OLLMchat.History
 				total_messages = this.total_messages,
 				total_tokens = this.total_tokens,
 				duration_seconds = this.duration_seconds,
-				child_chats = this.child_chats
+				child_chats = this.child_chats,
+				project_path = this.project_path
 			};
 			
 			// b) Load the JSON file into a SessionJson
@@ -139,18 +140,8 @@ namespace OLLMchat.History
 			// Agent is managed separately, not stored on client
 			// Agent selection is handled via agent_name in session
 			
-			// c) Copy messages from SessionJson into Session
-			// JSON has "updated-at-timestamp" (Unix seconds). Only migrate user→ui for sessions saved before the fenced-UI change.
-			var  migrate = real_session.updated_at_timestamp > 0
-				 && real_session.updated_at_timestamp <= 1773458325;
-			foreach (var msg in json_session.messages) {
-				real_session.messages.add(msg);
-				if (migrate && (msg.role == "user-sent")) {
-					real_session.messages.add(new Message("ui",
-						Message.fenced("text.oc-frame-primary.oc-frame-user You said:", msg.content)));
-					migrate = false;
-				}
-			}
+			// c) Assign messages from JSON (migration applied during deserialization). project_path already set from DB in initializer.
+			real_session.messages = json_session.messages;
 			
 			// d) Find the index of this placeholder in manager.sessions
 			uint index;
