@@ -58,6 +58,9 @@ namespace OLLMcoder.Task
 			base(factory, session);
 			this.parent = parent;
 			this.id = run_id;
+			if (this.parent.runner.in_replay) {
+				this.chat_call = this.parent.runner.chat_call;
+			}
 		}
 
 		/** Reference contents for this run (from this.references). Can be empty. Http(s) refs ignored. */
@@ -101,12 +104,39 @@ namespace OLLMcoder.Task
 		}
 
 		/**
+		 * Set chat_call.model from this task's skill definition when the skill
+		 * header has an optional model and it is available; otherwise use default.
+		 */
+		protected override async void fill_model()
+		{
+			var definition = this.parent.skill_manager.fetch(this.parent);
+			if (!definition.header.has_key("model")) {
+				yield base.fill_model();
+				return;
+			}
+			var skill_model = definition.header.get("model").strip();
+			if (skill_model != "" && this.connection.models.has_key(skill_model)) {
+				this.chat_call.model = skill_model;
+				this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
+				return;
+			}
+			if (skill_model != "") {
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"text.oc-frame-warning Model unavailable",
+					"The skill requested the model \"" + skill_model +
+						 "\", but it was not available. Using your selected model instead.")));
+			}
+			yield base.fill_model();
+		}
+
+		/**
 		 * Run the tool (if any), build reference content + tool output, combine for executor input,
 		 * send executor prompt, parse into summary and document. Up to 5 attempts; on failure
 		 * appends to parent.issues and throws.
 		 */
 		public async void run() throws GLib.Error
 		{
+			yield this.fill_model();
 			this.chat_call.tools.clear();
 			var tool_output = "";
 			if (this.tool_call != null) {
@@ -154,6 +184,8 @@ namespace OLLMcoder.Task
 				if (parser.exec_extract(this)) {
 					return;
 				}
+				this.parent.runner.replay_step("exec_parse_issues",
+					response_text + "\n\nParse issues:\n" + parser.issues);
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
 					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
