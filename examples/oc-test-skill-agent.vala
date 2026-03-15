@@ -36,7 +36,7 @@ class TestSkillAgentApp : TestAppBase
 	private static int opt_step = 0;
 	private static int opt_task_num = 0;
 	private static bool opt_enable_file_scan = false;
-	private static string? opt_session = null;
+	private static string? opt_replay = null;
 	private static bool opt_interactive = false;
 	private static int opt_auto = -1;
 
@@ -52,21 +52,21 @@ class TestSkillAgentApp : TestAppBase
 	protected override string help { get; set; default = """
 Usage: {ARG} [OPTIONS]
 
-Testable step-by-step usage of the skills agent flow. Requires --run MODE and --project PATH.
+Testable step-by-step usage of the skills agent flow. Use --replay FILE (with --project) to step through a session—runs each part and waits for return. Use --run MODE for single-step modes.
 
 Options:
   -d, --debug                 Enable debug output
   -E, --enable-file-scan       Enable initial project file scan (default: disabled)
-  --session FILE              Load session from JSON for replay (no LLM calls)
+  --replay FILE               Session JSON to step through (no LLM calls)
   --interactive                Replay: press Enter before each parse step
   --auto N                     Replay: run up to N parse steps then stop
 
 Examples:
   {ARG} --run prompt --project=/path/to/project --prompt \"Add a README\"
   {ARG} --debug --run parse-tasklist --project=/path --test-output=llm.txt
-  {ARG} --run replay --project=/path --session=history/session.json
-  {ARG} --run replay --project=/path --session=session.json --interactive
-  {ARG} --run replay --project=/path --session=session.json --auto 3
+  {ARG} --project=/path --replay=history/session.json
+  {ARG} --project=/path --replay=session.json --interactive
+  {ARG} --project=/path --replay=session.json --auto 3
 """; }
 
 	public TestSkillAgentApp()
@@ -102,8 +102,8 @@ Examples:
 		 "Enable initial project file scan (default: disabled)", null },
 		{ "step", 0, 0, OptionArg.INT, ref opt_step, "Step index (default 0)", "N" },
 		{ "task-num", 0, 0, OptionArg.INT, ref opt_task_num, "Task index within step (default 0)", "N" },
-		{ "session", 0, 0, OptionArg.FILENAME, ref opt_session,
-			"Session JSON file for replay (--run replay); no LLM calls", "FILE" },
+		{ "replay", 0, 0, OptionArg.FILENAME, ref opt_replay,
+			"Session JSON file to step through (no --run needed)", "FILE" },
 		{ "interactive", 0, 0, OptionArg.NONE, ref opt_interactive,
 			"Replay: press Enter to run next parse step", null },
 		{ "auto", 0, 0, OptionArg.INT, ref opt_auto,
@@ -132,15 +132,17 @@ Examples:
 	{
 		this.cl = command_line;
 		opt_run = opt_run == null ? "" : opt_run;
-		if (opt_run == "") {
-			this.cl.printerr("--run MODE is required. See --help for modes.\n");
+		if (opt_run == "" && (opt_replay == null || opt_replay == "")) {
+			this.cl.printerr("Use --replay FILE (with --project) to step through a session, or --run MODE for single-step. See --help.\n");
 			return;
 		}
+		if (opt_run == "" && opt_replay != null && opt_replay != "")
+			opt_run = "replay";
 		if (opt_run != "replay" && (opt_project == null || opt_project == "")) {
 			throw new GLib.IOError.INVALID_ARGUMENT("--project PATH is required");
 		}
 		if (opt_run == "replay" && (opt_project == null || opt_project == "")) {
-			throw new GLib.IOError.INVALID_ARGUMENT("--run replay requires --project PATH");
+			throw new GLib.IOError.INVALID_ARGUMENT("--replay requires --project PATH");
 		}
 
 		switch (opt_run) {
@@ -366,9 +368,6 @@ Examples:
 				return;
 			}
 			case "replay": {
-				if (opt_session == null || opt_session == "") {
-					throw new GLib.IOError.INVALID_ARGUMENT("--run replay requires --session FILE");
-				}
 				yield this.run_replay();
 				return;
 			}
@@ -542,8 +541,8 @@ Examples:
 
 	private async void run_replay()
 	{
-		this.load_session(opt_session);
-		this.cl.printerr("Replay from %s (%d messages)\n", opt_session, (int) this.session.messages.size);
+		this.load_session(opt_replay);
+		this.cl.printerr("Replay from %s (%d messages)\n", opt_replay, (int) this.session.messages.size);
 		var project_path = this.session.project_path != "" ? this.session.project_path : opt_project;
 		if (project_path == null || project_path == "") {
 			this.cl.printerr("Replay requires --project PATH or a session with project_path set.\n");
@@ -555,12 +554,17 @@ Examples:
 			this.cl.printerr("%s\n", e.message);
 			Process.exit(1);
 		}
-		try {
-			yield this.runner.run_replay_from_messages(this.session.messages);
-		} catch (GLib.Error e) {
-			this.cl.printerr("Replay failed: %s\n", e.message);
-			Process.exit(1);
-		}
+		int[] step_count = { 0 };
+		this.runner.replay_step.connect((step, content) => {
+			this.cl.printerr("Step: %s\n", step);
+			this.cl.printerr("Content being parsed:\n---\n%s\n---\n", content);
+			step_count[0]++;
+			if (opt_auto < 0 || step_count[0] <= opt_auto) {
+				this.cl.printerr("Press Enter to continue...");
+				GLib.stdin.read_line();
+			}
+		});
+		yield this.runner.replay(this.session.messages);
 		this.cl.printerr("Replay done.\n");
 	}
 

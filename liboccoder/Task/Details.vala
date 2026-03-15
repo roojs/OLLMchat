@@ -149,6 +149,9 @@ public class Details : OLLMchat.Agent.Base
 		this.issues = "";
 		this.result_parser = new ResultParser(step.list.runner, "");
 		this.fill_task_data();
+		if (this.runner.in_replay) {
+			this.chat_call = this.runner.chat_call;
+		}
 	}
 
 	private void fill_task_data()
@@ -539,7 +542,7 @@ public class Details : OLLMchat.Agent.Base
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
 
-			string response_text = "";
+			var response_text = "";
 			for (var attempt = 0; attempt < 3; attempt++) {
 				try {
 					var response = yield this.chat_call.send(messages, cancellable);
@@ -568,6 +571,8 @@ public class Details : OLLMchat.Agent.Base
 				return;
 			}
 			if (i < 4) {
+				this.runner.replay_step("refinement_parse_issues",
+					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"text.oc-frame-warning Refinement for \"" + 
 						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
@@ -595,7 +600,7 @@ public class Details : OLLMchat.Agent.Base
 		var skill_model = definition.header.get("model").strip();
 		if (skill_model != "" && this.connection.models.has_key(skill_model)) {
 			this.chat_call.model = skill_model;
-			this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
+			// this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
 			return;
 		}
 		if (skill_model != "") {

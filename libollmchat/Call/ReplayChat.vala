@@ -24,7 +24,10 @@ namespace OLLMchat.Call
 		private Gee.ArrayList<Message> replay_messages;
 		private int replay_index;
 
-		public ReplayChat(Settings.Connection connection, string model, Gee.ArrayList<Message> replay_messages)
+		public ReplayChat(
+				Settings.Connection connection, 
+				string model, 
+				Gee.ArrayList<Message> replay_messages)
 		{
 			base(connection, model);
 			this.replay_messages = replay_messages;
@@ -32,23 +35,35 @@ namespace OLLMchat.Call
 			this.stream = false;
 		}
 
-		public override async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null) throws Error
+		public override async Response.Chat send(Gee.ArrayList<Message> messages, GLib.Cancellable? cancellable = null)
 		{
 			if (messages.size == 0) {
-				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
+				GLib.printerr("Chat messages array is empty. Provide messages to send.\n");
+				Process.exit(1);
 			}
 			while (this.replay_index < this.replay_messages.size) {
 				var msg = this.replay_messages.get(this.replay_index);
+				var idx = this.replay_index;
 				this.replay_index++;
-				if ((msg.role != "content-stream" && msg.role != "content-non-stream" && msg.role != "assistant") || msg.content == "") {
+				if (msg.role != "content-stream" && msg.role != "content-non-stream"
+					&& msg.role != "assistant") {
 					continue;
 				}
+				if (msg.content == "") {
+					continue;
+				}
+				GLib.debug("Replay index %d role=%s content.length=%d",
+					idx, msg.role, msg.content.length);
 				this.messages = messages;
-				this.streaming_response.message = new Message("assistant", msg.content);
-				this.streaming_response.done = true;
-				return (Response.Chat) this.streaming_response;
+				var response = new Response.Chat(this.connection, this);
+				response.message = new Message("assistant", msg.content);
+				response.done = true;
+				return response;
 			}
-			throw new OllmError.FAILED("Replay: no more content messages.");
+			GLib.debug("No more content messages replay_index=%d total=%d",
+				this.replay_index, (int) this.replay_messages.size);
+			GLib.printerr("Replay: no more content messages.\n");
+			Process.exit(1);
 		}
 	}
 }
