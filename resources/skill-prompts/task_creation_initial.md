@@ -70,9 +70,12 @@ When the work involves **preparing or making code changes**, the task list **mus
 
 ## Markdown output
 
-Your output will be read as markdown. If you include content that should **not** be interpreted as markdown (e.g. the user's request, or text that could be mistaken for markdown such as a fenced block start), wrap it in a code block so the parser does not treat it as markdown — for example: \`\`\`text
-  indent... \`\`\`some not valid markdown
-\`\`\`
+Your output will be read as markdown. If you include content that should **not** be interpreted as markdown (e.g. the user's request, or text that could be mistaken for markdown such as a fenced block start), wrap it in a code block so the parser does not treat it as markdown — for example: 
+
+```text
+  indent... ```some not valid markdown
+```
+
 
 ## Output format
 
@@ -104,8 +107,6 @@ When one task **references another task's output**, the link target is **not** t
 - **Rule:** From the task's **Name**, form the slug by: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens.
 - **Link format:** `task://{slug}.md` or `task://{slug}.md#section` for a specific part of the output.
 
-**Be particularly careful when creating task reference links: they must match the task name exactly.** Double-check your generated link against the task name before outputting — same words, same spelling. A mismatched link will fail validation.
-
 **Examples:**
 
 | Task Name (display)        | Reference link                    |
@@ -115,6 +116,8 @@ When one task **references another task's output**, the link target is **not** t
 | Plan 2                    | `task://plan-2.md`                |
 
 So if you name a task **"Analysis Current Structure"**, later tasks must refer to it as `task://analysis-current-structure.md` — **not** `task://Analysis Current Structure.md` or `task://analysis current structure.md`. Use the slug in the link; the link label (e.g. `[Analysis Current Structure Results]`) can be any readable text.
+
+**Spelling in task names and links must match exactly.** When building a reference link, use the **exact wording** from the task's Name — do not change word forms. In particular, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. If the task is named "Analyze …", the link must use `analyze-` in the slug; if "Analysis …", use `analysis-`. A mismatched link (e.g. `task://analysis-current-task-flow.md` when the task name is "Analyze Current Task Flow") will fail validation.
 
 ## Reference link types (use only these)
 
