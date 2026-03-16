@@ -117,7 +117,7 @@ namespace OLLMcoder.Task
 			var skill_model = definition.header.get("model").strip();
 			if (skill_model != "" && this.connection.models.has_key(skill_model)) {
 				this.chat_call.model = skill_model;
-				this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
+				// this.add_message(new OLLMchat.Message("ui", "skill using " + skill_model + " model."));
 				return;
 			}
 			if (skill_model != "") {
@@ -181,7 +181,11 @@ namespace OLLMcoder.Task
 					throw e;
 				}
 				var parser = new ResultParser(this.parent.runner, response_text);
-				if (parser.exec_extract(this)) {
+				var exec_ok = parser.exec_extract(this);
+				if (this.parent.runner.in_replay) {
+					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
+				}
+				if (exec_ok) {
 					return;
 				}
 				this.parent.runner.replay_step("exec_parse_issues",
@@ -263,6 +267,7 @@ namespace OLLMcoder.Task
 				p.load_from_data(body);
 			} catch (GLib.Error e) {
 				this.issues += "\n" + "Tool Calls: invalid JSON in block: " + e.message;
+				this.issues += "\n\nString being parsed:\n" + body;
 				return false;
 			}
 			var root = p.get_root();

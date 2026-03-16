@@ -246,6 +246,9 @@ namespace OLLMcoder.Skill
 					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
+					if (this.in_replay) {
+						((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
+					}
 					if (parser.issues == "") {
 						this.pending.write("task_list.md", response);
 						yield this.handle_task_list(cancellable);

@@ -561,8 +561,13 @@ public class Details : OLLMchat.Agent.Base
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
+			var task_name = this.task_data.get("Name").to_markdown().strip();
+			if (this.runner.in_replay) {
+				((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(this.result_parser.issues);
+			}
 			if (this.result_parser.issues == "") {
-				this.add_message(new OLLMchat.Message("ui", "Got result for: " + 
+				this.runner.replay_step("refinement_success: " + task_name, response_text);
+				this.add_message(new OLLMchat.Message("ui", "Got result for: " +
 					this.task_data.get("Name").to_markdown().strip()));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
@@ -571,7 +576,7 @@ public class Details : OLLMchat.Agent.Base
 				return;
 			}
 			if (i < 4) {
-				this.runner.replay_step("refinement_parse_issues",
+				this.runner.replay_step("refinement_parse_issues: " + task_name,
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"text.oc-frame-warning Refinement for \"" + 
