@@ -228,14 +228,14 @@ namespace OLLMchat
 		}
 		
 		/**
-		 * Builds a fenced block. Format: fence + " " + header + "\n" + body + "\n" + fence + "\n".
+		 * Builds a fenced block. Format: fence + header + "\n" + body + "\n" + fence + "\n" (no space after fence).
 		 * Picks fence in order: ``` if body has no line closing it; else ~~~; else ````; else escape body and use ```.
 		 *
 		 * @param header Info string (e.g. "text.oc-frame-primary You said:")
 		 * @param body Inner content
 		 * @return Full fenced block string
 		 */
-		public static string fenced(string header, string body) throws GLib.RegexError
+		public static string fenced(string header, string body)
 		{
 			var re_3back = new GLib.Regex("(?m)^\\s*```\\s*$");
 			var re_3til = new GLib.Regex("(?m)^\\s*~~~\\s*$");
@@ -253,7 +253,7 @@ namespace OLLMchat
 				out_body = "    " + body.replace("\n", "\n    ");
 				fence = "```";
 			}
-			return fence + " " + header + "\n" + out_body + "\n" + fence + "\n";
+			return fence + header + "\n" + out_body + "\n" + fence + "\n";
 		}
 
 		/**

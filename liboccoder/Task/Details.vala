@@ -523,7 +523,7 @@ public class Details : OLLMchat.Agent.Base
 		this.refined_done = false;
 		this.refine_error = null;
 		this.add_message(new OLLMchat.Message("ui",
-			OLLMchat.Message.fenced("markdown.oc-frame-info Refining " + 
+			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " + 
 				this.task_data.get("Name").to_markdown().strip() + " with (" +
 					 this.session.model_usage.display_name_with_size() + ")",
 					  this.to_markdown(MarkdownPhase.COARSE))));
@@ -579,13 +579,13 @@ public class Details : OLLMchat.Agent.Base
 				this.runner.replay_step("refinement_parse_issues: " + task_name,
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"text.oc-frame-warning Refinement for \"" + 
+					"text.oc-frame-warning.collapsed Refinement for \"" + 
 						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
 					this.result_parser.issues.strip())));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-			"text.oc-frame-warning Refinement for \"" + 
+			"text.oc-frame-warning.collapsed Refinement for \"" + 
 				this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
@@ -610,7 +610,7 @@ public class Details : OLLMchat.Agent.Base
 		}
 		if (skill_model != "") {
 			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-				"text.oc-frame-warning Model unavailable",
+				"text.oc-frame-warning.collapsed Model unavailable",
 				"The skill requested the model \"" + skill_model +
 					 "\", but it was not available. Using your selected model instead.")));
 		}

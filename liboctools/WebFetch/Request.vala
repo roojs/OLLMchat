@@ -64,7 +64,7 @@ namespace OLLMtools.WebFetch
 				
 			// Send request message to UI
 			this.agent.add_message(new OLLMchat.Message("ui", 
-				OLLMchat.Message.fenced("text.oc-frame-info request", this.url)));
+				OLLMchat.Message.fenced("text.oc-frame-info.collapsed request", this.url)));
 			
 			// Fetch URL with redirects disabled (redirects require approval)
 			Bytes content;
@@ -102,7 +102,7 @@ namespace OLLMtools.WebFetch
 				var response_title = this.tool.name + " - response (" + this.result_format + ")";
 				var type_prefix = this.result_format == "base64" ? "text" : this.result_format;
 				this.agent.add_message(new OLLMchat.Message("ui", 
-					OLLMchat.Message.fenced(type_prefix + ".oc-frame-success " + response_title, result)));
+					OLLMchat.Message.fenced(type_prefix + ".oc-frame-success.collapsed " + response_title, result)));
 				
 				return result;
 			}

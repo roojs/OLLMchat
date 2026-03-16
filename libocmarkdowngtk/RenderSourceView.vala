@@ -38,6 +38,8 @@ namespace MarkdownGtk
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Button expand_button;
 		private Gtk.Button new_chat_button;
+		private Gtk.Revealer body_revealer;  // wraps body; when .collapsed style, toggles visibility
+		private Gtk.Button collapse_toggle_button;  // before title: expand/collapse body when .collapsed
 		
 		// Phase 2: nested markdown (stack + view-source toggle)
 		private Gtk.Stack stack;
@@ -49,10 +51,11 @@ namespace MarkdownGtk
 		
 		private enum ResizeMode
 		{
-			INITIAL,    // Initial sizing: min(natural, max_height), hide button if fits
-			EXPAND,     // Expanded state: natural height
-			COLLAPSE,   // Collapsed state: min(natural, max_height)
-			FINAL       // Final sizing when code block ends: min(natural, max_height), hide button if fits
+			INITIAL,     // Initial sizing: min(natural, max_height), hide button if fits
+			EXPAND,      // Expanded state: natural height
+			COLLAPSE,    // Collapsed state: min(natural, max_height)
+			FINAL,       // Final sizing when code block ends: min(natural, max_height), hide button if fits
+			REVEAL_BODY  // Same capped size as INITIAL but use body_revealer for width, set vexpand true (for .collapsed expand)
 		}
 		
 		/**
@@ -86,6 +89,7 @@ namespace MarkdownGtk
 			string[] frame_theme_classes = lang_parts.length > 1 ?
 				 lang_parts[1:lang_parts.length] : new string[0];
 			bool is_user_frame = "oc-frame-user" in frame_theme_classes;
+			bool has_collapsed_style = "collapsed" in frame_theme_classes;
 			// Title: use description when present; for oc-frame blocks without description use fallback (never show raw "text.oc-frame-...")
 			var header_text = (description != "") ? description :
 				(frame_theme_classes.length > 0 ? "Content" : ((language != "") ? language : "code"));
@@ -141,6 +145,40 @@ namespace MarkdownGtk
 				margin_bottom = 0
 			};
 			header_box.add_css_class("oc-frame-header");
+			
+			// When .collapsed: button before title toggles body (list-add = expand, go-up = collapse)
+			this.collapse_toggle_button = new Gtk.Button() {
+				icon_name = "list-add-symbolic",
+				tooltip_text = "Expand",
+				hexpand = false,
+				margin_end = 4,
+				can_focus = false,
+				focus_on_click = false,
+				visible = has_collapsed_style
+			};
+			this.collapse_toggle_button.clicked.connect(() => {
+				if (this.body_revealer.reveal_child) {
+					this.body_revealer.reveal_child = false;
+					this.collapse_toggle_button.icon_name = "list-add-symbolic";
+					this.collapse_toggle_button.tooltip_text = "Expand";
+					return;
+				}
+				GLib.Idle.add(() => {
+					bool retry = this.resize_widget_callback(
+						(this.code_language == "markdown") ? 
+							(Gtk.Widget) this.rendered_box : 
+							(Gtk.Widget) this.source_view,
+						ResizeMode.REVEAL_BODY
+					);
+					if (!retry) {
+						this.body_revealer.reveal_child = true;
+						this.collapse_toggle_button.icon_name = "go-up-symbolic";
+						this.collapse_toggle_button.tooltip_text = "Collapse";
+					}
+					return retry;
+				});
+			});
+			header_box.append(this.collapse_toggle_button);
 			
 			var title_label = new Gtk.Label("<b>%s</b>".printf(GLib.Markup.escape_text(header_text, -1))) {
 				hexpand = true,
@@ -318,8 +356,16 @@ namespace MarkdownGtk
 				this.stack.visible_child_name = "source";
 			}
 			
-			// Add ScrolledWindow to container
-			container_box.append(this.scrolled_window);
+			// Wrap body in Revealer so .collapsed style can hide/show it with animation
+			this.body_revealer = new Gtk.Revealer() {
+				reveal_child = !has_collapsed_style,
+				hexpand = true,
+				vexpand = false,
+				transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN,
+				transition_duration = 250
+			};
+			this.body_revealer.set_child(this.scrolled_window);
+			container_box.append(this.body_revealer);
 
 			// Wrap in Frame for visibility and styling (no label - title is in header box)
 			// Match user box structure: same margins
@@ -402,10 +448,18 @@ namespace MarkdownGtk
 				// GLib.debug("widget not realized");
 				return false; // Do not retry; resize will run again when visible (e.g. view-source toggle)
 			}
-			// Width needed for height-for-width (e.g. SourceView with word wrap); retry if not allocated yet
-			int for_width = this.scrolled_window.get_width();
+			// Width for height-for-width; REVEAL_BODY uses body_revealer (child may have no allocation when collapsed)
+			var  for_width = this.scrolled_window.get_width(); 
+			if (mode == ResizeMode.REVEAL_BODY) {
+				for_width = this.body_revealer.get_allocated_width();
+				if (for_width <= 0) {
+					for_width = this.body_revealer.get_width();
+				}
+				if (for_width <= 0 && this.renderer.box != null) {
+					for_width = this.renderer.box.get_allocated_width();
+				}
+			}  
 			if (for_width <= 0) {
-				// GLib.debug("for_width=%d, retry", for_width);
 				return true;
 			}
 			// Get preferred height of the widget for the actual width so wrap-based height is correct
@@ -413,13 +467,23 @@ namespace MarkdownGtk
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
-			// GLib.debug("for_width=%d nat=%d", for_width, natural_height);
 			
 			switch (mode) {
 				case ResizeMode.EXPAND:
 					// Remove size constraint to allow expansion to fit content
 					this.scrolled_window.set_size_request(-1, -1);
 					this.scrolled_window.vexpand = true; // Allow expansion to natural height
+					return false;
+				
+				case ResizeMode.REVEAL_BODY:
+					// Same capped size as INITIAL but vexpand true so revealer animates to correct height
+					int max_ht = this.get_max_collapsed_height();
+					int target_ht = (natural_height > 0 && natural_height < max_ht) ? natural_height : max_ht;
+					if (target_ht <= 0) {
+						target_ht = 200;
+					}
+					this.scrolled_window.set_size_request(-1, target_ht);
+					this.scrolled_window.vexpand = true;
 					return false;
 					
 				case ResizeMode.INITIAL:

@@ -261,12 +261,12 @@ namespace OLLMcoder.Skill
 						response + "\n\nParse issues:\n" + parser.issues);
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-							"text.oc-frame-warning Task list had issues (retrying)",
+							"text.oc-frame-warning.collapsed Task list had issues (retrying)",
 							previous_proposal_issues)));
 					}
 				}
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"text.oc-frame-danger Could not build valid task list after 5 tries",
+					"text.oc-frame-danger.collapsed Could not build valid task list after 5 tries",
 					previous_proposal_issues != "" ? previous_proposal_issues.strip() : "")));
 			} finally {
 				this.session.is_running = false;
@@ -323,11 +323,6 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
-				this.add_message(new OLLMchat.Message("ui",
-					"Continuing with task list (%d steps). Refining and executing next step.".printf(this.pending.steps.size)));
-				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				yield this.pending.refine(cancellable);
 				var step_done = yield this.pending.run_step_until_approval();
@@ -339,7 +334,6 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui", "Task list complete (no more steps)."));
 					break;
 				}
-				this.add_message(new OLLMchat.Message("ui", "[dbg] After approval path, pending.steps=%d.".printf(this.pending.steps.size)));
 				if (this.pending.has_tasks_requiring_approval() && !this.writer_approval) {
 					var approved = yield this.request_writer_approval();
 					if (!approved) {
@@ -351,14 +345,11 @@ namespace OLLMcoder.Skill
 					this.writer_approval = true;
 				}
 				// Refine the (new) first step before run_step; after run_task_list_iteration the list was replaced and the new first step was not refined yet.
-				this.add_message(new OLLMchat.Message("ui", "Refining tasks" + model_part));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				yield this.pending.refine(cancellable);
 				step_done = yield this.pending.run_step();
-				this.add_message(new OLLMchat.Message("ui", "[dbg] run_step returned step_done=%s.".printf(step_done.to_string())));
 				if (step_done) {
 					yield this.run_task_list_iteration();
-					this.add_message(new OLLMchat.Message("ui", "[dbg] Back in handle_task_list after run_task_list_iteration (run_step path), pending.steps=%d.".printf(this.pending.steps.size)));
 				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
@@ -462,7 +453,7 @@ namespace OLLMcoder.Skill
 						response + "\n\nParse issues:\n" + parser.issues);
 					this.pending = existing_proposed;
 					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-						"text.oc-frame-warning Task list iteration had issues",
+						"text.oc-frame-warning.collapsed Task list iteration had issues",
 						parser.issues.strip())));
 					continue;
 				}
@@ -473,7 +464,7 @@ namespace OLLMcoder.Skill
 				return;
 			}
 			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-				"text.oc-frame-danger Task list iteration: could not get valid task list after 5 tries",
+				"text.oc-frame-danger.collapsed Task list iteration: could not get valid task list after 5 tries",
 				parser.issues != "" ? parser.issues.strip() : "")));
 		}
 	}
