@@ -206,7 +206,7 @@ namespace OLLMtools.WriteFile
 					throw e;
 				}
 			}
-			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-success Write File",
+			this.agent.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced("text.oc-frame-success.collapsed Write File",
 				"Successfully wrote file: " + this.normalized_path + "\nProject file: " + (is_in_project ? "yes" : "no"))));
 			if (change_type == "added" && this.file.id <= 0 && is_in_project) {
 				yield project_manager.convert_fake_file_to_real(this.file, this.normalized_path);

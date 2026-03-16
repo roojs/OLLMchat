@@ -140,7 +140,7 @@ namespace OLLMchat.History
 			// Agent is managed separately, not stored on client
 			// Agent selection is handled via agent_name in session
 			
-			// c) Assign messages from JSON (migration applied during deserialization). project_path already set from DB in initializer.
+			// c) Assign messages from JSON (migration applied during deserialization in SessionJson). project_path already set from DB in initializer.
 			real_session.messages = json_session.messages;
 			
 			// d) Find the index of this placeholder in manager.sessions

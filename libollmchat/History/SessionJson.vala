@@ -51,20 +51,21 @@ namespace OLLMchat.History
 			
 			this.messages.clear();
 			var array = property_node.get_array();
-			bool migrate_user_sent = this.updated_at_timestamp > 0 && this.updated_at_timestamp <= 1773458325;
+			Message? last_msg = null;
 			for (uint i = 0; i < array.get_length(); i++) {
 				var element_node = array.get_element(i);
 				var msg = Json.gobject_deserialize(typeof(Message), element_node) as Message;
 				if (msg == null) {
 					continue;
 				}
-				this.messages.add(msg);
-				if (!migrate_user_sent || msg.role != "user-sent") {
-					continue;
+				// If previous was user-sent and current is not the "You said:" ui frame, add the ui message (migrate old session format).
+				if (last_msg != null && last_msg.role == "user-sent"
+					&& (msg.role != "ui" || !msg.content.contains("oc-frame-user You said:"))) {
+					this.messages.add(new Message("ui",
+						Message.fenced("text.oc-frame-primary.oc-frame-user You said:", last_msg.content)));
 				}
-				this.messages.add(new Message("ui",
-					Message.fenced("text.oc-frame-primary.oc-frame-user You said:", msg.content)));
-				migrate_user_sent = false;
+				this.messages.add(msg);
+				last_msg = msg;
 			}
 			value = Value(typeof(Gee.ArrayList));
 			value.set_object(this.messages);

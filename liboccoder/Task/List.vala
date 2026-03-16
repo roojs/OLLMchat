@@ -213,7 +213,7 @@ public class List : Object
 		}
 		if (!all_done) {
 			this.runner.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-				"text.oc-frame-danger Step did not complete",
+				"text.oc-frame-danger.collapsed Step did not complete",
 				"Stopping.")));
 			return false;
 		}
@@ -309,7 +309,7 @@ public class List : Object
 		}
 		if (!all_done) {
 			this.runner.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-				"text.oc-frame-danger Step did not complete",
+				"text.oc-frame-danger.collapsed Step did not complete",
 				"Stopping.")));
 			return false;
 		}

@@ -122,7 +122,7 @@ namespace OLLMcoder.Task
 			}
 			if (skill_model != "") {
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"text.oc-frame-warning Model unavailable",
+					"text.oc-frame-warning.collapsed Model unavailable",
 					"The skill requested the model \"" + skill_model +
 						 "\", but it was not available. Using your selected model instead.")));
 			}
@@ -163,7 +163,7 @@ namespace OLLMcoder.Task
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).
 				// Use markdown.oc-frame-info so the executor prompt is rendered as markdown, not plain text.
 				this.add_message(new OLLMchat.Message("ui",
-					OLLMchat.Message.fenced("markdown.oc-frame-info Interpreting results " + model_part,
+					OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Interpreting results " + model_part,
 					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				try {
@@ -173,7 +173,7 @@ namespace OLLMcoder.Task
 					last_issues = e.message;
 					if (try_count < 4) {
 						this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-							"text.oc-frame-warning Executor try %d failed".printf(try_count + 1),
+							"text.oc-frame-warning.collapsed Executor try %d failed".printf(try_count + 1),
 							last_issues)));
 						continue;
 					}
@@ -193,7 +193,7 @@ namespace OLLMcoder.Task
 				last_issues = parser.issues.strip();
 				if (try_count < 4) {
 					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-						"text.oc-frame-warning Executor try %d".printf(try_count + 1),
+						"text.oc-frame-warning.collapsed Executor try %d".printf(try_count + 1),
 						last_issues)));
 				}
 			}

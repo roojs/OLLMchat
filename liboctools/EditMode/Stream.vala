@@ -810,7 +810,7 @@ namespace OLLMtools.EditMode
 				"Project file: " + (is_in_project ? "yes" : "no") + "\n" +
 				"Mode: " + mode_text;
 			this.request.agent.add_message(new OLLMchat.Message("ui",
-				 OLLMchat.Message.fenced("text.oc-frame-success Changes Applied", success_message)));
+				 OLLMchat.Message.fenced("text.oc-frame-success.collapsed Changes Applied", success_message)));
 		}
 		
 		/**

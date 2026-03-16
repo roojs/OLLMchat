@@ -580,6 +580,12 @@ namespace OLLMchatGtk
 				this.finalize_assistant_message_direct();
 			}
 
+			// Ensure any open block is closed and flushed so the new content is parsed in a clean state.
+			// (We used to add \n here to force state exit; we only end block when one is open to avoid extra blank lines.)
+			if (this.content_state != ContentState.NONE) {
+				this.end_block_direct(this.is_thinking);
+			}
+
 			// Clear any waiting indicator
 			this.clear_waiting_indicator();
 
