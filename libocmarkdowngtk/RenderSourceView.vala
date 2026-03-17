@@ -174,12 +174,13 @@ namespace MarkdownGtk
 				this.view_source_toggle.visible = (this.code_language == "markdown");
 				this.copy_button.visible = true;
 				GLib.Idle.add(() => {
-					return  this.resize_widget_callback(
-						(this.code_language == "markdown") ?
-							(Gtk.Widget) this.rendered_box :
-							(Gtk.Widget) this.source_view,
-						ResizeMode.REVEAL_BODY
-					);
+					// Use the stack's visible child so we measure the widget that will be shown (and realized)
+					Gtk.Widget widget = this.stack.visible_child;
+					if (widget == null) {
+						widget = (this.code_language == "markdown") ? 
+							 (Gtk.Widget) this.rendered_box : (Gtk.Widget)  this.source_view;
+					}
+					return this.resize_widget_callback(widget, ResizeMode.REVEAL_BODY);
 				});
 			});
 			header_box.append(this.collapse_toggle_button);
@@ -449,7 +450,7 @@ namespace MarkdownGtk
 		 */
 		private bool resize_widget_callback(Gtk.Widget widget, ResizeMode mode)
 		{
-			// GLib.debug("resize_widget_callback mode=%d realized=%s", (int) mode, widget.get_realized().to_string());
+			GLib.debug("resize_widget_callback mode=%d realized=%s", (int) mode, widget.get_realized().to_string());
 			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
 				// REVEAL_BODY: body was just revealed; widget may need another frame to realize
@@ -470,7 +471,7 @@ namespace MarkdownGtk
 				}
 			}
 			if (for_width <= 0) {
-				// GLib.debug("resize_widget_callback mode=%d bail for_width<=0", (int) mode);
+				GLib.debug("resize_widget_callback mode=%d bail for_width<=0", (int) mode);
 				return true;
 			}
 			// Get preferred height of the widget for the actual width so wrap-based height is correct
@@ -478,14 +479,14 @@ namespace MarkdownGtk
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
-			// GLib.debug(
-			// 	"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
-			// 	(int) mode,
-			// 	for_width,
-			// 	min_natural,
-			// 	natural_height,
-			// 	this.get_max_collapsed_height()
-			// );
+			GLib.debug(
+				"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
+				(int) mode,
+				for_width,
+				min_natural,
+				natural_height,
+				this.get_max_collapsed_height()
+			);
 
 			switch (mode) {
 				case ResizeMode.EXPAND:

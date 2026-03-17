@@ -434,7 +434,7 @@ namespace OLLMcoder.Skill
 						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
 				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				var model_part = model_label != "" ? " with " + model_label : "";
 				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Refining task list" + model_part;
 				var full_prompt = "## System\n\n" + tpl.filled_system + "\n\n## User\n\n" + tpl.filled_user;
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(

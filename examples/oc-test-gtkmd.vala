@@ -118,7 +118,8 @@ Examples:
 		}
 
 		bool stream = (opt_stream_delay_sec >= 0);
-		var window = build_markdown_window(file_path, markdown_content, stream, stream ? opt_stream_delay_sec : 0);
+		var window = this.build_markdown_window(
+				file_path, markdown_content, stream, stream ? opt_stream_delay_sec : 0);
 		var loop = new MainLoop();
 		window.close_request.connect(() => {
 			loop.quit();
