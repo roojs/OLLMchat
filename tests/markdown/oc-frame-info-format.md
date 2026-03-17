@@ -14,7 +14,7 @@ RenderSourceView must parse these as type + theme (e.g. markdown), not as langua
 
 ## Block with type.oc-frame-theme and title
 
-``` markdown.oc-frame-info Interpreting results with (model)
+``` markdown.oc-frame-info Reviewing Tool Output with (model)
 Executor prompt body here.
 
 - Section one
