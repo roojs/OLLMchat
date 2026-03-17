@@ -149,7 +149,7 @@ namespace MarkdownGtk
 			
 			// When .collapsed: button before title toggles body (list-add = expand, go-up = collapse)
 			this.collapse_toggle_button = new Gtk.Button() {
-				icon_name = "list-add-symbolic",
+				icon_name = "go-next-symbolic",
 				tooltip_text = "Expand",
 				hexpand = false,
 				margin_end = 4,
@@ -160,29 +160,26 @@ namespace MarkdownGtk
 			this.collapse_toggle_button.clicked.connect(() => {
 				if (this.body_revealer.reveal_child) {
 					this.body_revealer.reveal_child = false;
-					this.collapse_toggle_button.icon_name = "list-add-symbolic";
+					this.collapse_toggle_button.icon_name = "go-next-symbolic";
 					this.collapse_toggle_button.tooltip_text = "Expand";
 					// Hide view source and copy when collapsed
 					this.view_source_toggle.visible = false;
 					this.copy_button.visible = false;
 					return;
 				}
+				// Reveal first so body is visible; then idle-add resize so widget can be realized
+				this.body_revealer.reveal_child = true;
+				this.collapse_toggle_button.icon_name = "go-up-symbolic";
+				this.collapse_toggle_button.tooltip_text = "Collapse";
+				this.view_source_toggle.visible = (this.code_language == "markdown");
+				this.copy_button.visible = true;
 				GLib.Idle.add(() => {
-					bool retry = this.resize_widget_callback(
-						(this.code_language == "markdown") ? 
-							(Gtk.Widget) this.rendered_box : 
+					return  this.resize_widget_callback(
+						(this.code_language == "markdown") ?
+							(Gtk.Widget) this.rendered_box :
 							(Gtk.Widget) this.source_view,
 						ResizeMode.REVEAL_BODY
 					);
-					if (!retry) {
-						this.body_revealer.reveal_child = true;
-						this.collapse_toggle_button.icon_name = "go-up-symbolic";
-						this.collapse_toggle_button.tooltip_text = "Collapse";
-						// Show view source when expanded (markdown only) and copy
-						this.view_source_toggle.visible = (this.code_language == "markdown");
-						this.copy_button.visible = true;
-					}
-					return retry;
 				});
 			});
 			header_box.append(this.collapse_toggle_button);
@@ -452,13 +449,17 @@ namespace MarkdownGtk
 		 */
 		private bool resize_widget_callback(Gtk.Widget widget, ResizeMode mode)
 		{
+			// GLib.debug("resize_widget_callback mode=%d realized=%s", (int) mode, widget.get_realized().to_string());
 			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
-				// GLib.debug("widget not realized");
-				return false; // Do not retry; resize will run again when visible (e.g. view-source toggle)
+				// REVEAL_BODY: body was just revealed; widget may need another frame to realize
+				if (mode == ResizeMode.REVEAL_BODY) {
+					return true; // Retry on next idle
+				}
+				return false;
 			}
 			// Width for height-for-width; REVEAL_BODY uses body_revealer (child may have no allocation when collapsed)
-			var  for_width = this.scrolled_window.get_width(); 
+			var  for_width = this.scrolled_window.get_width();
 			if (mode == ResizeMode.REVEAL_BODY) {
 				for_width = this.body_revealer.get_allocated_width();
 				if (for_width <= 0) {
@@ -467,8 +468,9 @@ namespace MarkdownGtk
 				if (for_width <= 0 && this.renderer.box != null) {
 					for_width = this.renderer.box.get_allocated_width();
 				}
-			}  
+			}
 			if (for_width <= 0) {
+				// GLib.debug("resize_widget_callback mode=%d bail for_width<=0", (int) mode);
 				return true;
 			}
 			// Get preferred height of the widget for the actual width so wrap-based height is correct
@@ -476,14 +478,14 @@ namespace MarkdownGtk
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
-			GLib.debug(
-				"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
-				(int) mode,
-				for_width,
-				min_natural,
-				natural_height,
-				this.get_max_collapsed_height()
-			);
+			// GLib.debug(
+			// 	"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
+			// 	(int) mode,
+			// 	for_width,
+			// 	min_natural,
+			// 	natural_height,
+			// 	this.get_max_collapsed_height()
+			// );
 
 			switch (mode) {
 				case ResizeMode.EXPAND:
