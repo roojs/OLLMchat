@@ -553,19 +553,23 @@ namespace MarkdownGtk
 				this.nested_markdown_render.add(text);
 			}
 			
+			// When collapsed, skip resize and scroll (body is hidden)
+			if (!this.body_revealer.reveal_child) {
+				this.renderer.code_block_content_updated();
+				return;
+			}
 			// Scroll visible content (rendered or source) to bottom after content is added
 			GLib.Idle.add(() => {
 				this.scroll_bottom();
 				return false;
 			});
-			
-			// Emit signal to notify that content was updated (for scrolling outer container)
 			this.renderer.code_block_content_updated();
-			
 			// When content grows (e.g. newline), resize the frame so it expands with streamed content
 			if (text.contains("\n")) {
 				GLib.Idle.add(() => {
-					// For markdown blocks the visible child is rendered_box; for others it is source_view
+					if (!this.body_revealer.reveal_child) {
+						return false;
+					}
 					var widget_to_resize = (this.nested_markdown_render != null)
 						? (Gtk.Widget) this.rendered_box
 						: (Gtk.Widget) this.source_view;
@@ -604,19 +608,21 @@ namespace MarkdownGtk
 			if (this.nested_markdown_render != null) {
 				this.nested_markdown_render.flush();
 				this.nested_markdown_render = null;
-				// Resize frame to min(rendered content height, max_height); delay so layout has settled
 				GLib.Timeout.add(200, () => {
-					this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
-					this.scroll_bottom(this.scrolled_window);
+					if (this.body_revealer.reveal_child) {
+						this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
+						this.scroll_bottom(this.scrolled_window);
+					}
 					return false;
 				});
 			}
-			
 			// Finalize the sourceview - resize based on content rules
 			if (this.source_view != null) {
 				GLib.Idle.add(() => {
+					if (!this.body_revealer.reveal_child) {
+						return false;
+					}
 					var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
-					// Scroll to bottom after resize completes
 					this.scroll_bottom(this.source_scrolled);
 					return result;
 				});
@@ -640,6 +646,9 @@ namespace MarkdownGtk
 		 */
 		private void scroll_bottom(Gtk.ScrolledWindow? sw = null)
 		{
+			if (!this.body_revealer.reveal_child) {
+				return;
+			}
 			var target = sw;
 			if (target == null) {
 				target = (this.nested_markdown_render != null)

@@ -98,7 +98,7 @@ TEXT: "
 "
 TEXT: "
 "
-START: <code_block> (lang= markdown.oc-frame-info Interpreting results with (model))
+START: <code_block> (lang= markdown.oc-frame-info Reviewing Tool Output with (model))
   CODE_TEXT: "Executor prompt body here."
   CODE_TEXT: "
 "

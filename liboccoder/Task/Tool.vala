@@ -151,7 +151,7 @@ namespace OLLMcoder.Task
 			yield this.parent.runner.load_files(this.references);
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
-			this.add_message(new OLLMchat.Message("ui", 	"Tool run finished. Interpreting results"));
+			this.add_message(new OLLMchat.Message("ui", 	"Tool run finished. Reviewing Tool Output"));
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
@@ -165,7 +165,7 @@ namespace OLLMcoder.Task
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).
 				// Use markdown.oc-frame-info so the executor prompt is rendered as markdown, not plain text.
 				this.add_message(new OLLMchat.Message("ui",
-					OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Interpreting results " + model_part,
+					OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Reviewing Tool Output" + model_part,
 					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				try {
