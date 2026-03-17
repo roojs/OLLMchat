@@ -276,6 +276,9 @@ namespace OLLMcoder.Skill
 							previous_proposal_issues)));
 					}
 				}
+				if (cancellable != null) {
+					cancellable.cancel();
+				}
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"text.oc-frame-danger.collapsed Could not build valid task list after 5 tries",
 					previous_proposal_issues != "" ? previous_proposal_issues.strip() : "")));
@@ -338,7 +341,7 @@ namespace OLLMcoder.Skill
 				yield this.pending.refine(cancellable);
 				var step_done = yield this.pending.run_step_until_approval();
 				if (step_done) {
-					yield this.run_task_list_iteration();
+					yield this.run_task_list_iteration(cancellable);
 				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
@@ -360,7 +363,7 @@ namespace OLLMcoder.Skill
 				yield this.pending.refine(cancellable);
 				step_done = yield this.pending.run_step();
 				if (step_done) {
-					yield this.run_task_list_iteration();
+					yield this.run_task_list_iteration(cancellable);
 				}
 				if (this.pending.steps.size == 0) {
 					hit_max_rounds = false;
@@ -423,8 +426,12 @@ namespace OLLMcoder.Skill
 		 * into this.pending. On parse/validation failure restores
 		 * this.pending = existing_proposed; uses raw LLM response as
 		 * previous_proposed for next retry.
+		 * On failure after 5 tries, cancels the given cancellable so the
+		 * whole request stops (no way to carry on).
+		 *
+		 * @param cancellable optional; cancelled on unrecoverable failure
 		 */
-		public async void run_task_list_iteration() throws GLib.Error
+		public async void run_task_list_iteration(GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
 			var existing_proposed = this.pending;
 			var response = "";
@@ -439,7 +446,8 @@ namespace OLLMcoder.Skill
 				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with " + model_label : "";
-				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Reviewing and updating task list" + model_part;
+				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : 
+					"Reviewing and updating task list" + model_part;
 				var full_prompt = "## System\n\n" + tpl.filled_system + "\n\n## User\n\n" + tpl.filled_user;
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"markdown.oc-frame-info.collapsed " + title,
@@ -450,6 +458,11 @@ namespace OLLMcoder.Skill
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var response_obj = yield this.chat_call.send(messages, null);
 				response = response_obj != null ? response_obj.message.content : "";
+
+				// Debug: show content actually passed to iteration parser (session log + UI)
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"markdown.debug Debug parsed content",
+					response)));
 
 				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);
@@ -469,6 +482,9 @@ namespace OLLMcoder.Skill
 				this.pending.write("task_list_completed.md",
 					this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.LIST));
 				return;
+			}
+			if (cancellable != null) {
+				cancellable.cancel();
 			}
 			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 				"text.oc-frame-danger.collapsed Task list iteration: could not get valid task list after 5 tries",
