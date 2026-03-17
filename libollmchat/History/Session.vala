@@ -670,9 +670,9 @@ namespace OLLMchat.History
 				Message.fenced("text.oc-frame-primary.oc-frame-user You said:", message.content));
 			this.messages.add(ui_msg);
 			this.manager.message_added(ui_msg, this);
-			// Emit ui-waiting so UI shows animated "waiting for (pretty model) to reply..." (not added to messages; transient)
+			// Emit ui-waiting so UI shows animated "waiting for pretty model to reply..." (not added to messages; transient)
 			var model_label = this.model_usage.model != "" ? this.model_usage.display_name_with_size() : "";
-			var wait_label = model_label != "" ? "waiting for (%s) to reply".printf(model_label) : "waiting for a reply";
+			var wait_label = model_label != "" ? "waiting for " + model_label + " to reply" : "waiting for a reply";
 			this.manager.message_added(new Message("ui-waiting", wait_label), this);
 			// Note: display_info notification not needed here - user-sent messages don't affect reply count
 			
