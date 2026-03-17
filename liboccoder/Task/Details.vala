@@ -271,14 +271,17 @@ public class Details : OLLMchat.Agent.Base
 					continue;
 				}
 
+				// Normalize for index lookup: project index uses paths without trailing slash.
+				var lookup_path = resolved_path.has_suffix("/") ? resolved_path.substring(0, resolved_path.length - 1) : resolved_path;
+
 				// When we have an active project, validate using project index first (no filesystem).
 				if (project != null) {
 					// Path is a known file in the project → valid.
-					if (project.project_files.child_map.has_key(resolved_path)) {
+					if (project.project_files.child_map.has_key(lookup_path)) {
 						continue;
 					}
 					// Path is a known directory. At REFINEMENT stage reject; at LIST (task) stage allow.
-					if (project.project_files.folder_map.has_key(resolved_path)) {
+					if (project.project_files.folder_map.has_key(lookup_path)) {
 						if (stage == MarkdownPhase.REFINEMENT) {
 							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is a directory; use a file path, not a folder.";
 							continue;
@@ -289,21 +292,17 @@ public class Details : OLLMchat.Agent.Base
 					var under_project = GLib.File.new_for_path(resolved_path);
 					var project_root = GLib.File.new_for_path(project.path);
 					var is_under_project = under_project.has_prefix(project_root) || under_project.equal(project_root);
-					// Relative: reject if outside project; if under project then not in index → error.
+					// Relative: reject if outside project.
 					if (link.is_relative) {
 						if (!is_under_project) {
 							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is outside project folder.";
 							continue;
 						}
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is not in project (use a file that exists in the project).";
-						continue;
+						// Under project but not in index → fall through to filesystem check.
+					} else if (!is_under_project) {
+						// Absolute path outside project root → allow fall through to filesystem checks.
 					}
-					// Absolute path not in index. If under project root → not in project (error). Outside → allow fallback.
-					if (is_under_project) {
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": path is not in project (use a file that exists in the project).";
-						continue;
-					}
-					// Outside project root → allow fall through to filesystem checks.
+					// Under project but not in index: fall through to filesystem check so paths like docs/ that exist on disk are accepted.
 				}
 
 				// Fallback: path not in project index (or no project). Check filesystem.

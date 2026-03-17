@@ -113,6 +113,8 @@ namespace OLLMcoder
 			// Project dropdown (left-aligned)
 			this.project_dropdown = new ProjectDropdown(this.manager);
 			this.project_dropdown.project_selected.connect(this.on_project_selected);
+			// When active project is set elsewhere (e.g. session restore), sync dropdown via existing apply_manager_state
+			this.manager.active_project_changed.connect((project) => this.apply_manager_state.begin());
 			header_bar.append(this.project_dropdown);
 			
 			// File dropdown (next to project)
@@ -280,17 +282,19 @@ namespace OLLMcoder
 			// Use manager's active_project and active_file properties
 			
 			if (this.manager.active_project == null) {
+				this.file_dropdown.visible = false;
 				return;
 			}
-			
+
 			// Check if we're already on the same project - if so, don't change active file
 			bool same_project = (this.project_dropdown.selected_project != null && 
 								this.project_dropdown.selected_project.path == this.manager.active_project.path);
 			
 			// Project is already activated by restore_active_state(), just update UI
-			// Update file dropdown's project
+			// Update file dropdown's project and show it (matches on_project_selected when user picks a project)
 			this.file_dropdown.project = this.manager.active_project;
-			
+			this.file_dropdown.visible = true;
+
 			// Update project dropdown placeholder only if it's different (avoid unnecessary updates)
 			// Note: on_selected() already handles clearing entry and setting placeholder,
 			// so we only need to update if it's different to avoid duplicate work
@@ -298,16 +302,23 @@ namespace OLLMcoder
 			if (this.project_dropdown.placeholder_text != expected_placeholder) {
 				this.project_dropdown.placeholder_text = expected_placeholder;
 			}
-			
+
+			// Sync active file from project (e.g. session restore only emits active_project_changed;
+			// restore_active_state() which sets active_file only runs when widget is first created)
+			var project_active_file = this.manager.active_project.project_files.get_active_file();
+			if (project_active_file != null && this.manager.active_file != project_active_file) {
+				this.manager.activate_file(project_active_file);
+			}
+
 			// If we're switching to the same project, don't change the active file
 			if (same_project) {
 				return;
 			}
-			
+
 			if (this.manager.active_file == null) {
 				return;
 			}
-			
+
 			// Open file (will restore cursor/scroll position from file.cursor_line, etc.)
 			yield this.open_file(this.manager.active_file);
 		}

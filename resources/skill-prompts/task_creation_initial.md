@@ -16,7 +16,7 @@ These are the available skills you may assign to tasks. You must choose **only**
 
 ## Rectification
 
-When you receive **previous proposal** and **previous proposal issues**, you must produce a **revised task list** that fixes those issues. For example: replace an invalid or non-existent skill with a valid one from the catalog; correct a malformed task; fix or remove an invalid reference. The next step (refinement or implementation) will validate the task list again.
+When you receive **previous proposal** and **previous proposal issues**, you must produce a **revised task list** that fixes those issues. For example: replace an invalid or non-existent skill with a valid one from the catalog; correct a malformed task; fix or remove an invalid reference. **If the issues mention invalid task references (e.g. "no task for …"):** each `task://` link must use the **exact slug** derived from an existing task's Name in your list — re-derive the slug from the task Name and correct the link. The next step (refinement or implementation) will validate the task list again.
 
 ## Discipline: RAPIR
 
@@ -117,7 +117,7 @@ When one task **references another task's output**, the link target is **not** t
 
 So if you name a task **"Analysis Current Structure"**, later tasks must refer to it as `task://analysis-current-structure.md` — **not** `task://Analysis Current Structure.md` or `task://analysis current structure.md`. Use the slug in the link; the link label (e.g. `[Analysis Current Structure Results]`) can be any readable text.
 
-**Spelling in task names and links must match exactly.** When building a reference link, use the **exact wording** from the task's Name — do not change word forms. In particular, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. If the task is named "Analyze …", the link must use `analyze-` in the slug; if "Analysis …", use `analysis-`. A mismatched link (e.g. `task://analysis-current-task-flow.md` when the task name is "Analyze Current Task Flow") will fail validation.
+**Spelling in task names and links must match exactly — check before output.** When building a reference link, use the **exact wording** from the task's Name (do not change word forms). For example, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. Before you output the task list, verify that **every** `task://…` link in References matches a real task in your list: take that task's **Name**, form the slug (lowercase, spaces and non-alphanumeric → hyphens), and ensure the link uses that exact slug. A mismatched or non-existent task reference will fail validation and force the system to ask you to re-create the task list — which wastes time. Be extremely careful: mismatched task references are a common cause of rejected task lists.
 
 ## Reference link types (use only these)
 
