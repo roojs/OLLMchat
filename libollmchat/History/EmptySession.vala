@@ -68,7 +68,8 @@ namespace OLLMchat.History
 		{
 			GLib.debug("Converting EmptySession to Session: %s", this.to_string());
 			
-			// Convert EmptySession to real Session (Chat is created per request by AgentHandler)
+			// Convert EmptySession to real Session (Chat is created per request by AgentHandler).
+			// project_path is copied so it persists when the real Session saves (may have been set at send time by the app).
 			var real_session = new Session(this.manager) {
 				agent_name = this.agent_name,
 				updated_at_timestamp = (new DateTime.now_local()).to_unix(),
