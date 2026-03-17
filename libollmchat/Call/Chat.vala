@@ -467,8 +467,10 @@ namespace OLLMchat.Call
 				throw new OllmError.INVALID_ARGUMENT("Chat messages array is empty. Provide messages to send.");
 			}
 			
-			// Reset response state for this request (streaming_response set once in constructor)
-			this.streaming_response.message = new Message("assistant", "");
+			// Reset response state for this request: use a fresh Response so done, is_first_chunk,
+			// thinking, new_content, etc. are not left over from the previous send (same idea as
+			// ReplayChat returning a new Response each time).
+			this.streaming_response = new Response.Chat(this.connection, this);
 			this.cancellable = cancellable;
 			
 			// Store provided messages in this.messages (for serialization/access)

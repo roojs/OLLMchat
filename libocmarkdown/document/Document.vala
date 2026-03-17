@@ -28,6 +28,25 @@ namespace Markdown.Document
 		/** Heading keys in document order; appended when a heading is registered. Use for step parsing so order is stable. */
 		public Gee.ArrayList<string> header_list { get; private set; default = new Gee.ArrayList<string>(); }
 
+		/**
+		 * Return a string of markdown links for each section:
+		 * (header)[url#slug], (header2)[url#slug2], ...
+		 * Used for error messages so the LLM sees available sections.
+		 *
+		 * @param url document URL to use as link target, e.g. {{{ task://slug.md }}}
+		 * @return comma-separated list of (title)[url#slug] links
+		 */
+		public string header_links(string url)
+		{
+			string[] parts = {};
+			foreach (var slug in this.header_list) {
+				var block = this.headings.get(slug);
+				var title = block != null ? block.text_content().strip() : slug;
+				parts += "(" + (title == "" ? slug : title) + ")[" + url + "#" + slug + "]";
+			}
+			return string.joinv(", ", parts);
+		}
+
 		/** Call when a top-level heading block is adopted; keeps headings in sync. Key is GFM-style anchor (lowercase, non-alphanumeric → hyphen, trimmed). Only stores the first occurrence of each key. */
 		internal void register_heading(Block b)
 		{

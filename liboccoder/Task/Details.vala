@@ -350,7 +350,9 @@ public class Details : OLLMchat.Agent.Base
 						if (ref_task.exec_runs.size > 0) {
 							var run = ref_task.exec_runs.get(0);
 							if (!run.document.headings.has_key(link.hash)) {
-								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug + "\" has no section \"" + link.hash + "\".";
+								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug
+									 + "\" has no section \"" + link.hash + "\". Available: "
+									 + run.document.header_links("task://" + slug + ".md") + ".";
 								continue;
 							}
 							GLib.debug("validate_references: task href=%s slug=%s hash=%s accepted (exec_runs.size=%u headings.has_key=true)", 
@@ -381,7 +383,10 @@ public class Details : OLLMchat.Agent.Base
 						if (ref_task.exec_runs.size > 0) {
 							var run = ref_task.exec_runs.get(0);
 							if (!run.document.headings.has_key(link.hash)) {
-								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug + "\" has no section \"" + link.hash + "\".";
+								this.issues += "\n" + "Invalid reference target \"" + href + 
+									"\": task \"" + slug + "\" has no section \"" + link.hash +
+									"\". Available: "
+									+ run.document.header_links("task://" + slug + ".md") + ".";
 								continue;
 							}
 						}
