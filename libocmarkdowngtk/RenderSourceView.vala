@@ -37,6 +37,7 @@ namespace MarkdownGtk
 		// Widget references for expand/collapse functionality
 		private Gtk.ScrolledWindow scrolled_window;
 		private Gtk.Button expand_button;
+		private Gtk.Button copy_button;
 		private Gtk.Button new_chat_button;
 		private Gtk.Revealer body_revealer;  // wraps body; when .collapsed style, toggles visibility
 		private Gtk.Button collapse_toggle_button;  // before title: expand/collapse body when .collapsed
@@ -161,6 +162,9 @@ namespace MarkdownGtk
 					this.body_revealer.reveal_child = false;
 					this.collapse_toggle_button.icon_name = "list-add-symbolic";
 					this.collapse_toggle_button.tooltip_text = "Expand";
+					// Hide view source and copy when collapsed
+					this.view_source_toggle.visible = false;
+					this.copy_button.visible = false;
 					return;
 				}
 				GLib.Idle.add(() => {
@@ -174,6 +178,9 @@ namespace MarkdownGtk
 						this.body_revealer.reveal_child = true;
 						this.collapse_toggle_button.icon_name = "go-up-symbolic";
 						this.collapse_toggle_button.tooltip_text = "Collapse";
+						// Show view source when expanded (markdown only) and copy
+						this.view_source_toggle.visible = (this.code_language == "markdown");
+						this.copy_button.visible = true;
 					}
 					return retry;
 				});
@@ -206,7 +213,7 @@ namespace MarkdownGtk
 			};
 			
 			// Create Copy to Clipboard button with icon
-			var copy_button = new Gtk.Button() {
+			this.copy_button = new Gtk.Button() {
 				icon_name = "edit-copy-symbolic",
 				tooltip_text = "Copy to Clipboard",
 				hexpand = false,
@@ -217,7 +224,7 @@ namespace MarkdownGtk
 				can_focus = false,
 				focus_on_click = false
 			};
-			copy_button.clicked.connect(() => {
+			this.copy_button.clicked.connect(() => {
 				this.copy_source_view_to_clipboard(this.source_buffer);
 			});
 			
@@ -345,9 +352,11 @@ namespace MarkdownGtk
 			// Add stack to ScrolledWindow (stack has "rendered" and "source" pages)
 			this.scrolled_window.set_child(this.stack);
 			
-			// Show view-source toggle and default to rendered view only for markdown blocks
+			// Show view-source toggle for markdown: only when expanded (or when frame is not collapsible)
+			// Copy button: only when expanded when frame is collapsible
+			this.copy_button.visible = !has_collapsed_style;
 			if (this.code_language == "markdown") {
-				this.view_source_toggle.visible = true;
+				this.view_source_toggle.visible = !has_collapsed_style;
 				this.stack.visible_child_name = "rendered";
 				this.nested_markdown_render = new MarkdownGtk.Render(this.rendered_box);
 				this.nested_markdown_render.start();
@@ -467,7 +476,15 @@ namespace MarkdownGtk
 			int nat_natural = 0;
 			widget.measure(Gtk.Orientation.VERTICAL, for_width, out min_natural, out nat_natural, null, null);
 			int natural_height = nat_natural;
-			
+			GLib.debug(
+				"mode=%d for_width=%d min_natural=%d natural_height=%d max_collapsed=%d",
+				(int) mode,
+				for_width,
+				min_natural,
+				natural_height,
+				this.get_max_collapsed_height()
+			);
+
 			switch (mode) {
 				case ResizeMode.EXPAND:
 					// Remove size constraint to allow expansion to fit content

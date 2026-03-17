@@ -536,6 +536,11 @@ public class Details : OLLMchat.Agent.Base
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
 			}
+			// Clear state from any previous parse so we don't feed it back into the prompt
+			// (task_data / to_markdown would include tools and code_blocks, causing the LLM
+			// to echo them and producing combined output that fails to parse).
+			this.tools.clear();
+			this.code_blocks.clear();
 			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
 			var messages = new Gee.ArrayList<OLLMchat.Message>();

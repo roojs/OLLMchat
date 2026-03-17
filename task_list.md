@@ -1,71 +1,62 @@
 ## Original prompt
 
-In the coder task flow we write the task list to a series of files:
- * task list
- * completed list
- * proposed list
-
-I'd like to simplify this so that we output the task list file only which consists of:
- * prompt
- * goals
- * completed
- * proposed
-
-And we output that at each task list create stage and each task list iteration stage.
+We added project path support for sessions — however its' not getting filled in with any value.
 
 ## Goals / summary
 
-This task list aims to simplify the coder task flow by consolidating the separate task list, completed list, and proposed list files into a single unified file. The consolidated file will contain all four sections (prompt, goals, completed, proposed) and be output at each task list creation and iteration stage.
+The user is reporting a bug where the project path feature added to sessions is not being populated with actual values. This task list will research the session and project path implementation, identify where the value should be set, analyze why it's not being populated, and produce a fix for the issue.
 
 ## Tasks
 
 ### Task section 1
 
-- **Name** Research Task List System
-- **What is needed** Find where the task list, completed list, and proposed list files are created and written in the codebase
+- **Name** Research Sessions
+- **What is needed** Find session-related code, particularly where project path support was added, and understand the session storage mechanism.
 - **Skill** analyze_codebase
-- **References** [README.md](README.md)
-- **Expected output** Findings on file paths and where task list operations are implemented
+- **References** [sessions](libollmchat/)
+- **Expected output** Findings about session implementation and project path support location.
 
-- **Name** Research File Writing Logic
-- **What is needed** Locate the specific functions or methods that write task list files and understand their structure
+- **Name** Research Session Files
+- **What is needed** Locate specific session-related files (JSON, C/Vala files) that handle session creation, loading, and project path storage.
 - **Skill** analyze_codebase
-- **References** [libollmchat/](/home/alan/gitlive/OLLMchat/libollmchat), [docs/](/home/alan/gitlive/OLLMchat/docs)
-- **Expected output** Findings on file writing functions and their parameters
+- **References** [session](libollmchat/), [project path](libollmchat/)
+- **Expected output** List of relevant files where session data is created and persisted.
 
-- **Name** Review Current Task File Format
-- **What is needed** Examine existing task list files to understand their current structure and format
-- **Skill** analyze_docs
-- **References** [docs/](/home/alan/gitlive/OLLMchat/docs)
-- **Expected output** Summary of current file format
+- **Name** Coding Standards Research
+- **What is needed** Locate project coding standards to ensure any fixes align with established conventions.
+- **Skill** analyze_code_standards
+- **References** [.cursor/rules/CODING_STANDARDS.md](.cursor/rules/CODING_STANDARDS.md)
+- **Expected output** Coding conventions and style guidelines for reference.
 
 ### Task section 2
 
-- **Name** Analyze Current Format
-- **What is needed** Analyze the research findings to understand what sections need to be combined and how they map to the new single-file format
+- **Name** Analysis Project Path Issue
+- **What is needed** Analyze the session implementation to identify where project path should be set and why it's not getting a value.
 - **Skill** analyze_code
-- **References** [Research Task List System Results](task://research-task-list-system.md), [Research File Writing Logic Results](task://research-file-writing-logic.md)
-- **Expected output** Analysis document with proposed format mapping
+- **References** [Research Sessions Results](task://research-sessions.md), [Research Session Files Results](task://research-session-files.md)
+- **Expected output** Findings document identifying the root cause of the project path not being populated.
 
 ### Task section 3
 
-- **Name** Plan Task List Consolidation
-- **What is needed** Create a plan for modifying the code to write a single unified task list file with all four sections
-- **Skill** plan_create
-- **References** [Analyze Current Format Results](task://analyze-current-format.md)
-- **Expected output** Plan document with objectives, steps, and references
-
-- **Name** Plan Review
-- **What is needed** Review the consolidation plan against coding standards and API usage
-- **Skill** plan_review
-- **References** [Plan Task List Consolidation Results](task://plan-task-list-consolidation.md)
-- **Expected output** Approved plan or recommendations
+- **Name** Plan Fix
+- **What is needed** Produce a concrete fix plan for the project path issue, including code changes needed.
+- **Skill** plan_code
+- **References** [Analysis Project Path Issue Results](task://analysis-project-path-issue.md)
+- **Expected output** Proposed code changes for the fix.
 
 ### Task section 4
 
-- **Name** Implement Task List File Consolidation
-- **What is needed** Modify the code to output a single task list file containing prompt, goals, completed, and proposed sections at each creation and iteration stage
+- **Name** Review Plan
+- **What is needed** Review the proposed fix against coding standards and ensure correctness before implementation.
+- **Skill** plan_review
+- **References** [Plan Fix Results](task://plan-fix.md)
+- **Expected output** Reviewed and validated fix ready for implementation.
+
+### Task section 5
+
+- **Name** Implement Fix
+- **What is needed** Apply the code changes to fix the project path not being filled in.
 - **Skill** implement_code
-- **References** [Plan Task List Consolidation Results](task://plan-task-list-consolidation.md), [CODING_STANDARDS.md](.cursor/rules/CODING_STANDARDS.md)
-- **Expected output** Updated code with consolidated task list file writing
+- **References** [Plan Fix Results](task://plan-fix.md)
+- **Expected output** Fixed code with project path support working.
 - **Requires user approval**

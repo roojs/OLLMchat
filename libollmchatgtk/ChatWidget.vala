@@ -621,7 +621,7 @@ namespace OLLMchatGtk
 				// Provide specific error messages for different error types
 				string error_msg = "";
 				if (e is OLLMchat.OllmError.INVALID_ARGUMENT) {
-					error_msg = @"Invalid request: $(e.message). Please check your request parameters.";
+					error_msg = e.message;
 				} else if (e is OLLMchat.OllmError.FAILED) {
 					error_msg = @"Request failed: $(e.message)";
 				} else {
@@ -646,7 +646,7 @@ namespace OLLMchatGtk
 			// Note: We keep partial response content as it may have content the user wants to see
 			
 			var error_ui_msg = new OLLMchat.Message("ui",
-				OLLMchat.Message.fenced("text.oc-frame-danger Error", error_msg));
+				OLLMchat.Message.fenced("markdown.oc-frame-danger Error", error_msg));
 			this.manager.session.messages.add(error_ui_msg);
 			this.manager.message_added(error_ui_msg, this.manager.session);
 			this.error_occurred(error_msg);

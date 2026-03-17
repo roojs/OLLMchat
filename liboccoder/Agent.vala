@@ -51,6 +51,12 @@ namespace OLLMcoder
 		 */
 		public override async void send_async(OLLMchat.Message message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
+			if (this.session.project_path == "") {
+				var af = this.factory as AgentFactory;
+				if (af != null && af.project_manager.active_project != null) {
+					this.session.project_path = af.project_manager.active_project.path;
+				}
+			}
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
 			try {

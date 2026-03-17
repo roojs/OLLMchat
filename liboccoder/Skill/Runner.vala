@@ -222,6 +222,13 @@ namespace OLLMcoder.Skill
 		 */
 		public override async void send_async(OLLMchat.Message in_message, GLib.Cancellable? cancellable = null) throws GLib.Error
 		{
+			if (this.sr_factory.project_manager.active_project == null) {
+				throw new OLLMchat.OllmError.INVALID_ARGUMENT(
+					"No project selected. Please select a project from the dropdown before sending.");
+			}
+			if (this.session.project_path == "" && this.sr_factory.project_manager.active_project != null) {
+				this.session.project_path = this.sr_factory.project_manager.active_project.path;
+			}
 			this.session.messages.add(in_message);
 			this.session.is_running = true;
 			this.session.manager.agent_status_change();
@@ -426,17 +433,13 @@ namespace OLLMcoder.Skill
 					this.add_message(new OLLMchat.Message("ui",
 						"Trying again (attempt %d/5). Sending revised task list to LLM with issues feedback.".printf(try_count + 1)));
 				}
-				// Show completed tasaks markdown in UI so we can see what the LLM receives (injected into iteration prompt)
-				if (try_count == 0) {
-					var completed_md = this.completed.to_markdown(OLLMcoder.Task.MarkdownPhase.REFINE_COMPLETED);
-					if (completed_md != "") { 
-						this.add_message(new OLLMchat.Message("ui", "## Completed tasks\n\n" + completed_md));
-					}
-				}
 				var model_label = this.session.model_usage.model != "" ? this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
-				var action_text = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Refining task list" + model_part;
-				this.add_message(new OLLMchat.Message("ui", action_text));
+				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : "Refining task list" + model_part;
+				var full_prompt = "## System\n\n" + tpl.filled_system + "\n\n## User\n\n" + tpl.filled_user;
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"markdown.oc-frame-info.collapsed " + title,
+					full_prompt)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));

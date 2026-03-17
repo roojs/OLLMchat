@@ -226,7 +226,7 @@ namespace OLLMvector.Tool
 					llm_message = "No files found in the project folder. Check that the project is open and has indexed files.";
 				}
 				this.agent.add_message(new OLLMchat.Message("ui", 
-					OLLMchat.Message.fenced("text.oc-frame-danger.collapsed Code Search Results", ui_reason)));
+					OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Code search — no results", ui_reason)));
 				return llm_message;
 			}
 			
@@ -296,7 +296,7 @@ namespace OLLMvector.Tool
 					ui_reason = "No results — no indexed documents match the category filter \"%s\". Try without the category filter or use a different category. Valid: %s.".printf(
 						this.category, string.joinv(", ", VALID_CATEGORIES));
 					this.agent.add_message(new OLLMchat.Message("ui",
-						 OLLMchat.Message.fenced("text.oc-frame-danger.collapsed Code Search", ui_reason)));
+						 OLLMchat.Message.fenced("text.oc-frame-info.collapsed Code search — no results", ui_reason)));
 					return "No document matches the criteria (category=\"" + this.category + "\"). "
 						+ "Try the same query without the category filter to search all docs, "
 						+ "or use a different category. Valid categories: "
@@ -304,7 +304,7 @@ namespace OLLMvector.Tool
 				}
 				ui_reason = "No results — no indexed code or documents match the current filters (element type, language, or category). Try the same query with fewer or different filters (e.g. omit element_type or language), or broaden the query.";
 				this.agent.add_message(new OLLMchat.Message("ui", 
-					OLLMchat.Message.fenced("text.oc-frame-danger.collapsed Code Search", ui_reason)));
+					OLLMchat.Message.fenced("text.oc-frame-info.collapsed Code search — no results", ui_reason)));
 				return "No document matches the criteria (current filters returned no indexed content). "
 					+ "Try the same query with fewer or different filters (e.g. omit element_type), "
 					+ "or broaden the query.";
