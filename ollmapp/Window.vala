@@ -368,6 +368,8 @@ namespace OLLMapp
 					var migrator = new OLLMfiles.ProjectMigrate(this.project_manager);
 					yield migrator.migrate_all();
 				}
+				// Load project list from DB so session restore and UI can resolve project_path
+				yield this.project_manager.load_projects_from_db();
 			}
 			// Cleanup old backup files and database records on startup
 			if (this.project_manager.db != null) {
@@ -758,30 +760,38 @@ namespace OLLMapp
 			
 			// Connect to session_activated signal to update when session changes
 			this.history_manager.session_activated.connect((session) => {
-				// Update agent selection to match session's agent
 				var store = this.agent_dropdown.model as GLib.ListStore;
 				if (store == null) {
 					return;
 				}
-				
+				uint agent_index = 0;
 				for (uint j = 0; j < store.get_n_items(); j++) {
-					if (((OLLMchat.Agent.Factory)store.get_item(j)).name != session.agent_name) {
-						continue;
+					if (((OLLMchat.Agent.Factory)store.get_item(j)).name == session.agent_name) {
+						agent_index = j;
+						break;
 					}
-					this.agent_dropdown.selected = j;
-					break;
 				}
 
-				// Restore active project from session.project_path (set when session was loaded or created)
+				// Restore active project from session.project_path before updating agent dropdown,
+				// so initialize_widget → restore_active_state() sees the session's project in DB.
 				if (session.project_path == "") {
+					this.agent_dropdown.selected = agent_index;
 					return;
 				}
 				var project = this.project_manager.projects.path_map.get(session.project_path);
 				if (project == null) {
 					GLib.warning("Session project_path '%s' not found in project list", session.project_path);
+					this.agent_dropdown.selected = agent_index;
 					return;
 				}
-				this.project_manager.activate_project.begin(project);
+				this.project_manager.activate_project.begin(project, (obj, res) => {
+					try {
+						this.project_manager.activate_project.end(res);
+					} catch (GLib.Error e) {
+						GLib.warning("Session restore: activate_project failed: %s", e.message);
+					}
+					this.agent_dropdown.selected = agent_index;
+				});
 			});
 		}
 		
