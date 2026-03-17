@@ -145,11 +145,13 @@ namespace OLLMcoder.Task
 				this.tool_run_result = yield tool_impl.execute(this.parent.chat(), this.tool_call, true);
 				tool_output = this.tool_call_details();
 			}
+			 
+				
 			// Load file reference buffers so reference_contents() can get content (same as code search tool)
 			yield this.parent.runner.load_files(this.references);
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
-
+			this.add_message(new OLLMchat.Message("ui", 	"Tool run finished. Interpreting results"));
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
@@ -157,9 +159,9 @@ namespace OLLMcoder.Task
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
-				var model_label = this.session.model_usage.model != "" ? 
+				var model_label = this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "";
-				var model_part = model_label != "" ? " with (%s)".printf(model_label) : "";
+				var model_part = model_label != "" ? " with " + model_label : "";
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).
 				// Use markdown.oc-frame-info so the executor prompt is rendered as markdown, not plain text.
 				this.add_message(new OLLMchat.Message("ui",

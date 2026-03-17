@@ -193,16 +193,12 @@ public class List : Object
 				yield this.run_child(single);
 			}
 		} else {
-			this.num_exec_running = 0;
+			// Run tasks in the step sequentially (one after another)
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
-					this.num_exec_running++;
+					yield this.run_child(t);
 				}
 			}
-			foreach (var t in step.children) {
-				this.start_child(t);
-			}
-			yield this.wait_exec_done();
 		}
 		var all_done = true;
 		foreach (var t in step.children) {
@@ -289,16 +285,12 @@ public class List : Object
 				yield this.run_child(single);
 			}
 		} else {
-			this.num_exec_running = 0;
+			// Run tasks in the step sequentially (one after another)
 			foreach (var t in step.children) {
 				if (!t.exec_done) {
-					this.num_exec_running++;
+					yield this.run_child(t);
 				}
 			}
-			foreach (var t in step.children) {
-				this.start_child(t);
-			}
-			yield this.wait_exec_done();
 		}
 		var all_done = true;
 		foreach (var t in step.children) {

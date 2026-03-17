@@ -523,9 +523,9 @@ public class Details : OLLMchat.Agent.Base
 		this.refined_done = false;
 		this.refine_error = null;
 		this.add_message(new OLLMchat.Message("ui",
-			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " + 
-				this.task_data.get("Name").to_markdown().strip() + " with (" +
-					 this.session.model_usage.display_name_with_size() + ")",
+			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
+				this.task_data.get("Name").to_markdown().strip() + " with " +
+				this.session.model_usage.display_name_with_size(),
 					  this.to_markdown(MarkdownPhase.COARSE))));
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
@@ -572,8 +572,6 @@ public class Details : OLLMchat.Agent.Base
 			}
 			if (this.result_parser.issues == "") {
 				this.runner.replay_step("refinement_success: " + task_name, response_text);
-				this.add_message(new OLLMchat.Message("ui", "Got result for: " +
-					this.task_data.get("Name").to_markdown().strip()));
 				this.refined_done = true;
 				if (this.resume_refined != null) {
 					this.resume_refined();
@@ -930,7 +928,12 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void run_exec() throws GLib.Error
 	{
+		var task_name = this.task_data.get("Name").to_markdown().strip();
+		int n = 0;
 		foreach (var ex in this.exec_runs) {
+			n++;
+			this.add_message(new OLLMchat.Message("ui",
+				"Running Tools for Task " + task_name + " — Tool call " + n.to_string()));
 			yield ex.run();
 		}
 		this.exec_done = true;
