@@ -612,6 +612,10 @@ namespace OLLMchatGtk
 					case GLib.IOError.NETWORK_UNREACHABLE:
 						error_msg = "Network unreachable. Please check your internet connection.";
 						break;
+					case GLib.IOError.INVALID_ARGUMENT:
+						// Validation/refinement/parse errors (e.g. "Task refinement: ...")
+						error_msg = e.message;
+						break;
 					default:
 						error_msg = @"Network error: $(e.message)";
 						break;

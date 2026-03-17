@@ -63,7 +63,8 @@ namespace MarkdownGtk
 		
 		// Code block handlers (kept in array to prevent going out of scope)
 		private Gee.ArrayList<RenderSourceView> source_view_handlers = new Gee.ArrayList<RenderSourceView>();
-		private RenderSourceView? current_source_view_handler = null;
+		/** Current code block (child frame); public so ChatView can hold a reference after on_code_block(true, lang). */
+		public RenderSourceView? childview { get; set; default = null; }
 		
 		// Indent levels: actual space_skip values we've seen (on_ul/on_ol), in ascending order
 		private Gee.ArrayList<int> indent_levels = new Gee.ArrayList<int>();
@@ -301,7 +302,7 @@ namespace MarkdownGtk
 		public void clear()
 		{
 			// Clear current sourceview handler
-			this.current_source_view_handler = null;
+			this.childview = null;
 			
 			// Clear all sourceview handlers
 			this.source_view_handlers.clear();
@@ -320,7 +321,7 @@ namespace MarkdownGtk
 		{
 			// Check that TextView is created OR a code block is active
 			// (code blocks use sourceview instead of textview)
-			if (this.current_textview == null && this.current_source_view_handler == null) {
+			if (this.current_textview == null && this.childview == null) {
 				GLib.error("Render.add() called before start() - TextView not initialized. Call start() before adding text.");
 			}
 			
@@ -757,12 +758,12 @@ namespace MarkdownGtk
 		public override void on_code_block(bool is_start, string lang)
 		{
 			if (!is_start) {
-				// Code block ended - delegate to current_source_view_handler
-				if (this.current_source_view_handler != null) {
-					this.current_source_view_handler.end_code_block();
+				// Code block ended - delegate to childview
+				if (this.childview != null) {
+					this.childview.end_code_block();
 					// Keep handler in array so it doesn't go out of scope
 					// (buttons and other handlers need to remain functional)
-					this.current_source_view_handler = null;
+					this.childview = null;
 				}
 				
 				// Textview and states were already created when code block started,
@@ -779,10 +780,10 @@ namespace MarkdownGtk
 			
 			// Create new source_view_handler for the code block FIRST
 			// (so it appears before the textview that will be created after)
-			this.current_source_view_handler = new RenderSourceView(this, lang);
+			this.childview = new RenderSourceView(this, lang);
 			
 			// Keep handler in array so it doesn't go out of scope
-			this.source_view_handlers.add(this.current_source_view_handler);
+			this.source_view_handlers.add(this.childview);
 			
 			// Create new textview and states immediately (ready for text after code block)
 			// This will be added to the box AFTER the sourceview, which is correct
@@ -791,9 +792,9 @@ namespace MarkdownGtk
 		
 		public override void on_code_text(string text)
 		{
-			// Delegate to current_source_view_handler
-			if (this.current_source_view_handler != null) {
-				this.current_source_view_handler.add_code_text(text);
+			// Delegate to childview
+			if (this.childview != null) {
+				this.childview.add_code_text(text);
 			}
 		}
 	}
