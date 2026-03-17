@@ -250,6 +250,10 @@ namespace OLLMcoder.Skill
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
 					this.replay_step("task_list_parse", response);
+					// Debug: show content actually passed to parser (session log + UI)
+					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+						"markdown.debug.collapsed Debug parsed content",
+						response)));
 					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();

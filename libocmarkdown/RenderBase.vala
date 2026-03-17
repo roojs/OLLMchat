@@ -222,7 +222,7 @@ namespace Markdown
 		protected virtual void on_text(string text) {}
 		protected virtual void on_html(bool is_start, string tag, string attributes) {}
 		protected virtual void on_other(bool is_start, string tag_name) {}
-		protected virtual void on_code_block(bool is_start, string lang) {}
+		public virtual void on_code_block(bool is_start, string lang) {}
 		protected virtual void on_table(bool is_start) {}
 		protected virtual void on_table_row(bool is_start) {}
 		protected virtual void on_img(string src, string title) {}

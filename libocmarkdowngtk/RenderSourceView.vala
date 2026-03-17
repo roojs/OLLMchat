@@ -553,20 +553,23 @@ namespace MarkdownGtk
 				this.nested_markdown_render.add(text);
 			}
 			
-			// Scroll sourceview to bottom after content is added
-			// Use Idle to ensure layout is updated first
+			// Scroll visible content (rendered or source) to bottom after content is added
 			GLib.Idle.add(() => {
-				this.scroll_sourceview_to_bottom();
+				this.scroll_bottom();
 				return false;
 			});
 			
 			// Emit signal to notify that content was updated (for scrolling outer container)
 			this.renderer.code_block_content_updated();
 			
-			// Check if text contains a line break - if so, check if we need to clamp height
+			// When content grows (e.g. newline), resize the frame so it expands with streamed content
 			if (text.contains("\n")) {
 				GLib.Idle.add(() => {
-					return this.resize_widget_callback(this.source_view, ResizeMode.INITIAL);
+					// For markdown blocks the visible child is rendered_box; for others it is source_view
+					var widget_to_resize = (this.nested_markdown_render != null)
+						? (Gtk.Widget) this.rendered_box
+						: (Gtk.Widget) this.source_view;
+					return this.resize_widget_callback(widget_to_resize, ResizeMode.INITIAL);
 				});
 			}
 		}
@@ -597,14 +600,14 @@ namespace MarkdownGtk
 				this.source_buffer.delete(ref del_start, ref end_iter);
 			}
 
-			// Phase 2: when markdown block, flush the streamed nested renderer then resize frame to content (capped at max)
+			// Phase 2: when markdown block, flush the streamed nested renderer then resize and scroll to bottom
 			if (this.nested_markdown_render != null) {
 				this.nested_markdown_render.flush();
 				this.nested_markdown_render = null;
-				// GLib.debug("nested flush, 200ms resize, child=%s", this.rendered_box.get_first_child() != null ? "y" : "n");
 				// Resize frame to min(rendered content height, max_height); delay so layout has settled
 				GLib.Timeout.add(200, () => {
 					this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
+					this.scroll_bottom(this.scrolled_window);
 					return false;
 				});
 			}
@@ -614,7 +617,7 @@ namespace MarkdownGtk
 				GLib.Idle.add(() => {
 					var result = this.resize_widget_callback(this.source_view, ResizeMode.FINAL);
 					// Scroll to bottom after resize completes
-					this.scroll_sourceview_to_bottom();
+					this.scroll_bottom(this.source_scrolled);
 					return result;
 				});
 			}
@@ -633,27 +636,27 @@ namespace MarkdownGtk
 		}
 		
 		/**
-		 * Scrolls the sourceview's scrolled window to the bottom.
+		 * Scrolls to the bottom. If sw is null, scrolls the visible content (outer for markdown, source for others).
 		 */
-		private void scroll_sourceview_to_bottom()
+		private void scroll_bottom(Gtk.ScrolledWindow? sw = null)
 		{
-			// Scroll the inner source page (stack always has source_scrolled)
-			var vadjustment = this.source_scrolled.vadjustment;
+			var target = sw;
+			if (target == null) {
+				target = (this.nested_markdown_render != null)
+					? this.scrolled_window
+					: this.source_scrolled;
+			}
+			var vadjustment = target.vadjustment;
 			if (vadjustment == null) {
 				return;
 			}
-			
-			// Check if layout is ready by verifying upper bound is reasonable
 			if (vadjustment.upper < 10.0) {
-				// Layout not ready yet, try again on next idle
 				GLib.Idle.add(() => {
-					this.scroll_sourceview_to_bottom();
+					this.scroll_bottom(target);
 					return false;
 				});
 				return;
 			}
-			
-			// Scroll to bottom by setting value to maximum
 			vadjustment.value = vadjustment.upper;
 		}
 		

@@ -272,7 +272,8 @@ public class Details : OLLMchat.Agent.Base
 				}
 
 				// Normalize for index lookup: project index uses paths without trailing slash.
-				var lookup_path = resolved_path.has_suffix("/") ? resolved_path.substring(0, resolved_path.length - 1) : resolved_path;
+				var lookup_path = resolved_path.has_suffix("/") ? 
+					resolved_path.substring(0, resolved_path.length - 1) : resolved_path;
 
 				// When we have an active project, validate using project index first (no filesystem).
 				if (project != null) {
@@ -563,6 +564,10 @@ public class Details : OLLMchat.Agent.Base
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
 			}
+			// Debug: show content actually passed to refinement parser (session log + UI)
+			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+				"markdown.debug Debug parsed content",
+				response_text)));
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			var task_name = this.task_data.get("Name").to_markdown().strip();
@@ -581,13 +586,13 @@ public class Details : OLLMchat.Agent.Base
 				this.runner.replay_step("refinement_parse_issues: " + task_name,
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"text.oc-frame-warning.collapsed Refinement for \"" + 
+					"text.oc-frame-danger.collapsed Refinement for \"" + 
 						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
 					this.result_parser.issues.strip())));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-			"text.oc-frame-warning.collapsed Refinement for \"" + 
+			"text.oc-frame-danger.collapsed Refinement for \"" + 
 				this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);

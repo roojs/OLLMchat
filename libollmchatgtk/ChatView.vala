@@ -65,7 +65,8 @@ namespace OLLMchatGtk
 		/** When true, user has scrolled up so we temporarily disable autoscroll until they scroll back to bottom. */
 		private bool autoscroll_paused_by_user = false;
 		private bool programmatic_scroll_in_progress = false;
-		
+		/** Current thinking child frame (when streaming thinking into a framed box). */
+		private MarkdownGtk.RenderSourceView? thinking_frame = null;
 
 		/**
 		 * Creates a new ChatView instance.
@@ -340,21 +341,25 @@ namespace OLLMchatGtk
 		{
 			// Append text to last_line (text does not contain newlines)
 			this.last_line += text;
-			
 			switch (this.content_state) {
 				case ContentState.THINKING:
+					if (this.thinking_frame != null) {
+						this.thinking_frame.add_code_text(text);
+					} else {
+						this.renderer.add(text);
+					}
+					return;
 				case ContentState.CONTENT:
-					// Send new text directly to progressive renderer (handles code blocks automatically)
 					this.renderer.add(text);
 					return;
-					
 				case ContentState.NONE:
-					// Start a new markdown block
 					this.content_state = is_thinking ? ContentState.THINKING : ContentState.CONTENT;
 					this.start_block_direct(is_thinking);
-					// Send text to renderer
-					this.renderer.add(text);
-					// No need to update end_mark anymore (box model handles it)
+					if (this.thinking_frame != null) {
+						this.thinking_frame.add_code_text(text);
+					} else {
+						this.renderer.add(text);
+					}
 					return;
 			}
 		}
@@ -393,18 +398,21 @@ namespace OLLMchatGtk
 		*/
 		private void process_new_line_thinking_direct(bool is_thinking)
 		{
-			// Check if thinking state changed to not thinking
 			if (!is_thinking) {
-				// End thinking block (end_block_direct will reset content_state to NONE)
+				if (this.thinking_frame != null) {
+					this.thinking_frame.add_code_text("\n");
+					this.renderer.on_code_block(false, "");
+					this.thinking_frame = null;
+				}
 				this.renderer.add("\n");
 				this.end_block_direct(this.is_thinking);
 				return;
 			}
-			
-			// Empty lines are just regular content - add newline and continue
-			// Send newline to renderer
-			this.renderer.add("\n");
-			// No need to update end_mark anymore (box model handles it)
+			if (this.thinking_frame != null) {
+				this.thinking_frame.add_code_text("\n");
+			} else {
+				this.renderer.add("\n");
+			}
 		}
 		
 		/**
@@ -431,21 +439,16 @@ namespace OLLMchatGtk
 				case ContentState.CONTENT:
 					// Initialize renderer if needed (creates TextView on first block)
 					this.renderer.start();
-					
-					// Set up styling for thinking/content blocks using TextTags
+					if (is_thinking) {
+						this.renderer.on_code_block(true, "markdown.oc-frame-info Thinking...");
+						this.thinking_frame = this.renderer.childview;
+						this.last_chunk_start = 0;
+						return;
+					}
+					// Set up styling for content block using TextTags
 					// Note: default_state is set AFTER renderer.start() because we need a buffer
 					// to create the TextTag. The default_state will be used for future TextViews
 					// created after code blocks, not the current one.
-					if (is_thinking) {
-						// Create span state for thinking with both color (#767676) and italic
-						var style_state = this.renderer.current_state.add_state();
-						style_state.style.foreground = "#767676";
-						style_state.style.style = Pango.Style.ITALIC;
-						// Store as default state (for future TextViews created after code blocks)
-						this.renderer.default_state = style_state;
-						this.last_chunk_start = 0;
-						return;
-					} 
 					// Create span state for content color (#333333)
 					var xstyle_state = this.renderer.current_state.add_state();
 					xstyle_state.style.foreground = "#333333";
@@ -470,30 +473,27 @@ namespace OLLMchatGtk
 		{
 			switch (this.content_state) {
 				case ContentState.THINKING:
-				case ContentState.CONTENT:
-					// Ensure content ends with newline if last_line has content (incomplete line)
-					if (this.last_line.length > 0) {
-						// Send final newline to renderer
-						this.renderer.add("\n");
+					if (this.thinking_frame != null) {
+						if (this.last_line.length > 0) {
+							this.thinking_frame.add_code_text("\n");
+						}
+						this.renderer.on_code_block(false, "");
+						this.thinking_frame = null;
 					}
-					
-					// Flush renderer to finalize
-					this.renderer.flush();
-					// Call renderer.end_block() to end current block
-					// (start() will be called when starting the next block)
-					this.renderer.end_block();
-					
-					// Clear default state when block ends
-					this.renderer.default_state = null;
-					
-					// Reset last_line for next block
 					this.last_line = "";
-					// Reset content_state to NONE so new blocks can be started
 					this.content_state = ContentState.NONE;
 					return;
-					
+				case ContentState.CONTENT:
+					if (this.last_line.length > 0) {
+						this.renderer.add("\n");
+					}
+					this.renderer.flush();
+					this.renderer.end_block();
+					this.renderer.default_state = null;
+					this.last_line = "";
+					this.content_state = ContentState.NONE;
+					return;
 				case ContentState.NONE:
-					// Nothing to end
 					return;
 			}
 		}
@@ -513,7 +513,10 @@ namespace OLLMchatGtk
 			if (!this.is_assistant_message) {
 				return;
 			}
-
+			if (this.thinking_frame != null) {
+				this.renderer.on_code_block(false, "");
+				this.thinking_frame = null;
+			}
 			// End current block if we're in one (already adds trailing newline via renderer flush)
 			if (this.content_state != ContentState.NONE) {
 				this.end_block_direct(this.is_thinking);
