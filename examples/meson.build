@@ -310,7 +310,7 @@ test_bubble = executable('oc-test-bubble',
   install_dir: get_option('datadir') / 'doc' / 'ollmchat'
 )
 
-# Build oc-test-skill-agent executable (testable skills agent flow; plan 1.23.19)
+# Build oc-test-skill-agent (plan 1.23.19 DONE — testable agent flow)
 # Extends TestAppBase for standard --debug, --model, and log handling.
 # Needs ocvector for OLLMvector.Registry (codebase_search tool for execute/refine).
 oc_test_skill_agent = executable('oc-test-skill-agent',

@@ -19,7 +19,7 @@
 /**
  * oc-test-skill-agent — testable step-by-step usage of the skills agent flow.
  *
- * Plan: docs/plans/1.23.19-testable-agent-flow.md
+ * Plan: docs/plans/done/1.23.19-DONE-testable-agent-flow.md
  *
  * Extends TestAppBase for standard debug options, log handling, and help.
  */
