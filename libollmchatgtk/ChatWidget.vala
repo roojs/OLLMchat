@@ -206,10 +206,11 @@ namespace OLLMchatGtk
 			});
 		}
 
-		/** Updates streaming state: when running, hide text area (paned position = full); when stopped, restore position. */
+		/** Updates streaming state: when running, hide text area (paned position = full + input not visible); when stopped, restore position. */
 		private void streaming_state(bool streaming)
 		{
 			this.streaming = streaming;
+			this.chat_input.visible = !streaming;
 			this.chat_input.set_input_editable(!streaming);
 			this.chat_input.set_input_sensitive(!streaming);
 			this.chat_bar.update_action_button_state(streaming);
@@ -495,8 +496,7 @@ namespace OLLMchatGtk
 		private void on_stream_chunk_handler(string new_text, bool is_thinking, OLLMchat.Response.Chat response)
 		{
 			// Skip only when session was stopped (e.g. user clicked Stop) and this is not the final chunk.
-			// When response.done is true we must run to finalize the message and call streaming_state(false);
-			// Session.finalize_streaming() sets is_running=false before relaying, so we must not return on the final chunk.
+			// When response.done is true we must run to finalize the message; do not return—is_running is cleared by the agent when send_async returns, then agent_status_change drives streaming_state(false).
 			if (!this.manager.session.is_running && !response.done) {
 				return;
 			}

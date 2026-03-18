@@ -386,6 +386,7 @@ namespace Markdown.Document
 				link_fmt.path = "";
 				link_fmt.hash = href.substring(1);
 				link_fmt.is_relative = false;
+				this.document.links.add(link_fmt);
 				this.on_inline(link_fmt);
 				return;
 			}
@@ -404,6 +405,7 @@ namespace Markdown.Document
 			link_fmt.path = path_part;
 			link_fmt.is_relative = (link_fmt.scheme == "file") &&
 				 !GLib.Path.is_absolute(link_fmt.path);
+			this.document.links.add(link_fmt);
 			this.on_inline(link_fmt);
 		}
 

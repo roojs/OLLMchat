@@ -20,7 +20,8 @@ public enum MarkdownPhase
 	REFINEMENT,
 	LIST,
 	REFINE_COMPLETED,
-	EXECUTION
+	EXECUTION,
+	POST_EXEC
 }
 
 /**
@@ -135,6 +136,22 @@ public class Details : OLLMchat.Agent.Base
 	public Gee.ArrayList<Tool> exec_runs { get; set; default = new Gee.ArrayList<Tool>(); }
 
 	/**
+	 * Single markdown document after post-exec synthesis. Headings used for
+	 * {{{ task://slug.md#anchor }}} resolution and validation. Empty until
+	 * run_post_exec finishes.
+	 */
+	public Markdown.Document.Document task_output_document {
+		get; set; default = new Markdown.Document.Document();
+	}
+
+	/**
+	 * Result summary block from post-exec (iteration + completed-task list).
+	 */
+	public Markdown.Document.Block task_post_exec_summary {
+		get; set; default = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+	}
+
+	/**
 	 * Initial task_data from ListItem.to_key_map() for one task list item
 	 * (keys: exact labels only, see class doc). Runner and session come from step.list.runner (tree).
 	 *
@@ -173,31 +190,16 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Write this task's result to session task dir.
-	 * When exec_runs.size > 1, writes slug + "-" + ex.id + ".md" per Tool
-	 * (document content).
-	 * Single run writes slug + suffix + ".md" with that run's document or result.
+	 * Writes a single slug.md from task_output_document.
 	 *
-	 * @param suffix filename suffix for single-run output (default "")
+	 * @param suffix filename suffix (default "")
 	 */
 	public void write(string suffix = "")
 	{
-		var base_dir = this.runner.session.task_dir();
-		if (this.exec_runs.size > 1) {
-			foreach (var ex in this.exec_runs) {
-				var path = GLib.Path.build_filename(base_dir, this.slug() + "-" + ex.id + ".md");
-				try {
-					GLib.FileUtils.set_contents(path, ex.document != null ? ex.document.to_markdown() : "");
-				} catch (GLib.FileError e) {
-					GLib.critical("Details.write: failed to write %s: %s", path, e.message);
-				}
-			}
-			return;
-		}
-		var path = GLib.Path.build_filename(base_dir, this.slug() + suffix + ".md");
-		var content = (this.exec_runs.size == 1 && this.exec_runs.get(0).document != null)
-			? this.exec_runs.get(0).document.to_markdown()
-			: (this.exec_runs.size == 1 && this.exec_runs.get(0).summary != null
-				? this.exec_runs.get(0).summary.to_markdown_with_content() : "");
+		var path = GLib.Path.build_filename(
+			this.runner.session.task_dir(),
+			this.slug() + suffix + ".md");
+		var content = this.task_output_document.to_markdown();
 		try {
 			GLib.FileUtils.set_contents(path, content);
 		} catch (GLib.FileError e) {
@@ -224,183 +226,241 @@ public class Details : OLLMchat.Agent.Base
 		this.fill_task_data();
 	}
 
-	/**
-	 * Validate reference_targets hrefs; append to issues on invalid.
-	 * Call from parsing process after fill_names (pass list so task-output
-	 * anchors can be validated).
-	 *
-	 * @param stage LIST = task creation/iteration (may reference pending tasks, http(s) URLs accepted); REFINEMENT = refinement output (completed tasks only, task ref must have section anchor that exists).
-	 * Task output refs use task URI only. Future: taskname plus tool id plus .md when TaskResult map exists.
-	 */
-	public void validate_references(MarkdownPhase stage = MarkdownPhase.REFINEMENT)
+	internal void validate_link(Markdown.Document.Format link, MarkdownPhase stage)
 	{
-		foreach (var link in this.reference_targets) {
-			var href = link.href;
-			if (link.path == "") {
-				var anchor = link.hash;
-				if (this.runner.user_request != null && this.runner.user_request.headings.has_key(anchor)) {
-					GLib.debug("validate_references: anchor href=%s accepted (user_request=%p has_key(%s)=true)",
-						 href, this.runner.user_request, anchor);
-					continue;
-				}
-				this.issues += "\n" + "Invalid reference target \"" + href + "\": unknown anchor \"" + anchor + "\".";
-				continue;
+		if (link.path == "") {
+			if (this.runner.user_request != null &&
+					this.runner.user_request.headings.has_key(link.hash)) {
+				return;
 			}
-			if (link.scheme == "http" || link.scheme == "https") {
-				if (stage == MarkdownPhase.LIST) {
-					continue;
-				}
+			switch (stage) {
+				case MarkdownPhase.POST_EXEC:
+					if (this.task_output_document.headings.has_key(link.hash)) {
+						return;
+					}
+					break;
+				default:
+					break;
+			}
+			this.issues += "\n" + "Invalid reference target \"" + link.href +
+				"\": unknown anchor \"" + link.hash + "\".";
+			return;
+		}
+		if (link.scheme == "http" || link.scheme == "https") {
+			this.validate_link_http(stage, link.href);
+			return;
+		}
+		if (link.path != "" && link.scheme == "file") {
+			this.validate_link_file(link, stage, link.href);
+			return;
+		}
+		if (link.scheme == "task") {
+			this.validate_link_task(link, stage, link.href);
+			return;
+		}
+		this.issues += "\n" + "Invalid reference target \"" + link.href + "\". " +
+			"Use only: #anchor (document sections), task://taskname.md or " +
+			"task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
+	}
+
+	private void validate_link_http(MarkdownPhase stage, string href)
+	{
+		switch (stage) {
+			case MarkdownPhase.LIST:
+			case MarkdownPhase.POST_EXEC:
+				return;
+			case MarkdownPhase.REFINEMENT:
+			default:
 				this.issues += "\n" +
-					 "References must not contain http(s) URLs. Do not put URLs in References " + 
-					 	"- create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
-				continue;
-			}
-			if (link.path != "" && link.scheme == "file") {
-				var project = this.runner.sr_factory.project_manager.active_project;
-				string resolved_path;
-				if (link.is_relative) {
-					if (project == null) {
-						this.issues += "\n" + "Invalid reference target \"" + href + "\": relative file path requires an active project.";
-						continue;
-					}
-					resolved_path = link.abspath(project.path);
-				} else {
-					resolved_path = link.path;
-				}
-				if (resolved_path == "") {
-					continue;
-				}
+					"References must not contain http(s) URLs. Do not put URLs in References " +
+					"- create a tool call (e.g. web_fetch) in ## Tool Calls to fetch the content instead.";
+				return;
+		}
+	}
 
-				// Normalize for index lookup: project index uses paths without trailing slash.
-				var lookup_path = resolved_path.has_suffix("/") ? 
-					resolved_path.substring(0, resolved_path.length - 1) : resolved_path;
-
-				// When we have an active project, validate using project index first (no filesystem).
-				if (project != null) {
-					// Path is a known file in the project → valid.
-					if (project.project_files.child_map.has_key(lookup_path)) {
-						continue;
-					}
-					// Path is a known directory. At REFINEMENT stage reject; at LIST (task) stage allow.
-					if (project.project_files.folder_map.has_key(lookup_path)) {
-						if (stage == MarkdownPhase.REFINEMENT) {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is a directory; use a file path, not a folder.";
-							continue;
-						}
-						continue;
-					}
-					// Path not in project index. Check whether path is under project root (prefix).
-					var under_project = GLib.File.new_for_path(resolved_path);
-					var project_root = GLib.File.new_for_path(project.path);
-					var is_under_project = under_project.has_prefix(project_root) || under_project.equal(project_root);
-					// Relative: reject if outside project.
-					if (link.is_relative) {
-						if (!is_under_project) {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": path is outside project folder.";
-							continue;
-						}
-						// Under project but not in index → fall through to filesystem check.
-					} else if (!is_under_project) {
-						// Absolute path outside project root → allow fall through to filesystem checks.
-					}
-					// Under project but not in index: fall through to filesystem check so paths like docs/ that exist on disk are accepted.
-				}
-
-				// Fallback: path not in project index (or no project). Check filesystem.
-				var resolved_file = GLib.File.new_for_path(resolved_path);
-				if (!resolved_file.query_exists()) {
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": file does not exist (resolved from project folder).";
-					continue;
-				}
-				// Not a directory → valid file reference.
-				if (resolved_file.query_file_type(GLib.FileQueryInfoFlags.NONE) != GLib.FileType.DIRECTORY) {
-					continue;
-				}
-				if (stage == MarkdownPhase.REFINEMENT) {
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": path is a directory; use a file path, not a folder.";
-					continue;
-				}
-				continue;
+	private void validate_link_file(Markdown.Document.Format link,
+		MarkdownPhase stage, string href)
+	{
+		var project = this.runner.sr_factory.project_manager.active_project;
+		if (project == null) {
+			this.issues += "\n" + "Invalid reference target \"" + href +
+				"\": file references require an active project.";
+			return;
+		}
+		var resolved_path = link.path;
+		if (link.is_relative) {
+			resolved_path = link.abspath(project.path);
+		}
+		if (resolved_path == "") {
+			return;
+		}
+		if (project.project_files.child_map.has_key(
+				resolved_path.has_suffix("/") ?
+					resolved_path.substring(0, resolved_path.length - 1) :
+					resolved_path)) {
+			return;
+		}
+		if (project.project_files.folder_map.has_key(
+				resolved_path.has_suffix("/") ?
+					resolved_path.substring(0, resolved_path.length - 1) :
+					resolved_path)) {
+			switch (stage) {
+				case MarkdownPhase.REFINEMENT:
+				case MarkdownPhase.POST_EXEC:
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": path is a directory; use a file path, not a folder.";
+					return;
+				case MarkdownPhase.LIST:
+				default:
+					return;
 			}
-			// task://slug.md#section — At LIST only the first step (step_index==0) gets full validation; later steps validated when they become current in iteration. REFINEMENT: completed only, section required and must exist.
-			if (link.scheme == "task") {
-				var path = link.path.strip();
-				if (path.contains("/")) {
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path must not contain '/'.";
-					continue;
+		}
+		var under_project = GLib.File.new_for_path(resolved_path);
+		var project_root = GLib.File.new_for_path(project.path);
+		if (link.is_relative &&
+				!under_project.has_prefix(project_root) &&
+				!under_project.equal(project_root)) {
+			this.issues += "\n" + "Invalid reference target \"" + href +
+				"\": path is outside project folder.";
+			return;
+		}
+		var resolved_file = GLib.File.new_for_path(resolved_path);
+		if (!resolved_file.query_exists()) {
+			this.issues += "\n" + "Invalid reference target \"" + href +
+				"\": file does not exist (resolved from project folder).";
+			return;
+		}
+		if (resolved_file.query_file_type(GLib.FileQueryInfoFlags.NONE) !=
+				GLib.FileType.DIRECTORY) {
+			return;
+		}
+		switch (stage) {
+			case MarkdownPhase.REFINEMENT:
+			case MarkdownPhase.POST_EXEC:
+				this.issues += "\n" + "Invalid reference target \"" + href +
+					"\": path is a directory; use a file path, not a folder.";
+				return;
+			case MarkdownPhase.LIST:
+			default:
+				return;
+		}
+	}
+
+	private void validate_link_task(Markdown.Document.Format link,
+		MarkdownPhase stage, string href)
+	{
+		if (link.path.strip().contains("/")) {
+			this.issues += "\n" + "Invalid reference target \"" + href +
+				"\": task path must not contain '/'.";
+			return;
+		}
+		var slug = (link.path.strip().has_suffix(".md") ?
+			link.path.strip().substring(0, link.path.strip().length - 3) :
+			link.path.strip()).strip();
+		if (slug == "") {
+			this.issues += "\n" + "Invalid reference target \"" + href +
+				"\": task path is empty.";
+			return;
+		}
+		switch (stage) {
+			case MarkdownPhase.POST_EXEC:
+				if (slug == this.slug()) {
+					if (link.hash == "") {
+						this.issues += "\n" + "Invalid reference target \"" + href +
+							"\": task reference must include a section anchor (e.g. task://" +
+							slug + ".md#section-name).";
+						return;
+					}
+					if (!this.task_output_document.headings.has_key(link.hash)) {
+						this.issues += "\n" + "Invalid reference target \"" + href +
+							"\": task \"" + slug + "\" has no section \"" + link.hash +
+							"\". Available: " +
+							this.task_output_document.header_links("task://" + slug + ".md") + ".";
+					}
+					return;
 				}
-				var slug = path.has_suffix(".md") ? path.substring(0, path.length - 3) : path;
-				slug = slug.strip();
-				if (slug == "") {
-					this.issues += "\n" + "Invalid reference target \"" + href + "\": task path is empty.";
-					continue;
+				if (!this.runner.completed.slugs.has_key(slug)) {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": no completed task for \"" + slug + "\".";
+					return;
 				}
-				Details? ref_task = null;
-				switch (stage) {
-					case MarkdownPhase.REFINEMENT:
-						ref_task = this.runner.completed.slugs.get(slug);
-						if (ref_task == null) {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": no completed task for \"" + slug + "\" (references must be to completed tasks only).";
-							continue;
-						}
-						if (link.hash == "") {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": task reference must include a section anchor (e.g. task://" + slug + ".md#section-name).";
-							continue;
-						}
-						if (ref_task.exec_runs.size > 0) {
-							var run = ref_task.exec_runs.get(0);
-							if (!run.document.headings.has_key(link.hash)) {
-								this.issues += "\n" + "Invalid reference target \"" + href + "\": task \"" + slug
-									 + "\" has no section \"" + link.hash + "\". Available: "
-									 + run.document.header_links("task://" + slug + ".md") + ".";
-								continue;
-							}
-							GLib.debug("validate_references: task href=%s slug=%s hash=%s accepted (exec_runs.size=%u headings.has_key=true)", 
-								href, slug, link.hash, ref_task.exec_runs.size);
-						} else {
-							GLib.debug("validate_references: task href=%s slug=%s accepted with exec_runs.size=0 (no section check)", 
-								href, slug);
-						}
-						break;
-					case MarkdownPhase.LIST:
-					default:
-						ref_task = this.runner.completed.slugs.get(slug);
-						if (ref_task == null) {
-							ref_task = this.runner.pending.slugs.get(slug);
-						}
-						if (ref_task == null) {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": no task for \"" + slug + "\".";
-							continue;
-						}
-						// First step only: require section anchor and section exist so we never build refinement prompt with invalid refs; later steps validated when current.
-						if (this.step_index != 0) {
-							continue;
-						}
-						if (link.hash == "") {
-							this.issues += "\n" + "Invalid reference target \"" + href + "\": task reference must include a section anchor (e.g. task://" + slug + ".md#section-name).";
-							continue;
-						}
-						if (ref_task.exec_runs.size > 0) {
-							var run = ref_task.exec_runs.get(0);
-							if (!run.document.headings.has_key(link.hash)) {
-								this.issues += "\n" + "Invalid reference target \"" + href + 
-									"\": task \"" + slug + "\" has no section \"" + link.hash +
-									"\". Available: "
-									+ run.document.header_links("task://" + slug + ".md") + ".";
-								continue;
-							}
-						}
-						break;
+				if (link.hash == "") {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": task reference must include a section anchor.";
+					return;
 				}
-				if (this.step_index >= 0 && ref_task.step_index >= 0 && ref_task.step_index >= this.step_index) {
-					this.issues += "\n" + "Reference target \"" + href + 
-						"\" refers to a task in the same or later section. A task may only reference the output of a task from an earlier section. "
-						+ "I suggest you split this task into its own section.";
+				var other_task = this.runner.completed.slugs.get(slug);
+				if (!other_task.task_output_document.headings.has_key(link.hash)) {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": task \"" + slug + "\" has no section \"" + link.hash +
+						"\". Available: " +
+						other_task.task_output_document.header_links("task://" + slug + ".md") + ".";
 				}
-				continue;
-			}
-			this.issues += "\n" + "Invalid reference target \"" + href + "\". "
-				+ "Use only: #anchor (document sections), task://taskname.md or task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
+				return;
+			case MarkdownPhase.REFINEMENT:
+				var completed_ref = this.runner.completed.slugs.get(slug);
+				if (completed_ref == null) {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": no completed task for \"" + slug +
+						"\" (references must be to completed tasks only).";
+					return;
+				}
+				if (link.hash == "") {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": task reference must include a section anchor (e.g. task://" +
+						slug + ".md#section-name).";
+					return;
+				}
+				if (!completed_ref.task_output_document.headings.has_key(link.hash)) {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": task \"" + slug + "\" has no section \"" + link.hash +
+						"\". Available: " +
+						completed_ref.task_output_document.header_links("task://" + slug + ".md") + ".";
+				}
+				if (this.step_index >= 0 && completed_ref.step_index >= 0 &&
+						completed_ref.step_index >= this.step_index) {
+					this.issues += "\n" + "Reference target \"" + href +
+						"\" refers to a task in the same or later section. " +
+						"A task may only reference the output of a task from an earlier section. " +
+						"I suggest you split this task into its own section.";
+				}
+				return;
+			case MarkdownPhase.LIST:
+			default:
+				var ref_task = this.runner.completed.slugs.get(slug);
+				if (ref_task == null) {
+					ref_task = this.runner.pending.slugs.get(slug);
+				}
+				if (ref_task == null) {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": no task for \"" + slug + "\".";
+					return;
+				}
+				if (this.step_index != 0) {
+					return;
+				}
+				if (link.hash == "") {
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": task reference must include a section anchor (e.g. task://" +
+						slug + ".md#section-name).";
+					return;
+				}
+				if (ref_task.exec_done) {
+					if (!ref_task.task_output_document.headings.has_key(link.hash)) {
+						this.issues += "\n" + "Invalid reference target \"" + href +
+							"\": task \"" + slug + "\" has no section \"" + link.hash +
+							"\". Available: " +
+							ref_task.task_output_document.header_links("task://" + slug + ".md") + ".";
+					}
+				}
+				if (this.step_index >= 0 && ref_task.step_index >= 0 &&
+						ref_task.step_index >= this.step_index) {
+					this.issues += "\n" + "Reference target \"" + href +
+						"\" refers to a task in the same or later section. " +
+						"A task may only reference the output of a task from an earlier section. " +
+						"I suggest you split this task into its own section.";
+				}
+				return;
 		}
 	}
 
@@ -569,10 +629,6 @@ public class Details : OLLMchat.Agent.Base
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
 			}
-			// Debug: show content actually passed to refinement parser (session log + UI)
-			this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-				"markdown.debug Debug parsed content",
-				response_text)));
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
 			var task_name = this.task_data.get("Name").to_markdown().strip();
@@ -632,12 +688,11 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Task as markdown for a given phase. Does not add section headings
 	 * (e.g. `## Task`); caller adds header.
-	 * COARSE: creation keys. REFINEMENT: task list + `## Tool Calls` when tools exist.
-	 * LIST: task list + ##### Result summary (raw) when exec_done.
-	 * EXECUTION: same as REFINEMENT for Tool Calls.
+	 * COARSE: creation keys. REFINEMENT/EXECUTION: task list + `## Tool Calls` when tools exist.
+	 * POST_EXEC: task list only (no Tool Calls). LIST: task list + ##### Result summary when exec_done.
 	 *
 	 * @param phase which phase (COARSE, REFINEMENT, LIST, REFINE_COMPLETED,
-	 * EXECUTION)
+	 * EXECUTION, POST_EXEC)
 	 * @return markdown string for this phase
 	 */
 	public string to_markdown(MarkdownPhase phase)
@@ -660,30 +715,21 @@ public class Details : OLLMchat.Agent.Base
 					}
 					break;
 				case "Output":
-					if ((phase != MarkdownPhase.LIST && phase != MarkdownPhase.REFINE_COMPLETED)
-						 || !this.exec_done || this.exec_runs.size == 0) {
+					if ((phase != MarkdownPhase.LIST &&
+							phase != MarkdownPhase.REFINE_COMPLETED)
+							|| !this.exec_done) {
 						continue;
 					}
-					// Output raw result summaries: numbered headings + pretext with task links
-					if (this.exec_runs.size > 0) {
+					if (this.task_post_exec_summary.text_content().strip() != "" ||
+							this.task_output_document.header_list.size > 0) {
 						var task_ref = "task://" + this.slug() + ".md";
-						ret += "#### Task Result Output summaries\n\n";
-						ret += this.exec_runs.size.to_string()
-							 + " subtool(s) were run — these are the outputs. ";
-						ret += "You can refer to them as ";
-						var ref_parts = new string[this.exec_runs.size];
-						for (var ri = 0; ri < this.exec_runs.size; ri++) {
-							var n = (ri + 1).to_string();
-							ref_parts[ri] = "[Result summary " + n + "](" 
-								+ task_ref + "#result-summary-" + n + ")";
-						}
-						ret += string.joinv(", ", ref_parts) + ".\n\n";
-						var idx = 0;
-						foreach (var ex in this.exec_runs) {
-							idx++;
-							var title = "Result summary " + idx.to_string();
-							ex.summary.update_header(5, title);
-							ret += ex.summary.to_markdown_with_content().strip() + "\n\n";
+						ret += "#### Task result\n\n";
+						ret += this.task_post_exec_summary.to_markdown_with_content()
+							.strip() + "\n\n";
+						if (this.task_output_document.header_list.size > 0) {
+							ret += "**Available sections:** " +
+								this.task_output_document.header_links(task_ref) +
+								"\n\n";
 						}
 					}
 					continue;
@@ -695,11 +741,9 @@ public class Details : OLLMchat.Agent.Base
 			}
 			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
 		}
-		if (phase == MarkdownPhase.REFINE_COMPLETED) {
-			return ret;
-		}
-		// Include ## Tool Calls only when there are tools (omit empty section in prompt).
-		if (this.tools.size == 0) {
+		// Omit ## Tool Calls for REFINE_COMPLETED and POST_EXEC; include only for REFINEMENT/EXECUTION when tools exist.
+		if (phase == MarkdownPhase.REFINE_COMPLETED || phase == MarkdownPhase.POST_EXEC ||
+			 this.tools.size == 0) {
 			return ret;
 		}
 		ret += "\n## Tool Calls\n\n";
@@ -932,20 +976,115 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Run all Tool exec runs (tool if needed, then LLM). Summaries stay on each Tool.
-	 * Documents stay on each Tool (ex.document).
+	 * Run all Tool exec runs (tool if needed, then LLM). Breaks on has_task_complete();
+	 * then runs post-exec synthesis. Summaries and canonical document from post-exec.
 	 */
 	public async void run_exec() throws GLib.Error
 	{
 		var task_name = this.task_data.get("Name").to_markdown().strip();
-		int n = 0;
-		foreach (var ex in this.exec_runs) {
-			n++;
+		for (var i = 0; i < this.exec_runs.size; i++) {
+			var ex = this.exec_runs.get(i);
 			this.add_message(new OLLMchat.Message("ui",
-				"Running Tools for Task " + task_name + " — Tool call " + n.to_string()));
+				"Running Tools for Task " + task_name + " — Tool call " +
+				(i + 1).to_string()));
 			yield ex.run();
+			if (ex.has_task_complete()) {
+				this.add_message(new OLLMchat.Message("ui",
+					"Tool evaluation indicated that **We have enough " +
+					"information to complete task**."));
+				break;
+			}
 		}
+		yield this.run_post_exec();
 		this.exec_done = true;
+	}
+
+	/**
+	 * Build post-execution prompt from task_post_exec.md.
+	 * previous_response and retry_issues are used for retries (header_raw when non-empty).
+	 */
+	public OLLMcoder.Skill.PromptTemplate post_exec_prompt(
+			string previous_response, string retry_issues) throws GLib.Error
+	{
+		var definition = this.skill_manager.fetch(this);
+		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_post_exec.md");
+		tpl.system_fill(0);
+		string[] run_blocks = {};
+		for (var i = 0; i < this.exec_runs.size; i++) {
+			var ex = this.exec_runs.get(i);
+			run_blocks += ex.document.to_markdown();
+			if (ex.has_task_complete()) {
+				break;
+			}
+		}
+		tpl.fill(7,
+			"task_link_base", "task://" + this.slug() + ".md",
+			"task_definition", this.to_markdown(MarkdownPhase.POST_EXEC),
+			"skill_name", definition.header.get("name"),
+			"skill_execute_body", definition.execute,
+			"tool_runs_combined", string.joinv("\n\n---\n\n", run_blocks),
+			"post_exec_previous_output",
+			previous_response.strip() == "" ? "" :
+				tpl.header_raw("Your previous output", previous_response),
+			"post_exec_retry_issues",
+			retry_issues.strip() == "" ? "" :
+				tpl.header_raw("Issues with your previous output", retry_issues));
+		return tpl;
+	}
+
+	/**
+	 * Post-execution synthesis: combine executor outputs, call LLM with task_post_exec.md,
+	 * parse into task_post_exec_summary and task_output_document; validate links.
+	 * Retry on parse/validation issues: refill with previous output and issues via header_raw (same pattern as refinement).
+	 */
+	public async void run_post_exec() throws GLib.Error
+	{
+		yield this.fill_model();
+		this.chat_call.tools.clear();
+		var response_text = "";
+		var last_issues = "";
+		for (var try_count = 0; try_count < 5; try_count++) {
+			var tpl = this.post_exec_prompt(response_text, last_issues);
+			var task_name = this.task_data.get("Name").to_markdown().strip();
+			var model_label = this.session.model_usage.model != "" ?
+				this.session.model_usage.display_name_with_size() : "";
+			var model_part = model_label != "" ? " with " + model_label : "";
+			this.add_message(new OLLMchat.Message("ui",
+				OLLMchat.Message.fenced(
+					"markdown.oc-frame-info.collapsed Summarizing Tool outputs for " +
+					task_name + model_part,
+					tpl.filled_user)));
+			var messages = new Gee.ArrayList<OLLMchat.Message>();
+			messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			this.add_message(new OLLMchat.Message("ui-waiting",
+				model_label != "" ?
+					"Waiting for response from " + model_label :
+					"Waiting for response"));
+			var response = yield this.chat_call.send(messages, null);
+			response_text = response != null ? response.message.content : "";
+			// Ensure any literal {task_link_base} in model output is replaced so links validate
+			var task_base = "task://" + this.slug() + ".md";
+			response_text = response_text.replace("{task_link_base}", task_base);
+			var parser = new ResultParser(this.runner, response_text);
+			parser.exec_post_extract(this);
+			if (parser.issues == "") {
+				return;
+			}
+			this.issues += "\n" + parser.issues;
+			last_issues = parser.issues.strip();
+			if (try_count < 4) {
+				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+					"text.oc-frame-warning.collapsed Issues with summation of tool calls",
+					last_issues)));
+			}
+		}
+		var task_name_fail = this.task_data.get("Name").to_markdown().strip();
+		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+			"text.oc-frame-danger.collapsed Summation of tool calls failed for \"" + task_name_fail + "\"",
+			last_issues.strip())));
+		throw new GLib.IOError.INVALID_ARGUMENT(
+			"task_post_exec: " + last_issues);
 	}
 }
 

@@ -6,6 +6,8 @@ tools: codebase_search
 
 ## Refinement
 
+**DO NOT FILL IN REFERENCES.** References are irrelevant to performing codebase searches — you are only interested in creating tool calls. Do **not** add file links, task links, or URLs to **References**. Leave References empty (use "—" or "(none)"). Your only job for this skill is to output the **## Tool Calls** section with one or more `codebase_search` calls.
+
 **What is needed** is the description of what to find in the codebase (e.g. "where task list is parsed", "skill definition load", "how to call the runner"). Produce one or more **codebase_search** tool calls with **query** and, when useful, the optional parameters below.
 
 ### Tool: codebase_search (options worth using)
@@ -24,6 +26,29 @@ tools: codebase_search
 - **Distinct types or names:** If you know distinct types or property names that might be used by the code you're looking for (e.g. `OptionEntry`), try searching for those as well.
 
 **Encourage:** Multiple tool calls with different **element_type** or **query** (e.g. one call with `element_type: "method"` and one with `element_type: "class"`) to get both call sites and type definitions. Including **element_type** yields symbol-level results; omitting it often returns more whole-file or mixed results.
+
+### Example refinement output (analyze_codebase)
+
+For this skill, your refinement output must have **no references** — only Tool Calls. Example:
+
+## Task
+
+- **What is needed** Find where the skill definition is loaded from file and how the runner invokes it.
+- **Skill** analyze_codebase
+- **References** —
+- **Expected output** Result summary with code locations and how they relate to loading skills.
+
+## Tool Calls
+
+```json
+{ "name": "codebase_search", "arguments": { "query": "where skill definition is loaded from file", "element_type": "method" } }
+```
+
+```json
+{ "name": "codebase_search", "arguments": { "query": "how runner invokes or runs a skill", "element_type": "method" } }
+```
+
+Do **not** add file paths, task links, or URLs under **References**. Leave it as **References** — .
 
 ---
 

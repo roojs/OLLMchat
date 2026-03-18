@@ -129,7 +129,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				t.validate_references(MarkdownPhase.LIST);
+				foreach (var link in t.reference_targets) {
+					t.validate_link(link, MarkdownPhase.LIST);
+				}
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -179,7 +181,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				t.validate_references(MarkdownPhase.LIST);
+				foreach (var link in t.reference_targets) {
+					t.validate_link(link, MarkdownPhase.LIST);
+				}
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -411,7 +415,9 @@ public class ResultParser : Object
 				break;
 			}
 			task.update_props(refined_map);
-			task.validate_references(MarkdownPhase.REFINEMENT);
+			foreach (var link in task.reference_targets) {
+				task.validate_link(link, MarkdownPhase.REFINEMENT);
+			}
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}
@@ -478,6 +484,30 @@ public class ResultParser : Object
 		ex.summary = this.document.headings.get("result-summary");
 		ex.document = this.document;
 		return true;
+	}
+
+	/**
+	 * Parse post-exec synthesis response into the task. Called by Details.run_post_exec().
+	 * Requires ## Result summary; sets task_post_exec_summary and task_output_document,
+	 * then validates each link in the output document.
+	 *
+	 * @param task the task to fill with post-exec summary and document
+	 */
+	public void exec_post_extract(Details task)
+	{
+		if (!this.document.headings.has_key("result-summary")) {
+			this.issues += "\n" +
+				"Post-exec output must include ## Result summary.";
+			return;
+		}
+		task.task_post_exec_summary = this.document.headings.get("result-summary");
+		task.task_output_document = this.document;
+		foreach (var link in task.task_output_document.links) {
+			task.validate_link(link, MarkdownPhase.POST_EXEC);
+		}
+		if (task.issues != "") {
+			this.issues += task.issues;
+		}
 	}
 
 	/**

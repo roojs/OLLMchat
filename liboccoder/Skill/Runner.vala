@@ -140,13 +140,14 @@ namespace OLLMcoder.Skill
 			if (link.scheme == "task") {
 				var slug = link.path.has_suffix(".md") ?
 					link.path.substring(0, link.path.length - 3) : link.path;
-				var task = this.completed.slugs.has_key(slug) ? 
+				var task = this.completed.slugs.has_key(slug) ?
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
-				var run = task.exec_runs.get(0);
-				var block = run.document.headings.get(link.hash);
-				GLib.debug("reference_content: task slug=%s run.document=%p headings.has_key(%s)=%s block=%p", 
-					slug, run.document, link.hash, run.document.headings.has_key(link.hash).to_string(), block);
-				return block.to_markdown_with_content();
+				var doc = task.task_output_document;
+				if (!doc.headings.has_key(link.hash)) {
+					GLib.error("reference_content: task section missing slug=%s hash=%s",
+						slug, link.hash);
+				}
+				return doc.headings.get(link.hash).to_markdown_with_content();
 			}
 			if (link.path == "") {
 				var anchor = link.hash;
@@ -250,10 +251,6 @@ namespace OLLMcoder.Skill
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
 					this.replay_step("task_list_parse", response);
-					// Debug: show content actually passed to parser (session log + UI)
-					this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-						"markdown.debug.collapsed Debug parsed content",
-						response)));
 					this.pending = new OLLMcoder.Task.List(this);
 					var parser = new OLLMcoder.Task.ResultParser(this, response);
 					parser.parse_task_list();
@@ -458,11 +455,6 @@ namespace OLLMcoder.Skill
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var response_obj = yield this.chat_call.send(messages, null);
 				response = response_obj != null ? response_obj.message.content : "";
-
-				// Debug: show content actually passed to iteration parser (session log + UI)
-				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
-					"markdown.debug Debug parsed content",
-					response)));
 
 				this.pending = new OLLMcoder.Task.List(this);
 				parser = new OLLMcoder.Task.ResultParser(this, response);

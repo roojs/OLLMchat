@@ -130,3 +130,9 @@
     --frame-shadow: rgba(var(--bs-danger-rgb), 0.3);
     --frame-text-emphasis: var(--bs-danger-text-emphasis);
 }
+
+/* Thinking frames: muted italic text for markdown body */
+.oc-frame.thinking .oc-markdown-text {
+    color: #666;
+    font-style: italic;
+}
