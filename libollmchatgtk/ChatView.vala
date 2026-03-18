@@ -440,7 +440,7 @@ namespace OLLMchatGtk
 					// Initialize renderer if needed (creates TextView on first block)
 					this.renderer.start();
 					if (is_thinking) {
-						this.renderer.on_code_block(true, "markdown.oc-frame-info Thinking...");
+						this.renderer.on_code_block(true, "markdown.oc-frame-info.thinking Thinking...");
 						this.thinking_frame = this.renderer.childview;
 						this.last_chunk_start = 0;
 						return;

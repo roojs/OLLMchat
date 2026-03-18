@@ -29,6 +29,12 @@ namespace Markdown.Document
 		public Gee.ArrayList<string> header_list { get; private set; default = new Gee.ArrayList<string>(); }
 
 		/**
+		 * Every LINK created during parse, in document order.
+		 * Render.on_a appends; do not scan the tree afterward.
+		 */
+		public Gee.ArrayList<Format> links { get; private set; default = new Gee.ArrayList<Format>(); }
+
+		/**
 		 * Return a string of markdown links for each section:
 		 * (header)[url#slug], (header2)[url#slug2], ...
 		 * Used for error messages so the LLM sees available sections.

@@ -186,17 +186,18 @@ namespace MarkdownGtk
 			header_box.append(this.collapse_toggle_button);
 			
 			var title_label = new Gtk.Label("<b>%s</b>".printf(GLib.Markup.escape_text(header_text, -1))) {
-				hexpand = true,
+				hexpand = false,
 				halign = Gtk.Align.START,
-				valign = Gtk.Align.START,
-				margin_start = 9,
+				valign = Gtk.Align.END,
+				margin_start = has_collapsed_style ?  0  : 4,
 				margin_top = 4,
+				margin_bottom = 10,
 				ellipsize = Pango.EllipsizeMode.END,
 				tooltip_text = header_text,
 				use_markup = true
 			};
 			title_label.add_css_class("oc-code-frame-title");
-			title_label.max_width_chars = 30;
+			title_label.max_width_chars = -1;  // no character limit
 			header_box.append(title_label);
 			
 			// Add spacer to push buttons to the right
@@ -235,7 +236,7 @@ namespace MarkdownGtk
 				tooltip_text = "Expand",
 				hexpand = false,
 				margin_start = 5,
-				margin_end = 5,
+				margin_end = 0, // the text has a margin so this doesnt need it
 				margin_top = 0,
 				margin_bottom = 0,
 				can_focus = false,
@@ -273,7 +274,10 @@ namespace MarkdownGtk
 				icon_name = "object-flip-horizontal-symbolic",
 				tooltip_text = "View source",
 				can_focus = false,
-				focus_on_click = false
+				focus_on_click = false,
+				margin_end = 0, // the text has a margin so this doesnt need it
+				margin_top = 0,
+				margin_bottom = 0
 			};
 			this.view_source_toggle.clicked.connect(() => {
 				this.showing_source = !this.showing_source;
@@ -453,9 +457,9 @@ namespace MarkdownGtk
 			GLib.debug("resize_widget_callback mode=%d realized=%s", (int) mode, widget.get_realized().to_string());
 			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
-				// REVEAL_BODY: body was just revealed; widget may need another frame to realize
-				if (mode == ResizeMode.REVEAL_BODY) {
-					return true; // Retry on next idle
+				// REVEAL_BODY and FINAL may run before layout has realized the widget; retry on the next idle.
+				if (mode == ResizeMode.REVEAL_BODY || mode == ResizeMode.FINAL) {
+					return true;
 				}
 				return false;
 			}

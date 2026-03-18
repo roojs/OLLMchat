@@ -87,8 +87,26 @@ namespace OLLMcoder.Task
 			return "## Reference Contents\n\n" + string.joinv("", parts);
 		}
 
+		/**
+		 * True when the tail of this run's executor output says the task
+		 * is complete — no further tool calls in this task. Call only after
+		 * exec_extract set this.document.
+		 */
+		public bool has_task_complete()
+		{
+			if (this.document == null) {
+				return false;
+			}
+			var chunks = this.document.to_markdown().strip().split("\n\n");
+			var tail = this.document.to_markdown().strip();
+			if (chunks.length >= 2) {
+				tail = chunks[chunks.length - 2] + "\n\n" + chunks[chunks.length - 1];
+			}
+			return tail.down().contains("no further tool calls needed");
+		}
+
 		/** Tool call details for this run: tool call + result. Uses this.tool_run_result; build with parent.header_fenced/header_raw. Empty when no tool_call. */
-		private string tool_call_details()
+		internal string tool_call_details()
 		{
 			if (this.tool_call == null) {
 				return "";
@@ -151,7 +169,8 @@ namespace OLLMcoder.Task
 			yield this.parent.runner.load_files(this.references);
 			var reference_content = this.reference_contents();
 			var executor_input = tool_output + reference_content;
-			this.add_message(new OLLMchat.Message("ui", 	"Tool run finished. Reviewing Tool Output"));
+			this.add_message(new OLLMchat.Message("ui", 
+				"Tool run finished. Reviewing Tool Output"));
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
@@ -165,7 +184,8 @@ namespace OLLMcoder.Task
 				// Show user message sent to LLM so user can see what's going on (system is fixed, omit).
 				// Use markdown.oc-frame-info so the executor prompt is rendered as markdown, not plain text.
 				this.add_message(new OLLMchat.Message("ui",
-					OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Reviewing Tool Output" + model_part,
+					OLLMchat.Message.fenced(
+						"markdown.oc-frame-info.collapsed Reviewing Tool Output" + model_part,
 					 tpl.filled_user)));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				try {
