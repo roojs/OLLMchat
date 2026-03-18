@@ -38,6 +38,7 @@ namespace OLLMchat.Response
 		public int64 prompt_eval_duration { get; set; default = 0; }
 		public int eval_count { get; set; default = 0; }
 		public int64 eval_duration { get; set; default = 0; }
+		public Gee.ArrayList<string> choices { get; set; default = new Gee.ArrayList<string>(); }
 
 		public Generate(Settings.Connection? connection = null)
 		{
@@ -55,8 +56,63 @@ namespace OLLMchat.Response
 						return null;
 					}
 					return default_serialize_property(property_name, value, pspec);
+				case "choices":
+					if (this.choices.size == 0) {
+						return null;
+					}
+					var arr = new Json.Array();
+					foreach (var s in this.choices) {
+						arr.add_string_element(s);
+					}
+					var node = new Json.Node(Json.NodeType.ARRAY);
+					node.init_array(arr);
+					return node;
 				default:
 					return default_serialize_property(property_name, value, pspec);
+			}
+		}
+
+		public override bool deserialize_property(
+			string property_name, out Value value, ParamSpec pspec, Json.Node property_node)
+		{
+			switch (property_name) {
+				case "choices": {
+					// v1: array of { "text", "index", "finish_reason" } — we only use text; ignore finish_reason for now
+					var array = property_node.get_array();
+					for (var i = 0; i < array.get_length(); i++) {
+						var choice_obj = array.get_object_element(i);
+						if (choice_obj.has_member("text")) {
+							var t = choice_obj.get_string_member("text");
+							this.choices.add(t != null ? t : "");
+						}
+					}
+					this.response = this.choices.size > 0 ? this.choices[0] : "";
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.choices);
+					return true;
+				}
+				case "usage": {
+					// v1: reuse prompt_eval_count / eval_count (same as tokens)
+					var usage = property_node.get_object();
+					if (usage.has_member("prompt_tokens")) {
+						this.prompt_eval_count = (int)usage.get_int_member("prompt_tokens");
+					}
+					if (usage.has_member("completion_tokens")) {
+						this.eval_count = (int)usage.get_int_member("completion_tokens");
+					}
+					value = Value(typeof(int));
+					value.set_int(0);
+					return true;
+				}
+				case "created": {
+					// v1: unix timestamp (int) → created_at string
+					this.created_at = property_node.get_int().to_string();
+					value = Value(typeof(string));
+					value.set_string(this.created_at);
+					return true;
+				}
+				default:
+					return default_deserialize_property(property_name, out value, pspec, property_node);
 			}
 		}
 	}

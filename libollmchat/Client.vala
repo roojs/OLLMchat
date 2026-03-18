@@ -342,8 +342,36 @@ namespace OLLMchat
 			call.options = options == null ? new Call.Options() : options;
 			
 			var result = yield call.exec_generate();
-			
+
 			return result;
+		}
+
+		/**
+		 * Runs a completions call (OpenAI v1/completions) and returns the result as Response.Generate.
+		 * Same argument shape as generate() but without system prompt (API has no system).
+		 *
+		 * @param model The model name to use
+		 * @param prompt The text prompt (required)
+		 * @param options Optional Call.Options; used as fallback for max_tokens, temperature, etc.
+		 * @param cancellable Optional cancellable
+		 * @return Response.Generate with choices list and response = first choice; usage flattened.
+		 */
+		public async Response.Generate completions(
+			string model,
+			string prompt,
+			Call.Options? options = null,
+			GLib.Cancellable? cancellable = null
+		) throws Error
+		{
+			if (model == "") {
+				throw new OllmError.INVALID_ARGUMENT("Client.completions() requires a model parameter.");
+			}
+			var call = new Call.Completions(this.connection, model) {
+				cancellable = cancellable,
+				prompt = prompt
+			};
+			call.options = options == null ? new Call.Options() : options;
+			return yield call.exec_completions();
 		}
 	}
 }
