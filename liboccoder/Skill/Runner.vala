@@ -245,6 +245,8 @@ namespace OLLMcoder.Skill
 						this.sr_factory.project_manager);
 					this.user_request = tpl.user_to_document();
 					this.fill_tools(); // (clears tools)
+					this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+					this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -449,6 +451,8 @@ namespace OLLMcoder.Skill
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"markdown.oc-frame-info.collapsed " + title,
 					full_prompt)));
+				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));

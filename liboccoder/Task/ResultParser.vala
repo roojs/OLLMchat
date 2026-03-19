@@ -478,7 +478,7 @@ public class ResultParser : Object
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
-				"Produce a result summary (what was found or produced; whether complete or more work needed).";
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
 			return false;
 		}
 		ex.summary = this.document.headings.get("result-summary");
@@ -520,7 +520,7 @@ public class ResultParser : Object
 	 * Content we expect (task_execution.md):
 	 * {{{
 	 * ## Result summary
-	 * We have the information we need; it is complete.
+	 * (Substance + whether needs are met; optional final line: no further tool calls needed)
 	 * }}}
 	 *
 	 * @param task the task to add the synthetic run to
@@ -531,7 +531,7 @@ public class ResultParser : Object
 		if (!this.document.headings.has_key("result-summary")) {
 			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
 				"It was missing or not found in the response. " +
-				"Produce a result summary (what was found or produced; whether complete or more work needed).";
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
 			return;
 		}
 		var factory = (OLLMchat.Agent.Factory) task.runner.sr_factory;

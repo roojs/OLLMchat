@@ -66,6 +66,13 @@ namespace OLLMvector
 		private bool normalized = false;
 		private string filename;
 		
+		/**
+		 * For tmp indexes built with @copy_from: FAISS label @i → source index vector_id.
+		 * Only indices @i &lt; @get_total_vectors are used; array may be longer if some ids were skipped.
+		 * Empty: no remap (normal on-disk index).
+		 */
+		public int64[] map { get; private set; default = {}; }
+		
 		// Mutex to protect FAISS operations (FAISS is not thread-safe)
 		private GLib.Mutex faiss_mutex = GLib.Mutex();
 		
@@ -125,6 +132,62 @@ namespace OLLMvector
 			
 			// Use the HNSW index directly - IndexHNSW inherits from Index
 			this.index = (owned)hnsw_index;
+		}
+		
+		/**
+		 * In-RAM HNSWFlat (M=16), not backed by a file. Use @copy_from then @search; @map holds label→source ids.
+		 */
+		public Index.create_tmp_hnsw(int dim) throws Error
+		{
+			Object();
+			this.filename = "";
+			this.dimension = dim;
+			this.normalized = false;
+			this.map = {};
+			
+			Faiss.IndexHNSW hnsw_index;
+			if (Faiss.index_hnsw_flat_new(out hnsw_index, (int64)dim, 16) != 0) {
+				throw new GLib.IOError.FAILED("Failed to create tmp FAISS HNSW index");
+			}
+			this.index = (owned)hnsw_index;
+		}
+		
+		/**
+		 * Call only on an empty tmp index. Reconstructs vectors from @src for each id in order.
+		 *
+		 * @return number of vectors added (0 if none)
+		 */
+		public uint64 copy_from(Index src, Gee.ArrayList<int> source_vector_ids) throws Error
+		{
+			if (src.dimension != this.dimension) {
+				throw new GLib.IOError.FAILED("copy_from: dimension mismatch");
+			}
+			var batch = new OLLMchat.Response.FloatArray(this.dimension);
+			int n_ids = source_vector_ids.size;
+			var id_map = new int64[n_ids];
+			int t = 0;
+			
+			foreach (var orig_id in source_vector_ids) {
+				float[] row;
+				try {
+					row = src.reconstruct_vector(orig_id);
+				} catch (Error e) {
+					GLib.warning("copy_from: skip vector_id %d: %s", orig_id, e.message);
+					continue;
+				}
+				batch.add(row);
+				id_map[t] = orig_id;
+				t++;
+			}
+			
+			if (t == 0) {
+				this.map = {};
+				return 0;
+			}
+			
+			this.add_vectors(batch);
+			this.map = id_map;
+			return (uint64)t;
 		}
 		
 	 
@@ -206,6 +269,17 @@ namespace OLLMvector
 					distance = distances[i],
 					rank = i + 1
 				};
+			}
+			
+			if (this.map.length > 0) {
+				int64 nvec = (int64)this.get_total_vectors();
+				for (int i = 0; i < results.length; i++) {
+					int64 lid = results[i].document_id;
+					if (lid < 0 || lid >= nvec) {
+						continue;
+					}
+					results[i].document_id = this.map[lid];
+				}
 			}
 			
 			return results;
