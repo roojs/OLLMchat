@@ -862,6 +862,11 @@ this.some_method(
 
 **IMPORTANT:** When asked to add debugging, use at most 3-4 debug statements, preferably just one targeted debug statement. Avoid "splattering" debug statements everywhere - be selective and focus on the key points that will help diagnose the issue.
 
+**IMPORTANT:** For CLI/example apps, route debug output through the
+standard `--debug` option handled by the app/test base classes. Do
+not require `G_MESSAGES_DEBUG`, and do not add ad-hoc stdout/stderr
+debug output when `GLib.debug()` is sufficient.
+
 **Bad:**
 ```vala
 GLib.debug("[Client.models] Starting models() call");

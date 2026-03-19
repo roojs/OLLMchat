@@ -59,7 +59,7 @@ We ran the codebase search and read the relevant handlers. Outcome is **complete
 
 {task_definition}
 
-## Skill - {skill_name}
+## Skill definition
 
 {skill_execute_body}
 
