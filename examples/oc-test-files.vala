@@ -620,6 +620,21 @@ BACKUP_PATH: (tracked_in_file_history)
 			file = manager.get_file_from_active_project(file_path);
 		}
 		
+		// If there is no active project match, try to resolve the file from the DB
+		// so summarize can still use vector_metadata descriptions for absolute paths.
+		if (file == null && manager.db != null) {
+			var matches = new Gee.ArrayList<OLLMfiles.FileBase>();
+			OLLMfiles.FileBase.query(manager.db, manager).select(
+				"WHERE path = '%s' AND base_type = 'f' AND delete_id = 0 LIMIT 1".printf(
+					file_path.replace("'", "''")
+				),
+				matches
+			);
+			if (matches.size > 0) {
+				file = matches.get(0) as OLLMfiles.File;
+			}
+		}
+		
 		// If not in project, create fake file
 		if (file == null) {
 			file = new OLLMfiles.File.new_fake(manager, file_path);

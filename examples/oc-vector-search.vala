@@ -26,6 +26,10 @@ class VectorSearchApp : VectorAppBase
 	protected static int opt_max_results = 3;
 	protected static int opt_max_snippet_lines = 10;
 	protected static string? opt_embed_model = null;
+	protected static string? opt_debug_ast_path = null;
+	protected static string? opt_dump_vector = null;
+	protected static string? opt_only_file = null;
+	protected static string? opt_data_dir = null;
 	
 	private string db_path;
 	private string vector_db_path;
@@ -51,6 +55,9 @@ Examples:
   {ARG} --category=documentation libocvector "packaging"
   {ARG} --max-results=20 libocvector "search"
   {ARG} --max-snippet-lines=5 libocvector "search"
+  {ARG} --data-dir=/custom/path libocvector "search"
+  {ARG} --dump-vector=OLLMcoder.Task-List-write libocvector
+  {ARG} --only-file=liboccoder/Task/List.vala libocvector "write"
 """; }
 	
 	protected const OptionEntry[] local_options = {
@@ -61,7 +68,11 @@ Examples:
 		{ "category", 'c', 0, OptionArg.STRING, ref opt_category, "Filter docs by category (plan, documentation, rule, configuration, data, license, changelog, other)", "CATEGORY" },
 		{ "max-results", 'n', 0, OptionArg.INT, ref opt_max_results, "Maximum number of results (default: 3)", "N" },
 		{ "max-snippet-lines", 's', 0, OptionArg.INT, ref opt_max_snippet_lines, "Maximum lines of code snippet to display (default: 10, -1 for no limit)", "N" },
+		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
+		{ "debug-ast-path", 0, 0, OptionArg.STRING, ref opt_debug_ast_path, "Debug one AST path through filtering and ranking", "PATH" },
+		{ "dump-vector", 0, 0, OptionArg.STRING, ref opt_dump_vector, "Dump stored vector for AST path (one float per line, for diff)", "AST_PATH" },
+		{ "only-file", 0, 0, OptionArg.STRING, ref opt_only_file, "Restrict search to vectors from this file only (path relative to folder)", "FILE" },
 		{ null }
 	};
 	
@@ -105,6 +116,10 @@ Examples:
 		opt_max_results = 3;
 		opt_max_snippet_lines = 10;
 		opt_embed_model = null;
+		opt_debug_ast_path = null;
+		opt_dump_vector = null;
+		opt_only_file = null;
+		opt_data_dir = null;
 		
 		// Call base implementation which will parse options and call validate_args()
 		return base.command_line(command_line);
@@ -122,6 +137,31 @@ Examples:
 		opt_element_type = opt_element_type == null ? "" : opt_element_type;
 		opt_category = opt_category == null ? "" : opt_category;
 		opt_embed_model = opt_embed_model == null ? "" : opt_embed_model;
+		opt_debug_ast_path = opt_debug_ast_path == null ? "" : opt_debug_ast_path;
+		opt_dump_vector = opt_dump_vector == null ? "" : opt_dump_vector;
+		opt_only_file = opt_only_file == null ? "" : opt_only_file;
+		opt_data_dir = opt_data_dir == null ? "" : opt_data_dir;
+
+		// Apply data_dir from parsed options (so --data-dir is used)
+		if (opt_data_dir != "") {
+			var dir = opt_data_dir;
+			
+			this.data_dir = dir;
+			var data_dir_file = GLib.File.new_for_path(this.data_dir);
+			if (!data_dir_file.query_exists()) {
+				return "Error: data directory does not exist: %s\n".printf(this.data_dir);
+			}
+			var db_path_check = GLib.Path.build_filename(this.data_dir, "files.sqlite");
+			var vector_path_check = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
+			var db_file = GLib.File.new_for_path(db_path_check);
+			if (!db_file.query_exists()) {
+				return "Error: database file does not exist: %s\n".printf(db_path_check);
+			}
+			var vector_file = GLib.File.new_for_path(vector_path_check);
+			if (!vector_file.query_exists()) {
+				return "Error: vector database file does not exist: %s\n".printf(vector_path_check);
+			}
+		}
 		
 		if (opt_category != "") {
 			var normalized = opt_category.strip().down();
@@ -138,7 +178,7 @@ Examples:
 			}
 		}
 		
-		// Build paths at start
+		// Build paths from (possibly overridden) data_dir
 		this.db_path = GLib.Path.build_filename(this.data_dir, "files.sqlite");
 		this.vector_db_path = GLib.Path.build_filename(this.data_dir, "codedb.faiss.vectors");
 		
@@ -148,8 +188,8 @@ Examples:
 		if (folder_path == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
-		// When --show-info is set, query is optional; otherwise required
-		if (opt_show_info == null && query == "") {
+		// When --show-info or --dump-vector is set, query is optional; otherwise required
+		if (opt_show_info == null && opt_dump_vector == "" && query == "") {
 			return help.replace("{ARG}", remaining_args[0]);
 		}
 		
@@ -173,6 +213,10 @@ Examples:
 			yield this.run_show_info(folder_path, opt_show_info);
 			return;
 		}
+		if (opt_dump_vector != "") {
+			yield this.run_dump_vector(folder_path, opt_dump_vector);
+			return;
+		}
 		if (query == "") {
 			throw new GLib.IOError.NOT_FOUND("Query required (or use --show-info=FILE to list metadata for a file)");
 		}
@@ -185,6 +229,7 @@ Examples:
 		this.ensure_data_dir();
 		
 		var sql_db = new SQ.Database(this.db_path, false);
+		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
 		var manager = new OLLMfiles.ProjectManager(sql_db);
 		
 		var file = GLib.File.new_for_path(folder_path);
@@ -299,13 +344,83 @@ Examples:
 		stdout.printf("%s\n", generator.to_data(null));
 	}
 	
+	private async void run_dump_vector(string folder_path, string ast_path) throws Error
+	{
+		this.ensure_data_dir();
+		
+		var sql_db = new SQ.Database(this.db_path, false);
+		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
+		
+		// Get dimension and load vector DB (same as run_search)
+		if (this.config.loaded) {
+			yield this.ensure_config();
+		} else {
+			yield this.tool_config_client("embed", opt_url, opt_api_key, opt_embed_model);
+			this.save_config();
+		}
+		var temp_db = new OLLMvector.Database(this.config,
+			this.vector_db_path, OLLMvector.Database.DISABLE_INDEX);
+		var dimension = yield temp_db.embed_dimension();
+		var vector_db = new OLLMvector.Database(this.config, this.vector_db_path, dimension);
+		
+		// Load folder from database (same as run_search)
+		var file = GLib.File.new_for_path(folder_path);
+		if (!file.query_exists()) {
+			throw new GLib.IOError.NOT_FOUND("Folder not found: " + folder_path);
+		}
+		var abs_path = file.get_path();
+		if (abs_path == null) {
+			throw new GLib.IOError.FAILED("Failed to get absolute path for: " + folder_path);
+		}
+		var manager = new OLLMfiles.ProjectManager(sql_db);
+		var results_list = new Gee.ArrayList<OLLMfiles.FileBase>();
+		var query_obj = OLLMfiles.FileBase.query(sql_db, manager);
+		var stmt = query_obj.selectPrepare(
+				"SELECT " + string.joinv(",", query_obj.getColsExcept(null)) +
+					 " FROM filebase WHERE path = $path AND delete_id = 0");
+		stmt.bind_text(stmt.bind_parameter_index("$path"), abs_path);
+		query_obj.selectExecute(stmt, results_list);
+		OLLMfiles.Folder? search_folder = null;
+		if (results_list.size > 0 && results_list[0] is OLLMfiles.Folder) {
+			search_folder = (OLLMfiles.Folder)results_list[0];
+		} else {
+			throw new GLib.IOError.NOT_FOUND("Folder not found in database: " + abs_path);
+		}
+		yield search_folder.load_files_from_db();
+		
+		var file_ids = search_folder.project_files.get_ids("");
+		if (file_ids.size == 0) {
+			throw new GLib.IOError.FAILED("No files found in folder");
+		}
+		
+		var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+		OLLMfiles.SQT.VectorMetadata.query(sql_db).select(
+			"WHERE file_id IN (" + string.joinv(",", file_ids.to_array()) +
+				") AND ast_path = '" + ast_path.replace("'", "''") +
+				"' ORDER BY id DESC LIMIT 1",
+			rows
+		);
+		if (rows.size == 0) {
+			throw new GLib.IOError.NOT_FOUND("No vector found for AST path: " + ast_path);
+		}
+		var vector_id = rows.get(0).vector_id;
+		
+		var vector = vector_db.reconstruct_vector(vector_id);
+		for (int i = 0; i < vector.length; i++) {
+			stdout.printf("%.9g\n", vector[i]);
+		}
+	}
+	
 	private async void run_search(string folder_path, string query) throws Error
 	{
 		stdout.printf("=== Code Vector Search ===\n\n");
 		
+		GLib.debug("run_search: data_dir=%s db_path=%s vector_db_path=%s", this.data_dir, this.db_path, this.vector_db_path);
+		
 		this.ensure_data_dir();
 		
 		var sql_db = new SQ.Database(this.db_path, false);
+		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
 		GLib.debug("Using database: %s", this.db_path);
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
@@ -360,9 +475,21 @@ Examples:
 		// Load files into folder's project_files
 		yield search_folder.load_files_from_db();
 		
-		// Get all file IDs from project_files (optionally filtered by language)
+		// Get file IDs: either all in folder (filtered by language) or single file when --only-file is set
 		var language_filter = opt_language;
-		var file_ids = search_folder.project_files.get_ids(language_filter);
+		Gee.ArrayList<string> file_ids;
+		if (opt_only_file != "") {
+			var resolved_path = GLib.Path.is_absolute(opt_only_file) ?
+				opt_only_file : GLib.Path.build_filename(abs_path, opt_only_file);
+			var project_file = search_folder.project_files.child_map.get(resolved_path);
+			if (project_file == null) {
+				throw new GLib.IOError.NOT_FOUND("File not found in project: " + opt_only_file);
+			}
+			file_ids = new Gee.ArrayList<string>();
+			file_ids.add(project_file.file.id.to_string());
+		} else {
+			file_ids = search_folder.project_files.get_ids(language_filter);
+		}
 		
 		if (file_ids.size == 0) {
 			if (language_filter != "") {
@@ -423,14 +550,18 @@ Examples:
 		) {
 			max_results = (uint64)opt_max_results,
 			element_type_filter = opt_element_type,
-			category_filter = opt_category
+			category_filter = opt_category,
+			debug_ast_path = opt_debug_ast_path
 		};
 		
 		// Execute search
 		stdout.printf("Folder: %s\n", search_folder.path);
 		stdout.printf("Query: %s\n", query);
-		if (opt_language != "" || opt_element_type != "" || opt_category != "") {
+		if (opt_language != "" || opt_element_type != "" || opt_category != "" || opt_only_file != "") {
 			var filters = new Gee.ArrayList<string>();
+			if (opt_only_file != "") {
+				filters.add("only-file: " + opt_only_file);
+			}
 			if (opt_language != "") {
 				filters.add("language: " + opt_language);
 			}

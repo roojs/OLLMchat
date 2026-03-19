@@ -25,6 +25,7 @@ class VectorIndexerApp : VectorAppBase
 	protected static string? opt_embed_model = null;
 	protected static string? opt_analyze_model = null;
 	protected static string? opt_data_dir = null;
+	protected static string? opt_only_file = null;
 	
 	private string db_path;
 	private string vector_db_path;
@@ -35,11 +36,10 @@ Usage: {ARG} [OPTIONS] <file_or_folder_path>
 Index files or folders for vector search.
 
 Examples:
-  {ARG} libocvector/Database.vala
-  {ARG} --debug libocvector/Database.vala
   {ARG} libocvector/
   {ARG} --recurse libocvector/
   {ARG} --create-project libocvector/
+  {ARG} --only-file=libocvector/Database.vala libocvector/
   {ARG} --project-summary libocvector/
   {ARG} --data-dir=/custom/path libocvector/
   {ARG} --reset-database
@@ -51,6 +51,7 @@ Examples:
 		{ "create-project", 0, 0, OptionArg.NONE, ref opt_create_project, "Create the folder as a project if it's not already one", null },
 		{ "project-summary", 0, 0, OptionArg.NONE, ref opt_project_summary, "Only generate project summary from existing metadata (file scan runs; indexer does not)", null },
 		{ "data-dir", 0, 0, OptionArg.STRING, ref opt_data_dir, "Data directory for database files (default: ~/.local/share/ollmchat)", "DIR" },
+		{ "only-file", 0, 0, OptionArg.STRING, ref opt_only_file, "Index only one file within the selected folder/project", "PATH" },
 		{ "embed-model", 0, 0, OptionArg.STRING, ref opt_embed_model, "Embedding model name (default: bge-m3)", "MODEL" },
 		{ "analyze-model", 0, 0, OptionArg.STRING, ref opt_analyze_model, "Analysis model name (default: qwen3-coder:30b)", "MODEL" },
 		{ null }
@@ -94,6 +95,7 @@ Examples:
 		opt_embed_model = null;
 		opt_analyze_model = null;
 		opt_data_dir = null;
+		opt_only_file = null;
 		
 		return base.command_line(command_line);
 	}
@@ -116,6 +118,10 @@ Examples:
 		
 		if (path == null && !opt_reset_database) {
 			return help.replace("{ARG}", remaining_args[0]);
+		}
+		
+		if (opt_only_file != null && opt_only_file != "" && opt_project_summary) {
+			return "--only-file cannot be combined with --project-summary\n";
 		}
 		
 		return null;
@@ -167,6 +173,7 @@ Examples:
 		
 		var file_info = file.query_info("standard::type", GLib.FileQueryInfoFlags.NONE, null);
 		bool is_folder = file_info.get_file_type() == GLib.FileType.DIRECTORY;
+		var project_path = is_folder ? abs_path : GLib.Path.get_dirname(abs_path);
 		
 		if (is_folder) {
 			if (opt_recurse) {
@@ -181,6 +188,7 @@ Examples:
 		this.ensure_data_dir();
 		
 		var sql_db = new SQ.Database(this.db_path, false);
+		OLLMfiles.SQT.VectorMetadata.initDB(sql_db);
 		GLib.debug("Using database: %s", this.db_path);
 		
 		var manager = new OLLMfiles.ProjectManager(sql_db);
@@ -246,7 +254,7 @@ Examples:
 		}
 		
 		if (filebase != null && !(filebase is OLLMfiles.Folder)) {
-			throw new GLib.IOError.INVALID_ARGUMENT("Only folders can be indexed, not files");
+			throw new GLib.IOError.INVALID_ARGUMENT("Path is not a folder: " + abs_path);
 		}
 		
 		// Get or create folder object
@@ -279,9 +287,22 @@ Examples:
 			manager.projects.append(folder_obj);
 			stdout.printf("✓ Project created\n\n");
 		}
-		stdout.printf("Starting indexing process...\n" +
-		              "Indexing folder: %s (recurse=%s)\n",
-		              folder_obj.path, opt_recurse.to_string());
+		if (opt_only_file != null && opt_only_file != "") {
+			stdout.printf(
+				"Starting indexing process...\n" +
+				"Indexing folder: %s\n" +
+				"Only file: %s\n",
+				folder_obj.path,
+				opt_only_file
+			);
+		} else {
+			stdout.printf(
+				"Starting indexing process...\n" +
+				"Indexing folder: %s (recurse=%s)\n",
+				folder_obj.path,
+				opt_recurse.to_string()
+			);
+		}
 		
 		// Set up folder for indexing: scan files and update project_files
 		// Disable background_recurse to ensure file scan completes before indexing
@@ -353,8 +374,24 @@ Examples:
 		});
 		
 		try {
+			OLLMfiles.FileBase target = folder_obj;
+			if (opt_only_file != null && opt_only_file != "") {
+				var only_file_path = GLib.Path.is_absolute(opt_only_file) ?
+					opt_only_file : GLib.Path.build_filename(abs_path, opt_only_file);
+				if (!folder_obj.project_files.child_map.has_key(only_file_path)) {
+					throw new GLib.IOError.NOT_FOUND(
+						"File not found in project: " + only_file_path
+					);
+				}
+				target = folder_obj.project_files.child_map.get(only_file_path).file;
+			}
+			
 			stdout.printf("Calling indexer.index_filebase...\n");
-			int files_indexed = yield indexer.index_filebase(folder_obj, opt_recurse, false);
+			int files_indexed = yield indexer.index_filebase(
+				target,
+				opt_only_file == null || opt_only_file == "" ? opt_recurse : false,
+				false
+			);
 			stdout.printf("\n" +
 			              "index_filebase returned: %d files indexed\n" +
 			              "✓ Indexing completed\n" +
@@ -364,9 +401,11 @@ Examples:
 			              files_indexed, files_indexed, vector_db.vector_count, vector_db.dimension);
 			
 			// Set last_vector_scan timestamp after successful indexing
-			var vector_scan_time = new DateTime.now_local().to_unix();
-			folder_obj.last_vector_scan = vector_scan_time;
-			folder_obj.saveToDB(sql_db, null, true);
+			if (opt_only_file == null || opt_only_file == "") {
+				var vector_scan_time = new DateTime.now_local().to_unix();
+				folder_obj.last_vector_scan = vector_scan_time;
+				folder_obj.saveToDB(sql_db, null, true);
+			}
 		} catch (GLib.Error e) {
 			stdout.printf("Error during indexing: %s\n", e.message);
 			throw e;

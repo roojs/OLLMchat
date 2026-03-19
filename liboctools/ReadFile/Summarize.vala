@@ -47,6 +47,11 @@ namespace OLLMtools.ReadFile
 		private bool show_lines = false;
 		
 		/**
+		 * Cached vector rows from vector_metadata, keyed by AST path.
+		 */
+		private Gee.HashMap<string,OLLMfiles.SQT.VectorMetadata> vectors = new Gee.HashMap<string,OLLMfiles.SQT.VectorMetadata>();
+		
+		/**
 		 * Constructor.
 		 * 
 		 * @param file The OLLMfiles.File to parse
@@ -68,6 +73,7 @@ namespace OLLMtools.ReadFile
 		{
 			// Load file content using base class method
 			var code_content = yield this.load_file_content();
+			this.load_db_data();
 			
 			// Check if this is a non-code file that we should skip
 			if (this.is_unsupported_language(this.file.language)) {
@@ -103,6 +109,29 @@ namespace OLLMtools.ReadFile
 			this.traverse_ast(root_node, code_content, null, null, null, null);
 			
 			return this.output;
+		}
+		
+		private void load_db_data()
+		{
+ 
+			
+			if (this.file.id <= 0 || this.file.manager.db == null) {
+				return;
+			}
+			
+			var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.file.manager.db).select(
+				"WHERE file_id = " + this.file.id.to_string(),
+				rows
+			);
+			
+			foreach (var row in rows) {
+				var ast_path = row.ast_path.strip();
+				if (ast_path == "") {
+					continue;
+				}
+				this.vectors.set(ast_path, row);
+			}
 		}
 		
 		
@@ -347,25 +376,29 @@ namespace OLLMtools.ReadFile
 		{
 			// Generate indentation
 			var indent = string.nfill(this.indent_level * INDENT_STEP, ' ');
+			var ast_path_str = this.ast_path(node, code_content);
+			var description = "";
+			if (ast_path_str != "" && this.vectors.has_key(ast_path_str)) {
+				description = " - "+  this.vectors.get(ast_path_str).description;
+			}
 			
 			// Build the line - use AST path by default, or line numbers if show_lines is true
 			if (this.show_lines) {
 				// Show line numbers
 				this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
-					(end_line != start_line ? "-" + end_line.to_string() : "") + "\n";
+					(end_line != start_line ? "-" + end_line.to_string() : "") + description + "\n";
 				return;
 			}
 			
 			// Show AST path (default)
-			var ast_path_str = this.ast_path(node, code_content);
-			if (ast_path_str != null && ast_path_str != "") {
-				this.output += indent + "* " + type + " " + name + " ast-path: " + ast_path_str + "\n";
+			if (ast_path_str != "") {
+				this.output += indent + "* " + type + " " + name + " ast-path: " + ast_path_str + description + "\n";
 				return;
 			}
 			
 			// Fallback to line numbers if AST path not available
 			this.output += indent + "* " + type + " " + name + " lines " + start_line.to_string() +
-				(end_line != start_line ? "-" + end_line.to_string() : "") + "\n";
+				(end_line != start_line ? "-" + end_line.to_string() : "") + description + "\n";
 		}
 	}
 }

@@ -100,6 +100,15 @@ namespace OLLMvector.Search
 		public string category_filter { get; set; default = ""; }
 		
 		/**
+		 * Optional AST path to inspect in debug output.
+		 *
+		 * When set, search emits one targeted debug line showing whether
+		 * the AST path made it into the filtered set, the raw FAISS hits,
+		 * and the final formatted results.
+		 */
+		public string debug_ast_path { get; set; default = ""; }
+		
+		/**
 		 * Constructor with required dependencies.
 		 * Optional: max_results, element_type_filter, category_filter via object initializer, e.g.
 		 * {{{
@@ -145,6 +154,129 @@ namespace OLLMvector.Search
 			}
 			
 			return normalized.strip();
+		}
+		
+		/**
+		 * Resolve the configured debug AST path to one vector_id within the
+		 * current folder scope.
+		 *
+		 * @return Matching vector_id, or -1 when not found
+		 */
+		private int64 lookup_debug_vector_id()
+		{
+			if (this.debug_ast_path == "") {
+				return -1;
+			}
+			
+			var file_ids = this.folder.project_files.get_ids("");
+			if (file_ids.size == 0) {
+				return -1;
+			}
+			
+			var rows = new Gee.ArrayList<OLLMfiles.SQT.VectorMetadata>();
+			OLLMfiles.SQT.VectorMetadata.query(this.sql_db).select(
+				"WHERE file_id IN (" + string.joinv(",", file_ids.to_array()) +
+					") AND ast_path = '" +
+					this.debug_ast_path.replace("'", "''") +
+					"' ORDER BY id DESC LIMIT 1",
+				rows
+			);
+			if (rows.size == 0) {
+				return -1;
+			}
+			
+			return rows.get(0).vector_id;
+		}
+		
+		/**
+		 * Emit one focused debug line for a watched AST path.
+		 *
+		 * @param normalized_query Normalized query text
+		 * @param faiss_results Raw FAISS results before metadata filtering
+		 * @param filtered_set Allowed vector IDs after SQL filtering
+		 * @param metadata_map Metadata keyed by vector_id
+		 * @param search_results Final formatted search results
+		 */
+		private void debug_target(
+			string normalized_query,
+			OLLMvector.SearchResult[] faiss_results,
+			Gee.HashSet<int> filtered_set,
+			Gee.HashMap<int, OLLMfiles.SQT.VectorMetadata> metadata_map,
+			Gee.ArrayList<SearchResult> search_results
+		)
+		{
+			if (this.debug_ast_path == "") {
+				return;
+			}
+			
+			var target_vector_id = this.lookup_debug_vector_id();
+			var target_in_filtered = target_vector_id != -1 &&
+				filtered_set.contains((int)target_vector_id);
+			var target_in_raw = false;
+			var target_in_final = false;
+			var target_distance = "";
+			
+			for (int i = 0; i < faiss_results.length; i++) {
+				if (faiss_results[i].document_id != target_vector_id) {
+					continue;
+				}
+				target_in_raw = true;
+				target_distance = "%.4f".printf(faiss_results[i].distance);
+				break;
+			}
+			
+			foreach (var result in search_results) {
+				if (result.vector_id != target_vector_id) {
+					continue;
+				}
+				target_in_final = true;
+				if (target_distance == "") {
+					target_distance = "%.4f".printf(result.distance);
+				}
+				break;
+			}
+			
+			var top1_id = faiss_results.length > 0 ?
+				faiss_results[0].document_id.to_string() : "";
+			var top1_distance = faiss_results.length > 0 ?
+				"%.4f".printf(faiss_results[0].distance) : "";
+			var top1_ast = faiss_results.length > 0 &&
+				metadata_map.has_key((int)faiss_results[0].document_id) ?
+				metadata_map.get((int)faiss_results[0].document_id).ast_path : "";
+			var top2_id = faiss_results.length > 1 ?
+				faiss_results[1].document_id.to_string() : "";
+			var top2_distance = faiss_results.length > 1 ?
+				"%.4f".printf(faiss_results[1].distance) : "";
+			var top2_ast = faiss_results.length > 1 &&
+				metadata_map.has_key((int)faiss_results[1].document_id) ?
+				metadata_map.get((int)faiss_results[1].document_id).ast_path : "";
+			var top3_id = faiss_results.length > 2 ?
+				faiss_results[2].document_id.to_string() : "";
+			var top3_distance = faiss_results.length > 2 ?
+				"%.4f".printf(faiss_results[2].distance) : "";
+			var top3_ast = faiss_results.length > 2 &&
+				metadata_map.has_key((int)faiss_results[2].document_id) ?
+				metadata_map.get((int)faiss_results[2].document_id).ast_path : "";
+			
+			GLib.debug(
+				"query='%s' target='%s' vector_id=%s filtered=%s raw=%s final=%s distance=%s top1=%s:%s:%s top2=%s:%s:%s top3=%s:%s:%s",
+				normalized_query,
+				this.debug_ast_path,
+				target_vector_id.to_string(),
+				target_in_filtered.to_string(),
+				target_in_raw.to_string(),
+				target_in_final.to_string(),
+				target_distance,
+				top1_id,
+				top1_distance,
+				top1_ast,
+				top2_id,
+				top2_distance,
+				top2_ast,
+				top3_id,
+				top3_distance,
+				top3_ast
+			);
 		}
 		
 		/**
@@ -212,6 +344,17 @@ namespace OLLMvector.Search
 			var filtered_set = new Gee.HashSet<int>();
 			foreach (var vid in this.filtered_vector_ids) {
 				filtered_set.add(vid);
+			}
+			
+			if (this.debug_ast_path != "") {
+				var target_vector_id = this.lookup_debug_vector_id();
+				var in_filtered = target_vector_id >= 0 && filtered_set.contains((int)target_vector_id);
+				GLib.debug(
+					"Search.execute: debug_ast_path '%s' -> vector_id %s, in filtered list: %s",
+					this.debug_ast_path,
+					target_vector_id.to_string(),
+					in_filtered.to_string()
+				);
 			}
 			
 			Faiss.IDSelector? selector = null;
@@ -294,6 +437,14 @@ namespace OLLMvector.Search
 				);
 				search_results.add(search_result);
 			}
+			
+			this.debug_target(
+				normalized_query,
+				faiss_results,
+				filtered_set,
+				metadata_map,
+				search_results
+			);
 			
 			return search_results;
 		}

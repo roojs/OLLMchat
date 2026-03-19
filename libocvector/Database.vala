@@ -236,6 +236,17 @@ namespace OLLMvector
 		}
 		
 		/**
+		 * Reconstruct a stored vector by ID (for dump/diff use).
+		 *
+		 * @param vector_id FAISS vector ID
+		 * @return The vector as a float array
+		 */
+		public float[] reconstruct_vector(int64 vector_id) throws Error
+		{
+			return this.index.reconstruct_vector(vector_id);
+		}
+		
+		/**
 		 * Saves the index to the file specified in constructor.
 		 */
 		public void save_index() throws Error
