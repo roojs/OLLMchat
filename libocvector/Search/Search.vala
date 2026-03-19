@@ -318,13 +318,17 @@ namespace OLLMvector.Search
 			}
 			var query_vector = embed_response.embeddings.get_vector(0);
 			
-			// Step 3: Create IDSelector for filtering
-			var id_array = new int64[this.filtered_vector_ids.size];
-			for (int i = 0; i < this.filtered_vector_ids.size; i++) {
-				id_array[i] = this.filtered_vector_ids[i];
-			}
+			/*
+			 * Old path — id_array for IDSelector (rollback: docs/bugs/2026-04-19-vector search results.md).
+			 * Debug line was GLib.debug("...Creating IDSelector with...", size, first_ids_str) using same first_ids_str as below.
+			 *
+			 * var id_array = new int64[this.filtered_vector_ids.size];
+			 * for (int i = 0; i < this.filtered_vector_ids.size; i++) {
+			 *     id_array[i] = this.filtered_vector_ids[i];
+			 * }
+			 */
 			
-			// Debug: Log filtered vector IDs being passed to FAISS
+			// Step 3: Debug — filtered id count (tmp in-memory copy + search replaces IDSelector filtering)
 			var first_ids_str = "";
 			if (this.filtered_vector_ids.size > 0) {
 				var first_ids = new string[this.filtered_vector_ids.size > 10 ? 10 : this.filtered_vector_ids.size];
@@ -335,12 +339,13 @@ namespace OLLMvector.Search
 			} else {
 				first_ids_str = "none";
 			}
-			GLib.debug("Search.execute: Creating IDSelector with %d filtered_vector_ids (first 10: %s)",
+			GLib.debug(
+				"Search.execute: tmp index copy search with %d filtered_vector_ids (first 10: %s)",
 				this.filtered_vector_ids.size,
 				first_ids_str
 			);
 			
-			// Create a set for quick lookup to verify results
+			// Create a set for quick lookup to verify results and debug_target
 			var filtered_set = new Gee.HashSet<int>();
 			foreach (var vid in this.filtered_vector_ids) {
 				filtered_set.add(vid);
@@ -357,18 +362,33 @@ namespace OLLMvector.Search
 				);
 			}
 			
-			Faiss.IDSelector? selector = null;
-			if (Faiss.id_selector_batch_new(out selector, (int64)this.filtered_vector_ids.size, id_array) != 0) {
-				throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
-			}
+			/*
+			 * Old path — IDSelector + search on main index (same filtered_set / debug_ast / null check as here).
+			 *
+			 * Faiss.IDSelector? selector = null;
+			 * if (Faiss.id_selector_batch_new(out selector, (int64)this.filtered_vector_ids.size, id_array) != 0) {
+			 *     throw new GLib.IOError.FAILED("Failed to create IDSelector for filtering");
+			 * }
+			 * var faiss_results = this.vector_db.index.search(query_vector, this.max_results, selector);
+			 */
 			
-			// Step 4: Perform FAISS similarity search with native filtering
-			// Access internal index property (same library, so accessible)
+			// Step 4: Copy filtered vectors into a tmp FAISS index and search (avoids IDSelector bugs)
 			if (this.vector_db.index == null) {
 				throw new GLib.IOError.FAILED("Vector database index is not initialized");
 			}
 			
-			var faiss_results = this.vector_db.index.search(query_vector, this.max_results, selector);
+			var copy = new OLLMvector.Index.create_tmp_hnsw(this.vector_db.index.dimension);
+			uint64 copied = copy.copy_from(this.vector_db.index, this.filtered_vector_ids);
+			if (copied == 0) {
+				return new Gee.ArrayList<SearchResult>();
+			}
+			
+			uint64 k = this.max_results;
+			if (k > copied) {
+				k = copied;
+			}
+			
+			var faiss_results = copy.search(query_vector, k, null);
 			
 			if (faiss_results.length == 0) {
 				return new Gee.ArrayList<SearchResult>();

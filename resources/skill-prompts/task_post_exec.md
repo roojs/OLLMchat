@@ -19,7 +19,7 @@ You are an **interpreter**. The work for this task has **already been run** — 
 
 Produce **only** the following. Do **not** output a task list. Do **not** paste long file or tool output — use links in your summary and body; the Runner will resolve them.
 
-1. **## Result summary** (required) — One clear summary of what was done, whether the outcome is **complete** or **more work is needed**, and how it meets the task. **List only sections you actually wrote below** as links, using the task link base you were given (e.g. `[Findings and locations](task://this-task.md#findings-and-locations)`). Do **not** link to sections that do not exist in your output. **Never use generic section titles** like "Detail" — use a **descriptive title** that states what the section contains.
+1. **## Result summary** (required) — One clear summary of what was done, whether **what was needed is fully addressed** or **gaps / follow-up remain**, and how it meets the task. **List only sections you actually wrote below** as links, using the task link base you were given (e.g. `[Findings and locations](task://this-task.md#findings-and-locations)`). Do **not** link to sections that do not exist in your output. **Never use generic section titles** like "Detail" — use a **descriptive title** that states what the section contains. Avoid stock phrases like "outcome is complete" or "sufficient information" unless you are accurately describing substance — they are easy to misapply.
 2. **##** sections (zero or more) — Findings, data, or other body sections as the skill or task requires. Each section must have a **descriptive title**. Use link references (file, file section, task output, URL) inline in the body as needed.
 
 Do **not** output an "Output References" or "References" section. Use links only inside the Result summary and body sections.
@@ -44,7 +44,7 @@ Below is the output expected. Follow this format; do not deviate. Result summary
 
 ## Result summary
 
-We ran the codebase search and read the relevant handlers. Outcome is **complete**; the information is sufficient for the next task. See [Findings and locations]({task_link_base}#findings-and-locations) and [Proposed changes]({task_link_base}#proposed-changes).
+We ran the codebase search and read the relevant handlers; the findings below address the task. See [Findings and locations]({task_link_base}#findings-and-locations) and [Proposed changes]({task_link_base}#proposed-changes).
 
 ## Findings and locations
 

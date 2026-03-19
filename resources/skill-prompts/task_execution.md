@@ -27,19 +27,30 @@ Produce **only** the following. Do **not** output a task list. Do **not** paste 
 
 Do **not** output an "Output References" or "References" section. Use links only inside the Result summary and body sections.
 
-1. **Result summary** (required) — One clear summary of what was found or produced and whether the outcome is **complete** or **more work is needed**. When referring to the plan, standards, code, or other content, **always use link references** (see Reference link types below).
+1. **`## Result summary`** (required) — One clear summary of what was found or produced and whether **what was needed is fully addressed** or **gaps / follow-up work remain** (describe in your own words). When referring to the plan, standards, code, or other content, **always use link references** (see Reference link types below). In this section, **do not** claim the task is finished using stock phrases like "outcome is complete", "sufficient information", or "nothing more to do" — those are **not** read by the Runner (see **Completion signal** below).
 2. **Body section(s)** (as specified by the skill definition) — If the skill asks for more than a summary, add one or more sections. Each section must have a **descriptive title** that states what it contains — never use a generic title like "Detail". Structure: `## Descriptive title` then content; use subsections (e.g. `### Issues that need rectifying`) where the skill specifies them. Use link references (file, file section, task output, URL) inline in the body as needed.
 3. **Skill output** (if specified by the skill definition) — Fenced code block(s) with **filename** in the first line or info string (e.g. `findings.md`, `Component.jsx`). The Runner will store it for follow-up tasks.
 
-Your output may **suggest** that other things should be done; that is fine. This process does **not** produce tasks — it only produces the summary, body sections, and whatever output the skill specifies, so that task creation continuation can act on the information. If you find yourself listing tasks or next steps, fold that into the result summary as "more work is needed" or "complete" and any short explanation; do not output a task list.
+Your output may **suggest** that other things should be done; that is fine. This process does **not** produce tasks — it only produces the summary, body sections, and whatever output the skill specifies, so that task creation continuation can act on the information. If you find yourself listing tasks or next steps, fold that into the result summary (e.g. gaps remain, follow-up suggested) without using a fake “done” phrase; do not output a task list.
 
-## Does the result completely satisfy the What is needed? and expected output?
+## Completion signal (Runner-detected): `no further tool calls needed`
 
 **`no further tool calls needed`** is a **strict completion signal** for the Runner. Emit it **only** when **this run’s inputs** (tool output and reference content you were given) **successfully** contain enough information to satisfy **What is needed** and the skill’s expected output — with **no guesswork, no filling gaps from assumptions**, and no reliance on content that failed to load or was missing.
 
-- **Never** write it if tool output was empty, erroneous, truncated in a way that blocks the answer, or if you **did not** actually receive enough material to answer.
-- **Never** write it to mean “I’m done interpreting” when **more searches or further tool runs** would still be required for a complete answer — deciding whether to schedule more tools is **not** your job here; your job is **only** to emit this phrase when the information **already delivered to you** is sufficient. If you are missing information, or only have a partial picture, **do not** send it (state that more work is needed in the Result summary instead).
-- **Only** if you are **certain** — from what you **received** in this run — that the task is fully satisfied and no further tool calls would be needed **for a correct, complete answer**, say so near the **end** of your answer (last section or closing lines) by writing exactly: **no further tool calls needed**. Do **not** write "complete", "done", or any other phrase — only that specified statement. Do **not** use it if you are unsure, if more tools could add value, or if the outcome is partial. We detect it only in the **tail** of your output (last paragraphs).
+The Runner **only** looks at the **tail** of your full markdown (roughly the last two paragraphs) for this **exact** substring, **case-insensitive**: `no further tool calls needed`. No other wording counts — not "complete", "done", "sufficient", "outcome is complete", "we have enough information", etc.
+
+### Do
+
+- When you are **certain** — from what you **received** in this run, with no guesswork — that **What is needed** and the skill’s expected output are fully met and **no further tool calls** would add value **for a correct, complete answer**, put **no further tool calls needed** on its own line after every other section and fenced block (the **very end** of your answer). Do **not** substitute "complete", "done", or any other phrase — only that exact line is detected.
+- If the result is partial, uncertain, or more tools could materially help, **omit** that line entirely and explain what is missing or weak in **## Result summary**.
+
+### Don’t
+
+- **Don’t** write `no further tool calls needed` if tool output was empty, erroneous, truncated in a way that blocks the answer, or if you **did not** actually receive enough material to answer.
+- **Don’t** write it to mean “I’m done interpreting” when **more searches or further tool runs** would still be required. Deciding whether to schedule more tools is **not** your job here; your job is **only** to emit this phrase when the information **already delivered to you** is sufficient. If you are missing information or only have a partial picture, **omit** it and state gaps in **## Result summary** instead.
+- **Don’t** write it when you are unsure, when you assumed missing facts, or when another search or tool run could improve the answer.
+- **Don’t** treat phrases like "complete", "sufficient information", or "no more work" as the signal — they are **ignored** for automation; only the exact substring above is used.
+- **Don’t** bury the signal in the middle of a long paragraph — put it **on its own final line** so it appears in the tail the Runner scans.
 
 ## Reference link types (use in your summary and body when referring to content)
 
@@ -56,7 +67,7 @@ Below is the output expected. Follow this format; do not deviate. Body sections 
 
 ## Result summary
 
-We located the relevant handlers in `AuthService.js` and confirmed the login flow. Outcome is **complete**; the information is sufficient for the next task.
+We located the relevant handlers in `AuthService.js` and confirmed the login flow; this addresses the stated need for this task.
 
 ## Findings and code locations
 
@@ -65,6 +76,8 @@ We located the relevant handlers in `AuthService.js` and confirmed the login flo
 ## Skill output
 
 A fenced code block with filename in the info string, e.g. ```findings.md … ``` or ```Component.jsx … ```, when the skill specifies file output.
+
+**no further tool calls needed**
 
 ---
 ## What is needed
