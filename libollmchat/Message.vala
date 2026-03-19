@@ -425,7 +425,8 @@ namespace OLLMchat
 					value.set_object(this.images);
 					return true;
 				case "tool-calls":
-					// Vala converts tool_calls to tool-calls in JSON
+				case "tool_calls":
+					// Vala converts tool_calls to tool-calls in JSON; v1 uses tool_calls
 					//this.tool_calls.clear();
 					var json_array = property_node.get_array();
 					GLib.debug("Message.deserialize_property: Found tool_calls array with %u elements", json_array.get_length());
@@ -437,6 +438,11 @@ namespace OLLMchat
 					}
 					value = Value(typeof(Gee.ArrayList));
 					value.set_object(this.tool_calls);
+					return true;
+				case "reasoning_content":
+					this.thinking = property_node.get_string();
+					value = Value(typeof(string));
+					value.set_string("");
 					return true;
 				default:
 					return default_deserialize_property(property_name, out value, pspec, property_node);

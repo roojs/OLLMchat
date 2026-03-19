@@ -34,7 +34,7 @@ namespace OLLMchat.Call
 		 *
 		 * @param response The pull progress response object
 		 */
-		public signal void progress_chunk(Response.Pull response);
+		public signal void progress_chunk(Response.Chunk chunk);
 
 		public Pull(Settings.Connection connection, string model_name)
 		{
@@ -46,6 +46,11 @@ namespace OLLMchat.Call
 			this.url_endpoint = "pull";
 			this.http_method = "POST";
 			this.streaming_response = new Response.Pull(connection);
+		}
+
+		protected override void process_streaming_chunk(Response.Chunk chunk)
+		{
+			this.progress_chunk(chunk);
 		}
 
 		/**
@@ -67,20 +72,7 @@ namespace OLLMchat.Call
 
 			this.streaming_response.done = false;
 			try {
-				yield this.handle_streaming_response(message, (chunk) => {
-					// Convert Json.Object to Response.Pull
-					var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-					chunk_node.set_object(chunk);
-					
-					var response = Json.gobject_deserialize(typeof(Response.Pull), chunk_node) as Response.Pull;
-					if (response == null) {
-						GLib.warning("Failed to deserialize pull response chunk");
-						return;
-					}
-					
-					// Note: client no longer set on response objects
-					this.progress_chunk(response);
-				});
+				yield this.handle_streaming_response(message);
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
 					// User cancelled - this is expected, don't throw

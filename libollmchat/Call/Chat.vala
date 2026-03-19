@@ -39,7 +39,7 @@ namespace OLLMchat.Call
 	 * print(response.message.content);
 	 * }}}
 	 */
-	public class Chat : Base, ChatContentInterface
+	public class Chat : Base, ChatContentInterface, ChatInterface
 	{
 		public string model { get; set; }
 		
@@ -509,10 +509,7 @@ namespace OLLMchat.Call
 
 			// Note: stream_start signal removed - handled by caller if needed
 
-			var generator = new Json.Generator();
-			generator.set_root(root);
-			var json_str = generator.to_data(null);
-			var response_obj = Json.gobject_from_data(typeof(Response.Chat), json_str, -1) as Response.Chat;
+			var response_obj = Json.gobject_deserialize(typeof(Response.Chat), root) as Response.Chat;
 			if (response_obj == null) {
 				throw new OllmError.FAILED("Failed to parse response");
 			}
@@ -543,9 +540,7 @@ namespace OLLMchat.Call
 			//GLib.debug("Request Body: %s", request_body);
 
 			try {
-				yield this.handle_streaming_response(message, (chunk) => {
-					this.process_streaming_chunk(chunk);
-				});
+				yield this.handle_streaming_response(message);
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
 					// Base already set streaming_response.done = true on cancel
@@ -577,12 +572,11 @@ namespace OLLMchat.Call
 		}
 
 
-		private void process_streaming_chunk(Json.Object chunk)
+		protected override void process_streaming_chunk(Response.Chunk stream_chunk)
 		{
 			var response = (Response.Chat) this.streaming_response;
 
-			// Process chunk
-			response.addChunk(chunk);
+			response.addChunk(stream_chunk);
 
 			// Emit stream_start signal on first chunk
 			if (response.is_first_chunk) {
@@ -617,5 +611,6 @@ namespace OLLMchat.Call
 				this.agent.handle_stream_chunk(new_text, is_thinking, response);
 			}
 		}
+
 	}
 }

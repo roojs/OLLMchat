@@ -45,7 +45,10 @@ namespace OLLMchat.Response
 	{
 		/** Dummy message when no chunk received yet; never null. */
 		public Message message { get; set; }
-		public Call.Chat? call { get; set; default = null; }
+		/** v1 non-streaming: choice messages (first mirrors {@link message}). */
+		public Gee.ArrayList<Message> choices { get; set; default = new Gee.ArrayList<Message>(); }
+		/** Owning chat call (Ollama or v1); always set for live responses. */
+		public Call.ChatInterface call { get; set; }
 		
 		public new string chat_content {
 			get { return this.message.content; }
@@ -111,7 +114,7 @@ namespace OLLMchat.Response
 				this.message = new Message("assistant", "");
 		}
 
-		public Chat(Settings.Connection? connection, Call.Chat call)
+		public Chat(Settings.Connection? connection, Call.ChatInterface call)
 		{
 			base(connection);
 			this.call = call;
@@ -127,6 +130,11 @@ namespace OLLMchat.Response
 				case "call":
 					// Exclude computed properties and call (circular reference) from serialization
 					return null;
+				case "choices":
+					if (this.choices.size == 0) {
+						return null;
+					}
+					return default_serialize_property(property_name, value, pspec);
 				default:
 					return default_serialize_property(property_name, value, pspec);
 			}
@@ -142,7 +150,40 @@ namespace OLLMchat.Response
 					value.set_string("");
 					return true;
 				}
-				
+				case "choices": {
+					this.choices.clear();
+					var array = property_node.get_array();
+					for (var i = 0; i < array.get_length(); i++) {
+						var choice_obj = array.get_object_element(i);
+						if (choice_obj.has_member("message")) {
+							var msg_node = choice_obj.get_member("message");
+							var m = Json.gobject_deserialize(typeof(Message), msg_node) as Message;
+							this.choices.add(m != null ? m : new Message("assistant", ""));
+						}
+					}
+					this.message = this.choices.size > 0 ? this.choices.get(0) : new Message("assistant", "");
+					value = Value(typeof(Gee.ArrayList));
+					value.set_object(this.choices);
+					return true;
+				}
+				case "usage": {
+					var usage = property_node.get_object();
+					if (usage.has_member("prompt_tokens")) {
+						this.prompt_eval_count = (int)usage.get_int_member("prompt_tokens");
+					}
+					if (usage.has_member("completion_tokens")) {
+						this.eval_count = (int)usage.get_int_member("completion_tokens");
+					}
+					value = Value(typeof(int));
+					value.set_int(0);
+					return true;
+				}
+				case "created": {
+					this.created_at = property_node.get_int().to_string();
+					value = Value(typeof(string));
+					value.set_string(this.created_at);
+					return true;
+				}
 				case "total_duration_s":
 				case "eval_duration_s":
 				case "tokens_per_second":
@@ -155,101 +196,50 @@ namespace OLLMchat.Response
 			}
 		}
 
-		public override string addChunk(Json.Object chunk)
+		public override string addChunk(Response.Chunk chunk)
 		{
-			// Reset new content properties for this chunk
 			this.new_content = "";
 			this.new_thinking = "";
 			this.is_thinking = false;
-			
-			// Loop through object properties and handle content extraction and metadata updates
-			chunk.foreach_member((obj, name, node) => {
-				switch (name) {
-					// Handle integer fields
-					case "total_duration":
-						this.total_duration = chunk.get_int_member("total_duration");
-						break;
-					case "load_duration":
-						this.load_duration = chunk.get_int_member("load_duration");
-						break;
-					case "prompt_eval_duration":
-						this.prompt_eval_duration = chunk.get_int_member("prompt_eval_duration");
-						break;
-					case "eval_duration":
-						this.eval_duration = chunk.get_int_member("eval_duration");
-						break;
-					case "prompt_eval_count":
-						this.prompt_eval_count = (int)chunk.get_int_member("prompt_eval_count");
-						break;
-					case "eval_count":
-						this.eval_count = (int)chunk.get_int_member("eval_count");
-						break;
-					// Handle boolean fields
-					case "done":
-						this.done = chunk.get_boolean_member("done");
-						break;
-					// Handle object fields
-					case "message":
-						this.add_message_chunk(chunk.get_object_member("message"));
-						break;
-					// Handle string fields
-					case "done_reason":
-						this.done_reason = chunk.get_string_member("done_reason");
-						break;
-					case "model":
-						this.model = chunk.get_string_member("model");
-						break;
-					case "created_at":
-						this.created_at = chunk.get_string_member("created_at");
-						break;
-					default:
-						break;
-				}
-			});
-			
-			// Return the content that was extracted (either regular content or thinking)
-			return this.new_thinking.length > 0 ? this.new_thinking : this.new_content;
-		}
 
-		private void add_message_chunk(Json.Object message_obj)
-		{
-			// Convert Json.Object to Json.Node and deserialize
-			var message_node = new Json.Node(Json.NodeType.OBJECT);
-			message_node.set_object(message_obj);
-			var msg = Json.gobject_deserialize(typeof(Message), message_node) as Message;
-			
-			// If message is null, this is the first chunk - use the deserialized object directly
+			this.total_duration = chunk.total_duration;
+			this.load_duration = chunk.load_duration;
+			this.prompt_eval_duration = chunk.prompt_eval_duration;
+			this.eval_duration = chunk.eval_duration;
+			this.prompt_eval_count = chunk.prompt_eval_count;
+			this.eval_count = chunk.eval_count;
+			this.done = chunk.done;
+			this.done_reason = chunk.done_reason;
+			this.model = chunk.model;
+			this.created_at = chunk.created_at;
+
 			if (this.message == null) {
-				this.message = msg;
-				this.new_content = msg.content;
-				this.new_thinking = msg.thinking;
-				this.thinking = msg.thinking;
-				this.is_thinking = msg.thinking != "";
-				foreach (var tool_call in msg.tool_calls) {
+				this.message = chunk.message;
+				this.new_content = chunk.message.content;
+				this.new_thinking = chunk.message.thinking;
+				this.thinking = chunk.message.thinking;
+				this.is_thinking = chunk.message.thinking != "";
+				foreach (Response.ToolCall tool_call in chunk.message.tool_calls) {
 					this.message.tool_calls.add(tool_call);
 				}
-				return;
+			} else {
+				if (chunk.message.content != "") {
+					this.new_content = chunk.message.content;
+					this.message.content += this.new_content;
+				}
+				if (chunk.message.thinking != "") {
+					this.new_thinking = chunk.message.thinking;
+					this.message.thinking += this.new_thinking;
+					this.thinking += this.new_thinking;
+					this.is_thinking = true;
+				}
+				this.message.role = chunk.message.role;
+				foreach (Response.ToolCall tool_call in chunk.message.tool_calls) {
+					this.message.tool_calls.add(tool_call);
+				}
 			}
-			
-			// Update existing message
-			if (msg.content != "") {
-				this.new_content = msg.content;
-				this.message.content += this.new_content;
-			}
-			
-			if (msg.thinking != "") {
-				this.new_thinking = msg.thinking;
-				this.message.thinking += this.new_thinking;
-				this.thinking += this.new_thinking;
-				this.is_thinking = true;
-			}
-			
-			this.message.role = msg.role;
-			
-			// Update tool_calls if present (usually in final chunk)
-			foreach (var tool_call in msg.tool_calls) {
-				this.message.tool_calls.add(tool_call);
-			}
+
+			return this.new_thinking.length > 0 ? this.new_thinking : this.new_content;
 		}
 		
 		/**
@@ -261,6 +251,9 @@ namespace OLLMchat.Response
 		 */
 		public async Chat reply(string text) throws Error
 		{
+			if (this.call == null) {
+				throw new OllmError.INVALID_ARGUMENT("Reply not available when call is null (v1 path)");
+			}
 			// Build messages array: previous assistant response + new user message
 			var messages_to_send = new Gee.ArrayList<OLLMchat.Message>();
 			

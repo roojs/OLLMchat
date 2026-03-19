@@ -35,7 +35,11 @@ Your output may **suggest** that other things should be done; that is fine. This
 
 ## Does the result completely satisfy the What is needed? and expected output?
 
-**Only** if you are **certain** — with no guesswork or assumption — that this run fully satisfies the task and no further tool calls are needed, say so near the **end** of your answer (last section or closing lines) by writing exactly: **no further tool calls needed**. Do **not** write "complete", "done", or any other phrase — only that specified statement. Do **not** use it if you are unsure, if more tools could add value, or if the outcome is partial. We detect it only in the **tail** of your output (last paragraphs).
+**`no further tool calls needed`** is a **strict completion signal** for the Runner. Emit it **only** when **this run’s inputs** (tool output and reference content you were given) **successfully** contain enough information to satisfy **What is needed** and the skill’s expected output — with **no guesswork, no filling gaps from assumptions**, and no reliance on content that failed to load or was missing.
+
+- **Never** write it if tool output was empty, erroneous, truncated in a way that blocks the answer, or if you **did not** actually receive enough material to answer.
+- **Never** write it to mean “I’m done interpreting” when **more searches or further tool runs** would still be required for a complete answer — deciding whether to schedule more tools is **not** your job here; your job is **only** to emit this phrase when the information **already delivered to you** is sufficient. If you are missing information, or only have a partial picture, **do not** send it (state that more work is needed in the Result summary instead).
+- **Only** if you are **certain** — from what you **received** in this run — that the task is fully satisfied and no further tool calls would be needed **for a correct, complete answer**, say so near the **end** of your answer (last section or closing lines) by writing exactly: **no further tool calls needed**. Do **not** write "complete", "done", or any other phrase — only that specified statement. Do **not** use it if you are unsure, if more tools could add value, or if the outcome is partial. We detect it only in the **tail** of your output (last paragraphs).
 
 ## Reference link types (use in your summary and body when referring to content)
 

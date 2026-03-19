@@ -101,7 +101,7 @@ namespace OLLMchat.Call
 		 *
 		 * @param response The create progress response object
 		 */
-		public signal void progress_chunk(Response.Create response);
+		public signal void progress_chunk(Response.Chunk chunk);
 
 		/**
 		 * Creates a new Create API call instance.
@@ -120,6 +120,11 @@ namespace OLLMchat.Call
 			this.url_endpoint = "create";
 			this.http_method = "POST";
 			this.streaming_response = new Response.Create(connection);
+		}
+
+		protected override void process_streaming_chunk(Response.Chunk chunk)
+		{
+			this.progress_chunk(chunk);
 		}
 
 		/**
@@ -141,19 +146,7 @@ namespace OLLMchat.Call
 
 			this.streaming_response.done = false;
 			try {
-				yield this.handle_streaming_response(message, (chunk) => {
-					// Convert Json.Object to Response.Create
-					var chunk_node = new Json.Node(Json.NodeType.OBJECT);
-					chunk_node.set_object(chunk);
-					
-					var response = Json.gobject_deserialize(typeof(Response.Create), chunk_node) as Response.Create;
-					if (response == null) {
-						GLib.warning("Failed to deserialize create response chunk");
-						return;
-					}
-					
-					this.progress_chunk(response);
-				});
+				yield this.handle_streaming_response(message);
 			} catch (GLib.IOError e) {
 				if (e.code == GLib.IOError.CANCELLED) {
 					// User cancelled - this is expected, don't throw

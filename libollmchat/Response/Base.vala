@@ -51,9 +51,10 @@ namespace OLLMchat.Response
 		public bool is_first_chunk { get; set; default = true; }
 
 		/**
-		 * Process a streaming JSON chunk. No-op in base; subclasses (e.g. Response.Chat) override.
+		 * Process a streaming chunk (Ollama NDJSON or v1 SSE deserialized into {@link Response.Chunk}).
+		 * No-op in base; subclasses (e.g. Response.Chat) override.
 		 */
-		public virtual string addChunk(Json.Object chunk)
+		public virtual string addChunk(Response.Chunk chunk)
 		{
 			return "";
 		}
