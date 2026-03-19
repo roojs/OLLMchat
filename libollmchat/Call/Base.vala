@@ -115,7 +115,7 @@ namespace OLLMchat.Call
 			return bytes;
 		}
 
-		protected string get_request_body()
+		protected virtual string get_request_body()
 		{
 			var json_node = Json.gobject_serialize(this);
 			var generator = new Json.Generator();
@@ -149,7 +149,13 @@ namespace OLLMchat.Call
 			GLib.debug("Request Body: %s", request_body);
 		}
 
-		protected delegate void StreamingChunkCallback(Json.Object chunk);
+		/**
+		 * One parsed NDJSON line as {@link Response.Chunk} (chat, create, and pull streams share this DTO).
+		 * Default no-op; {@link Chat}, {@link Create}, and {@link Pull} override.
+		 */
+		protected virtual void process_streaming_chunk(Response.Chunk chunk)
+		{
+		}
 
 		/** Throws OllmError.FAILED for non-200 status; call after attempting to parse 400 body if desired. */
 		protected void handle_message_error(Soup.Message message) throws OllmError
@@ -236,7 +242,7 @@ namespace OLLMchat.Call
 			this.parse_error_from_json(line.strip(), prefix);
 		}
 
-		protected async void handle_streaming_response(Soup.Message message, StreamingChunkCallback on_chunk) throws Error
+		protected async void handle_streaming_response(Soup.Message message) throws Error
 		{
 			// Use send_async() to get InputStream for true streaming
 			// In Vala's libsoup-3.0 bindings, send_async() is already async and returns InputStream directly
@@ -268,7 +274,7 @@ namespace OLLMchat.Call
 			
 			// Process the stream line by line as data arrives
 			try {
-				yield this.process_json_streaming(input_stream, on_chunk);
+				yield this.process_json_streaming(input_stream);
 			} catch (GLib.IOError e) {
 				if (this.cancellable == null || !this.cancellable.is_cancelled())
 					throw e;
@@ -278,7 +284,7 @@ namespace OLLMchat.Call
 			}
 		}
 
-		private async void process_json_streaming(InputStream input_stream, StreamingChunkCallback on_chunk) throws Error
+		private async void process_json_streaming(InputStream input_stream) throws Error
 		{
 			var line_buffer = new StringBuilder();
 			var data_input = new DataInputStream(input_stream);
@@ -302,19 +308,19 @@ namespace OLLMchat.Call
 
 				var trimmed = line.strip();
 				if (trimmed != "") {
-					this.process_json_chunk(trimmed, on_chunk);
+					this.process_json_chunk(trimmed);
 				}
 			}
 
 			if (line_buffer.len > 0) {
 				var final_line = line_buffer.str.strip();
 				if (final_line != "") {
-					this.process_json_chunk(final_line, on_chunk);
+					this.process_json_chunk(final_line);
 				}
 			}
 		}
 
-		private async void process_streaming(InputStream input_stream, StreamingChunkCallback on_chunk) throws Error
+		private async void process_streaming(InputStream input_stream) throws Error
 		{
 			while (true) {
 				var chunk_str = yield this.read_chunk(input_stream);
@@ -322,7 +328,7 @@ namespace OLLMchat.Call
 					break;
 				}
 
-				this.process_json_chunk(chunk_str, on_chunk);
+				this.process_json_chunk(chunk_str);
 			}
 		}
 
@@ -338,7 +344,7 @@ namespace OLLMchat.Call
 			return (string)chunk[0:bytes_read];
 		}
 
-		private void process_json_chunk(string chunk_str, StreamingChunkCallback on_chunk)
+		private void process_json_chunk(string chunk_str)
 		{
 			var trimmed = chunk_str.strip();
 			//GLib.debug("GOT: %s", trimmed);
@@ -360,8 +366,21 @@ namespace OLLMchat.Call
 				var chunk_obj = chunk_node.get_object();
 				if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
 					GLib.debug("Last streaming response: %s", trimmed);
-				}				
-				on_chunk(chunk_obj);
+				}
+				var payload_node = new Json.Node(Json.NodeType.OBJECT);
+				payload_node.set_object(chunk_obj);
+
+				Response.Chunk? stream_chunk = null;
+				try {
+					stream_chunk = Json.gobject_deserialize(typeof(Response.Chunk), payload_node) as Response.Chunk;
+				} catch (Error e) {
+					GLib.warning("Failed to deserialize streaming chunk: %s", e.message);
+					return;
+				}
+				if (stream_chunk == null) {
+					return;
+				}
+				this.process_streaming_chunk(stream_chunk);
 			} catch (Error e) {
 				// Log JSON parsing errors
 				GLib.debug("Failed to parse JSON chunk: %s. Error: %s", trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length), e.message);

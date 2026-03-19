@@ -20,12 +20,13 @@ namespace OLLMchat.Call
 {
 	/**
 	 * OpenAI-compatible chat completions API call.
-	 * Uses v1/chat/completions; same URL pattern as Call.Models.
-	 * Request: model, messages, stream, max_tokens, temperature, top_p,
-	 * response_format, tools. Returns Response.ChatCompletion (or accumulated
-	 * message when streaming).
+	 *
+	 * Uses {{{v1/chat/completions}}}. Request uses flat top-level params with
+	 * {{{Call.Options}}} as fallback (same pattern as {@link Completions}).
+	 * {{{format}}} / {{{format_obj}}} map to JSON key {{{response_format}}}.
+	 * Non-streaming and streaming both return {@link Response.Chat}.
 	 */
-	public class ChatCompletions : Base
+	public class ChatCompletions : Base, ChatInterface
 	{
 		public string model { get; set; }
 		public Gee.ArrayList<Message> messages { get; set;
@@ -34,7 +35,20 @@ namespace OLLMchat.Call
 		public int max_tokens { get; set; default = -1; }
 		public double temperature { get; set; default = -1.0; }
 		public double top_p { get; set; default = -1.0; }
-		public Json.Object? response_format { get; set; default = null; }
+		/**
+		 * Simple format hint: e.g. {{{"json"}}} maps to
+		 * {{{response_format: { type: json_object }}}}.
+		 */
+		public string format { get; set; default = ""; }
+		/**
+		 * Full OpenAI response_format object when set (schema / json_object).
+		 */
+		public Json.Object? format_obj { get; set; default = null; }
+		public Call.Options options { get; set; default = new Call.Options(); }
+		public int seed { get; set; default = -1; }
+		public string stop { get; set; default = ""; }
+		public double presence_penalty { get; set; default = -1.0; }
+		public double frequency_penalty { get; set; default = -1.0; }
 		public Gee.HashMap<string, Tool.BaseTool>? tools { get; set;
 			default = new Gee.HashMap<string, Tool.BaseTool>(); }
 
@@ -50,6 +64,38 @@ namespace OLLMchat.Call
 			this.http_method = "POST";
 		}
 
+		/**
+		 * Injects {{{response_format}}} from {@link format_obj} or {@link format}.
+		 * Not a GObject property so {@link Json.gobject_serialize} does not emit it
+		 * by default.
+		 */
+		private void merge_response_format_into_object(Json.Object obj)
+		{
+			if (this.format_obj != null) {
+				var n = new Json.Node(Json.NodeType.OBJECT);
+				n.set_object(this.format_obj);
+				obj.set_member("response_format", n);
+				return;
+			}
+			if (this.format == "json") {
+				var o = new Json.Object();
+				o.set_string_member("type", "json_object");
+				var n = new Json.Node(Json.NodeType.OBJECT);
+				n.set_object(o);
+				obj.set_member("response_format", n);
+			}
+		}
+
+		protected override string get_request_body()
+		{
+			var json_node = Json.gobject_serialize(this);
+			var obj = json_node.get_object();
+			this.merge_response_format_into_object(obj);
+			var generator = new Json.Generator();
+			generator.set_root(json_node);
+			return generator.to_data(null);
+		}
+
 		public override Json.Node serialize_property(string property_name, Value value, ParamSpec pspec)
 		{
 			switch (property_name) {
@@ -63,24 +109,78 @@ namespace OLLMchat.Call
 					var node = new Json.Node(Json.NodeType.ARRAY);
 					node.init_array(arr);
 					return node;
-				case "max_tokens":
-					if (this.max_tokens < 0) {
+				case "options":
+					return null;
+				case "format":
+				case "format-obj":
+					return null;
+				case "max_tokens": {
+					var v = this.max_tokens >= 0 ? this.max_tokens : this.options.num_predict;
+					if (v < 0) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
-				case "temperature":
-				case "top_p":
-					if (value.get_double() < 0) {
+					var int_node = new Json.Node(Json.NodeType.VALUE);
+					int_node.set_int(v);
+					return int_node;
+				}
+				case "temperature": {
+					var v = this.temperature >= 0 ? this.temperature : this.options.temperature;
+					if (v < 0) {
 						return null;
 					}
-					return default_serialize_property(property_name, value, pspec);
-				case "response_format":
-					if (this.response_format == null) {
+					var d_node = new Json.Node(Json.NodeType.VALUE);
+					d_node.set_double(v);
+					return d_node;
+				}
+				case "top_p": {
+					var v = this.top_p >= 0 ? this.top_p : this.options.top_p;
+					if (v < 0) {
 						return null;
 					}
-					var fmt_node = new Json.Node(Json.NodeType.OBJECT);
-					fmt_node.set_object(this.response_format);
-					return fmt_node;
+					var d_node = new Json.Node(Json.NodeType.VALUE);
+					d_node.set_double(v);
+					return d_node;
+				}
+				case "seed": {
+					var v = this.seed >= 0 ? this.seed : this.options.seed;
+					if (v < 0) {
+						return null;
+					}
+					var int_node = new Json.Node(Json.NodeType.VALUE);
+					int_node.set_int(v);
+					return int_node;
+				}
+				case "stop": {
+					var s = this.stop != "" ? this.stop : this.options.stop;
+					if (s == "") {
+						return null;
+					}
+					var s_node = new Json.Node(Json.NodeType.VALUE);
+					s_node.set_string(s);
+					return s_node;
+				}
+				case "presence_penalty": {
+					var v = this.presence_penalty >= 0
+						? this.presence_penalty
+						: this.options.presence_penalty;
+					if (v < 0) {
+						return null;
+					}
+					var d_node = new Json.Node(Json.NodeType.VALUE);
+					d_node.set_double(v);
+					return d_node;
+				}
+				case "frequency_penalty": {
+					var v = this.frequency_penalty >= 0
+						? this.frequency_penalty
+						: this.options.frequency_penalty;
+					if (v < 0) {
+						return null;
+					}
+					var d_node = new Json.Node(Json.NodeType.VALUE);
+					d_node.set_double(v);
+					return d_node;
+				}
 				case "tools":
 					if (this.tools.size == 0) {
 						return null;
@@ -103,54 +203,64 @@ namespace OLLMchat.Call
 					tools_node.init_array(tools_arr);
 					return tools_node;
 				default:
-					// Delegate to Base so connection, chat-content, cancellable, streaming-response are excluded
 					return base.serialize_property(property_name, value, pspec);
 			}
 		}
 
 		/**
-		 * Execute non-streaming request; returns full ChatCompletion.
+		 * Non-streaming request; response parsed into {@link Response.Chat}.
+		 *
+		 * @return v1 completion mapped into {@link Response.Chat}
 		 */
-		public async Response.ChatCompletion exec() throws Error
+		public async Response.Chat exec() throws Error
 		{
-			var bytes = yield this.send_request(true);
-			var root = this.parse_response(bytes);
-			if (root.get_node_type() != Json.NodeType.OBJECT) {
-				throw new OllmError.FAILED("Invalid JSON response");
+			if (this.messages.size == 0) {
+				throw new OllmError.INVALID_ARGUMENT("Messages are required for chat completions");
 			}
-			var generator = new Json.Generator();
-			generator.set_root(root);
-			var json_str = generator.to_data(null);
-			var obj = Json.gobject_from_data(
-				typeof(Response.ChatCompletion), json_str, -1) as Response.ChatCompletion;
-			if (obj == null) {
-				throw new OllmError.FAILED("Failed to deserialize chat completion response");
+			var stream_orig = this.stream;
+			this.stream = false;
+			try {
+				var bytes = yield this.send_request(true);
+				var root = this.parse_response(bytes);
+				if (root.get_node_type() != Json.NodeType.OBJECT) {
+					throw new OllmError.FAILED("Invalid JSON response");
+				}
+				var chat = Json.gobject_deserialize(typeof(Response.Chat), root) as Response.Chat;
+				if (chat == null) {
+					throw new OllmError.FAILED("Failed to deserialize chat completion response");
+				}
+				chat.connection = this.connection;
+				chat.call = this;
+				chat.done = true;
+				return chat;
+			} finally {
+				this.stream = stream_orig;
 			}
-			return obj;
 		}
 
 		/**
-		 * Execute streaming request; consumes SSE, accumulates deltas into
-		 * a single ChatCompletionMessage and returns it.
-		 * The stream's finish_reason is set on the returned message.
+		 * Streaming request; SSE lines deserialized to {@link Response.Chunk},
+		 * accumulated via {@link Response.Chat.addChunk}.
 		 *
-		 * @return accumulated message (role, content, tool_calls, finish_reason)
+		 * @return accumulated {@link Response.Chat}
 		 */
-		public async Response.ChatCompletionMessage exec_stream() throws Error
+		public async Response.Chat exec_stream() throws Error
 		{
-			var message = new Response.ChatCompletionMessage();
-			message.role = "assistant";
-
+			if (this.messages.size == 0) {
+				throw new OllmError.INVALID_ARGUMENT("Messages are required for chat completions");
+			}
 			if (this.connection == null) {
 				throw new OllmError.INVALID_ARGUMENT("Connection is null");
 			}
+
+			var resp = new Response.Chat(this.connection, this);
 
 			var url = this.build_url();
 			var stream_orig = this.stream;
 			this.stream = true;
 			var request_body = this.get_request_body();
 			this.stream = stream_orig;
-			var soup_msg = this.connection.soup_message( this.http_method, url, request_body);
+			var soup_msg = this.connection.soup_message(this.http_method, url, request_body);
 
 			GLib.InputStream? input_stream = null;
 			try {
@@ -160,19 +270,24 @@ namespace OLLMchat.Call
 				if (this.cancellable == null || !this.cancellable.is_cancelled()) {
 					throw e;
 				}
-				return message;
+				resp.done = true;
+				return resp;
 			}
 
 			if (soup_msg.status_code != 200) {
 				if (input_stream != null && soup_msg.status_code == 400) {
 					var data_stream = new GLib.DataInputStream(input_stream);
-					string? line = null;
+					var err_line = "";
 					try {
-						line = yield data_stream.read_line_async(GLib.Priority.DEFAULT, this.cancellable);
+						var read = yield data_stream.read_line_async(
+							GLib.Priority.DEFAULT, this.cancellable);
+						if (read != null) {
+							err_line = read;
+						}
 					} catch (GLib.IOError ignored) {
 					}
-					if (line != null && line.strip() != "") {
-						this.parse_error_from_json(line.strip(), "Stream error: ");
+					if (err_line.strip() != "") {
+						this.parse_error_from_json(err_line.strip(), "Stream error: ");
 					}
 				}
 				this.handle_message_error(soup_msg);
@@ -182,7 +297,6 @@ namespace OLLMchat.Call
 				throw new OllmError.FAILED("Failed to get response input stream");
 			}
 
-			var args_buffer = new Gee.ArrayList<string>();
 			var data_input = new GLib.DataInputStream(input_stream);
 
 			while (true) {
@@ -216,69 +330,70 @@ namespace OLLMchat.Call
 					continue;
 				}
 
-				Response.ChatCompletionChunk? chunk = null;
+				var parser = new Json.Parser();
 				try {
-					chunk = Json.gobject_from_data(typeof(Response.ChatCompletionChunk), payload, -1) as Response.ChatCompletionChunk;
+					parser.load_from_data(payload, -1);
 				} catch (Error e) {
 					continue;
 				}
-				if (chunk == null || chunk.choices.size == 0) {
+				var root = parser.get_root();
+				if (root == null || root.get_node_type() != Json.NodeType.OBJECT) {
 					continue;
 				}
-				var choice = chunk.choices.get(0);
-
-				if (choice.finish_reason != "") {
-					message.finish_reason = choice.finish_reason;
-					break;
-				}
-
-				var delta = choice.delta;
-				if (delta.content != "") {
-					message.content += delta.content;
-				}
-				if (delta.role != "") {
-					message.role = delta.role;
-				}
-				if (delta.tool_calls.size == 0) {
-					continue;
-				}
-				foreach (var tc in delta.tool_calls) {
-					int index = tc.index;
-					while (message.tool_calls.size <= index) {
-						message.tool_calls.add(new Response.ToolCall());
-						args_buffer.add("");
-					}
-					var tool_call = message.tool_calls.get(index);
-					if (tc.id != "") {
-						tool_call.id = tc.id;
-					}
-					if (tc.function.name != "") {
-						tool_call.function.name = tc.function.name;
-					}
-					if (tc.function.arguments != "") {
-						args_buffer.set(index, args_buffer.get(index) + tc.function.arguments);
-					}
-				}
-			}
-
-			for (int i = 0; i < args_buffer.size; i++) {
-				var arg_str = args_buffer.get(i).strip();
-				if (arg_str == "") {
-					continue;
-				}
+				Response.Chunk? chunk = null;
 				try {
-					var parser = new Json.Parser();
-					parser.load_from_data(arg_str, -1);
-					var node = parser.get_root();
-					if (node != null && node.get_node_type() == Json.NodeType.OBJECT) {
-						message.tool_calls.get(i).function.arguments = node.get_object();
-					}
+					chunk = Json.gobject_deserialize(typeof(Response.Chunk), root) as Response.Chunk;
 				} catch (Error e) {
-					// leave arguments as empty Json.Object
+					continue;
 				}
+				if (chunk == null) {
+					continue;
+				}
+				resp.addChunk(chunk);
 			}
 
-			return message;
+			if (!resp.done) {
+				resp.done = true;
+			}
+			return resp;
+		}
+
+		/**
+		 * Append messages and run one non-streaming completions request.
+		 *
+		 * Returns {@link Response.Chat} with v1 fields mapped in deserialize.
+		 * Streaming is forced off for this round so the body is a single JSON object.
+		 */
+		public async Response.Chat send_append(
+			Gee.ArrayList<Message> new_messages,
+			GLib.Cancellable? cancellable = null) throws Error
+		{
+			foreach (var msg in new_messages) {
+				this.messages.add(msg);
+			}
+			if (this.messages.size == 0) {
+				throw new OllmError.INVALID_ARGUMENT("Messages are required for chat completions");
+			}
+			this.cancellable = cancellable;
+			bool was_stream = this.stream;
+			this.stream = false;
+			try {
+				var bytes = yield this.send_request(true);
+				var root = this.parse_response(bytes);
+				if (root.get_node_type() != Json.NodeType.OBJECT) {
+					throw new OllmError.FAILED("Invalid JSON response");
+				}
+				var response_obj = Json.gobject_deserialize(typeof(Response.Chat), root) as Response.Chat;
+				if (response_obj == null) {
+					throw new OllmError.FAILED("Failed to parse response");
+				}
+				response_obj.connection = this.connection;
+				response_obj.call = this;
+				response_obj.done = true;
+				return response_obj;
+			} finally {
+				this.stream = was_stream;
+			}
 		}
 	}
 }

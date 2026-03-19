@@ -52,10 +52,12 @@ ollmchat_ollama_src = files([
   'Agent/JustAskFactory.vala',  # Must come after Base (JustAskFactory uses Factory)
   'Agent/JustAsk.vala',  # Must come after JustAskFactory (JustAsk uses Base)
   'Call/Base.vala',
+  'Call/ChatInterface.vala',
   'Call/Version.vala',
   'Client.vala',
   'Response/Base.vala',
   'Response/CallFunction.vala',
+  'Response/Chunk.vala',
   'Response/Chat.vala',
   'Response/FloatArray.vala',
   'Response/Embed.vala',
