@@ -87,16 +87,40 @@ The following illustrates the **shape** of the output. Use the same headings and
 
 ## Task reference naming (critical)
 
-When a task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens. Link format: `task://{slug}.md` or `task://{slug}.md#section`. Example: "Analysis Current Structure" → `task://analysis-current-structure.md`. Use the slug in the link; the link label can be any readable text.
+When a task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name.
+
+### Do
+
+- **Do** — **Lowercase** the **Name**; replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
+- **Do** — Use link format `task://{slug}.md` or `task://{slug}.md#section` (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`); the link label can be any readable text.
+- **Do** — Apply the same rule for **section anchors** on markdown (`/path/to/doc.md#…` or `task://some-task.md#…`): lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
+- **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
+
+### Don't
+
+- **Don't** — Build `#…` fragments by turning spaces and punctuation into **separate** hyphens that stack as `--` — that fails validation for `task://…` and for `/path/to/file.md#…`.
+- **Don't** — Use `#docblocks--code-documentation` for that heading — the double hyphen is wrong.
 
 ## Reference link types (use only these)
 
-- **File:** `[Title](/path/to/file)` - use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
-- **File section:** `[Title](/path/to/file#anchor)` - when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code — use the **AST path** format: hyphen-separated, e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Namespace parts use `.`; class and method parts use `-`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`. Do **not** use plain symbol names like `#task_creation_prompt`; the runner expects the full AST path. Output and References can use this form so the runner injects that symbol. Path: absolute path plus `#anchor`. Do **not** use relative paths.
-- **Task output:** Only **completed** tasks have a ##### Result summary block. When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer using the **slug** in the link (see **Task reference naming** above): e.g. `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)`. Omit Name when no later task references this task's output.
-- **URL:** `[Title](https://…)` - when the task needs external content and the skill has a tool that can fetch web pages (e.g. web_fetch). Use http or https URLs. If the skill does not have a web-fetch tool, do not include URL references; remove any URLs that appear in references you received (e.g. from prior task Detail).
+### Do
 
-Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.
+- **Do** — Use `[Title](target)` markdown links in **References**.
+- **Do** — Use **absolute** paths for files and file sections.
+- **Do** — Form **markdown** `#anchor` (headings in `.md` or sections in `task://…` output): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
+- **Do** — Use **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; **links to files are the best way to add file content**; the Runner injects content.
+- **Do** — Use **ReadFile** only for a **specific part** of a file (e.g. line range), not whole-file context.
+- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** for markdown headings; **AST** for code — full path format e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
+- **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): `[Research 1 Results](task://research-1.md)` or `[…](task://research-1.md#section)` with the same heading-slug rules.
+- **Do** — Use **URL** links `[Title](https://…)` only when the skill has a tool that can fetch web pages (e.g. web_fetch).
+
+### Don't
+
+- **Don't** — Use **relative** paths.
+- **Don't** — Paste file bodies into the task list.
+- **Don't** — Leave URL references if the skill has **no** web-fetch tool (remove them from References).
+- **Don't** — Use plain symbol-only anchors for code when the runner expects the full **AST** path.
+- **Don't** — Include the actual body of files or other precursor content in the task list — only links; the Runner will inject the contents when running each task.
 
 ---
 

@@ -250,6 +250,12 @@ namespace OLLMcoder.Skill
 					var messages = new Gee.ArrayList<OLLMchat.Message>();
 					messages.add(new OLLMchat.Message("system", tpl.filled_system));
 					messages.add(new OLLMchat.Message("user", tpl.filled_user));
+					// Same wording as Session.send; always emit so retries still show wait after UI frames clear it.
+					var model_label = this.session.model_usage.model != "" ?
+						this.session.model_usage.display_name_with_size() : "";
+					var wait_label = model_label != "" ?
+						"waiting for " + model_label + " to reply" : "waiting for a reply";
+					this.add_message(new OLLMchat.Message("ui-waiting", wait_label));
 					var response_obj = yield this.chat_call.send(messages, cancellable);
 					var response = response_obj != null ? response_obj.message.content : "";
 					this.replay_step("task_list_parse", response);
@@ -447,10 +453,10 @@ namespace OLLMcoder.Skill
 				var model_part = model_label != "" ? " with " + model_label : "";
 				var title = try_count > 0 ? "Sending revised task list to LLM" + model_part : 
 					"Reviewing and updating task list" + model_part;
-				var full_prompt = "## System\n\n" + tpl.filled_system + "\n\n## User\n\n" + tpl.filled_user;
+				// Show user message only in UI (same as Task.Tool executor); system prompt must not appear in chat.
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"markdown.oc-frame-info.collapsed " + title,
-					full_prompt)));
+					tpl.filled_user)));
 				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response"));
