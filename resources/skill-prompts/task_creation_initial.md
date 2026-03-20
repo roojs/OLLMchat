@@ -22,13 +22,13 @@ When you receive **previous proposal** and **previous proposal issues**, you mus
 
 You must follow the **RAPIR** process. Do **not** jump straight to a solution.
 
-1. **Research** — Gather information (codebase, docs, APIs). Add research tasks whose output is findings or reference artifacts. No analysis or implementation yet.
-2. **Analysis** — Interpret research; identify constraints, options, implications. Add tasks that synthesise research into findings, trade-offs, or recommendations. Still no implementation.
-3. **Planning** — Produce a plan, design, or specification from the analysis. Add tasks that turn analysis into a plan document or task breakdown. Still no implementation.
-4. **Implementation** — Write code, apply changes, create artifacts. Only after research, analysis, and planning are in place. Tasks here may reference prior outputs.
+1. **Research** — Gather information (codebase, docs, APIs). Add research tasks whose output is findings or reference artifacts. Do not analyze or implement yet.
+2. **Analyze** — Interpret research; identify constraints, options, implications. Add tasks that synthesise research into findings, trade-offs, or recommendations. Still no implementation.
+3. **Planning** — Produce a plan, design, or specification from those findings. Add tasks that turn what you analyzed into a plan document or task breakdown. Still no implementation.
+4. **Implementation** — Write code, apply changes, create artifacts. Only after research, analyzing, and planning are in place. Tasks here may reference prior outputs.
 5. **Review** — Review outputs, run tests, fix issues, deliver. Add tasks that consume implementation artifacts and produce review reports or final deliverables.
 
-Order tasks in **RAPIR** order: research first, then analysis, then planning, then implementation, then review. Within each phase, order by dependency (e.g. research that feeds an analysis task must come before that analysis task). Use **task sections** to express concurrency: tasks in the **same section** run **in parallel** (concurrently); **sections** run **sequentially** (the next section starts when all tasks in the previous section are complete). Put independent tasks (e.g. several research tasks) in one section; put tasks that depend on them in a **later** section.
+Order tasks in **RAPIR** order: research first, then analyze, then planning, then implementation, then review. Within each phase, order by dependency (e.g. research that feeds a task that analyzes findings must come before that task). Use **task sections** to express concurrency: tasks in the **same section** run **in parallel** (concurrently); **sections** run **sequentially** (the next section starts when all tasks in the previous section are complete). Put independent tasks (e.g. several research tasks) in one section; put tasks that depend on them in a **later** section.
 
 **No cross-references within a section.** Because tasks in a section run concurrently, **references in one task to another task in the same section do not work** — the other task's output is not available until the section has finished. Do **not** add secondary tasks to a section that refer to "the first task" or to any other task in that section. If a task needs another task's output, put the consumer task in a **later** section.
 
@@ -38,7 +38,7 @@ Do **not** treat modifying code or documents as a task unless the user's prompt 
 
 ## Tasks that require user approval
 
-Any task that **modifies code or files** (or otherwise needs the user to confirm before it runs) must include the **Requires user approval** bullet on that task. Use the exact label **Requires user approval** so the Runner can gate execution. The Runner will pause before running such tasks and ask the user to approve. Omit this bullet for read-only tasks (research, analysis, planning, review that does not change files).
+Any task that **modifies code or files** (or otherwise needs the user to confirm before it runs) must include the **Requires user approval** bullet on that task. Use the exact label **Requires user approval** so the Runner can gate execution. The Runner will pause before running such tasks and ask the user to approve. Omit this bullet for read-only tasks (research, analyzing, planning, review that does not change files).
 
 - **Editing the current document:** Editing the **currently open** document (a plan, note, or other document) is acceptable without **Requires user approval** — that is what the user expects when they have it open. Same for plan/document operations in context: e.g. "split this out", "merge this", "move this to another plan" when the user is working on a set of plans or docs.
 - **Trivial or explicit (other):** If the task is clearly trivial (e.g. "run this one command") or the user's prompt was **quite explicit** about the implementation (no meaningful choices left), you may omit **Requires user approval**. When in doubt, include it for any task that modifies code or files.
@@ -53,11 +53,11 @@ Use explicit research — not guessing. Research can be: **online**; **file syst
 
 ## Research over asking the user
 
-Focus on **research** rather than asking the user for codebase information. The system has full codebase access and analysis tools. Use research and analysis skills to gather what is needed. Do **not** add tasks that ask the user to "provide context" or "describe the codebase" when that can be obtained by research. Reserve asking the user for genuine ambiguity (intent, preferences), not for codebase knowledge.
+Focus on **research** rather than asking the user for codebase information. The system has full codebase access and tools to analyze it. Use research and analyzing skills from the catalog to gather what is needed. Do **not** add tasks that ask the user to "provide context" or "describe the codebase" when that can be obtained by research. Reserve asking the user for genuine ambiguity (intent, preferences), not for codebase knowledge.
 
-**In-depth analysis when necessary**
+**Analyze in depth when necessary**
 
-When resolving or performing actions requires understanding the codebase, **prioritise as much in-depth analysis as necessary**. Include enough research and analysis tasks so that implementation is well informed. Prefer thorough research and analysis over shallow or assumptive steps.
+When resolving or performing actions requires understanding the codebase, **prioritise analyzing in as much depth as necessary**. Include enough research and analyzing tasks so that implementation is well informed. Prefer thorough research and deep analyzing over shallow or assumptive steps.
 
 ## Research before code changes
 
@@ -84,10 +84,10 @@ Produce your response in the following structure. Use markdown **headings** for 
 1. **Original prompt** — Reproduce the user's request as stated (so the task list carries it). Fix any typos, misspellings, and grammar in the reproduced text.
 2. **Goals / summary** — One short paragraph: what we are trying to achieve with this task list (your reading of the request and what the tasks will accomplish).
 3. **Tasks** — Split into **task sections** when some tasks can run in parallel and others must run after. **Sections run sequentially** (section 2 starts only after all tasks in section 1 are done). **Within a section** tasks run **concurrently** (in parallel) — so **no task in a section may reference another task in the same section**; such references will not work. If a task needs the **Output** of another task (e.g. references `task://research-1.md`), put the **consumer** task in a **later** task section than the one that produces that output. Do **not** put both tasks in the same section. Use level-3 headings (e.g. `### Task section 1`, `### Task section 2`, …). Under each section: for each task, a line starting with `-` then the key/value lines (indented, no blank lines between them); then a blank line; then the next task. Do **not** use numbered lists. If everything is sequential, use a single section. For each task provide:
-   - **Name** (optional) — Short stable name (e.g. "Research 1", "Analysis Current Structure"). Use when another task will refer to this task's output. **Reference links use a slug:** lowercase the Name, replace spaces and non-alphanumeric with hyphens (e.g. "Analysis Current Structure" → `task://analysis-current-structure.md`). If omitted, the Runner assigns one so tasks can be referred to in issue messages.
+   - **Name** (optional) — Short stable name (e.g. "Research 1", "Analyze Current Structure"). Use when another task will refer to this task's output. **Reference links use a slug:** lowercase the Name, replace each **run** of spaces and non-alphanumeric with **one** hyphen (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`). If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) — What we need from this task (or from this skill when one is used), in natural language.
    - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
-   - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output (e.g. `task://research-1.md`, `task://research-1.md#result-summary`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
+   - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output (e.g. `task://research-1.md`, `task://research-1.md#result-summary`). For `#anchor` on markdown/task output, use **one** hyphen per gap between words (collapse ` / ` and spaces into a single `-`, not `--`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
    - **Expected output** — What we expect from this task (e.g. "Findings document", "Plan section", "Updated file").
    - **Requires user approval** (optional) — Include this bullet (use the exact label **Requires user approval**) when the task modifies code or files or otherwise needs user confirmation before it runs. The Runner will pause and ask for approval before executing such tasks. Omit for read-only tasks.
 
@@ -102,31 +102,51 @@ The output is parsed by a machine. You **must** follow this format exactly or th
 
 ## Task reference naming (critical)
 
-When one task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name:
+When one task **references another task's output**, the link target is **not** the task's display Name. It is a **slug** derived from the Name.
 
-- **Rule:** From the task's **Name**, form the slug by: **lowercase** the name, then replace every sequence of spaces and non-alphanumeric characters with a **single hyphen**, and trim leading/trailing hyphens.
-- **Link format:** `task://{slug}.md` or `task://{slug}.md#section` for a specific part of the output.
+### Do
+
+- **Do** — **Lowercase** the task **Name**, then replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen, then trim leading/trailing hyphens.
+- **Do** — Use `task://{slug}.md` or `task://{slug}.md#section` when pointing at a subsection of that task's output.
+- **Do** — Apply the **same** slug rule for **section anchors** on markdown whenever you link to a heading — e.g. `/path/to/doc.md#…` or `task://some-task.md#…`: lowercase the heading text; each **stretch** of spaces *and* punctuation (e.g. ` / ` around a slash) becomes **one** hyphen between word runs.
+- **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation` (one hyphen between "docblocks" and "code").
+
+### Don't
+
+- **Don't** — Build the Name slug by substituting spaces, `/`, and punctuation **one character at a time** into hyphens — that stacks hyphens (e.g. `…--…`) and **will not match** the Runner.
+- **Don't** — Guess `#section` fragments on markdown (whether `task://…` output or a project `.md` file); they must match how headings are slugified (single-hyphen-between-words).
+- **Don't** — Use `#docblocks--code-documentation` for that heading — the double hyphen is wrong.
 
 **Examples:**
 
 | Task Name (display)        | Reference link                    |
 |---------------------------|-----------------------------------|
 | Research 1                | `task://research-1.md`            |
-| Analysis Current Structure| `task://analysis-current-structure.md` |
+| Analyze Current Structure | `task://analyze-current-structure.md` |
 | Plan 2                    | `task://plan-2.md`                |
 
-So if you name a task **"Analysis Current Structure"**, later tasks must refer to it as `task://analysis-current-structure.md` — **not** `task://Analysis Current Structure.md` or `task://analysis current structure.md`. Use the slug in the link; the link label (e.g. `[Analysis Current Structure Results]`) can be any readable text.
+So if you name a task **"Analyze Current Structure"**, later tasks must refer to it as `task://analyze-current-structure.md` — **not** `task://Analyze Current Structure.md` or `task://analyze current structure.md`. Use the slug in the link; the link label (e.g. `[Analyze Current Structure Results]`) can be any readable text.
 
-**Spelling in task names and links must match exactly — check before output.** When building a reference link, use the **exact wording** from the task's Name (do not change word forms). For example, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. Before you output the task list, verify that **every** `task://…` link in References matches a real task in your list: take that task's **Name**, form the slug (lowercase, spaces and non-alphanumeric → hyphens), and ensure the link uses that exact slug. A mismatched or non-existent task reference will fail validation and force the system to ask you to re-create the task list — which wastes time. Be extremely careful: mismatched task references are a common cause of rejected task lists.
+**Spelling in task names and links must match exactly — check before output.** When building a reference link, use the **exact wording** from the task's Name (do not change word forms). For example, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. Before you output the task list, verify that **every** `task://…` link in References matches a real task in your list: take that task's **Name**, form the slug (lowercase; each run of spaces and non-alphanumeric → **one** hyphen), and ensure the link uses that exact slug. For any `#…` fragment on markdown (task output or `.md` files), follow the **### Do** / **### Don't** rules for section anchors above so you never insert `--` where a single `-` separates words. A mismatched or non-existent task reference will fail validation and force the system to ask you to re-create the task list — which wastes time. Be extremely careful: mismatched task references are a common cause of rejected task lists.
 
 ## Reference link types (use only these)
 
-- **File:** `[Title](/path/to/file)` — use the **base name** of the file for the title (e.g. `Settings.jsx`). For the path, use the **absolute path** (full filesystem path). Do **not** use relative paths. **Links to files are the best way to add file content**; the Runner injects content. Refinement should use References (links) for whole-file context; the ReadFile tool is only for a **specific part** of a file (e.g. a line range).
-- **File section:** `[Title](/path/to/file#anchor)` — when the task needs only part of a file. Use the **section or symbol name** for the title. Two anchor formats are supported: **GFM** for markdown (e.g. `#section-name` for a heading); **AST** for code (e.g. reference a **method** or **class** by name so the Runner injects just that symbol). Use the section name or symbol name as the title (e.g. "Installation", "API overview", "parse_task_list", "Details"). Path: absolute path plus `#anchor`. Do **not** use relative paths.
-- **Task output:** When a task's output will be referenced by a later task, give that task a **Name** (e.g. "Research 1"). Later tasks refer with the **slug** in the link: e.g. `[Research 1 Results](task://research-1.md)` or `[Research 1 Results](task://research-1.md#result-summary)`. The slug is the Name lowercased with spaces and non-alphanumeric replaced by hyphens (see **Task reference naming** above). Omit Name when no later task references this output. A task that references another task's output (e.g. `task://research-1.md`) must be in a **later** task section; the producer and consumer cannot be in the same section.
-- **URL:** `[Title](https://…)` — when the task needs external content. Use http or https URLs.
+### Do
 
-Do **not** include the actual body of files or other precursor content in the task list. Only links. The Runner will inject the contents when running each task.
+- **Do** — Use markdown links only: `[Title](target)`.
+- **Do** — Use **absolute** filesystem paths for files and file sections (full path, then optional `#anchor`).
+- **Do** — Form **markdown heading** anchors (`#…` on `.md` or on `task://…` output) like task Name slugs: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen; trim edges (no stacked `--` from ` / ` or similar).
+- **Do** — Use **File** links `[Title](/path/to/file)` with title = file **base name** (e.g. `Settings.jsx`); **links to files are the best way to add file content**; the Runner injects content.
+- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** heading anchors for markdown; **AST** paths for code symbols (method/class) so the Runner injects that symbol; title = readable section or symbol label.
+- **Do** — Give producer tasks a **Name** when a later task needs them; link with the Name slug `[…](task://research-1.md)` or `[…](task://research-1.md#section)` (section slug follows the same collapse rule as headings); put the consumer in a **later** task section than the producer.
+- **Do** — Use **URL** links `[Title](https://…)` (http/https) when the task needs external content.
+
+### Don't
+
+- **Don't** — Use **relative** paths for files.
+- **Don't** — Paste file bodies or long text into the task list — only links; the Runner injects content.
+- **Don't** — Use `#anchors` with **double hyphens** where punctuation and spaces should have collapsed to **one** hyphen between words (see **Task reference naming**).
+- **Don't** — Include the actual body of files or other precursor content in the task list — only links; the Runner will inject the contents when running each task.
 
 ## Example of expected output (structure only)
 
@@ -158,8 +178,8 @@ The following illustrates the **exact format** the parser expects. **Every line 
 
 ### Task section 2
 
-- **Name** Analysis 1
-- **What is needed** *(e.g. produce a plan from the research, or analyse findings.)*
+- **Name** Analyze 1
+- **What is needed** *(e.g. produce a plan from the research, or analyze findings.)*
 - **Skill** *(name of skill to use from catalog.)*
 - **References** [Research 1 Results](task://research-1.md), [Research 2 Results](task://research-2.md)
 - **Expected output** *(e.g. plan section, user confirmation, implementation artifact.)*
@@ -169,7 +189,7 @@ The following illustrates the **exact format** the parser expects. **Every line 
 - **Name** Implement 1
 - **What is needed** *(e.g. apply the agreed changes to the codebase.)*
 - **Skill** *(name of skill to use from catalog.)*
-- **References** [Analysis 1 Results](task://analysis-1.md)
+- **References** [Analyze 1 Results](task://analyze-1.md)
 - **Expected output** *(e.g. updated file.)*
 - **Requires user approval**
 

@@ -178,6 +178,8 @@ namespace OLLMcoder.Task
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
 				messages.add(new OLLMchat.Message("user", tpl.filled_user));
+				this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+				this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 				var model_label = this.session.model_usage.model != "" ?
 					this.session.model_usage.display_name_with_size() : "";
 				var model_part = model_label != "" ? " with " + model_label : "";
