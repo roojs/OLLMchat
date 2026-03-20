@@ -4,74 +4,74 @@ This documentation covers the OLLMchat application and its libraries.
 
 == Application ==
 
-* libollmapp — namespace: ''[[ollmchat/OLLMapp.html|OLLMapp]]''. Main application: window, settings dialogs. Entry point and window management.
+* libollmapp — namespace: ''[[OLLMapp.html|OLLMapp]]''. Main application: window, settings dialogs. Entry point and window management.
 
-  * ''[[ollmchat/OLLMapp.SettingsDialog.html|SettingsDialog]]'' — ''[[ollmchat/OLLMapp.SettingsDialog.MainDialog.html|MainDialog]]'', ''[[ollmchat/OLLMapp.SettingsDialog.ConnectionsPage.html|ConnectionsPage]]'', ''[[ollmchat/OLLMapp.SettingsDialog.ModelsPage.html|ModelsPage]]'', ''[[ollmchat/OLLMapp.SettingsDialog.ProjectsPage.html|ProjectsPage]]'', ''[[ollmchat/OLLMapp.SettingsDialog.ToolsPage.html|ToolsPage]]''. ''[[ollmchat/OLLMapp.SettingsDialog.Rows.html|Rows]]'' — row widgets for settings.
+  * ''[[OLLMapp.SettingsDialog.html|SettingsDialog]]'' — ''[[OLLMapp.SettingsDialog.MainDialog.html|MainDialog]]'', ''[[OLLMapp.SettingsDialog.ConnectionsPage.html|ConnectionsPage]]'', ''[[OLLMapp.SettingsDialog.ModelsPage.html|ModelsPage]]'', ''[[OLLMapp.SettingsDialog.ProjectsPage.html|ProjectsPage]]'', ''[[OLLMapp.SettingsDialog.ToolsPage.html|ToolsPage]]''. ''[[OLLMapp.SettingsDialog.Rows.html|Rows]]'' — row widgets for settings.
 
 == Core libraries ==
 
-* libollmchat — namespace: ''[[ollmchat/OLLMchat.html|OLLMchat]]''. LLM chat client: Ollama/OpenAI-compatible API, tool calling, streaming, history, and configuration without GTK.
+* libollmchat — namespace: ''[[OLLMchat.html|OLLMchat]]''. LLM chat client: Ollama/OpenAI-compatible API, tool calling, streaming, history, and configuration without GTK.
 
-  * ''[[ollmchat/OLLMchat.Client.html|Client]]'' — API communication and chat entry point. ''[[ollmchat/OLLMchat.Message.html|Message]]'' — chat message representation.
-  * ''[[ollmchat/OLLMchat.Call.html|Call]]'' — API call implementations. ''[[ollmchat/OLLMchat.Call.Base.html|Base]]'', ''[[ollmchat/OLLMchat.Call.Chat.html|Chat]]'', ''[[ollmchat/OLLMchat.Call.Embed.html|Embed]]'', ''[[ollmchat/OLLMchat.Call.Models.html|Models]]'', ''[[ollmchat/OLLMchat.Call.Create.html|Create]]'', ''[[ollmchat/OLLMchat.Call.Delete.html|Delete]]'', ''[[ollmchat/OLLMchat.Call.Pull.html|Pull]]'', ''[[ollmchat/OLLMchat.Call.Version.html|Version]]''.
-  * ''[[ollmchat/OLLMchat.Response.html|Response]]'' — Response types for API results. ''[[ollmchat/OLLMchat.Response.Base.html|Base]]'', ''[[ollmchat/OLLMchat.Response.Chat.html|Chat]]'', ''[[ollmchat/OLLMchat.Response.CallFunction.html|CallFunction]]'', ''[[ollmchat/OLLMchat.Response.ToolCall.html|ToolCall]]''.
-  * ''[[ollmchat/OLLMchat.Tool.html|Tool]]'' — Function calling (tools, params, requests). ''[[ollmchat/OLLMchat.Tool.BaseTool.html|BaseTool]]'', ''[[ollmchat/OLLMchat.Tool.Function.html|Function]]'', ''[[ollmchat/OLLMchat.Tool.Param.html|Param]]'', ''[[ollmchat/OLLMchat.Tool.RequestBase.html|RequestBase]]''.
-  * ''[[ollmchat/OLLMchat.History.html|History]]'' — Session persistence and list. ''[[ollmchat/OLLMchat.History.Manager.html|Manager]]'', ''[[ollmchat/OLLMchat.History.Session.html|Session]]'', ''[[ollmchat/OLLMchat.History.SessionBase.html|SessionBase]]''.
-  * ''[[ollmchat/OLLMchat.Settings.html|Settings]]'' — Configuration (connections, models, usage). ''[[ollmchat/OLLMchat.Settings.Connection.html|Connection]]'', ''[[ollmchat/OLLMchat.Settings.Config1.html|Config1]]'', ''[[ollmchat/OLLMchat.Settings.Config2.html|Config2]]'', ''[[ollmchat/OLLMchat.Settings.AvailableModels.html|AvailableModels]]'', ''[[ollmchat/OLLMchat.Settings.ModelUsage.html|ModelUsage]]''.
-  * ''[[ollmchat/OLLMchat.Agent.html|Agent]]'' — Agent interface and implementations. ''[[ollmchat/OLLMchat.Agent.Interface.html|Interface]]'', ''[[ollmchat/OLLMchat.Agent.Base.html|Base]]'', ''[[ollmchat/OLLMchat.Agent.Factory.html|Factory]]'', ''[[ollmchat/OLLMchat.Agent.JustAsk.html|JustAsk]]'', ''[[ollmchat/OLLMchat.Agent.JustAskFactory.html|JustAskFactory]]''.
-  * ''[[ollmchat/OLLMchat.Prompt.html|Prompt]]'' — Prompt templates for agents. ''[[ollmchat/OLLMchat.Prompt.Template.html|Template]]''.
-  * ''[[ollmchat/OLLMchat.ChatPermission.html|ChatPermission]]'' — Permission provider for tool access. ''[[ollmchat/OLLMchat.ChatPermission.Provider.html|Provider]]'', ''[[ollmchat/OLLMchat.ChatPermission.Dummy.html|Dummy]]''.
+  * ''[[OLLMchat.Client.html|Client]]'' — API communication and chat entry point. ''[[OLLMchat.Message.html|Message]]'' — chat message representation.
+  * ''[[OLLMchat.Call.html|Call]]'' — API call implementations. ''[[OLLMchat.Call.Base.html|Base]]'', ''[[OLLMchat.Call.Chat.html|Chat]]'', ''[[OLLMchat.Call.Embed.html|Embed]]'', ''[[OLLMchat.Call.Models.html|Models]]'', ''[[OLLMchat.Call.Create.html|Create]]'', ''[[OLLMchat.Call.Delete.html|Delete]]'', ''[[OLLMchat.Call.Pull.html|Pull]]'', ''[[OLLMchat.Call.Version.html|Version]]''.
+  * ''[[OLLMchat.Response.html|Response]]'' — Response types for API results. ''[[OLLMchat.Response.Base.html|Base]]'', ''[[OLLMchat.Response.Chat.html|Chat]]'', ''[[OLLMchat.Response.CallFunction.html|CallFunction]]'', ''[[OLLMchat.Response.ToolCall.html|ToolCall]]''.
+  * ''[[OLLMchat.Tool.html|Tool]]'' — Function calling (tools, params, requests). ''[[OLLMchat.Tool.BaseTool.html|BaseTool]]'', ''[[OLLMchat.Tool.Function.html|Function]]'', ''[[OLLMchat.Tool.Param.html|Param]]'', ''[[OLLMchat.Tool.RequestBase.html|RequestBase]]''.
+  * ''[[OLLMchat.History.html|History]]'' — Session persistence and list. ''[[OLLMchat.History.Manager.html|Manager]]'', ''[[OLLMchat.History.Session.html|Session]]'', ''[[OLLMchat.History.SessionBase.html|SessionBase]]''.
+  * ''[[OLLMchat.Settings.html|Settings]]'' — Configuration (connections, models, usage). ''[[OLLMchat.Settings.Connection.html|Connection]]'', ''[[OLLMchat.Settings.Config1.html|Config1]]'', ''[[OLLMchat.Settings.Config2.html|Config2]]'', ''[[OLLMchat.Settings.AvailableModels.html|AvailableModels]]'', ''[[OLLMchat.Settings.ModelUsage.html|ModelUsage]]''.
+  * ''[[OLLMchat.Agent.html|Agent]]'' — Agent interface and implementations. ''[[OLLMchat.Agent.Interface.html|Interface]]'', ''[[OLLMchat.Agent.Base.html|Base]]'', ''[[OLLMchat.Agent.Factory.html|Factory]]'', ''[[OLLMchat.Agent.JustAsk.html|JustAsk]]'', ''[[OLLMchat.Agent.JustAskFactory.html|JustAskFactory]]''.
+  * ''[[OLLMchat.Prompt.html|Prompt]]'' — Prompt templates for agents. ''[[OLLMchat.Prompt.Template.html|Template]]''.
+  * ''[[OLLMchat.ChatPermission.html|ChatPermission]]'' — Permission provider for tool access. ''[[OLLMchat.ChatPermission.Provider.html|Provider]]'', ''[[OLLMchat.ChatPermission.Dummy.html|Dummy]]''.
 
-* liboctools — namespace: ''[[ollmchat/OLLMtools.html|OLLMtools]]''. Built-in tools; registered via ''[[ollmchat/OLLMchat.Tool.html|Tool]]'' and used by the chat/agent stack.
+* liboctools — namespace: ''[[OLLMtools.html|OLLMtools]]''. Built-in tools; registered via ''[[OLLMchat.Tool.html|Tool]]'' and used by the chat/agent stack.
 
-  * ''[[ollmchat/OLLMtools.ReadFile.html|ReadFile]]'' — Read file contents. ''[[ollmchat/OLLMtools.ReadFile.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.ReadFile.Request.html|Request]]''.
-  * ''[[ollmchat/OLLMtools.WriteFile.html|WriteFile]]'' — Write file contents. ''[[ollmchat/OLLMtools.WriteFile.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.WriteFile.Request.html|Request]]''.
-  * ''[[ollmchat/OLLMtools.RunCommand.html|RunCommand]]'' — Run shell commands. ''[[ollmchat/OLLMtools.RunCommand.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.RunCommand.Request.html|Request]]''.
-  * ''[[ollmchat/OLLMtools.WebFetch.html|WebFetch]]'' — Fetch URLs. ''[[ollmchat/OLLMtools.WebFetch.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.WebFetch.Request.html|Request]]''.
-  * ''[[ollmchat/OLLMtools.GoogleSearch.html|GoogleSearch]]'' — Web search. ''[[ollmchat/OLLMtools.GoogleSearch.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.GoogleSearch.Config.html|Config]]''.
-  * ''[[ollmchat/OLLMtools.Child.html|Child]]'' — Child/sub-agent tool. ''[[ollmchat/OLLMtools.Child.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.Child.Agent.html|Agent]]'', ''[[ollmchat/OLLMtools.Child.Factory.html|Factory]]''.
-  * ''[[ollmchat/OLLMtools.EditMode.html|EditMode]]'' — Edit-in-place streaming. ''[[ollmchat/OLLMtools.EditMode.Tool.html|Tool]]'', ''[[ollmchat/OLLMtools.EditMode.Stream.html|Stream]]''.
-  * ''[[ollmchat/OLLMtools.Registry.html|Registry]]'' — Tool registration.
+  * ''[[OLLMtools.ReadFile.html|ReadFile]]'' — Read file contents. ''[[OLLMtools.ReadFile.Tool.html|Tool]]'', ''[[OLLMtools.ReadFile.Request.html|Request]]''.
+  * ''[[OLLMtools.WriteFile.html|WriteFile]]'' — Write file contents. ''[[OLLMtools.WriteFile.Tool.html|Tool]]'', ''[[OLLMtools.WriteFile.Request.html|Request]]''.
+  * ''[[OLLMtools.RunCommand.html|RunCommand]]'' — Run shell commands. ''[[OLLMtools.RunCommand.Tool.html|Tool]]'', ''[[OLLMtools.RunCommand.Request.html|Request]]''.
+  * ''[[OLLMtools.WebFetch.html|WebFetch]]'' — Fetch URLs. ''[[OLLMtools.WebFetch.Tool.html|Tool]]'', ''[[OLLMtools.WebFetch.Request.html|Request]]''.
+  * ''[[OLLMtools.GoogleSearch.html|GoogleSearch]]'' — Web search. ''[[OLLMtools.GoogleSearch.Tool.html|Tool]]'', ''[[OLLMtools.GoogleSearch.Config.html|Config]]''.
+  * ''[[OLLMtools.Child.html|Child]]'' — Child/sub-agent tool. ''[[OLLMtools.Child.Tool.html|Tool]]'', ''[[OLLMtools.Child.Agent.html|Agent]]'', ''[[OLLMtools.Child.Factory.html|Factory]]''.
+  * ''[[OLLMtools.EditMode.html|EditMode]]'' — Edit-in-place streaming. ''[[OLLMtools.EditMode.Tool.html|Tool]]'', ''[[OLLMtools.EditMode.Stream.html|Stream]]''.
+  * ''[[OLLMtools.Registry.html|Registry]]'' — Tool registration.
 
-* libocfiles — namespace: ''[[ollmchat/OLLMfiles.html|OLLMfiles]]''. File and project management: buffers, files, folders, project list, tree-sitter AST paths, diff/patch.
+* libocfiles — namespace: ''[[OLLMfiles.html|OLLMfiles]]''. File and project management: buffers, files, folders, project list, tree-sitter AST paths, diff/patch.
 
-  * ''[[ollmchat/OLLMfiles.File.html|File]]'', ''[[ollmchat/OLLMfiles.Folder.html|Folder]]'', ''[[ollmchat/OLLMfiles.FileBase.html|FileBase]]'', ''[[ollmchat/OLLMfiles.FileBuffer.html|FileBuffer]]'', ''[[ollmchat/OLLMfiles.ProjectManager.html|ProjectManager]]'', ''[[ollmchat/OLLMfiles.ProjectFiles.html|ProjectFiles]]'', ''[[ollmchat/OLLMfiles.Tree.html|Tree]]'', ''[[ollmchat/OLLMfiles.TreeBase.html|TreeBase]]''. ''[[ollmchat/OLLMfiles.Diff.Patch.html|Patch]]'', ''[[ollmchat/OLLMfiles.Diff.Differ.html|Differ]]''.
+  * ''[[OLLMfiles.File.html|File]]'', ''[[OLLMfiles.Folder.html|Folder]]'', ''[[OLLMfiles.FileBase.html|FileBase]]'', ''[[OLLMfiles.FileBuffer.html|FileBuffer]]'', ''[[OLLMfiles.ProjectManager.html|ProjectManager]]'', ''[[OLLMfiles.ProjectFiles.html|ProjectFiles]]'', ''[[OLLMfiles.Tree.html|Tree]]'', ''[[OLLMfiles.TreeBase.html|TreeBase]]''. ''[[OLLMfiles.Diff.Patch.html|Patch]]'', ''[[OLLMfiles.Diff.Differ.html|Differ]]''.
 
-* libollmchatgtk — namespace: ''[[ollmchat/OLLMchatGtk.html|OLLMchatGtk]]''. Chat widget, history browser, tool permission UI, model usage list. Application-facing GTK pieces.
+* libollmchatgtk — namespace: ''[[OLLMchatGtk.html|OLLMchatGtk]]''. Chat widget, history browser, tool permission UI, model usage list. Application-facing GTK pieces.
 
-  * ''[[ollmchat/OLLMchatGtk.ChatWidget.html|ChatWidget]]'' — main chat container. ''[[ollmchat/OLLMchatGtk.ChatView.html|ChatView]]'' — message display. ''[[ollmchat/OLLMchatGtk.ChatInput.html|ChatInput]]'' — input area. ''[[ollmchat/OLLMchatGtk.ChatBar.html|ChatBar]]'' — top bar. ''[[ollmchat/OLLMchatGtk.HistoryBrowser.html|HistoryBrowser]]'' — session list. ''[[ollmchat/OLLMchatGtk.ChatPermission.html|ChatPermission]]'' — permission UI.
-  * ''[[ollmchat/OLLMchatGtk.List.html|List]]'' — Model usage list/filter/sort. ''[[ollmchat/OLLMchatGtk.List.ModelUsageFilter.html|ModelUsageFilter]]'', ''[[ollmchat/OLLMchatGtk.List.ModelUsageSort.html|ModelUsageSort]]'', ''[[ollmchat/OLLMchatGtk.List.ModelUsageFactory.html|ModelUsageFactory]]'', ''[[ollmchat/OLLMchatGtk.List.SortedList.html|SortedList]]''. ''[[ollmchat/OLLMchatGtk.Tools.html|Tools]]'' — Tool permission UI. ''[[ollmchat/OLLMchatGtk.Tools.Permission.html|Permission]]''.
+  * ''[[OLLMchatGtk.ChatWidget.html|ChatWidget]]'' — main chat container. ''[[OLLMchatGtk.ChatView.html|ChatView]]'' — message display. ''[[OLLMchatGtk.ChatInput.html|ChatInput]]'' — input area. ''[[OLLMchatGtk.ChatBar.html|ChatBar]]'' — top bar. ''[[OLLMchatGtk.HistoryBrowser.html|HistoryBrowser]]'' — session list. ''[[OLLMchatGtk.ChatPermission.html|ChatPermission]]'' — permission UI.
+  * ''[[OLLMchatGtk.List.html|List]]'' — Model usage list/filter/sort. ''[[OLLMchatGtk.List.ModelUsageFilter.html|ModelUsageFilter]]'', ''[[OLLMchatGtk.List.ModelUsageSort.html|ModelUsageSort]]'', ''[[OLLMchatGtk.List.ModelUsageFactory.html|ModelUsageFactory]]'', ''[[OLLMchatGtk.List.SortedList.html|SortedList]]''. ''[[OLLMchatGtk.Tools.html|Tools]]'' — Tool permission UI. ''[[OLLMchatGtk.Tools.Permission.html|Permission]]''.
 
 == Semantic Search ==
 
-* libocvector — namespace: ''[[ollmchat/OLLMvector.html|OLLMvector]]''. Vector search and codebase indexing: embeddings, FAISS, indexing pipeline, semantic search.
+* libocvector — namespace: ''[[OLLMvector.html|OLLMvector]]''. Vector search and codebase indexing: embeddings, FAISS, indexing pipeline, semantic search.
 
-  * ''[[ollmchat/OLLMvector.Indexing.html|Indexing]]'' — Tree-sitter, analysis, vector build, indexer. ''[[ollmchat/OLLMvector.Indexing.Indexer.html|Indexer]]'', ''[[ollmchat/OLLMvector.Indexing.VectorBuilder.html|VectorBuilder]]'', ''[[ollmchat/OLLMvector.Indexing.Analysis.html|Analysis]]'', ''[[ollmchat/OLLMvector.Indexing.Tree.html|Tree]]''.
-  * ''[[ollmchat/OLLMvector.Search.html|Search]]'' — Semantic search over vectors. ''[[ollmchat/OLLMvector.Search.Search.html|Search]]'', ''[[ollmchat/OLLMvector.Search.SearchResult.html|SearchResult]]''.
-  * ''[[ollmchat/OLLMvector.Database.html|Database]]'' — Vector DB and metadata. ''[[ollmchat/OLLMvector.Index.html|Index]]'' — FAISS index.
+  * ''[[OLLMvector.Indexing.html|Indexing]]'' — Tree-sitter, analysis, vector build, indexer. ''[[OLLMvector.Indexing.Indexer.html|Indexer]]'', ''[[OLLMvector.Indexing.VectorBuilder.html|VectorBuilder]]'', ''[[OLLMvector.Indexing.Analysis.html|Analysis]]'', ''[[OLLMvector.Indexing.Tree.html|Tree]]''.
+  * ''[[OLLMvector.Search.html|Search]]'' — Semantic search over vectors. ''[[OLLMvector.Search.Search.html|Search]]'', ''[[OLLMvector.Search.SearchResult.html|SearchResult]]''.
+  * ''[[OLLMvector.Database.html|Database]]'' — Vector DB and metadata. ''[[OLLMvector.Index.html|Index]]'' — FAISS index.
 
 == Markdown parsing and rendering ==
 
-* libocmarkdown — namespace: ''[[ollmchat/Markdown.html|Markdown]]''. Markdown parsing and document model. Used by skills and chat rendering.
+* libocmarkdown — namespace: ''[[Markdown.html|Markdown]]''. Markdown parsing and document model. Used by skills and chat rendering.
 
-  * ''[[ollmchat/Markdown.Parser.html|Parser]]'' — Parse markdown. ''[[ollmchat/Markdown.RenderBase.html|RenderBase]]'' — Base renderer.
-  * ''[[ollmchat/Markdown.Document.html|Document]]'' — Document tree (nodes, blocks, format). ''[[ollmchat/Markdown.Document.Document.html|Document]]'', ''[[ollmchat/Markdown.Document.Block.html|Block]]'', ''[[ollmchat/Markdown.Document.Node.html|Node]]'', ''[[ollmchat/Markdown.Document.Format.html|Format]]'', ''[[ollmchat/Markdown.Document.List.html|List]]'', ''[[ollmchat/Markdown.Document.Render.html|Render]]''.
+  * ''[[Markdown.Parser.html|Parser]]'' — Parse markdown. ''[[Markdown.RenderBase.html|RenderBase]]'' — Base renderer.
+  * ''[[Markdown.Document.html|Document]]'' — Document tree (nodes, blocks, format). ''[[Markdown.Document.Document.html|Document]]'', ''[[Markdown.Document.Block.html|Block]]'', ''[[Markdown.Document.Node.html|Node]]'', ''[[Markdown.Document.Format.html|Format]]'', ''[[Markdown.Document.List.html|List]]'', ''[[Markdown.Document.Render.html|Render]]''.
 
-* libocmarkdowngtk — namespace: ''[[ollmchat/MarkdownGtk.html|MarkdownGtk]]''. GTK markdown rendering for the chat UI.
+* libocmarkdowngtk — namespace: ''[[MarkdownGtk.html|MarkdownGtk]]''. GTK markdown rendering for the chat UI.
 
 == Coding and Skills ==
 
-* liboccoder — namespace: ''[[ollmchat/OLLMcoder.html|OLLMcoder]]''. Code-editor and task/skill layer: skills, tasks, GTK source view. Skill-based task creation, refinement, and execution.
+* liboccoder — namespace: ''[[OLLMcoder.html|OLLMcoder]]''. Code-editor and task/skill layer: skills, tasks, GTK source view. Skill-based task creation, refinement, and execution.
 
-  * ''[[ollmchat/OLLMcoder.Skill.html|Skill]]'' — Skill definitions, runner, manager, templates. ''[[ollmchat/OLLMcoder.Skill.Runner.html|Runner]]'', ''[[ollmchat/OLLMcoder.Skill.Manager.html|Manager]]'', ''[[ollmchat/OLLMcoder.Skill.Factory.html|Factory]]'', ''[[ollmchat/OLLMcoder.Skill.Definition.html|Definition]]'', ''[[ollmchat/OLLMcoder.Skill.PromptTemplate.html|PromptTemplate]]''.
-  * ''[[ollmchat/OLLMcoder.Task.html|Task]]'' — Task list, details, tool runs, steps, result parsing. ''[[ollmchat/OLLMcoder.Task.List.html|List]]'', ''[[ollmchat/OLLMcoder.Task.Details.html|Details]]'', ''[[ollmchat/OLLMcoder.Task.Tool.html|Tool]]'', ''[[ollmchat/OLLMcoder.Task.Step.html|Step]]'', ''[[ollmchat/OLLMcoder.Task.ResultParser.html|ResultParser]]''.
-  * ''[[ollmchat/OLLMcoder.Agent.html|Agent]]'' — Coding agent. ''[[ollmchat/OLLMcoder.AgentFactory.html|AgentFactory]]'' — Factory. ''[[ollmchat/OLLMcoder.SourceView.html|SourceView]]'' — Code editor widget.
+  * ''[[OLLMcoder.Skill.html|Skill]]'' — Skill definitions, runner, manager, templates. ''[[OLLMcoder.Skill.Runner.html|Runner]]'', ''[[OLLMcoder.Skill.Manager.html|Manager]]'', ''[[OLLMcoder.Skill.Factory.html|Factory]]'', ''[[OLLMcoder.Skill.Definition.html|Definition]]'', ''[[OLLMcoder.Skill.PromptTemplate.html|PromptTemplate]]''.
+  * ''[[OLLMcoder.Task.html|Task]]'' — Task list, details, tool runs, steps, result parsing. ''[[OLLMcoder.Task.List.html|List]]'', ''[[OLLMcoder.Task.Details.html|Details]]'', ''[[OLLMcoder.Task.Tool.html|Tool]]'', ''[[OLLMcoder.Task.Step.html|Step]]'', ''[[OLLMcoder.Task.ResultParser.html|ResultParser]]''.
+  * ''[[OLLMcoder.Agent.html|Agent]]'' — Coding agent. ''[[OLLMcoder.AgentFactory.html|AgentFactory]]'' — Factory. ''[[OLLMcoder.SourceView.html|SourceView]]'' — Code editor widget.
 
 == Database ==
 
-* libocsqlite — namespace: ''[[ollmchat/SQ.html|SQ]]''. SQLite wrapper. Used by libocfiles and libocvector.
+* libocsqlite — namespace: ''[[SQ.html|SQ]]''. SQLite wrapper. Used by libocfiles and libocvector.
 
-  * ''[[ollmchat/SQ.Database.html|Database]]'' — DB connection. ''[[ollmchat/SQ.Query.html|Query]]'' — Prepared statements. ''[[ollmchat/SQ.Schema.html|Schema]]'' — Schema definition.
+  * ''[[SQ.Database.html|Database]]'' — DB connection. ''[[SQ.Query.html|Query]]'' — Prepared statements. ''[[SQ.Schema.html|Schema]]'' — Schema definition.
 
 == Reference ==
 

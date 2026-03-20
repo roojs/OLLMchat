@@ -608,6 +608,8 @@ public class Details : OLLMchat.Agent.Base
 			this.code_blocks.clear();
 			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
+			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
@@ -1008,7 +1010,10 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_post_exec.md");
-		tpl.system_fill(0);
+		/* Example block in task_post_exec.md lives in system_message; fill() only replaces user_template. */
+		tpl.system_fill(1, 
+			"task_link_base", "task://" + this.slug() + ".md"
+		);
 		string[] run_blocks = {};
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);
@@ -1017,8 +1022,7 @@ public class Details : OLLMchat.Agent.Base
 				break;
 			}
 		}
-		tpl.fill(7,
-			"task_link_base", "task://" + this.slug() + ".md",
+		tpl.fill(6,
 			"task_definition", this.to_markdown(MarkdownPhase.POST_EXEC),
 			"skill_name", definition.header.get("name"),
 			"skill_execute_body", definition.execute,
@@ -1057,6 +1061,8 @@ public class Details : OLLMchat.Agent.Base
 			var messages = new Gee.ArrayList<OLLMchat.Message>();
 			messages.add(new OLLMchat.Message("system", tpl.filled_system));
 			messages.add(new OLLMchat.Message("user", tpl.filled_user));
+			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
+			this.session.messages.add(new OLLMchat.Message("user", tpl.filled_user));
 			this.add_message(new OLLMchat.Message("ui-waiting",
 				model_label != "" ?
 					"Waiting for response from " + model_label :
