@@ -1040,6 +1040,8 @@ public class Details : OLLMchat.Agent.Base
 			// Ensure any literal {task_link_base} in model output is replaced so links validate
 			var task_base = "task://" + this.slug() + ".md";
 			response_text = response_text.replace("{task_link_base}", task_base);
+			// Before exec_post_extract: it copies task.issues into parser.issues after link checks.
+			this.issues = "";
 			var parser = new ResultParser(this.runner, response_text);
 			parser.exec_post_extract(this);
 			if (parser.issues == "") {

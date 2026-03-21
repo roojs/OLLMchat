@@ -250,7 +250,7 @@ namespace OLLMchat.History
 		 */
 		public EmptySession create_new_session()
 		{
-			GLib.debug("create_new_session: before - %s", this.session.to_string());
+			//GLib.debug("create_new_session: before - %s", this.session.to_string());
 			
 			// Get agent name from current session, default to "just-ask"
 			var agent_name = "just-ask";

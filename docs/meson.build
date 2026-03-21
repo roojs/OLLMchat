@@ -121,6 +121,7 @@ valadoc_docs = custom_target('valadoc',
     '../libollmchat/Call/namespace.vala',  # Call namespace documentation
     '../libollmchat/Call/Base.vala',
     '../libollmchat/Call/ChatInterface.vala',
+    '../libollmchat/Call/ChatCompletions.vala',
     '../libollmchat/Call/Chat.vala',
     '../libollmchat/Call/ReplayChat.vala',
     '../libollmchat/Call/Embed.vala',

@@ -199,22 +199,21 @@ namespace OLLMvector {
                 return;
             }
             
-            // Start thread if not already running.
-            this.ensure_thread ();
-
-            // Extract path before creating callback to avoid capturing object in closure.
-            // This is required for thread safety - we pass only the path string (thread-safe)
-            // rather than the object itself, which may not be thread-safe.
             var project_path = project.path;
-
-            // Dispatch the heavy work to the background thread via idle source.
-            // The background thread will load the project from the database.
-            var source = new GLib.IdleSource ();
-            source.set_callback (() => {
-                this.queueProject.begin (project_path);
+            var pm = project.manager;
+            GLib.Timeout.add (1000, () => {
+                if (pm.scanning.size > 0) {
+                    return true;
+                }
+                this.ensure_thread ();
+                var source = new GLib.IdleSource ();
+                source.set_callback (() => {
+                    this.queueProject.begin (project_path);
+                    return false;
+                });
+                source.attach (this.worker_context);
                 return false;
             });
-            source.attach (this.worker_context);
         }
 
         /**
@@ -234,21 +233,22 @@ namespace OLLMvector {
                 return;
             }
             
-            this.ensure_thread ();
-
-            // Extract paths before creating callback to avoid capturing object in closure.
-            // This is required for thread safety - we pass only the path strings (thread-safe)
-            // rather than the objects themselves, which may not be thread-safe.
             var file_path = file.path;
             var project_path = project.path;
-
-            // Dispatch to background thread.
-            var source = new GLib.IdleSource ();
-            source.set_callback (() => {
-                this.queueFile (new BackgroundScanItem (project_path, file_path));
+            var pm = project.manager;
+            GLib.Timeout.add (1000, () => {
+                if (pm.scanning.size > 0) {
+                    return true;
+                }
+                this.ensure_thread ();
+                var source2 = new GLib.IdleSource ();
+                source2.set_callback (() => {
+                    this.queueFile (new BackgroundScanItem (project_path, file_path));
+                    return false;
+                });
+                source2.attach (this.worker_context);
                 return false;
             });
-            source.attach (this.worker_context);
         }
 
         /**

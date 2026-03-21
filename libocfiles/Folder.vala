@@ -273,9 +273,12 @@ namespace OLLMfiles
 			}
 			yield this.read_dir_remove(new_items, old_children, check_time);
 			
+			this.manager.scanning.set (this.path, this);
+			
 			// If not recursing, do backup and return early
 			if (!recurse) {
 				this.manager.db.backupDB();
+				this.manager.scanning.unset (this.path);
 				return;
 			}
 			
@@ -312,9 +315,10 @@ namespace OLLMfiles
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
 				}
+				this.manager.scanning.unset (this.path);
 				return;
-			} 
-				// Start processing folders in idle callback (non-blocking)
+			}
+			// Start processing folders in idle callback (non-blocking)
 			GLib.debug(
 				"read_dir subdirs deferred on idle count=%d path=%s",
 				(int)folders_to_process.size,
@@ -342,6 +346,7 @@ namespace OLLMfiles
 					this.project_files.review_files.refresh();
 					GLib.debug("read_dir project recurse complete path=%s", this.path);
 				}
+				this.manager.scanning.unset (this.path);
 				return;
 			}
 			
