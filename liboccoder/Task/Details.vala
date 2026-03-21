@@ -137,7 +137,8 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Single markdown document after post-exec synthesis. Headings used for
-	 * {{{ task://slug.md#anchor }}} resolution and validation. Empty until
+	 * {{{ task://slug.md }}} (full document) or optional fragment for one section.
+	 * Empty until
 	 * run_post_exec finishes.
 	 */
 	public Markdown.Document.Document task_output_document {
@@ -259,8 +260,8 @@ public class Details : OLLMchat.Agent.Base
 			return;
 		}
 		this.issues += "\n" + "Invalid reference target \"" + link.href + "\". " +
-			"Use only: #anchor (document sections), task://taskname.md or " +
-			"task://taskname.md#section, http(s) URL, or absolute file path (must exist).";
+			"Use only: #anchor (document sections), task://taskname.md, http(s) URL, " +
+			"or absolute file path (must exist).";
 	}
 
 	private void validate_link_http(MarkdownPhase stage, string href)
@@ -365,18 +366,9 @@ public class Details : OLLMchat.Agent.Base
 		switch (stage) {
 			case MarkdownPhase.POST_EXEC:
 				if (slug == this.slug()) {
-					if (link.hash == "") {
-						this.issues += "\n" + "Invalid reference target \"" + href +
-							"\": task reference must include a section anchor (e.g. task://" +
-							slug + ".md#section-name).";
-						return;
-					}
-					if (!this.task_output_document.headings.has_key(link.hash)) {
-						this.issues += "\n" + "Invalid reference target \"" + href +
-							"\": task \"" + slug + "\" has no section \"" + link.hash +
-							"\". Available: " +
-							this.task_output_document.header_links("task://" + slug + ".md") + ".";
-					}
+					this.issues += "\n" + "Invalid reference target \"" + href +
+						"\": do not use task:// links to this task in your output; " +
+						"use ## section headings only.";
 					return;
 				}
 				if (!this.runner.completed.slugs.has_key(slug)) {
@@ -384,17 +376,11 @@ public class Details : OLLMchat.Agent.Base
 						"\": no completed task for \"" + slug + "\".";
 					return;
 				}
-				if (link.hash == "") {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task reference must include a section anchor.";
-					return;
-				}
 				var other_task = this.runner.completed.slugs.get(slug);
-				if (!other_task.task_output_document.headings.has_key(link.hash)) {
+				if (link.hash != "" && !other_task.task_output_document.headings.has_key(link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + href +
 						"\": task \"" + slug + "\" has no section \"" + link.hash +
-						"\". Available: " +
-						other_task.task_output_document.header_links("task://" + slug + ".md") + ".";
+						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
 				}
 				return;
 			case MarkdownPhase.REFINEMENT:
@@ -405,30 +391,19 @@ public class Details : OLLMchat.Agent.Base
 						"\" (references must be to completed tasks only).";
 					return;
 				}
-				if (link.hash == "") {
-					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task reference must include a section anchor (e.g. task://" +
-						slug + ".md#section-name).";
-					return;
-				}
-				if (!completed_ref.task_output_document.headings.has_key(link.hash)) {
+				if (link.hash != "" && !completed_ref.task_output_document.headings.has_key(link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + href +
 						"\": task \"" + slug + "\" has no section \"" + link.hash +
-						"\". Available: " +
-						completed_ref.task_output_document.header_links("task://" + slug + ".md") + ".";
-				}
-				if (this.step_index >= 0 && completed_ref.step_index >= 0 &&
-						completed_ref.step_index >= this.step_index) {
-					this.issues += "\n" + "Reference target \"" + href +
-						"\" refers to a task in the same or later section. " +
-						"A task may only reference the output of a task from an earlier section. " +
-						"I suggest you split this task into its own section.";
+						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
 				}
 				return;
 			case MarkdownPhase.LIST:
 			default:
-				var ref_task = this.runner.completed.slugs.get(slug);
-				if (ref_task == null) {
+				Details? ref_task = null;
+				var ref_is_completed = this.runner.completed.slugs.has_key(slug);
+				if (ref_is_completed) {
+					ref_task = this.runner.completed.slugs.get(slug);
+				} else {
 					ref_task = this.runner.pending.slugs.get(slug);
 				}
 				if (ref_task == null) {
@@ -439,21 +414,13 @@ public class Details : OLLMchat.Agent.Base
 				if (this.step_index != 0) {
 					return;
 				}
-				if (link.hash == "") {
+				if (ref_task.exec_done && link.hash != "" &&
+						!ref_task.task_output_document.headings.has_key(link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + href +
-						"\": task reference must include a section anchor (e.g. task://" +
-						slug + ".md#section-name).";
-					return;
+						"\": task \"" + slug + "\" has no section \"" + link.hash +
+						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
 				}
-				if (ref_task.exec_done) {
-					if (!ref_task.task_output_document.headings.has_key(link.hash)) {
-						this.issues += "\n" + "Invalid reference target \"" + href +
-							"\": task \"" + slug + "\" has no section \"" + link.hash +
-							"\". Available: " +
-							ref_task.task_output_document.header_links("task://" + slug + ".md") + ".";
-					}
-				}
-				if (this.step_index >= 0 && ref_task.step_index >= 0 &&
+				if (!ref_is_completed && this.step_index >= 0 && ref_task.step_index >= 0 &&
 						ref_task.step_index >= this.step_index) {
 					this.issues += "\n" + "Reference target \"" + href +
 						"\" refers to a task in the same or later section. " +
@@ -724,14 +691,18 @@ public class Details : OLLMchat.Agent.Base
 					}
 					if (this.task_post_exec_summary.text_content().strip() != "" ||
 							this.task_output_document.header_list.size > 0) {
-						var task_ref = "task://" + this.slug() + ".md";
 						ret += "#### Task result\n\n";
 						ret += this.task_post_exec_summary.to_markdown_with_content()
 							.strip() + "\n\n";
 						if (this.task_output_document.header_list.size > 0) {
-							ret += "**Available sections:** " +
-								this.task_output_document.header_links(task_ref) +
-								"\n\n";
+							string[] titles = {};
+							foreach (var hkey in this.task_output_document.header_list) {
+								var hb = this.task_output_document.headings.get(hkey);
+								var t = hb != null ? hb.text_content().strip() : hkey;
+								titles += (t != "" ? t : hkey);
+							}
+							ret += "**Sections in this output:** " +
+								string.joinv(", ", titles) + "\n\n";
 						}
 					}
 					continue;
@@ -1010,10 +981,7 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var definition = this.skill_manager.fetch(this);
 		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_post_exec.md");
-		/* Example block in task_post_exec.md lives in system_message; fill() only replaces user_template. */
-		tpl.system_fill(1, 
-			"task_link_base", "task://" + this.slug() + ".md"
-		);
+		tpl.system_fill(0);
 		string[] run_blocks = {};
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);

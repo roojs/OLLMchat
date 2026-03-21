@@ -72,7 +72,7 @@ Your output describes only the **tasks to be done**. Only the field names listed
 
 ## Referencing previous task results
 
-When formulating tasks that refer to the results of **completed** previous tasks: focus on the **segment** of that result that is useful for the new task. Do **not** try to include or request the whole content by default — only when it is essential. The completed tasks you receive (each with a ##### Result summary block) summarize the segments available (e.g. by heading); **choose the relevant ones**. In References, use the **slug** for the task link: lowercase the task Name, replace each **run** of spaces and non-alphanumeric with **one** hyphen (e.g. "Analyze 1" → `task://analyze-1.md`, "Analyze Current Structure" → `task://analyze-current-structure.md`). For `#heading` on markdown (that task's output or any `.md` file you reference), use the same collapse rule (no `--` from punctuation like ` / `). Prefer linking to a specific section with `task://slug.md#heading` when the output has structure; in **What is needed**, say which part of the prior result the task uses.
+When formulating tasks that refer to the results of **completed** previous tasks: the Runner injects the **full** prior task output when you use **`task://{slug}.md`** (URL ends at **`.md`**). In **What is needed**, say which part of that output the new task should focus on. In References, use only **`[Title](task://{slug}.md)`** — lowercase the task Name, each **run** of spaces and non-alphanumeric → **one** hyphen (e.g. `task://analyze-1.md`). **Never** put anything after **`.md`** in a **`task://`** URL. For **file** links to a `.md` heading, `#anchor` still uses the usual single-hyphen collapse rule (no `--`).
 
 ## Task reference naming (critical)
 
@@ -81,15 +81,15 @@ When a task **references another task's output**, the link target is **not** the
 ### Do
 
 - **Do** — **Lowercase** the **Name**, replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen, trim leading/trailing hyphens.
-- **Do** — Use `task://{slug}.md` or `task://{slug}.md#section` for a subsection of that task's markdown output.
-- **Do** — Apply the same rule for **section anchors** on markdown (`/path/to/doc.md#…` or `task://some-task.md#…`): lowercase the heading; each **stretch** of spaces *and* punctuation becomes **one** hyphen between word runs.
+- **Do** — Use **`task://{slug}.md`** for task output; stop at **`.md`**.
+- **Do** — For **file** section links (`/path/to/doc.md#…`): lowercase the heading; each **stretch** of spaces *and* punctuation becomes **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
 ### Don't
 
 - **Don't** — Turn spaces and punctuation (e.g. `/`) into **separate** hyphens that stack as `--`; that will not match the Runner.
-- **Don't** — Guess `#…` fragments on markdown (task output or project `.md` files).
-- **Don't** — Ignore validation: when the Runner lists **Available:** links with `#…`, copy that fragment exactly.
+- **Don't** — Put anything after **`.md`** in a **`task://`** URL.
+- **Don't** — Guess wrong `#…` fragments on **file** links; when the Runner lists **Available:** links, copy fragments exactly.
 - **Don't** — Use `#docblocks--code-documentation` for that heading — the double hyphen is wrong.
 
 **Be particularly careful when creating task reference links: they must match the task name exactly.** Double-check your generated link against the task name before outputting — same words, same spelling. **Spelling of similar words matters:** **analyze** (verb) and **Analysis** (noun) produce different slugs — e.g. "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, not `task://analysis-current-task-flow.md`. When referencing a task, copy the exact wording from that task's Name when building the slug; do not substitute "analysis" for "analyze" or vice versa. A mismatched link will fail validation.
@@ -104,10 +104,10 @@ When a task **references another task's output**, the link target is **not** the
 
 - **Do** — Use `[Title](target)` markdown links only.
 - **Do** — Use **absolute** paths for files and file sections.
-- **Do** — Form `#anchor` on markdown or `task://…` output: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen (no `--` from ` / ` between words).
+- **Do** — Form `#anchor` on **file** paths only (`/path/to/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen (no `--` from ` / ` between words).
 - **Do** — Use **File** links `[Title](/path/to/file)` with title = file base name.
 - **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — GFM-style heading anchors or code symbol anchors as required.
-- **Do** — Link **task output** only for **completed** tasks: `[…](task://slug.md)` or `[…](task://slug.md#heading)`; put the consumer task in a **later** section than the producer.
+- **Do** — Link **task output** only for **completed** tasks: **`[…](task://slug.md)`**; put the consumer task in a **later** section than the producer.
 - **Do** — Use **URL** links `[Title](https://…)` only when the task's skill can fetch web content.
 
 ### Don't

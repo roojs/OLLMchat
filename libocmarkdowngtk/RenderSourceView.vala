@@ -49,6 +49,8 @@ namespace MarkdownGtk
 		private bool showing_source = false;
 		private Gtk.ScrolledWindow source_scrolled;  // inner scrolled for source page; used for scroll-to-bottom
 		private MarkdownGtk.Render? nested_markdown_render = null;  // streamed nested renderer for ```markdown blocks
+		private ulong source_view_realize_handler = 0;
+		private ulong rendered_box_realize_handler = 0;
 		
 		private enum ResizeMode
 		{
@@ -177,8 +179,8 @@ namespace MarkdownGtk
 					// Use the stack's visible child so we measure the widget that will be shown (and realized)
 					Gtk.Widget widget = this.stack.visible_child;
 					if (widget == null) {
-						widget = (this.code_language == "markdown") ? 
-							 (Gtk.Widget) this.rendered_box : (Gtk.Widget)  this.source_view;
+						widget = (this.code_language == "markdown") ?
+							 (Gtk.Widget) this.rendered_box : (Gtk.Widget) this.source_view;
 					}
 					return this.resize_widget_callback(widget, ResizeMode.REVEAL_BODY);
 				});
@@ -396,8 +398,29 @@ namespace MarkdownGtk
 			// Add frame to box
 			this.renderer.box.append(frame);
 			
+			// Connect before set_visible: realize may run during show; a handler connected afterward would miss it.
+			this.source_view_realize_handler = this.source_view.realize.connect(() => {
+				this.source_view.disconnect(this.source_view_realize_handler);
+				this.source_view_realize_handler = 0;
+				GLib.Idle.add(() => {
+					if (this.body_revealer.reveal_child) {
+						this.resize_widget_callback((Gtk.Widget) this.source_view, ResizeMode.INITIAL);
+					}
+					return false;
+				});
+			});
+			this.rendered_box_realize_handler = this.rendered_box.realize.connect(() => {
+				this.rendered_box.disconnect(this.rendered_box_realize_handler);
+				this.rendered_box_realize_handler = 0;
+				GLib.Idle.add(() => {
+					if (this.body_revealer.reveal_child) {
+						this.resize_widget_callback((Gtk.Widget) this.rendered_box, ResizeMode.INITIAL);
+					}
+					return false;
+				});
+			});
+			
 			frame.set_visible(true);
-
 			// Source view will size naturally - no fixed height
 			this.source_view.set_visible(true);
 		}
@@ -454,14 +477,10 @@ namespace MarkdownGtk
 		 */
 		private bool resize_widget_callback(Gtk.Widget widget, ResizeMode mode)
 		{
-			GLib.debug("resize_widget_callback mode=%d realized=%s", (int) mode, widget.get_realized().to_string());
 			// Check if widget is realized (e.g. hidden stack page may never be realized)
 			if (!widget.get_realized()) {
-				// REVEAL_BODY and FINAL may run before layout has realized the widget; retry on the next idle.
-				if (mode == ResizeMode.REVEAL_BODY || mode == ResizeMode.FINAL) {
-					return true;
-				}
-				return false;
+				// REVEAL_BODY may run before layout; retry on idle. SourceView FINAL when unrealized is handled by ctor realize one-shot + INITIAL.
+				return mode == ResizeMode.REVEAL_BODY;
 			}
 			// Width for height-for-width; REVEAL_BODY uses body_revealer (child may have no allocation when collapsed)
 			var  for_width = this.scrolled_window.get_width();

@@ -72,7 +72,7 @@ After refinement, the runner runs the tool calls and then runs the executor for 
 
 ### What the executor receives
 
-- **Name** (optional) — The task name, if set. Downstream tasks can refer to this task's output via `task://taskname.md` or `task://taskname.md#section` (slug = task name lowercased, non-alphanumeric → hyphen).
+- **Name** (optional) — The task name, if set. Downstream tasks refer to this task's output with **`task://taskname.md`** (slug = task name lowercased, non-alphanumeric → hyphen). The URL ends at **`.md`** (no suffix after it).
 - **What is needed** — From the task list, in natural language. This is the main instruction for the task.
 - **Skill definition** — The full content of this skill's markdown file. The executor uses it to guide interpretation and output.
 - **Tool Output and/or Reference information** — Reference content (resolved References) and/or tool output (tool call(s) + result(s)). When the task had tool calls: tool output plus reference content. When the task has no tool calls, this section is from References only (once per reference or one combined run per skill header `execute-combined`). Each execution run is stored as a **Tool** (id, summary, document); the completed-task list uses Tool summary.
@@ -100,14 +100,14 @@ Every skill must produce output in this shape so the runner can parse it and sho
 
 - **## Result summary** (required) — The content of this section is what appears in the task list under **##### Result summary** (raw; no **Output** line) as the task’s **Output**.
 - It must be a **summary of what the task did** to address the goal and **whether that answered it** (one or two sentences). Use outcome-focused language (e.g. "Searched the codebase for X; found Y — enough for a follow-up."). Do not use a literal "Goal:" line or describe system mechanics.
-- **Always list sections of the output as links** when describing what the task did (e.g. [Sources and findings](#sources-and-findings), [Issues that need rectifying](#issues-that-need-rectifying)). Use markdown links to each section heading — this is **very important**: it is the only visible information that later tasks can use to enhance their information; without section links, downstream tasks cannot discover what is in your output.
+- **Always list sections of the output as links** when describing what the task did, using **in-document** heading links only (e.g. [Sources and findings](#sources-and-findings) — same markdown document). Do **not** use **`task://` links** in this section — those are for *other* tasks referencing this file as a whole. Downstream tasks use **`task://slug.md`** (URL ends at `.md`) and receive the full document.
 - If nothing relevant was found, say that clearly (e.g. "Nothing relevant found.").
 - No long prose here; the detail goes in the next section.
 
 ### Body sections (descriptive titles only)
 
 - **Never use generic section titles** (e.g. "Detail"). Use a **descriptive title** that states what the section contains (e.g. "Sources and findings", "Vala async: yield, main loop, and example of calling async methods", "Review findings: issues and proposed changes"). Be specific to the content — avoid generic titles like "Synthesis and sample code".
-- The full breakdown is injected into the **Precursor** of any later task that references this task’s output.
+- When a later task references this output with **`task://slug.md`**, the runner injects the **full** task result document into the Precursor (no `task://` fragment).
 - Structure: **heading + body** or **heading + subsections with links**.
 - **Body sections can contain markdown links** and **short summaries about the references and why they are useful** (e.g. “The [Vala async docs](url) cover async/yield and main loop; [Runner.vala](path#OLLMcoder.Skill-Runner-task_creation_prompt) is where the prompt is built.”). Links can be URLs, file paths, or **AST references** for code — use the project AST path format (e.g. `#Namespace-Class-methodName`); see "Reference link types" below. Do not use plain symbol names like `#task_creation_prompt`. Downstream tasks receive the body and can have the refiner add those links to References so their content is injected too.
 - End with a clear conclusion: e.g. "Enough information to proceed." or "More research needed: [what to search next]."
@@ -187,7 +187,7 @@ When skill output refers to other content, use only these link forms so the runn
 
 - **File:** `[Title](/absolute/path/to/file)` — base name for title, absolute path.
 - **File section / AST reference:** `[Title](/absolute/path/to/file#anchor)` — anchor can be a **GFM heading** (e.g. `#section-name`) or an **AST path** for code. **AST paths do not use plain symbol names**; they use the project’s AST path format: hyphen-separated, with namespace parts optionally using `.`. Example: `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. So for code use e.g. `[task_creation_prompt](/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`, not `#task_creation_prompt`. The runner resolves the AST path to inject that symbol.
-- **Task output:** `[Task Name Results](task://taskname.md)` or `[Task Name Results](task://taskname.md#section)` — slug = task name lowercased, non-alphanumeric → hyphen.
+- **Task output:** `[Task Name Results](task://taskname.md)` — slug = task name lowercased, non-alphanumeric → hyphen; URL ends at **`.md`**. The runner injects the full task output document.
 - **URL:** `[Title](https://…)`
 
 Do not paste long file or precursor content into the task list or into output; use links. The runner injects resolved content when a task runs.

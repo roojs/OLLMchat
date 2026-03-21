@@ -92,13 +92,14 @@ When a task **references another task's output**, the link target is **not** the
 ### Do
 
 - **Do** — **Lowercase** the **Name**; replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen; trim leading/trailing hyphens.
-- **Do** — Use link format `task://{slug}.md` or `task://{slug}.md#section` (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`); the link label can be any readable text.
-- **Do** — Apply the same rule for **section anchors** on markdown (`/path/to/doc.md#…` or `task://some-task.md#…`): lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
+- **Do** — Use **`task://{slug}.md` only** for task output (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`); the link label can be any readable text. The URL must end at **`.md`**.
+- **Do** — For **file** section links, use `/path/to/doc.md#…`: lowercase the heading; each **stretch** of spaces *and* punctuation → **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation`.
 
 ### Don't
 
-- **Don't** — Build `#…` fragments by turning spaces and punctuation into **separate** hyphens that stack as `--` — that fails validation for `task://…` and for `/path/to/file.md#…`.
+- **Don't** — Put anything after **`.md`** in a **`task://`** URL.
+- **Don't** — Build `#…` fragments on **files** by turning spaces and punctuation into **separate** hyphens that stack as `--`.
 - **Don't** — Use `#docblocks--code-documentation` for that heading — the double hyphen is wrong.
 
 ## Reference link types (use only these)
@@ -107,11 +108,11 @@ When a task **references another task's output**, the link target is **not** the
 
 - **Do** — Use `[Title](target)` markdown links in **References**.
 - **Do** — Use **absolute** paths for files and file sections.
-- **Do** — Form **markdown** `#anchor` (headings in `.md` or sections in `task://…` output): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
+- **Do** — Form **markdown** `#anchor` on **file** paths (`/path/to/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
 - **Do** — Use **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; **links to files are the best way to add file content**; the Runner injects content.
 - **Do** — Use **ReadFile** only for a **specific part** of a file (e.g. line range), not whole-file context.
 - **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** for markdown headings; **AST** for code — full path format e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
-- **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): `[Research 1 Results](task://research-1.md)` or `[…](task://research-1.md#section)` with the same heading-slug rules.
+- **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): **`[Research 1 Results](task://research-1.md)`** — stop at **`.md`**.
 - **Do** — Use **URL** links `[Title](https://…)` only when the skill has a tool that can fetch web pages (e.g. web_fetch).
 
 ### Don't

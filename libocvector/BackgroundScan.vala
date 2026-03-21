@@ -66,16 +66,16 @@ namespace OLLMvector {
             var project_manager = tool.project_manager;
             
             if (embedding_client == null) {
-                GLib.error("BackgroundScan: CodebaseSearchTool.embedding_client is null");
+                GLib.error("CodebaseSearchTool.embedding_client is null");
             }
             if (vector_db == null) {
-                GLib.error("BackgroundScan: CodebaseSearchTool.vector_db is null");
+                GLib.error("CodebaseSearchTool.vector_db is null");
             }
             if (project_manager == null) {
-                GLib.error("BackgroundScan: CodebaseSearchTool.project_manager is null");
+                GLib.error("CodebaseSearchTool.project_manager is null");
             }
             if (project_manager.db == null) {
-                GLib.error("BackgroundScan: CodebaseSearchTool.project_manager.db is null");
+                GLib.error("CodebaseSearchTool.project_manager.db is null");
             }
             
             // GLib.error() never returns, so these are guaranteed non-null after the checks above
@@ -103,14 +103,14 @@ namespace OLLMvector {
         {
             // Only restart if thread is currently running
             if (this.worker_thread != null) {
-                GLib.debug("BackgroundScan: Config changed, restarting background thread");
+                GLib.debug("config changed, restarting background thread");
                 this.restart_thread.begin();
                 return;
             }
             
             // Thread not running - safe to update config immediately
             this.config = this.original_config.clone();
-            GLib.debug("BackgroundScan: Config changed, config updated (thread not running)");
+            GLib.debug("config changed, cloned (thread not running)");
         }
         
         /**
@@ -143,7 +143,7 @@ namespace OLLMvector {
             // Restart the thread immediately
             this.ensure_thread();
             
-            GLib.debug("BackgroundScan: Thread restarted with new config");
+            GLib.debug("background thread restarted after config change");
         }
 
         /**
@@ -164,7 +164,7 @@ namespace OLLMvector {
                     // Set this context as thread default
                     this.worker_context.push_thread_default ();
 
-                    GLib.debug ("BackgroundScan: background thread started");
+                    GLib.debug("background thread started");
                     
                     // Create and run MainLoop
                     this.worker_loop = new GLib.MainLoop (this.worker_context);
@@ -360,6 +360,8 @@ namespace OLLMvector {
          * @param path The path of the project to process.
          */
         private async void queueProject (string path) {
+            GLib.debug("queueProject path=%s", path);
+
             // Ensure worker_project_manager exists
             this.ensure_project_manager ();
 
@@ -369,7 +371,7 @@ namespace OLLMvector {
             // Find project by path (O(1) lookup using path_map)
             var project = this.worker_project_manager.projects.path_map.get (path);
             if (project == null) {
-                GLib.warning ("BackgroundScan: could not find project %s", path);
+                GLib.warning ("could not find project %s", path);
                 return;
             }
 
@@ -383,6 +385,9 @@ namespace OLLMvector {
             // Iterate through project_files (flat list, not hierarchical)
             // ProjectFiles implements Gee.Iterable<ProjectFile>, so we can iterate directly
             foreach (var project_file in project.project_files) {
+                if (project_file.file.delete_id > 0) {
+                    continue;
+                }
                 // Skip if file doesn't need scanning (negative test)
                 if (project_file.file.last_vector_scan >= project_file.file.mtime_on_disk ()) {
                     continue;
@@ -392,7 +397,7 @@ namespace OLLMvector {
                 queued_count++;
             }
             
-            GLib.debug ("BackgroundScan: queued %d files from project '%s'", queued_count, path);
+            GLib.debug("queued %d files for project %s", queued_count, path);
 
             // Do NOT emit project_scan_completed - project scan just queues files,
             // completion is handled by file queue via scan_update signal
@@ -409,7 +414,10 @@ namespace OLLMvector {
             // All queue operations happen in the background thread context, so no mutex needed
             this.file_queue.offer (item);
             
-            GLib.debug ("BackgroundScan: queued file '%s' (queue size: %u)", item.file_path, this.file_queue.size);
+            GLib.debug(
+                "queued file %s (queue size %u)",
+                item.file_path,
+                this.file_queue.size);
 
             // Start queue processing (we're already in the background thread context)
             this.startQueue.begin ();

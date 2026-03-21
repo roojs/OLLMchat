@@ -269,9 +269,9 @@ namespace OLLMfiles
 			
 			var new_items = yield this.read_dir_scan();
 			foreach (var new_item in new_items) {
-				yield this.read_dir_update(new_item, old_child_map);
+				yield this.read_dir_update(new_item, old_child_map, check_time);
 			}
-			this.read_dir_remove(new_items, old_children);
+			yield this.read_dir_remove(new_items, old_children, check_time);
 			
 			// If not recursing, do backup and return early
 			if (!recurse) {
@@ -315,7 +315,11 @@ namespace OLLMfiles
 				return;
 			} 
 				// Start processing folders in idle callback (non-blocking)
-			Idle.add(() => {
+			GLib.debug(
+				"read_dir subdirs deferred on idle count=%d path=%s",
+				(int)folders_to_process.size,
+				this.path);
+			GLib.Idle.add(() => {
 				this.process_folders(folders_to_process, check_time);
 				return false;
 			});
@@ -336,6 +340,7 @@ namespace OLLMfiles
 				if (this.is_project) {
 					this.project_files.update_from(this);
 					this.project_files.review_files.refresh();
+					GLib.debug("read_dir project recurse complete path=%s", this.path);
 				}
 				return;
 			}
@@ -487,10 +492,12 @@ namespace OLLMfiles
 		 * 
 		 * @param new_item The newly scanned FileBase object
 		 * @param old_child_map Map of old children by name
+		 * @param check_time Scan timestamp (for soft-deleting replaced entries)
 		 */
 		private async void read_dir_update(
 			FileBase new_item,
-			Gee.HashMap<string, FileBase> old_child_map)
+			Gee.HashMap<string, FileBase> old_child_map,
+			int64 check_time) throws GLib.Error
 		{
 			var name = GLib.Path.get_basename(new_item.path);
 			var old_item = old_child_map.get(name);
@@ -544,8 +551,9 @@ namespace OLLMfiles
 			
 			// Old item exists - check if same
 			if (!old_item.compare(new_item)) {
-				// Totally different - remove old from DB and children
-				old_item.removeFromDB(this.manager.db);
+				// Totally different — soft-delete old row (delete_id + history), then add replacement
+				var ts = new GLib.DateTime.from_unix_local(check_time);
+				yield this.manager.delete_manager.remove(old_item, ts);
 				this.children.remove(old_item);
 				// Add new item
 				this.children.append(new_item);
@@ -573,27 +581,29 @@ namespace OLLMfiles
 		}
 		
 		/**
-		 * Check for removed items and remove them from children and database.
+		 * Check for removed items: soft-delete in DB (delete_id) and detach from children.
 		 * 
 		 * @param new_items List of newly scanned FileBase objects
 		 * @param old_children List of old children that existed before the scan
+		 * @param check_time Scan timestamp (used for FileHistory)
 		 */
-		private void read_dir_remove(
+		private async void read_dir_remove(
 			Gee.ArrayList<FileBase> new_items,
-			Gee.ArrayList<FileBase> old_children)
+			Gee.ArrayList<FileBase> old_children,
+			int64 check_time) throws GLib.Error
 		{
 			// Third pass: Check for removed items
 			var seen_names = new Gee.HashSet<string>();
 			foreach (var new_item in new_items) {
 				seen_names.add(GLib.Path.get_basename(new_item.path));
 			}
+			var ts = new GLib.DateTime.from_unix_local(check_time);
 			foreach (var old_child in old_children) {
 				if (seen_names.contains(GLib.Path.get_basename(old_child.path))) {
 					continue; // Still exists
 				}
-				// Remove from children and DB
+				yield this.manager.delete_manager.remove(old_child, ts);
 				this.children.remove(old_child);
-				old_child.removeFromDB(this.manager.db);
 			}
 		}
 		

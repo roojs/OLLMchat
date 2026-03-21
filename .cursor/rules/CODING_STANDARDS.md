@@ -23,6 +23,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
 - **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
 - **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
+- **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
 
 These checklist items should be copied (or referenced) at the top of new plan documents in `docs/plans/` so they can be quickly verified.
 
@@ -860,12 +861,30 @@ this.some_method(
 
 **IMPORTANT:** When adding debug output using `GLib.debug()`, do NOT prefix the message with function names, class names, or location information. The debug output system already includes the filename and line number automatically, making such prefixes redundant.
 
+**IMPORTANT:** Do NOT add timestamps or elapsed-time fields to
+`GLib.debug()` or `GLib.warning()` messages (e.g.
+`GLib.get_monotonic_time()`, wall-clock values, or `monotonic_us=…` /
+`t=%lld` placeholders used only to correlate order). Log output
+already includes a time prefix from the logging pipeline or
+application; repeating time in the message is redundant and clutters
+logs.
+
 **IMPORTANT:** When asked to add debugging, use at most 3-4 debug statements, preferably just one targeted debug statement. Avoid "splattering" debug statements everywhere - be selective and focus on the key points that will help diagnose the issue.
 
 **IMPORTANT:** For CLI/example apps, route debug output through the
 standard `--debug` option handled by the app/test base classes. Do
 not require `G_MESSAGES_DEBUG`, and do not add ad-hoc stdout/stderr
 debug output when `GLib.debug()` is sufficient.
+
+**Also Bad (redundant time in the message):**
+```vala
+GLib.debug("monotonic_us=%lld queueProject path=%s", GLib.get_monotonic_time(), path);
+```
+
+**Good (same intent, no duplicate time):**
+```vala
+GLib.debug("queueProject path=%s", path);
+```
 
 **Bad:**
 ```vala
@@ -899,9 +918,9 @@ GLib.debug("Model '%s' not found in available_models (current: '%s', available: 
 	this.client.model, this.client.model, this.client.available_models.size);
 ```
 
-The debug output will automatically show the file and line number, so you don't need to include that information in the message itself.
+The debug output will automatically show the file and line number (and typically a time prefix), so you don't need to include that information in the message itself.
 
-**Same rule for GLib.warning():** Never include class or method names (e.g. `"MyClass.method_name:"`). Use a short, user- or operator-friendly phrase; file and line are in the log.
+**Same rule for GLib.warning():** Never include class or method names (e.g. `"MyClass.method_name:"`). Use a short, user- or operator-friendly phrase; file and line are in the log. Do not add redundant timestamps to the message text.
 
 
 ## Gee.HashMap Access
