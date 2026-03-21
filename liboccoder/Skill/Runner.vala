@@ -140,9 +140,15 @@ namespace OLLMcoder.Skill
 			if (link.scheme == "task") {
 				var slug = link.path.has_suffix(".md") ?
 					link.path.substring(0, link.path.length - 3) : link.path;
+				if (!this.completed.slugs.has_key(slug) && !this.pending.slugs.has_key(slug)) {
+					GLib.error("reference_content: no task for slug=%s", slug);
+				}
 				var task = this.completed.slugs.has_key(slug) ?
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
 				var doc = task.task_output_document;
+				if (link.hash == "") {
+					return doc.to_markdown();
+				}
 				if (!doc.headings.has_key(link.hash)) {
 					GLib.error("reference_content: task section missing slug=%s hash=%s",
 						slug, link.hash);

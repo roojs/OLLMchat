@@ -203,4 +203,4 @@ public Index.create_tmp_hnsw(int dim) throws GLib.Error
 
 ## Related
 
-- `docs/plans/2.20.10-faiss-vector-dump-compare.md` — FAISS dump/compare work (if applicable to debugging this issue).
+- `docs/plans/done/2.20.10-DONE-faiss-vector-dump-compare.md` — FAISS dump/compare work (if applicable to debugging this issue).

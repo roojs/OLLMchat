@@ -360,9 +360,9 @@ namespace OLLMchat.Call
 					return;
 				}
 				// Only log first chunk when message not yet set
-				if (this.streaming_response.message == null) {
-					GLib.debug("First streaming response: %s", trimmed);
-				}
+				// if (this.streaming_response.message == null) {
+				// 	GLib.debug("First streaming response: %s", trimmed);
+				// }
 				var chunk_obj = chunk_node.get_object();
 				if (chunk_obj.has_member("done") && chunk_obj.get_boolean_member("done") == true) {
 					GLib.debug("Last streaming response: %s", trimmed);

@@ -203,15 +203,20 @@ namespace OLLMfiles
 		 */
 		public async void commit() throws Error
 		{
-			// Check if file is ignored - skip if so
-			if (this.filebase_object.is_ignored) {
-				return; // Do nothing for ignored files
+			// Ignored paths are still omitted from history for normal edits, but deletions must
+			// insert a row so filebase.delete_id can reference file_history.id (soft delete).
+			if (this.filebase_object.is_ignored && this.change_type != "deleted") {
+				return;
 			}
 			
 			// Insert into database first (to get id)
 			yield this.save_to_db();
 			
 			if (!(this.filebase_object is File)) {
+				return;
+			}
+			// No backup for ignored files; deletion still needs a history id only.
+			if (this.filebase_object.is_ignored) {
 				return;
 			}
 			// Create backup if needed (for modified/deleted/revert files, but not for symlinks)
@@ -239,6 +244,15 @@ namespace OLLMfiles
 		 */
 		private async void create_backup() throws Error
 		{
+			// File already gone (e.g. moved or deleted outside the app) — record deletion, no backup.
+			if (this.change_type == "deleted") {
+				var src = GLib.File.new_for_path(this.path);
+				if (!src.query_exists()) {
+					GLib.debug("FileHistory.create_backup: skip backup (path already absent): %s", this.path);
+					return;
+				}
+			}
+			
 			try {
 				var cache_dir = GLib.Path.build_filename(
 					GLib.Environment.get_home_dir(),

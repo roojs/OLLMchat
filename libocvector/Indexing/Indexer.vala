@@ -111,6 +111,12 @@ namespace OLLMvector.Indexing
 				return false;
 			}
 			
+			// Soft-deleted filebase rows stay in SQLite with delete_id set; do not index.
+			if (file.delete_id > 0) {
+				GLib.debug("Skipping file '%s' (delete_id=%lld)", file.path, file.delete_id);
+				return false;
+			}
+			
 			// Only index text files or supported binary (e.g. images)
 			if (!file.is_text) {
 				return yield this.index_image_file(file, force);

@@ -87,7 +87,7 @@ Produce your response in the following structure. Use markdown **headings** for 
    - **Name** (optional) — Short stable name (e.g. "Research 1", "Analyze Current Structure"). Use when another task will refer to this task's output. **Reference links use a slug:** lowercase the Name, replace each **run** of spaces and non-alphanumeric with **one** hyphen (e.g. "Analyze Current Structure" → `task://analyze-current-structure.md`). If omitted, the Runner assigns one so tasks can be referred to in issue messages.
    - **What is needed** (required) — What we need from this task (or from this skill when one is used), in natural language.
    - **Skill** (required) — Name of skill to use, from the skill catalog above. Every task must have exactly one skill. Choose the skill that best fits what is needed.
-   - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), task output (e.g. `task://research-1.md`, `task://research-1.md#result-summary`). For `#anchor` on markdown/task output, use **one** hyphen per gap between words (collapse ` / ` and spaces into a single `-`, not `--`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
+   - **References** (optional) — Reference links can be file paths, file sections, task outputs, or URLs. Use markdown links only (zero or more). Format each as `[Title](target)`. Allowed: file (absolute path), file section (path plus `#anchor` — GFM for markdown sections, AST for code e.g. method or class), URLs (http/https), **task output** as **`task://{slug}.md`** (e.g. `task://research-1.md`) — the URL **ends at `.md`**. For `#anchor` on **files** only, use **one** hyphen per gap between words (collapse ` / ` and spaces into a single `-`, not `--`). The Runner will resolve and inject content at refinement/execution. If a task needs the current (open) document, add a reference to it in that task's References using the standard link format (e.g. [Basename](/absolute/path/to/file)).
    - **Expected output** — What we expect from this task (e.g. "Findings document", "Plan section", "Updated file").
    - **Requires user approval** (optional) — Include this bullet (use the exact label **Requires user approval**) when the task modifies code or files or otherwise needs user confirmation before it runs. The Runner will pause and ask for approval before executing such tasks. Omit for read-only tasks.
 
@@ -107,14 +107,15 @@ When one task **references another task's output**, the link target is **not** t
 ### Do
 
 - **Do** — **Lowercase** the task **Name**, then replace each **maximal contiguous** run of spaces and non-alphanumeric characters with **one** hyphen, then trim leading/trailing hyphens.
-- **Do** — Use `task://{slug}.md` or `task://{slug}.md#section` when pointing at a subsection of that task's output.
-- **Do** — Apply the **same** slug rule for **section anchors** on markdown whenever you link to a heading — e.g. `/path/to/doc.md#…` or `task://some-task.md#…`: lowercase the heading text; each **stretch** of spaces *and* punctuation (e.g. ` / ` around a slash) becomes **one** hyphen between word runs.
+- **Do** — Use **`task://{slug}.md`** when pointing at another task's output; stop at **`.md`**.
+- **Do** — For **file** links to a heading, use `/path/to/doc.md#…`: lowercase the heading text; each **stretch** of spaces *and* punctuation becomes **one** hyphen between word runs.
 - **Do** — Use `#docblocks-code-documentation` for `## Docblocks / code documentation` (one hyphen between "docblocks" and "code").
 
 ### Don't
 
 - **Don't** — Build the Name slug by substituting spaces, `/`, and punctuation **one character at a time** into hyphens — that stacks hyphens (e.g. `…--…`) and **will not match** the Runner.
-- **Don't** — Guess `#section` fragments on markdown (whether `task://…` output or a project `.md` file); they must match how headings are slugified (single-hyphen-between-words).
+- **Don't** — Add `#…` to **`task://…`** URLs.
+- **Don't** — Guess `#section` fragments on **project `.md` file** links; they must match how headings are slugified (single-hyphen-between-words).
 - **Don't** — Use `#docblocks--code-documentation` for that heading — the double hyphen is wrong.
 
 **Examples:**
@@ -127,7 +128,7 @@ When one task **references another task's output**, the link target is **not** t
 
 So if you name a task **"Analyze Current Structure"**, later tasks must refer to it as `task://analyze-current-structure.md` — **not** `task://Analyze Current Structure.md` or `task://analyze current structure.md`. Use the slug in the link; the link label (e.g. `[Analyze Current Structure Results]`) can be any readable text.
 
-**Spelling in task names and links must match exactly — check before output.** When building a reference link, use the **exact wording** from the task's Name (do not change word forms). For example, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. Before you output the task list, verify that **every** `task://…` link in References matches a real task in your list: take that task's **Name**, form the slug (lowercase; each run of spaces and non-alphanumeric → **one** hyphen), and ensure the link uses that exact slug. For any `#…` fragment on markdown (task output or `.md` files), follow the **### Do** / **### Don't** rules for section anchors above so you never insert `--` where a single `-` separates words. A mismatched or non-existent task reference will fail validation and force the system to ask you to re-create the task list — which wastes time. Be extremely careful: mismatched task references are a common cause of rejected task lists.
+**Spelling in task names and links must match exactly — check before output.** When building a reference link, use the **exact wording** from the task's Name (do not change word forms). For example, **analyze** (verb) and **Analysis** (noun) produce different slugs: "Analyze Current Task Flow" → `task://analyze-current-task-flow.md`, while "Analysis Current Task Flow" → `task://analysis-current-task-flow.md`. Before you output the task list, verify that **every** `task://…` link in References matches a real task in your list: take that task's **Name**, form the slug (lowercase; each run of spaces and non-alphanumeric → **one** hyphen), and ensure the link uses that exact slug and **ends at `.md`**. For anchors on **file** paths only, follow the **### Do** / **### Don't** rules above. A mismatched or non-existent task reference will fail validation and force the system to ask you to re-create the task list — which wastes time. Be extremely careful: mismatched task references are a common cause of rejected task lists.
 
 ## Reference link types (use only these)
 
@@ -135,10 +136,10 @@ So if you name a task **"Analyze Current Structure"**, later tasks must refer to
 
 - **Do** — Use markdown links only: `[Title](target)`.
 - **Do** — Use **absolute** filesystem paths for files and file sections (full path, then optional `#anchor`).
-- **Do** — Form **markdown heading** anchors (`#…` on `.md` or on `task://…` output) like task Name slugs: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen; trim edges (no stacked `--` from ` / ` or similar).
+- **Do** — Form **markdown heading** anchors on **file** paths (`/path/to/doc.md#…`) like task Name slugs: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen; trim edges (no stacked `--` from ` / ` or similar). **`task://`** URLs do not use fragments — they end at **`.md`**.
 - **Do** — Use **File** links `[Title](/path/to/file)` with title = file **base name** (e.g. `Settings.jsx`); **links to files are the best way to add file content**; the Runner injects content.
 - **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** heading anchors for markdown; **AST** paths for code symbols (method/class) so the Runner injects that symbol; title = readable section or symbol label.
-- **Do** — Give producer tasks a **Name** when a later task needs them; link with the Name slug `[…](task://research-1.md)` or `[…](task://research-1.md#section)` (section slug follows the same collapse rule as headings); put the consumer in a **later** task section than the producer.
+- **Do** — Give producer tasks a **Name** when a later task needs them; link with **`[…](task://research-1.md)`** only; put the consumer in a **later** task section than the producer.
 - **Do** — Use **URL** links `[Title](https://…)` (http/https) when the task needs external content.
 
 ### Don't
