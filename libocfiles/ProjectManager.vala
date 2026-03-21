@@ -64,6 +64,16 @@ namespace OLLMfiles
 			default = new ProjectList(); }
 		
 		/**
+		 * Folder paths currently inside a {@link Folder.read_dir} pass (main thread only).
+		 * Callers add/remove entries; replace the map to clear.
+		 * {@link Gee.HashMap.unset} on a missing key is safe (returns false, does not throw).
+		 */
+		public Gee.HashMap<string, Folder> scanning {
+			get; set;
+			default = new Gee.HashMap<string, Folder> ();
+		}
+		
+		/**
 		 * Currently active project (folder with is_project = true).
 		 */
 		public Folder? active_project { get; private set; default = null; }
@@ -219,8 +229,14 @@ namespace OLLMfiles
 				}
 
 				if (!this.disable_initial_scan) {
-					// Start async directory scan (don't await - runs in background)
-					yield project.read_dir(new DateTime.now_local().to_unix(), true);
+					if (this.scanning.has_key (project.path)) {
+						GLib.debug(
+							"ProjectManager.activate_project: Skipping read_dir, scan already in progress for '%s'",
+							project.path);
+					} else {
+						// Start async directory scan (don't await - runs in background)
+						yield project.read_dir(new DateTime.now_local().to_unix(), true);
+					}
 				}
 				this.disable_initial_scan = false;
 				

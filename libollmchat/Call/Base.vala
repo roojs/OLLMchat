@@ -146,7 +146,6 @@ namespace OLLMchat.Call
 		{
 			var request_body = this.get_request_body();
 			message.set_request_body_from_bytes("application/json", new Bytes(request_body.data));
-			GLib.debug("Request Body: %s", request_body);
 		}
 
 		/**
