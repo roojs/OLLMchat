@@ -33,7 +33,8 @@ namespace OLLMcoder.Task
 		/** Executor output document. Set by ResultParser.exec_extract() on success. */
 		public Markdown.Document.Document? document { get; set; default = null; }
 		/** References for this run (one or more). Used by reference_contents() to build executor input. */
-		public Gee.ArrayList<Markdown.Document.Format> references { get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+		public Gee.ArrayList<Markdown.Document.Format> references { 
+				get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
 		/** Tool execution result from this run. Set in run() when this run has a tool_call. */
 		public string tool_run_result { get; set; default = ""; }
 		/** Tool name from parsed JSON (e.g. "write_file"). */

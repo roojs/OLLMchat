@@ -172,6 +172,12 @@ public class Details : OLLMchat.Agent.Base
 		}
 	}
 
+	/**
+	 * Ensure expected task_data keys exist (placeholder block if missing), then refresh
+	 * fields derived from task_data (e.g. reference_targets from the References block).
+	 * Called from the ctor and update_props after task_data changes — the name alone
+	 * does not spell out that dual role.
+	 */
 	private void fill_task_data()
 	{
 		this.requires_user_approval = this.task_data.has_key("Requires user approval");
