@@ -22,6 +22,8 @@ Before marking a plan as ready to implement, make sure it answers these:
 - **Try/catch scope**: Does the plan keep try/catch focused on the minimal code that can throw — not blanketing large areas? Wrap only the specific call(s) that may throw; keep setup and non-throwing code outside the try block.
 - **Underscore prefix**: Does the plan avoid leading underscore (`_`) on variable, field, and property names?
 - **get_* methods**: Does the plan avoid `get_*()` method names in favour of properties or verb-less/action names (e.g. `system_message()` not `get_system_message()`)? See “Property Getters vs Get Methods” below.
+- **Method names (length)**: Does the plan use **short, concise** method names and avoid long descriptive names?
+- **New methods**: Does the plan **avoid introducing new methods** unless the user or the plan **explicitly** calls for them? Default to changing **existing** methods / call sites. Whether to extract a helper is a **user** decision, not the LLM’s — do not assume a new method is warranted.
 - **Docblocks**: Do new or modified docblocks follow the code documentation standards and use multiline form (not short one-liners)? See "Docblocks / code documentation" below.
 - **Debug time**: Does the plan avoid putting timestamps or monotonic time in `GLib.debug()` / `GLib.warning()` messages (log output already includes time)? See "Debug and Warning Statements" below.
 
@@ -1340,5 +1342,30 @@ public class MyClass
         return this.files.get(path);
     }
 }
+```
+
+## Method names and new methods
+
+**IMPORTANT:** Prefer **short, concise** method names. Avoid long, narrative names that restate what the file or type already implies.
+
+**IMPORTANT:** **Do not add new methods** unless the **user** or the **written plan** explicitly asks for one. Default to putting logic in an **existing** method or location the task already touches. Do **not** introduce a “helper” or `merge_*` / `build_*` method because it seems tidy — the **user** decides if extraction is appropriate.
+
+**IMPORTANT:** If a change can be done by a few lines inside **`get_request_body()`**, **`serialize_property()`**, or another existing entry point, do that first. Only when the user approves a new method should you add one, and then keep the name **short**.
+
+**Bad (long name; also assumes new method without user approval):**
+```vala
+private void merge_reasoning_effort_into_object(Json.Object obj)
+```
+
+**Better (still only if user approves a helper — shorter name):**
+```vala
+private void merge_reasoning(Json.Object obj)
+```
+
+**Often better (no new method — inline in existing `get_request_body()` until user asks otherwise):**
+```vala
+// inside get_request_body(), after building obj:
+obj.set_string_member("reasoning_effort",
+    this.reasoning_effort != "" ? this.reasoning_effort : (this.think ? "medium" : "none"));
 ```
 

@@ -1,0 +1,27 @@
+---
+description: When implementing from a plan—revert, update plan, get approval; no surprise fixes
+alwaysApply: true
+---
+
+# Plan implementation workflow
+
+## Scope
+
+Applies when implementing **feature or refactor work** from `docs/plans/*`, tickets, or explicit user instructions.
+
+## Rules
+
+1. **Implement only what was approved** (the written plan or agreed scope). Do not expand scope silently.
+
+2. **If something blocks you** (build errors, missing fields like `agent` / `think`, wrong API split, design hole):
+   - **Revert** speculative or partial code rather than piling on workarounds.
+   - **Update the plan** (or the relevant doc): what failed, what must change, options if any.
+   - **Stop and ask for explicit user approval** before continuing implementation.
+
+3. **No surprise fixes**: do not add drive-by refactors, unrelated cleanups, or “compile-only” API changes (e.g. bolting abstract properties onto a base class) unless the user approved that change in the plan or in chat.
+
+4. **Exception**: trivial edits the user already asked for in the same message (typos, formatting) are fine—still avoid unrelated code changes.
+
+## Relation to bug fixes
+
+For **bug fixes**, follow `.cursor/rules/bug-fix-process.md` (debug → understand → propose → approval → apply). This rule adds the **revert + plan update + approval** loop when **planned implementation** hits design gaps.
