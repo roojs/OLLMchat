@@ -31,9 +31,9 @@ public enum MarkdownPhase
  * Task list (input): each list item under a task section heading has a nested list
  * with labels ''What is needed'', ''Skill'', ''References'', ''Expected output''.
  * Links in References: current_file, paths, plan:...
- * Keys are exactly these labels (no other format accepted):
- * "What is needed", "Skill", "References", "Expected output",
- * "Requires user approval".
+ * Keys are lowercase labels from List.to_key_map(..., a_2_z), e.g.
+ * "what is needed", "skill", "references", "expected output",
+ * "requires user approval", "shared references", "examination references".
  *
  * Refined task (refinement output): section "Refined task" with same list plus
  * ''Skill call'' and an optional fenced code block. Parser uses
@@ -50,7 +50,7 @@ public class Details : OLLMchat.Agent.Base
 {
 	// - stored task content (exact keys only, see class doc)
 	/**
-	 * Map from ListItem.to_key_map(); keys are exact labels only.
+	 * Map from ListItem.to_key_map(..., a_2_z); keys are lowercase labels only.
 	 * All task content is read from here.
 	 */
 	public Gee.Map<string, Markdown.Document.Block> task_data {
@@ -110,10 +110,16 @@ public class Details : OLLMchat.Agent.Base
 	public ResultParser result_parser { get; set; }
 
 	/**
-	 * Markdown links from references block (current_file, paths, plan:...);
+	 * Markdown links from task "references" block (current_file, paths, plan:...);
 	 * Runner resolves for prompt fill. Filled in fill_task_data().
 	 */
-	public Gee.ArrayList<Markdown.Document.Format> reference_targets { 
+	public Gee.ArrayList<Markdown.Document.Format> references {
+		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+	/** Links from "shared references" task_data (refinement). */
+	public Gee.ArrayList<Markdown.Document.Format> shared_references {
+		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+	/** Links from "examination references" task_data (per-run execution). */
+	public Gee.ArrayList<Markdown.Document.Format> exam_references {
 		get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
 
 	/**
@@ -153,11 +159,11 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Initial task_data from ListItem.to_key_map() for one task list item
-	 * (keys: exact labels only, see class doc). Runner and session come from step.list.runner (tree).
+	 * Initial task_data from ListItem.to_key_map(..., a_2_z) for one task list item
+	 * (keys: lowercase labels only, see class doc). Runner and session come from step.list.runner (tree).
 	 *
 	 * @param step the step this task belongs to (provides list and runner via tree)
-	 * @param task_data initial map from list item (exact keys only)
+	 * @param task_data initial map from list item (lowercase keys only)
 	 */
 	public Details(Step step, Gee.Map<string, Markdown.Document.Block> task_data)
 	{
@@ -174,25 +180,39 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Ensure expected task_data keys exist (placeholder block if missing), then refresh
-	 * fields derived from task_data (e.g. reference_targets from the References block).
+	 * fields derived from task_data (e.g. references, shared_references, exam_references).
 	 * Called from the ctor and update_props after task_data changes — the name alone
 	 * does not spell out that dual role.
 	 */
 	private void fill_task_data()
 	{
-		this.requires_user_approval = this.task_data.has_key("Requires user approval");
-		string[] keys_to_fill = {
-			"What is needed",
-			"Skill",
-			"References",
-			"Expected output" };
+		this.requires_user_approval = this.task_data.has_key("requires user approval");
 		var empty = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
+		string[] keys_to_fill = {
+			"what is needed",
+			"skill",
+			"references",
+			"expected output",
+			"shared references",
+			"examination references" };
 		foreach (var key in keys_to_fill) {
 			if (!this.task_data.has_key(key)) {
 				this.task_data.set(key, empty);
 			}
+			switch (key) {
+				case "references":
+					this.references = this.task_data.get(key).links();
+					break;
+				case "shared references":
+					this.shared_references = this.task_data.get(key).links();
+					break;
+				case "examination references":
+					this.exam_references = this.task_data.get(key).links();
+					break;
+				default:
+					break;
+			}
 		}
-		this.reference_targets = this.task_data.get("References").links();
 	}
 
 	/**
@@ -225,7 +245,7 @@ public class Details : OLLMchat.Agent.Base
 		this.issues = "";
 		foreach (var e in refined_map.entries) {
 			// Keep original task's Skill; do not overwrite from refinement output.
-			if (e.key == "Skill") {
+			if (e.key == "skill") {
 				continue;
 			}
 			this.task_data.set(e.key, e.value);
@@ -541,7 +561,7 @@ public class Details : OLLMchat.Agent.Base
 			"environment", this.runner.env(),
 			"project_description", (this.runner.sr_factory.project_manager.active_project == null ?
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
-			"task_reference_contents", this.reference_contents(),
+			"task_reference_contents", this.reference_contents(MarkdownPhase.REFINEMENT),
 			"skill_details", definition.refine,
 			"completed_task_list", (completed_md == "" ? "" : 
 				"## Completed tasks (so far) for your reference only\n\n" + completed_md));
@@ -551,7 +571,7 @@ public class Details : OLLMchat.Agent.Base
 	/**
 	 * Refinement: fill template. Caller has validated via skill_manager.validate(this);
 	 * definition from skill_manager.fetch(this) is non-null. Details builds
-	 * task_reference_contents by looping reference_targets and asking Runner
+	 * task_reference_contents by looping references and asking Runner
 	 * for each item (see "Building the task reference block").
 	 * Up to 5 refinement attempts; up to 3 communication retries per attempt.
 	 * Caller (Runner) must catch and report to user; see 1.23.14.
@@ -569,7 +589,10 @@ public class Details : OLLMchat.Agent.Base
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
 		// Load file reference buffers so reference_contents() can get content (same as code search tool)
-		yield this.runner.load_files(this.reference_targets);
+		var load_list = new Gee.ArrayList<Markdown.Document.Format>();
+		load_list.add_all(this.references);
+		load_list.add_all(this.shared_references);
+		yield this.runner.load_files(load_list);
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
@@ -773,9 +796,10 @@ public class Details : OLLMchat.Agent.Base
 	 * @param file file to read content and language from
 	 * @return fenced block with line + content
 	 */
-	internal string header_file(string line, OLLMfiles.File file)
+	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage)
 	{
-		var content = file.get_contents(0);
+		var content = stage == MarkdownPhase.REFINEMENT ? file.get_contents(10) : file.get_contents(0);
+		content += stage == MarkdownPhase.REFINEMENT && file.get_line_count() > 10 ? "\n\n_(abbreviated)_\n" : "";
 		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
 		return line + "\n\n"
 			+ fence
@@ -810,37 +834,31 @@ public class Details : OLLMchat.Agent.Base
 	 * Resolved content for a single reference link. Uses link.scheme (file, task,
 	 * http(s), or path == "" for `#anchor`). File: project manager or
 	 * File.new_fake, create_buffer, header_file. Other schemes:
-	 * runner.reference_content(link).
+	 * runner.reference_content(link, stage).
 	 *
 	 * @param link the reference link (scheme, path, href, title
 	 * already parsed)
+	 * @param stage markdown phase forwarded to runner / file preview
 	 * @return fenced or file block for prompt, or "" if unresolved/empty
 	 */
-	internal string link_content(Markdown.Document.Format link)
+	internal string link_content(Markdown.Document.Format link, MarkdownPhase stage)
 	{
 		var name = link.title != "" ? link.title : (link.href != "" ? link.href : "unnamed reference");
+		var ref_url = link.href != "" ? link.href : link.path;
+		var title = "### Reference contents for " + name;
+		if (ref_url != "") {
+			title += " — " + ref_url;
+		}
 		if (link.path == "") {
-			var content = this.runner.reference_content(link);
-			if (content != "") {
-				return this.header_fenced(
-					"### Reference contents for " + name,
-					content,
-					"markdown");
-			}
-			return "";
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme == "http" || link.scheme == "https") {
 			return "";
 		}
 		if (link.scheme == "task") {
-			var content = this.runner.reference_content(link);
-			if (content != "") {
-				return this.header_fenced(
-					"### Reference contents for " + name,
-					content,
-					"markdown");
-			}
-			return "";
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme != "file") {
 			return "";
@@ -857,23 +875,27 @@ public class Details : OLLMchat.Agent.Base
 			found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
 		}
 		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
-		return this.header_file(
-			"### Reference contents for " + name,
-			found);
+		return this.header_file(title, found, stage);
 	}
 
 	/**
-	 * Resolved reference block for this task: loop reference_targets; for each,
+	 * Resolved reference block for this task: loop references; for each,
 	 * get content via link_content(). When there are no references, returns "".
 	 * When there are references, returns "## Reference Contents" plus each block.
 	 */
-	private string reference_contents()
+	internal string reference_contents(MarkdownPhase stage)
 	{
 		string[] parts = {};
-		foreach (var link in this.reference_targets) {
-			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s", 
+		foreach (var link in this.references) {
+			GLib.debug("reference_contents: resolving link scheme=%s path=%s href=%s hash=%s",
 				link.scheme, link.path, link.href, link.hash);
-			var block = this.link_content(link);
+			var block = this.link_content(link, stage);
+			if (block != "") {
+				parts += block;
+			}
+		}
+		foreach (var link in this.shared_references) {
+			var block = this.link_content(link, stage);
 			if (block != "") {
 				parts += block;
 			}
@@ -885,7 +907,7 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * Add all reference_targets to the given Tool.
+	 * Add all references to the given Tool.
 	 * Used by add_exec_runs_for_tools() and by the combined branch in
 	 * build_exec_runs().
 	 *
@@ -893,7 +915,7 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	private void add_all_references_to(Tool ex)
 	{
-		foreach (var link in this.reference_targets) {
+		foreach (var link in this.references) {
 			ex.references.add(link);
 		}
 	}
@@ -921,7 +943,7 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
 		var idx = 0;
-		foreach (var link in this.reference_targets) {
+		foreach (var link in this.references) {
 			var ex = new Tool(factory, this.session, this, "ref-%d".printf(idx++));
 			ex.references.add(link);
 			this.exec_runs.add(ex);

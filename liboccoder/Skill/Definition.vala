@@ -33,6 +33,8 @@ namespace OLLMcoder.Skill
 		public string full_content { get; private set; default = ""; }
 		public Gee.HashMap<string, string> header { 
 			get; private set; default = new Gee.HashMap<string, string>(); }
+		/** Optional comma-separated tool names from YAML header `tools` (parsed in load()). */
+		public Gee.ArrayList<string> tools { get; private set; default = new Gee.ArrayList<string>(); }
 		/** File modification time; set in load(). */
 		public int64 mtime { get; private set; default = 0; }
 		/** Parsed refine section as a markdown document (libocmarkdown). */
@@ -83,6 +85,11 @@ namespace OLLMcoder.Skill
 						this.header.set(key, value);
 					}
 				}
+			}
+
+			if (this.header.has_key("tools")) {
+				this.tools.add_all_array(
+					this.header.get("tools").replace(" ", "").strip().split(","));
 			}
 
 			if (!this.header.has_key("name") || this.header.get("name") == "") {

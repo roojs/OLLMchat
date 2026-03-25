@@ -76,7 +76,7 @@ namespace OLLMcoder.Task
 				if (link.scheme == "http" || link.scheme == "https") {
 					block = "";
 				} else {
-					block = this.parent.link_content(link);
+					block = this.parent.link_content(link, OLLMcoder.Task.MarkdownPhase.EXECUTION);
 				}
 				if (block != "") {
 					parts += block;
