@@ -76,7 +76,7 @@ namespace OLLMcoder.Task
 				if (link.scheme == "http" || link.scheme == "https") {
 					block = "";
 				} else {
-					block = this.parent.link_content(link, OLLMcoder.Task.MarkdownPhase.EXECUTION);
+					block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
 				}
 				if (block != "") {
 					parts += block;
@@ -232,7 +232,7 @@ namespace OLLMcoder.Task
 		 * What the prompt gets (template placeholders and what we fill):
 		 *
 		 *   ## What is needed
-		 *   {what_is_needed}     <- task_data "What is needed"
+		 *   {what_is_needed}     <- task_data "what is needed"
 		 *
 		 *   ## Skill definition
 		 *   {skill_definition}   <- this task's skill body
@@ -264,7 +264,7 @@ namespace OLLMcoder.Task
 			var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
 			tpl.system_fill(0);
 			tpl.fill(6,
-				"what_is_needed", this.parent.task_data.get("What is needed").to_markdown(),
+				"what_is_needed", this.parent.task_data.get("what is needed").to_markdown(),
 				"skill_definition", definition.execute,
 				"project_description", project_description,
 				"executor_input", executor_input,

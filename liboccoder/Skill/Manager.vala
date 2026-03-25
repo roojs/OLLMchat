@@ -39,14 +39,14 @@ namespace OLLMcoder.Skill
 		/** Returns true if task's skill exists in by_name; false otherwise. Caller generates error message. */
 		public bool validate(OLLMcoder.Task.Details task)
 		{
-			var skill_name = task.task_data.get("Skill").to_markdown().strip();
+			var skill_name = task.task_data.get("skill").to_markdown().strip();
 			return skill_name != "" && this.by_name.has_key(skill_name);
 		}
 
 		/** Skill name from task; call only after validate(task). */
 		public Definition fetch(OLLMcoder.Task.Details task)
 		{
-			var skill_name = task.task_data.get("Skill").to_markdown().strip();
+			var skill_name = task.task_data.get("skill").to_markdown().strip();
 			var definition = this.by_name.get(skill_name);
 			if (definition == null) {
 				GLib.critical("skill_manager.fetch: no definition for skill_name='%s' (by_name has %u skills)", skill_name, this.by_name.size);

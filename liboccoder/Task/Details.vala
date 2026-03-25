@@ -37,7 +37,7 @@ public enum MarkdownPhase
  *
  * Refined task (refinement output): section "Refined task" with same list plus
  * ''Skill call'' and an optional fenced code block. Parser uses
- * ListItem.to_key_map() for both; update_props(refined_map); code added
+ * ListItem.to_key_map(..., a_2_z) for both; update_props(refined_map); code added
  * directly to code_blocks.
  *
  * Execution: after refinement, the runner calls build_exec_runs() then run_exec().
@@ -458,39 +458,39 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
-	 * If task_data has no "Name" or empty, set Name = (Skill or "Task") + " " + index.
+	 * If task_data has no "name" or empty, set name = (skill or "Task") + " " + index.
 	 * Single method.
 	 *
 	 * @param i step index (0-based) used for the default name
 	 */
 	public void fill_name(int i)
 	{
-		var name_block = this.task_data.has_key("Name") ?
-			this.task_data.get("Name").to_markdown().strip() : "";
+		var name_block = this.task_data.has_key("name") ?
+			this.task_data.get("name").to_markdown().strip() : "";
 		if (name_block != "") {
 			return;
 		}
 		// Allow empty skill; validate_skills() will report this as a bad task.
-		var skill = this.task_data.has_key("Skill") ?
-			this.task_data.get("Skill").to_markdown().strip() : "";
+		var skill = this.task_data.has_key("skill") ?
+			this.task_data.get("skill").to_markdown().strip() : "";
 		var name = (skill != "" ? skill : "Task") + " " + i.to_string();
 		var b = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
 		b.adopt(new Markdown.Document.Format.from_text(name));
-		this.task_data.set("Name", b);
+		this.task_data.set("name", b);
 	}
 
 	/**
 	 * This task's name as slug (e.g. "Research 1" → "research-1").
-	 * Returns "" if no Name in task_data or empty.
+	 * Returns "" if no name in task_data or empty.
 	 *
 	 * @return slug string for filenames and task refs
 	 */
 	public string slug()
 	{
-		if (!this.task_data.has_key("Name")) {
+		if (!this.task_data.has_key("name")) {
 			return "";
 		}
-		var name = this.task_data.get("Name").to_markdown().strip();
+		var name = this.task_data.get("name").to_markdown().strip();
 		if (name == "") {
 			return "";
 		}
@@ -507,8 +507,8 @@ public class Details : OLLMchat.Agent.Base
 	{
 		var section = (this.step.title != "") ?
 			this.step.title : "section " + (this.step_index >= 0 ? (this.step_index + 1).to_string() : "?");
-		var name = this.task_data.has_key("Name") ? 
-			this.task_data.get("Name").to_markdown().strip() : "";
+		var name = this.task_data.has_key("name") ?
+			this.task_data.get("name").to_markdown().strip() : "";
 		if (name != "") {
 			return section + " \"" + name + "\"";
 		}
@@ -552,7 +552,10 @@ public class Details : OLLMchat.Agent.Base
 	public OLLMcoder.Skill.PromptTemplate refinement_prompt() throws GLib.Error
 	{
 		var definition = this.skill_manager.fetch(this);
-		var tpl = OLLMcoder.Skill.PromptTemplate.template("task_refinement.md");
+		var tpl = OLLMcoder.Skill.PromptTemplate.template(
+			definition.tools.size > 0 && !definition.tools.contains("write_file")
+				? "task_refinement.md"
+				: "task_refinement_references.md");
 		tpl.system_fill(0);
 		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
 		tpl.fill(7,
@@ -582,7 +585,7 @@ public class Details : OLLMchat.Agent.Base
 		this.refine_error = null;
 		this.add_message(new OLLMchat.Message("ui",
 			OLLMchat.Message.fenced("markdown.oc-frame-info.collapsed Refining " +
-				this.task_data.get("Name").to_markdown().strip() + " with " +
+				this.task_data.get("name").to_markdown().strip() + " with " +
 				this.session.model_usage.display_name_with_size(),
 					  this.to_markdown(MarkdownPhase.COARSE))));
 		yield this.fill_model();
@@ -629,7 +632,7 @@ public class Details : OLLMchat.Agent.Base
 			}
 			this.result_parser = new ResultParser(this.runner, response_text);
 			this.result_parser.extract_refinement(this);
-			var task_name = this.task_data.get("Name").to_markdown().strip();
+			var task_name = this.task_data.get("name").to_markdown().strip();
 			if (this.runner.in_replay) {
 				((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(this.result_parser.issues);
 			}
@@ -646,13 +649,13 @@ public class Details : OLLMchat.Agent.Base
 					response_text + "\n\nParse issues:\n" + this.result_parser.issues);
 				this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 					"text.oc-frame-danger.collapsed Refinement for \"" + 
-						this.task_data.get("Name").to_markdown().strip() + "\" had issues (retrying)",
+						this.task_data.get("name").to_markdown().strip() + "\" had issues (retrying)",
 					this.result_parser.issues.strip())));
 			}
 		}
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Refinement for \"" + 
-				this.task_data.get("Name").to_markdown().strip() + "\" failed after 5 tries",
+				this.task_data.get("name").to_markdown().strip() + "\" failed after 5 tries",
 			this.result_parser.issues.strip())));
 		throw new GLib.IOError.INVALID_ARGUMENT("Task refinement: " + this.result_parser.issues);
 	}
@@ -696,44 +699,52 @@ public class Details : OLLMchat.Agent.Base
 	public string to_markdown(MarkdownPhase phase)
 	{
 		string[] order = {
-			"Name",
-			"What is needed",
-			"Skill",
-			"References",
-			"Expected output",
-			"Output"
+			"name",
+			"what is needed",
+			"skill",
+			"references",
+			"shared references",
+			"examination references",
+			"expected output",
+			"requires user approval",
+			"output"
 		};
 		var ret = "";
 		for (var i = 0; i < order.length; i++) {
 			var key = order[i];
 			switch (key) {
-				case "References":
+				case "references":
+				case "shared references":
+				case "examination references":
 					if (phase == MarkdownPhase.REFINE_COMPLETED) {
 						continue;
 					}
 					break;
-				case "Output":
+				case "output":
 					if ((phase != MarkdownPhase.LIST &&
 							phase != MarkdownPhase.REFINE_COMPLETED)
 							|| !this.exec_done) {
 						continue;
 					}
-					if (this.task_post_exec_summary.text_content().strip() != "" ||
-							this.task_output_document.header_list.size > 0) {
-						ret += "#### Task result\n\n";
-						ret += this.task_post_exec_summary.to_markdown_with_content()
-							.strip() + "\n\n";
-						if (this.task_output_document.header_list.size > 0) {
-							string[] titles = {};
-							foreach (var hkey in this.task_output_document.header_list) {
-								var hb = this.task_output_document.headings.get(hkey);
-								var t = hb != null ? hb.text_content().strip() : hkey;
-								titles += (t != "" ? t : hkey);
-							}
-							ret += "**Sections in this output:** " +
-								string.joinv(", ", titles) + "\n\n";
-						}
+					// Executor output: always include the post-exec result summary (Result summary body).
+					ret += "#### Task result\n\n";
+					ret += this.task_post_exec_summary.to_markdown_with_content()
+						.strip() + "\n\n";
+					// Other top-level headings in the output doc: bullet list of [title](#gfm-slug) for in-doc navigation.
+					if (this.task_output_document.header_list.size == 0) {
+						continue;
 					}
+					string[] section_links = {};
+					foreach (var slug in this.task_output_document.header_list) {
+						var hb = this.task_output_document.headings.get(slug);
+						var title = hb != null ? hb.text_content().strip() : slug;
+						if (title == "") {
+							title = slug;
+						}
+						section_links += "- [" + title + "](#" + slug + ")";
+					}
+					ret += "**Sections in this output:**\n\n"
+						+ string.joinv("\n", section_links) + "\n\n";
 					continue;
 				default:
 					break;
@@ -745,11 +756,11 @@ public class Details : OLLMchat.Agent.Base
 			if (block.children.size == 0) {
 				continue;
 			}
-			ret += "- **" + key + "** " + block.to_markdown() + "\n";
+			ret += "- **" + key.substring(0, 1).up() + key.substring(1) + "** "
+				+ block.to_markdown() + "\n";
 		}
-		// Omit ## Tool Calls for REFINE_COMPLETED and POST_EXEC; include only for REFINEMENT/EXECUTION when tools exist.
 		if (phase == MarkdownPhase.REFINE_COMPLETED || phase == MarkdownPhase.POST_EXEC ||
-			 this.tools.size == 0) {
+				this.tools.size == 0) {
 			return ret;
 		}
 		ret += "\n## Tool Calls\n\n";
@@ -986,7 +997,7 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	public async void run_exec() throws GLib.Error
 	{
-		var task_name = this.task_data.get("Name").to_markdown().strip();
+		var task_name = this.task_data.get("name").to_markdown().strip();
 		for (var i = 0; i < this.exec_runs.size; i++) {
 			var ex = this.exec_runs.get(i);
 			this.add_message(new OLLMchat.Message("ui",
@@ -1049,7 +1060,7 @@ public class Details : OLLMchat.Agent.Base
 		var last_issues = "";
 		for (var try_count = 0; try_count < 5; try_count++) {
 			var tpl = this.post_exec_prompt(response_text, last_issues);
-			var task_name = this.task_data.get("Name").to_markdown().strip();
+			var task_name = this.task_data.get("name").to_markdown().strip();
 			var model_label = this.session.model_usage.model != "" ?
 				this.session.model_usage.display_name_with_size() : "";
 			var model_part = model_label != "" ? " with " + model_label : "";
@@ -1087,7 +1098,7 @@ public class Details : OLLMchat.Agent.Base
 					last_issues)));
 			}
 		}
-		var task_name_fail = this.task_data.get("Name").to_markdown().strip();
+		var task_name_fail = this.task_data.get("name").to_markdown().strip();
 		this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
 			"text.oc-frame-danger.collapsed Summation of tool calls failed for \"" + task_name_fail + "\"",
 			last_issues.strip())));

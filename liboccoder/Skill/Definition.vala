@@ -75,6 +75,7 @@ namespace OLLMcoder.Skill
 			this.execute = parts[2].strip();
 
 			this.header.clear();
+			this.tools.clear();
 			foreach (var line in header_text.split("\n")) {
 				var stripped = line.strip();
 				var colon = stripped.index_of(":");
