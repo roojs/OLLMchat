@@ -544,7 +544,7 @@ public class Details : OLLMchat.Agent.Base
 			"task_reference_contents", this.reference_contents(),
 			"skill_details", definition.refine,
 			"completed_task_list", (completed_md == "" ? "" : 
-				"## Completed tasks (so far)\n\n" + completed_md));
+				"## Completed tasks (so far) for your reference only\n\n" + completed_md));
 		return tpl;
 	}
 
@@ -718,7 +718,11 @@ public class Details : OLLMchat.Agent.Base
 			if (!this.task_data.has_key(key)) {
 				continue;
 			}
-			ret += "- **" + key + "** " + this.task_data.get(key).to_markdown() + "\n";
+			var block = this.task_data.get(key);
+			if (block.children.size == 0) {
+				continue;
+			}
+			ret += "- **" + key + "** " + block.to_markdown() + "\n";
 		}
 		// Omit ## Tool Calls for REFINE_COMPLETED and POST_EXEC; include only for REFINEMENT/EXECUTION when tools exist.
 		if (phase == MarkdownPhase.REFINE_COMPLETED || phase == MarkdownPhase.POST_EXEC ||
