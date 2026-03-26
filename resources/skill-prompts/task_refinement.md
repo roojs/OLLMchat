@@ -144,3 +144,5 @@ When a task **references another task's output**, the link target is **not** the
 ## Skill Details
 
 {skill_details}
+
+{tool_instructions}

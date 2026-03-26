@@ -342,6 +342,44 @@ public class Details : OLLMchat.Agent.Base
 	}
 
 	/**
+	 * Fenced JSON blocks from the session tool registry for each name in the skill's tools list.
+	 * Empty when there are no tools, the skill lists write_file, or nothing resolves to BaseTool.
+	 */
+	public string tool_instructions(OLLMcoder.Skill.Definition definition)
+	{
+		if (definition.tools.size < 1 || definition.tools.contains("write_file")) {
+			return "";
+		}
+		string[] chunks = {};
+		foreach (var tool_name in definition.tools) {
+			var original = this.runner.session.manager.tools.get(tool_name);
+			if (original == null || !(original is OLLMchat.Tool.BaseTool)) {
+				continue;
+			}
+			var base_tool = (OLLMchat.Tool.BaseTool) original;
+			var schema = new Json.Object();
+			schema.set_string_member("name", base_tool.function.name);
+			schema.set_string_member("description", base_tool.function.description);
+			var param_node = Json.gobject_serialize(base_tool.function.parameters);
+			param_node.get_object().set_string_member("type", base_tool.function.parameters.x_type);
+			schema.set_object_member("parameters", param_node.get_object());
+			var root = new Json.Node(Json.NodeType.OBJECT);
+			root.set_object(schema);
+			var gen = new Json.Generator();
+			gen.set_root(root);
+			var ret = gen.to_data(null);
+			if (base_tool.example_call != "") {
+				ret += "\nExample: " + base_tool.example_call;
+			}
+			chunks += "```json\n" + ret + "\n```\n\n";
+		}
+		if (chunks.length == 0) {
+			return "";
+		}
+		return "## Registered tool definitions\n\n" + string.joinv("", chunks);
+	}
+
+	/**
 	 * Build refinement prompt template (no current_file; reference_contents
 	 * includes current file when in the task's References).
 	 */
@@ -352,9 +390,15 @@ public class Details : OLLMchat.Agent.Base
 			definition.tools.size > 0 && !definition.tools.contains("write_file")
 				? "task_refinement.md"
 				: "task_refinement_references.md");
-		tpl.system_fill(0);
+		var toolcall = (definition.tools.size < 1 || definition.tools.contains("write_file")) ? "" : "DEFAULT";
+
+		tpl.system_fill(4,
+			"toolcall1", toolcall,
+			"toolcall2", toolcall,
+			"toolcall3", toolcall,
+			"toolcall4", toolcall);
 		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
-		tpl.fill(7,
+		tpl.fill(8,
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
 			"task_data", tpl.header_raw("Task", this.to_markdown(MarkdownPhase.REFINEMENT)),
 			"environment", this.runner.env(),
@@ -362,7 +406,8 @@ public class Details : OLLMchat.Agent.Base
 				"" : this.runner.sr_factory.project_manager.active_project.project_description()),
 			"task_reference_contents", this.reference_contents(MarkdownPhase.REFINEMENT),
 			"skill_details", definition.refine,
-			"completed_task_list", (completed_md == "" ? "" : 
+			"tool_instructions", this.tool_instructions(definition),
+			"completed_task_list", (completed_md == "" ? "" :
 				"## Completed tasks (so far) for your reference only\n\n" + completed_md));
 		return tpl;
 	}

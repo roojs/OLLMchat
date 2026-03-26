@@ -16,7 +16,7 @@ namespace OLLMcoder.Task
 	/**
 	 * Parsed tool call (refinement) and/or one execution run.
 	 *
-	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate(), to_instructions().
+	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate().
 	 * Execution run: run_id set; references and optionally tool_call. run() runs the tool (if any)
 	 * then the LLM executor; result in summary and document.
 	 *
@@ -213,7 +213,7 @@ namespace OLLMcoder.Task
 				load_list.add(link);
 			}
 			yield this.load_links(load_list);
-			string reference_content = "";
+			var reference_content = "";
 			if (this.references.size > 0) {
 				string[] ref_parts = {};
 				foreach (var link in this.references) {
@@ -427,34 +427,6 @@ namespace OLLMcoder.Task
 				return false;
 			}
 			return true;
-		}
-
-		/**
-		 * Returns instructions for the refine stage: tool name, description, and
-		 * parameters. Uses this.name to look up the tool from the manager. Call
-		 * after constructing the Tool with name set.
-		 *
-		 * @return JSON schema string for the tool (name, description, parameters)
-		 */
-		public string to_instructions()
-		{
-			var original = this.parent.runner.session.manager.tools.get(this.name);
-			var base_tool = (OLLMchat.Tool.BaseTool) original;
-			var schema = new Json.Object();
-			schema.set_string_member("name", base_tool.function.name);
-			schema.set_string_member("description", base_tool.function.description);
-			var param_node = Json.gobject_serialize(base_tool.function.parameters);
-			param_node.get_object().set_string_member("type", base_tool.function.parameters.x_type);
-			schema.set_object_member("parameters", param_node.get_object());
-			var root = new Json.Node(Json.NodeType.OBJECT);
-			root.set_object(schema);
-			var gen = new Json.Generator();
-			gen.set_root(root);
-			var ret = gen.to_data(null);
-			if (base_tool.example_call != "") {
-				ret += "\nExample: " + base_tool.example_call;
-			}
-			return ret;
 		}
 	}
 }
