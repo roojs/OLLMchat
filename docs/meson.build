@@ -235,6 +235,7 @@ valadoc_docs = custom_target('valadoc',
     '../liboccoder/Task/Step.vala',     # Task: Step → Details
     '../liboccoder/Task/Details.vala',  # Task: Details → ResultParser, Tool
     '../liboccoder/Task/Tool.vala',     # Task: Tool → Details
+    '../liboccoder/Task/WriteChange.vala',  # after Tool — match liboccoder/meson.build
     '../liboccoder/Task/List.vala',     # Task: List → Step, Details
     '../liboccoder/Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
     '../liboccoder/List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)

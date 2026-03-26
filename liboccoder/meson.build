@@ -36,6 +36,7 @@ occoder_src = files([
   'Task/Step.vala',     # Task: Step → Details
   'Task/Details.vala',  # Task: Details → ResultParser, Tool
   'Task/Tool.vala',     # Task: Tool → Details
+  'Task/WriteChange.vala',  # after Tool.vala
   'Task/List.vala',     # Task: List → Step, Details
   'Task/ResultParser.vala',  # Task: ResultParser → List, Step, Details, Tool
   'List/SortedList.vala',  # Must come before Approvals (Approvals uses SortedList)

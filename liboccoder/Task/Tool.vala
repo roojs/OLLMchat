@@ -32,10 +32,22 @@ namespace OLLMcoder.Task
 		public Markdown.Document.Block? summary { get; set; default = null; }
 		/** Executor output document. Set by ResultParser.exec_extract() on success. */
 		public Markdown.Document.Document? document { get; set; default = null; }
-		/** References for this run (one or more). Used by reference_contents() to build executor input. */
-		public Gee.ArrayList<Markdown.Document.Format> references { 
-				get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
-		/** Examination target for this run; shared context stays in {@link references}. When non-null, {@link run} always appends ## Examination reference to executor input (see plan §7 — never omit; empty resolution must be stated explicitly). */
+		/**
+		 * Shared reference links for this exec run.
+		 *
+		 * After {@link Details.build_exec_runs}, this list aliases {@link Details.shared_references}.
+		 * Resolved bodies are inlined in {@link run} for the executor prompt.
+		 */
+		public Gee.ArrayList<Markdown.Document.Format> references {
+			get; set; default = new Gee.ArrayList<Markdown.Document.Format>();
+		}
+		/**
+		 * Primary document or code the executor must focus on.
+		 *
+		 * Shared context stays in {@link references}. When set, {@link run} appends a section
+		 * titled ''Specific Document or Code to consider for this task'' with resolved content
+		 * or an explicit unavailable line.
+		 */
 		public Markdown.Document.Format? exam_reference { get; set; default = null; }
 		/** Tool execution result from this run. Set in run() when this run has a tool_call. */
 		public string tool_run_result { get; set; default = ""; }
@@ -47,6 +59,17 @@ namespace OLLMcoder.Task
 		public string issues { get; set; default = ""; }
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
+
+		/**
+		 * Write operations parsed from the write executor output.
+		 *
+		 * Filled by {@link ResultParser.exec_extract} when the skill lists ``write_file``.
+		 * Cleared at the start of each executor retry in {@link run}.
+		 * Empty for normal executor paths — {@link run} still iterates without branching.
+		 */
+		public Gee.ArrayList<WriteChange> writes {
+			get; set; default = new Gee.ArrayList<WriteChange>();
+		}
 
 		/**
 		 * Creates a tool for refinement (run_id == "") or an execution run (run_id set).
@@ -64,25 +87,6 @@ namespace OLLMcoder.Task
 			if (this.parent.runner.in_replay) {
 				this.chat_call = this.parent.runner.chat_call;
 			}
-		}
-
-		/** Reference contents for this run (from this.references). Can be empty. Http(s) refs ignored. */
-		private string reference_contents()
-		{
-			if (this.references.size == 0) {
-				return "";
-			}
-			string[] parts = {};
-			foreach (var link in this.references) {
-				var block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
-				if (block != "") {
-					parts += block;
-				}
-			}
-			if (parts.length == 0) {
-				return "";
-			}
-			return "## Reference Contents\n\n" + string.joinv("", parts);
 		}
 
 		private async void load_http(Markdown.Document.Format link)
@@ -209,15 +213,27 @@ namespace OLLMcoder.Task
 				load_list.add(link);
 			}
 			yield this.load_links(load_list);
-			var reference_content = this.reference_contents();
+			string reference_content = "";
+			if (this.references.size > 0) {
+				string[] ref_parts = {};
+				foreach (var link in this.references) {
+					var block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
+					if (block != "") {
+						ref_parts += block;
+					}
+				}
+				if (ref_parts.length > 0) {
+					reference_content = "## Reference Contents\n\n" + string.joinv("", ref_parts);
+				}
+			}
 			var exam_content = "";
 			if (this.exam_reference != null) {
 				var eb = this.parent.link_content(this.exam_reference, MarkdownPhase.EXECUTION);
-				exam_content = "\n\n## Examination reference\n\n";
+				exam_content = "\n\n## Specific Document or Code to consider for this task\n\n";
 				if (eb != "") {
 					exam_content += eb;
 				} else {
-					exam_content += "_(Examination reference content is empty or could not be resolved.)_\n";
+					exam_content += "_(The designated document or code could not be loaded or is empty.)_\n";
 				}
 			}
 			var executor_input = tool_output + reference_content + exam_content;
@@ -226,6 +242,7 @@ namespace OLLMcoder.Task
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
+				this.writes.clear();
 				var tpl = this.executor_prompt(executor_input, response_text, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -262,6 +279,9 @@ namespace OLLMcoder.Task
 					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 				}
 				if (exec_ok) {
+					foreach (var w in this.writes) {
+						yield w.exec(this);
+					}
 					return;
 				}
 				this.parent.runner.replay_step("exec_parse_issues",
@@ -312,7 +332,10 @@ namespace OLLMcoder.Task
 			var definition = this.parent.skill_manager.fetch(this.parent);
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
 			var project_description = (project == null) ? "" : project.project_description();
-			var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
+			var tpl = OLLMcoder.Skill.PromptTemplate.template(
+				definition.tools.contains("write_file")
+					? "task_execution_write.md"
+					: "task_execution.md");
 			tpl.system_fill(0);
 			tpl.fill(6,
 				"what_is_needed", this.parent.task_data.get("what is needed").to_markdown(),
