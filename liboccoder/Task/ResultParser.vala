@@ -129,9 +129,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				foreach (var link in t.references) {
-					t.validate_link(link, MarkdownPhase.LIST);
-				}
+				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				vl_list.validate_all(t.references);
+				t.issues += vl_list.issues;
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -181,9 +181,9 @@ public class ResultParser : Object
 			step.register_slugs(i);
 			foreach (var t in step.children) {
 				this.validate_task(t, MarkdownPhase.LIST);
-				foreach (var link in t.references) {
-					t.validate_link(link, MarkdownPhase.LIST);
-				}
+				var vl_list = new ValidateLink(t.runner, t, MarkdownPhase.LIST);
+				vl_list.validate_all(t.references);
+				t.issues += vl_list.issues;
 				if (t.issues != "") {
 					this.issues += "\n" + t.issue_label() + " (References): " + t.issues;
 				}
@@ -420,15 +420,11 @@ public class ResultParser : Object
 				break;
 			}
 			task.update_props(refined_map);
-			foreach (var link in task.references) {
-				task.validate_link(link, MarkdownPhase.REFINEMENT);
-			}
-			foreach (var link in task.shared_references) {
-				task.validate_link(link, MarkdownPhase.REFINEMENT);
-			}
-			foreach (var link in task.exam_references) {
-				task.validate_link(link, MarkdownPhase.REFINEMENT);
-			}
+			var vl_ref = new ValidateLink(task.runner, task, MarkdownPhase.REFINEMENT);
+			vl_ref.validate_all(task.references);
+			vl_ref.validate_all(task.shared_references);
+			vl_ref.validate_all(task.exam_references);
+			task.issues += vl_ref.issues;
 			if (task.references.size > 0) {
 				this.issues += "\n" + "Section \"Task\": **References** must be **empty** in refined output; " +
 					"do not put markdown links there. Move all links to **Shared references** " +
@@ -520,9 +516,9 @@ public class ResultParser : Object
 		}
 		task.task_post_exec_summary = this.document.headings.get("result-summary");
 		task.task_output_document = this.document;
-		foreach (var link in task.task_output_document.links) {
-			task.validate_link(link, MarkdownPhase.POST_EXEC);
-		}
+		var vl_post = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
+		vl_post.validate_all(task.task_output_document.links);
+		task.issues += vl_post.issues;
 		if (task.issues != "") {
 			this.issues += task.issues;
 		}
