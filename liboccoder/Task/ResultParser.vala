@@ -429,6 +429,12 @@ public class ResultParser : Object
 			foreach (var link in task.exam_references) {
 				task.validate_link(link, MarkdownPhase.REFINEMENT);
 			}
+			if (task.references.size > 0) {
+				this.issues += "\n" + "Section \"Task\": **References** must be **empty** in refined output; " +
+					"do not put markdown links there. Move all links to **Shared references** " +
+					"(shared context for every run) and/or **Examination references** " +
+					"(one examination target per execution run).";
+			}
 			if (task.issues != "") {
 				this.issues += "\n" + "Section \"Task\" (References): " + task.issues;
 			}
@@ -469,11 +475,12 @@ public class ResultParser : Object
 			}
 			task.tools.add(tool);
 		}
-		if (task.references.size == 0 && task.shared_references.size == 0
-				&& task.exam_references.size == 0 && task.tools.size == 0) {
-			this.issues += "\n" + "Refinement must provide at least one of References or Tool calls. " +
-				"This task has neither; add markdown links in References and/or fenced JSON blocks in " +
-				" ## Tool Calls so execution has precursor content.";
+		if (task.shared_references.size == 0 && task.exam_references.size == 0
+				&& task.tools.size == 0) {
+			this.issues += "\n" + "Refinement must provide at least one of **Shared references**, " +
+				"**Examination references**, or **Tool calls** (fenced JSON under **## Tool Calls**). " +
+				"put all links in **Shared references** " +
+				"and/or **Examination references** so execution has precursor content.";
 		}
 	}
 

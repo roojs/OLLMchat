@@ -35,6 +35,8 @@ namespace OLLMcoder.Task
 		/** References for this run (one or more). Used by reference_contents() to build executor input. */
 		public Gee.ArrayList<Markdown.Document.Format> references { 
 				get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+		/** Examination target for this run; shared context stays in {@link references}. When non-null, {@link run} always appends ## Examination reference to executor input (see plan §7 — never omit; empty resolution must be stated explicitly). */
+		public Markdown.Document.Format? exam_reference { get; set; default = null; }
 		/** Tool execution result from this run. Set in run() when this run has a tool_call. */
 		public string tool_run_result { get; set; default = ""; }
 		/** Tool name from parsed JSON (e.g. "write_file"). */
@@ -72,12 +74,7 @@ namespace OLLMcoder.Task
 			}
 			string[] parts = {};
 			foreach (var link in this.references) {
-				string block = "";
-				if (link.scheme == "http" || link.scheme == "https") {
-					block = "";
-				} else {
-					block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
-				}
+				var block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
 				if (block != "") {
 					parts += block;
 				}
@@ -86,6 +83,44 @@ namespace OLLMcoder.Task
 				return "";
 			}
 			return "## Reference Contents\n\n" + string.joinv("", parts);
+		}
+
+		private async void load_http(Markdown.Document.Format link)
+		{
+			if (link.scheme != "http" && link.scheme != "https") {
+				return;
+			}
+			var key = link.href != "" ? link.href : link.path;
+			if (this.parent.runner.http_cache.has_key(key)) {
+				return;
+			}
+			if (key == "") {
+				this.parent.runner.http_cache.set(key,
+					"ERROR: Reference URL is empty; cannot prefetch.");
+				return;
+			}
+			var tool_impl = this.parent.runner.session.manager.tools.get("web_fetch");
+			var args = new Json.Object();
+			args.set_string_member("url", key);
+			args.set_string_member("format", "markdown");
+			var fn = new OLLMchat.Response.CallFunction.with_values("web_fetch", args);
+			var call = new OLLMchat.Response.ToolCall.with_values("http-fake-id", fn);
+			var md = yield tool_impl.execute(this.chat(), call, true);
+			this.parent.runner.http_cache.set(key, md);
+		}
+
+		private async void load_links(Gee.Collection<Markdown.Document.Format> links)
+		{
+			foreach (var link in links) {
+				if (link.scheme == "file") {
+					yield this.parent.runner.load_file(link);
+					continue;
+				}
+				if (link.scheme == "http" || link.scheme == "https") {
+					yield this.load_http(link);
+					continue;
+				}
+			}
 		}
 
 		/**
@@ -161,15 +196,31 @@ namespace OLLMcoder.Task
 			if (this.tool_call != null) {
 				var tool_impl = this.parent.runner.session.manager.tools.get(
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
-				this.tool_run_result = yield tool_impl.execute(this.parent.chat(), this.tool_call, true);
+				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
 				tool_output = this.tool_call_details();
 			}
 			 
 				
-			// Load file reference buffers so reference_contents() can get content (same as code search tool)
-			yield this.parent.runner.load_files(this.references);
+			var load_list = new Gee.ArrayList<Markdown.Document.Format>();
+			if (this.exam_reference != null) {
+				load_list.add(this.exam_reference);
+			}
+			foreach (var link in this.references) {
+				load_list.add(link);
+			}
+			yield this.load_links(load_list);
 			var reference_content = this.reference_contents();
-			var executor_input = tool_output + reference_content;
+			var exam_content = "";
+			if (this.exam_reference != null) {
+				var eb = this.parent.link_content(this.exam_reference, MarkdownPhase.EXECUTION);
+				exam_content = "\n\n## Examination reference\n\n";
+				if (eb != "") {
+					exam_content += eb;
+				} else {
+					exam_content += "_(Examination reference content is empty or could not be resolved.)_\n";
+				}
+			}
+			var executor_input = tool_output + reference_content + exam_content;
 			this.add_message(new OLLMchat.Message("ui", 
 				"Tool run finished. Reviewing Tool Output"));
 			var response_text = "";

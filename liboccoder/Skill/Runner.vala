@@ -57,6 +57,10 @@ namespace OLLMcoder.Skill
 		 */
 		public bool in_replay { get; set; default = false; }
 
+		// Filled only by Task.Tool.load_http; read by reference_content; dedupe skips refetch (no clear).
+		// internal: Task.Tool writes; keep cache off Details and off a second map on Tool.
+		internal Gee.HashMap<string, string> http_cache { get; default = new Gee.HashMap<string, string>(); }
+
 		/**
 		 * Emitted during replay before each logical step. Arguments: step name and
 		 * content (e.g. raw text being parsed; empty string when none). Listeners
@@ -93,33 +97,29 @@ namespace OLLMcoder.Skill
 			return ret;
 		}
 
-		/**
-		 * Load file buffers for reference links so that get_contents /
-		 * link_content can read content from the buffer (same pattern as
-		 * code search tool). Links are assumed validated; for each file
-		 * link, creates buffer and loads.
-		 *
-		 * @param links reference links (e.g. task references or
-		 *        Tool.references)
-		 */
-		public async void load_files(Gee.Collection<Markdown.Document.Format> links)
+		public async void load_file(Markdown.Document.Format link)
 		{
 			var project = this.sr_factory.project_manager.active_project;
+			var resolved_path = link.is_relative ? link.abspath(project.path) : link.path;
+			var found = this.sr_factory.project_manager.get_file_from_active_project(resolved_path);
+			if (found == null) {
+				found = new OLLMfiles.File.new_fake(this.sr_factory.project_manager, resolved_path);
+			}
+			this.sr_factory.project_manager.buffer_provider.create_buffer(found);
+			try {
+				yield found.buffer.read_async();
+			} catch (GLib.Error e) {
+				GLib.debug("%s: %s", found.path, e.message);
+			}
+		}
+
+		public async void load_links(Gee.Collection<Markdown.Document.Format> links)
+		{
 			foreach (var link in links) {
 				if (link.scheme != "file") {
 					continue;
 				}
-				var resolved_path = link.is_relative ? link.abspath(project.path) : link.path;
-				var found = this.sr_factory.project_manager.get_file_from_active_project(resolved_path);
-				if (found == null) {
-					found = new OLLMfiles.File.new_fake(this.sr_factory.project_manager, resolved_path);
-				}
-				this.sr_factory.project_manager.buffer_provider.create_buffer(found);
-				try {
-					yield found.buffer.read_async();
-				} catch (GLib.Error e) {
-					GLib.debug("Runner.load_files: %s: %s", found.path, e.message);
-				}
+				yield this.load_file(link);
 			}
 		}
 
@@ -189,7 +189,14 @@ namespace OLLMcoder.Skill
 				return anchor_md;
 			}
 			if (link.scheme == "http" || link.scheme == "https") {
-				GLib.error("reference_content: http(s) links are not resolved");
+				if (stage != OLLMcoder.Task.MarkdownPhase.EXECUTION) {
+					return "";
+				}
+				var key = link.href != "" ? link.href : link.path;
+				if (key == "" || !this.http_cache.has_key(key)) {
+					return "";
+				}
+				return this.http_cache.get(key);
 			}
 			GLib.error("reference_content: unsupported link scheme or path (href=%s)", link.href);
 		}

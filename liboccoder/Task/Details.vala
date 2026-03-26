@@ -591,11 +591,6 @@ public class Details : OLLMchat.Agent.Base
 		yield this.fill_model();
 		// Refiner must not have tools; the model must only output text (Skill call + Tool Calls as text).
 		this.chat_call.tools.clear();
-		// Load file reference buffers so reference_contents() can get content (same as code search tool)
-		var load_list = new Gee.ArrayList<Markdown.Document.Format>();
-		load_list.add_all(this.references);
-		load_list.add_all(this.shared_references);
-		yield this.runner.load_files(load_list);
 		for (var i = 0; i < 5; i++) {
 			if (cancellable != null && cancellable.is_cancelled()) {
 				return;
@@ -605,6 +600,7 @@ public class Details : OLLMchat.Agent.Base
 			// to echo them and producing combined output that fails to parse).
 			this.tools.clear();
 			this.code_blocks.clear();
+			yield this.runner.load_links(this.references);
 			this.add_message(new OLLMchat.Message("ui-waiting", "Waiting for response…"));
 			var tpl = this.refinement_prompt();
 			this.session.messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -865,7 +861,11 @@ public class Details : OLLMchat.Agent.Base
 			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme == "http" || link.scheme == "https") {
-			return "";
+			if (stage != MarkdownPhase.EXECUTION) {
+				return "";
+			}
+			var body = this.runner.reference_content(link, stage);
+			return body != "" ? this.header_fenced(title, body, "markdown") : "";
 		}
 		if (link.scheme == "task") {
 			var body = this.runner.reference_content(link, stage);
@@ -917,78 +917,31 @@ public class Details : OLLMchat.Agent.Base
 		return "## Reference Contents\n\n" + string.joinv("", parts);
 	}
 
-	/**
-	 * Add all references to the given Tool.
-	 * Used by add_exec_runs_for_tools() and by the combined branch in
-	 * build_exec_runs().
-	 *
-	 * @param ex the Tool (exec run) to add references to
-	 */
-	private void add_all_references_to(Tool ex)
-	{
-		foreach (var link in this.references) {
-			ex.references.add(link);
-		}
-	}
-
-	/**
-	 * Scenario 1: one Tool per tool; reuse each from this.tools, set id, add all references,
-	 * add to exec_runs.
-	 */
-	private void add_exec_runs_for_tools()
-	{
-		var idx = 0;
-		foreach (var ex in this.tools) {
-			ex.id = "tool-%d".printf(idx++);
-			this.add_all_references_to(ex);
-			this.exec_runs.add(ex);
-		}
-	}
-
-	/**
-	 * Scenario 2: one Tool per reference; each with references =
-	 * single-element list.
-	 * If no refs, one Tool with id "exec".
-	 */
-	private void add_exec_runs_for_references()
-	{
-		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
-		var idx = 0;
-		foreach (var link in this.references) {
-			var ex = new Tool(factory, this.session, this, "ref-%d".printf(idx++));
-			ex.references.add(link);
-			this.exec_runs.add(ex);
-		}
-		if (this.exec_runs.size == 0) {
-			var ex = new Tool(factory, this.session, this, "exec");
-			this.exec_runs.add(ex);
-		}
-	}
-
-	/**
-	 * Populate exec_runs. Three scenarios only: (1) tools when run →
-	 * one Tool per tool; (2) refs without tools → one per ref;
-	 * (3) combined → one run with all refs.
-	 * Does not run them. Return early per branch.
-	 */
 	public void build_exec_runs()
 	{
 		this.exec_runs.clear();
-		var definition = this.skill_manager.fetch(this);
-		var execute_combined = definition.header.has_key("execute-combined") &&
-			definition.header.get("execute-combined").strip() != "";
+		var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
+		var idx = 0;
+		if (this.exam_references.size > 0) {
+			foreach (var exam in this.exam_references) {
+				var ex = new Tool(factory, this.session, this, "exam-%d".printf(idx++));
+				ex.exam_reference = exam;
+				ex.references = this.shared_references;
+				this.exec_runs.add(ex);
+			}
+			return;
+		}
 		if (this.tools.size > 0) {
-			this.add_exec_runs_for_tools();
+			foreach (var ex in this.tools) {
+				ex.id = "tool-%d".printf(idx++);
+				ex.references = this.shared_references;
+				this.exec_runs.add(ex);
+			}
 			return;
 		}
-		if (execute_combined) {
-			var factory = (OLLMchat.Agent.Factory) this.runner.sr_factory;
-			var ex = new Tool(factory, this.session, this, "exec");
-			this.add_all_references_to(ex);
-			this.exec_runs.add(ex);
-			return;
-		}
-		this.add_exec_runs_for_references();
+		var lone = new Tool(factory, this.session, this, "exec");
+		lone.references = this.shared_references;
+		this.exec_runs.add(lone);
 	}
 
 	/**
