@@ -805,7 +805,17 @@ public class Details : OLLMchat.Agent.Base
 				break;
 			}
 		}
-		yield this.run_post_exec();
+		// Multi-run: post-exec summarizes combined tool runs (write_file runs are included inside each run).
+		// Single run: no synthesis pass — copy that run's executor output.
+		// Invariant: build_exec_runs() leaves exec_runs.size >= 1 before run_exec().
+		if (this.exec_runs.size > 1) {
+			yield this.run_post_exec();
+			this.exec_done = true;
+			return;
+		}
+		var last = this.exec_runs.get(this.exec_runs.size - 1);
+		this.task_post_exec_summary = last.summary;
+		this.task_output_document = last.document;
 		this.exec_done = true;
 	}
 

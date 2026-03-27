@@ -56,12 +56,7 @@ namespace Markdown.Document
 		/** Call when a top-level heading block is adopted; keeps headings in sync. Key is GFM-style anchor (lowercase, non-alphanumeric → hyphen, trimmed). Only stores the first occurrence of each key. */
 		internal void register_heading(Block b)
 		{
-			var raw = b.text_content().strip();
-			if (raw == "") {
-				return;
-			}
-			var key = new GLib.Regex("[^a-z0-9]+").replace(raw.down(), -1, 0, "-", 0);
-			key = new GLib.Regex("^-+|-+$").replace(key, -1, 0, "", 0);
+			var key = b.slug();
 			if (key == "" || this.headings.has_key(key)) {
 				return;
 			}

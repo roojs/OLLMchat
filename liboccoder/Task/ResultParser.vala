@@ -490,13 +490,46 @@ public class ResultParser : Object
 	public bool exec_extract(Tool ex)
 	{
 		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
-				"It was missing or not found in the response. " +
-				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
+			this.issues += "\nThis task's executor output must include a \"Result summary\" section.";
 			return false;
 		}
 		ex.summary = this.document.headings.get("result-summary");
 		ex.document = this.document;
+		var sum_render = new Markdown.Document.Render();
+		sum_render.parse(ex.summary.to_markdown_with_content());
+		var vl_sum = new ValidateLink(this.runner, ex.parent, MarkdownPhase.POST_EXEC);
+		vl_sum.validate_all(sum_render.document.links);
+		if (vl_sum.issues != "") {
+			this.issues += vl_sum.issues;
+			return false;
+		}
+		if (!ex.parent.skill_manager.fetch(ex.parent).tools.contains("write_file")) {
+			return true;
+		}
+		ex.writes.clear();
+		var write_path_issues_start = this.issues.length;
+		foreach (var slug in this.document.header_list) {
+			if (slug == "result-summary") {
+				continue;
+			}
+			var hb = this.document.headings.get(slug);
+			if (hb.parent != this.document) {
+				continue;
+			}
+			var wc = new WriteChange.from_header(hb);
+			if (wc.issues == "") {
+				ex.writes.add(wc);
+				continue;
+			}
+			this.issues += "\n" + wc.issues;
+		}
+		if (ex.writes.size == 0) {
+			this.issues += "\nWrite executor output must include a recognizable Change details section.";
+			return false;
+		}
+		if (this.issues.length > write_path_issues_start) {
+			return false;
+		}
 		return true;
 	}
 
@@ -510,15 +543,16 @@ public class ResultParser : Object
 	public void exec_post_extract(Details task)
 	{
 		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\n" +
-				"Post-exec output must include ## Result summary.";
+			this.issues += "\nPost-exec output must include ## Result summary.";
 			return;
 		}
 		task.task_post_exec_summary = this.document.headings.get("result-summary");
 		task.task_output_document = this.document;
-		var vl_post = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
-		vl_post.validate_all(task.task_output_document.links);
-		task.issues += vl_post.issues;
+		var sum_render = new Markdown.Document.Render();
+		sum_render.parse(task.task_post_exec_summary.to_markdown_with_content());
+		var vl_sum = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
+		vl_sum.validate_all(sum_render.document.links);
+		task.issues += vl_sum.issues;
 		if (task.issues != "") {
 			this.issues += task.issues;
 		}
