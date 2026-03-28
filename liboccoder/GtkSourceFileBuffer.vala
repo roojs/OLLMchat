@@ -166,26 +166,32 @@ namespace OLLMcoder
 		 */
 		public string get_text(int start_line = 0, int end_line = -1)
 		{
-			Gtk.TextIter start, end;
-			this.get_bounds(out start, out end);
+			Gtk.TextIter buf_start, buf_end;
+			this.get_bounds(out buf_start, out buf_end);
 			
-			if (end_line >= 0 && end_line >= start_line) {
-				// Limit to specified line range
-				var line_start = start;
-				line_start.forward_lines(start_line);
-				var line_end = start;
-				if (end_line > start_line) {
-					line_end.forward_lines(end_line);
-				} else {
-					line_end = line_start;
-				}
-				if (!line_end.ends_line()) {
-					line_end.forward_to_line_end();
-				}
-				return ((Gtk.TextBuffer) this).get_text(line_start, line_end, true);
+			if (end_line < 0 || end_line < start_line) {
+				return ((Gtk.TextBuffer) this).get_text(buf_start, buf_end, true);
 			}
 			
-			return ((Gtk.TextBuffer) this).get_text(start, end, true);
+			int max_idx = buf_end.get_line();
+			start_line = start_line < 0 ? 0 : start_line;
+			if (start_line > max_idx) {
+				// start line after end
+				return "";
+			}
+			end_line = int.min(end_line, max_idx);
+			var line_start = buf_start;
+			line_start.forward_lines(start_line);
+			var line_end = buf_start;
+			if (end_line > start_line) {
+				line_end.forward_lines(end_line);
+			} else {
+				line_end = line_start;
+			}
+			if (!line_end.ends_line()) {
+				line_end.forward_to_line_end();
+			}
+			return ((Gtk.TextBuffer) this).get_text(line_start, line_end, true);
 		}
 		
 		/**

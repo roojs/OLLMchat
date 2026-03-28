@@ -253,7 +253,7 @@ namespace OLLMvector.Indexing
 			}
 
 			// Get file line count for end_line
-			var file_line_count = tree.file.get_line_count();
+			var file_line_count = tree.file.line_count();
 			if (file_line_count <= 0) {
 				// Fallback: count lines from tree.lines if available
 				if (tree.lines != null && tree.lines.length > 0) {

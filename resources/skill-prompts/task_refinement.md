@@ -30,9 +30,9 @@ When this task references a **completed** prior task (e.g. `[Research 1 Results]
 {toolcall3/start}
 ## How to run tools
 
-**Encourage multiple tool calls** — Output as many fenced blocks as needed; the Runner runs them all and passes every result to the skill. Prefer several focused tool calls over one broad one (e.g. multiple codebase_search queries, or multiple read_file for different sections). More tool calls give the skill richer context and reduce the need for follow-up.
+**Encourage multiple tool calls** — Output as many fenced blocks as needed; the Runner runs them all and passes every result to the skill. Prefer several focused tool calls over one broad one (e.g. multiple codebase_search queries with different focuses). More tool calls give the skill richer context and reduce the need for follow-up.
 
-- **File content:** The best way to add file content is **References** (markdown links with absolute path in the task); the Runner injects content. Use the **ReadFile** tool only when you need a **specific part** of a file (e.g. a line range), not for whole-file context.
+- **File content:** List files and sections in **References** as markdown links (absolute paths); the Runner injects content. For only part of a file, use a **file section** link (`#anchor` — GFM heading or AST path), not a separate read step.
 - **Codebase search / research:** Use **multiple queries** when researching; issue several tool calls and study the combined results - more informative than a single call. **References from search results:** Only add file or file-section links to **References** when the content of that file (or part) is **relevant to the search results and to what the task needs**. Do not add references just because they were returned — you may have used paths or context to focus the search; that does not mean they should become References. Add a reference only when there is a good reason (e.g. the executor will need that content); otherwise omit it.
 
 The Runner executes one tool call per fenced code block. Each block must contain a single JSON object with **name** (required) and **arguments** (optional object). Output one fenced code block per tool call in the ## Tool Calls section (add as many as needed). The Runner assigns an id to each call and passes results to the skill.
@@ -59,7 +59,7 @@ Produce your response with **## Task** (required). When the skill uses tools, al
    - **Expected output** *(description)*
 
 {toolcall4/start}
-2. **## Tool Calls** Zero or more fenced code blocks. One block per tool call. Each block body is a single JSON object with **name** (required) and optional **arguments** (object). Example: { "name": "read_file", "arguments": {"file_path": "/path/to/file", "start_line": 1, "end_line": 50} }. Do not include an id; the Runner assigns ids.
+2. **## Tool Calls** Zero or more fenced code blocks. One block per tool call. Each block body is a single JSON object with **name** (required) and optional **arguments** (object). Example: { "name": "codebase_search", "arguments": { "query": "where X is implemented" } }. Do not include an id; the Runner assigns ids.
 
 ## Example of expected output (structure only)
 
@@ -79,7 +79,7 @@ The following illustrates the **shape** of the output. Use the same headings and
 ```
 
 ```json
-{ "name": "read_file", "arguments": { "file_path": "/abs/path/to/RelevantFile.js", "start_line": 10, "end_line": 25 } }
+{ "name": "web_fetch", "arguments": { "url": "https://example.com/docs" } }
 ```
 
 *(Omit the ## Tool Calls section entirely if no tool calls are needed; otherwise one fenced block per call.)*
@@ -110,8 +110,7 @@ When a task **references another task's output**, the link target is **not** the
 - **Do** — Use **absolute** paths for files and file sections.
 - **Do** — Form **markdown** `#anchor` on **file** paths (`/path/to/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
 - **Do** — Use **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; **links to files are the best way to add file content**; the Runner injects content.
-- **Do** — Use **ReadFile** only for a **specific part** of a file (e.g. line range), not whole-file context.
-- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** for markdown headings; **AST** for code — full path format e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
+- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` when only part of a file is needed — **GFM** for markdown headings; **AST** for code — full path format e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
 - **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): **`[Research 1 Results](task://research-1.md)`** — stop at **`.md`**.
 - **Do** — Use **URL** links `[Title](https://…)` only when the skill has a tool that can fetch web pages (e.g. web_fetch).
 

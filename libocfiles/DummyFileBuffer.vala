@@ -107,16 +107,15 @@ namespace OLLMfiles
 				}
 			}
 			
-			// Handle line range
-			start_line = start_line < 0 ? 0 : start_line;
-			end_line = end_line == -1 ? this.lines.length - 1 : (end_line >= this.lines.length ? this.lines.length - 1 : end_line);
-			
-			if (start_line > end_line) {
+			// Handle line range (0-based inclusive; ''end_line == -1'' = through last line)
+			if (start_line < 0 || start_line >= this.lines.length) {
 				return "";
 			}
-			
-			// Extract lines and join
-			return string.joinv("\n", this.lines[start_line:end_line+1]);
+			int el = end_line == -1 ? this.lines.length - 1 : (end_line >= this.lines.length ? this.lines.length - 1 : end_line);
+			if (el < start_line) {
+				return "";
+			}
+			return string.joinv("\n", this.lines[start_line:el + 1]);
 		}
 		
 		/**
