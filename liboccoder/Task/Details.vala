@@ -646,8 +646,15 @@ public class Details : OLLMchat.Agent.Base
 	 */
 	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage)
 	{
-		var content = stage == MarkdownPhase.REFINEMENT ? file.get_contents(10) : file.get_contents(0);
-		content += stage == MarkdownPhase.REFINEMENT && file.get_line_count() > 10 ? "\n\n_(abbreviated)_\n" : "";
+		var content = stage == MarkdownPhase.REFINEMENT
+			? file.get_contents(20)
+			: file.get_contents(0);
+		if (stage == MarkdownPhase.REFINEMENT) {
+			if (file.get_line_count() > 20) {
+				content += "\n\n**This has been abbreviated.** The full content has "
+					+ file.get_line_count().to_string() + " lines.\n";
+			}
+		}
 		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
 		return line + "\n\n"
 			+ fence

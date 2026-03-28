@@ -165,10 +165,12 @@ namespace OLLMcoder.Skill
 				var section_md = doc.headings.get(link.hash).to_markdown_with_content();
 				if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
 					string[] lines = section_md.split("\n");
-					if (lines.length <= 10) {
+					if (lines.length <= 20) {
 						return section_md;
 					}
-					return string.joinv("\n", lines[0:10]) + "\n\n_(abbreviated)_\n";
+					return string.joinv("\n", lines[0:20])
+						+ "\n\n**This has been abbreviated.** The full content has "
+						+ lines.length.to_string() + " lines.\n";
 				}
 				return section_md;
 			}
@@ -181,10 +183,12 @@ namespace OLLMcoder.Skill
 				var anchor_md = block.to_markdown_with_content();
 				if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
 					string[] lines = anchor_md.split("\n");
-					if (lines.length <= 10) {
+					if (lines.length <= 20) {
 						return anchor_md;
 					}
-					return string.joinv("\n", lines[0:10]) + "\n\n_(abbreviated)_\n";
+					return string.joinv("\n", lines[0:20])
+						+ "\n\n**This has been abbreviated.** The full content has "
+						+ lines.length.to_string() + " lines.\n";
 				}
 				return anchor_md;
 			}
