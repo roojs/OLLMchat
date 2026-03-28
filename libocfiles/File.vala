@@ -346,26 +346,26 @@ namespace OLLMfiles
 		 * This method requires ''file.buffer'' to be non-null. Ensure buffer is created
 		 * before use:
 		 * {{{
-		 * if (file.buffer == null) {
-		 *     file.manager.buffer_provider.create_buffer(file);
-		 * }
-		 * var all = file.contents();
+		 *         if (file.buffer == null) {
+		 *                 file.manager.buffer_provider.create_buffer(file);
+		 *         }
+		 *         var all = file.contents();
 		 * }}}
-		 * 
 		 * Buffer must be loaded first (via read_async() or automatic loading).
 		 * 
 		 * == Two modes (second parameter) ==
 		 * 
-		 * * ''end_line == -1'' (default) — ''start_or_count'' is how many lines to take from
-		 *   the **start** of the file: ''-1'' or ''0'' (or any ''<= 0'') means the **whole** file;
-		 *   ''N > 0'' means the first ''N'' lines (e.g. ''contents(2)'' is the first two lines).
-		 * * ''end_line != -1'' — ''start_or_count'' and ''end_line'' are **1-based inclusive**
-		 *   line numbers (e.g. ''contents(2, 5)'' is lines 2 through 5). The lower and upper
-		 *   lines are ''int.min'' / ''int.max'' so the pair may be passed in either order.
-		 *   Further bounds and clamping are handled by ''buffer.get_text()''.
+		 *  * ''end_line == -1'' (default) — ''start_or_count'' is how many lines to take
+		 *    from the **start** of the file:
+		 *    ''-1'' or ''0'' (or any value less than or equal to zero) means the **whole** file;
+		 *    ''N > 0'' means the first ''N'' lines (e.g. ''contents(2)'' is the first two lines).
+		 *  * ''end_line != -1'' — ''start_or_count'' and ''end_line'' are
+		 *    **1-based inclusive** line numbers (e.g. ''contents(2, 5)'' is lines 2 through 5).
+		 *    The lower and upper lines are ''int.min'' / ''int.max'' so the pair may be passed
+		 *    in either order. Further bounds and clamping are handled by ''buffer.get_text()''.
 		 * 
-		 * @param start_or_count Head mode: line count from the top; ''-1'' or ''0'' = entire file.
-		 *   Range mode: first line number, **1-based inclusive** (unchanged).
+		 * @param start_or_count Head mode: line count from the top; ''-1'' or ''0'' =
+		 *   entire file. Range mode: first line number, **1-based inclusive** (unchanged).
 		 * @param end_line ''-1'' = head mode; else end line (1-based inclusive)
 		 * @return File contents, or empty string if not available
 		 */

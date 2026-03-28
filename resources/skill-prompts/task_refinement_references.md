@@ -126,22 +126,29 @@ When a task **references another task's output**, the link target is **not** the
 
 ## Link types (use only these)
 
+In refined **output**, place links in **Shared references** / **Examination references** per **Refinement** and **Balance shared vs examination** above.
+
 ### Do
 
 - **Do** — Use `[Title](target)` markdown links in **Shared references** / **Examination references**.
 - **Do** — Use **absolute** paths for files and file sections.
-- **Do** — Form **markdown** `#anchor` on **file** paths (`/path/to/file.md#…`): lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
-- **Do** — Use **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; linked files supply precursor content at execution.
-- **Do** — Use **File section** links `[Title](/path/to/file#anchor)` — **GFM** for markdown headings; **AST** for code — full path format e.g. `#Namespace-Class-methodName` or `#Namespace.SubNamespace-Class-Method`. Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
+- **Do** — Form **markdown** `#anchor` on **file** paths: lowercase; each **contiguous** run of spaces and non-alphanumeric → **one** hyphen.
+- **Do** — **File** links `[Title](/path/to/file)` — title = file **base name**; path = absolute; linked files supply precursor content at execution.
+- **Do** — **File section** links (`/path#fragment`) when the executor needs only part of a file; the Runner injects that slice. Three fragment styles (do not mix in one link):
+  - **GFM heading** — `[Title](/path/doc.md#my-section)` (slug from heading text).
+  - **AST path** (code) — `[Sym](/path/File.vala#Namespace-Class-methodName)` (full AST fragment). Example: `[task_creation_prompt](/abs/path/to/Runner.vala#OLLMcoder.Skill-Runner-task_creation_prompt)`.
+  - **Line range** — **only** **`#L<start>-L<end>`** (both numbers **`L`‑prefixed**, e.g. **`/path/File.vala#L12-L30`**). **1-based inclusive**. **Unsupported:** **`#L12`** alone, **`#L12-30`** (second number without **`L`**), **`#-L1`**, or any other shape — use **`#L12-L12`** for a single line.
+- **Do** — Prefer **line-range** or **AST** over whole-file links when **Task reference contents** shows **This has been abbreviated** for a long file — narrow each link to what that run needs (**Shared references** vs **Examination references** per skill rules).
+- **Do** — To **examine** a long file without one huge precursor: use **multiple examination references** — **one link per chunk**, each with **`#L<first>-L<last>`** (e.g. ~100–200 lines per chunk: `#L1-L180`, `#L181-L360`, …), **or** **AST** links (`/path/File.vala#Namespace-Class-method`) to target symbols instead of long line ranges.
 - **Do** — Link **task output** for **completed** tasks only (they have a ##### Result summary block): **`[Research 1 Results](task://research-1.md)`** — stop at **`.md`**.
 - **Do** — Prefer file paths and `task://` links that resolve in this project.
 
 ### Don't
 
 - **Don't** — Use **relative** paths.
-- **Don't** — Paste file bodies into the task list.
-- **Don't** — Use plain symbol-only anchors for code; use the full **AST** path.
-- **Don't** — Paste file bodies into the task list — only links; contents load from those links at execution.
+- **Don't** — Paste file bodies into **## Task** — only links; contents load from those links at execution.
+- **Don't** — Use plain symbol-only anchors for code when the runner expects full **AST** paths.
+- **Don't** — Treat a **`#L<num>-L<num>`** fragment as a **markdown heading slug** or **AST** path — that shape is **line-range** only (see **Do** above).
 
 ---
 

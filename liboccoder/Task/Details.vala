@@ -390,13 +390,7 @@ public class Details : OLLMchat.Agent.Base
 			definition.tools.size > 0 && !definition.tools.contains("write_file")
 				? "task_refinement.md"
 				: "task_refinement_references.md");
-		var toolcall = (definition.tools.size < 1 || definition.tools.contains("write_file")) ? "" : "DEFAULT";
-
-		tpl.system_fill(4,
-			"toolcall1", toolcall,
-			"toolcall2", toolcall,
-			"toolcall3", toolcall,
-			"toolcall4", toolcall);
+		tpl.system_fill(0);
 		var completed_md = this.runner.completed.to_markdown(MarkdownPhase.REFINE_COMPLETED);
 		tpl.fill(8,
 			"issues", tpl.header_raw("Issues with the current call", this.result_parser.issues),
@@ -642,18 +636,23 @@ public class Details : OLLMchat.Agent.Base
 	 *
 	 * @param line heading or label line
 	 * @param file file to read content and language from
+	 * @param start **-1** = no line-range fragment (head or refinement preview); else 1-based start line from **#L…** fragment
+	 * @param end **-1** with **start == -1** = head / refinement preview; else 1-based end line (**#L…**)
 	 * @return fenced block with line + content
 	 */
-	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage)
+	internal string header_file(string line, OLLMfiles.File file, MarkdownPhase stage,
+		int start = -1, int end = -1)
 	{
 		var content = stage == MarkdownPhase.REFINEMENT
-			? file.contents(20)
-			: file.contents(0);
-		if (stage == MarkdownPhase.REFINEMENT) {
-			if (file.line_count() > 20) {
-				content += "\n\n**This has been abbreviated.** The full content has "
-					+ file.line_count().to_string() + " lines.\n";
-			}
+			? file.contents(int.max(start, 1), start == -1 ? 20 : int.min(end, start + 29))
+			: file.contents(int.max(-1, start), start == -1 ? -1 : end);
+		if (stage == MarkdownPhase.REFINEMENT
+				&& (
+					(start == -1 && file.line_count() > 20)
+					|| (start != -1 && end > start + 29)
+				)) {
+			content += "\n\n**This has been abbreviated.** The full content has "
+				+ file.line_count().to_string() + " lines.\n";
 		}
 		var fence = (content.index_of("\n```") >= 0 || content.has_prefix("```")) ? "~~~~" : "```";
 		return line + "\n\n"
@@ -734,6 +733,14 @@ public class Details : OLLMchat.Agent.Base
 			found = new OLLMfiles.File.new_fake(this.runner.sr_factory.project_manager, resolved_path);
 		}
 		this.runner.sr_factory.project_manager.buffer_provider.create_buffer(found);
+		GLib.MatchInfo mi;
+		if (new GLib.Regex(
+				"^[Ll](\\d+)-[Ll](\\d+)$",
+				GLib.RegexCompileFlags.OPTIMIZE | GLib.RegexCompileFlags.CASELESS)
+				.match(link.hash, 0, out mi)) {
+			return this.header_file(title, found, stage,
+				int.parse(mi.fetch(1)), int.parse(mi.fetch(2)));
+		}
 		return this.header_file(title, found, stage);
 	}
 
