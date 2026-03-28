@@ -175,7 +175,8 @@ namespace OLLMcoder.Task
 			}
 			var body = string.joinv("\n\n", parts);
 			if (body.strip().length == 0) {
-				this.issues = "\nChange details: output_mode next_section requires non-empty content after the bullet list (rest of document).";
+				this.issues = "\nChange details: output_mode next_section requires " + 
+					" non-empty content after the bullet list (rest of document).";
 				return;
 			}
 			this.content = body;
@@ -183,9 +184,17 @@ namespace OLLMcoder.Task
 		}
 
 		/**
-		 * Structural subset of write_file argument checks (sync). No extra properties on this class for validation.
-		 * Cannot: resolve file_path against the project, FileUtils.test file existence (ast/line modes), async buffer
-		 * read, resolve_ast_path, or FileChange — Tool.validate / write_file execute when project_manager is set.
+		 * Structural subset of write_file argument checks (sync). No extra
+		 * properties on this class for validation.
+		 *
+		 * Empty body text after strip is allowed for a line range (deletes
+		 * lines), for ast_path with location remove, or for complete_file
+		 * (including an empty file).
+		 *
+		 * Cannot: resolve file_path against the project, FileUtils.test file
+		 * existence (ast/line modes), async buffer read, resolve_ast_path, or
+		 * FileChange — WriteFile.Request validation / execute when project_manager
+		 * is set.
 		 */
 		public void validate ()
 		{
@@ -193,20 +202,26 @@ namespace OLLMcoder.Task
 				this.issues += "\nwrite_file: file_path is required";
 				return;
 			}
-			if (this.content.strip() == "") {
-				this.issues += "\nwrite_file: content is required";
-				return;
-			}
 			bool has_ast = (this.ast_path.strip() != "");
 			bool has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
+			if (this.content.strip() == "" && !has_lines
+					&& !(has_ast && this.location == "remove")
+					&& !this.complete_file) {
+				this.issues += "\nwrite_file: content is required"
+					+ " (empty allowed for line-range delete, AST remove,"
+					+ " or complete_file)";
+				return;
+			}
 			int modes = (has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0);
 			if (modes != 1) {
-				this.issues += "\nwrite_file: use exactly one of: ast_path, line numbers (start_line/end_line), or complete_file";
+				this.issues += "\nwrite_file: use exactly one of: ast_path,"
+					+ " line numbers (start_line/end_line), or complete_file";
 				return;
 			}
 			if (this.start_line >= 1 || this.end_line >= 1) {
 				if (this.start_line < 1 || this.end_line < this.start_line) {
-					this.issues += "\nwrite_file: start_line must be >= 1 and end_line >= start_line";
+					this.issues += "\nwrite_file: start_line must be >= 1"
+						+ " and end_line >= start_line";
 					return;
 				}
 			}
@@ -226,7 +241,7 @@ namespace OLLMcoder.Task
 				}
 			}
 			// Not here: project-relative file_path, FileUtils.test(IS_REGULAR) for ast/line modes (needs PM + path).
-			// Not here (async): buffer read, resolve_ast_path, FileChange — Tool.validate / write_file execute only.
+			// Not here (async): buffer read, resolve_ast_path, FileChange — WriteFile.Request only.
 		}
 
 		/**

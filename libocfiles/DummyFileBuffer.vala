@@ -111,7 +111,8 @@ namespace OLLMfiles
 			if (start_line < 0 || start_line >= this.lines.length) {
 				return "";
 			}
-			int el = end_line == -1 ? this.lines.length - 1 : (end_line >= this.lines.length ? this.lines.length - 1 : end_line);
+			int el = end_line == -1 ? this.lines.length - 1 : 
+				(end_line >= this.lines.length ? this.lines.length - 1 : end_line);
 			if (el < start_line) {
 				return "";
 			}
@@ -317,9 +318,13 @@ namespace OLLMfiles
 			}
 			
 			// Get array slices using array slicing syntax
-			string[] lines_before = this.lines[0:start_idx];
-			string[] replacement_lines = change.replacement.split("\n");
-			string[] lines_after = this.lines[end_idx:this.lines.length];
+			var lines_before = this.lines[0:start_idx];
+			// Empty replacement must not use split alone ("" yields one line).
+			var replacement_lines = change.replacement.split("\n");
+			if (!is_insertion && change.replacement == "") {
+				replacement_lines = {};
+			}
+			var lines_after = this.lines[end_idx:this.lines.length];
 			
 			// Build new lines array efficiently using GLib.Array
 			var array = new GLib.Array<string>(false, true, sizeof(string));
