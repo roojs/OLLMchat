@@ -490,7 +490,9 @@ public class ResultParser : Object
 	public bool exec_extract(Tool ex)
 	{
 		if (!this.document.headings.has_key("result-summary")) {
-			this.issues += "\nThis task's executor output must include a \"Result summary\" section.";
+			this.issues += "\n" + "This task's executor output must include a \"Result summary\" section (required). " +
+				"It was missing or not found in the response. " +
+				"Produce ## Result summary (what was found or produced; whether needs are met or gaps remain).";
 			return false;
 		}
 		ex.summary = this.document.headings.get("result-summary");

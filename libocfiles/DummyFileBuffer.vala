@@ -177,6 +177,66 @@ namespace OLLMfiles
 		}
 		
 		/**
+		 * Find 0-based start lines of each match for the given text.
+		 *
+		 * Work in progress: non-trimmed branch sketched; trimmed branch is pseudocode
+		 * (``substring(i,???)``, etc.) — finish before relying on this.
+		 */
+		public int[] locate(string text, bool match_trimmed)
+		{
+			int[] ret= {};
+			var full = this.get_text();
+			if (text.strip() == "" || full =="") {
+				return ret;
+			}
+			if (!match_trimmed) {
+				var  pos = 0;
+				while (true) {
+					var i = full.index_of(text, pos);
+					if (i < 0) {
+						break;
+					}
+					var prefix = full.substring(0, i);
+					ret += prefix.split("\n").length - 1;
+					pos = i + text.length;
+				}
+				return ret;
+			}
+			var mlines = text.split("\n"); // split the search
+			var fl = mlines[0].trim();
+			while (true) {
+				var i = full.index_of(fl, pos);
+				if (i < 0) {
+					break;
+				}
+				// validate other lines
+				var afterlines = full.substring(i).split("\n");
+				// check if afterlines has enough lines to match original
+				var ml = i;
+				var failed = false
+				for(var ii = 1; ii < mlines.length; ii++) {
+				
+					if (mlines[ii].strip() != afterlines[ii].strip()) {
+						// doenst match
+						failed = true;
+						break;
+					}
+
+				}
+				if (failed) {
+					pos = i+1; //?? << or shoudl we find out the liength of the first line and add that...
+					// if pos > lenght?? break??
+					continue;
+				}
+				var prefix = full.substring(0, i);
+				ret += prefix.split("\n").length - 1;
+				pos = i + text.length;
+			}
+			return ret;
+
+		}
+		
+		/**
 		 * Get the current cursor position.
 		 * 
 		 * Dummy buffers don't track cursor position, so returns 0,0.
