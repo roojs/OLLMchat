@@ -17,7 +17,7 @@ namespace OLLMtools.WriteFile
 		public override string title { get { return "Write File Tool"; } }
 		public override string example_call {
 			get {
-				return "{\"name\": \"write_file\", \"arguments\": {\"file_path\": \"src/App.vala\", \"content\": \"// implementation\", \"ast_path\": \"App-MainWindow-on_activate\", \"location\": \"replace\"}}";
+				return "{\"name\": \"write_file\", \"arguments\": {\"file_path\": \"src/App.vala\", \"search_text\": \"  old();\", \"content\": \"  new();\"}}";
 			}
 		}
 		public override string description { get {
@@ -34,6 +34,7 @@ Modes (use exactly one):
   location remove).
 - complete_file: replace or create entire file; content = full file body.
   Use overwrite=true to overwrite existing file.
+- search_text: find this substring in the existing file and replace with content; file must exist; exactly one FileBuffer.locate match.
 
 Location (when using ast_path):
   replace — replace the target at the path.
@@ -47,14 +48,15 @@ Location (when using ast_path):
 		public override string parameter_description { get {
 			return """
 @param file_path {string} [required] Path to the file.
-@param content {string} [required] Text to write.
+@param content {string} [required] Text to write or replacement body.
 @param ast_path {string} [optional] AST path (e.g. Namespace-Class-Method). Required with location when using AST mode.
 @param location {string} [optional] Required when ast_path is set. replace, replace-with-comment, before, after, remove, before-comment.
 @param start_line {int} [optional] Start line (1-based inclusive).
 @param end_line {int} [optional] End line (1-based, exclusive). Empty
   content deletes lines in [start_line, end_line).
 @param complete_file {boolean} [optional] If true, content is full file. Default false.
-@param overwrite {boolean} [optional] If true and complete_file and file exists, overwrite. Default false.""";
+@param overwrite {boolean} [optional] If true and complete_file and file exists, overwrite. Default false.
+@param search_text {string} [optional] Excerpt to find (one match). Use with content; unset other mode fields.""";
 		} }
 
 		public signal void change_done(string file_path, OLLMfiles.FileChange change);

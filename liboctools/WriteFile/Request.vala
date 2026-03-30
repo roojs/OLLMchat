@@ -16,6 +16,13 @@ namespace OLLMtools.WriteFile
 	{
 		public string file_path { get; set; default = ""; }
 		public string content { get; set; default = ""; }
+		/**
+		 * Literal excerpt to find in an existing file when using
+		 * search/replace mode. Mutually exclusive with ast_path line
+		 * range and complete_file; use with {{{content}}} as the
+		 * replacement. Empty when not using this mode.
+		 */
+		public string search_text { get; set; default = ""; }
 		public string ast_path { get; set; default = ""; }
 		public string location { get; set; default = ""; }
 		public int start_line { get; set; default = -1; }
@@ -79,9 +86,10 @@ namespace OLLMtools.WriteFile
 			}
 			bool has_ast = (this.ast_path.strip() != "");
 			bool has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
-			int modes = (has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0);
+			bool has_search = (this.search_text.strip() != "");
+			int modes = (has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0) + (has_search ? 1 : 0);
 			if (modes != 1) {
-				return "use exactly one of: ast_path, line numbers (start_line/end_line), or complete_file";
+				return "use exactly one of: ast_path, line numbers (start_line/end_line), complete_file, or search_text";
 			}
 			if (this.start_line >= 1 || this.end_line >= 1) {
 				if (this.start_line < 1 || this.end_line < this.start_line) {
@@ -107,6 +115,32 @@ namespace OLLMtools.WriteFile
 				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
 					return "file does not exist (required for ast_path / line_numbers mode)";
 				}
+			}
+			if (project_manager != null && has_search) {
+				string norm = this.normalize_file_path(this.file_path);
+				if (!GLib.FileUtils.test(norm, GLib.FileTest.IS_REGULAR)) {
+					return "file does not exist (required for search_text mode)";
+				}
+				var file = project_manager.get_file_from_active_project(norm);
+				if (file == null) {
+					file = new OLLMfiles.File.new_fake(project_manager, norm);
+				}
+				project_manager.buffer_provider.create_buffer(file);
+				if (!file.buffer.is_loaded) {
+					try {
+						yield file.buffer.read_async();
+					} catch (GLib.Error e) {
+						return "failed to read file: " + e.message;
+					}
+				}
+				var matches = file.buffer.locate(this.search_text, true, true);
+				if (matches.size == 0) {
+					return "search_text not found in file";
+				}
+				if (matches.size > 1) {
+					return "search_text must match exactly once";
+				}
+				return "";
 			}
 			if (project_manager != null && has_ast) {
 				string norm = this.normalize_file_path(this.file_path);
@@ -176,6 +210,33 @@ namespace OLLMtools.WriteFile
 			}
 			this.creating_file = !GLib.FileUtils.test(
 				this.normalized_path, GLib.FileTest.IS_REGULAR);
+			if (this.search_text.strip() != "") {
+				if (this.creating_file) {
+					throw new GLib.IOError.INVALID_ARGUMENT(
+						"search_text requires an existing file");
+				}
+				project_manager.buffer_provider.create_buffer(this.file);
+				if (!this.file.buffer.is_loaded) {
+					try {
+						yield this.file.buffer.read_async();
+					} catch (GLib.Error e) {
+						throw new GLib.IOError.FAILED(
+							"Failed to read file: " + e.message);
+					}
+				}
+				var matches = this.file.buffer.locate(this.search_text, true, true);
+				if (matches.size != 1) {
+					throw new GLib.IOError.FAILED(
+						"search_text match count inconsistent with validate");
+				}
+				var keys_arr = matches.keys.to_array();
+				var match_block = matches.get(keys_arr[0]);
+				var line_parts = match_block.split("\n");
+				this.start_line = keys_arr[0] + 1;
+				this.end_line = this.start_line + line_parts.length
+					- (line_parts.length > 0 && line_parts[line_parts.length - 1] == "" ? 1 : 0);
+				this.search_text = "";
+			}
 			if (this.complete_file && !this.creating_file && !this.overwrite) {
 				throw new GLib.IOError.EXISTS(
 					"File already exists: " + this.normalized_path + ". Use overwrite=true to overwrite.");
