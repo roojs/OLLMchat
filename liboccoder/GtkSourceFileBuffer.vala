@@ -227,6 +227,58 @@ namespace OLLMcoder
 			return ((Gtk.TextBuffer) this).get_text(iter, line_end, true);
 		}
 		
+		public Gee.HashMap<int, string> locate(string needle, bool match_trimmed, bool case_sensitive)
+		{
+			var result = new Gee.HashMap<int, string>();
+			if (needle.strip() == "") {
+				return result;
+			}
+			string search_text;
+			if (match_trimmed) {
+				var ws_nl = new GLib.Regex ("\\s+\\n\\s+");
+				var collapsed = ws_nl.replace (needle, -1, 0, "\n");
+				search_text = GLib.Regex.escape_string (collapsed.strip ());
+			} else {
+				search_text = needle.index_of ("\n") >= 0
+					? GLib.Regex.escape_string (needle)
+					: needle;
+			}
+			var settings = new GtkSource.SearchSettings();
+			settings.case_sensitive = case_sensitive;
+			settings.wrap_around = false;
+			settings.at_word_boundaries = false;
+			settings.regex_enabled = match_trimmed || needle.index_of ("\n") >= 0;
+			settings.set_search_text (search_text);
+			var ctx = new GtkSource.SearchContext(this, settings);
+			ctx.set_highlight(false);
+			var scan_pos = 0;
+			while (true) {
+				Gtk.TextIter from_iter;
+				this.get_iter_at_offset(out from_iter, scan_pos);
+				Gtk.TextIter m_start;
+				Gtk.TextIter m_end;
+				bool wrapped = false;
+				if (!ctx.forward(from_iter, out m_start, out m_end, out wrapped)) {
+					break;
+				}
+				Gtk.TextIter line_start;
+				this.get_iter_at_line(out line_start, m_start.get_line());
+				Gtk.TextIter line_end = m_end;
+				if (!line_end.ends_line()) {
+					line_end.forward_to_line_end();
+				}
+				result.set(
+					line_start.get_line(),
+					((Gtk.TextBuffer) this).get_text(line_start, line_end, false)
+				);
+				scan_pos = m_end.get_offset();
+				if (scan_pos <= from_iter.get_offset()) {
+					break;
+				}
+			}
+			return result;
+		}
+		
 		/**
 		 * Get the current cursor position.
 		 * 
