@@ -4,7 +4,7 @@ description: Use when you need to locate particular documentation in the project
 tools: codebase_search
 ---
 
-## Refinement
+**During refinement**
 
 **What is needed** is the description of what documentation to find (e.g. "skill authoring format", "task refinement conventions", "how RAPIR is applied"). Produce one or more **codebase_search** tool calls with **query** and the documentation-specific options below.
 

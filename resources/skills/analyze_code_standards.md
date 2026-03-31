@@ -4,7 +4,7 @@ description: Use when you need to locate project coding standards, style guides,
 tools: codebase_search
 ---
 
-## Refinement
+**During refinement**
 
 Emit one or more **codebase_search** tool calls to find coding standards, style guides, or rules.
 

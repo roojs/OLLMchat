@@ -4,7 +4,7 @@ description: Use when you need to gather external information from the web (algo
 tools: web_search
 ---
 
-## Refinement
+**During refinement**
 
 **Purpose of this skill:** Gather external information from the web; the executor needs the search results so it can analyze them and recommend pages to look at. Refinement fills in **References** so the executor can deliver what is needed, and emits the web searches.
 
