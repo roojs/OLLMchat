@@ -80,7 +80,7 @@ Produce **## Task** (required). When the skill uses tools, also **## Tool Calls*
    - **Expected output** (one concise line describing what the executor should produce)
    - **Shared references** — markdown links the executor needs (omit the line if **Refinement** says there are no precursors).
 
-   Refined **output:** precursor links under **Shared references**. The **References** field in parsed refined YAML stays empty for link payload ([Phase 4](1.23.44-refine-stage-reference-injection-phase-4.md) §6b).
+   Refined **output:** precursor links under **Shared references**. The **References** field in parsed refined YAML stays empty for link payload ([Phase 4](../../docs/plans/done/1.23.44-DONE-refine-stage-reference-injection-phase-4.md) §6b).
 
 2. **## Tool Calls** — See **How to run tools** and **`{tool_instructions}`**.
 
