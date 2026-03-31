@@ -146,7 +146,7 @@ namespace OLLMcoder.Skill
 				}
 				var task = this.completed.slugs.has_key(slug) ?
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
-				var doc = task.task_output_document;
+				var doc = task.out_doc;
 				if (link.hash == "") {
 					if (stage == OLLMcoder.Task.MarkdownPhase.REFINEMENT) {
 						if (!doc.headings.has_key("result-summary")) {
@@ -427,7 +427,7 @@ namespace OLLMcoder.Skill
 
 		/**
 		 * Stub: request user approval before running writer tasks.
-		 * Plan: implement UI.
+		 * TODO: wire approval UI.
 		 *
 		 * @return true if approved (currently always true)
 		 */

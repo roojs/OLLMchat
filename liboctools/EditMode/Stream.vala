@@ -2,8 +2,7 @@
  * Streaming content processor for EditMode.
  *
  * Phase 1: Introduce Stream class and FileChange extensions.
- * Request integration and migration of streaming logic will be done
- * in later phases as described in the 2.1.6 plan.
+ * Request integration and migration of streaming logic will be done in later phases.
  */
 
 namespace OLLMtools.EditMode

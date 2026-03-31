@@ -136,8 +136,7 @@ namespace Markdown
 	/**
 	 * Parser for markdown text that calls specific callbacks on Render.
 	 * 
-	 * This is a placeholder implementation. Full parser implementation
-	 * will be specified in a separate plan.
+	 * This is a placeholder implementation; the full parser may grow incrementally.
 	 */
 	public class Parser
 	{
@@ -156,7 +155,7 @@ namespace Markdown
 		public FormatType last_line_block { get; set; default = FormatType.NONE; }
 		public FormatType current_block { get; set; default = FormatType.NONE; }
 		public bool at_line_start { get; set; default = true; }
-		/** True when at the first character of list item content (after marker); avoid ending list on block_match == 0 (plan 1.8.1). */
+		/** True when at the first character of list item content (after marker); avoid ending list on block_match == 0 there. */
 		public bool at_list_start { get; set; default = false; }
 
 		/**
@@ -378,7 +377,7 @@ namespace Markdown
 					if (chunk_pos != saved_chunk_pos) {
 						continue;
 					}
-					// At list item content start, no block consumed → clear so next line can end list (plan 1.8.1)
+					// At list item content start, no block consumed → clear so next line can end list
 					if (this.current_block == FormatType.ORDERED_LIST || 
 						this.current_block == FormatType.UNORDERED_LIST) {
 						this.at_list_start = false;

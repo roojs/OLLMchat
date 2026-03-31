@@ -147,14 +147,14 @@ public class Details : OLLMchat.Agent.Base
 	 * Empty until
 	 * run_post_exec finishes.
 	 */
-	public Markdown.Document.Document task_output_document {
+	public Markdown.Document.Document out_doc {
 		get; set; default = new Markdown.Document.Document();
 	}
 
 	/**
 	 * Result summary block from post-exec (iteration + completed-task list).
 	 */
-	public Markdown.Document.Block task_post_exec_summary {
+	public Markdown.Document.Block post_summary {
 		get; set; default = new Markdown.Document.Block(Markdown.FormatType.PARAGRAPH);
 	}
 
@@ -217,7 +217,7 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Write this task's result to session task dir.
-	 * Writes a single slug.md from task_output_document.
+	 * Writes a single slug.md from out_doc.
 	 *
 	 * @param suffix filename suffix (default "")
 	 */
@@ -226,7 +226,7 @@ public class Details : OLLMchat.Agent.Base
 		var path = GLib.Path.build_filename(
 			this.runner.session.task_dir(),
 			this.slug() + suffix + ".md");
-		var content = this.task_output_document.to_markdown();
+		var content = this.out_doc.to_markdown();
 		try {
 			GLib.FileUtils.set_contents(path, content);
 		} catch (GLib.FileError e) {
@@ -559,15 +559,15 @@ public class Details : OLLMchat.Agent.Base
 					}
 					// Executor output: always include the post-exec result summary (Result summary body).
 					ret += "#### Task result\n\n";
-					ret += this.task_post_exec_summary.to_markdown_with_content()
+					ret += this.post_summary.to_markdown_with_content()
 						.strip() + "\n\n";
 					// Other top-level headings in the output doc: bullet list of [title](#gfm-slug) for in-doc navigation.
-					if (this.task_output_document.header_list.size == 0) {
+					if (this.out_doc.header_list.size == 0) {
 						continue;
 					}
 					string[] section_links = {};
-					foreach (var slug in this.task_output_document.header_list) {
-						var hb = this.task_output_document.headings.get(slug);
+					foreach (var slug in this.out_doc.header_list) {
+						var hb = this.out_doc.headings.get(slug);
 						var title = hb != null ? hb.text_content().strip() : slug;
 						if (title == "") {
 							title = slug;
@@ -828,8 +828,8 @@ public class Details : OLLMchat.Agent.Base
 			return;
 		}
 		var last = this.exec_runs.get(this.exec_runs.size - 1);
-		this.task_post_exec_summary = last.summary;
-		this.task_output_document = last.document;
+		this.post_summary = last.summary;
+		this.out_doc = last.document;
 		this.exec_done = true;
 	}
 
@@ -867,7 +867,7 @@ public class Details : OLLMchat.Agent.Base
 
 	/**
 	 * Post-execution synthesis: combine executor outputs, call LLM with task_post_exec.md,
-	 * parse into task_post_exec_summary and task_output_document; validate links.
+	 * parse into post_summary and out_doc; validate links.
 	 * Retry on parse/validation issues: refill with previous output and issues via header_raw (same pattern as refinement).
 	 */
 	public async void run_post_exec() throws GLib.Error

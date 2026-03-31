@@ -5,8 +5,6 @@
 // OLLMvector indexing pipeline (Indexer) and emits signals so the UI can
 // react to scan progress.
 //
-// The implementation follows the description in the project plan (Phase 7).
-
 namespace OLLMvector {
 
     /**

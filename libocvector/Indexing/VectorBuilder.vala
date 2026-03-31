@@ -308,7 +308,7 @@ namespace OLLMvector.Indexing
 		/**
 		 * Formats a OLLMfiles.SQT.VectorMetadata into a document string for vectorization.
 		 * 
-		 * Format follows the specification in the plan document:
+		 * Field order for the embedding text:
 		 * - type, name, file, lines, description, signature, code snippet
 		 * 
 		 * @param element The OLLMfiles.SQT.VectorMetadata to format

@@ -130,7 +130,7 @@ namespace OLLMcoder.Task
 		 *
 		 * First: if `header.slug()` does not start with `change-details`, set `issues` and return.
 		 * Then: if Change details but the shape is wrong, set `issues`.
-		 * After key/value parse: fenced mode — next block is fence → `content`, `validate_structure()`, return. `next_section` — walk `list_block.next()` / `Node.next()` to EOF → `content`, `validate_structure()` (plan steps 4–5).
+		 * After key/value parse: fenced mode — next block is fence → `content`, `validate_structure()`, return. `next_section` — walk `list_block.next()` / `Node.next()` to EOF → `content`, `validate_structure()`.
 		 * `replace` — two fences: first → `search_text`, second → `content`.
 		 *
 		 * @param header The heading `Block` for this section — must be a direct child of the document root (`header.parent == header.document()`). Caller skips nested headings.
