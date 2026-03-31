@@ -169,12 +169,13 @@ Skill refinement and execution bodies must **not** describe **how** the product 
 
 Required keys:
 
-- **name** — Skill name, lowercase with underscores (e.g. `research_online_search`). Must match the runner’s catalog.
+- **name** — Skill name, lowercase with underscores (e.g. `research_online_search`). Must match the runner’s catalog. For bundled skills under `resources/skills/`, the runner also requires **name to match the file stem** (e.g. `plan_create.md` → `name: plan_create`).
 - **description** — **When to use** this skill — that is its only job. One line, shown in the task list and skill catalog; the task creator uses it to choose the right skill per task. Include when the planner should choose it and hints about when not to use it (e.g. do not use before research is done; ensure prerequisites have been run). Do not describe what the skill outputs or how it works; that belongs in the Refinement and Execution sections.
 
 Optional:
 
 - **tools** — Comma-separated list of tool names this skill uses (e.g. `web_search` or `read_file`, `grep` — use the exact name from the wrapped-tool @name). Omit if the skill uses no tools.
+- **override** — *(User override files only: `~/.local/share/ollmchat/skills/*.md`.)* Set to the **catalog name** of the built-in skill to replace (e.g. `override: plan_create`). Use this instead of **name** when overriding; the filename may be anything. If **name** is also present, it must equal **override** or the skill is rejected.
 
 **Principles:** (A) **Do not use read_file** — put content the skill needs in **References** so the runner injects it into Precursor. (B) **Each skill does one job** — e.g. research vs synthesize vs implement; do not combine unrelated steps in one skill definition.
 

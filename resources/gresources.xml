@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/agents">
-    <file>codebase-analyzer.md</file>
-    <file>codebase-locator.md</file>
-    <file>codebase-pattern-finder.md</file>
-    <file>document-analyzer.md</file>
-    <file>document-locator.md</file>
-    <file>web-search-researcher.md</file>
-  </gresource>
   <gresource prefix="/ollmchat-agents/code-assistant">
     <file>introduction.md</file>
     <file>communication.md</file>
@@ -50,6 +42,21 @@
     <file>task_execution.md</file>
     <file>task_execution_write.md</file>
     <file>task_post_exec.md</file>
+  </gresource>
+  <gresource prefix="/skills">
+    <file>analyze_code.md</file>
+    <file>analyze_code_standards.md</file>
+    <file>analyze_codebase.md</file>
+    <file>analyze_docs.md</file>
+    <file>analyze_docsbase.md</file>
+    <file>implement_code.md</file>
+    <file>plan_code.md</file>
+    <file>plan_code_iterate.md</file>
+    <file>plan_create.md</file>
+    <file>plan_iterate.md</file>
+    <file>plan_review.md</file>
+    <file>research_online_search.md</file>
+    <file>research_web_page.md</file>
   </gresource>
 </gresources>
 

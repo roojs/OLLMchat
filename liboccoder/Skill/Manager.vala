@@ -19,15 +19,17 @@
 namespace OLLMcoder.Skill
 {
 	/**
-	 * Holds an array of skills directories and two maps: path → Definition and name → Definition.
-	 * One scan populates both; each Definition stores its own mtime.
+	 * Loads built-in skills from gresources and optional user overrides under
+	 * ``~/.local/share/ollmchat/skills/``.
+	 *
+	 * **by_name** — Key is the skill catalog name (YAML ``name``, or ``override`` target).
+	 * Used to validate tasks and resolve which definition to run.
 	 */
 	public class Manager : Object
 	{
 		public Gee.ArrayList<string> skills_directories { 
 			get; private set; default = new Gee.ArrayList<string>(); }
-		public Gee.HashMap<string, Definition> by_path { 
-			get; set; default = new Gee.HashMap<string, Definition>(); }
+		/** YAML catalog name (``name`` / ``override`` target) → definition. */
 		public Gee.HashMap<string, Definition> by_name { 
 			get; set; default = new Gee.HashMap<string, Definition>(); }
 
@@ -68,44 +70,92 @@ namespace OLLMcoder.Skill
 
 		public void scan() throws GLib.Error
 		{
-			var keys_before = new Gee.ArrayList<string>();
-			keys_before.add_all(this.by_path.keys);
-			foreach (var skills_base_path in this.skills_directories) {
-				var dir = GLib.File.new_for_path(skills_base_path);
-				if (!dir.query_exists()) {
-					continue;
-				}
-				var enumerator = dir.enumerate_children(
-					"standard::name,standard::type,time::modified",
-					GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-				GLib.FileInfo? info;
-				while ((info = enumerator.next_file(null)) != null) {
-					var name = info.get_name();
+			this.by_name.clear();
+			// 1) Built-ins from gresources (/skills/*.md)
+			try {
+				var children = GLib.resources_enumerate_children(
+					"/skills", GLib.ResourceLookupFlags.NONE);
+				foreach (var name in children) {
 					if (!name.has_suffix(".md")) {
 						continue;
 					}
-					var skill_path = GLib.Path.build_filename(skills_base_path, name);
-					int64 file_mtime = (int64) info.get_modification_time().tv_sec;
-					if (this.by_path.has_key(skill_path)
-						&& file_mtime == this.by_path.get(skill_path).mtime) {
-						keys_before.remove(skill_path);
+					var resource_path = "/skills/" + name;
+					try {
+						var skill = new Definition("resource://" + resource_path);
+						skill.load();
+						this.by_name.set(skill.header.get("name"), skill);
+					} catch (GLib.Error e) {
+						GLib.warning("skip builtin skill %s: %s", resource_path, e.message);
+					}
+				}
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot enumerate resource directory /skills: %s", e.message);
+			}
+
+			// 2) User files: ~/.local/share/ollmchat/skills/*.md
+			this.scan_dir(GLib.Path.build_filename(
+				GLib.Environment.get_user_data_dir(), "ollmchat", "skills"));
+		}
+
+		/**
+		 * Load every ``*.md`` in ``dir_path`` if the directory exists.
+		 * Files with YAML ``override: skill_name`` replace that catalog entry.
+		 * Other files register only if the name is new; duplicates require ``override``.
+		 */
+		private void scan_dir(string dir_path)
+		{
+			var dir = GLib.File.new_for_path(dir_path);
+			if (!dir.query_exists()) {
+				return;
+			}
+			GLib.FileEnumerator enumerator;
+			try {
+				enumerator = dir.enumerate_children(
+					"standard::name,standard::type,time::modified",
+					GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot open skills directory %s: %s", dir_path, e.message);
+				return;
+			}
+			try {
+				GLib.FileInfo? info;
+				while ((info = enumerator.next_file(null)) != null) {
+					var fname = info.get_name();
+					if (!fname.has_suffix(".md")) {
 						continue;
 					}
+					var skill_path = GLib.Path.build_filename(dir_path, fname);
 					var skill = new Definition(skill_path);
 					try {
 						skill.load();
-						this.by_path.set(skill_path, skill);
-						this.by_name.set(skill.header.get("name"), skill);
-						keys_before.remove(skill_path);
 					} catch (GLib.Error e) {
-						GLib.warning("skip %s: %s", name, e.message);
+						GLib.warning("skip skill %s: %s", skill_path, e.message);
+						continue;
 					}
+					var catalog_name = skill.header.get("name");
+					bool is_override = skill.header.has_key("override")
+						&& skill.header.get("override").strip() != "";
+					if (is_override) {
+						if (!this.by_name.has_key(catalog_name)) {
+							GLib.critical(
+								"Skill override %s: no built-in skill '%s' to replace — skipping",
+								skill_path, catalog_name);
+							continue;
+						}
+						this.by_name.set(catalog_name, skill);
+						contine;
+					} 
+					if (this.by_name.has_key(catalog_name)) {
+						GLib.critical(
+							"Skill %s: catalog name '%s' already loaded — use 'override: %s' in YAML to replace the built-in",
+							skill_path, catalog_name, catalog_name);
+						continue;
+					}
+					this.by_name.set(catalog_name, skill);
+					
 				}
-			}
-			foreach (var path in keys_before) {
-				var skill = this.by_path.get(path);
-				this.by_path.unset(path);
-				this.by_name.unset(skill.header.get("name"));
+			} catch (GLib.Error e) {
+				GLib.warning("Cannot enumerate skills directory %s: %s", dir_path, e.message);
 			}
 		}
 	}
