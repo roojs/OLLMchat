@@ -55,6 +55,8 @@ Combined: `''//__bold italic underlined__//''` → **_bold italic underlined_**
 
 Use a leading space and list marker; two spaces required after newlines for list layout.
 
+As with long `@param` text, **CODING_STANDARDS** line-length guidance is not a reason to wrap a list item so that only a word or two sits alone on the next line—keep a bullet on one line when that reads better, or break at a natural phrase boundary.
+
 - Numbered: ` 1.` or ` #.` or ` i.` / ` I.` or ` a.` / ` A.`
 - Bullet: ` *`
 
@@ -65,6 +67,16 @@ Use a leading space and list marker; two spaces required after newlines for list
  *
  *  * Bullet one
  *  * Bullet two
+ */
+```
+
+**Multi-line bullet (same item):** [Valadoc list rules](https://valadoc.org/markup.htm) require two spaces after newlines; continuation lines use the same extra indent as nested list lines in that page’s example (` *` then four spaces before the rest of the line: ` *    …`). Use as many continuation lines as needed so no single line is an unreadable run-on (do not start another ` *  *` line, or it becomes a new bullet):
+
+```vala
+/**
+ *  * First line of the bullet, break after a phrase or punctuation:
+ *    second line of the same bullet.
+ *    third line still the same bullet.
  */
 ```
 
@@ -107,6 +119,17 @@ Use triple braces for code blocks:
 - `=== headline 3 ===`
 - `==== headline 4 ====`
 
+**valadoc (HTML doc generation):** After a headline line (`== … ==` or `=== … ===`), put a
+**blank** documentation line (` * ` only) before the next paragraph. If the first word of a
+section body immediately follows a `===` line on the very next line, `valadoc` can fail with
+errors such as `unexpected token` on that word. Do **not** put `''…''` markup **inside** the
+same line as the `=== … ===` delimiters (put parameters in the body lines below). In
+`{{{ … }}}` blocks, avoid a line that contains only a closing brace `}` after ` * ` (e.g. the
+closing line of a braced `if`); prefer a one-line `if` without braces or equivalent so the
+sample still compiles. For long bullets, use the **Multi-line bullet** indentation under
+**Lists** (same idea as nested lines in [Valadoc’s list example](https://valadoc.org/markup.htm));
+arbitrary or inconsistent continuation indents can still confuse `valadoc`.
+
 ## Block taglets (at end of comment)
 
 | Taglet | Synopsis | Use for |
@@ -117,6 +140,19 @@ Use triple braces for code blocks:
 | `@since version` | Version | When the API was added |
 | `@deprecated version` | Deprecation | When and why deprecated |
 | `@see SymbolName` | See also | Related symbol |
+
+### Long `@param` / `@return` / `@throws` text
+
+Prefer **several readable lines** over one very long line. After the first line (` * @param name …`), put each continuation on a new comment line that starts with ` * ` and **two spaces** before the rest of the text, so the description stays one taglet:
+
+```vala
+/**
+ * @param start_or_count Head mode: line count from the top; ''-1'' or ''0'' = entire file.
+ *   Range mode: first line number, **1-based inclusive** (unchanged).
+ */
+```
+
+This matches common gtk-doc / Valadoc usage and works with `ninja docs/valadoc` (unlike some wiki list continuations in the long description above). **CODING_STANDARDS** suggests keeping docblock lines reasonably short (often cited as ~72 characters); that is **not** a reason to split in the middle of a short phrase or leave a lone word on the next line—prefer natural phrase breaks or leave a slightly longer line.
 
 ## Inline taglets (inside text)
 

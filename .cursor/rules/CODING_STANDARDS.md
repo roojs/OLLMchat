@@ -6,6 +6,7 @@ Before marking a plan as ready to implement, make sure it answers these:
 
 - **Nullable types**: Are new APIs and properties designed to avoid nullable types where possible (using default objects/flags instead)?
 - **Null checks**: Does the plan avoid adding generic null checks, and only use them where the design explicitly requires null?
+- **Defensive code**: Does the plan avoid extra guards, redundant validation, and speculative branches unless there is **strong justification** (external contract, real boundary, unavoidable nullable return)? See **Defensive code and null checks** below.
 - **String interpolation**: Does the plan avoid `@"..."` string interpolation except for multi-line usage/help text or documentation?
 - **Temporary variables**: Does the plan avoid one-use temporaries and forbid trivial aliases (except aliasing long chains like a.b.c.d.e)?
 - **Brace placement**: Does the plan keep brace style consistent (line breaks for namespaces/classes/methods, inline for control structures)? Does it avoid one-line if/else with body (always put opening brace and body on separate lines)?
@@ -738,7 +739,15 @@ public class Renderer
 
 Note: The `Table` class should have `public bool active { get; set; default = false; }` to ensure it defaults to `false`.
 
-## Null Checks
+## Defensive code and null checks
+
+**Defensive code (general):** Avoid branches and checks whose only purpose is to handle situations your own API and call graph should already rule out—redundant guards, duplicated validation, speculative "what if" fallbacks, silent recovery from states that indicate a programming error, empty-collection checks when the pipeline guarantees non-empty invariants, and similar patterns. They **hide bugs** and **mask broken invariants** the same way needless null checks do: execution continues in a half-valid state instead of failing at the real fault.
+
+**Strong justification required:** Any defensive check (null, empty collection, range, type tag, swallowed error, default-on-failure) must be backed by a **concrete reason** it is unavoidable: e.g. return type from an external library, user or network input at a boundary, FFI where the platform can genuinely fail, or a documented protocol exception. **Not** sufficient: "just in case", "defensive programming", "future-proofing", "the caller might forget", or "doesn't hurt". If the situation should not happen in correct internal code, **fix the contract or the caller** instead of guarding everywhere downstream.
+
+**Prefer:** Make invalid states unrepresentable; establish invariants at module boundaries; fail fast where a violation means a bug; use separate methods or types for distinct cases instead of one function that accepts everything and branches internally.
+
+### Null checks (specific)
 
 **CRITICAL - ZERO TOLERANCE:** Null checks are FORBIDDEN unless you can prove with 100% certainty that the object MUST be null due to an external API contract or system-level constraint that is completely outside your control. "Optional" properties, "might be null", "could be null", "may not be set", "legitimately null", or any similar excuses are NOT valid reasons. These are design flaws that must be fixed, not worked around with null checks.
 

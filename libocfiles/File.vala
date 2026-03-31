@@ -336,33 +336,49 @@ namespace OLLMfiles
 		public signal void changed();
 		
 		/**
-		 * Gets file contents, optionally limited to first N lines.
+		 * Gets file contents: either a head slice (first ''N'' lines) or a 1-based line range.
 		 * 
-		 * Convenience method that delegates to file.buffer.get_text(). Requires
-		 * file.buffer to be non-null. Ensure buffer is created before use.
+		 * Convenience method that delegates to ''file.buffer.get_text()''. Requires
+		 * ''file.buffer'' to be non-null. Ensure buffer is created before use.
 		 * 
 		 * == Important ==
 		 * 
-		 * This method requires file.buffer to be non-null. Ensure buffer is created
+		 * This method requires ''file.buffer'' to be non-null. Ensure buffer is created
 		 * before use:
 		 * {{{
-		 * if (file.buffer == null) {
-		 *     file.manager.buffer_provider.create_buffer(file);
-		 * }
-		 * var contents = file.get_contents();
+		 *         if (file.buffer == null) {
+		 *                 file.manager.buffer_provider.create_buffer(file);
+		 *         }
+		 *         var all = file.contents();
 		 * }}}
-		 * 
 		 * Buffer must be loaded first (via read_async() or automatic loading).
 		 * 
-		 * @param max_lines Maximum number of lines to return (0 = all lines)
+		 * == Two modes (second parameter) ==
+		 * 
+		 *  * ''end_line == -1'' (default) — ''start_or_count'' is how many lines to take
+		 *    from the **start** of the file:
+		 *    ''-1'' or ''0'' (or any value less than or equal to zero) means the **whole** file;
+		 *    ''N > 0'' means the first ''N'' lines (e.g. ''contents(2)'' is the first two lines).
+		 *  * ''end_line != -1'' — ''start_or_count'' and ''end_line'' are
+		 *    **1-based inclusive** line numbers (e.g. ''contents(2, 5)'' is lines 2 through 5).
+		 *    The lower and upper lines are ''int.min'' / ''int.max'' so the pair may be passed
+		 *    in either order. Further bounds and clamping are handled by ''buffer.get_text()''.
+		 * 
+		 * @param start_or_count Head mode: line count from the top; ''-1'' or ''0'' =
+		 *   entire file. Range mode: first line number, **1-based inclusive** (unchanged).
+		 * @param end_line ''-1'' = head mode; else end line (1-based inclusive)
 		 * @return File contents, or empty string if not available
 		 */
-		public string get_contents(int max_lines = 0)
+		public string contents(int start_or_count = -1, int end_line = -1)
 		{
 			if (this.buffer == null) {
 				return "";
 			}
-			return this.buffer.get_text(0, max_lines > 0 ? max_lines - 1 : -1);
+			if (end_line == -1) {
+				return this.buffer.get_text(0, start_or_count > 0 ? start_or_count - 1 : -1);
+			}
+			// Range: start ''0'' or ''-1'' → first line (0-based start ''0'').
+			return this.buffer.get_text(int.max(1, start_or_count) - 1, end_line - 1);
 		}
 		
 		/**
@@ -373,7 +389,7 @@ namespace OLLMfiles
 		 * 
 		 * @return Line count, or 0 if not available
 		 */
-		public int get_line_count()
+		public int line_count()
 		{
 			if (this.buffer == null) {
 				return 0;

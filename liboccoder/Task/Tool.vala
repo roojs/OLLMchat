@@ -16,7 +16,7 @@ namespace OLLMcoder.Task
 	/**
 	 * Parsed tool call (refinement) and/or one execution run.
 	 *
-	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate(), to_instructions().
+	 * Refinement: run_id == ""; stored in task.tools. Use parse(), validate().
 	 * Execution run: run_id set; references and optionally tool_call. run() runs the tool (if any)
 	 * then the LLM executor; result in summary and document.
 	 *
@@ -32,9 +32,23 @@ namespace OLLMcoder.Task
 		public Markdown.Document.Block? summary { get; set; default = null; }
 		/** Executor output document. Set by ResultParser.exec_extract() on success. */
 		public Markdown.Document.Document? document { get; set; default = null; }
-		/** References for this run (one or more). Used by reference_contents() to build executor input. */
-		public Gee.ArrayList<Markdown.Document.Format> references { 
-				get; set; default = new Gee.ArrayList<Markdown.Document.Format>(); }
+		/**
+		 * Shared reference links for this exec run.
+		 *
+		 * After {@link Details.build_exec_runs}, this list aliases {@link Details.shared_references}.
+		 * Resolved bodies are inlined in {@link run} for the executor prompt.
+		 */
+		public Gee.ArrayList<Markdown.Document.Format> references {
+			get; set; default = new Gee.ArrayList<Markdown.Document.Format>();
+		}
+		/**
+		 * Primary document or code the executor must focus on.
+		 *
+		 * Shared context stays in {@link references}. When set, {@link run} appends a section
+		 * titled ''Specific Document or Code to consider for this task'' with resolved content
+		 * or an explicit unavailable line.
+		 */
+		public Markdown.Document.Format? exam_reference { get; set; default = null; }
 		/** Tool execution result from this run. Set in run() when this run has a tool_call. */
 		public string tool_run_result { get; set; default = ""; }
 		/** Tool name from parsed JSON (e.g. "write_file"). */
@@ -45,6 +59,17 @@ namespace OLLMcoder.Task
 		public string issues { get; set; default = ""; }
 		/** ToolCall built from name and arguments; set by parse(), used in run() when this run has a tool. */
 		public OLLMchat.Response.ToolCall? tool_call { get; set; default = null; }
+
+		/**
+		 * Write operations parsed from the write executor output.
+		 *
+		 * Filled by {@link ResultParser.exec_extract} when the skill lists ``write_file``.
+		 * Cleared at the start of each executor retry in {@link run}.
+		 * Empty for normal executor paths — {@link run} still iterates without branching.
+		 */
+		public Gee.ArrayList<WriteChange> writes {
+			get; set; default = new Gee.ArrayList<WriteChange>();
+		}
 
 		/**
 		 * Creates a tool for refinement (run_id == "") or an execution run (run_id set).
@@ -64,28 +89,42 @@ namespace OLLMcoder.Task
 			}
 		}
 
-		/** Reference contents for this run (from this.references). Can be empty. Http(s) refs ignored. */
-		private string reference_contents()
+		private async void load_http(Markdown.Document.Format link)
 		{
-			if (this.references.size == 0) {
-				return "";
+			if (link.scheme != "http" && link.scheme != "https") {
+				return;
 			}
-			string[] parts = {};
-			foreach (var link in this.references) {
-				string block = "";
+			var key = link.href != "" ? link.href : link.path;
+			if (this.parent.runner.http_cache.has_key(key)) {
+				return;
+			}
+			if (key == "") {
+				this.parent.runner.http_cache.set(key,
+					"ERROR: Reference URL is empty; cannot prefetch.");
+				return;
+			}
+			var tool_impl = this.parent.runner.session.manager.tools.get("web_fetch");
+			var args = new Json.Object();
+			args.set_string_member("url", key);
+			args.set_string_member("format", "markdown");
+			var fn = new OLLMchat.Response.CallFunction.with_values("web_fetch", args);
+			var call = new OLLMchat.Response.ToolCall.with_values("http-fake-id", fn);
+			var md = yield tool_impl.execute(this.chat(), call, true);
+			this.parent.runner.http_cache.set(key, md);
+		}
+
+		private async void load_links(Gee.Collection<Markdown.Document.Format> links)
+		{
+			foreach (var link in links) {
+				if (link.scheme == "file") {
+					yield this.parent.runner.load_file(link);
+					continue;
+				}
 				if (link.scheme == "http" || link.scheme == "https") {
-					block = "";
-				} else {
-					block = this.parent.link_content(link);
-				}
-				if (block != "") {
-					parts += block;
+					yield this.load_http(link);
+					continue;
 				}
 			}
-			if (parts.length == 0) {
-				return "";
-			}
-			return "## Reference Contents\n\n" + string.joinv("", parts);
 		}
 
 		/**
@@ -161,20 +200,49 @@ namespace OLLMcoder.Task
 			if (this.tool_call != null) {
 				var tool_impl = this.parent.runner.session.manager.tools.get(
 						this.tool_call.function.name) as OLLMchat.Tool.BaseTool;
-				this.tool_run_result = yield tool_impl.execute(this.parent.chat(), this.tool_call, true);
+				this.tool_run_result = yield tool_impl.execute(this.chat(), this.tool_call, true);
 				tool_output = this.tool_call_details();
 			}
 			 
 				
-			// Load file reference buffers so reference_contents() can get content (same as code search tool)
-			yield this.parent.runner.load_files(this.references);
-			var reference_content = this.reference_contents();
-			var executor_input = tool_output + reference_content;
+			var load_list = new Gee.ArrayList<Markdown.Document.Format>();
+			if (this.exam_reference != null) {
+				load_list.add(this.exam_reference);
+			}
+			foreach (var link in this.references) {
+				load_list.add(link);
+			}
+			yield this.load_links(load_list);
+			var reference_content = "";
+			if (this.references.size > 0) {
+				string[] ref_parts = {};
+				foreach (var link in this.references) {
+					var block = this.parent.link_content(link, MarkdownPhase.EXECUTION);
+					if (block != "") {
+						ref_parts += block;
+					}
+				}
+				if (ref_parts.length > 0) {
+					reference_content = "## Reference Contents\n\n" + string.joinv("", ref_parts);
+				}
+			}
+			var exam_content = "";
+			if (this.exam_reference != null) {
+				var eb = this.parent.link_content(this.exam_reference, MarkdownPhase.EXECUTION);
+				exam_content = "\n\n## Specific Document or Code to consider for this task\n\n";
+				if (eb != "") {
+					exam_content += eb;
+				} else {
+					exam_content += "_(The designated document or code could not be loaded or is empty.)_\n";
+				}
+			}
+			var executor_input = tool_output + reference_content + exam_content;
 			this.add_message(new OLLMchat.Message("ui", 
 				"Tool run finished. Reviewing Tool Output"));
 			var response_text = "";
 			var last_issues = "";
 			for (var try_count = 0; try_count < 5; try_count++) {
+				this.writes.clear();
 				var tpl = this.executor_prompt(executor_input, response_text, last_issues);
 				var messages = new Gee.ArrayList<OLLMchat.Message>();
 				messages.add(new OLLMchat.Message("system", tpl.filled_system));
@@ -211,6 +279,25 @@ namespace OLLMcoder.Task
 					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 				}
 				if (exec_ok) {
+					var validate_issues = "";
+					foreach (var w in this.writes) {
+						yield w.validate ();
+						validate_issues += w.issues;
+					}
+					if (validate_issues.strip () != "") {
+						this.parent.runner.replay_step("exec_validate_issues",
+							response_text + "\n\nValidate issues:\n" + validate_issues.strip ());
+						last_issues = validate_issues.strip ();
+						if (try_count < 4) {
+							this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+								"text.oc-frame-warning.collapsed Executor try %d".printf(try_count + 1),
+								last_issues)));
+						}
+						continue;
+					}
+					foreach (var w in this.writes) {
+						yield w.exec (this);
+					}
 					return;
 				}
 				this.parent.runner.replay_step("exec_parse_issues",
@@ -232,7 +319,7 @@ namespace OLLMcoder.Task
 		 * What the prompt gets (template placeholders and what we fill):
 		 *
 		 *   ## What is needed
-		 *   {what_is_needed}     <- task_data "What is needed"
+		 *   {what_is_needed}     <- task_data "what is needed"
 		 *
 		 *   ## Skill definition
 		 *   {skill_definition}   <- this task's skill body
@@ -261,10 +348,13 @@ namespace OLLMcoder.Task
 			var definition = this.parent.skill_manager.fetch(this.parent);
 			var project = this.parent.runner.sr_factory.project_manager.active_project;
 			var project_description = (project == null) ? "" : project.project_description();
-			var tpl = OLLMcoder.Skill.PromptTemplate.template("task_execution.md");
+			var tpl = OLLMcoder.Skill.PromptTemplate.template(
+				definition.tools.contains("write_file")
+					? "task_execution_write.md"
+					: "task_execution.md");
 			tpl.system_fill(0);
 			tpl.fill(6,
-				"what_is_needed", this.parent.task_data.get("What is needed").to_markdown(),
+				"what_is_needed", this.parent.task_data.get("what is needed").to_markdown(),
 				"skill_definition", definition.execute,
 				"project_description", project_description,
 				"executor_input", executor_input,
@@ -353,34 +443,6 @@ namespace OLLMcoder.Task
 				return false;
 			}
 			return true;
-		}
-
-		/**
-		 * Returns instructions for the refine stage: tool name, description, and
-		 * parameters. Uses this.name to look up the tool from the manager. Call
-		 * after constructing the Tool with name set.
-		 *
-		 * @return JSON schema string for the tool (name, description, parameters)
-		 */
-		public string to_instructions()
-		{
-			var original = this.parent.runner.session.manager.tools.get(this.name);
-			var base_tool = (OLLMchat.Tool.BaseTool) original;
-			var schema = new Json.Object();
-			schema.set_string_member("name", base_tool.function.name);
-			schema.set_string_member("description", base_tool.function.description);
-			var param_node = Json.gobject_serialize(base_tool.function.parameters);
-			param_node.get_object().set_string_member("type", base_tool.function.parameters.x_type);
-			schema.set_object_member("parameters", param_node.get_object());
-			var root = new Json.Node(Json.NodeType.OBJECT);
-			root.set_object(schema);
-			var gen = new Json.Generator();
-			gen.set_root(root);
-			var ret = gen.to_data(null);
-			if (base_tool.example_call != "") {
-				ret += "\nExample: " + base_tool.example_call;
-			}
-			return ret;
 		}
 	}
 }

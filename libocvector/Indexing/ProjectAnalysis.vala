@@ -73,7 +73,7 @@ namespace OLLMvector.Indexing
 				}
 				string content = "";
 				try {
-					content = file.get_contents(0);
+					content = file.contents(0);
 				} catch (GLib.Error e) {
 					GLib.warning("ProjectAnalysis: could not read build file %s: %s", file.path, e.message);
 					continue;

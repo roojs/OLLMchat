@@ -198,7 +198,7 @@ namespace OLLMcoder
 					&& this.project_manager.active_file.path == file) {
 			 
 				
-				return this.project_manager.active_file.get_contents(200);
+				return this.project_manager.active_file.contents(200);
 			}
 			var found_file = this.project_manager.get_file_from_active_project(file);
 			if (found_file == null) {
@@ -206,7 +206,7 @@ namespace OLLMcoder
 				return "Problem loading file contents: " + file;
 			}
 			this.project_manager.buffer_provider.create_buffer(found_file);
-			return found_file.get_contents(20);
+			return found_file.contents(20);
 		}
 		
 		/**

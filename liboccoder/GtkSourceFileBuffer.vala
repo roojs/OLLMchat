@@ -166,26 +166,32 @@ namespace OLLMcoder
 		 */
 		public string get_text(int start_line = 0, int end_line = -1)
 		{
-			Gtk.TextIter start, end;
-			this.get_bounds(out start, out end);
+			Gtk.TextIter buf_start, buf_end;
+			this.get_bounds(out buf_start, out buf_end);
 			
-			if (end_line >= 0 && end_line >= start_line) {
-				// Limit to specified line range
-				var line_start = start;
-				line_start.forward_lines(start_line);
-				var line_end = start;
-				if (end_line > start_line) {
-					line_end.forward_lines(end_line);
-				} else {
-					line_end = line_start;
-				}
-				if (!line_end.ends_line()) {
-					line_end.forward_to_line_end();
-				}
-				return ((Gtk.TextBuffer) this).get_text(line_start, line_end, true);
+			if (end_line < 0 || end_line < start_line) {
+				return ((Gtk.TextBuffer) this).get_text(buf_start, buf_end, true);
 			}
 			
-			return ((Gtk.TextBuffer) this).get_text(start, end, true);
+			int max_idx = buf_end.get_line();
+			start_line = start_line < 0 ? 0 : start_line;
+			if (start_line > max_idx) {
+				// start line after end
+				return "";
+			}
+			end_line = int.min(end_line, max_idx);
+			var line_start = buf_start;
+			line_start.forward_lines(start_line);
+			var line_end = buf_start;
+			if (end_line > start_line) {
+				line_end.forward_lines(end_line);
+			} else {
+				line_end = line_start;
+			}
+			if (!line_end.ends_line()) {
+				line_end.forward_to_line_end();
+			}
+			return ((Gtk.TextBuffer) this).get_text(line_start, line_end, true);
 		}
 		
 		/**
@@ -219,6 +225,58 @@ namespace OLLMcoder
 			}
 			
 			return ((Gtk.TextBuffer) this).get_text(iter, line_end, true);
+		}
+		
+		public Gee.HashMap<int, string> locate(string needle, bool match_trimmed, bool case_sensitive)
+		{
+			var result = new Gee.HashMap<int, string>();
+			if (needle.strip() == "") {
+				return result;
+			}
+			string search_text;
+			if (match_trimmed) {
+				var ws_nl = new GLib.Regex ("\\s+\\n\\s+");
+				var collapsed = ws_nl.replace (needle, -1, 0, "\n");
+				search_text = GLib.Regex.escape_string (collapsed.strip ());
+			} else {
+				search_text = needle.index_of ("\n") >= 0
+					? GLib.Regex.escape_string (needle)
+					: needle;
+			}
+			var settings = new GtkSource.SearchSettings();
+			settings.case_sensitive = case_sensitive;
+			settings.wrap_around = false;
+			settings.at_word_boundaries = false;
+			settings.regex_enabled = match_trimmed || needle.index_of ("\n") >= 0;
+			settings.set_search_text (search_text);
+			var ctx = new GtkSource.SearchContext(this, settings);
+			ctx.set_highlight(false);
+			var scan_pos = 0;
+			while (true) {
+				Gtk.TextIter from_iter;
+				this.get_iter_at_offset(out from_iter, scan_pos);
+				Gtk.TextIter m_start;
+				Gtk.TextIter m_end;
+				bool wrapped = false;
+				if (!ctx.forward(from_iter, out m_start, out m_end, out wrapped)) {
+					break;
+				}
+				Gtk.TextIter line_start;
+				this.get_iter_at_line(out line_start, m_start.get_line());
+				Gtk.TextIter line_end = m_end;
+				if (!line_end.ends_line()) {
+					line_end.forward_to_line_end();
+				}
+				result.set(
+					line_start.get_line(),
+					((Gtk.TextBuffer) this).get_text(line_start, line_end, false)
+				);
+				scan_pos = m_end.get_offset();
+				if (scan_pos <= from_iter.get_offset()) {
+					break;
+				}
+			}
+			return result;
 		}
 		
 		/**
