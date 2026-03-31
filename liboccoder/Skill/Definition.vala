@@ -21,7 +21,11 @@ namespace OLLMcoder.Skill
 	/**
 	 * One skill file: YAML header, then Refinement and Execution sections separated by "---".
 	 * Constructor only stores path; call load() to read and parse.
-	 * Header is stored in a hash map; "name" etc. are read from the map after load.
+	 * Header is stored in a hash map after load.
+	 *
+	 * Normal skills: YAML ``name`` must equal the ``.md`` file stem (basename without extension).
+	 * User overrides (under ``~/.local/share/ollmchat/skills/``) may use ``override: catalog_name``
+	 * instead of ``name`` to replace a built-in; filename may differ.
 	 */
 	public class Definition : Object
 	{
@@ -46,15 +50,30 @@ namespace OLLMcoder.Skill
 		}
 
 		/**
-		 * Load and parse the skill file. Validates content; throws on read or validation failure.
+		 * Load and parse the skill file (filesystem path, or bundled skills via a resource URI).
+		 * Validates content; throws on read or validation failure.
 		 */
 		public void load() throws GLib.Error
 		{
-			string contents = "";
-			if (!GLib.FileUtils.get_contents(this.path, out contents)) {
-				var msg = "Skill: could not read %s".printf(this.path);
-				GLib.critical("Invalid skill file: %s", msg);
-				throw new GLib.FileError.FAILED(msg);
+			var file = this.path.has_prefix("resource://")
+				? GLib.File.new_for_uri(this.path)
+				: GLib.File.new_for_path(this.path);
+			uint8[] raw;
+			string etag;
+			file.load_contents(null, out raw, out etag);
+			string contents = (string) raw;
+
+			this.mtime = 0;
+			if (!this.path.has_prefix("resource://")) {
+				try {
+					this.mtime = (int64) file.query_info(
+						GLib.FileAttribute.TIME_MODIFIED,
+						GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+						null
+					).get_modification_time().tv_sec;
+				} catch (GLib.Error e) {
+					GLib.warning("Skill: could not read mtime for %s: %s", this.path, e.message);
+				}
 			}
 
 			this.full_content = contents;
@@ -82,7 +101,7 @@ namespace OLLMcoder.Skill
 				if (colon > 0) {
 					var key = stripped.substring(0, colon).strip();
 					var value = stripped.substring(colon + 1).strip();
-					if (value != "") {
+					if (key != "" && value != "") {
 						this.header.set(key, value);
 					}
 				}
@@ -90,25 +109,35 @@ namespace OLLMcoder.Skill
 
 			if (this.header.has_key("tools")) {
 				this.tools.add_all_array(
-					this.header.get("tools").replace(" ", "").strip().split(","));
+					this.header.get("tools").replace(" ", "").split(","));
 			}
 
+			bool has_override = this.header.has_key("override") && this.header.get("override") != "";
+			if (has_override) {
+				var ov = this.header.get("override");
+				this.header.set("name", ov);
+			}
 			if (!this.header.has_key("name") || this.header.get("name") == "") {
-				var msg = "Skill: %s has no valid 'name' in header".printf(this.path);
+				var msg = "Skill: %s has no valid 'name' in header (use 'override: skill_name' to replace a built-in)".printf(this.path);
 				GLib.critical("Invalid skill file: %s", msg);
 				throw new GLib.FileError.INVAL(msg);
 			}
+			var base_name = this.path.has_prefix("resource://")
+				? GLib.File.new_for_uri(this.path).get_basename()
+				: GLib.File.new_for_path(this.path).get_basename();
+			if (base_name != this.header.get("name") + ".md") {
+					var msg = "Skill: %s file must be named '%s' (got '%s')".printf(
+						this.path, this.header.get("name") + ".md", (string) base_name);
+				GLib.critical("Invalid skill file: %s", msg);
+				throw new GLib.FileError.INVAL(msg);
+			}
+			
+
 			if (!this.header.has_key("description") || this.header.get("description") == "") {
 				var msg = "Skill: %s has no valid 'description' in header".printf(this.path);
 				GLib.critical("Invalid skill file: %s", msg);
 				throw new GLib.FileError.INVAL(msg);
 			}
-
-			this.mtime = (int64) GLib.File.new_for_path(this.path).query_info(
-				GLib.FileAttribute.TIME_MODIFIED,
-				GLib.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
-				null
-			).get_modification_time().tv_sec;
 
 			var doc_render = new Markdown.Document.Render();
 			doc_render.parse(this.refine);

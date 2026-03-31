@@ -22,7 +22,7 @@ namespace OLLMtools
 	 * Registry for all tools in liboctools.
 	 * 
 	 * Registers: ReadFile, RunCommand, WebFetch, EditMode, WriteFile, GoogleSearch,
-	 * wrapped tools (via ToolBuilder), and agent tools (via Child.Parser).
+	 * and wrapped tools (via ToolBuilder).
 	 */
 	public class Registry : Object
 	{
@@ -83,15 +83,8 @@ namespace OLLMtools
 			var builder = new ToolBuilder(manager.tools);
 			builder.scan_and_build();
 			
-			GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)", 
+			GLib.debug("OLLMtools.Registry.fill_tools: Registered wrapped tools (total tools: %d)",
 				manager.tools.size);
-			
-			// Register agent tools from resources/agents/ (commented out for now)
-			// var parser = new Child.Parser();
-			// parser.scan_and_register(manager, project_manager);
-			//
-			// GLib.debug("OLLMtools.Registry.fill_tools: Registered agent tools (total tools: %d)", 
-			// manager.tools.size);
-	}
+		}
 	}
 }

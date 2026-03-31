@@ -418,12 +418,12 @@ ocvector_resources = gnome.compile_resources(
   'ocvector-resources',
   '../resources/gresources.xml',
   source_dir: [
-	'../resources/agents',
 	'../resources/ollmchat-agents/code-assistant',
 	'../resources',
 	'../resources/wrapped-tools',
 	'../resources/ocvector',
-	'../resources/skill-prompts'
+	'../resources/skill-prompts',
+	'../resources/skills'
 	],
   c_name: 'ocvector_resources'
 )
