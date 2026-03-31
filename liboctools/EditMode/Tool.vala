@@ -109,7 +109,7 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 		 * 
 		 * Note: Multiple requests for the same file are allowed (e.g., when a single
 		 * agent restarts the tool). Handling conflicts between multiple agents editing
-		 * the same file is deferred to plan 5.4 (multi-window chat issues).
+		 * the same file is deferred (multi-window chat / concurrent agents).
 		 * 
 		 * @param request The request to activate
 		 */
@@ -138,7 +138,7 @@ Don't forget to close the code block with the closing ``` tag. If you don't clos
 			GLib.debug("Tool.activate_request: Added request to active_requests (total=%zu, file=%s, request_id=%d)", 
 				this.active_requests.size, request.normalized_path, request.request_id);
 			
-			// TODO (Plan 5.4): Handle conflicts when multiple agents edit the same file
+			// TODO: Handle conflicts when multiple agents edit the same file
 			// Currently we allow multiple requests for the same file, which works for
 			// single agent restarting the tool, but could cause issues with multiple agents.
 		}

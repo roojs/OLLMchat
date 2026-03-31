@@ -54,7 +54,7 @@ public class ValidateLink : GLib.Object
 			}
 			switch (this.stage) {
 				case MarkdownPhase.POST_EXEC:
-					if (this.details.task_output_document.headings.has_key (link.hash)) {
+					if (this.details.out_doc.headings.has_key (link.hash)) {
 						return;
 					}
 					break;
@@ -203,7 +203,7 @@ public class ValidateLink : GLib.Object
 					return;
 				}
 				var other_task = this.runner.completed.slugs.get (slug);
-				if (link.hash != "" && !other_task.task_output_document.headings.has_key (link.hash)) {
+				if (link.hash != "" && !other_task.out_doc.headings.has_key (link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": task \"" + slug + "\" has no section \"" + link.hash +
 						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
@@ -217,7 +217,7 @@ public class ValidateLink : GLib.Object
 						"\" (references must be to completed tasks only).";
 					return;
 				}
-				if (link.hash != "" && !completed_ref.task_output_document.headings.has_key (link.hash)) {
+				if (link.hash != "" && !completed_ref.out_doc.headings.has_key (link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": task \"" + slug + "\" has no section \"" + link.hash +
 						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";
@@ -241,7 +241,7 @@ public class ValidateLink : GLib.Object
 					return;
 				}
 				if (ref_task.exec_done && link.hash != "" &&
-						!ref_task.task_output_document.headings.has_key (link.hash)) {
+						!ref_task.out_doc.headings.has_key (link.hash)) {
 					this.issues += "\n" + "Invalid reference target \"" + link.href +
 						"\": task \"" + slug + "\" has no section \"" + link.hash +
 						"\". Use `task://" + slug + ".md` with no suffix after `.md` for the full output.";

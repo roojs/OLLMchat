@@ -58,6 +58,18 @@ namespace Markdown.Document
 			return result != null ? result : "";
 		}
 
+		/**
+		 * File link as a relative target: [[scheme]] `file`, [[path]], [[href]] = path + `#` + [[hash]],
+		 * and [[is_relative]] true (caller passes a path suitable for markdown-relative links).
+		 */
+		public void up_relpath(string path)
+		{
+			this.scheme = "file";
+			this.path = path;
+			this.href = path + (this.hash != "" ? "#" + this.hash : "");
+			this.is_relative = true;
+		}
+
 		public override string to_markdown()
 		{
 			string inner = "";

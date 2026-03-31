@@ -197,7 +197,7 @@ namespace OLLMchat.History
 		 */
 		public override void handle_stream_chunk(string new_text, bool is_thinking, Response.Chat response)
 		{
-			// Debug: refinement stream (see docs/plans/skill-runner-refinement-stream-to-ui.md) — log only new stream start
+			// Debug: refinement stream — log only new stream start
 			if (this.current_stream_message == null && (new_text.length > 0 || response.done)) {
 				GLib.debug("Session.handle_stream_chunk: new stream is_active=%s", this.is_active.to_string());
 			}

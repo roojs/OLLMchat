@@ -70,7 +70,7 @@ namespace OLLMchat.Call
 		[Description(nick = "Repeat Last N", blurb = "Larger = stronger reduction of repetition; 0 = off. Range 0–65536. (default: 64)")]
 		public int repeat_last_n { get; set; default = -1; }
 		
-		/* Ranges for repeat_penalty, presence_penalty, frequency_penalty from plan 1.3.8 Option ranges; Ollama does not document official min/max. */
+		/* Application-side ranges for repeat_penalty, presence_penalty, frequency_penalty; Ollama does not document official min/max. */
 		[Description(nick = "Repeat Penalty", blurb = "Higher = less repetition in the output. Range 1.0–2.0. (default: 1.1)")]
 		public double repeat_penalty { get; set; default = -1.0; }
 		

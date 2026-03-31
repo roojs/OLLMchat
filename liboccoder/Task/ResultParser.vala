@@ -199,7 +199,7 @@ public class ResultParser : Object
 	 * Cached in ''valid_key_cache''. Use ''valid_keys().contains(key)'' to reject
 	 * disallowed keys.
 	 *
-	 * @return cached list of allowed lowercase task_data keys (see plan 1.23.44)
+	 * @return cached list of allowed lowercase task_data keys
 	 */
 	private static Gee.ArrayList<string> valid_keys()
 	{
@@ -550,7 +550,7 @@ public class ResultParser : Object
 
 	/**
 	 * Parse post-exec synthesis response into the task. Called by Details.run_post_exec().
-	 * Requires ## Result summary; sets task_post_exec_summary and task_output_document,
+	 * Requires ## Result summary; sets post_summary and out_doc,
 	 * then validates each link in the output document.
 	 *
 	 * @param task the task to fill with post-exec summary and document
@@ -561,10 +561,10 @@ public class ResultParser : Object
 			this.issues += "\nPost-exec output must include ## Result summary.";
 			return;
 		}
-		task.task_post_exec_summary = this.document.headings.get("result-summary");
-		task.task_output_document = this.document;
+		task.post_summary = this.document.headings.get("result-summary");
+		task.out_doc = this.document;
 		var sum_render = new Markdown.Document.Render();
-		sum_render.parse(task.task_post_exec_summary.to_markdown_with_content());
+		sum_render.parse(task.post_summary.to_markdown_with_content());
 		var vl_sum = new ValidateLink(task.runner, task, MarkdownPhase.POST_EXEC);
 		vl_sum.validate_all(sum_render.document.links);
 		task.issues += vl_sum.issues;

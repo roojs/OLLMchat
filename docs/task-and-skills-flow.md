@@ -16,7 +16,7 @@ This document explains **how the Skill Runner agent** turns a user request into 
 | **Task list** | Ordered **steps** (`Step`). Each step has one or more **tasks** (`Details`). The runner advances **one step at a time** (refine that step → execute that step → optionally iterate). |
 | **Refinement** | An LLM pass that turns a coarse task into a **Refined task** (including **Skill call** with concrete arguments) and a **Tool Calls** section (JSON blocks). Tools are **not** executed during refinement; the model only emits text. |
 | **Execution** | For each task: build one or more **execution runs** (`Tool` instances), run each tool call if present, then run the **executor** LLM with `task_execution.md` + skill execution body + “Tool Output and/or Reference information”. |
-| **Post-exec** | After the executor runs, a final LLM pass (`task_post_exec.md`) merges run outputs into the canonical **`task_output_document`** and **task post-exec summary** used for `task://…` links and iteration. |
+| **Post-exec** | After the executor runs, a final LLM pass (`task_post_exec.md`) merges run outputs into the canonical **`out_doc`** and **task post-exec summary** used for `task://…` links and iteration. |
 
 **Pending vs completed:** `Runner.pending` is the list still to run; `Runner.completed` holds finished steps. Task output for linking is resolved from `completed` (and pending during a run) via `Runner.reference_content()`.
 
@@ -115,7 +115,7 @@ Executor output is parsed into per-run **`summary`** and **`document`**. The loo
 
 ## Phase 3: Post-execution synthesis
 
-**`Details.run_post_exec()`** uses `task_post_exec.md`. It passes the combined executor documents (`tool_runs_combined`), the task definition without tool calls (`POST_EXEC` phase), skill name, skill execution body, and optional retry issues. Parsed output fills **`task_output_document`** (canonical markdown for downstream **`task://slug.md`** resolution) and **`task_post_exec_summary`**.
+**`Details.run_post_exec()`** uses `task_post_exec.md`. It passes the combined executor documents (`tool_runs_combined`), the task definition without tool calls (`POST_EXEC` phase), skill name, skill execution body, and optional retry issues. Parsed output fills **`out_doc`** (canonical markdown for downstream **`task://slug.md`** resolution) and **`post_summary`**.
 
 This is what later tasks and iteration see as the stable **task result** (not the raw per-run executor markdown alone).
 
@@ -137,9 +137,9 @@ Parse failures: up to **5** tries; unrecoverable failure cancels the session run
 
 ## Task links (`task://`)
 
-References to another task’s **canonical output** use **`[label](task://{slug}.md)`** — the URL **ends at `.md`**. Task lists, refinement, and executor prompts use that shape only; the runner injects the **full** **`task_output_document`** for that slug.
+References to another task’s **canonical output** use **`[label](task://{slug}.md)`** — the URL **ends at `.md`**. Task lists, refinement, and executor prompts use that shape only; the runner injects the **full** **`out_doc`** for that slug.
 
-Parsing (`libocmarkdown/document/Render.vala`): **`scheme`** is `task`, **`path`** is the segment after `task://` (no `/`), optional **`hash`**. **Resolution** (`Runner.reference_content`): empty **`hash`** → **`task_output_document.to_markdown()`**; non-empty **`hash`** → that section only (legacy paths, tests, or malformed model output — not described to the LLM). **Prompts** and **`docs/skills-format.md`** describe URLs that **stop at `.md`**.
+Parsing (`libocmarkdown/document/Render.vala`): **`scheme`** is `task`, **`path`** is the segment after `task://` (no `/`), optional **`hash`**. **Resolution** (`Runner.reference_content`): empty **`hash`** → **`out_doc.to_markdown()`**; non-empty **`hash`** → that section only (legacy paths, tests, or malformed model output — not described to the LLM). **Prompts** and **`docs/skills-format.md`** describe URLs that **stop at `.md`**.
 
 ### Slug
 
@@ -147,7 +147,7 @@ Derived from **Name** via **`Details.slug()`**: lowercase; each run of non-alpha
 
 ### Storage
 
-**`task_output_document`** (in memory) and **`Details.write()`** → **`{task_dir}/{slug}.md`**. **`Markdown.Document.Document.register_heading()`** still assigns GFM-style keys to **`##` headings** (e.g. for in-document links in executor output and for optional non-empty **`hash`** resolution).
+**`out_doc`** (in memory) and **`Details.write()`** → **`{task_dir}/{slug}.md`**. **`Markdown.Document.Document.register_heading()`** still assigns GFM-style keys to **`##` headings** (e.g. for in-document links in executor output and for optional non-empty **`hash`** resolution).
 
 ### Validation (summary)
 
@@ -262,7 +262,7 @@ The original **Conductor / skills agent** vision (skill runner as a chat agent, 
 				}
 				var task = this.completed.slugs.has_key(slug) ?
 					this.completed.slugs.get(slug) : this.pending.slugs.get(slug);
-				var doc = task.task_output_document;
+				var doc = task.out_doc;
 				if (link.hash == "") {
 					return doc.to_markdown();
 				}
