@@ -143,8 +143,8 @@ namespace OLLMcoder.Skill
 							continue;
 						}
 						this.by_name.set(catalog_name, skill);
-						contine;
-					} 
+						continue;
+					}
 					if (this.by_name.has_key(catalog_name)) {
 						GLib.critical(
 							"Skill %s: catalog name '%s' already loaded — use 'override: %s' in YAML to replace the built-in",
