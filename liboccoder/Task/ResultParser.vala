@@ -518,15 +518,28 @@ public class ResultParser : Object
 			if (hb.parent != this.document) {
 				continue;
 			}
-			var wc = new WriteChange.from_header(hb);
+			if (!slug.has_prefix("change-details")) {
+				this.issues += "\nWrite executor: unexpected top-level section (use ## Change details or Path 2 only): \"" + slug + "\".";
+				continue;
+			}
+			var wc = new WriteChange.from_header (hb, ex.parent.runner.sr_factory.project_manager);
 			if (wc.issues == "") {
 				ex.writes.add(wc);
 				continue;
 			}
-			this.issues += "\n" + wc.issues;
+			this.issues += "\n"
+				+ "Change details — " + hb.text_content().strip() + ":"
+				+ wc.issues.strip();
 		}
 		if (ex.writes.size == 0) {
-			this.issues += "\nWrite executor output must include a recognizable Change details section.";
+			if (this.issues.length > write_path_issues_start) {
+				return false;
+			}
+			var md = this.document.to_markdown().strip();
+			if (md.down().contains("**no changes needed**")) {
+				return true;
+			}
+			this.issues += "\nWrite executor output must include a recognizable Change details section, or Path 2 (full markdown must contain **no changes needed**).";
 			return false;
 		}
 		if (this.issues.length > write_path_issues_start) {

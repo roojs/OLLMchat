@@ -87,8 +87,7 @@ namespace OLLMtools.WriteFile
 			bool has_ast = (this.ast_path.strip() != "");
 			bool has_lines = (this.start_line >= 1 && this.end_line >= this.start_line);
 			bool has_search = (this.search_text.strip() != "");
-			int modes = (has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0) + (has_search ? 1 : 0);
-			if (modes != 1) {
+			if ((has_ast ? 1 : 0) + (has_lines ? 1 : 0) + (this.complete_file ? 1 : 0) + (has_search ? 1 : 0) != 1) {
 				return "use exactly one of: ast_path, line numbers (start_line/end_line), complete_file, or search_text";
 			}
 			if (this.start_line >= 1 || this.end_line >= 1) {

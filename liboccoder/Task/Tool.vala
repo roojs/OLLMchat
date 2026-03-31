@@ -279,8 +279,24 @@ namespace OLLMcoder.Task
 					((OLLMchat.Call.ReplayChat) this.chat_call).report_replay_outcome(parser.issues);
 				}
 				if (exec_ok) {
+					var validate_issues = "";
 					foreach (var w in this.writes) {
-						yield w.exec(this);
+						yield w.validate ();
+						validate_issues += w.issues;
+					}
+					if (validate_issues.strip () != "") {
+						this.parent.runner.replay_step("exec_validate_issues",
+							response_text + "\n\nValidate issues:\n" + validate_issues.strip ());
+						last_issues = validate_issues.strip ();
+						if (try_count < 4) {
+							this.add_message(new OLLMchat.Message("ui", OLLMchat.Message.fenced(
+								"text.oc-frame-warning.collapsed Executor try %d".printf(try_count + 1),
+								last_issues)));
+						}
+						continue;
+					}
+					foreach (var w in this.writes) {
+						yield w.exec (this);
 					}
 					return;
 				}
